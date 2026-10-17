@@ -1,0 +1,25 @@
+[package]
+name = "jevision-ffi"
+description = "UniFFI bindings that expose the JEVision core to the native apps"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "jevision_ffi"
+crate-type = ["lib", "staticlib"]
+
+[[bin]]
+name = "uniffi-bindgen-swift"
+path = "src/bin/uniffi-bindgen-swift.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+jevision-core.workspace = true
+thiserror.workspace = true
+uniffi.workspace = true

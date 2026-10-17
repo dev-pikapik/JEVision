@@ -34,47 +34,73 @@ A test is a graph of blocks. Execution starts at `start` and follows the arrows.
 
 ```mermaid
 flowchart TD
-    open([launch sign-in page]) --> email[type email]
+    open([open AcmeMail]) --> email[type email]
     email --> password[type password]
     password --> submit[click &quot;Sign in&quot;]
-    submit --> check{Dashboard visible?}
-    check -- yes --> pass([passed])
-    check -- no --> fail([failed + screenshot])
+    submit --> inbox{{wait for the inbox}}
+    inbox --> messages{{check the message list}}
 ```
 
-The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow.json):
+The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow.json), shortened:
 
 ```json
 {
+  "format": 1,
   "name": "Sign in with valid credentials",
+  "app": "com.example.AcmeMail",
   "start": "open",
   "blocks": {
-    "open":   { "type": "launch", "target": "https://example.com/sign-in", "next": "email" },
-    "email":  { "type": "type",  "into": { "label": "Email" }, "text": "demo@example.com", "next": "password" },
-    "password": { "type": "type", "into": { "label": "Password" }, "text": "${env.DEMO_PASSWORD}", "next": "submit" },
-    "submit": { "type": "click", "on": { "role": "button", "name": "Sign in" }, "next": "check" },
-    "check":  { "type": "if", "condition": { "visible": { "text": "Dashboard" } }, "then": "pass", "else": "fail" },
-    "pass":   { "type": "end", "result": "passed" },
-    "fail":   { "type": "end", "result": "failed", "screenshot": true }
+    "open": { "type": "openApp", "next": "email" },
+    "email": { "type": "type", "text": "demo@example.com", "into": { "image": "refs/email-field.png" }, "next": "password" },
+    "password": { "type": "type", "text": "${secret.ACME_PASSWORD}", "into": { "image": "refs/password-field.png" }, "next": "submit" },
+    "submit": { "type": "click", "target": { "image": "refs/sign-in-button.png" }, "button": "left", "next": "inbox" },
+    "inbox": { "type": "waitFor", "until": { "appears": { "image": "refs/inbox.png" } }, "timeout": "10s", "next": "messages" },
+    "messages": { "type": "check", "reference": { "image": "refs/message-list.png", "compare": "similar", "threshold": 0.9 } }
   }
 }
 ```
 
-> [!NOTE]
-> The file format is a **draft** and will change. Feedback is very welcome in
-> [Discussions](../../discussions).
+- **`format`** is the file format version. Older files are upgraded when read; files from a newer
+  JEVision are refused instead of being misread.
+- **`app`** is the bundle identifier of the application under test.
+- **Paths** (reference images, data files, other tests) are relative to the folder of the test file.
+- **Secrets are never stored in the file.** `${secret.NAME}` refers to a secret by name; its value
+  comes from the environment or the Keychain at run time. `${data.COLUMN}` is a value from the
+  current row of a `useData` table. Both are allowed in the text of a `type` block.
+- **Arrows** are `next`, `then`/`else` and `body`. A loop is only possible through the `body` of
+  `repeat` or `useData`; any other cycle is an error.
+- **Optional metadata:** `description`, `testType` (`smoke`, `regression`, `acceptance`),
+  `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
+  `tags` and `retries`.
 
-## Block types (planned)
+The `jevision` command line tool checks and formats test files:
 
-| Block | Shape | What it does |
+```sh
+jevision validate tests/         # report errors and warnings (--json for machines)
+jevision fmt tests/              # rewrite files in canonical form (--check to only report)
+```
+
+The canonical form has a fixed key order, lists blocks in reading order and leaves out default
+values, so every change shows up as a small, readable diff.
+
+## Block types
+
+| Block | Group | What it does |
 | --- | --- | --- |
-| `launch` | start | Opens the application or page under test |
-| `click`, `type`, `select`, `scroll` | step | Interacts with the interface |
-| `wait` | step | Waits for an element, a state or a time |
-| `if` | decision | Branches on what is on screen |
-| `loop` | decision | Repeats a group of blocks |
-| `call` | subprocess | Runs another test file as a reusable block |
-| `end` | finish | Ends the run as passed or failed |
+| `openApp` | actions | Opens the application under test, or another one by bundle identifier |
+| `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
+| `click` | actions | Clicks an image on screen or a point, left or right, single or double |
+| `type` | actions | Types text, optionally into a field found by its image |
+| `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
+| `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
+| `check` | wait and check | Compares the screen with a reference image: `exact`, `similar` or `meaning` |
+| `if` | logic | Goes to `then` or `else` depending on what is on screen |
+| `repeat` | logic | Runs its `body` a given number of times |
+| `runTest` | logic | Runs another test file as a step |
+| `useData` | data | Runs its `body` once for every row of a CSV file |
+
+A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
+`hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
 
 ## Roadmap
 

@@ -1,0 +1,4 @@
+[bindings.swift]
+module_name = "JEVisionCore"
+ffi_module_name = "JEVisionCoreFFI"
+ffi_module_filename = "JEVisionCoreFFI"

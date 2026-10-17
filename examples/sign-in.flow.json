@@ -1,38 +1,80 @@
 {
+  "format": 1,
   "name": "Sign in with valid credentials",
-  "description": "Opens the sign-in page, submits the form and checks that the dashboard appears.",
-  "format": 0,
+  "description": "Signs in with a known account and checks that the inbox appears.",
+  "app": "com.example.AcmeMail",
+  "testType": "smoke",
+  "priority": "critical",
+  "status": "ready",
+  "tags": [
+    "sign-in"
+  ],
+  "retries": 2,
   "start": "open",
   "blocks": {
     "open": {
-      "type": "launch",
-      "target": "https://example.com/sign-in",
+      "type": "openApp",
       "next": "email"
     },
     "email": {
       "type": "type",
-      "into": { "label": "Email" },
       "text": "demo@example.com",
+      "into": {
+        "image": "refs/email-field.png"
+      },
       "next": "password"
     },
     "password": {
       "type": "type",
-      "into": { "label": "Password" },
-      "text": "${env.DEMO_PASSWORD}",
+      "text": "${secret.ACME_PASSWORD}",
+      "into": {
+        "image": "refs/password-field.png"
+      },
       "next": "submit"
     },
     "submit": {
       "type": "click",
-      "on": { "role": "button", "name": "Sign in" },
-      "next": "check"
+      "target": {
+        "image": "refs/sign-in-button.png"
+      },
+      "button": "left",
+      "next": "inbox"
     },
-    "check": {
-      "type": "if",
-      "condition": { "visible": { "text": "Dashboard" }, "timeout": "5s" },
-      "then": "pass",
-      "else": "fail"
+    "inbox": {
+      "type": "waitFor",
+      "until": {
+        "appears": {
+          "image": "refs/inbox.png",
+          "compare": "similar",
+          "threshold": 0.95
+        }
+      },
+      "timeout": "10s",
+      "next": "messages"
     },
-    "pass": { "type": "end", "result": "passed" },
-    "fail": { "type": "end", "result": "failed", "screenshot": true }
+    "messages": {
+      "type": "check",
+      "reference": {
+        "image": "refs/message-list.png",
+        "compare": "similar",
+        "threshold": 0.9,
+        "ignore": [
+          {
+            "x": 0.8,
+            "y": 0.0,
+            "width": 0.2,
+            "height": 0.1
+          }
+        ],
+        "hide": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.3,
+            "height": 0.1
+          }
+        ]
+      }
+    }
   }
 }
