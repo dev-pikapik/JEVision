@@ -1,0 +1,38 @@
+{
+  "name": "Sign in with valid credentials",
+  "description": "Opens the sign-in page, submits the form and checks that the dashboard appears.",
+  "format": 0,
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "launch",
+      "target": "https://example.com/sign-in",
+      "next": "email"
+    },
+    "email": {
+      "type": "type",
+      "into": { "label": "Email" },
+      "text": "demo@example.com",
+      "next": "password"
+    },
+    "password": {
+      "type": "type",
+      "into": { "label": "Password" },
+      "text": "${env.DEMO_PASSWORD}",
+      "next": "submit"
+    },
+    "submit": {
+      "type": "click",
+      "on": { "role": "button", "name": "Sign in" },
+      "next": "check"
+    },
+    "check": {
+      "type": "if",
+      "condition": { "visible": { "text": "Dashboard" }, "timeout": "5s" },
+      "then": "pass",
+      "else": "fail"
+    },
+    "pass": { "type": "end", "result": "passed" },
+    "fail": { "type": "end", "result": "failed", "screenshot": true }
+  }
+}

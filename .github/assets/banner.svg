@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="t d">
+  <title id="t">JEVision</title>
+  <desc id="d">UI tests built as flowcharts: launch, act, check, branch.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#141b33"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#ffffff" opacity="0.06"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="360" rx="24" fill="url(#bg)"/>
+  <rect width="1200" height="360" rx="24" fill="url(#grid)"/>
+
+  <g font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+    <text x="72" y="150" font-size="76" font-weight="800" fill="#f8fafc" letter-spacing="-2">JE<tspan fill="url(#accent)">Vision</tspan></text>
+    <text x="74" y="200" font-size="24" fill="#94a3b8">UI tests you can see.</text>
+    <text x="74" y="234" font-size="24" fill="#94a3b8">Every test is a flowchart. Every flowchart is a file.</text>
+  </g>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" text-anchor="middle">
+    <g fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M800 92 V120"/>
+      <path d="M800 168 V196"/>
+      <path d="M760 244 Q700 270 700 290"/>
+      <path d="M840 244 Q900 270 900 290"/>
+    </g>
+    <rect x="730" y="52" width="140" height="40" rx="20" fill="#0f172a" stroke="#5eead4" stroke-width="2"/>
+    <text x="800" y="77" fill="#5eead4">launch</text>
+    <rect x="730" y="122" width="140" height="44" rx="8" fill="#0f172a" stroke="#818cf8" stroke-width="2"/>
+    <text x="800" y="149" fill="#c7d2fe">click "Sign in"</text>
+    <path d="M800 198 L860 222 L800 246 L740 222 z" fill="#0f172a" stroke="#f472b6" stroke-width="2"/>
+    <text x="800" y="227" fill="#fbcfe8">visible?</text>
+    <rect x="640" y="292" width="120" height="40" rx="20" fill="#0f172a" stroke="#34d399" stroke-width="2"/>
+    <text x="700" y="317" fill="#6ee7b7">pass</text>
+    <rect x="840" y="292" width="120" height="40" rx="20" fill="#0f172a" stroke="#f87171" stroke-width="2"/>
+    <text x="900" y="317" fill="#fca5a5">fail</text>
+    <text x="716" y="270" font-size="12" fill="#64748b">yes</text>
+    <text x="886" y="270" font-size="12" fill="#64748b">no</text>
+  </g>
+</svg>
