@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%"><feGaussianBlur stdDeviation="14"/></filter>
+    <linearGradient id="body" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6F86FF"/>
+      <stop offset="0.55" stop-color="#4A4FE8"/>
+      <stop offset="1" stop-color="#2A228F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="180" r="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="100" x2="0" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.22"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0" y1="300" x2="0" y2="724" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE4FF"/>
+    </linearGradient>
+    <linearGradient id="path" x1="360" y1="0" x2="680" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5EF0C8"/>
+      <stop offset="1" stop-color="#38D3F5"/>
+    </linearGradient>
+    <path id="shape" d="M382.8,100L641.2,100 C722.6,100 763.3,104.6 800.1,112.1 C855,131.3 892.7,169 911.9,223.9 C919.4,260.7 924,301.4 924,382.8L924,641.2 C924,722.6 919.4,763.3 911.9,800.1 C892.7,855 855,892.7 800.1,911.9 C763.3,919.4 722.6,924 641.2,924L382.8,924 C301.4,924 260.7,919.4 223.9,911.9 C169,892.7 131.3,855 112.1,800.1 C104.6,763.3 100,722.6 100,641.2L100,382.8 C100,301.4 104.6,260.7 112.1,223.9 C131.3,169 169,131.3 223.9,112.1 C260.7,104.6 301.4,100 382.8,100Z"/>
+    <path id="eye" d="M232,512 C312,372 408,316 512,316 C616,316 712,372 792,512 C712,652 616,708 512,708 C408,708 312,652 232,512Z"/>
+    <path id="check" d="M386,521 L473,609 L645,427"/>
+  </defs>
+
+  <use href="#shape" transform="translate(0 10)" fill="#000000" fill-opacity="0.25" filter="url(#drop)"/>
+  <use href="#shape" fill="url(#body)"/>
+  <use href="#shape" fill="url(#glow)"/>
+  <use href="#shape" fill="none" stroke="url(#rim)" stroke-width="6"/>
+
+  <g transform="translate(0 14)" opacity="0.28" fill="none" stroke="#120C5C" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#eye" stroke-width="56"/>
+    <use href="#check" stroke-width="52"/>
+    <circle cx="386" cy="521" r="44" fill="#120C5C" stroke="none"/>
+    <circle cx="473" cy="609" r="44" fill="#120C5C" stroke="none"/>
+    <circle cx="645" cy="427" r="44" fill="#120C5C" stroke="none"/>
+  </g>
+
+  <use href="#eye" fill="#1A1478" fill-opacity="0.32" stroke="url(#glyph)" stroke-width="56" stroke-linejoin="round"/>
+  <use href="#check" fill="none" stroke="url(#path)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#FFFFFF" stroke="url(#path)" stroke-width="16">
+    <circle cx="386" cy="521" r="42"/>
+    <circle cx="473" cy="609" r="42"/>
+    <circle cx="645" cy="427" r="42"/>
+  </g>
+</svg>

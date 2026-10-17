@@ -1,0 +1,16 @@
+[package]
+name = "jevision-runner"
+description = "Runs JEVision flowchart UI tests through a platform-specific input/output layer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+jevision-core.workspace = true
+csv = "1.3"
+png = "0.18"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

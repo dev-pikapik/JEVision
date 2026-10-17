@@ -1,0 +1,184 @@
+//! Runs JEVision tests: walks a test's flowchart block by block, drives the application under
+//! test through a platform layer ([`Hands`]), compares screenshots with reference images and
+//! writes a [`RunReport`] with screenshots into the project's `.jevision/runs` folder.
+//!
+//! The crate is platform independent. Everything that touches the operating system — launching
+//! applications, synthetic input, screen capture, finding an image on screen — sits behind
+//! [`Hands`]; secrets come from a [`SecretSource`]; progress goes to an [`EventSink`]; a
+//! [`RunControl`] cancels, pauses and steps a run from another thread.
+
+mod control;
+mod data;
+mod image;
+mod report;
+mod run;
+
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
+
+pub use control::{PauseReason, RunControl};
+pub use data::DataTable;
+pub use jevision_core::{MouseButton, Point};
+pub use report::{
+    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, describe, html,
+    junit_xml,
+};
+pub use run::{Run, RunOptions, Runner};
+
+/// Shown instead of a secret value wherever a secret would otherwise appear.
+pub const SECRET_MASK: &str = "••••";
+
+/// Operating-system side of a run: one implementation per platform.
+///
+/// Points and screenshots are relative to the front window of the given application, so tests
+/// do not depend on window position or on which display the window is on. Methods may block
+/// until the action is done; long-running ones (typing a long text) should stop early once the
+/// [`RunControl`] the application created for the run reports [`RunControl::is_cancelled`].
+pub trait Hands: Send + Sync {
+    /// Launches the application (or finds it running) and brings it to the front; returns once
+    /// it can take input.
+    fn open_app(&self, app: &str) -> Result<(), HandsError>;
+    /// Opens files or web addresses in `app`, or in the system default application.
+    fn open(
+        &self,
+        items: &[Openable],
+        app: Option<&str>,
+        new_instance: bool,
+    ) -> Result<(), HandsError>;
+    /// Brings the application to the front so typed keys reach it.
+    fn activate(&self, app: &str) -> Result<(), HandsError>;
+    /// Asks the application to quit, as the user would.
+    fn quit(&self, app: &str) -> Result<(), HandsError>;
+    /// Captures the application's front window.
+    fn capture(&self, app: &str) -> Result<Screenshot, HandsError>;
+    /// Finds the PNG `template` in the application's front window and returns its centre, or
+    /// `None` when no place is at least `min_similarity` (0–1) alike.
+    fn locate(
+        &self,
+        app: &str,
+        template: &[u8],
+        min_similarity: f64,
+    ) -> Result<Option<Point>, HandsError>;
+    fn click(
+        &self,
+        app: &str,
+        at: Point,
+        button: MouseButton,
+        double: bool,
+    ) -> Result<(), HandsError>;
+    /// Types text into the front application. The text may hold secret values: never log it.
+    fn type_text(&self, text: &str) -> Result<(), HandsError>;
+    /// Presses one key combination such as `cmd+shift+s`.
+    fn press_keys(&self, keys: &str) -> Result<(), HandsError>;
+    /// Whether a person moved the mouse or typed since the last call; synthetic input sent by
+    /// this object does not count. A `true` pauses the run.
+    fn user_input_detected(&self) -> bool;
+}
+
+/// A captured window.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Screenshot {
+    /// PNG image in device pixels.
+    pub png: Vec<u8>,
+    /// Device pixels per point: 2 on Retina displays.
+    pub scale: f64,
+    /// The window was drawn in dark appearance.
+    pub dark: bool,
+}
+
+/// Something [`Hands::open`] opens.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Openable {
+    /// An absolute path: a fresh copy of the test's file, made for this run.
+    File(PathBuf),
+    /// An `http(s)://` address.
+    Url(String),
+}
+
+/// Why the operating system layer could not do something.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum HandsError {
+    /// A system permission is missing; holds its name, e.g. `screenRecording`, `accessibility`.
+    #[error("permission `{0}` is not granted")]
+    PermissionDenied(String),
+    #[error("application `{0}` is not installed")]
+    AppNotFound(String),
+    #[error("application `{0}` has no open window")]
+    NoWindow(String),
+    #[error("cannot open `{0}`")]
+    CannotOpen(String),
+    #[error("{0}")]
+    Failed(String),
+}
+
+/// Values for `${secret.NAME}` placeholders. Values are used only for typing; reports, events
+/// and logs show [`SECRET_MASK`] instead.
+pub trait SecretSource: Send + Sync {
+    fn secret(&self, name: &str) -> Option<String>;
+}
+
+impl SecretSource for HashMap<String, String> {
+    fn secret(&self, name: &str) -> Option<String> {
+        self.get(name).cloned()
+    }
+}
+
+/// Receives progress while a run goes on, on the thread that runs it.
+pub trait EventSink: Send + Sync {
+    fn send(&self, event: &Event);
+}
+
+impl<F: Fn(&Event) + Send + Sync> EventSink for F {
+    fn send(&self, event: &Event) {
+        self(event)
+    }
+}
+
+/// Progress of a run, in the order things happen.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(
+    tag = "event",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum Event {
+    /// `dir` is the run folder; screenshot paths in steps are relative to it.
+    RunStarted {
+        test: String,
+        file: String,
+        dir: PathBuf,
+        max_attempts: u32,
+    },
+    AttemptStarted {
+        attempt: u32,
+    },
+    /// A block starts. `test` is the file the block belongs to (it differs from the run's test
+    /// inside `runTest`); `variables` are the values visible to it, secrets masked.
+    StepStarted {
+        attempt: u32,
+        seq: u32,
+        test: String,
+        block: String,
+        block_type: String,
+        variables: BTreeMap<String, String>,
+    },
+    StepFinished {
+        attempt: u32,
+        step: Step,
+    },
+    Paused {
+        block: String,
+        reason: PauseReason,
+    },
+    Resumed,
+    AttemptFinished {
+        attempt: u32,
+        verdict: Verdict,
+        failure: Option<Failure>,
+    },
+    RunFinished {
+        verdict: Verdict,
+        flaky: bool,
+        report: PathBuf,
+    },
+}

@@ -1,0 +1,41 @@
+import SwiftUI
+
+@main
+struct JEVisionApp: App {
+  @State private var project = ProjectStore()
+  @State private var permissions = PermissionsMonitor()
+
+  init() {
+    _ = AppLanguage.atLaunch
+    Appearance.saved.apply()
+  }
+
+  var body: some Scene {
+    Window("JEVision", id: SceneID.main) {
+      MainView()
+        .environment(project)
+        .environment(permissions)
+    }
+    .defaultSize(width: 960, height: 640)
+    .commands { AppCommands(project: project) }
+
+    Window("Welcome to JEVision", id: SceneID.onboarding) {
+      OnboardingView()
+        .environment(permissions)
+    }
+    .windowResizability(.contentSize)
+    .windowStyle(.hiddenTitleBar)
+    .defaultPosition(.center)
+    .restorationBehavior(.disabled)
+
+    Settings {
+      SettingsView()
+        .environment(permissions)
+    }
+  }
+}
+
+enum SceneID {
+  static let main = "main"
+  static let onboarding = "onboarding"
+}

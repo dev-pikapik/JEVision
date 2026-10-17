@@ -1,0 +1,547 @@
+//! Checks a well-formed test for problems in its meaning: broken edges, forbidden cycles,
+//! empty or out-of-range parameters, malformed placeholders.
+
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+
+use crate::issue::Issue;
+use crate::model::{
+    BODY, Block, BlockKind, Compare, Flow, Point, Rect, Reference, Target, format_duration,
+};
+
+pub const MAX_RETRIES: u32 = 10;
+pub const MAX_REPEAT: u32 = 10_000;
+pub const MAX_TIMEOUT_MS: u64 = 60 * 60 * 1000;
+const MAX_ID_LEN: usize = 64;
+
+/// Lists every problem in `flow`, errors and warnings, in a stable order.
+pub fn validate(flow: &Flow) -> Vec<Issue> {
+    let mut out = Vec::new();
+    root(flow, &mut out);
+
+    let mut blocks: Vec<&Block> = flow.blocks.iter().collect();
+    blocks.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut seen = HashSet::new();
+    for b in &blocks {
+        if !seen.insert(b.id.as_str()) {
+            out.push(Issue::error("flow.block.duplicateId").with("block", &b.id));
+        }
+    }
+    if !seen.contains(flow.start.as_str()) {
+        out.push(Issue::error("flow.start.unknownBlock").with("target", &flow.start));
+    }
+    for b in &blocks {
+        block(b, &seen, &mut out);
+    }
+    graph(flow, &blocks, &mut out);
+    out
+}
+
+/// Names of the secrets the test reads through `${secret.NAME}`, sorted, without repeats.
+pub fn required_secrets(flow: &Flow) -> Vec<String> {
+    let mut names = BTreeSet::new();
+    for b in &flow.blocks {
+        if let BlockKind::Type { text, .. } = &b.kind {
+            for p in placeholders(text).into_iter().flatten() {
+                if p.0 == "secret" {
+                    names.insert(p.1.to_owned());
+                }
+            }
+        }
+    }
+    names.into_iter().collect()
+}
+
+fn root(flow: &Flow, out: &mut Vec<Issue>) {
+    if flow.name.trim().is_empty() {
+        out.push(Issue::error("flow.field.empty").with("field", "name"));
+    }
+    if !is_bundle_id(&flow.app) {
+        out.push(
+            Issue::error("flow.app.invalid")
+                .with("field", "app")
+                .with("value", &flow.app),
+        );
+    }
+    let mut tags = HashSet::new();
+    for tag in &flow.tags {
+        if tag.trim().is_empty() {
+            out.push(Issue::error("flow.field.empty").with("field", "tags"));
+        } else if !tags.insert(tag) {
+            out.push(Issue::error("flow.tags.duplicate").with("tag", tag));
+        }
+    }
+    if flow.retries > MAX_RETRIES {
+        out.push(range(None, "retries", 0, MAX_RETRIES));
+    }
+}
+
+fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
+    let id = b.id.as_str();
+    let err = |code: &str, field: &str| Issue::error(code).with("block", id).with("field", field);
+    if !is_block_id(id) {
+        out.push(Issue::error("flow.block.invalidId").with("block", id));
+    }
+    for (edge, target) in b.kind.edges() {
+        if !ids.contains(target) {
+            out.push(
+                Issue::error("flow.edge.unknownTarget")
+                    .with("block", id)
+                    .with("edge", edge)
+                    .with("target", target),
+            );
+        }
+    }
+    match &b.kind {
+        BlockKind::OpenApp { app, .. } => app_id(id, app.as_deref(), out),
+        BlockKind::OpenFile { files, app, .. } => {
+            if files.is_empty() {
+                out.push(err("flow.field.empty", "files"));
+            }
+            for (i, f) in files.iter().enumerate() {
+                if !is_web_address(f) {
+                    relative_path(id, &format!("files.{i}"), f, out);
+                }
+            }
+            app_id(id, app.as_deref(), out);
+        }
+        BlockKind::Click { target: t, .. } => target(id, "target", t, out),
+        BlockKind::Type { text, into, .. } => {
+            if text.is_empty() {
+                out.push(err("flow.field.empty", "text"));
+            }
+            for p in placeholders(text) {
+                if let Err(bad) = p {
+                    out.push(err("flow.placeholder.invalid", "text").with("placeholder", bad));
+                }
+            }
+            if let Some(t) = into {
+                target(id, "into", t, out);
+            }
+        }
+        BlockKind::PressKeys { keys, .. } => {
+            if keys.is_empty() {
+                out.push(err("flow.field.empty", "keys"));
+            } else if !is_key_combo(keys) {
+                out.push(err("flow.keys.invalid", "keys").with("value", keys));
+            }
+        }
+        BlockKind::WaitFor {
+            until, timeout_ms, ..
+        } => {
+            use crate::model::WaitUntil::*;
+            match until {
+                Appears(r) => reference(id, "until.appears", r, out),
+                Disappears(r) => reference(id, "until.disappears", r, out),
+                ScreenStable => {}
+            }
+            if !(1..=MAX_TIMEOUT_MS).contains(timeout_ms) {
+                out.push(
+                    err("flow.field.range", "timeout")
+                        .with("min", format_duration(1))
+                        .with("max", format_duration(MAX_TIMEOUT_MS)),
+                );
+            }
+        }
+        BlockKind::Check { reference: r, .. } | BlockKind::If { reference: r, .. } => {
+            reference(id, "reference", r, out);
+        }
+        BlockKind::Repeat { times, body, .. } => {
+            if !(1..=MAX_REPEAT).contains(times) {
+                out.push(range(Some(id), "times", 1, MAX_REPEAT));
+            }
+            loop_body(id, body, out);
+        }
+        BlockKind::UseData { file, body, .. } => {
+            path_with_extension(id, "file", file, ".csv", out);
+            loop_body(id, body, out);
+        }
+        BlockKind::RunTest { test, .. } => path_with_extension(id, "test", test, ".flow.json", out),
+    }
+}
+
+fn range(block: Option<&str>, field: &str, min: u32, max: u32) -> Issue {
+    let issue = Issue::error("flow.field.range");
+    let issue = match block {
+        Some(b) => issue.with("block", b),
+        None => issue,
+    };
+    issue.with("field", field).with("min", min).with("max", max)
+}
+
+fn app_id(block: &str, app: Option<&str>, out: &mut Vec<Issue>) {
+    if let Some(app) = app.filter(|a| !is_bundle_id(a)) {
+        out.push(
+            Issue::error("flow.app.invalid")
+                .with("block", block)
+                .with("field", "app")
+                .with("value", app),
+        );
+    }
+}
+
+fn loop_body(block: &str, body: &str, out: &mut Vec<Issue>) {
+    if body == block {
+        out.push(Issue::error("flow.loop.emptyBody").with("block", block));
+    }
+}
+
+/// Reports an empty or absolute path; returns whether the path can be used.
+fn relative_path(block: &str, field: &str, path: &str, out: &mut Vec<Issue>) -> bool {
+    let issue = |code| Issue::error(code).with("block", block).with("field", field);
+    if path.is_empty() {
+        out.push(issue("flow.field.empty"));
+    } else if !is_relative_path(path) {
+        out.push(issue("flow.path.invalid").with("value", path));
+    } else {
+        return true;
+    }
+    false
+}
+
+fn path_with_extension(block: &str, field: &str, path: &str, ext: &str, out: &mut Vec<Issue>) {
+    let wrong_extension = !path.ends_with(ext) || path.ends_with(&format!("/{ext}")) || path == ext;
+    if relative_path(block, field, path, out) && wrong_extension {
+        out.push(
+            Issue::error("flow.path.extension")
+                .with("block", block)
+                .with("field", field)
+                .with("value", path)
+                .with("expected", ext),
+        );
+    }
+}
+
+fn target(block: &str, field: &str, t: &Target, out: &mut Vec<Issue>) {
+    match t {
+        Target::Image(path) => {
+            relative_path(block, &format!("{field}.image"), path, out);
+        }
+        Target::Point(p) => point(block, &format!("{field}.point"), p, out),
+    }
+}
+
+fn point(block: &str, field: &str, p: &Point, out: &mut Vec<Issue>) {
+    if !(is_fraction(p.x) && is_fraction(p.y)) {
+        out.push(
+            Issue::error("flow.point.invalid")
+                .with("block", block)
+                .with("field", field),
+        );
+    }
+}
+
+fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
+    let fits = [r.x, r.y, r.width, r.height].into_iter().all(is_fraction)
+        && r.width > 0.0
+        && r.height > 0.0
+        && r.x + r.width <= 1.0
+        && r.y + r.height <= 1.0;
+    if !fits {
+        out.push(
+            Issue::error("flow.area.invalid")
+                .with("block", block)
+                .with("field", field),
+        );
+    }
+}
+
+fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
+    relative_path(block, &format!("{field}.image"), &r.image, out);
+    if let Compare::Similar { threshold } = r.compare {
+        if !(threshold > 0.0 && threshold <= 1.0) {
+            out.push(
+                Issue::error("flow.field.range")
+                    .with("block", block)
+                    .with("field", format!("{field}.threshold"))
+                    .with("min", 0)
+                    .with("max", 1),
+            );
+        }
+    }
+    if let Some(a) = &r.area {
+        rect(block, &format!("{field}.area"), a, out);
+    }
+    for (name, list) in [("ignore", &r.ignore), ("hide", &r.hide)] {
+        for (i, a) in list.iter().enumerate() {
+            rect(block, &format!("{field}.{name}.{i}"), a, out);
+        }
+    }
+}
+
+/// Cycles are allowed only through the `body` edge of a loop block; reachability is checked
+/// from `start`.
+fn graph(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
+    let index: HashMap<&str, usize> = blocks
+        .iter()
+        .enumerate()
+        .map(|(i, b)| (b.id.as_str(), i))
+        .collect();
+    let edges = |include_body: bool| -> Vec<Vec<usize>> {
+        blocks
+            .iter()
+            .map(|b| {
+                b.kind
+                    .edges()
+                    .into_iter()
+                    .filter(|(name, _)| include_body || *name != BODY)
+                    .filter_map(|(_, t)| index.get(t).copied())
+                    .collect()
+            })
+            .collect()
+    };
+    let all = edges(true);
+
+    for cycle in cycles(&edges(false)) {
+        let ids: Vec<&str> = cycle.iter().map(|&i| blocks[i].id.as_str()).collect();
+        out.push(
+            Issue::error("flow.cycle")
+                .with("block", ids[0])
+                .with("blocks", ids.join(", ")),
+        );
+    }
+
+    if let Some(&start) = index.get(flow.start.as_str()) {
+        let reached = reachable(&all, start);
+        for (i, b) in blocks.iter().enumerate() {
+            if !reached[i] {
+                out.push(Issue::warning("flow.block.unreachable").with("block", &b.id));
+            }
+        }
+    }
+
+    for (i, b) in blocks.iter().enumerate() {
+        let body = match &b.kind {
+            BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } => body,
+            _ => continue,
+        };
+        if let Some(&body) = index.get(body.as_str()) {
+            if body != i && !reachable(&all, body)[i] {
+                out.push(Issue::warning("flow.loop.noReturn").with("block", &b.id));
+            }
+        }
+    }
+}
+
+fn reachable(edges: &[Vec<usize>], from: usize) -> Vec<bool> {
+    let mut seen = vec![false; edges.len()];
+    let mut queue = VecDeque::from([from]);
+    seen[from] = true;
+    while let Some(n) = queue.pop_front() {
+        for &m in &edges[n] {
+            if !seen[m] {
+                seen[m] = true;
+                queue.push_back(m);
+            }
+        }
+    }
+    seen
+}
+
+/// One cycle per back edge found by depth-first search, as block indexes in edge order.
+fn cycles(edges: &[Vec<usize>]) -> Vec<Vec<usize>> {
+    const NEW: u8 = 0;
+    const ON_PATH: u8 = 1;
+    const DONE: u8 = 2;
+    let mut state = vec![NEW; edges.len()];
+    let mut found = Vec::new();
+    for root in 0..edges.len() {
+        if state[root] != NEW {
+            continue;
+        }
+        state[root] = ON_PATH;
+        let mut path: Vec<(usize, usize)> = vec![(root, 0)];
+        while let Some(top) = path.last_mut() {
+            let (node, next_edge) = *top;
+            let Some(&to) = edges[node].get(next_edge) else {
+                state[node] = DONE;
+                path.pop();
+                continue;
+            };
+            top.1 += 1;
+            match state[to] {
+                NEW => {
+                    state[to] = ON_PATH;
+                    path.push((to, 0));
+                }
+                ON_PATH => {
+                    let at = path.iter().position(|&(n, _)| n == to).unwrap_or(0);
+                    found.push(path[at..].iter().map(|&(n, _)| n).collect());
+                }
+                _ => {}
+            }
+        }
+    }
+    found
+}
+
+/// Splits `${namespace.name}` placeholders out of text; malformed ones are returned as `Err`.
+fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
+    let mut found = Vec::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("${") {
+        rest = &rest[at..];
+        let Some(end) = rest.find('}') else {
+            found.push(Err(rest));
+            break;
+        };
+        let whole = &rest[..=end];
+        let parsed = whole[2..end]
+            .split_once('.')
+            .filter(|(ns, name)| matches!(*ns, "secret" | "data") && is_identifier(name));
+        found.push(parsed.ok_or(whole));
+        rest = &rest[end + 1..];
+    }
+    found
+}
+
+fn is_fraction(v: f64) -> bool {
+    (0.0..=1.0).contains(&v)
+}
+
+fn is_identifier(s: &str) -> bool {
+    let mut chars = s.chars();
+    chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+fn is_block_id(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= MAX_ID_LEN
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+/// Reverse-DNS application identifier, e.g. `com.apple.TextEdit`.
+fn is_bundle_id(s: &str) -> bool {
+    let parts: Vec<&str> = s.split('.').collect();
+    parts.len() >= 2
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
+}
+
+fn is_web_address(s: &str) -> bool {
+    ["http://", "https://"]
+        .iter()
+        .any(|scheme| s.len() > scheme.len() && s.starts_with(scheme))
+}
+
+/// A portable path relative to the test file's folder, written with `/`.
+fn is_relative_path(s: &str) -> bool {
+    !s.is_empty()
+        && !s.starts_with('/')
+        && !s.starts_with('~')
+        && !s.ends_with('/')
+        && !s.contains('\\')
+        && !s.contains('\0')
+        && !s.split('/').any(str::is_empty)
+        && !s.as_bytes().get(1).is_some_and(|&b| b == b':')
+}
+
+const MODIFIERS: &[&str] = &["cmd", "shift", "option", "ctrl"];
+const NAMED_KEYS: &[&str] = &[
+    "return",
+    "tab",
+    "space",
+    "delete",
+    "forwarddelete",
+    "escape",
+    "up",
+    "down",
+    "left",
+    "right",
+    "home",
+    "end",
+    "pageup",
+    "pagedown",
+];
+
+/// `cmd+shift+s`: distinct lowercase modifiers, then one key — a character or a named key.
+fn is_key_combo(s: &str) -> bool {
+    let tokens: Vec<&str> = s.split('+').collect();
+    let Some((key, modifiers)) = tokens.split_last() else {
+        return false;
+    };
+    let mut seen = HashSet::new();
+    let modifiers_ok = modifiers
+        .iter()
+        .all(|m| MODIFIERS.contains(m) && seen.insert(*m));
+    let mut chars = key.chars();
+    let single_char = matches!((chars.next(), chars.next()), (Some(c), None)
+        if c.is_ascii_lowercase() || c.is_ascii_digit() || "-=[]\\;',./`".contains(c));
+    let function_key = key
+        .strip_prefix('f')
+        .and_then(|n| n.parse::<u8>().ok())
+        .is_some_and(|n| (1..=20).contains(&n) && !key.starts_with("f0"));
+    modifiers_ok && (single_char || function_key || NAMED_KEYS.contains(key))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn key_combos() {
+        for ok in [
+            "cmd+s",
+            "cmd+shift+s",
+            "return",
+            "f12",
+            "ctrl+option+space",
+            "cmd+/",
+        ] {
+            assert!(is_key_combo(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "cmd+",
+            "cmd",
+            "cmd+cmd+s",
+            "Cmd+S",
+            "s+cmd",
+            "f0",
+            "f21",
+            "f01",
+            "cmd++",
+            "enterr",
+        ] {
+            assert!(!is_key_combo(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn placeholder_parsing() {
+        assert_eq!(
+            placeholders("${secret.PASS} and ${data.user_1}"),
+            vec![Ok(("secret", "PASS")), Ok(("data", "user_1"))]
+        );
+        assert_eq!(
+            placeholders("${env.X} ${secret.} ${secret.A"),
+            vec![Err("${env.X}"), Err("${secret.}"), Err("${secret.A")]
+        );
+        assert!(placeholders("plain $ text {}").is_empty());
+    }
+
+    #[test]
+    fn paths_and_ids() {
+        for ok in ["refs/a.png", "../shared/login.flow.json", "a.csv"] {
+            assert!(is_relative_path(ok), "{ok}");
+        }
+        for bad in ["", "/etc/x", "~/x", "a//b", "a\\b", "C:x", "dir/"] {
+            assert!(!is_relative_path(bad), "{bad}");
+        }
+        assert!(is_bundle_id("com.apple.TextEdit") && is_bundle_id("org.my-app.x1"));
+        assert!(!is_bundle_id("TextEdit") && !is_bundle_id("com..x") && !is_bundle_id("com.a b"));
+        assert!(is_block_id("open-app_2") && !is_block_id("open app") && !is_block_id(""));
+    }
+
+    #[test]
+    fn cycles_are_found_once_per_back_edge() {
+        // 0 → 1 → 2 → 0, and 3 → 3.
+        let found = cycles(&[vec![1], vec![2], vec![0], vec![3]]);
+        assert_eq!(found, vec![vec![0, 1, 2], vec![3]]);
+        assert!(cycles(&[vec![1, 2], vec![2], vec![]]).is_empty());
+    }
+}

@@ -18,6 +18,10 @@ dist/
 build/
 target/
 out/
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
 
 # Test run artifacts
 reports/
