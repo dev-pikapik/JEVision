@@ -35,6 +35,16 @@ struct SyntheticInputTests {
   }
 }
 
+struct FrontWindowTests {
+  @Test func skipsTinyHelperWindows() {
+    let helper = (id: CGWindowID(2), bounds: CGRect(x: 447, y: 81, width: 66, height: 20), title: String?("Window"))
+    let note = (id: CGWindowID(1), bounds: CGRect(x: 441, y: 75, width: 673, height: 439), title: String?("note.txt"))
+    #expect(MacHands.front(of: [helper, note])?.id == 1)
+    #expect(MacHands.front(of: [helper])?.id == 2)
+    #expect(MacHands.front(of: []) == nil)
+  }
+}
+
 struct KeyStrokeTests {
   @Test func readsCombinations() throws {
     let save = try #require(KeyStroke("cmd+shift+s"))

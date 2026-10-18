@@ -146,3 +146,11 @@ struct ScheduleNotifierTests {
     #expect(ScheduleNotifier.unseen(project, defaults: defaults).isEmpty)
   }
 }
+
+struct ScheduleNameTests {
+  @Test func picksTheFirstFreeName() {
+    #expect(SchedulesSheet.freeName("Nightly", taken: []) == "Nightly")
+    #expect(SchedulesSheet.freeName("Nightly", taken: ["nightly"]) == "Nightly 2")
+    #expect(SchedulesSheet.freeName("Nightly", taken: ["Nightly", "Nightly 2", "Hourly"]) == "Nightly 3")
+  }
+}

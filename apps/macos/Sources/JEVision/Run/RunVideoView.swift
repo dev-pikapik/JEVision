@@ -29,7 +29,7 @@ struct RunVideoView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text("Video")
         .font(.headline)
-      VideoPlayer(player: player)
+      PlayerView(player: player)
         .aspectRatio(size, contentMode: .fit)
         .frame(maxHeight: 360)
         .frame(maxWidth: .infinity)
@@ -104,5 +104,21 @@ struct RunVideoView: View {
   static func clock(_ seconds: Double) -> String {
     let whole = Int(seconds.isFinite ? max(seconds, 0) : 0)
     return String(format: "%d:%02d", whole / 60, whole % 60)
+  }
+}
+
+/// AppKit's player. SwiftUI's `VideoPlayer` aborts the app on macOS 27 while its view is made.
+private struct PlayerView: NSViewRepresentable {
+  let player: AVPlayer
+
+  func makeNSView(context: Context) -> AVPlayerView {
+    let view = AVPlayerView()
+    view.controlsStyle = .inline
+    view.player = player
+    return view
+  }
+
+  func updateNSView(_ view: AVPlayerView, context: Context) {
+    if view.player !== player { view.player = player }
   }
 }

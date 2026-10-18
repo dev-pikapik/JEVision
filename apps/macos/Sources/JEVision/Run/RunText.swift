@@ -148,7 +148,7 @@ enum RunText {
       guard let row = attempt?.row else { return text }
       return String(localized: "\(RunChoices.rowTitle(number: Int(row.number), label: row.label)): \(text)")
     case .passed:
-      let time = Duration.milliseconds(report.durationMs).formatted(.units(allowed: [.minutes, .seconds], width: .abbreviated))
+      let time = RunHistory.duration(report.durationMs)
       if report.flaky {
         let tries = report.attempts.count
         return String(localized: "Passed on try \(tries), so the test is flaky: it failed before that.")

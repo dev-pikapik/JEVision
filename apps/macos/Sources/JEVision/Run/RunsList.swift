@@ -80,6 +80,7 @@ private struct RunRow: View {
         Image(systemName: status.symbol)
           .foregroundStyle(status.color)
           .imageScale(.large)
+          .frame(width: 22)
           .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 1) {
           Text(run.report.test.isEmpty ? String(localized: "Untitled Test") : run.report.test)
@@ -136,12 +137,14 @@ private struct HealthView: View {
             .foregroundStyle(RunStatus.flaky.color)
         }
         .font(.caption)
+        .lineLimit(4)
         .fixedSize(horizontal: false, vertical: true)
       }
       if let point = health.failsMostAt {
         Text("Fails most often at \(place(point))")
           .font(.caption)
           .foregroundStyle(.secondary)
+          .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
       }
       if let since = health.failingSince.map(RunHistory.date), since != .distantPast {

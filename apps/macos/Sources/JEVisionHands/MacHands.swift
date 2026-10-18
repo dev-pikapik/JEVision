@@ -303,7 +303,13 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   /// The front window of any of `apps`: its id, frame in global top-left coordinates and title.
   public static func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
-    windows(of: apps).first
+    front(of: windows(of: apps))
+  }
+
+  /// The first of `windows` big enough to be one a person works in. Apps put tiny helper windows
+  /// in front for a moment (TextEdit a 66×20 one after typing), and a picture of those checks nothing.
+  static func front(of windows: [(id: CGWindowID, bounds: CGRect, title: String?)]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
+    windows.first { $0.bounds.width >= 100 && $0.bounds.height >= 40 } ?? windows.first
   }
 
   /// The apps' ordinary windows on screen, front to back; bounds in global points, top-left origin.
