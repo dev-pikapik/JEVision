@@ -27,6 +27,10 @@ struct RunState: Equatable {
   /// How each block of this test ended in the current attempt.
   private(set) var marks: [String: Mark] = [:]
   private(set) var flaky = false
+  /// Ways out of the `if`s of this test taken in the current attempt.
+  private(set) var taken: Set<Slot> = []
+  /// The last `if` step, anywhere, for the HUD to say which way it went.
+  private(set) var lastChoice: Step?
   /// The last attempt's reason to fail.
   private(set) var failure: Failure?
   /// Values the block about to run sees, by name, secrets masked.
@@ -59,6 +63,8 @@ struct RunState: Equatable {
     case .attemptStarted(let attempt):
       self.attempt = attempt
       marks = [:]
+      taken = []
+      lastChoice = nil
       open = []
       current = nil
       currentType = nil
@@ -73,6 +79,10 @@ struct RunState: Equatable {
     case .stepFinished(_, let step):
       if let index = open.lastIndex(where: { $0.test == step.test && $0.block == step.block }) {
         open.removeSubrange(index...)
+      }
+      if let branch = step.branch {
+        lastChoice = step
+        if step.test == file { taken.insert(Slot(from: step.block, edge: branch)) }
       }
       if step.test == file {
         switch step.status {

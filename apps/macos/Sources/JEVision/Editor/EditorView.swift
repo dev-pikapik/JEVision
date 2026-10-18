@@ -55,7 +55,7 @@ struct EditorView: View {
       LastRun(
         file: RelativePath.from($0, to: document.url), flow: flow, runs: project.runs, pinned: document.reportRun)
     }
-    return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:])
+    return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
       .overlay(alignment: .topLeading) {
         if let target = palette {
           GeometryReader { box in
@@ -285,11 +285,11 @@ struct EditorView: View {
     Binding(get: { showsInspector && document.selection != nil }, set: { showsInspector = $0 })
   }
 
-  private func canvas(outcomes: [String: BlockOutcome]) -> some View {
+  private func canvas(outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
     GeometryReader { viewport in
       ScrollView([.horizontal, .vertical]) {
         let visible = CGSize(width: viewport.size.width / zoom, height: viewport.size.height / zoom)
-        FlowCanvas(document: document, appName: apps.name(of:), minSize: visible, outcomes: outcomes) { items, block in
+        FlowCanvas(document: document, appName: apps.name(of:), minSize: visible, outcomes: outcomes, taken: taken) { items, block in
           document.pick(items, prefer: block)
           showsInspector = true
           canvasFocused = true

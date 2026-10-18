@@ -165,6 +165,14 @@ struct RunHUD: View {
 
     currentBlock(state, document: document)
 
+    if let choice = state.lastChoice.flatMap(RunText.branch) {
+      Label(choice, systemImage: "arrow.triangle.branch")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .truncationMode(.middle)
+    }
+
     if state.isPaused, !state.variables.isEmpty {
       variables(state.variables)
     }

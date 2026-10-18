@@ -6340,6 +6340,16 @@
         }
       }
     },
+    "Not taken in the last run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не выбран в последнем прогоне"
+          }
+        }
+      }
+    },
     "Note" : {
       "localizations" : {
         "ru" : {
@@ -9776,6 +9786,16 @@
         }
       }
     },
+    "Taken in the last run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран в последнем прогоне"
+          }
+        }
+      }
+    },
     "Takes a different path depending on which reference the screen matches." : {
       "localizations" : {
         "ru" : {
@@ -11002,6 +11022,26 @@
         }
       }
     },
+    "Took “%@: %@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран путь «%1$@: %2$@»"
+          }
+        }
+      }
+    },
+    "Took “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран путь «%@»"
+          }
+        }
+      }
+    },
     "Tries: %lld" : {
       "localizations" : {
         "ru" : {
@@ -11808,16 +11848,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "картинка"
-          }
-        }
-      }
-    },
-    "answer: %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ответ: %@"
           }
         }
       }

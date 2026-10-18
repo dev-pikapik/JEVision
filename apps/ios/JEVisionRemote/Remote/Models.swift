@@ -197,6 +197,12 @@ struct RunReport: Hashable, Sendable {
     var expected: String?
     var diff: String?
     var failure: Failure?
+    /// The way out an `if` took: `then`, `elseIf1`, `elseIf2`… or `else`.
+    var branch: String? = nil
+    /// How many ways out the `if` had; `nil` in reports from before it could have more than two.
+    var branches: Int? = nil
+    /// What the condition of the way taken looks for. Absent for `else`.
+    var branchCondition: String? = nil
     var id: Int { seq }
   }
 }

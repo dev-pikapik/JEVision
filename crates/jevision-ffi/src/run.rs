@@ -796,6 +796,13 @@ pub struct Step {
     /// Private areas of `sent` were covered before sending.
     #[uniffi(default = false)]
     pub sent_masked: bool,
+    /// How many ways out the `if` had: two are Yes and No, more are Condition 1, 2… and Otherwise.
+    #[uniffi(default = None)]
+    pub branches: Option<u32>,
+    /// What the condition of the way taken looks for: what the screen should show, or the name
+    /// of the reference image. Absent for `else`.
+    #[uniffi(default = None)]
+    pub branch_condition: Option<String>,
 }
 
 impl From<jevision_runner::Step> for Step {
@@ -819,8 +826,21 @@ impl From<jevision_runner::Step> for Step {
             video_at_ms: s.video_at_ms,
             sent: s.sent,
             sent_masked: s.sent_masked,
+            branches: s.branches,
+            branch_condition: s.branch_condition,
         }
     }
+}
+
+/// Which way an `if` step went, in English, for the command line: `Took “Condition 2: Inbox is
+/// empty”`, `Took “Otherwise”`. `None` for other blocks.
+#[uniffi::export]
+pub fn branch_text(step: &Step) -> Option<String> {
+    jevision_runner::branch_text(
+        step.branch.as_deref()?,
+        step.branches,
+        step.branch_condition.as_deref(),
+    )
 }
 
 /// Why a run failed: a localization key (`run.waitFor.timeout`) and the values its text uses.

@@ -108,6 +108,25 @@ enum RunText {
   }
 
   /// The run stopped because the AI model isn't set up right: Settings → AI can fix it.
+  /// Which way an `if` step went, named as the canvas names the ways out:
+  /// Took “Condition 2: Inbox is empty”, Took “Otherwise”. `nil` for other blocks.
+  static func branch(_ step: Step) -> String? {
+    guard let branch = step.branch else { return nil }
+    let index = elseIfIndex(edge: branch).map(Int.init)
+    // Reports from before an `if` had more conditions don't say how many ways out it had.
+    let plain = step.branches.map { $0 <= 2 } ?? (index == nil)
+    let name: String
+    switch branch {
+    case "then": name = plain ? String(localized: "Yes") : String(localized: "Condition \(1)")
+    case "else": name = plain ? String(localized: "No") : String(localized: "Otherwise")
+    default:
+      guard let index else { return nil }
+      name = String(localized: "Condition \(index + 2)")
+    }
+    guard let condition = step.branchCondition else { return String(localized: "Took “\(name)”") }
+    return String(localized: "Took “\(name): \(condition)”")
+  }
+
   static func needsAISetup(_ failure: Failure) -> Bool {
     [
       "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noModel", "run.vision.noKey",

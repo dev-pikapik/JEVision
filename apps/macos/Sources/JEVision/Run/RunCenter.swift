@@ -290,6 +290,12 @@ final class RunCenter {
     return (state.marks, isRunning ? state.current : nil)
   }
 
+  /// Ways out of the `if`s of `document` the run started from the app took; `nil` as for `marks`.
+  func taken(for document: FlowDocument) -> Set<Slot>? {
+    guard let state, stateURL == document.url else { return nil }
+    return state.taken
+  }
+
   /// Forgets the last run's marks once the test changes.
   func clearMarks(of document: FlowDocument) {
     guard !isRunning, stateURL == document.url else { return }
