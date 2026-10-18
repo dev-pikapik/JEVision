@@ -16,6 +16,8 @@ pub struct VisionProvider {
     pub name: String,
     /// Where requests go when no address is set; empty when the address must be given.
     pub default_address: String,
+    /// The user may set another address.
+    pub address_editable: bool,
     /// Suggested model; empty when the models come from the server.
     pub default_model: String,
     /// Environment variable that can hold the API key; empty when there is no key.
@@ -96,6 +98,7 @@ pub fn vision_providers() -> Vec<VisionProvider> {
             id: p.id().into(),
             name: p.name().into(),
             default_address: p.default_address().into(),
+            address_editable: p.address_editable(),
             default_model: p.default_model().into(),
             key_variable: p.key_name().unwrap_or_default().into(),
             needs_key: p.needs_key(),
@@ -158,6 +161,7 @@ mod tests {
                 "anthropic",
                 "openai",
                 "gemini",
+                "jev",
                 "ollama",
                 "lmstudio",
                 "openai-compatible"
@@ -175,6 +179,13 @@ mod tests {
             None
         )));
         assert!(!vision_is_local(settings("openai", "", Some("k"))));
+        assert!(!vision_is_local(settings("jev", "", Some("k"))));
+        let editable: Vec<_> = vision_providers()
+            .into_iter()
+            .filter(|p| p.address_editable)
+            .map(|p| p.id)
+            .collect();
+        assert_eq!(editable, ["jev", "ollama", "lmstudio", "openai-compatible"]);
         assert!(!vision_is_local(settings("nope", "", None)));
     }
 

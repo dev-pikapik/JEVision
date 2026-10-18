@@ -141,7 +141,7 @@ struct CommandLineArgumentTests {
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
     (
       ["run", "a", "--provider", "skynet"],
-      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, ollama, lmstudio, openai-compatible"
+      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible"
     ),
   ])
   func usageErrors(arguments: [String], message: String) {
