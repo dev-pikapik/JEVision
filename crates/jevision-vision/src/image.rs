@@ -167,7 +167,7 @@ impl Image {
     }
 
     /// Box-filtered copy at another size.
-    fn resized(&self, width: u32, height: u32) -> Image {
+    pub(crate) fn resized(&self, width: u32, height: u32) -> Image {
         let span = |t: u32, target: u32, source: u32| {
             let from = u64::from(t) * u64::from(source) / u64::from(target);
             let to = (u64::from(t + 1) * u64::from(source) / u64::from(target)).max(from + 1);

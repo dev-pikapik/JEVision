@@ -113,8 +113,8 @@ private struct ProviderSection: View {
     visionIsLocal(settings: VisionSettings(provider: provider.id, model: "", address: address, key: nil))
   }
 
-  /// Cloud services have one address; local servers and compatible ones need theirs.
-  private var hasAddress: Bool { !provider.needsKey }
+  /// Most cloud services have one address; local servers and compatible ones need theirs.
+  private var hasAddress: Bool { provider.addressEditable }
 
   var body: some View {
     Section {
@@ -169,7 +169,7 @@ private struct ProviderSection: View {
       Text("The model runs on this Mac: screenshots and expected texts stay here.")
     } else {
       Text(
-        "For each check by meaning, JEVision sends \(provider.needsKey ? provider.name : (address.isEmpty ? provider.name : address)) the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture."
+        "For each check by meaning, JEVision sends \(!hasAddress || address.isEmpty ? provider.name : address) the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture."
       )
     }
   }
