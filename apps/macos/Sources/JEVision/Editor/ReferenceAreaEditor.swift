@@ -55,14 +55,6 @@ struct ReferencePicture {
 
 /// The paths of reference pictures.
 enum ReferenceFile {
-  /// `refs/inbox.png` → `refs/inbox.dark.png`: the picture a run compares with when the app is
-  /// drawn dark. Without one, the light picture stands in.
-  static func darkVariant(_ image: String) -> String {
-    let nameStart = image.lastIndex(of: "/").map { image.index(after: $0) } ?? image.startIndex
-    guard let dot = image[nameStart...].lastIndex(of: "."), dot > nameStart else { return image + ".dark" }
-    return image[..<dot] + ".dark" + image[dot...]
-  }
-
   /// A free name for a new picture of block `block` in the `refs` folder next to the test.
   static func newPath(for block: String, in folder: URL) -> String {
     let base = block.replacing(/[^A-Za-z0-9_-]+/, with: "-")
@@ -216,7 +208,7 @@ struct ReferenceAreaEditor: View {
   }
 
   private var imagePath: String {
-    appearance == .dark && !reference.image.isEmpty ? ReferenceFile.darkVariant(reference.image) : reference.image
+    appearance == .dark && !reference.image.isEmpty ? referenceDarkVariant(image: reference.image) : reference.image
   }
 
   private var imageURL: URL? {
@@ -712,7 +704,7 @@ struct ReferenceAreaEditor: View {
         undo?.endUndoGrouping()
         return
       }
-      let path = dark ? ReferenceFile.darkVariant(reference.image) : reference.image
+      let path = dark ? referenceDarkVariant(image: reference.image) : reference.image
       let file = RelativePath.resolve(path, in: context.folder)
       guard let root = project.rootURL, RelativePath.isInside(file, folder: root) else {
         problem = Problem(

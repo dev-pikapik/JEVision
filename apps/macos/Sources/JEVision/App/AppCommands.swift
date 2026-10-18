@@ -25,16 +25,24 @@ struct AppCommands: Commands {
       Button("Duplicate") { canvas?.duplicate() }
         .keyboardShortcut("d")
         .disabled(canvas?.picked.isEmpty ?? true)
+      Button("Link to Another Block") {
+        if canvas?.startLink() != true { NSSound.beep() }
+      }
+      .keyboardShortcut("l")
+      .disabled(canvas?.selection == nil)
     }
     CommandGroup(after: .toolbar) {
-      Button("Zoom In") { zoom?.wrappedValue = Zoom.step(zoom?.wrappedValue ?? 1, up: true) }
+      Button("Zoom In") { zoom.map { $0.set(Zoom.step($0.value, up: true)) } }
         .keyboardShortcut("+")
-        .disabled(zoom == nil)
-      Button("Zoom Out") { zoom?.wrappedValue = Zoom.step(zoom?.wrappedValue ?? 1, up: false) }
+        .disabled(zoom.map { $0.value >= Zoom.range.upperBound } ?? true)
+      Button("Zoom Out") { zoom.map { $0.set(Zoom.step($0.value, up: false)) } }
         .keyboardShortcut("-")
-        .disabled(zoom == nil)
-      Button("Actual Size") { zoom?.wrappedValue = 1 }
+        .disabled(zoom.map { $0.value <= Zoom.range.lowerBound } ?? true)
+      Button("Zoom to Fit") { zoom?.fit() }
         .keyboardShortcut("0")
+        .disabled(zoom == nil)
+      Button("Actual Size") { zoom?.set(1) }
+        .keyboardShortcut("0", modifiers: [.command, .option])
         .disabled(zoom == nil)
       Divider()
     }

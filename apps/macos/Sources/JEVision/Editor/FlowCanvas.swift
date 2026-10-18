@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The test drawn as a flowchart, at the positions the core laid out, with its frames and notes.
 /// Blocks, frames and notes move by dragging; a block links to another by dragging from the dot
-/// under it. Unscaled: the editor zooms it.
+/// under it, or from the keyboard. Unscaled: the editor zooms it.
 struct FlowCanvas: View {
   static let space = "flowCanvas"
   static let grid = canvasGrid()
@@ -126,10 +126,13 @@ struct FlowCanvas: View {
   private func links(_ layout: FlowLayout) -> some View {
     ZStack(alignment: .topLeading) {
       Edges(layout: layout)
+      Edges(layout: layout, only: document.pickedLinks)
       ForEach(layout.edges.filter { $0.points.count > 1 }, id: \.self) { edge in
-        EdgeHit(edge: edge, size: CGSize(width: layout.width, height: layout.height)) {
-          document.connect(edge.from, edge: edge.edge, to: nil)
-        }
+        let slot = Slot(from: edge.from, edge: edge.edge)
+        EdgeHit(
+          edge: edge, label: linkLabel(edge), isPicked: document.pickedLinks.contains(slot),
+          pick: { pickLink(slot) },
+          delete: { document.unlink([slot]) })
       }
       ForEach(layout.frames, id: \.block) { frame in
         RoundedRectangle(cornerRadius: 16)
@@ -159,13 +162,17 @@ struct FlowCanvas: View {
           summary: BlockSummary.text(block.kind, appName: appName),
           issues: document.issues(of: laid.id),
           isSelected: document.picked.contains(item),
-          isLinkTarget: link?.target == laid.id,
+          isLinkTarget: (link?.target ?? document.linking?.target) == laid.id,
           step: (order.firstIndex(of: laid.id) ?? 0) + 1,
           steps: order.count,
           mark: run.marks[laid.id],
           isCurrent: run.current == laid.id,
           hasBreakpoint: runs.hasBreakpoint(laid.id, in: document),
           select: { pick(item) },
+          startLink: {
+            onPick([item], laid.id)
+            if !document.startLink() { NSSound.beep() }
+          },
           toggleBreakpoint: { runs.toggleBreakpoint(laid.id, in: document) },
           runFromHere: runs.isRunning || project.rootURL == nil
             ? nil : { project.rootURL.map { runs.run(document, in: $0, from: laid.id) } },
@@ -220,7 +227,10 @@ struct FlowCanvas: View {
         .offset(x: laid.at.x - SlotButton.size / 2, y: laid.at.y - SlotButton.size / 2)
       }
       ForEach(layout.ports.filter { showsPorts(of: $0.slot.from) }, id: \.slot) { port in
-        PortHandle(label: portLabel(port.slot))
+        PortHandle(
+          label: portLabel(port.slot), accessibilityLabel: portAccessibilityLabel(port.slot),
+          isLinking: document.linking?.slot == port.slot
+        ) { if !document.startLink(from: port.slot) { NSSound.beep() } }
           .onHover { hover(port.slot.from, $0) }
           .gesture(linkGesture(port))
           .offset(x: port.at.x - PortHandle.size / 2, y: port.at.y - PortHandle.size / 2)
@@ -242,10 +252,10 @@ struct FlowCanvas: View {
 
   @ViewBuilder
   private var dragFeedback: some View {
-    if let link {
+    if let (from, to) = link.map({ ($0.from, $0.to) }) ?? keyboardLink {
       Path { path in
-        path.move(to: link.from)
-        path.addLine(to: link.to)
+        path.move(to: from)
+        path.addLine(to: to)
       }
       .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 4]))
       .allowsHitTesting(false)
@@ -260,12 +270,30 @@ struct FlowCanvas: View {
     }
   }
 
+  /// Where the link being made from the keyboard is drawn: from its dot to the top of the block it
+  /// leads to.
+  private var keyboardLink: (CGPoint, CGPoint)? {
+    guard let linking = document.linking,
+      let port = document.layout.ports.first(where: { $0.slot == linking.slot }),
+      let target = document.layout.blocks.first(where: { $0.id == linking.target })
+    else { return nil }
+    return (CGPoint(x: port.at.x, y: port.at.y), CGPoint(x: target.rect.cgRect.midX, y: target.rect.y))
+  }
+
   // MARK: Gestures
 
-  /// Clicking selects the item alone; with Shift or Command, adds it to the selection or takes it out.
+  /// Clicking selects the item alone; with Shift or Command, adds it to the selection or takes it
+  /// out. While a link is made from the keyboard, clicking a block it may lead to links to it.
   private func pick(_ item: CanvasItem) {
+    if document.linking != nil, let id = item.blockID, document.finishLink(at: id) { return }
     let adding = !NSEvent.modifierFlags.intersection([.shift, .command]).isEmpty
     onPick(adding ? document.picked.symmetricDifference([item]) : [item], item.blockID)
+  }
+
+  /// Clicking a link selects it alone; with Shift or Command, adds it to the selected links or takes it out.
+  private func pickLink(_ slot: Slot) {
+    let adding = !NSEvent.modifierFlags.intersection([.shift, .command]).isEmpty
+    document.pickLinks(adding ? document.pickedLinks.symmetricDifference([slot]) : [slot])
   }
 
   private func endEditing(_ item: CanvasItem) {
@@ -279,7 +307,7 @@ struct FlowCanvas: View {
   }
 
   private func showsPorts(of id: String) -> Bool {
-    if let link { return link.slot.from == id }
+    if let slot = link?.slot ?? document.linking?.slot { return slot.from == id }
     return preview == nil && (hovered == id || document.picked.contains(.block(id: id)))
   }
 
@@ -413,6 +441,32 @@ struct FlowCanvas: View {
     }
   }
 
+  private func portAccessibilityLabel(_ slot: Slot) -> Text {
+    let title = BlockInfo.title(document.block(slot.from)?.kind.typeName ?? "")
+    switch slot.edge {
+    case "then": return Text("Link Yes of \(title) to a block")
+    case "else": return Text("Link No of \(title) to a block")
+    case "body": return Text("Choose the first step inside \(title)")
+    default: return Text("Choose the step after \(title)")
+    }
+  }
+
+  /// What VoiceOver calls the link `edge`: the blocks it joins, by their step in reading order.
+  private func linkLabel(_ edge: LaidEdge) -> Text {
+    let order = document.order
+    func name(_ id: String) -> String {
+      let step = (order.firstIndex(of: id) ?? 0) + 1
+      return String(localized: "step \(step), \(BlockInfo.title(document.block(id)?.kind.typeName ?? ""))")
+    }
+    let from = name(edge.from), to = name(edge.to)
+    switch edge.edge {
+    case "then": return Text("Yes link from \(from) to \(to)")
+    case "else": return Text("No link from \(from) to \(to)")
+    case "body": return Text("Link from \(from) to the first step inside it, \(to)")
+    default: return Text("Link from \(from) to \(to)")
+    }
+  }
+
   private func portLabel(_ slot: Slot) -> Text {
     switch slot.edge {
     case "then": Text("Drag to link Yes to a block")
@@ -492,13 +546,17 @@ struct GridDots: View {
 /// Arrows between blocks: lines with rounded corners and a head at the end.
 struct Edges: View {
   let layout: FlowLayout
+  /// Draws only these links, highlighted as selected; `nil` draws every link plainly.
+  var only: Set<Slot>?
 
   var body: some View {
     Canvas { context, _ in
+      let shading: GraphicsContext.Shading = only == nil ? .style(.secondary) : .color(.accentColor)
       for edge in layout.edges where edge.points.count > 1 {
+        if let only, !only.contains(Slot(from: edge.from, edge: edge.edge)) { continue }
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
-        context.stroke(Self.line(points), with: .style(.secondary), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-        context.fill(Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: .style(.secondary))
+        context.stroke(Self.line(points), with: shading, style: StrokeStyle(lineWidth: only == nil ? 1.5 : 3, lineJoin: .round))
+        context.fill(Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: shading)
       }
     }
     .frame(width: layout.width, height: layout.height)
@@ -530,21 +588,32 @@ struct Edges: View {
   }
 }
 
-/// Where an arrow can be right-clicked to delete it.
+/// Where an arrow is clicked to select it and right-clicked to delete it.
 private struct EdgeHit: View {
   let edge: LaidEdge
-  let size: CGSize
+  let label: Text
+  let isPicked: Bool
+  let pick: () -> Void
   let delete: () -> Void
 
   var body: some View {
+    let reach = 6.0
     let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
+    let bounds = Edges.line(points).boundingRect.insetBy(dx: -reach, dy: -reach)
+    let line = Edges.line(points.map { CGPoint(x: $0.x - bounds.minX, y: $0.y - bounds.minY) })
     Color.clear
-      .frame(width: size.width, height: size.height)
-      .contentShape(Edges.line(points).strokedPath(StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round)))
+      .frame(width: bounds.width, height: bounds.height)
+      .contentShape(line.strokedPath(StrokeStyle(lineWidth: 2 * reach, lineCap: .round, lineJoin: .round)))
+      .onTapGesture(perform: pick)
       .contextMenu {
         Button("Delete Link", systemImage: "trash", role: .destructive, action: delete)
       }
-      .accessibilityHidden(true)
+      .accessibilityElement()
+      .accessibilityLabel(label)
+      .accessibilityAddTraits(isPicked ? [.isButton, .isSelected] : .isButton)
+      .accessibilityAction(.default, pick)
+      .accessibilityAction(named: Text("Delete Link"), delete)
+      .offset(x: bounds.minX, y: bounds.minY)
   }
 }
 
@@ -618,6 +687,8 @@ private struct BlockNode: View {
   let isCurrent: Bool
   let hasBreakpoint: Bool
   let select: () -> Void
+  /// Starts linking this block to another one from the keyboard.
+  let startLink: () -> Void
   let toggleBreakpoint: () -> Void
   /// `nil` while the test can't be run from here.
   let runFromHere: (() -> Void)?
@@ -705,6 +776,7 @@ private struct BlockNode: View {
         + issues.map(IssueText.line)).joined(separator: ". ")))
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction(.default, select)
+    .accessibilityAction(named: Text("Link to Another Block"), startLink)
     .accessibilityAction(named: Text("Run from Here")) { runFromHere?() }
     .accessibilityAction(named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint)
     .accessibilityAction(named: Text("Duplicate"), actions.duplicate)
@@ -732,7 +804,7 @@ private struct BlockNode: View {
 
 /// A titled frame that groups blocks into a section; only its title bar takes clicks, so the
 /// blocks and the canvas inside stay reachable.
-private struct FrameView: View {
+struct FrameView: View {
   let section: CanvasSection
   let isPicked: Bool
   let isEditing: Bool
@@ -775,7 +847,7 @@ private struct FrameView: View {
 }
 
 /// A sticky note: its text, who wrote it and when.
-private struct NoteView: View {
+struct NoteView: View {
   let note: Note
   let isPicked: Bool
   let isEditing: Bool
@@ -851,17 +923,27 @@ private struct NoteView: View {
 private struct PortHandle: View {
   static let size = 22.0
   let label: Text
+  let accessibilityLabel: Text
+  /// A link is being made from this dot from the keyboard.
+  let isLinking: Bool
+  /// Starts a link from this dot, to finish with the keyboard or a click on a block.
+  let startLink: () -> Void
 
   var body: some View {
     Circle()
-      .fill(.background)
+      .fill(isLinking ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background))
       .overlay { Circle().strokeBorder(Color.accentColor, lineWidth: 1.5) }
       .frame(width: 10, height: 10)
       .frame(width: Self.size, height: Self.size)
       .contentShape(.circle)
       .pointerStyle(.grabIdle)
+      .onTapGesture(perform: startLink)
       .help(label)
-      .accessibilityHidden(true)
+      .accessibilityElement()
+      .accessibilityLabel(accessibilityLabel)
+      .accessibilityHint(Text("Then choose a block with the arrow keys and press Return."))
+      .accessibilityAddTraits(isLinking ? [.isButton, .isSelected] : .isButton)
+      .accessibilityAction(.default, startLink)
   }
 }
 

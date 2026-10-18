@@ -62,9 +62,13 @@ struct RunChoicesTests {
     #expect(environments.current.selected?.name == "production")
     #expect(environments.valueNames == ["HOST", "USER"])
 
-    environments.select("staging")
-    #expect(environments.current.selected?.name == "staging")
-    #expect(ProjectEnvironments.read(project, defaults: defaults).selected?.name == "staging")
+    try #"{"format":1,"default":"staging","environments":{"staging":{"HOST":"s"},"production":{"HOST":"p","USER":"u"}}}"#
+      .write(to: ProjectEnvironments.file(in: project), atomically: true, encoding: .utf8)
+    environments.reload()
+    #expect(environments.current.selected?.name == "staging", "the file's default until one is chosen")
+    environments.select("production")
+    #expect(environments.current.selected?.name == "production")
+    #expect(ProjectEnvironments.read(project, defaults: defaults).selected?.name == "production")
 
     try "{".write(to: ProjectEnvironments.file(in: project), atomically: true, encoding: .utf8)
     environments.reload()

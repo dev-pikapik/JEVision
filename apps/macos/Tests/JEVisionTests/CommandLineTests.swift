@@ -343,6 +343,13 @@ struct CommandLineRunTests {
     #expect(throws: UsageError(message: "there is no environment “staging” in jevision.environments.json; use one of: dev, prod")) {
       try RunCommand.plan(RunRequest(paths: [login], environment: "staging"))
     }
+    #expect(try RunCommand.plan(RunRequest(paths: [login])).environment == nil)
+
+    _ = try dir.file("jevision.environments.json", #"{"format":1,"default":"prod","environments":{"dev":{},"prod":{}}}"#)
+    #expect(try RunCommand.plan(RunRequest(paths: [login])).environment == "prod", "the file's default without --env")
+    #expect(try RunCommand.plan(RunRequest(paths: [login], environment: "dev")).environment == "dev")
+    _ = try dir.file("jevision.environments.json", #"{"format":1,"default":"qa","environments":{"dev":{}}}"#)
+    #expect(throws: UsageError.self) { try RunCommand.plan(RunRequest(paths: [login])) }
   }
 }
 

@@ -475,6 +475,23 @@ fn runs_in_an_environment_of_the_project() {
     assert_eq!(status["passed"], 1, "{status}");
     let runs = jevision_runner::Run::list(&project.0).unwrap();
     assert_eq!(runs[0].report.environment.as_deref(), Some("staging"));
+
+    // Without "env" the run uses the file's default environment.
+    project.write(
+        "jevision.environments.json",
+        r#"{"format":1,"default":"dev","environments":{"dev":{},"staging":{}}}"#,
+    );
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(!failed, "{text}");
+    let (_, status) = call(&server, "get_run", json!({ "run": "2", "wait": 60 }));
+    let status: Value = serde_json::from_str(&status).unwrap();
+    assert_eq!(status["passed"], 1, "{status}");
+    let runs = jevision_runner::Run::list(&project.0).unwrap();
+    assert!(
+        runs.iter()
+            .any(|r| r.report.environment.as_deref() == Some("dev")),
+        "{runs:?}"
+    );
 }
 
 #[test]

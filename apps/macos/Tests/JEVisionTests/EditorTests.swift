@@ -272,6 +272,140 @@ struct FlowDocumentTests {
   }
 }
 
+@MainActor
+struct CanvasKeyboardTests {
+  /// Open, then a check: Yes types, No presses keys; both go on to the end.
+  private static let branches = """
+    {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "open", "blocks": {
+      "open": {"type": "pressKeys", "keys": "a", "next": "if"},
+      "if": {"type": "if", "reference": {"image": "a.png"}, "then": "yes", "else": "no"},
+      "yes": {"type": "type", "text": "y", "next": "end"},
+      "no": {"type": "pressKeys", "keys": "n", "next": "end"},
+      "end": {"type": "pressKeys", "keys": "e"}}}
+    """
+
+  private func document() throws -> FlowDocument {
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let url = folder.appending(path: "t.flow.json")
+    try Self.branches.write(to: url, atomically: true, encoding: .utf8)
+    return FlowDocument(url: url)
+  }
+
+  @Test func arrowsFollowTheLinks() throws {
+    let document = try document()
+    func go(_ from: String?, _ direction: CanvasDirection) -> String? {
+      CanvasNavigation.next(from: from, toward: direction, in: document.layout, order: document.order)
+    }
+    #expect(go(nil, .down) == "open")
+    #expect(go(nil, .up) == document.order.last)
+    #expect(go("open", .down) == "if")
+    #expect(go("if", .down) == "yes", "Down takes the Yes branch first")
+    #expect(go("yes", .right) == "no")
+    #expect(go("no", .left) == "yes")
+    #expect(go("no", .up) == "if")
+    #expect(go("yes", .down) == "end")
+    #expect(go("end", .up) == "no", "Of two steps leading here, the one read last")
+    #expect(go("open", .up) == nil)
+  }
+
+  @Test func linksFromTheKeyboardAndUndoes() throws {
+    let document = try document()
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    document.selection = "yes"
+
+    undo.beginUndoGrouping()
+    document.unlink([Slot(from: "yes", edge: "next")])
+    undo.endUndoGrouping()
+    #expect(document.block("yes")?.kind == .type(text: "y", into: nil, next: nil))
+
+    #expect(document.startLink())
+    #expect(document.linking?.slot == Slot(from: "yes", edge: "next"))
+    #expect(document.linking?.targets.contains("if") == false, "A link back to the check would loop")
+    #expect(document.linking?.target == "no", "Starts at the nearest block it may lead to")
+    document.moveLinkTarget(.down)
+    #expect(document.linking?.target == "end")
+    #expect(!document.finishLink(at: "open"), "Open leads to the check, so this would loop")
+    #expect(document.linking != nil)
+
+    undo.beginUndoGrouping()
+    #expect(document.finishLink())
+    undo.endUndoGrouping()
+    #expect(document.linking == nil)
+    #expect(document.block("yes")?.kind == .type(text: "y", into: nil, next: "end"))
+    undo.undo()
+    #expect(document.block("yes")?.kind == .type(text: "y", into: nil, next: nil))
+
+    document.selection = "if"
+    #expect(document.startLink())
+    #expect(document.linking?.slot.edge == "then")
+    #expect(document.startLink(), "Again: the next edge of the same block")
+    #expect(document.linking?.slot.edge == "else")
+    document.selection = "open"
+    #expect(document.linking == nil, "Selecting another block cancels the link")
+  }
+
+  @Test func deletesSelectedLinksAsOneStep() throws {
+    let document = try document()
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    let links: Set = [Slot(from: "yes", edge: "next"), Slot(from: "no", edge: "next")]
+    document.pickLinks(links)
+    #expect(document.pickedLinks == links)
+    #expect(document.selection == nil)
+
+    undo.beginUndoGrouping()
+    document.unlink(Array(links))
+    undo.endUndoGrouping()
+    #expect(document.pickedLinks.isEmpty)
+    #expect(!document.layout.edges.contains { $0.to == "end" })
+    undo.undo()
+    #expect(document.layout.edges.filter { $0.to == "end" }.count == 2)
+    #expect(!undo.canUndo)
+  }
+
+  @Test func zoomFitsAndKeepsThePointUnderThePointer() {
+    #expect(Zoom.clamp(5) == Zoom.range.upperBound)
+    #expect(Zoom.clamp(0.01) == Zoom.range.lowerBound)
+    #expect(Zoom.fit(CGSize(width: 200, height: 100), in: CGSize(width: 800, height: 600)) == 1, "Never blown up")
+    #expect(Zoom.fit(CGSize(width: 1000, height: 300), in: CGSize(width: 548, height: 600)) == 0.5)
+    #expect(Zoom.fit(CGSize(width: 100_000, height: 100), in: CGSize(width: 800, height: 600)) == Zoom.range.lowerBound)
+    #expect(Zoom.fit(.zero, in: CGSize(width: 800, height: 600)) == 1)
+
+    let viewport = CGSize(width: 400, height: 300)
+    let zoomed = Zoom.offset(
+      CGPoint(x: 100, y: 50), keeping: CGPoint(x: 200, y: 150), from: 1, to: 2,
+      content: CGSize(width: 2000, height: 2000), viewport: viewport)
+    #expect(zoomed == CGPoint(x: 400, y: 250), "Canvas point (300, 200) stays at (200, 150)")
+    let edge = Zoom.offset(
+      CGPoint(x: 10, y: 0), keeping: CGPoint(x: 0, y: 0), from: 2, to: 1,
+      content: CGSize(width: 400, height: 300), viewport: viewport)
+    #expect(edge == .zero, "Never scrolls past the canvas")
+  }
+
+  @Test func diffsNotesAndFramesOfTheCanvas() throws {
+    var before = try loadFlow(json: Self.branches)
+    before.canvas.notes = [
+      Note(id: "n1", text: "Old", author: "Ann", time: "", rect: Rect(x: 0, y: 0, width: 200, height: 100))
+    ]
+    var after = before
+    after.canvas.notes[0].text = "New"
+    after.canvas.sections = [CanvasSection(id: "s1", title: "Sign in", rect: Rect(x: 0, y: 0, width: 300, height: 200))]
+    let diff = diffFlows(before: before, after: after)
+    #expect(diff.notes == [BlockChange(id: "n1", kind: .changed, fields: ["text"])])
+    #expect(diff.sections == [BlockChange(id: "s1", kind: .added, fields: [])])
+    #expect(diff.testFields.isEmpty)
+    #expect(FlowDiffView.marks(diff.sections, on: .before).isEmpty, "An added frame isn’t on the old version")
+    #expect(FlowDiffView.marks(diff.notes, on: .before) == ["n1": .changed])
+    for field in ["text", "title", "author", "position", "size"] {
+      #expect(FlowDiffView.fieldName(field) != field)
+    }
+  }
+}
+
 /// Counts the changes registered for undo: each one names its action.
 private final class CountingUndoManager: UndoManager {
   var registrations = 0

@@ -146,6 +146,7 @@ folder, next to the tests, and are committed with them:
 ```json
 {
   "format": 1,
+  "default": "staging",
   "environments": {
     "production": { "BASE_URL": "https://example.com" },
     "staging": { "BASE_URL": "https://staging.example.com", "USER": "qa" }
@@ -154,8 +155,12 @@ folder, next to the tests, and are committed with them:
 ```
 
 - Environment names use letters, digits, `-` and `_`; value names use letters, digits and `_`.
-- A test reads a value as `${env.BASE_URL}`. `jevision validate` and the editor report a name
-  no environment has as an error, and a name only some environments have as a warning.
+- `default` is optional and must name one of the environments. `jevision run` without `--env`,
+  and an assistant's run without `env`, use it; the app picks it until you choose another one.
+- A test reads a value as `${env.BASE_URL}`, in text to type and in the paths and addresses of
+  files a block opens or reads (`${secret.NAME}` and `${data.COLUMN}` work there too).
+  `jevision validate` and the editor report a name no environment has as an error, and a name
+  only some environments have as a warning.
 - The file is never for secrets. A secret can still differ per environment: the app saves it in
   the Keychain for the environment chosen when you set it. At run time a secret comes from the
   environment variable `NAME`, then from the Keychain item of the chosen environment, then from

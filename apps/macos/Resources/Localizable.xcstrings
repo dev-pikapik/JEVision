@@ -727,6 +727,16 @@
         }
       }
     },
+    "Actual size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Реальный размер"
+          }
+        }
+      }
+    },
     "Add Area" : {
       "localizations" : {
         "ru" : {
@@ -1289,6 +1299,16 @@
         }
       }
     },
+    "Author" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор"
+          }
+        }
+      }
+    },
     "Back" : {
       "localizations" : {
         "ru" : {
@@ -1799,6 +1819,16 @@
         }
       }
     },
+    "Choose the first step inside %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать первый шаг внутри блока «%@»"
+          }
+        }
+      }
+    },
     "Choose the folder that holds your tests." : {
       "localizations" : {
         "ru" : {
@@ -1815,6 +1845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите папку с тестами. JEVision покажет все файлы .flow.json в ней."
+          }
+        }
+      }
+    },
+    "Choose the step after %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать шаг после блока «%@»"
           }
         }
       }
@@ -2485,6 +2525,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалить связь"
+          }
+        }
+      }
+    },
+    "Delete Links" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить связи"
           }
         }
       }
@@ -3962,6 +4012,66 @@
         }
       }
     },
+    "Link No of %@ to a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать «Нет» блока «%@» с блоком"
+          }
+        }
+      }
+    },
+    "Link Yes of %@ to a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать «Да» блока «%@» с блоком"
+          }
+        }
+      }
+    },
+    "Link from %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь от %@ к %@"
+          }
+        }
+      }
+    },
+    "Link from %@ to the first step inside it, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь от %@ к первому шагу внутри него, %@"
+          }
+        }
+      }
+    },
+    "Link to Another Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать с другим блоком"
+          }
+        }
+      }
+    },
+    "Linking to step %lld, %@. Choose another block with the arrow keys, then press Return to link or Escape to cancel." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь к шагу %lld, %@. Выберите другой блок стрелками, затем нажмите Return, чтобы связать, или Escape, чтобы отменить."
+          }
+        }
+      }
+    },
     "Logic" : {
       "localizations" : {
         "ru" : {
@@ -4322,22 +4432,22 @@
         }
       }
     },
-    "No blocks or test details changed." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Блоки и свойства теста не изменились."
-          }
-        }
-      }
-    },
     "No blocks yet" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блоков пока нет"
+          }
+        }
+      }
+    },
+    "No blocks, notes, frames or test details changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки, заметки, рамки и свойства теста не изменились."
           }
         }
       }
@@ -4408,6 +4518,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиши не записаны"
+          }
+        }
+      }
+    },
+    "No link from %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь «Нет» от %@ к %@"
           }
         }
       }
@@ -5148,6 +5268,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите приложение, нажмите «Начать запись» и пользуйтесь им как обычно. Шаги можно поправить потом."
+          }
+        }
+      }
+    },
+    "Position" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положение"
           }
         }
       }
@@ -6502,6 +6632,16 @@
         }
       }
     },
+    "Sets the zoom to actual size." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Возвращает реальный размер."
+          }
+        }
+      }
+    },
     "Settings are reset. Quit JEVision and open it again to finish." : {
       "localizations" : {
         "ru" : {
@@ -6612,6 +6752,16 @@
         }
       }
     },
+    "Show the whole test (⌘0)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать весь тест (⌘0)"
+          }
+        }
+      }
+    },
     "Shows the moment this step began" : {
       "localizations" : {
         "ru" : {
@@ -6698,6 +6848,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сходство"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Размер"
           }
         }
       }
@@ -6818,6 +6978,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Шаг %1$lld из %2$lld, %3$@"
+          }
+        }
+      }
+    },
+    "Step %lld, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %lld, %@"
           }
         }
       }
@@ -7528,6 +7698,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сравнивается вся картинка"
+          }
+        }
+      }
+    },
+    "Then choose a block with the arrow keys and press Return." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Затем выберите блок стрелками и нажмите Return."
           }
         }
       }
@@ -8422,6 +8602,16 @@
         }
       }
     },
+    "Yes link from %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь «Да» от %@ к %@"
+          }
+        }
+      }
+    },
     "Yesterday" : {
       "localizations" : {
         "ru" : {
@@ -8492,6 +8682,16 @@
         }
       }
     },
+    "Zoom" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Масштаб"
+          }
+        }
+      }
+    },
     "Zoom In" : {
       "localizations" : {
         "ru" : {
@@ -8508,6 +8708,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Уменьшить"
+          }
+        }
+      }
+    },
+    "Zoom in (⌘+)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приблизить (⌘+)"
+          }
+        }
+      }
+    },
+    "Zoom out (⌘−)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отдалить (⌘−)"
+          }
+        }
+      }
+    },
+    "Zoom to Fit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать всё"
           }
         }
       }
@@ -10520,6 +10750,16 @@
         }
       }
     },
+    "step %lld, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "шаг %lld, %@"
+          }
+        }
+      }
+    },
     "stop from anywhere · move the mouse to pause" : {
       "localizations" : {
         "ru" : {
@@ -11142,6 +11382,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "запускает другой тест"
+          }
+        }
+      }
+    },
+    "Test %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест %1$lld из %2$lld"
           }
         }
       }

@@ -90,6 +90,13 @@ pub fn required_secrets(flow: Flow) -> Vec<String> {
     jevision_core::required_secrets(&flow)
 }
 
+/// The picture a run compares with when the app is drawn dark: `refs/inbox.png` →
+/// `refs/inbox.dark.png`.
+#[uniffi::export]
+pub fn reference_dark_variant(image: String) -> String {
+    jevision_core::dark_variant(&image)
+}
+
 /// Every block type, in palette order.
 #[uniffi::export]
 pub fn block_catalog() -> Vec<BlockSpec> {

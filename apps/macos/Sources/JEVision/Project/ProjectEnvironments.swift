@@ -66,12 +66,15 @@ final class ProjectEnvironments {
   }
 
   /// The environments of `project` and the one chosen for it on this Mac: the saved choice, or
-  /// else the first one.
+  /// else the file's default, or else the first one.
   static func read(_ project: URL, defaults: UserDefaults = .standard) -> Snapshot {
     do {
-      let all = try projectEnvironments(project: project.path(percentEncoded: false))
+      let path = project.path(percentEncoded: false)
+      let all = try projectEnvironments(project: path)
+      let fallback = try defaultEnvironment(project: path)
       let saved = (defaults.dictionary(forKey: selectionKey) as? [String: String])?[project.path]
-      return Snapshot(all: all, selected: all.first { $0.name == saved } ?? all.first)
+      let named = { (name: String?) in all.first { $0.name == name } }
+      return Snapshot(all: all, selected: named(saved) ?? named(fallback) ?? all.first)
     } catch EnvironmentsError.Unreadable(let file, let reason) {
       return Snapshot(problem: String(localized: "\(file) can’t be read: \(reason)"))
     } catch {
