@@ -239,7 +239,15 @@ th { background: var(--bg-soft); }
 .cards h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
 .cards p { margin: 0; color: var(--muted); font-size: 0.95rem; }
 
-.hero img { width: 100%; height: auto; border-radius: 16px; }
+.hero img { width: 100%; height: auto; border-radius: 12px; }
+
+.tour { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1.5rem 1.25rem; padding: 0; list-style: none; }
+.tour a { color: inherit; text-decoration: none; }
+.tour a:hover h3 { color: var(--link); }
+.tour img, .shot img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+.tour h3 { margin: 0.6rem 0 0.2rem; font-size: 1.05rem; }
+.tour p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.shot { margin: 1.5rem 0 2rem; }
 
 dt { font-weight: 600; margin-top: 0.75rem; }
 dd { margin-left: 1.25rem; }

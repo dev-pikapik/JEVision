@@ -1,59 +1,25 @@
-<p align="center">
-  <img src=".github/assets/banner.svg" alt="JEVision — UI tests you can see" width="100%">
-</p>
+<p align="center"><img src="docs/media/icon.png" width="128" height="128" alt=""></p>
+<h1 align="center">JEVision</h1>
+<p align="center"><b>UI tests you can see.</b><br>Draw the path a user takes through any Mac app. JEVision walks it block by block and shows where it broke.</p>
+<p align="center"><sub><b>English</b> · <a href="docs/readme/README.ru.md">Русский</a></sub></p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5eead4?style=flat-square"></a>
-  <img alt="Platform: macOS 26+" src="https://img.shields.io/badge/platform-macOS%2026%2B-818cf8?style=flat-square">
-  <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399?style=flat-square"></a>
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="docs/media/hero-dark.png">
+<img src="docs/media/hero-light.png" alt="JEVision with a test open on the canvas">
+</picture>
 </p>
-
-<p align="center">
-  <b>Visual, flowchart-driven UI testing for any application.</b><br>
-  Draw the path a user takes. JEVision walks it, block by block, and tells you where it broke.
-</p>
-
----
 
 JEVision tests the interface of any Mac app, including apps you don't own and can't instrument.
 It sees the screen and uses the real mouse and keyboard, the way a person does. A test is a
 flowchart: one JSON file per test, with a block for every step, so anyone on the team can read
 it and a failure points at the block where it happened.
 
-## What it does
+## Get JEVision
 
-- **Flowchart editor.** Add, connect and edit blocks on a canvas; every change is saved to the
-  test file at once and can be undone. Problems in a test are listed on the block they concern.
-- **Recording.** Click, type and press keys in the app under test; each action becomes a block,
-  with a picture of what you clicked. Drag a frame to add a check. Passwords become secrets kept
-  in the Keychain, never in the file.
-- **Running.** Run a test, run it step by step (⌥⌘R) or start from any block, with breakpoints.
-  A small panel shows progress without getting in the way of clicks. Moving the mouse pauses the
-  run; pressing Esc twice stops it from any app.
-- **Reports and history.** Every run is saved with a screenshot of each step. For a check, the
-  report shows the screen, the reference image, their differences or one over the other. Reports
-  export as HTML or JUnit XML.
-- **Reference images.** When the app changed on purpose, accept a run's screenshot as the new
-  reference from the report. The old image goes to the Trash, and Undo brings it back.
-- **Checks by meaning.** Where comparing pictures is too strict, describe the screen in words,
-  such as “The cart shows 2 items”, and an AI model of your choice decides. See
-  [AI models](#ai-models).
-- **Command line.** The `jevision` tool inside the app runs, validates and formats tests from
-  Terminal, scripts and CI.
-- **AI assistants.** Claude, Cursor, Copilot and other MCP clients can find, write, run and
-  debug tests. See [Assistants (MCP)](#assistants-mcp).
-- **Git and GitHub.** Commit, pull, push and switch branches without a terminal, see what each
-  version of a test changed, and open and review pull requests. See [Git](#git).
-- **iPhone remote.** Browse tests, start a run and follow it, and read reports from an iPhone,
-  while tests and pictures stay on the Mac. See [iPhone remote](#iphone-remote).
-
-## Requirements
-
-- macOS 26 or later, on Apple silicon or Intel.
-- To build from source: Xcode 26 or later and Rust 1.85 or later, installed with
-  [rustup](https://rustup.rs).
-
-## Build from source
+JEVision needs macOS 26 or later, on Apple silicon or Intel. Until the first release, build it
+from source with Xcode 26 or later and Rust 1.85 or later, installed with
+[rustup](https://rustup.rs):
 
 ```sh
 git clone https://github.com/dev-pikapik/JEVision.git
@@ -65,6 +31,59 @@ open apps/macos/build/JEVision.app
 `build.sh` builds the Rust core for both architectures, then the app and the `jevision` tool
 into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one architecture only, and
 `SIGN_IDENTITY` to sign with your own certificate instead of an ad-hoc signature.
+
+## What it does
+
+<table>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/editor-dark.png"><img src="docs/media/editor-light.png" width="400" alt=""></picture>
+<br><b>Tests are flowcharts</b>
+<br>Add, connect and edit blocks on a canvas. Every change is saved at once and can be undone, and a problem shows on the block it concerns.
+</td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/report-dark.png"><img src="docs/media/report-light.png" width="400" alt=""></picture>
+<br><b>See what broke</b>
+<br>Every run keeps a screenshot of each step. A check shows the screen next to its reference, one over the other, or just the pixels that differ.
+</td>
+</tr></tbody>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/history-dark.png"><img src="docs/media/history-light.png" width="400" alt=""></picture>
+<br><b>Run all, keep the history</b>
+<br>Run every test of a project at once. The history shows what passed, what failed and which tests are flaky, with the evidence.
+</td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/ai-check-dark.png"><img src="docs/media/ai-check-light.png" width="400" alt=""></picture>
+<br><b>Checks by meaning</b>
+<br>Where pictures are too strict, describe the screen in words, such as “The cart shows 2 items”, and an AI model of your choice decides.
+</td>
+</tr></tbody>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/git-dark.png"><img src="docs/media/git-light.png" width="400" alt=""></picture>
+<br><b>Git without a terminal</b>
+<br>Commit, pull, push and open pull requests. A changed test shows as one flowchart with its added, removed and changed blocks.
+</td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/schedule-dark.png"><img src="docs/media/schedule-light.png" width="400" alt=""></picture>
+<br><b>Runs on a schedule</b>
+<br>Every night, on weekdays or every few hours, with the environment you choose. A failed run sends a notification.
+</td>
+</tr></tbody>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/project-map-dark.png"><img src="docs/media/project-map-light.png" width="400" alt=""></picture>
+<br><b>Project map</b>
+<br>Every test of the project on one page, with its last result, flaky tests and tests in quarantine.
+</td>
+</tr></tbody>
+</table>
+
+Also: the [`jevision` command line](#command-line) for Terminal and CI,
+[AI assistants over MCP](#assistants-mcp), [data-driven tests](#data-driven-tests) from CSV files,
+[environments](#environments), runs [in a virtual machine](#in-a-virtual-machine) and an
+[iPhone remote](#iphone-remote).
 
 ## First steps
 
@@ -78,7 +97,11 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 
 ⌘K opens the command palette: type a few letters of any command, block or test and press Return.
 
-## Permissions
+## Details
+
+<a id="permissions"></a>
+<details>
+<summary><b>Permissions</b></summary>
 
 JEVision asks for two permissions in System Settings → Privacy & Security, and explains each
 before asking:
@@ -91,7 +114,11 @@ before asking:
 
 Settings → Permissions shows what is granted and opens the right page in System Settings.
 
-## How it works
+</details>
+
+<a id="how-it-works"></a>
+<details>
+<summary><b>How a test is written</b></summary>
 
 A test is a graph of blocks. Execution starts at `start` and follows the arrows.
 
@@ -142,7 +169,11 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   time and frame). It never changes how the test runs; without it the blocks are laid out
   automatically.
 
-### Environments
+</details>
+
+<a id="environments"></a>
+<details>
+<summary><b>Environments</b></summary>
 
 One test can run against staging, production or a local server. Values that differ between them,
 such as a server address or a user name, go into `jevision.environments.json` in the project
@@ -175,7 +206,11 @@ folder, next to the tests, and are committed with them:
   environment is kept per project on this Mac. Before a run the app lists the names of missing
   values and secrets, never the values. The report says which environment the run used.
 
-### Data-driven tests
+</details>
+
+<a id="data-driven-tests"></a>
+<details>
+<summary><b>Data-driven tests</b></summary>
 
 One test can run with many sets of values, such as several users or languages. Put the values in
 a CSV file next to the test, one row per set and one column per value, and read it with a
@@ -211,7 +246,11 @@ Bo,bo@example.com,"quotes ""inside"", and a comma"
   change cells, and add or remove rows and columns. Saving keeps the file's separator, line ends
   and byte order mark.
 
-### Retries, flaky tests and quarantine
+</details>
+
+<a id="retries-flaky-tests-and-quarantine"></a>
+<details>
+<summary><b>Retries, flaky tests and quarantine</b></summary>
 
 Settings shared by every test of a project go into `jevision.project.json` in the project folder,
 committed with the tests. The app writes it in Settings › Advanced and from the sidebar; the file
@@ -257,7 +296,11 @@ are off or empty and always writes the click `button`, the reference's `compare`
 `threshold` for `similar`) and the `waitFor` `timeout`, so every change shows up as a small,
 readable diff.
 
-## Block types
+</details>
+
+<a id="block-types"></a>
+<details>
+<summary><b>Block types</b></summary>
 
 | Block | Group | What it does |
 | --- | --- | --- |
@@ -286,7 +329,11 @@ With `"compare": "meaning"`, an AI model looks at the screen and decides whether
 The reference image is optional; with one, the model compares the screen with it. `check`,
 `waitFor` and `if` all accept such a reference.
 
-## AI models
+</details>
+
+<a id="ai-models"></a>
+<details>
+<summary><b>AI models</b></summary>
 
 Checks by meaning use the model chosen in Settings → AI. Without one, JEVision compares pictures
 only and sends nothing anywhere.
@@ -315,7 +362,11 @@ only and sends nothing anywhere.
 - **Test Connection** in Settings asks the model about a small built-in picture, to check the
   address, key and model in one go.
 
-## Command line
+</details>
+
+<a id="command-line"></a>
+<details>
+<summary><b>Command line</b></summary>
 
 The `jevision` command runs and checks tests from Terminal, scripts and CI. It comes inside the
 app: choose **JEVision → Install Command Line Tool…** and click **Install…**. macOS asks for an
@@ -366,7 +417,11 @@ files are valid and formatted); tests in quarantine may have failed (see
 
 Press Esc twice or Ctrl-C to stop a run. The stopped test is reported as cancelled.
 
-### GitHub Actions
+</details>
+
+<a id="github-actions"></a>
+<details>
+<summary><b>GitHub Actions</b></summary>
 
 Hosted runners have no logged-in user, so use a
 [self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners) on a Mac.
@@ -394,7 +449,11 @@ jobs:
             reports/
 ```
 
-### On a schedule
+</details>
+
+<a id="on-a-schedule"></a>
+<details>
+<summary><b>On a schedule</b></summary>
 
 Choose **Test → Schedules…**, or click the schedule line at the foot of the sidebar, to run tests
 on their own: all tests, the tests in one folder, or chosen tests; every day, on chosen days of
@@ -442,7 +501,11 @@ skipped and recorded as "skipped: screen locked" — JEVision never types into a
 unattended runs turn off the automatic screen lock. The app posts a notification when a
 scheduled run fails, is skipped or can't start. Deleting every schedule removes the launch agent.
 
-### In a virtual machine
+</details>
+
+<a id="in-a-virtual-machine"></a>
+<details>
+<summary><b>In a virtual machine</b></summary>
 
 Tests can run inside a macOS virtual machine on a Mac with Apple silicon, made with
 [Tart](https://tart.run), [UTM](https://mac.getutm.app) or another tool built on Apple's
@@ -467,7 +530,11 @@ display, such as "Standard display (1×)", and `report.json` has `virtualMachine
 The step-by-step guide, with SSH, CI and limits such as Apple's two virtual machines per Mac:
 [docs/vm.html](docs/vm.html).
 
-## Assistants (MCP)
+</details>
+
+<a id="assistants-mcp"></a>
+<details>
+<summary><b>Assistants (MCP)</b></summary>
 
 `jevision mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server for AI
 assistants on the same Mac. The assistant starts it and talks to it over standard input and
@@ -511,7 +578,11 @@ Safety:
 - A run started by an assistant pauses while you use the mouse or keyboard, and Esc pressed
   twice stops it.
 
-## iPhone remote
+</details>
+
+<a id="iphone-remote"></a>
+<details>
+<summary><b>iPhone remote</b></summary>
 
 JEVision Remote turns an iPhone into a remote for JEVision on your Mac. With it you can browse
 the projects and tests of each paired Mac, see a test drawn as its flow with its last results,
@@ -530,7 +601,11 @@ failure, and look through a project's run history.
 The app isn't in the App Store yet: build it from [`apps/ios`](apps/ios/README.md), which also
 explains building for the Simulator.
 
-## Git
+</details>
+
+<a id="git"></a>
+<details>
+<summary><b>Git and GitHub</b></summary>
 
 Tests are plain files, so git keeps their history. Settings → Git and GitHub shows the project's branch and
 changes; the foot of the sidebar shows them too and opens that page.
@@ -557,7 +632,11 @@ Keychain or SSH keys. For GitHub itself (the account and pull requests) the app 
 sign-in: it asks `gh auth token` when it needs it and never stores, shows or shares the token.
 The app has no sign-in of its own.
 
-## Releasing
+</details>
+
+<a id="releasing"></a>
+<details>
+<summary><b>Releasing</b></summary>
 
 Releases are made by the maintainer on a Mac. The version is `version` in the root
 `Cargo.toml`, shared by the core, the app and the `jevision` tool; the build number is the
@@ -596,6 +675,8 @@ Then tag the commit `v<version>`, attach the disk image to a GitHub release of t
 `apps/macos/build/appcast/appcast.xml` to GitHub Pages, and copy `packaging/homebrew/jevision.rb`
 to `Casks/` in the tap. Without `NOTARY_PROFILE`, `release.sh` stops after signing, which is
 enough to check a build; `ADHOC=1` builds the same disk image without any certificate, as CI does.
+
+</details>
 
 ## Roadmap
 
