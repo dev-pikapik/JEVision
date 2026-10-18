@@ -525,6 +525,16 @@
         }
       }
     },
+    "Account" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аккаунт"
+          }
+        }
+      }
+    },
     "Actions" : {
       "localizations" : {
         "ru" : {
@@ -907,6 +917,26 @@
         }
       }
     },
+    "Ask GitHub again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить GitHub ещё раз"
+          }
+        }
+      }
+    },
+    "Asking GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спрашиваем GitHub"
+          }
+        }
+      }
+    },
     "Asks the model about a small picture" : {
       "localizations" : {
         "ru" : {
@@ -1013,6 +1043,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ветка %@"
+          }
+        }
+      }
+    },
+    "Branch “%@” has commits that aren’t on GitHub yet. Push it first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В ветке «%@» есть коммиты, которых ещё нет на GitHub. Сначала отправьте её."
           }
         }
       }
@@ -1147,6 +1187,36 @@
         }
       }
     },
+    "Can’t show pull requests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось показать пул-реквесты"
+          }
+        }
+      }
+    },
+    "Can’t show the changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось показать изменения"
+          }
+        }
+      }
+    },
+    "Can’t start a pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось начать пул-реквест"
+          }
+        }
+      }
+    },
     "Changed" : {
       "localizations" : {
         "ru" : {
@@ -1187,6 +1257,16 @@
         }
       }
     },
+    "Changes that aren’t committed won’t be included." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Незакоммиченные изменения в него не попадут."
+          }
+        }
+      }
+    },
     "Changes to this project aren’t tracked." : {
       "localizations" : {
         "ru" : {
@@ -1217,12 +1297,32 @@
         }
       }
     },
+    "Check Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить снова"
+          }
+        }
+      }
+    },
     "Checking by meaning needs an AI model." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Для проверки по смыслу нужна модель ИИ."
+          }
+        }
+      }
+    },
+    "Checking the GitHub account" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверяем аккаунт GitHub"
           }
         }
       }
@@ -1627,6 +1727,16 @@
         }
       }
     },
+    "Couldn’t create the pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать пул-реквест"
+          }
+        }
+      }
+    },
     "Couldn’t pull" : {
       "localizations" : {
         "ru" : {
@@ -1703,6 +1813,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создать"
+          }
+        }
+      }
+    },
+    "Create Pull Request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать пул-реквест"
+          }
+        }
+      }
+    },
+    "Creating the pull request…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаём пул-реквест…"
+          }
+        }
+      }
+    },
+    "Creating…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаём…"
           }
         }
       }
@@ -1913,6 +2053,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дважды нажмите или нажмите пробел, чтобы открыть в Быстром просмотре"
+          }
+        }
+      }
+    },
+    "Downloading the changes…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружаем изменения…"
+          }
+        }
+      }
+    },
+    "Draft" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Черновик"
           }
         }
       }
@@ -2207,6 +2367,16 @@
         }
       }
     },
+    "From branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из ветки"
+          }
+        }
+      }
+    },
     "From the environment variable %@" : {
       "localizations" : {
         "ru" : {
@@ -2227,6 +2397,16 @@
         }
       }
     },
+    "Get GitHub CLI…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить GitHub CLI…"
+          }
+        }
+      }
+    },
     "Get the latest commits from the server" : {
       "localizations" : {
         "ru" : {
@@ -2237,12 +2417,12 @@
         }
       }
     },
-    "Git" : {
+    "Git and GitHub" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Git"
+            "value" : "Git и GitHub"
           }
         }
       }
@@ -2283,6 +2463,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Git сохраняет имя и email в каждом коммите. Они запомнятся для всех ваших проектов."
+          }
+        }
+      }
+    },
+    "GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub"
+          }
+        }
+      }
+    },
+    "GitHub CLI isn’t installed. Install it from cli.github.com, then run “gh auth login” in Terminal." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub CLI не установлен. Установите его с cli.github.com, затем выполните «gh auth login» в Терминале."
           }
         }
       }
@@ -2337,12 +2537,12 @@
         }
       }
     },
-    "History, commits and branches — no terminal needed." : {
+    "History, commits, branches and pull requests — no terminal needed." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "История, коммиты и ветки — без терминала."
+            "value" : "История, коммиты, ветки и пул-реквесты — без терминала."
           }
         }
       }
@@ -2507,6 +2707,16 @@
         }
       }
     },
+    "Install GitHub CLI, then run “gh auth login” in Terminal to sign in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установите GitHub CLI, затем войдите командой «gh auth login» в Терминале."
+          }
+        }
+      }
+    },
     "Install Just for Me" : {
       "localizations" : {
         "ru" : {
@@ -2533,6 +2743,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Установить…"
+          }
+        }
+      }
+    },
+    "Into branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В ветку"
           }
         }
       }
@@ -2616,6 +2836,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision нужны два разрешения"
+          }
+        }
+      }
+    },
+    "JEVision uses the account GitHub CLI is signed in to. To use another one, run “gh auth login” in Terminal." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision работает с аккаунтом, в который вошёл GitHub CLI. Чтобы сменить аккаунт, выполните «gh auth login» в Терминале."
           }
         }
       }
@@ -2900,6 +3130,16 @@
         }
       }
     },
+    "New Pull Request…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый пул-реквест…"
+          }
+        }
+      }
+    },
     "New Secret" : {
       "localizations" : {
         "ru" : {
@@ -2956,6 +3196,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранён новый эталон"
+          }
+        }
+      }
+    },
+    "New…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый…"
           }
         }
       }
@@ -3060,6 +3310,16 @@
         }
       }
     },
+    "No open pull requests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытых пул-реквестов нет"
+          }
+        }
+      }
+    },
     "No project is open" : {
       "localizations" : {
         "ru" : {
@@ -3146,6 +3406,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не задан"
+          }
+        }
+      }
+    },
+    "Nothing changes in this project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этом проекте ничего не меняется"
           }
         }
       }
@@ -3360,12 +3630,32 @@
         }
       }
     },
+    "Open on GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть на GitHub"
+          }
+        }
+      }
+    },
     "Open the folder with your tests to see its changes." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте папку с тестами, чтобы увидеть её изменения."
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to see its pull requests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы увидеть её пул-реквесты."
           }
         }
       }
@@ -3660,6 +3950,26 @@
         }
       }
     },
+    "Propose the changes on your branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предложить изменения из вашей ветки"
+          }
+        }
+      }
+    },
+    "Propose your branch’s changes, or see what others propose." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предложите изменения из своей ветки или посмотрите, что предлагают другие."
+          }
+        }
+      }
+    },
     "Provider" : {
       "localizations" : {
         "ru" : {
@@ -3680,6 +3990,46 @@
         }
       }
     },
+    "Pull Requests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пул-реквесты"
+          }
+        }
+      }
+    },
+    "Pull request #%llu is open" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пул-реквест #%llu открыт"
+          }
+        }
+      }
+    },
+    "Pull requests appear here once the project’s repository is on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пул-реквесты появятся здесь, когда репозиторий проекта будет на GitHub."
+          }
+        }
+      }
+    },
+    "Pull requests opened on GitHub appear here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь появляются пул-реквесты, открытые на GitHub."
+          }
+        }
+      }
+    },
     "Pulling…" : {
       "localizations" : {
         "ru" : {
@@ -3696,6 +4046,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправить"
+          }
+        }
+      }
+    },
+    "Push and Create" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить и создать"
+          }
+        }
+      }
+    },
+    "Pushing and creating…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляем и создаём…"
           }
         }
       }
@@ -4030,6 +4400,16 @@
         }
       }
     },
+    "Reviewers see what changed and can merge it into the branch you choose." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверяющие увидят, что изменилось, и смогут влить это в выбранную ветку."
+          }
+        }
+      }
+    },
     "Right" : {
       "localizations" : {
         "ru" : {
@@ -4166,6 +4546,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выполните эту команду в Терминале и введите пароль:"
+          }
+        }
+      }
+    },
+    "Run “gh auth login” in Terminal to sign in, then check again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите командой «gh auth login» в Терминале, затем проверьте снова."
           }
         }
       }
@@ -4400,6 +4790,16 @@
         }
       }
     },
+    "See what it changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотрите, что он меняет."
+          }
+        }
+      }
+    },
     "Select All" : {
       "localizations" : {
         "ru" : {
@@ -4436,6 +4836,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите коммит"
+          }
+        }
+      }
+    },
+    "Select a pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите пул-реквест"
           }
         }
       }
@@ -4596,6 +5006,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показывает снимки экрана"
+          }
+        }
+      }
+    },
+    "Show…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать…"
           }
         }
       }
@@ -5090,6 +5510,16 @@
         }
       }
     },
+    "The pull request contains only what you write. JEVision adds nothing to it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В пул-реквесте только то, что написали вы. JEVision ничего не добавляет."
+          }
+        }
+      }
+    },
     "The recording couldn’t be added to the test: %@" : {
       "localizations" : {
         "ru" : {
@@ -5340,6 +5770,36 @@
         }
       }
     },
+    "This branch already has an open pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У этой ветки уже есть открытый пул-реквест"
+          }
+        }
+      }
+    },
+    "This branch already has an open pull request." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У этой ветки уже есть открытый пул-реквест."
+          }
+        }
+      }
+    },
+    "This branch has no commits that “%@” doesn’t have yet." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой ветке нет коммитов, которых ещё нет в «%@»."
+          }
+        }
+      }
+    },
     "This branch isn’t on the server yet" : {
       "localizations" : {
         "ru" : {
@@ -5386,6 +5846,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проект не связан с сервером."
+          }
+        }
+      }
+    },
+    "This project isn’t on GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этого проекта нет на GitHub"
+          }
+        }
+      }
+    },
+    "This project’s server isn’t GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер этого проекта — не GitHub."
+          }
+        }
+      }
+    },
+    "This pull request changes only files outside “%@”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот пул-реквест меняет только файлы вне «%@»."
           }
         }
       }
@@ -5480,6 +5970,16 @@
         }
       }
     },
+    "Title" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заголовок"
+          }
+        }
+      }
+    },
     "To click, type and press keys for you" : {
       "localizations" : {
         "ru" : {
@@ -5536,6 +6036,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попытка %1$u из %2$u"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
           }
         }
       }
@@ -5870,6 +6380,16 @@
         }
       }
     },
+    "What this change does" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что делает это изменение"
+          }
+        }
+      }
+    },
     "What you do while paused isn’t recorded" : {
       "localizations" : {
         "ru" : {
@@ -5886,6 +6406,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Куда нажать"
+          }
+        }
+      }
+    },
+    "Why, and what to look at (optional)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зачем и на что посмотреть (необязательно)"
           }
         }
       }
@@ -5960,12 +6490,42 @@
         }
       }
     },
+    "Your GitHub account isn’t allowed to do this in this repository." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вашему аккаунту GitHub это не разрешено в этом репозитории."
+          }
+        }
+      }
+    },
+    "Your latest commits aren’t on GitHub yet. They’ll be pushed first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последних коммитов ещё нет на GitHub. Сначала они будут отправлены."
+          }
+        }
+      }
+    },
     "Your name" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ваше имя"
+          }
+        }
+      }
+    },
+    "You’re not signed in to GitHub. Run “gh auth login” in Terminal, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы не вошли в GitHub. Выполните «gh auth login» в Терминале и попробуйте снова."
           }
         }
       }

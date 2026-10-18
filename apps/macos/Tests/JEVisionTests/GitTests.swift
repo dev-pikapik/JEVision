@@ -65,11 +65,17 @@ struct GitTextTests {
       .RemoteNotFound, .Unreachable, .Rejected, .Conflict(paths: ["auth/login.flow.json"]),
       .LocalChanges(paths: ["a.flow.json", "b.png"]), .NoIdentity, .EmptyMessage, .NothingToCommit,
       .BadBranchName(name: "a b"), .BranchExists(name: "main"), .NotInCommit(path: "a.flow.json"),
+      .NoGitHubCli, .GitHubSignedOut, .NotGitHub, .NoPermission, .NotPushed(branch: "feat/login"),
+      .PullRequestExists, .NothingToPropose(base: "main"),
     ]
     let messages = errors.map(GitText.failure)
     #expect(Set(messages).count == errors.count)
     #expect(messages[10].contains("“login”"), "a test is named without its folder and extension")
     #expect(GitText.failure(GitError.Failed(message: "fatal: bad object")) == "fatal: bad object")
+    #expect(GitText.failure(GitError.GitHubSignedOut).contains("gh auth login"), "says how to sign in")
+    #expect(GitText.failure(GitError.NoGitHubCli).contains("cli.github.com"), "says where to get GitHub CLI")
+    #expect(GitText.failure(GitError.NotPushed(branch: "feat/login")).contains("“feat/login”"))
+    #expect(GitText.failure(GitError.NothingToPropose(base: "main")).contains("“main”"))
   }
 
   @Test func sortsTestsFromOtherFiles() {

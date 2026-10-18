@@ -42,8 +42,8 @@ it and a failure points at the block where it happened.
   Terminal, scripts and CI.
 - **AI assistants.** Claude, Cursor, Copilot and other MCP clients can find, write, run and
   debug tests. See [Assistants (MCP)](#assistants-mcp).
-- **Git.** Commit, pull, push and switch branches without a terminal, and see what each version
-  of a test changed. See [Git](#git).
+- **Git and GitHub.** Commit, pull, push and switch branches without a terminal, see what each
+  version of a test changed, and open and review pull requests. See [Git](#git).
 
 ## Requirements
 
@@ -334,7 +334,7 @@ Safety:
 
 ## Git
 
-Tests are plain files, so git keeps their history. Settings → Git shows the project's branch and
+Tests are plain files, so git keeps their history. Settings → Git and GitHub shows the project's branch and
 changes; the foot of the sidebar shows them too and opens that page.
 
 - **Commit.** Check the changes to include and describe them. A commit contains only your message:
@@ -348,15 +348,21 @@ changes; the foot of the sidebar shows them too and opens that page.
   as yours, nothing is changed and the app names the files. Push sends a new branch to the
   server too.
 - **Not tracked yet.** Start Tracking Changes creates the repository.
+- **Pull requests.** When the repository is on GitHub, Pull Requests → New… proposes the current
+  branch with your title and description (pushing it first if needed); the default branch is
+  the target unless you pick another. Show… lists the open pull requests: each shows the tests
+  and pictures it changes, before and after, and opens on GitHub.
 
 JEVision runs the git installed on the Mac (the Command Line Developer Tools include it), so
 signing in to the server works the way it does in Terminal: GitHub CLI (`gh auth login`), the
-Keychain or SSH keys. The app has no sign-in of its own.
+Keychain or SSH keys. For GitHub itself (the account and pull requests) the app uses GitHub CLI's
+sign-in: it asks `gh auth token` when it needs it and never stores, shows or shares the token.
+The app has no sign-in of its own.
 
 ## Roadmap
 
 - Testing remote devices, starting with iPhone
-- GitHub in the app: pull requests and run results on them
+- GitHub in the app: run results on pull requests, sign-in without GitHub CLI
 - Windows and Linux, each with an interface of its own
 
 ## Contributing

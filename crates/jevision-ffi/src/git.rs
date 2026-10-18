@@ -6,7 +6,8 @@ use std::sync::OnceLock;
 
 use jevision_core::{BlockChange, BlockChangeKind, Flow, FlowDiff};
 use jevision_git::{
-    ChangeKind, FileChange, Git, GitBranch, GitCommit, GitError, GitIdentity, GitStatus, Repo,
+    ChangeKind, FileChange, Git, GitBranch, GitCommit, GitError, GitHub, GitHubAccount,
+    GitIdentity, GitStatus, PullRequest, PullRequestChanges, PullRequestDraft, Repo,
 };
 use jevision_runner::PictureDiff;
 
@@ -125,6 +126,62 @@ pub fn git_set_identity(project: String, identity: GitIdentity) -> Result<(), Gi
     git()?.set_identity(Path::new(&project), &identity)
 }
 
+/// Who GitHub CLI is signed in to GitHub as.
+#[uniffi::export]
+pub fn github_account() -> Result<GitHubAccount, GitError> {
+    git()?.github()?.account()
+}
+
+/// The project's repository, once it is known to be on GitHub, and GitHub signed in.
+fn on_github(project: &str) -> Result<(Repo, GitHub), GitError> {
+    let repo = repo(project)?;
+    repo.github()?;
+    Ok((repo, git()?.github()?))
+}
+
+/// Open pull requests of the project's repository, the latest updated first.
+#[uniffi::export]
+pub fn github_pull_requests(project: String) -> Result<Vec<PullRequest>, GitError> {
+    let (repo, hub) = on_github(&project)?;
+    repo.pull_requests(&hub)
+}
+
+/// The files of the project a pull request changes, downloading its commits when needed.
+#[uniffi::export]
+pub fn github_pull_request_changes(
+    project: String,
+    pull_request: PullRequest,
+) -> Result<PullRequestChanges, GitError> {
+    repo(&project)?.pull_request_changes(&pull_request.base_commit, &pull_request.head_commit)
+}
+
+/// What a pull request from the current branch would start from.
+#[uniffi::export]
+pub fn github_pull_request_draft(project: String) -> Result<PullRequestDraft, GitError> {
+    let (repo, hub) = on_github(&project)?;
+    repo.pull_request_draft(&hub)
+}
+
+/// Proposes the current branch for `base`, pushing it first when `push` and it has commits
+/// that aren't on GitHub. The title and description are exactly the user's.
+#[uniffi::export]
+pub fn github_create_pull_request(
+    project: String,
+    base: String,
+    title: String,
+    description: String,
+    push: bool,
+) -> Result<PullRequest, GitError> {
+    let (repo, hub) = on_github(&project)?;
+    if title.trim().is_empty() {
+        return Err(GitError::EmptyMessage);
+    }
+    if push {
+        repo.push()?;
+    }
+    repo.create_pull_request(&hub, &base, &title, &description)
+}
+
 /// What changed between two versions of a test; a missing version has no blocks.
 #[uniffi::export]
 pub fn diff_flows(before: Option<Flow>, after: Option<Flow>) -> FlowDiff {
@@ -157,6 +214,13 @@ pub enum GitError {
     BadBranchName { name: String },
     BranchExists { name: String },
     NotInCommit { path: String },
+    NoGitHubCli,
+    GitHubSignedOut,
+    NotGitHub,
+    NoPermission,
+    NotPushed { branch: String },
+    PullRequestExists,
+    NothingToPropose { base: String },
     Failed { message: String },
 }
 
@@ -184,6 +248,7 @@ pub struct GitStatus {
     pub behind: u32,
     pub has_commits: bool,
     pub remote: Option<String>,
+    pub github: Option<String>,
     pub changes: Vec<FileChange>,
 }
 
@@ -209,6 +274,42 @@ pub struct GitBranch {
 pub struct GitIdentity {
     pub name: String,
     pub email: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct GitHubAccount {
+    pub login: String,
+    pub name: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct PullRequest {
+    pub number: u64,
+    pub title: String,
+    pub author: String,
+    pub url: String,
+    pub head: String,
+    pub head_commit: String,
+    pub base: String,
+    pub base_commit: String,
+    pub draft: bool,
+    pub updated: i64,
+}
+
+#[uniffi::remote(Record)]
+pub struct PullRequestDraft {
+    pub branch: String,
+    pub base: String,
+    pub bases: Vec<String>,
+    pub unpushed: bool,
+    pub existing: Option<PullRequest>,
+}
+
+#[uniffi::remote(Record)]
+pub struct PullRequestChanges {
+    pub before: String,
+    pub after: String,
+    pub files: Vec<FileChange>,
 }
 
 #[uniffi::remote(Enum)]
