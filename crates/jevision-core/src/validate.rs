@@ -36,6 +36,14 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
     }
     graph(flow, &blocks, &mut out);
     unknown_variables(flow, &blocks, &mut out);
+    // A test that runs another one may check the screen there.
+    if !flow
+        .blocks
+        .iter()
+        .any(|b| b.kind.checks() || matches!(b.kind, BlockKind::RunTest { .. }))
+    {
+        out.push(Issue::warning("flow.noCheck"));
+    }
     out
 }
 

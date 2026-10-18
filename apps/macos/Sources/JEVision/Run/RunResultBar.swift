@@ -10,6 +10,8 @@ struct RunResultBar: View {
   let result: RunCenter.Result
   /// Selects the block the run failed at and shows why; `nil` when no block failed.
   var showFailedBlock: (() -> Void)?
+  /// Adds a Check at the end of the test; `nil` unless the run checked nothing.
+  var addCheck: (() -> Void)?
   @State private var gitIgnoreError: String?
 
   var body: some View {
@@ -36,6 +38,10 @@ struct RunResultBar: View {
             openSettings()
           }
           .buttonStyle(.glassProminent)
+        }
+        if let addCheck {
+          Button("Add Check", systemImage: "eye", action: addCheck)
+            .buttonStyle(.glassProminent)
         }
         if let showFailedBlock {
           Button("Show Failed Block", action: showFailedBlock)
@@ -84,18 +90,20 @@ struct RunResultBar: View {
   }
 
   private var symbol: String {
+    if result.nothingChecked { return RunStatus.unchecked.symbol }
     switch result.verdict {
-    case .passed: "checkmark.circle.fill"
-    case .cancelled: "stop.circle.fill"
-    case .failed, nil: "xmark.square.fill"
+    case .passed: return "checkmark.circle.fill"
+    case .cancelled: return "stop.circle.fill"
+    case .failed, nil: return "xmark.square.fill"
     }
   }
 
   private var color: Color {
+    if result.nothingChecked { return RunStatus.unchecked.color }
     switch result.verdict {
-    case .passed: .green
-    case .cancelled: .secondary
-    case .failed, nil: .red
+    case .passed: return .green
+    case .cancelled: return .secondary
+    case .failed, nil: return .red
     }
   }
 }

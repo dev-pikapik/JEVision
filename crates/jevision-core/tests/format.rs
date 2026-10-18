@@ -39,8 +39,56 @@ fn minimal(blocks: &str) -> String {
     )
 }
 
+/// The issues of a test made of `blocks`, without the warning that it checks nothing, which
+/// most of these small tests would get.
 fn issues_of(blocks: &str) -> Vec<Issue> {
     validate(&parse(&minimal(blocks)).unwrap())
+        .into_iter()
+        .filter(|i| i.code != "flow.noCheck")
+        .collect()
+}
+
+#[test]
+fn a_test_that_never_checks_the_screen_gets_a_warning() {
+    let warned = |blocks: &str| {
+        validate(&parse(&minimal(blocks)).unwrap())
+            .iter()
+            .any(|i| i.code == "flow.noCheck" && i.severity == Severity::Warning)
+    };
+    assert!(warned(r#"{"a": {"type": "pressKeys", "keys": "a"}}"#));
+    assert!(warned(
+        r#"{"a": {"type": "waitFor", "until": "screenStable"}}"#
+    ));
+    assert!(warned(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "check", "reference": {"image": "x.png"}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "waitFor", "until": {"appears": {"image": "x.png"}}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "waitFor", "until": {"disappears": {"image": "x.png"}}}}"#
+    ));
+    // The test it runs may check the screen.
+    assert!(!warned(
+        r#"{"a": {"type": "runTest", "test": "other.flow.json"}}"#
+    ));
+    // Checks that look past the screen count too; a query that only saves a value does not.
+    assert!(!warned(
+        r#"{"a": {"type": "http", "url": "https://x.test"}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "checkFile", "path": "out.txt", "until": "exists"}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "database", "file": "a.sqlite", "query": "select 1", "expect": {"rows": 1}}}"#
+    ));
+    assert!(warned(
+        r#"{"a": {"type": "database", "file": "a.sqlite", "query": "select 1", "saveAs": "x"}}"#
+    ));
+    assert!(warned(r#"{"a": {"type": "command", "command": "true"}}"#));
 }
 
 #[test]
@@ -185,7 +233,12 @@ fn broken_edges_are_errors() {
     assert_eq!(issues[0].param("edge"), Some("then"));
     assert_eq!(issues[0].param("target"), Some("nowhere"));
 
-    let start = validate(&parse(&minimal(r#"{"b": {"type": "openApp"}}"#)).unwrap());
+    let start = validate(
+        &parse(&minimal(
+            r#"{"b": {"type": "check", "reference": {"image": "b.png"}}}"#,
+        ))
+        .unwrap(),
+    );
     assert_eq!(codes(&start), ["flow.start.unknownBlock"]);
 }
 
@@ -235,7 +288,7 @@ const THREE_WAYS: &str = r#"{
 #[test]
 fn else_if_cases_round_trip_and_plain_ifs_stay_unchanged() {
     let flow = parse(THREE_WAYS).unwrap();
-    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
     assert_eq!(to_canonical_json(&flow), THREE_WAYS);
     let edges: Vec<(String, &str)> = flow.blocks[0]
         .kind
@@ -587,7 +640,7 @@ const CANVAS: &str = r#"{
 #[test]
 fn the_canvas_round_trips_in_canonical_form() {
     let flow = parse(CANVAS).unwrap();
-    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
     assert_eq!(flow.canvas.sections.len(), 2);
     assert_eq!(
         flow.canvas

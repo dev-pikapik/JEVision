@@ -566,6 +566,25 @@ impl BlockKind {
         }
     }
 
+    /// The block fails the run when the app isn't as expected: a check, a wait for something to
+    /// appear or disappear, an HTTP answer status, a file state, or a database answer.
+    pub fn checks(&self) -> bool {
+        matches!(
+            self,
+            Self::Check { .. }
+                | Self::WaitFor {
+                    until: WaitUntil::Appears(_) | WaitUntil::Disappears(_),
+                    ..
+                }
+                | Self::Http { .. }
+                | Self::CheckFile { .. }
+                | Self::Database {
+                    expect: Some(_),
+                    ..
+                }
+        )
+    }
+
     /// Names of the outgoing edges this block can have, in drawing order.
     pub fn edge_names(&self) -> Vec<Cow<'static, str>> {
         match self {
