@@ -11,6 +11,7 @@ extension RemoteError {
     case .invalidCode: String(localized: "This Code Doesn’t Work")
     case .codeExpired: String(localized: "This Code Has Expired")
     case .revoked: String(localized: "This iPhone Was Removed")
+    case .dataRowNotFound: String(localized: "This Row Is Gone")
     case .other: String(localized: "Something Went Wrong")
     }
   }
@@ -33,6 +34,8 @@ extension RemoteError {
       String(localized: "Pairing codes work for five minutes. Show a new code on the Mac and scan it.")
     case .revoked:
       String(localized: "The Mac no longer knows this iPhone. Forget the Mac here and pair again.")
+    case .dataRowNotFound:
+      String(localized: "The test’s data table changed on the Mac. Pull down to refresh the test and choose a row again.")
     case .other:
       String(localized: "Try again. If it keeps happening, restart JEVision on the Mac.")
     }
@@ -45,6 +48,7 @@ extension RemoteError {
     case .runInProgress: "hourglass"
     case .notAllowed, .revoked: "hand.raised"
     case .declinedOnMac: "xmark.circle"
+    case .dataRowNotFound: "tablecells"
     case .invalidCode, .codeExpired: "qrcode"
     case .other: "exclamationmark.triangle"
     }

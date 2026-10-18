@@ -2158,6 +2158,86 @@
           }
         }
       }
+    },
+    "Data Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки данных"
+          }
+        }
+      }
+    },
+    "All Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все строки"
+          }
+        }
+      }
+    },
+    "Data Rows: All %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки данных: все %lld"
+          }
+        }
+      }
+    },
+    "Row %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %lld"
+          }
+        }
+      }
+    },
+    "Row %lld: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "This Row Is Gone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой строки больше нет"
+          }
+        }
+      }
+    },
+    "The test’s data table changed on the Mac. Pull down to refresh the test and choose a row again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таблица данных теста изменилась на Mac. Потяните экран вниз, чтобы обновить тест, и выберите строку заново."
+          }
+        }
+      }
+    },
+    "%@ · Try %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · попытка %2$lld"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

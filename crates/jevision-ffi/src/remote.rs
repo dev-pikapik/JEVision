@@ -111,11 +111,14 @@ pub trait RemoteDelegate: Send + Sync {
     fn confirm_run(&self, device: PairedDevice, project: String, test: String) -> bool;
     /// Starts `test`, relative to `project_root`, the way the app starts any run, with the
     /// device's name as [`crate::RunOptions::requested_by`] and the listener from
-    /// [`RemoteHost::run_listener`]. Returns once the run has started, or why it couldn't.
+    /// [`RemoteHost::run_listener`]. `data_row` runs only that row of the test's data table,
+    /// counted from 0 and known to exist, as [`crate::RunOptions::data_rows`]; `None` runs
+    /// every row. Returns once the run has started, or why it couldn't.
     fn start_run(
         &self,
         project_root: String,
         test: String,
+        data_row: Option<u32>,
         requested_by: PairedDevice,
     ) -> Option<RemoteError>;
     /// Stops the run going on, as the emergency stop does.
@@ -314,6 +317,7 @@ impl remote::HostDelegate for Bridge {
         &self,
         project_root: String,
         test: String,
+        row: Option<u32>,
         requested_by: remote::Device,
     ) -> Result<String, RemoteError> {
         let _one = self.runs.starting.lock().unwrap_or_else(|e| e.into_inner());
@@ -325,7 +329,9 @@ impl remote::HostDelegate for Bridge {
             }
             state.waiting = Some(tx);
         }
-        let refused = self.app.start_run(project_root, test, requested_by.into());
+        let refused = self
+            .app
+            .start_run(project_root, test, row, requested_by.into());
         let started = match refused {
             Some(e) => Err(e),
             None => rx
@@ -610,6 +616,7 @@ pub enum RemoteError {
     HostNotRunning,
     Storage,
     HostFailed,
+    DataRowNotFound,
 }
 
 #[cfg(test)]
@@ -624,7 +631,7 @@ mod tests {
 
     use super::*;
     use crate::run::tests::{Fake, Secrets};
-    use crate::{RunOptions, TestRun};
+    use crate::{DataRowRange, RunOptions, TestRun};
 
     struct Phone(SigningKey);
 
@@ -670,6 +677,7 @@ mod tests {
             &self,
             project_root: String,
             test: String,
+            data_row: Option<u32>,
             requested_by: PairedDevice,
         ) -> Option<RemoteError> {
             let host = self.host.get()?.upgrade()?;
@@ -680,6 +688,10 @@ mod tests {
                 test,
                 RunOptions {
                     requested_by: Some(requested_by.name),
+                    data_rows: data_row.map(|row| DataRowRange {
+                        first: row,
+                        last: row,
+                    }),
                     ..RunOptions::default()
                 },
                 Arc::new(Fake::default()),
@@ -734,6 +746,14 @@ mod tests {
                 "open":{"type":"openApp","next":"go"},"go":{"type":"pressKeys","keys":"return"}}}"#,
         )
         .unwrap();
+        std::fs::write(
+            project.join("rows.flow.json"),
+            r#"{"format":1,"name":"Rows","app":"com.example.App","start":"rows","blocks":{
+                "rows":{"type":"useData","file":"people.csv","body":"type"},
+                "type":{"type":"type","text":"${data.name}","next":"rows"}}}"#,
+        )
+        .unwrap();
+        std::fs::write(project.join("people.csv"), "name\nAnn\nBo\n").unwrap();
         let root = project.to_string_lossy().into_owned();
 
         let app = Arc::new(App::default());
@@ -778,7 +798,7 @@ mod tests {
         assert_eq!(devices[0].permission, DevicePermission::Run);
 
         let run = phone
-            .block_on(client.run_test("Demo".into(), "t.flow.json".into()))
+            .block_on(client.run_test("Demo".into(), "t.flow.json".into(), None))
             .unwrap();
         assert_eq!(
             *app.asked.lock().unwrap(),
@@ -794,7 +814,7 @@ mod tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert_eq!(
-            phone.block_on(client.run_test("Demo".into(), "t.flow.json".into())),
+            phone.block_on(client.run_test("Demo".into(), "t.flow.json".into(), None)),
             Err(RemoteError::RunInProgress)
         );
 
@@ -853,6 +873,38 @@ mod tests {
             host.activity(10)
                 .iter()
                 .any(|a| a.kind == ActivityKind::RunStarted)
+        );
+
+        // One row of a data table, picked on the phone.
+        let rows = phone
+            .block_on(client.get_test("Demo".into(), "rows.flow.json".into()))
+            .unwrap()
+            .rows;
+        assert_eq!(rows, ["Ann", "Bo"]);
+        let run = phone
+            .block_on(client.run_test("Demo".into(), "rows.flow.json".into(), Some(1)))
+            .unwrap();
+        let watch = phone
+            .block_on(client.watch("Demo".into(), run.clone()))
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !app.run().is_paused() {
+            assert!(Instant::now() < deadline, "the run never paused");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        app.run().resume();
+        while phone.block_on(watch.next()).unwrap().is_some() {}
+        let report = phone
+            .block_on(client.report("Demo".into(), run.clone()))
+            .unwrap();
+        assert_eq!(report.verdict, Verdict::Passed);
+        let ran: Vec<_> = report.attempts.iter().map(|a| a.row.clone()).collect();
+        assert_eq!(
+            ran,
+            [Some(jevision_runner::DataRow {
+                number: 2,
+                label: "Bo".into()
+            })]
         );
 
         host.revoke(devices[0].id.clone()).unwrap();

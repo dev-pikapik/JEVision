@@ -64,6 +64,19 @@ xcodebuild -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
 ```
 
 The test leaves a device named "JEVision end-to-end test" on the Mac; remove it there afterwards.
+With `TEST_RUNNER_JEVISION_REMOTE_E2E_RUN=1` it also runs one data row of a test and follows it
+to the report; that drives the Mac, so use it with the stand-in below.
+
+### Test without a Mac
+
+`cargo run -p jevision-remote --example test-host` stands in for the Mac app: it serves a small
+project from a temporary folder, prints a pairing link for this computer, and plays the runs a
+phone starts instead of driving anything. Pass that link to the test above.
+
+`apps/ios/scripts/ui-tour.sh <simulator UDID> <folder>` walks the app itself from pairing to a
+report against the stand-in, in English and Russian, light and dark, and the largest text size,
+and saves a screenshot of every screen into the folder. It enrolls Face ID in the Simulator and
+confirms it, and resets the Simulator's keychain.
 
 ## Run on an iPhone
 

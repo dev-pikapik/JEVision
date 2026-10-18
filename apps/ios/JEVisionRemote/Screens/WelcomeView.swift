@@ -52,6 +52,8 @@ struct WelcomeView: View {
       .padding(.horizontal, 24)
       .padding(.bottom, 12)
       .frame(maxWidth: 560)
+      // The buttons stay on screen; past this size they would hide most of what they float over.
+      .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
   }
 }

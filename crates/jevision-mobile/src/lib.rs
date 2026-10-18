@@ -101,6 +101,7 @@ remote_error!(
     HostNotRunning,
     Storage,
     HostFailed,
+    DataRowNotFound,
 );
 
 #[uniffi::export]
@@ -239,10 +240,16 @@ impl RemoteConnection {
         spawn(async move { client.get_test(project, path).await }).await
     }
 
-    /// Starts the test and returns the run's id.
-    pub async fn run_test(&self, project: String, path: String) -> Result<String, RemoteError> {
+    /// Starts the test and returns the run's id. `row` runs only that row of its data table,
+    /// counted from 0, one of [`TestSummary::rows`]; `None` runs every row.
+    pub async fn run_test(
+        &self,
+        project: String,
+        path: String,
+        row: Option<u32>,
+    ) -> Result<String, RemoteError> {
         let client = Arc::clone(&self.client);
-        spawn(async move { client.run_test(project, path).await }).await
+        spawn(async move { client.run_test(project, path, row).await }).await
     }
 
     pub async fn stop_run(&self, project: String, run: String) -> Result<(), RemoteError> {

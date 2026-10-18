@@ -33,3 +33,7 @@ libc = ">=0.2.183, <0.2.190"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[[example]]
+name = "test-host"
+required-features = ["host"]
