@@ -27,8 +27,9 @@ pub use jevision_vision::{
     Question, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
 };
 pub use report::{
-    Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
-    Verdict, VisionAnswer, branch_text, describe, describe_vision, html, junit_xml,
+    Attempt, DataRow, Failure, NOTHING_CHECKED, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,
+    Step, StepStatus, Verdict, VisionAnswer, branch_text, describe, describe_vision, html,
+    junit_xml,
 };
 pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
 pub use usage::{

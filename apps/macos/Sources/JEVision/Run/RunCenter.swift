@@ -34,6 +34,8 @@ final class RunCenter {
     var offersGitIgnore: Bool
     /// The run stopped for something Settings → AI fixes.
     var needsAISetup = false
+    /// The run passed without any block looking at the screen.
+    var nothingChecked = false
   }
 
   /// Tests run one after another, as Run All or a folder's Run starts them.
@@ -48,6 +50,8 @@ final class RunCenter {
     var failed = 0
     /// Tests in quarantine that failed: they don't fail the batch.
     var quarantined = 0
+    /// Tests that passed without checking anything.
+    var unchecked = 0
     /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
     var notRun = 0
     var isStopping = false
@@ -66,6 +70,8 @@ final class RunCenter {
     let failed: Int
     /// Tests in quarantine that failed, not counted in `failed`.
     var quarantined = 0
+    /// Tests that passed without checking anything, not counted in `passed`.
+    var unchecked = 0
     /// The batch was stopped before every test ran.
     let stopped: Bool
   }
@@ -185,8 +191,8 @@ final class RunCenter {
     self.batch = nil
     let summary = BatchResult(
       title: batch.title, total: batch.total, passed: batch.passed, failed: batch.failed,
-      quarantined: batch.quarantined,
-      stopped: batch.passed + batch.failed + batch.quarantined + batch.notRun < batch.total)
+      quarantined: batch.quarantined, unchecked: batch.unchecked,
+      stopped: batch.passed + batch.failed + batch.quarantined + batch.unchecked + batch.notRun < batch.total)
     result = nil
     batchResult = summary
     if isOutOfTheWay { showApp() }
@@ -340,6 +346,7 @@ final class RunCenter {
     hud = nil
     if var batch {
       switch outcome {
+      case .finished(_, _, let report) where report.nothingChecked: batch.unchecked += 1
       case .finished(_, _, let report) where report.verdict == .passed: batch.passed += 1
       case .finished(_, _, let report) where report.verdict == .failed && report.quarantined: batch.quarantined += 1
       case .finished(_, _, let report) where report.verdict == .failed: batch.failed += 1
@@ -371,7 +378,7 @@ final class RunCenter {
         test: request.document.url, project: request.project, verdict: report.verdict,
         message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),
         permission: failure.flatMap(RunText.permission), offersGitIgnore: offers,
-        needsAISetup: failure.map(RunText.needsAISetup) ?? false)
+        needsAISetup: failure.map(RunText.needsAISetup) ?? false, nothingChecked: report.nothingChecked)
     case .failed(let reason):
       result = Result(
         test: request.document.url, project: request.project, verdict: nil,

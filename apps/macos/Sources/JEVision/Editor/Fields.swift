@@ -162,8 +162,7 @@ struct KeyRecorder: View {
       MainActor.assumeIsolated {
         if event.keyCode == 53, held.intersection([.command, .shift, .option, .control]).isEmpty {
           stop()
-        } else if let combo = KeyCombo.from(
-          keyCode: event.keyCode, characters: event.characters(byApplyingModifiers: []), modifierFlags: held)
+        } else if let combo = KeyCombo.from(keyCode: event.keyCode, modifierFlags: held)
         {
           keys.wrappedValue = combo
           stop()
