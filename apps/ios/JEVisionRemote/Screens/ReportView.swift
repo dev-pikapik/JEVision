@@ -115,6 +115,11 @@ private struct StepRow: View {
       style.image
       VStack(alignment: .leading, spacing: 2) {
         Text(BlockInfo.title(step.kind))
+        if let branch = RunText.branch(step) {
+          Text(branch)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
         if let failure = step.failure {
           Text(RunText.failure(failure))
             .font(.subheadline)

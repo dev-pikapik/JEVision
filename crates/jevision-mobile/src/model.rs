@@ -471,6 +471,11 @@ pub struct Step {
     pub vision: Option<VisionAnswer>,
     /// Edge an `if` block followed: `then`, `elseIf1`, `elseIf2`… or `else`.
     pub branch: Option<String>,
+    /// How many ways out the `if` had: two are Yes and No, more are Condition 1, 2… and Otherwise.
+    pub branches: Option<u32>,
+    /// What the condition of the way taken looks for: what the screen should show, or the name
+    /// of the reference image. Absent for `else`.
+    pub branch_condition: Option<String>,
     pub failure: Option<Failure>,
 }
 
@@ -491,6 +496,8 @@ impl From<jevision_runner::Step> for Step {
             similarity: s.similarity,
             vision: s.vision,
             branch: s.branch,
+            branches: s.branches,
+            branch_condition: s.branch_condition,
             failure: s.failure.map(Into::into),
         }
     }

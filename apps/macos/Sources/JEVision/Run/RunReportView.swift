@@ -338,8 +338,8 @@ private struct StepRow: View {
   private var summary: String {
     let block = flow?.blocks.first { $0.id == step.block }
     var text = block.map { BlockSummary.text($0.kind, appName: AppCatalog.shared.name(of:)) } ?? step.block
-    if let branch = step.branch, let name = block?.kind.branchName(branch) {
-      text += " · " + String(localized: "answer: \(name)")
+    if let branch = RunText.branch(step) {
+      text += " · " + branch
     }
     if step.test != run.report.file {
       text += " · " + String(localized: "in \(ProjectScanner.testName((step.test as NSString).lastPathComponent))")

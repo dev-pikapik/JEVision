@@ -10,6 +10,8 @@ struct LastRun {
   let shown: SavedRun?
   /// How each block did in `shown`, by block id.
   let results: [String: BlockResult]
+  /// Ways out of the `if`s of the test `shown` took.
+  let taken: Set<Slot>
 
   /// `file` is the test relative to the project; `pinned` the run a report sent the user here from.
   init(file: String, flow: Flow, runs: [SavedRun], pinned: SavedRun.ID?) {
@@ -18,6 +20,8 @@ struct LastRun {
     results = shown.map {
       Dictionary(uniqueKeysWithValues: blockResults(flow: flow, file: file, report: $0.report).map { ($0.block, $0) })
     } ?? [:]
+    let steps = shown.flatMap { decidingAttempt(report: $0.report) }?.steps ?? []
+    taken = Set(steps.compactMap { step in step.test == file ? step.branch.map { Slot(from: step.block, edge: $0) } : nil })
   }
 
   /// The newest run of `file`, from the runs newest first.

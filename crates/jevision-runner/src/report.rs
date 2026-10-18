@@ -314,6 +314,14 @@ pub struct Step {
     /// Edge an `if` block followed: `then`, `elseIf1`, `elseIf2`… or `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
+    /// How many ways out the `if` had: two are Yes and No, more are Condition 1, 2… and
+    /// Otherwise. Absent in reports written before an `if` could have more conditions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branches: Option<u32>,
+    /// What the condition of the way taken looks for, in the test's own words: what the screen
+    /// should show, or the name of the reference image. Absent for `else`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch_condition: Option<String>,
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
@@ -349,6 +357,36 @@ pub enum StepStatus {
 pub struct Failure {
     pub code: String,
     pub params: BTreeMap<String, String>,
+}
+
+impl Step {
+    /// Which way an `if` went, in English: `Took “Condition 2: Inbox is empty”`,
+    /// `Took “Otherwise”`. `None` for other blocks.
+    pub fn branch_text(&self) -> Option<String> {
+        branch_text(
+            self.branch.as_deref()?,
+            self.branches,
+            self.branch_condition.as_deref(),
+        )
+    }
+}
+
+/// [`Step::branch_text`] from its parts, named as the editor names the ways out of an `if`.
+pub fn branch_text(branch: &str, branches: Option<u32>, condition: Option<&str>) -> Option<String> {
+    let index = jevision_core::else_if_index(branch);
+    let plain = branches.map_or(index.is_none(), |n| n <= 2);
+    let name = match (branch, index) {
+        (jevision_core::THEN, _) if plain => "Yes".to_owned(),
+        (jevision_core::THEN, _) => "Condition 1".to_owned(),
+        (jevision_core::ELSE, _) if plain => "No".to_owned(),
+        (jevision_core::ELSE, _) => "Otherwise".to_owned(),
+        (_, Some(n)) => format!("Condition {}", n + 2),
+        _ => return None,
+    };
+    Some(match condition {
+        Some(c) => format!("Took “{name}: {c}”"),
+        None => format!("Took “{name}”"),
+    })
 }
 
 impl Failure {
@@ -630,7 +668,15 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             .iter()
             .filter_map(|a| a.failure.as_ref())
             .collect();
-        if r.verdict == Verdict::Passed && failures.is_empty() {
+        // Which way each `if` of the last attempt went, so a CI log shows the path the test took.
+        let paths: Vec<String> = r
+            .attempts
+            .last()
+            .into_iter()
+            .flat_map(|a| &a.steps)
+            .filter_map(|s| Some(format!("{}: {}", s.block, s.branch_text()?)))
+            .collect();
+        if r.verdict == Verdict::Passed && failures.is_empty() && paths.is_empty() {
             out.push_str("/>\n");
             continue;
         }
@@ -673,6 +719,13 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             Verdict::Cancelled => {
                 out.push_str("      <skipped message=\"The run was cancelled.\"/>\n")
             }
+        }
+        if !paths.is_empty() {
+            let _ = writeln!(
+                out,
+                "      <system-out>{}</system-out>",
+                xml(&paths.join("\n"))
+            );
         }
         out.push_str("    </testcase>\n");
     }
@@ -810,8 +863,8 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             if s.test != report.file {
                 let _ = write!(o, "<span class=\"type\">in {}</span>", xml(&s.test));
             }
-            if let Some(b) = &s.branch {
-                let _ = write!(o, "<span class=\"type\">→ {}</span>", xml(b));
+            if let Some(b) = s.branch_text() {
+                let _ = write!(o, "<span class=\"type\">{}</span>", xml(&b));
             }
             if let Some(sim) = s.similarity {
                 let _ = write!(o, "<span class=\"type\">{} alike</span>", percent(sim));
@@ -984,6 +1037,23 @@ fn base64(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reports_from_before_the_way_names_still_say_which_way_an_if_went() {
+        let step: Step = serde_json::from_str(
+            r#"{"seq":1,"test":"t.flow.json","block":"if","type":"if","status":"passed",
+                "durationMs":5,"branch":"then"}"#,
+        )
+        .unwrap();
+        assert_eq!(step.branches, None);
+        assert_eq!(step.branch_condition, None);
+        assert_eq!(step.branch_text().as_deref(), Some("Took “Yes”"));
+        assert_eq!(
+            branch_text("elseIf2", None, None).as_deref(),
+            Some("Took “Condition 3”")
+        );
+        assert_eq!(branch_text("next", Some(2), None), None);
+    }
 
     #[test]
     fn base64_matches_rfc_4648() {

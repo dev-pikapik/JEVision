@@ -757,6 +757,8 @@ impl Exec<'_> {
             similarity: None,
             vision: None,
             branch: None,
+            branches: None,
+            branch_condition: None,
             failure: None,
             video_at_ms: self.video.map(|start| millis(start.elapsed())),
             sent: None,
@@ -915,6 +917,7 @@ impl Exec<'_> {
                         .enumerate()
                         .map(|(n, c)| (else_if_edge(n), &c.reference, &c.then)),
                 );
+                step.branches = u32::try_from(else_if.len() + 2).ok();
                 let mut first = None;
                 for (branch, reference, target) in cases {
                     let e = self
@@ -923,6 +926,7 @@ impl Exec<'_> {
                     if e.passed {
                         self.record_comparison(step, &e)?;
                         step.branch = Some(branch);
+                        step.branch_condition = Some(condition_name(reference));
                         return Ok(target.clone());
                     }
                     first.get_or_insert(e);
@@ -1720,6 +1724,22 @@ fn write_failed(path: &Path, e: impl ToString) -> Stop {
 }
 
 /// Why a `check` failed: too few matching pixels, or a vision model said no.
+/// What a condition looks for, for people: what the screen should show, or the name of its
+/// reference image, `refs/update-dialog.png` → `update dialog`.
+fn condition_name(r: &Reference) -> String {
+    if let Compare::Meaning { expect } = &r.compare
+        && !expect.trim().is_empty()
+    {
+        return expect.trim().to_owned();
+    }
+    let file = r.image.rsplit('/').next().unwrap_or_default();
+    let stem = file.rsplit_once('.').map_or(file, |(stem, _)| stem);
+    stem.split(['-', '_'])
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn mismatch(id: &str, r: &Reference, e: &Evaluation) -> Failure {
     let comparison = match &e.judged {
         Judged::Model(answer) => {

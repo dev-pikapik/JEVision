@@ -183,6 +183,16 @@
         }
       }
     },
+    "Condition %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условие %lld"
+          }
+        }
+      }
+    },
     "Confirm it’s you to pair this iPhone with %@." : {
       "localizations" : {
         "ru" : {
@@ -579,6 +589,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте проект в JEVision на Mac, и он появится здесь."
+          }
+        }
+      }
+    },
+    "Otherwise" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Иначе"
           }
         }
       }
@@ -1295,6 +1315,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы снова пользоваться этим Mac, его нужно будет связать заново."
+          }
+        }
+      }
+    },
+    "Took “%@: %@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран путь «%1$@: %2$@»"
+          }
+        }
+      }
+    },
+    "Took “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран путь «%@»"
           }
         }
       }
