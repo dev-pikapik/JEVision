@@ -38,8 +38,20 @@ open apps/macos/build/JEVision.app
 <tbody><tr>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="../media/editor-dark.png"><img src="../media/editor-light.png" width="400" alt=""></picture>
-<br><b>Тест — это блок-схема</b>
-<br>Добавляйте, соединяйте и меняйте блоки на холсте. Каждое изменение сразу сохраняется, его можно отменить, а проблема видна на том блоке, к которому относится.
+<br><b>Собирается из простых блоков</b>
+<br>Пробел открывает библиотеку блоков: у каждого значок и строка о том, что он делает. Правый клик по холсту ставит блок прямо там.
+</td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="../media/branches-dark.png"><img src="../media/branches-light.png" width="400" alt=""></picture>
+<br><b>Несколько путей</b>
+<br>Блок «Если» проверяет несколько условий по порядку. Срабатывает первое, которому соответствует экран, а «Иначе» забирает остальное.
+</td>
+</tr></tbody>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="../media/command-palette-dark.png"><img src="../media/command-palette-light.png" width="400" alt=""></picture>
+<br><b>Всё в одном ⌘K</b>
+<br>Наберите пару букв любой команды, блока или теста и нажмите Return.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="../media/report-dark.png"><img src="../media/report-light.png" width="400" alt=""></picture>
@@ -63,7 +75,7 @@ open apps/macos/build/JEVision.app
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="../media/git-dark.png"><img src="../media/git-light.png" width="400" alt=""></picture>
 <br><b>Git без терминала</b>
-<br>Коммиты, получение и отправка изменений, пул-реквесты. Изменённый тест показан одной блок-схемой с добавленными, удалёнными и изменёнными блоками.
+<br>Коммит по ⌥⌘C, пул-реквест по ⌥⌘P. Изменённый тест показан одной блок-схемой с добавленными, удалёнными и изменёнными блоками.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="../media/schedule-dark.png"><img src="../media/schedule-light.png" width="400" alt=""></picture>
@@ -77,13 +89,17 @@ open apps/macos/build/JEVision.app
 <br><b>Карта проекта</b>
 <br>Все тесты проекта на одной странице: последний результат, нестабильные тесты и тесты в карантине.
 </td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="../media/iphone-dark.png"><img src="../media/iphone-light.png" width="400" alt=""></picture>
+<br><b>Пульт на iPhone</b>
+<br>Свяжите iPhone с Mac, запустите тест или одну строку его данных и следите за прогоном блок за блоком. Тесты и картинки остаются на Mac.
+</td>
 </tr></tbody>
 </table>
 
 А также: [командная строка `jevision`](#command-line) для Терминала и CI,
 [ИИ-ассистенты через MCP](#assistants-mcp), [тесты с данными](#data-driven-tests) из CSV-файлов,
-[окружения](#environments), прогоны [в виртуальной машине](#in-a-virtual-machine) и
-[пульт на iPhone](#iphone-remote).
+[окружения](#environments) и прогоны [в виртуальной машине](#in-a-virtual-machine).
 
 ## Первые шаги
 
@@ -96,6 +112,9 @@ open apps/macos/build/JEVision.app
 4. Нажмите **Запустить** (⌘R). Тестируемое приложение выйдет на передний план, и JEVision
    повторит шаги. Когда прогон закончится, откройте его отчёт: там видны все шаги со снимками
    экрана.
+
+⌘K открывает палитру команд: наберите пару букв любой команды, блока или теста и нажмите
+Return.
 
 ## Подробности
 
@@ -612,7 +631,7 @@ ssh admin@192.168.64.5 /usr/local/bin/jevision run my-tests --junit junit.xml --
 
 JEVision Remote превращает iPhone в пульт для JEVision на вашем Mac. С ним можно просматривать
 проекты и тесты каждого связанного Mac, видеть тест в виде блок-схемы с последними результатами,
-запускать тест и следить за ним блок за блоком или останавливать его. А ещё читать отчёты с
+запускать тест или одну строку его таблицы данных и следить за ним блок за блоком или останавливать его. А ещё читать отчёты с
 короткой причиной каждого провала и просматривать историю прогонов проекта.
 
 - **Связывание.** На Mac откройте «Настройки → iPhone и удалённо», включите **Разрешить удалённый
