@@ -24,6 +24,8 @@ struct State {
     dark: bool,
     after_click: Option<Vec<u8>>,
     after_quit: Option<Vec<u8>>,
+    /// Shown from the second look at the screen on.
+    after_capture: Option<Vec<u8>>,
     not_findable: bool,
     reject_typing: bool,
     user_input: bool,
@@ -80,9 +82,13 @@ impl Hands for Fake {
         Ok(())
     }
     fn capture(&self, _: &str) -> Result<Screenshot, HandsError> {
-        let s = self.state.lock().unwrap();
+        let mut s = self.state.lock().unwrap();
+        let png = s.screen.clone();
+        if let Some(next) = s.after_capture.take() {
+            s.screen = next;
+        }
         Ok(Screenshot {
-            png: s.screen.clone(),
+            png,
             scale: 2.0,
             dark: s.dark,
         })
@@ -381,6 +387,34 @@ fn sign_in_example_runs_end_to_end() {
         serde_json::from_str(&std::fs::read_to_string(run.dir.join("report.json")).unwrap())
             .unwrap();
     assert_eq!(saved, run.report);
+}
+
+#[test]
+fn wait_for_keeps_waiting_through_a_window_of_another_size() {
+    let p = Project::new();
+    p.write("refs/dialog.png", solid([0, 255, 0])).test(
+        r#""wait":{"type":"waitFor","until":{"appears":{"image":"refs/dialog.png"}},"timeout":"2s"}"#,
+        "wait",
+        0,
+    );
+    // The first look still shows the bigger window; the dialog follows.
+    let hands = Fake::new(png(80, 60, |_, _| [9, 9, 9]))
+        .with(|s| s.after_capture = Some(solid([0, 255, 0])));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+}
+
+#[test]
+fn a_point_target_is_a_share_of_the_window() {
+    let p = Project::new();
+    p.test(
+        r#""click":{"type":"click","target":{"point":{"x":0.5,"y":0.25}}}"#,
+        "click",
+        0,
+    );
+    // 40×20 pixels at 2 pixels per point: a window of 20×10 points.
+    let hands = Fake::new(solid([9, 9, 9]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    assert_eq!(hands.log(), ["click Left 10 2.5"]);
 }
 
 #[test]

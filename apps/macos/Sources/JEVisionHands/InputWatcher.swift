@@ -54,67 +54,37 @@ public final class InputWatcher: @unchecked Sendable {
   private var quietUntil = Date.distantPast
   private var escape = EscapeDetector()
   private var onEmergencyStop: (@Sendable () -> Void)?
-  private var tap: CFMachPort?
-  private var runLoop: CFRunLoop?
+  private var tap: EventTap?
 
   public init() {}
 
   /// Starts watching; `false` when the system doesn't allow it (Accessibility is off).
   public func start(onEmergencyStop: @escaping @Sendable () -> Void) -> Bool {
     stop()
-    let types: [CGEventType] = [
-      .mouseMoved, .leftMouseDown, .rightMouseDown, .otherMouseDown, .leftMouseDragged,
-      .rightMouseDragged, .scrollWheel, .keyDown,
-    ]
-    let mask = types.reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
-    guard
-      let tap = CGEvent.tapCreate(
-        tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
-        eventsOfInterest: mask, callback: inputWatcherCallback,
-        userInfo: Unmanaged.passUnretained(self).toOpaque())
-    else { return false }
     lock.withLock {
-      self.tap = tap
       self.onEmergencyStop = onEmergencyStop
       touched = false
       escape = EscapeDetector()
     }
-    let ready = DispatchSemaphore(value: 0)
-    let thread = Thread { [self] in
-      let loop = CFRunLoopGetCurrent()
-      guard let tap = lock.withLock({ () -> CFMachPort? in
-        runLoop = loop
-        return self.tap
-      }) else {
-        ready.signal()
-        return
-      }
-      let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
-      CFRunLoopAddSource(loop, source, .commonModes)
-      CGEvent.tapEnable(tap: tap, enable: true)
-      ready.signal()
-      CFRunLoopRun()
-    }
-    thread.name = "JEVision input watcher"
-    thread.start()
-    ready.wait()
+    let tap = EventTap(name: "JEVision input watcher") { [weak self] type, event in self?.handle(type, event) }
+    let types: [CGEventType] = [
+      .mouseMoved, .leftMouseDown, .rightMouseDown, .otherMouseDown, .leftMouseDragged,
+      .rightMouseDragged, .scrollWheel, .keyDown,
+    ]
+    guard tap.start(types) else { return false }
+    lock.withLock { self.tap = tap }
     return true
   }
 
   public func stop() {
-    let (tap, loop) = lock.withLock {
+    let tap = lock.withLock {
       defer {
         self.tap = nil
-        runLoop = nil
         onEmergencyStop = nil
       }
-      return (self.tap, runLoop)
+      return self.tap
     }
-    if let tap {
-      CGEvent.tapEnable(tap: tap, enable: false)
-      CFMachPortInvalidate(tap)
-    }
-    if let loop { CFRunLoopStop(loop) }
+    tap?.stop()
   }
 
   /// Whether the person moved the mouse or typed since the last call.
@@ -134,11 +104,7 @@ public final class InputWatcher: @unchecked Sendable {
     }
   }
 
-  fileprivate func handle(_ type: CGEventType, _ event: CGEvent) {
-    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-      if let tap = lock.withLock({ tap }) { CGEvent.tapEnable(tap: tap, enable: true) }
-      return
-    }
+  private func handle(_ type: CGEventType, _ event: CGEvent) {
     guard !SyntheticInput.isSynthetic(event) else { return }
     let stop: (@Sendable () -> Void)? = lock.withLock {
       if Date() >= quietUntil { touched = true }
@@ -152,11 +118,79 @@ public final class InputWatcher: @unchecked Sendable {
   }
 }
 
-private func inputWatcherCallback(
+/// A listen-only tap on the session's mouse and keyboard, served on a thread of its own: it sees
+/// input without holding any back. Needs Accessibility.
+final class EventTap: @unchecked Sendable {
+  private let name: String
+  private let handle: @Sendable (CGEventType, CGEvent) -> Void
+  private let lock = NSLock()
+  private var tap: CFMachPort?
+  private var runLoop: CFRunLoop?
+
+  /// `handle` is called on the tap's thread and should return quickly.
+  init(name: String, handle: @escaping @Sendable (CGEventType, CGEvent) -> Void) {
+    self.name = name
+    self.handle = handle
+  }
+
+  /// `false` when the system doesn't allow it (Accessibility is off).
+  func start(_ types: [CGEventType]) -> Bool {
+    let mask = types.reduce(CGEventMask(0)) { $0 | (1 << $1.rawValue) }
+    guard
+      let tap = CGEvent.tapCreate(
+        tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
+        eventsOfInterest: mask, callback: eventTapCallback,
+        userInfo: Unmanaged.passUnretained(self).toOpaque())
+    else { return false }
+    lock.withLock { self.tap = tap }
+    let ready = DispatchSemaphore(value: 0)
+    let thread = Thread { [self] in
+      let loop = CFRunLoopGetCurrent()
+      guard let tap = lock.withLock({ runLoop = loop; return self.tap }) else {
+        ready.signal()
+        return
+      }
+      let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+      CFRunLoopAddSource(loop, source, .commonModes)
+      CGEvent.tapEnable(tap: tap, enable: true)
+      ready.signal()
+      CFRunLoopRun()
+    }
+    thread.name = name
+    thread.start()
+    ready.wait()
+    return true
+  }
+
+  func stop() {
+    let (tap, loop) = lock.withLock {
+      defer {
+        self.tap = nil
+        runLoop = nil
+      }
+      return (self.tap, runLoop)
+    }
+    if let tap {
+      CGEvent.tapEnable(tap: tap, enable: false)
+      CFMachPortInvalidate(tap)
+    }
+    if let loop { CFRunLoopStop(loop) }
+  }
+
+  fileprivate func receive(_ type: CGEventType, _ event: CGEvent) {
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+      if let tap = lock.withLock({ tap }) { CGEvent.tapEnable(tap: tap, enable: true) }
+      return
+    }
+    handle(type, event)
+  }
+}
+
+private func eventTapCallback(
   proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, info: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
   if let info {
-    Unmanaged<InputWatcher>.fromOpaque(info).takeUnretainedValue().handle(type, event)
+    Unmanaged<EventTap>.fromOpaque(info).takeUnretainedValue().receive(type, event)
   }
   return Unmanaged.passUnretained(event)
 }

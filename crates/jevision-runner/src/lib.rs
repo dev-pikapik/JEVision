@@ -51,7 +51,8 @@ pub trait Hands: Send + Sync {
     fn quit(&self, app: &str) -> Result<(), HandsError>;
     /// Captures the application's front window.
     fn capture(&self, app: &str) -> Result<Screenshot, HandsError>;
-    /// Finds the PNG `template` in the application's front window and returns its centre, or
+    /// Finds the PNG `template` in the application's front window and returns its centre, in
+    /// points from the window's top-left corner, or
     /// `None` when no place is at least `min_similarity` (0–1) alike.
     fn locate(
         &self,

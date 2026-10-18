@@ -5,6 +5,7 @@ struct JEVisionApp: App {
   @State private var project = ProjectStore()
   @State private var permissions = PermissionsMonitor()
   @State private var runs = RunCenter()
+  @State private var records = RecordCenter()
 
   init() {
     _ = AppLanguage.atLaunch
@@ -17,9 +18,10 @@ struct JEVisionApp: App {
         .environment(project)
         .environment(permissions)
         .environment(runs)
+        .environment(records)
     }
     .defaultSize(width: 960, height: 640)
-    .commands { AppCommands(project: project, runs: runs) }
+    .commands { AppCommands(project: project, runs: runs, records: records) }
 
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()

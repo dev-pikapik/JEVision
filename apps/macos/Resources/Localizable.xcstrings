@@ -51,6 +51,58 @@
         }
       }
     },
+    "%lld steps" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld step"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld steps"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld шаг"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld шага"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld шагов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld шага"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld tests" : {
       "localizations" : {
         "en" : {
@@ -225,6 +277,16 @@
         }
       }
     },
+    "Add Check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить проверку"
+          }
+        }
+      }
+    },
     "Add File…" : {
       "localizations" : {
         "ru" : {
@@ -345,6 +407,58 @@
         }
       }
     },
+    "Added %lld steps to the test." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld step to the test."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Added %lld steps to the test."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "В тест добавлен %lld шаг."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "В тест добавлено %lld шага."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "В тест добавлено %lld шагов."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "В тест добавлено %lld шага."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "After" : {
       "localizations" : {
         "ru" : {
@@ -451,6 +565,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перед запуском теста"
+          }
+        }
+      }
+    },
+    "Before you record" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед записью"
           }
         }
       }
@@ -715,12 +839,32 @@
         }
       }
     },
+    "Click, type and press keys in %@. Each action becomes a step." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажимайте, вводите текст и жмите клавиши в %@. Каждое действие станет шагом."
+          }
+        }
+      }
+    },
     "Clicks an element found by how it looks, or a fixed point in the window." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Кликает по элементу, найденному по виду, или по точке в окне."
+          }
+        }
+      }
+    },
+    "Clicks outside the app’s window, like in its menus, can’t be recorded. Use a keyboard shortcut instead." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажатия вне окна приложения, например в его меню, не записываются. Используйте сочетание клавиш."
           }
         }
       }
@@ -965,6 +1109,36 @@
         }
       }
     },
+    "Drag a frame around the part of the screen the test should check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обведите рамкой часть экрана, которую должен проверять тест"
+          }
+        }
+      }
+    },
+    "Drag over a part of the app’s window to check it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обведите рамкой часть окна приложения, чтобы проверить её."
+          }
+        }
+      }
+    },
+    "Drag over the part of the screen the test should check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обведите часть экрана, которую должен проверять тест"
+          }
+        }
+      }
+    },
     "Edit Block" : {
       "localizations" : {
         "ru" : {
@@ -981,6 +1155,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение теста"
+          }
+        }
+      }
+    },
+    "Esc cancels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esc — отмена"
           }
         }
       }
@@ -1358,6 +1542,16 @@
         }
       }
     },
+    "JEVision can’t see the app’s window. Bring it to the front." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не видит окно приложения. Выведите его на передний план."
+          }
+        }
+      }
+    },
     "JEVision checks every 1.5 seconds, so there’s no need to restart. If JEVision is already in the list but doesn’t work, remove it with the − button and add it again." : {
       "localizations" : {
         "ru" : {
@@ -1408,6 +1602,16 @@
         }
       }
     },
+    "JEVision watches what you do in the app and turns it into steps of the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision следит за вашими действиями в приложении и превращает их в шаги теста."
+          }
+        }
+      }
+    },
     "JUnit XML…" : {
       "localizations" : {
         "ru" : {
@@ -1444,6 +1648,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Последний прогон: %@"
+          }
+        }
+      }
+    },
+    "Last step: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последний шаг: %@"
           }
         }
       }
@@ -1808,6 +2022,16 @@
         }
       }
     },
+    "Open %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть %@"
+          }
+        }
+      }
+    },
     "Open App" : {
       "localizations" : {
         "ru" : {
@@ -2098,6 +2322,16 @@
         }
       }
     },
+    "Press Escape twice in any app to finish. Clicks on this panel aren’t recorded." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы закончить, дважды нажмите Escape в любом приложении. Нажатия на эту панель не записываются."
+          }
+        }
+      }
+    },
     "Press Escape twice to stop from any app. Moving the mouse pauses the test." : {
       "localizations" : {
         "ru" : {
@@ -2178,12 +2412,72 @@
         }
       }
     },
+    "Record" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать"
+          }
+        }
+      }
+    },
     "Record Keys" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Записать клавиши"
+          }
+        }
+      }
+    },
+    "Record steps by using the app; they go after the selected block (⇧⌘R)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать шаги, работая в приложении; они встанут после выбранного блока (⇧⌘R)"
+          }
+        }
+      }
+    },
+    "Recording" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись"
+          }
+        }
+      }
+    },
+    "Recording in %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись в %@"
+          }
+        }
+      }
+    },
+    "Recording not added" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись не добавлена"
+          }
+        }
+      }
+    },
+    "Recording. Use the app; JEVision turns what you do into steps." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт запись. Работайте в приложении — JEVision превратит ваши действия в шаги."
           }
         }
       }
@@ -2928,6 +3222,16 @@
         }
       }
     },
+    "Stop recording and add the steps to the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить запись и добавить шаги в тест"
+          }
+        }
+      }
+    },
     "Stopped" : {
       "localizations" : {
         "ru" : {
@@ -3058,6 +3362,16 @@
         }
       }
     },
+    "The app you’ll record in. It becomes the test’s app." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение, в котором вы будете записывать. Оно станет приложением теста."
+          }
+        }
+      }
+    },
     "The folder was moved, deleted or is on a disk that isn’t connected. Choose it again to keep working." : {
       "localizations" : {
         "ru" : {
@@ -3094,6 +3408,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новый язык появится, когда JEVision откроется снова."
+          }
+        }
+      }
+    },
+    "The recording couldn’t be added to the test: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось добавить запись в тест: %@"
           }
         }
       }
@@ -3438,6 +3762,16 @@
         }
       }
     },
+    "Undo Last Step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить шаг"
+          }
+        }
+      }
+    },
     "Unknown error." : {
       "localizations" : {
         "ru" : {
@@ -3578,6 +3912,16 @@
         }
       }
     },
+    "Wait for the new screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать новый экран"
+          }
+        }
+      }
+    },
     "Wait until the screen changes" : {
       "localizations" : {
         "ru" : {
@@ -3624,6 +3968,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Что проверяет тест"
+          }
+        }
+      }
+    },
+    "What you do while paused isn’t recorded" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действия во время паузы не записываются"
           }
         }
       }
@@ -3744,6 +4098,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "точке %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "finish from any app" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "закончить из любого приложения"
           }
         }
       }

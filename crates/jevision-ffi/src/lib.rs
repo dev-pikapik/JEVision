@@ -91,6 +91,17 @@ pub fn insert_block(mut flow: Flow, type_name: String, slot: Option<Slot>) -> Op
     })
 }
 
+/// Adds `blocks` as one chain on `slot` (after the main chain without one) and selects the
+/// last of them. `None` when there is nothing to add or the blocks can't be chained there.
+#[uniffi::export]
+pub fn insert_blocks(mut flow: Flow, blocks: Vec<BlockKind>, slot: Option<Slot>) -> Option<Edited> {
+    let ids = flow.insert_blocks(blocks, slot.as_ref())?;
+    Some(Edited {
+        flow,
+        selection: ids.last().cloned(),
+    })
+}
+
 /// Removes block `id`, joining its neighbours, and selects the block that took its place.
 #[uniffi::export]
 pub fn remove_block(mut flow: Flow, id: String) -> Edited {
