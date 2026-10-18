@@ -44,7 +44,7 @@ final class RunCenter {
 
   @ObservationIgnored private var run: TestRun?
   @ObservationIgnored private let input = InputWatcher()
-  @ObservationIgnored private var hud: RunPanel?
+  @ObservationIgnored private var hud: GlassPanel?
   /// Windows put away for the run.
   @ObservationIgnored private var hiddenWindows: [NSWindow] = []
 
@@ -105,7 +105,7 @@ final class RunCenter {
     stateURL = request.document.url
     run.setStepMode(on: request.stepByStep)
     run.setBreakpoints(blocks: Array(breakpoints[request.document.url] ?? []))
-    let hud = RunPanel(center: self)
+    let hud = GlassPanel(RunHUD(center: self), width: RunHUD.width, height: RunHUD.height)
     self.hud = hud
     getOutOfTheWay()
     // The run's thread waits until the panel has stepped aside, so the click can't land on it.

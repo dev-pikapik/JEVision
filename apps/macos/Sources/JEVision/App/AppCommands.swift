@@ -3,6 +3,7 @@ import SwiftUI
 struct AppCommands: Commands {
   let project: ProjectStore
   let runs: RunCenter
+  let records: RecordCenter
   @Environment(\.openWindow) private var openWindow
   @FocusedValue(\.canvasZoom) private var zoom
 
@@ -38,6 +39,12 @@ struct AppCommands: Commands {
       Button("Run Step by Step") { run(stepByStep: true) }
         .keyboardShortcut("r", modifiers: [.command, .option])
         .disabled(!canRun)
+      Divider()
+      Button("Record") {
+        if let document = project.document { records.record(document) }
+      }
+      .keyboardShortcut("r", modifiers: [.command, .shift])
+      .disabled(!canRun)
     }
     // The default Help item searches a help book the app does not have.
     CommandGroup(replacing: .help) {
@@ -46,7 +53,7 @@ struct AppCommands: Commands {
   }
 
   private var canRun: Bool {
-    !runs.isRunning && project.rootURL != nil && project.document?.flow != nil
+    !runs.isRunning && !records.isRecording && project.rootURL != nil && project.document?.flow != nil
   }
 
   private func run(stepByStep: Bool) {

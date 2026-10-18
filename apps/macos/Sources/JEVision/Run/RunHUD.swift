@@ -2,21 +2,21 @@ import AppKit
 import JEVisionCore
 import SwiftUI
 
-/// The floating glass panel that shows a run while the window is away. It stays above every app,
-/// never takes the focus from the app under test and keeps to a corner of the screen its window
-/// doesn't cover.
+/// A floating glass panel shown while the window is away: during a run or a recording. It stays
+/// above every app, never takes the focus from the app under test and keeps to a corner of the
+/// screen that window doesn't cover.
 @MainActor
-final class RunPanel {
-  static let width = 336.0
-  /// Tall enough for the longest state; the empty part below the HUD lets clicks through.
-  static let height = 340.0
-
+final class GlassPanel {
   private let panel: NSPanel
+  private let size: NSSize
 
-  init(center: RunCenter) {
+  /// `height` defaults to what `content` needs.
+  init(_ content: some View, width: Double, height: Double? = nil) {
+    let view = FirstMouseHostingView(rootView: content)
+    size = NSSize(width: width, height: height ?? view.fittingSize.height)
     panel = HUDPanel(
-      contentRect: NSRect(x: 0, y: 0, width: Self.width, height: Self.height),
-      styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+      contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
+      defer: true)
     panel.level = .statusBar
     panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
     panel.isOpaque = false
@@ -24,13 +24,13 @@ final class RunPanel {
     panel.hasShadow = false
     panel.hidesOnDeactivate = false
     panel.isReleasedWhenClosed = false
-    panel.contentView = FirstMouseHostingView(rootView: RunHUD(center: center))
+    panel.contentView = view
   }
 
   func show() {
     guard !panel.isVisible else { return }
     if let screen = NSScreen.main?.visibleFrame {
-      panel.setFrame(Self.corners(of: screen)[0], display: false)
+      panel.setFrame(corners(of: screen)[0], display: false)
     }
     panel.orderFrontRegardless()
   }
@@ -43,6 +43,11 @@ final class RunPanel {
       return
     }
     panel.ignoresMouseEvents = true
+    avoid(window)
+  }
+
+  /// Moves to the corner that covers least of `window` (global, top-left origin).
+  func avoid(_ window: CGRect) {
     guard let primary = NSScreen.screens.first?.frame else { return }
     // Cocoa counts from the bottom of the primary screen.
     let frame = NSRect(x: window.minX, y: primary.maxY - window.maxY, width: window.width, height: window.height)
@@ -53,18 +58,18 @@ final class RunPanel {
       let common = corner.intersection(frame)
       return common.isNull ? 0 : common.width * common.height
     }
-    if let best = Self.corners(of: visible).min(by: { overlap($0) < overlap($1) }) {
+    if let best = corners(of: visible).min(by: { overlap($0) < overlap($1) }) {
       panel.setFrame(best, display: true)
     }
   }
 
   /// Places for the panel, top right first.
-  private static func corners(of screen: NSRect) -> [NSRect] {
+  private func corners(of screen: NSRect) -> [NSRect] {
     let inset = 12.0
-    let left = screen.minX + inset, right = screen.maxX - width - inset
-    let top = screen.maxY - height - inset, bottom = screen.minY + inset
+    let left = screen.minX + inset, right = screen.maxX - size.width - inset
+    let top = screen.maxY - size.height - inset, bottom = screen.minY + inset
     return [(right, top), (left, top), (right, bottom), (left, bottom)].map {
-      NSRect(x: $0.0, y: $0.1, width: width, height: height)
+      NSRect(origin: NSPoint(x: $0.0, y: $0.1), size: size)
     }
   }
 
@@ -84,6 +89,9 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 }
 
 struct RunHUD: View {
+  static let width = 336.0
+  /// Tall enough for the longest state; the empty part below the HUD lets clicks through.
+  static let height = 340.0
   let center: RunCenter
 
   var body: some View {
@@ -93,10 +101,10 @@ struct RunHUD: View {
       }
     }
     .padding(16)
-    .frame(width: RunPanel.width - 16, alignment: .leading)
+    .frame(width: Self.width - 16, alignment: .leading)
     .glassEffect(.regular, in: .rect(cornerRadius: 22))
     .padding(8)
-    .frame(width: RunPanel.width, height: RunPanel.height, alignment: .top)
+    .frame(width: Self.width, height: Self.height, alignment: .top)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Test run"))
   }

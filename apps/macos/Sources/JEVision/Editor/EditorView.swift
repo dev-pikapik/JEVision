@@ -5,6 +5,7 @@ import SwiftUI
 struct EditorView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
+  @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
   let document: FlowDocument
   @State private var zoom = 1.0
@@ -112,8 +113,13 @@ struct EditorView: View {
           } primaryAction: {
             run()
           }
-          .disabled(runs.isRunning || project.rootURL == nil)
+          .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
           .help(Text("Run the test (⌘R)"))
+        }
+        ToolbarItem(placement: .primaryAction) {
+          Button("Record", systemImage: "record.circle") { records.record(document) }
+            .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
+            .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
       }
       .focusedSceneValue(\.canvasZoom, $zoom)

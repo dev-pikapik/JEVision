@@ -3,12 +3,14 @@ import SwiftUI
 struct MainView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
+  @Environment(RecordCenter.self) private var records
   @Environment(\.openWindow) private var openWindow
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
 
   var body: some View {
     @Bindable var project = project
     @Bindable var runs = runs
+    @Bindable var records = records
     Group {
       switch project.status {
       case .closed:
@@ -38,6 +40,21 @@ struct MainView: View {
     }
     .sheet(isPresented: $project.isCreatingTest) { NewTestSheet() }
     .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
+    .sheet(item: $records.blocked) { RecordReadinessSheet(request: $0) }
+    // The recording typed secrets that have no value yet: ask for each in turn.
+    .sheet(item: Binding(
+      get: { records.unsetSecrets.first.map(SecretName.init) },
+      set: { if $0 == nil, !records.unsetSecrets.isEmpty { records.unsetSecrets.removeFirst() } }
+    )) { secret in
+      SetSecretSheet(name: secret.id) {}
+    }
+    .alert(
+      "Recording not added", isPresented: Binding(get: { records.failure != nil }, set: { if !$0 { records.failure = nil } })
+    ) {
+      Button("OK") {}
+    } message: {
+      Text(records.failure ?? "")
+    }
     .frame(minWidth: 640, minHeight: 420)
     .navigationTitle(project.rootURL == nil ? "JEVision" : project.name)
     .onAppear {

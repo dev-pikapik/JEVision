@@ -45,7 +45,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   public func openApp(app: String) throws(HandsError) {
     let url = try appURL(app)
     let running = try launch(url)
-    waitForWindow(running.map { [$0] } ?? runningApps(app))
+    waitForWindow(running.map { [$0] } ?? Self.runningApps(app))
   }
 
   public func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {
@@ -71,7 +71,7 @@ public final class MacHands: Hands, @unchecked Sendable {
       let config = NSWorkspace.OpenConfiguration()
       config.activates = true
       config.createsNewApplicationInstance = newInstance
-      let result = wait { done in
+      let result = Self.wait { done in
         NSWorkspace.shared.open(urls, withApplicationAt: opener, configuration: config) { app, error in
           done((app?.processIdentifier, error?.localizedDescription))
         }
@@ -82,7 +82,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func activate(app: String) throws(HandsError) {
-    let running = runningApps(app)
+    let running = Self.runningApps(app)
     guard let first = running.first else { return try openApp(app: app) }
     if running.contains(where: \.isActive) { return }
     _ = first.activate()
@@ -92,7 +92,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func quit(app: String) throws(HandsError) {
-    let running = runningApps(app)
+    let running = Self.runningApps(app)
     running.forEach { $0.terminate() }
     // An app that asks to save changes stays open; the run goes on.
     _ = poll(timeout: 10) { running.allSatisfy { kill($0.processIdentifier, 0) != 0 } }
@@ -130,7 +130,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {
     try requireInput()
-    guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
+    guard let window = Self.frontWindow(of: Self.runningApps(app)) else { throw .NoWindow(app: app) }
     let point = CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y)
     clicking(window.bounds)
     defer { clicking(nil) }
@@ -234,7 +234,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     return url
   }
 
-  private func runningApps(_ app: String) -> [NSRunningApplication] {
+  static func runningApps(_ app: String) -> [NSRunningApplication] {
     NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
   }
 
@@ -242,7 +242,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   private func launch(_ url: URL) throws(HandsError) -> NSRunningApplication? {
     let config = NSWorkspace.OpenConfiguration()
     config.activates = true
-    let result = wait { done in
+    let result = Self.wait { done in
       NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
         done((app?.processIdentifier, error?.localizedDescription))
       }
@@ -255,7 +255,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   /// and the next look at the screen says so.
   private func waitForWindow(_ apps: [NSRunningApplication]) {
     guard !apps.isEmpty else { return }
-    _ = poll(timeout: Self.launchTimeout) { frontWindow(of: apps) != nil }
+    _ = poll(timeout: Self.launchTimeout) { Self.frontWindow(of: apps) != nil }
   }
 
   /// Checks `condition` every 50 ms until it holds, the time is up or the run is cancelled.
@@ -269,7 +269,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   /// Runs `start` and blocks this (non-main) thread until it calls back.
-  private func wait<T: Sendable>(_ start: (@escaping @Sendable (T) -> Void) -> Void) -> T {
+  private static func wait<T: Sendable>(_ start: (@escaping @Sendable (T) -> Void) -> Void) -> T {
     let box = Box<T>()
     let done = DispatchSemaphore(value: 0)
     start { value in
@@ -280,8 +280,8 @@ public final class MacHands: Hands, @unchecked Sendable {
     return box.value!
   }
 
-  /// The front window of any of `apps`: its id and frame in global top-left coordinates.
-  private func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect)? {
+  /// The front window of any of `apps`: its id, frame in global top-left coordinates and title.
+  static func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
     let pids = Set(apps.map(\.processIdentifier))
     guard !pids.isEmpty,
       let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
@@ -294,7 +294,7 @@ public final class MacHands: Hands, @unchecked Sendable {
         let dict = info[kCGWindowBounds as String] as? NSDictionary,
         let bounds = CGRect(dictionaryRepresentation: dict), bounds.width > 1, bounds.height > 1
       else { continue }
-      return (id, bounds)
+      return (id, bounds, info[kCGWindowName as String] as? String)
     }
     return nil
   }
@@ -302,6 +302,14 @@ public final class MacHands: Hands, @unchecked Sendable {
   private func captureWindow(_ app: String) throws(HandsError) -> (CGImage, Double) {
     guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
     wakeDisplay()
+    let shot = try Self.captureFrontWindow(app)
+    return (shot.image, shot.scale)
+  }
+
+  /// A picture of the app's front window, the window it shows, and pixels per point.
+  static func captureFrontWindow(_ app: String) throws(HandsError) -> (
+    image: CGImage, scale: Double, window: (id: CGWindowID, bounds: CGRect, title: String?)
+  ) {
     guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
     let id = window.id
     let result = wait { (done: @escaping @Sendable (Result<Shot, HandsError>) -> Void) in
@@ -327,7 +335,7 @@ public final class MacHands: Hands, @unchecked Sendable {
       }
     }
     let shot = try result.get()
-    return (shot.image, shot.scale)
+    return (shot.image, shot.scale, window)
   }
 
   /// Whether macOS draws windows dark. Apps that force their own appearance aren't detected.

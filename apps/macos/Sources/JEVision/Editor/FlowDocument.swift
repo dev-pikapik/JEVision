@@ -77,6 +77,15 @@ final class FlowDocument {
     apply(edited.flow, select: edited.selection, action: String(localized: "Add Block"))
   }
 
+  /// Adds what was recorded at `slot`, and the app it was recorded in when the test has none,
+  /// as one change.
+  func insertRecorded(_ blocks: [BlockKind], at slot: Slot?, app: String) {
+    guard var flow else { return }
+    if flow.app.isEmpty { flow.app = app }
+    guard let edited = insertBlocks(flow: flow, blocks: blocks, slot: slot) else { return }
+    apply(edited.flow, select: edited.selection, action: String(localized: "Recording"))
+  }
+
   func delete(_ id: String) {
     guard let flow else { return }
     let edited = removeBlock(flow: flow, id: id)

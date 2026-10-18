@@ -207,7 +207,44 @@ impl Flow {
     /// nothing) for an unknown type or slot.
     pub fn insert_block(&mut self, type_name: &str, slot: Option<&Slot>) -> Option<String> {
         let id = self.unique_id(type_name);
-        let mut kind = BlockKind::new(type_name, &id)?;
+        let kind = BlockKind::new(type_name, &id)?;
+        self.insert_kind(id, kind, slot)
+    }
+
+    /// Adds `kinds` in order as one chain on `slot` (after the main chain without one): each
+    /// block leads to the following one and the last to whatever came after the slot. Ids come
+    /// from the block types. Returns the new ids, or `None` (and changes nothing) when there is
+    /// nothing to add, a block has no `next` edge to chain on, or the slot is unknown.
+    pub fn insert_blocks(
+        &mut self,
+        mut kinds: Vec<BlockKind>,
+        slot: Option<&Slot>,
+    ) -> Option<Vec<String>> {
+        if kinds.is_empty() || kinds.iter_mut().any(|k| k.next_mut().is_none()) {
+            return None;
+        }
+        let mut edited = self.clone();
+        let mut ids = Vec::with_capacity(kinds.len());
+        let mut slot = slot.cloned();
+        for kind in kinds {
+            let id = edited.unique_id(kind.type_name());
+            let id = edited.insert_kind(id, kind, slot.as_ref())?;
+            slot = Some(Slot {
+                from: id.clone(),
+                edge: NEXT.to_owned(),
+            });
+            ids.push(id);
+        }
+        *self = edited;
+        Some(ids)
+    }
+
+    fn insert_kind(
+        &mut self,
+        id: String,
+        mut kind: BlockKind,
+        slot: Option<&Slot>,
+    ) -> Option<String> {
         let slot = slot.cloned().unwrap_or_else(|| self.end_of_chain());
         let after = if slot.from.is_empty() {
             if slot.edge != START {
@@ -362,6 +399,36 @@ mod tests {
         let only = empty.insert_block("openApp", None).unwrap();
         assert_eq!(empty.start, only);
         assert_eq!(empty.blocks.len(), 1);
+    }
+
+    #[test]
+    fn inserts_a_chain_as_one_edit() {
+        let mut f = flow(CHAIN, "a");
+        let keys = |k: &str| BlockKind::PressKeys {
+            keys: k.into(),
+            next: None,
+        };
+        let ids = f
+            .insert_blocks(vec![keys("x"), keys("y")], Some(&slot("a", NEXT)))
+            .unwrap();
+        assert_eq!(ids, ["pressKeys", "pressKeys2"]);
+        assert_eq!(next_of(&f, "a").as_deref(), Some("pressKeys"));
+        assert_eq!(next_of(&f, "pressKeys").as_deref(), Some("pressKeys2"));
+        assert_eq!(next_of(&f, "pressKeys2").as_deref(), Some("b"));
+
+        let mut empty = flow("{}", "");
+        let ids = empty.insert_blocks(vec![keys("x")], None).unwrap();
+        assert_eq!(empty.start, ids[0]);
+
+        let original = f.clone();
+        assert!(f.insert_blocks(Vec::new(), None).is_none());
+        let branch = BlockKind::new("if", "if").unwrap();
+        assert!(f.insert_blocks(vec![keys("z"), branch], None).is_none());
+        assert!(
+            f.insert_blocks(vec![keys("z")], Some(&slot("nope", NEXT)))
+                .is_none()
+        );
+        assert_eq!(f, original);
     }
 
     #[test]

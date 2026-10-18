@@ -698,12 +698,22 @@ impl Exec<'_> {
                 let mut cache = None;
                 let reached = self.poll(id, timeout, || {
                     let shot = self.capture(id)?;
-                    let e = self
-                        .evaluate(t, id, r, &shot, false, &mut cache)?
-                        .map_err(|name| missing_reference(id, &name))?;
+                    let passed = match self.evaluate(t, id, r, &shot, false, &mut cache) {
+                        Ok(e) => {
+                            let e = e.map_err(|name| missing_reference(id, &name))?;
+                            cache = Some(e.reference);
+                            e.passed
+                        }
+                        // A window of another size, such as the one before a dialog opens, is
+                        // simply not the state waited for.
+                        Err(Stop::Failed { failure, .. })
+                            if failure.code == "run.compare.shapeMismatch" =>
+                        {
+                            false
+                        }
+                        Err(stop) => return Err(stop),
+                    };
                     last = Some(shot);
-                    let passed = e.passed;
-                    cache = Some(e.reference);
                     Ok((passed == want).then_some(()))
                 })?;
                 (reached, r.image.as_str(), Some(r))
@@ -902,7 +912,8 @@ impl Exec<'_> {
         Ok(())
     }
 
-    /// Where to click: a fixed point, or the centre of the target image found on screen.
+    /// Where to click, in points from the window's top-left corner: a fixed point, or the
+    /// centre of the target image found on screen.
     fn locate(
         &self,
         t: &TestFile,
@@ -911,7 +922,22 @@ impl Exec<'_> {
         shot: Option<&Screenshot>,
     ) -> Result<Point, Stop> {
         let image = match target {
-            Target::Point(p) => return Ok(*p),
+            Target::Point(p) => {
+                // The test keeps the point as fractions of the window; hands click in points.
+                let captured;
+                let shot = match shot {
+                    Some(shot) => shot,
+                    None => {
+                        captured = self.capture(id)?;
+                        &captured
+                    }
+                };
+                let window = decode_screenshot(id, shot)?;
+                return Ok(Point {
+                    x: p.x * f64::from(window.width) / shot.scale,
+                    y: p.y * f64::from(window.height) / shot.scale,
+                });
+            }
             Target::Image(image) => image,
         };
         let dark = dark_variant(image);
