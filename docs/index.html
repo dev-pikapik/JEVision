@@ -56,7 +56,7 @@
 </nav>
 <main id="main" tabindex="-1">
 <div class="hero">
-  <img src="assets/banner.svg" alt="JEVision: UI tests you can see. Every test is a flowchart. Every flowchart is a file." width="1200" height="360">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="media/hero-dark.png"><img src="media/hero-light.png" alt="The JEVision window: the tests of a project on the left, a test drawn as a flowchart in the middle, the selected block on the right." width="2560" height="1600"></picture>
 </div>
 
 <h1>JEVision documentation</h1>
@@ -65,6 +65,19 @@
 <h2 id="what">What JEVision is</h2>
 <p>A test in JEVision is a flowchart: a set of blocks joined by arrows. Each block is one step, such as “click the Sign in button”, “type the password” or “check that the inbox appears”. JEVision walks the arrows block by block. When something goes wrong, it tells you which block failed and shows you the screen at that moment.</p>
 <p>Every test is one JSON file on your disk. You can keep tests in git, review them in pull requests and run them in continuous integration, like any other code. You don't need to read or write JSON to use JEVision: the app draws each test, and you edit it on a canvas or by recording what you do.</p>
+
+<h2 id="tour">A quick tour</h2>
+<ul class="tour">
+  <li><a href="writing-tests.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/editor-dark.png"><img src="media/editor-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Tests are flowcharts</h3></a><p>Add, connect and edit blocks on a canvas. A problem shows on the block it concerns.</p></li>
+  <li><a href="getting-started.html#first-test"><picture><source media="(prefers-color-scheme: dark)" srcset="media/record-dark.png"><img src="media/record-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Record instead of writing</h3></a><p>Use the app as usual; each action becomes a block with a picture of what you touched.</p></li>
+  <li><a href="reports.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/run-dark.png"><img src="media/run-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Watch it run</h3></a><p>Step through a test, stop at breakpoints, pause by moving the mouse.</p></li>
+  <li><a href="checks.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/report-dark.png"><img src="media/report-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>See what broke</h3></a><p>A check shows the screen next to its reference, or just the pixels that differ.</p></li>
+  <li><a href="retries.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/history-dark.png"><img src="media/history-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Run all, keep the history</h3></a><p>What passed, what failed, and which tests are flaky.</p></li>
+  <li><a href="checks.html#meaning"><picture><source media="(prefers-color-scheme: dark)" srcset="media/ai-check-dark.png"><img src="media/ai-check-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Checks by meaning</h3></a><p>Describe the screen in words, and an AI model of your choice decides.</p></li>
+  <li><a href="https://github.com/dev-pikapik/JEVision#git"><picture><source media="(prefers-color-scheme: dark)" srcset="media/git-dark.png"><img src="media/git-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Git without a terminal</h3></a><p>Commit, push and open pull requests with a visual diff of each test.</p></li>
+  <li><a href="schedules.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/schedule-dark.png"><img src="media/schedule-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Runs on a schedule</h3></a><p>Every night, on weekdays or every few hours.</p></li>
+  <li><a href="retries.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/project-map-dark.png"><img src="media/project-map-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Project map</h3></a><p>Every test of the project on one page, with its last result.</p></li>
+</ul>
 
 <h2 id="why">Why use it</h2>
 <ul>
