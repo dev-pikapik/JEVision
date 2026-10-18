@@ -22,7 +22,7 @@ struct ProjectPrivacySection: View {
           .foregroundStyle(.red)
           .textSelection(.enabled)
       } else {
-        Toggle(isOn: Binding(get: { project.settings.localOnly }, set: set(localOnly:))) {
+        Toggle(isOn: Binding(get: { project.settings.localOnly }, set: { set(localOnly: $0) })) {
           Text("Only models on this Mac for this project")
           Text("Its screenshots never go to a cloud service or to AI assistants, whatever each person’s settings say.")
         }
