@@ -25,6 +25,14 @@ public struct KeyStroke: Equatable, Sendable {
     "f16": 106, "f17": 64, "f18": 79, "f19": 80, "f20": 90,
   ]
 
+  /// Names test files use for key codes, the reverse of `keys`. Key codes don't depend on the
+  /// keyboard layout, so ⌘S is `cmd+s` on a Russian layout too.
+  public static let names: [CGKeyCode: String] = {
+    var names: [CGKeyCode: String] = [76: "return"]
+    for (name, code) in keys { names[code] = name }
+    return names
+  }()
+
   /// `nil` for text that isn't a key combination.
   public init?(_ text: String) {
     let parts = text.split(separator: "+", omittingEmptySubsequences: false).map(String.init)

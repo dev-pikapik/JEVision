@@ -87,7 +87,8 @@ final class ProjectStore {
     panel.canChooseFiles = false
     panel.allowsMultipleSelection = false
     panel.canCreateDirectories = true
-    panel.message = String(localized: "Choose the folder that holds your tests.")
+    panel.message = String(localized: "Choose the folder that holds your tests")
+    panel.directoryURL = rootURL ?? URL.documentsDirectory
     panel.prompt = String(localized: "Open")
     guard panel.runModal() == .OK, let url = panel.url else { return }
     save(url)
@@ -137,6 +138,24 @@ final class ProjectStore {
     let flow = insertBlock(flow: empty, typeName: "openApp", slot: nil)?.flow ?? empty
     try Data(saveFlow(flow: flow).utf8).write(to: folder.appending(path: fileName), options: .withoutOverwriting)
     selection = folderID.isEmpty ? fileName : folderID + "/" + fileName
+  }
+
+  /// Where a first project goes when the person hasn't chosen a folder.
+  static var defaultFolder: URL { URL.documentsDirectory.appending(path: "JEVision Tests", directoryHint: .isDirectory) }
+
+  /// Opens the default project folder, making it first if needed.
+  func openDefaultFolder() throws {
+    let url = Self.defaultFolder
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    save(url)
+    open(url)
+  }
+
+  /// Puts the demo test in the open project, or in the default one, and selects it.
+  func openDemo() throws {
+    if rootURL == nil { try openDefaultFolder() }
+    guard let rootURL else { return }
+    selection = try DemoTest.write(into: rootURL)
   }
 
   /// Renames the test file and the name inside it.
@@ -334,6 +353,7 @@ final class ProjectStore {
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
     showsMap = false
+    showsCommandPalette = false
     items = []
     show(History([]))
     selectedRun = nil

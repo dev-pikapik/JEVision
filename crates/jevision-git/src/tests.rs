@@ -962,6 +962,7 @@ fn pull_requests_are_proposed_only_once_the_branch_is_on_github() {
     assert_eq!(draft.bases, ["Beta", "main"]);
     assert!(draft.unpushed);
     assert_eq!(draft.existing.map(|p| p.number), Some(7));
+    assert_eq!(draft.title, "Change", "one new commit gives its title");
     repo.push().unwrap();
     repo.create_pull_request(&api.hub(), "main", " Login ", "Why")
         .unwrap();

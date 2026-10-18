@@ -27,6 +27,13 @@ struct BlockSummaryTests {
     #expect(summary(.runTest(test: "shared/sign-in.flow.json", next: nil)) == "Runs “sign-in”")
   }
 
+  @Test func neverSplitsADataToken() {
+    let shown = summary(.type(text: "Hello, ${data.name}!", into: nil, next: nil))
+    #expect(shown == "Type “Hello, " + unbreakablePlaceholders(text: "${data.name}") + "!”")
+    #expect(shown.replacing("\u{2060}", with: "") == "Type “Hello, ${data.name}!”")
+    #expect(BlockSummary.quoted("Dear customer, ${data.full_name}") == "“Dear customer,…”", "Cut before the token")
+  }
+
   @Test func namesEveryWayOutOfAnIf() {
     let plain = BlockKind.if(reference: Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: []), then: nil, elseIf: [], otherwise: nil)
     #expect(summary(plain) == "If “a” is on screen")
@@ -58,11 +65,18 @@ struct KeyComboTests {
   }
 
   @Test func recordsKeysInFileOrder() {
-    #expect(KeyCombo.from(keyCode: 1, characters: "s", modifierFlags: [.shift, .command]) == "cmd+shift+s")
-    #expect(KeyCombo.from(keyCode: 36, characters: "\r", modifierFlags: []) == "return")
-    #expect(KeyCombo.from(keyCode: 96, characters: nil, modifierFlags: [.control]) == "ctrl+f5")
-    #expect(KeyCombo.from(keyCode: 0, characters: "é", modifierFlags: []) == nil)
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.shift, .command]) == "cmd+shift+s")
+    #expect(KeyCombo.from(keyCode: 36, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 76, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 96, modifierFlags: [.control]) == "ctrl+f5")
+    #expect(KeyCombo.from(keyCode: 10, modifierFlags: []) == nil)
   }
+
+  /// On a Russian layout ⌘S types "ы"; the shortcut is still recorded as the key's place.
+  @Test func recordsShortcutsTheSameOnEveryLayout() {
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.command]) == "cmd+s")
+    #expect(KeyCombo.from(keyCode: 45, modifierFlags: [.command]) == "cmd+n")
+    #expect(KeyCombo.from(keyCode: 43, modifierFlags: [.command]) == "cmd+,")  }
 }
 
 struct RelativePathTests {

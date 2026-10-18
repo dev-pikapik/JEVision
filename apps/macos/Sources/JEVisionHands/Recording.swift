@@ -186,7 +186,7 @@ public struct Recording: Sendable {
       focusMoved(to: focus, frame: frame)
       return .ignored
     }
-    let name = Self.keyNames[press.code]
+    let name = KeyStroke.names[press.code]
     let shortcut = !press.modifiers.isDisjoint(with: [.command, .control])
     let text: String? =
       switch press.code {
@@ -427,13 +427,6 @@ public struct Recording: Sendable {
   }
 
   // MARK: Keys
-
-  /// Names test files use for key codes, the reverse of `KeyStroke`.
-  static let keyNames: [CGKeyCode: String] = {
-    var names: [CGKeyCode: String] = [76: "return"]
-    for (name, code) in KeyStroke.keys { names[code] = name }
-    return names
-  }()
 
   /// Keys that move or edit rather than type.
   static let specialKeys: Set<String> = [

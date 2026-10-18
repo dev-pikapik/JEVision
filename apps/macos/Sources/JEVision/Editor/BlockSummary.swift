@@ -3,10 +3,16 @@ import JEVisionCore
 
 /// The one line under a block's title that says what exactly it does.
 enum BlockSummary {
-  static func text(_ kind: BlockKind, appName: (String) -> String) -> String {
+  /// A `${data.name}` in it stays whole when the line wraps. `testApp` is the test's own app,
+  /// which an Open App block without one launches.
+  static func text(_ kind: BlockKind, appName: (String) -> String, testApp: String? = nil) -> String {
+    unbreakablePlaceholders(text: plainText(kind, appName: appName, testApp: testApp))
+  }
+
+  private static func plainText(_ kind: BlockKind, appName: (String) -> String, testApp: String?) -> String {
     switch kind {
     case .openApp(let app, _):
-      return app.map(appName) ?? String(localized: "The app under test")
+      return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
       let name = (first as NSString).lastPathComponent
@@ -75,10 +81,18 @@ enum BlockSummary {
   }
 
   /// On one line: Return and Tab show as the symbols on their keys. The quotation marks are those of
-  /// the language the app speaks: “…” in English, «…» in Russian.
+  /// the language the app speaks: “…” in English, «…» in Russian. Text too long to show is cut
+  /// before a `${…}` placeholder rather than inside it.
   static func quoted(_ text: String, limit: Int = 24) -> String {
     let line = String(text.map { $0.isNewline ? "⏎" : $0 == "\t" ? "⇥" : $0 })
-    let short = line.count > limit ? line.prefix(limit - 1) + "…" : line
+    var short = line
+    if line.count > limit {
+      var head = line.prefix(limit - 1)
+      if let open = head.range(of: "${", options: .backwards), !head[open.upperBound...].contains("}") {
+        head = head[..<open.lowerBound]
+      }
+      short = head.trimmingCharacters(in: .whitespaces) + "…"
+    }
     let language = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
     return (language.quotationBeginDelimiter ?? "“") + short + (language.quotationEndDelimiter ?? "”")
   }

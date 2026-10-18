@@ -34,6 +34,14 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
         block(b, &seen, &mut out);
     }
     graph(flow, &blocks, &mut out);
+    // A test that runs another one may check the screen there.
+    if !flow
+        .blocks
+        .iter()
+        .any(|b| b.kind.checks_screen() || matches!(b.kind, BlockKind::RunTest { .. }))
+    {
+        out.push(Issue::warning("flow.noCheck"));
+    }
     out
 }
 
@@ -530,6 +538,29 @@ pub(crate) fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
     found
 }
 
+/// `text` for display, with a word joiner (U+2060) between the characters of every `${…}`
+/// placeholder, so a line wraps before or after one and never inside: "Hello, ${data.name}!"
+/// doesn't end a line with "Hello, $".
+pub fn unbreakable_placeholders(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("${") {
+        let Some(len) = rest[at..].find('}') else {
+            break;
+        };
+        out.push_str(&rest[..at]);
+        for (i, c) in rest[at..=at + len].chars().enumerate() {
+            if i > 0 {
+                out.push('\u{2060}');
+            }
+            out.push(c);
+        }
+        rest = &rest[at + len + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 fn is_fraction(v: f64) -> bool {
     (0.0..=1.0).contains(&v)
 }
@@ -663,6 +694,19 @@ mod tests {
             ]
         );
         assert!(placeholders("plain $ text {}").is_empty());
+    }
+
+    #[test]
+    fn placeholders_never_break_across_lines() {
+        let j = "\u{2060}";
+        assert_eq!(
+            unbreakable_placeholders("Hello, ${data.name}!"),
+            format!("Hello, ${j}{{{j}d{j}a{j}t{j}a{j}.{j}n{j}a{j}m{j}e{j}}}!")
+        );
+        assert_eq!(
+            unbreakable_placeholders("${a}${b} $5 {x} ${open"),
+            format!("${j}{{{j}a{j}}}${j}{{{j}b{j}}} $5 {{x}} ${{open")
+        );
     }
 
     #[test]

@@ -174,6 +174,7 @@ pub fn describe(issue: &Issue) -> String {
                 .to_owned()
         }
         "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
+        "flow.noCheck" => "this test never checks the screen, so it can't catch a wrong result; add a check block.".to_owned(),
         "flow.reference.notSaved" => format!(
             "{} doesn't exist yet; the first run will save the screen there as the reference.",
             p("path")

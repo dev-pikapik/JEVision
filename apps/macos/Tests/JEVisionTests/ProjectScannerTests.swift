@@ -46,6 +46,23 @@ struct ProjectScannerTests {
     #expect(ProjectScanner.tests(in: items, matching: "missing").isEmpty)
   }
 
+  @Test func searchFindsTestsByTheirNameAndWhatTheyDo() throws {
+    let root = try makeProject(["flow-012.flow.json", "flow-013.flow.json"])
+    defer { try? FileManager.default.removeItem(at: root) }
+    try Data(
+      #"""
+      {"format":1,"name":"Add a line to a note 012","description":"Keeps the draft","app":"com.apple.Notes",
+       "start":"a","blocks":{"a":{"type":"type","text":"Shopping list"}}}
+      """#.utf8
+    ).write(to: root.appending(path: "flow-012.flow.json"))
+    let items = try ProjectScanner.scan(root)
+
+    #expect(ProjectScanner.tests(in: items, matching: "note 01").map(\.id) == ["flow-012.flow.json"])
+    #expect(ProjectScanner.tests(in: items, matching: "draft").map(\.id) == ["flow-012.flow.json"])
+    #expect(ProjectScanner.tests(in: items, matching: "shopping").map(\.id) == ["flow-012.flow.json"])
+    #expect(ProjectScanner.tests(in: items, matching: "flow-01").count == 2)
+  }
+
   @Test func throwsForMissingFolder() {
     #expect(throws: (any Error).self) {
       try ProjectScanner.scan(URL(filePath: "/nonexistent-\(UUID().uuidString)"))

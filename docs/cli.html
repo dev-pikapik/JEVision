@@ -100,6 +100,7 @@ jevision --help</code></pre>
 <h2 id="run"><code>jevision run</code></h2>
 <p>Runs tests on this Mac, one after another, and saves a report of every run.</p>
 <pre><code>jevision run <var>tests</var>… [options]</code></pre>
+<p>Each of <var>tests</var> is a test file, a folder of tests, or a test's name as the app shows it, without <code>.flow.json</code>: <code>jevision run notes/add-milk</code>.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
@@ -129,7 +130,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   <caption>Exit status of <code>jevision run</code></caption>
   <thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
   <tbody>
-    <tr><td><code>0</code></td><td>All tests passed. Tests in quarantine may have failed.</td></tr>
+    <tr><td><code>0</code></td><td>All tests passed. Tests in quarantine may have failed, and tests with no check may have finished without checking anything: the output says so and the JUnit report lists them as skipped.</td></tr>
     <tr><td><code>1</code></td><td>A test failed or was stopped.</td></tr>
     <tr><td><code>2</code></td><td>Wrong arguments, a file could not be read or written, or this Mac can't run tests now (see <a href="#ready">below</a>).</td></tr>
   </tbody>
@@ -140,6 +141,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
 <p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>
 <pre><code>{
   "passed": 1,
+  "nothingChecked": 0,
   "failed": 1,
   "quarantined": 0,
   "cancelled": 0,
@@ -165,7 +167,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   ]
 }</code></pre>
 <ul>
-  <li><code>verdict</code> is <code>passed</code>, <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
   <li><code>file</code> is relative to the project folder. <code>newReferences</code> lists the reference images this run saved for the first time.</li>
   <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>.</li>
 </ul>
