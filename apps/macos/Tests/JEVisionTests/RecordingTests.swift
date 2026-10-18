@@ -242,7 +242,7 @@ struct RecordingTests {
     _ = r.click(at: CGPoint(x: 212, y: 66), button: .left, count: 1, inApp: true, frame: Self.tiles(shift: 3), element: button)
     // A new screen right after a password: Return sent the form, though its key was hidden.
     #expect(Self.describe(r.steps) == ["open", "click @send-button", "secret MAIL_PASSWORD @password-field", "keys return", "wait untitled", "click @send-button"])
-    let blocks = try Recording.blocks(for: r.steps, testFolder: folder)
+    let (blocks, saved) = try Recording.blocks(for: r.steps, testFolder: folder)
     try #require(blocks.map(\.typeName) == ["openApp", "click", "type", "pressKeys", "waitFor", "click"])
     guard case .click(.image(let first), _, _, _, _) = blocks[1], case .type(let text, _, _) = blocks[2],
       case .waitFor(.appears(let screen), let timeout, _) = blocks[4], case .click(.image(let second), _, _, _, _) = blocks[5]
@@ -257,9 +257,53 @@ struct RecordingTests {
     #expect(text == "${secret.MAIL_PASSWORD}")
     let files = try FileManager.default.contentsOfDirectory(atPath: folder.appending(path: "refs").path).sorted()
     #expect(files == ["password-field.png", "send-button-2.png", "send-button.png", "untitled.png"])
+    #expect(saved.map(\.lastPathComponent).sorted() == files)
     // A second recording doesn't overwrite the first one's pictures.
-    let again = try Recording.blocks(for: [r.steps[1]], testFolder: folder)
+    let (again, _) = try Recording.blocks(for: [r.steps[1]], testFolder: folder)
     guard case .click(.image(let third), _, _, _, _) = again[0] else { return }
     #expect(third == "refs/send-button-3.png")
+  }
+
+  @MainActor @Test func undoingARecordingTrashesItsPictures() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "recording-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let trash = folder.appending(path: "Trash")
+    try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+    let url = folder.appending(path: "t.flow.json")
+    try #"{"format": 1, "name": "T", "app": "", "start": "a", "blocks": {"a": {"type": "pressKeys", "keys": "a"}}}"#
+      .write(to: url, atomically: true, encoding: .utf8)
+    var r = Recording(appName: "Mail", opensApp: false)
+    let button = ElementInfo(role: "AXButton", label: "Send", frame: CGRect(x: 200, y: 60, width: 40, height: 16))
+    _ = r.click(at: CGPoint(x: 210, y: 65), button: .left, count: 1, inApp: true, frame: Self.tiles(), element: button)
+    let (blocks, files) = try Recording.blocks(for: r.steps, testFolder: folder)
+    try #require(files.count == 1)
+    let document = FlowDocument(url: url)
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    func toTrash(_ file: URL) throws -> URL {
+      let target = trash.appending(path: file.lastPathComponent)
+      try FileManager.default.moveItem(at: file, to: target)
+      return target
+    }
+    func exists(_ file: URL) -> Bool { FileManager.default.fileExists(atPath: file.path) }
+
+    undo.beginUndoGrouping()
+    document.insertRecorded(blocks, files: files, at: Slot(from: "a", edge: "next"), app: "com.apple.mail", trash: toTrash)
+    undo.endUndoGrouping()
+    #expect(document.flow?.blocks.count == 2)
+
+    undo.undo()
+    #expect(document.flow?.blocks.count == 1)
+    #expect(document.flow?.app == "")
+    #expect(!exists(files[0]))
+    #expect(exists(trash.appending(path: files[0].lastPathComponent)))
+
+    undo.redo()
+    #expect(document.flow?.blocks.count == 2)
+    #expect(exists(files[0]))
+
+    undo.undo()
+    #expect(!exists(files[0]))
   }
 }

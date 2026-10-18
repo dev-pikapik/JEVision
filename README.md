@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5eead4?style=flat-square"></a>
-  <img alt="Status: early design" src="https://img.shields.io/badge/status-early%20design-818cf8?style=flat-square">
+  <img alt="Platform: macOS 26+" src="https://img.shields.io/badge/platform-macOS%2026%2B-818cf8?style=flat-square">
   <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-34d399?style=flat-square"></a>
 </p>
 
@@ -15,18 +15,70 @@
 
 ---
 
-## Why JEVision
+JEVision tests the interface of any Mac app, including apps you don't own and can't instrument.
+It sees the screen and uses the real mouse and keyboard, the way a person does. A test is a
+flowchart: one JSON file per test, with a block for every step, so anyone on the team can read
+it and a failure points at the block where it happened.
 
-UI tests usually live as long scripts that only their author can read. When one fails, you dig
-through code to find out *which step* went wrong and *why*.
+## What it does
 
-JEVision treats a test as what it really is — a **flowchart**:
+- **Flowchart editor.** Add, connect and edit blocks on a canvas; every change is saved to the
+  test file at once and can be undone. Problems in a test are listed on the block they concern.
+- **Recording.** Click, type and press keys in the app under test; each action becomes a block,
+  with a picture of what you clicked. Drag a frame to add a check. Passwords become secrets kept
+  in the Keychain, never in the file.
+- **Running.** Run a test, run it step by step (⌥⌘R) or start from any block, with breakpoints.
+  A small panel shows progress without getting in the way of clicks. Moving the mouse pauses the
+  run; pressing Esc twice stops it from any app.
+- **Reports and history.** Every run is saved with a screenshot of each step. For a check, the
+  report shows the screen, the reference image, their differences or one over the other. Reports
+  export as HTML or JUnit XML.
+- **Reference images.** When the app changed on purpose, accept a run's screenshot as the new
+  reference from the report. The old image goes to the Trash, and Undo brings it back.
+- **Command line.** The `jevision` tool inside the app runs, validates and formats tests from
+  Terminal, scripts and CI.
 
-- **One test, one file.** Each test is a self-contained JSON file. Easy to review, diff, share and version.
-- **Blocks, not scripts.** Launch, click, type, wait, check, branch, loop — each step is a block you can see.
-- **Readable by everyone.** QA, developers, designers and product people look at the same diagram.
-- **Failures point at a block.** A red block on the chart beats a stack trace in a log.
-- **Any app, not just yours.** Built to test interfaces you don't own and can't instrument.
+## Requirements
+
+- macOS 26 or later, on Apple silicon or Intel.
+- To build from source: Xcode 26 and Rust 1.85 or later, installed with
+  [rustup](https://rustup.rs).
+
+## Build from source
+
+```sh
+git clone https://github.com/dev-pikapik/JEVision.git
+cd JEVision
+apps/macos/scripts/build.sh
+open apps/macos/build/JEVision.app
+```
+
+`build.sh` builds the Rust core for both architectures, then the app and the `jevision` tool
+into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one architecture only, and
+`SIGN_IDENTITY` to sign with your own certificate instead of an ad-hoc signature.
+
+## First steps
+
+1. **Open Project…** (⌘O) and choose a folder. Tests are the `*.flow.json` files in it; a
+   folder per application works well.
+2. **New Test…** (⌘N), give it a name and choose the application to test.
+3. **Record** (⇧⌘R), then use the app. Press Esc twice or click **Done** to finish; the steps
+   appear on the canvas.
+4. **Run** (⌘R). The app under test comes to the front and JEVision repeats the steps. When the
+   run ends, open its report to see each step with screenshots.
+
+## Permissions
+
+JEVision asks for two permissions in System Settings → Privacy & Security, and explains each
+before asking:
+
+- **Screen Recording**, to take screenshots of the app under test: finding what to click,
+  waiting for screens and comparing them with reference images.
+- **Accessibility**, to click, type and press keys for you; to read the names of controls while
+  recording, so blocks and pictures get readable names; and to notice your own mouse and keyboard,
+  so a run pauses when you take over.
+
+Settings → Permissions shows what is granted and opens the right page in System Settings.
 
 ## How it works
 
@@ -86,7 +138,7 @@ values, so every change shows up as a small, readable diff.
 | `type` | actions | Types text, optionally into a field found by its image |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
-| `check` | wait and check | Compares the screen with a reference image: `exact`, `similar` or `meaning` |
+| `check` | wait and check | Compares the screen with a reference image, exactly or by similarity |
 | `if` | logic | Goes to `then` or `else` depending on what is on screen |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
@@ -199,17 +251,11 @@ history.
 
 ## Roadmap
 
-- [ ] Test file format and JSON Schema
-- [ ] Runner: execute a test file block by block
-- [ ] Reports: highlight the failed block on the diagram
-- [ ] Visual editor for building tests as flowcharts
-- [ ] Reusable sub-flows and shared variables
-- [ ] CI integration
-
-## Project status
-
-JEVision is in **early design**. The repository is open from day one so the format and the
-architecture can be shaped together. Star or watch the repo to follow along.
+- Vision-language model providers, for checks that compare screens by meaning
+- Testing remote devices, starting with iPhone
+- Git and GitHub integration in the app
+- An MCP server, so AI assistants can write and run tests
+- Windows and Linux, each with an interface of its own
 
 ## Contributing
 

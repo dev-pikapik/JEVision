@@ -163,8 +163,8 @@ final class RecordCenter {
     guard !result.isEmpty else { return }
     do {
       let folder = request.document.url.deletingLastPathComponent()
-      let blocks = try Recording.blocks(for: result.steps, testFolder: folder)
-      request.document.insertRecorded(blocks, at: request.slot, app: app)
+      let (blocks, files) = try Recording.blocks(for: result.steps, testFolder: folder)
+      request.document.insertRecorded(blocks, files: files, at: request.slot, app: app)
       unsetSecrets = result.secrets.filter { !SecretStore.isSet($0) }
       let count = blocks.count
       AccessibilityNotification.Announcement(String(localized: "Added \(count) steps to the test.")).post()
