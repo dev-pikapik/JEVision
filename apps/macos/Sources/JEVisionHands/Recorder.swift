@@ -121,7 +121,11 @@ public final class Recorder: @unchecked Sendable {
   private func receive(_ type: CGEventType, _ event: CGEvent) {
     guard !SyntheticInput.isSynthetic(event) else { return }
     let now = ProcessInfo.processInfo.systemUptime
-    let (ignoring, frame) = lock.withLock { (ignoring, frames.last { $0.ready < now }?.frame) }
+    let state: (ignoring: Bool, frame: WindowFrame?) = lock.withLock {
+      let latest: WindowFrame? = frames.last(where: { $0.ready < now })?.frame
+      return (self.ignoring, latest)
+    }
+    let ignoring = state.ignoring, frame = state.frame
     if type == .keyDown {
       var length = 0
       var units = [UniChar](repeating: 0, count: 8)
