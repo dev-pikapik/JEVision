@@ -1,8 +1,8 @@
 //! GitHub for a project whose server is on github.com: the user's account, pull requests and
 //! what they change.
 //!
-//! The sign-in is GitHub CLI's: its token is asked for whenever GitHub is called, kept only in
-//! memory for that call, and never written, logged or shown.
+//! The token comes from [`crate::signin::token`] whenever GitHub is called, and is kept only in
+//! memory for that call.
 
 use std::process::{Command, Stdio};
 use std::time::Duration;
@@ -118,14 +118,8 @@ pub struct GitHub {
 
 impl GitHub {
     pub fn new(api: &str, token: String) -> Self {
-        let agent = ureq::Agent::config_builder()
-            .http_status_as_error(false)
-            .timeout_global(Some(TIMEOUT))
-            .user_agent(concat!("JEVision/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .into();
         Self {
-            agent,
+            agent: agent(),
             api: api.trim_end_matches('/').to_owned(),
             token,
         }
@@ -255,8 +249,14 @@ impl GitHub {
 }
 
 impl Git {
-    /// GitHub, signed in as GitHub CLI is.
+    /// GitHub, signed in as the user is in JEVision.
     pub fn github(&self) -> Result<GitHub, GitError> {
+        let token = crate::signin::token().ok_or(GitError::GitHubSignedOut)?;
+        Ok(GitHub::new(API, token))
+    }
+
+    /// The token GitHub CLI is signed in with, to use instead of signing in again.
+    pub fn github_cli_token(&self) -> Result<String, GitError> {
         let gh = self
             .gh
             .clone()
@@ -274,7 +274,7 @@ impl Git {
         if !out.status.success() || token.is_empty() {
             return Err(GitError::GitHubSignedOut);
         }
-        Ok(GitHub::new(API, token.to_owned()))
+        Ok(token.to_owned())
     }
 }
 
@@ -422,8 +422,18 @@ fn pull_request(v: &Value) -> PullRequest {
     }
 }
 
-fn text(v: &Value) -> String {
+pub(crate) fn text(v: &Value) -> String {
     v.as_str().unwrap_or_default().to_owned()
+}
+
+/// An HTTP client for GitHub that hands back error answers instead of failing on them.
+pub(crate) fn agent() -> ureq::Agent {
+    ureq::Agent::config_builder()
+        .http_status_as_error(false)
+        .timeout_global(Some(TIMEOUT))
+        .user_agent(concat!("JEVision/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .into()
 }
 
 fn parse(body: &str) -> Result<Value, GitError> {

@@ -19,7 +19,7 @@ enum GitText {
     case .Detached:
       return String(localized: "No branch is selected. Choose a branch first.")
     case .SignIn:
-      return String(localized: "The server didn’t accept your sign-in. Sign in with GitHub CLI (gh auth login) or set up an SSH key, then try again.")
+      return String(localized: "The server didn’t accept your sign-in. Sign in to GitHub in Settings → Git and GitHub, or set up an SSH key, then try again.")
     case .RemoteNotFound:
       return String(localized: "The repository wasn’t found on the server, or your account can’t open it.")
     case .Unreachable:
@@ -45,7 +45,13 @@ enum GitText {
     case .NoGitHubCli:
       return String(localized: "GitHub CLI isn’t installed. Install it from cli.github.com, then run “gh auth login” in Terminal.")
     case .GitHubSignedOut:
-      return String(localized: "You’re not signed in to GitHub. Run “gh auth login” in Terminal, then try again.")
+      return String(localized: "You’re not signed in to GitHub. Sign in in Settings → Git and GitHub, then try again.")
+    case .SignInExpired:
+      return String(localized: "The code expired before it was entered on GitHub. Sign in again to get a new one.")
+    case .SignInDenied:
+      return String(localized: "Access was declined on GitHub. To sign in, start again and choose Authorize.")
+    case .SignInUnavailable:
+      return String(localized: "GitHub didn’t accept the OAuth app’s Client ID. Check it, and that device flow is turned on in the app’s settings on GitHub.")
     case .NotGitHub:
       return String(localized: "This project’s server isn’t GitHub.")
     case .NoPermission:

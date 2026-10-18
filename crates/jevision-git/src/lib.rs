@@ -10,12 +10,14 @@ use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 mod github;
+mod signin;
 #[cfg(test)]
 mod tests;
 
 pub use github::{
     API, GitHub, GitHubAccount, GitHubRepo, PullRequest, PullRequestChanges, PullRequestDraft,
 };
+pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, forget_token, save_token};
 
 /// Why a git operation didn't happen. Nothing on disk changed unless the variant says so.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -58,8 +60,14 @@ pub enum GitError {
     NotInCommit { path: String },
     #[error("GitHub CLI is not installed")]
     NoGitHubCli,
-    #[error("GitHub CLI is not signed in to github.com")]
+    #[error("not signed in to GitHub")]
     GitHubSignedOut,
+    #[error("the sign-in code expired before it was entered on GitHub")]
+    SignInExpired,
+    #[error("the sign-in was declined on GitHub")]
+    SignInDenied,
+    #[error("signing in to GitHub in the browser isn't set up: check the OAuth app's Client ID")]
+    SignInUnavailable,
     #[error("the repository's server is not GitHub")]
     NotGitHub,
     #[error("the GitHub account is not allowed to do that")]
@@ -153,6 +161,11 @@ pub struct Git {
     gh: Option<PathBuf>,
     env: Vec<(String, String)>,
 }
+
+/// A credential helper for github.com that answers with the token in [`GITHUB_TOKEN_VARIABLE`],
+/// so the token is never on a command line.
+const GITHUB_CREDENTIAL: &str = "credential.https://github.com.helper=!f() { test \"$1\" = get || return 0; echo username=x-access-token; echo \"password=$JEVISION_GITHUB_TOKEN\"; }; f";
+const GITHUB_TOKEN_VARIABLE: &str = "JEVISION_GITHUB_TOKEN";
 
 /// Folders where command line tools live besides `PATH`, which is short for apps started
 /// from the Finder.
@@ -637,10 +650,16 @@ impl Repo {
         Ok(String::from_utf8_lossy(&out).into_owned())
     }
 
-    /// A command that talks to the server, with the user's GitHub CLI sign-in on offer.
+    /// A command that talks to the server, with the user's GitHub sign-in on offer: JEVision's
+    /// own, otherwise GitHub CLI's.
     fn network(&self, args: &[&str]) -> Result<(), GitError> {
         let mut command = self.git.command(&self.dir);
-        if let Some(gh) = &self.git.gh {
+        let token = self.github().ok().and_then(|_| signin::token());
+        if let Some(token) = token {
+            command
+                .args(["-c", GITHUB_CREDENTIAL])
+                .env(GITHUB_TOKEN_VARIABLE, token);
+        } else if let Some(gh) = &self.git.gh {
             let helper = format!(
                 "credential.https://github.com.helper=!'{}' auth git-credential",
                 gh.display()

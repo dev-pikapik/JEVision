@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import JEVisionCore
 import Observation
 
@@ -20,7 +20,11 @@ final class ProjectGit {
     case starting, committing, pulling, pushing, switching, proposing
   }
 
-  /// Who the app works with GitHub as: GitHub CLI's sign-in.
+  /// The Client ID of JEVision's OAuth app on GitHub, used when Settings names none.
+  static let gitHubClientID = ""
+  static let gitHubClientIDKey = "gitHubClientID"
+
+  /// Who the app works with GitHub as.
   enum GitHubSignIn: Equatable {
     case checking
     case signedIn(GitHubAccount)
@@ -39,6 +43,10 @@ final class ProjectGit {
   private(set) var branches: [GitBranch] = []
   private(set) var activity: Activity?
   private(set) var gitHub = GitHubSignIn.checking
+  /// GitHub CLI's account, offered while signed out.
+  private(set) var gitHubCLIAccount: GitHubAccount?
+  /// The code to enter on GitHub while signing in in the browser.
+  private(set) var signInCode: DeviceCode?
   /// What went wrong with the last action, for an alert.
   var failure: Failure?
   /// The New Pull Request sheet is shown over the main window.
@@ -46,6 +54,7 @@ final class ProjectGit {
 
   @ObservationIgnored private(set) var project: URL?
   @ObservationIgnored private var refreshTask: Task<Void, Never>?
+  @ObservationIgnored private var signInTask: Task<Void, Never>?
 
   var status: GitStatus? {
     if case .tracked(let status) = state { status } else { nil }
@@ -119,15 +128,94 @@ final class ProjectGit {
     perform(.switching) { try gitCreateBranch(project: $0, name: name) } then: { _ in done() }
   }
 
-  /// Asks GitHub CLI again who is signed in.
+  /// Asks GitHub again who is signed in, and whether GitHub CLI has an account to offer.
   func checkGitHub() {
-    Task {
-      let result = await Task.detached(priority: .utility) { Result { try githubAccount() } }.value
-      switch result {
-      case .success(let account): gitHub = .signedIn(account)
-      case .failure(let error as GitError): gitHub = .signedOut(error)
-      case .failure(let error): gitHub = .signedOut(.Failed(message: error.localizedDescription))
+    Task { await show(Task.detached(priority: .utility) { Result { try githubAccount() } }.value) }
+  }
+
+  /// Signs in to GitHub in the browser: copies the code, opens GitHub's page for it and waits
+  /// until the user has entered it there.
+  func signInToGitHub(clientID: String) {
+    cancelSignIn()
+    signInTask = Task {
+      do {
+        let code = try await Task.detached { try githubSignInStart(clientId: clientID) }.value
+        signInCode = code
+        copySignInCode()
+        openSignInPage()
+        let account = try await waitForSignIn(code, clientID: clientID)
+        signInCode = nil
+        await show(.success(account))
+      } catch is CancellationError {
+      } catch {
+        signInCode = nil
+        await show(.failure(error))
       }
+    }
+  }
+
+  /// Asks GitHub every `interval` seconds whether the code has been entered, until it expires.
+  private func waitForSignIn(_ code: DeviceCode, clientID: String) async throws -> GitHubAccount {
+    var interval = code.interval
+    let expiry = ContinuousClock.now + .seconds(code.expiresIn)
+    while ContinuousClock.now < expiry {
+      try await Task.sleep(for: .seconds(interval))
+      let step = await Task.detached { [interval] in
+        Result { try githubSignInPoll(clientId: clientID, deviceCode: code.deviceCode, interval: interval) }
+      }.value
+      switch step {
+      case .success(.waiting), .failure(GitError.Unreachable): continue
+      case .success(.slowDown(let next)): interval = next
+      case .success(.signedIn(let account)): return account
+      case .failure(let error): throw error
+      }
+    }
+    throw GitError.SignInExpired
+  }
+
+  func cancelSignIn() {
+    signInTask?.cancel()
+    signInTask = nil
+    signInCode = nil
+  }
+
+  func copySignInCode() {
+    guard let code = signInCode?.userCode else { return }
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(code, forType: .string)
+  }
+
+  func openSignInPage() {
+    guard let url = signInCode.flatMap({ URL(string: $0.verificationUri) }) else { return }
+    NSWorkspace.shared.open(url)
+  }
+
+  /// Signs in with the account GitHub CLI is signed in to.
+  func useGitHubCLIAccount() {
+    Task { await show(Task.detached(priority: .utility) { Result { try githubUseCliAccount() } }.value) }
+  }
+
+  func signOutOfGitHub() {
+    cancelSignIn()
+    Task {
+      let result = await Task.detached(priority: .utility) { Result { try githubSignOut() } }.value
+      if case .failure(let error) = result {
+        await show(.failure(error))
+      } else {
+        await show(.failure(GitError.GitHubSignedOut))
+      }
+    }
+  }
+
+  /// Shows who is signed in, or why no one is, then what GitHub CLI has to offer.
+  private func show(_ result: Result<GitHubAccount, any Error>) async {
+    switch result {
+    case .success(let account):
+      gitHub = .signedIn(account)
+      gitHubCLIAccount = nil
+    case .failure(let error):
+      gitHub = .signedOut(error as? GitError ?? .Failed(message: error.localizedDescription))
+      gitHubCLIAccount = await Task.detached(priority: .utility) { try? githubCliAccount() }.value
     }
   }
 

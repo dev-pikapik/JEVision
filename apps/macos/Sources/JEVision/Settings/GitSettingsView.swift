@@ -4,10 +4,10 @@ import SwiftUI
 struct GitSettingsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openWindow) private var openWindow
-  @Environment(\.openURL) private var openURL
   @State private var isNamingBranch = false
   @State private var branchName = ""
   @State private var isComposing = false
+  @AppStorage(ProjectGit.gitHubClientIDKey) private var clientID = ""
 
   private var git: ProjectGit { project.git }
 
@@ -148,13 +148,19 @@ struct GitSettingsView: View {
       VStack(alignment: .leading, spacing: 6) {
         Text("Commits contain only what you write. JEVision adds nothing to them.")
         if status.remote != nil {
-          Text("Signing in to the server uses your Mac’s git setup: GitHub CLI, passwords in the Keychain or SSH keys.")
+          Text("Signing in to the server uses your GitHub sign-in below, otherwise your Mac’s git setup: GitHub CLI, passwords in the Keychain or SSH keys.")
         }
       }
       .font(.callout)
       .foregroundStyle(.secondary)
       .fixedSize(horizontal: false, vertical: true)
     }
+  }
+
+  /// The OAuth app to sign in with: the one in Settings, otherwise JEVision's own.
+  private var signInClientID: String {
+    let typed = clientID.trimmingCharacters(in: .whitespaces)
+    return typed.isEmpty ? ProjectGit.gitHubClientID : typed
   }
 
   @ViewBuilder
@@ -166,12 +172,18 @@ struct GitSettingsView: View {
           ProgressView().controlSize(.small)
             .accessibilityLabel(Text("Checking the GitHub account"))
         case .signedIn(let account):
-          Text(verbatim: account.login)
-            .textSelection(.enabled)
-        case .signedOut(let problem):
           HStack {
-            if problem == .NoGitHubCli {
-              Button("Get GitHub CLI…") { openURL(URL(string: "https://cli.github.com")!) }
+            Text(verbatim: account.login)
+              .textSelection(.enabled)
+            Button("Sign Out", action: git.signOutOfGitHub)
+              .help(Text("Forget the sign-in kept in the Keychain"))
+          }
+        case .signedOut:
+          HStack {
+            if git.signInCode == nil {
+              Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
+                .disabled(signInClientID.isEmpty)
+                .help(Text("Opens GitHub in your browser to let JEVision in"))
             }
             Button("Check Again", action: git.checkGitHub)
           }
@@ -183,6 +195,32 @@ struct GitSettingsView: View {
         case .signedIn(let account):
           if !account.name.isEmpty { Text(verbatim: account.name) }
         case .signedOut(let problem): Text(signInHelp(problem))
+        }
+      }
+      if let code = git.signInCode {
+        LabeledContent {
+          HStack {
+            Button("Copy Code", action: git.copySignInCode)
+            Button("Open GitHub", action: git.openSignInPage)
+            Button("Cancel", action: git.cancelSignIn)
+          }
+        } label: {
+          HStack(spacing: 8) {
+            Text(verbatim: code.userCode)
+              .font(.title2.monospaced().weight(.semibold))
+              .textSelection(.enabled)
+              .accessibilityLabel(Text("Code \(code.userCode.map(String.init).joined(separator: " "))"))
+            ProgressView().controlSize(.small)
+              .accessibilityLabel(Text("Waiting for GitHub"))
+          }
+          Text("The code is copied. Paste it on the GitHub page that opened and choose Authorize. JEVision is waiting.")
+        }
+      } else if case .signedOut = git.gitHub, let account = git.gitHubCLIAccount {
+        LabeledContent {
+          Button("Use This Account", action: git.useGitHubCLIAccount)
+        } label: {
+          Text("GitHub CLI is signed in as \(account.login)")
+          Text("Sign in with the same account, without the browser.")
         }
       }
       if case .tracked(let status) = git.state, status.github != nil {
@@ -198,10 +236,19 @@ struct GitSettingsView: View {
           Text("Propose your branch’s changes, or see what others propose.")
         }
       }
+      LabeledContent {
+        TextField("Client ID", text: $clientID, prompt: Text(verbatim: ProjectGit.gitHubClientID.isEmpty ? "Ov23li…" : ProjectGit.gitHubClientID))
+          .labelsHidden()
+          .frame(maxWidth: 220)
+          .accessibilityLabel(Text("OAuth app Client ID"))
+      } label: {
+        Text("OAuth App Client ID")
+        Text("The GitHub OAuth app JEVision signs in through. Device flow must be turned on in its settings.")
+      }
     } header: {
       Text("GitHub")
     } footer: {
-      Text("JEVision uses the account GitHub CLI is signed in to. To use another one, run “gh auth login” in Terminal.")
+      Text("The sign-in is kept in your Keychain. JEVision uses it for pull requests and to push to GitHub.")
         .font(.callout)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -210,8 +257,10 @@ struct GitSettingsView: View {
 
   private func signInHelp(_ problem: GitError) -> String {
     switch problem {
-    case .NoGitHubCli: String(localized: "Install GitHub CLI, then run “gh auth login” in Terminal to sign in.")
-    case .GitHubSignedOut: String(localized: "Run “gh auth login” in Terminal to sign in, then check again.")
+    case .GitHubSignedOut:
+      signInClientID.isEmpty
+        ? String(localized: "To sign in in the browser, enter the Client ID of your GitHub OAuth app below.")
+        : String(localized: "Sign in once in your browser to open pull requests and push to GitHub.")
     default: GitText.failure(problem)
     }
   }
