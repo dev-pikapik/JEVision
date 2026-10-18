@@ -27,6 +27,13 @@ struct BlockSummaryTests {
     #expect(summary(.runTest(test: "shared/sign-in.flow.json", next: nil)) == "Runs “sign-in”")
   }
 
+  @Test func neverSplitsADataToken() {
+    let shown = summary(.type(text: "Hello, ${data.name}!", into: nil, next: nil))
+    #expect(shown == "Type “Hello, " + unbreakablePlaceholders(text: "${data.name}") + "!”")
+    #expect(shown.replacing("\u{2060}", with: "") == "Type “Hello, ${data.name}!”")
+    #expect(BlockSummary.quoted("Dear customer, ${data.full_name}") == "“Dear customer,…”", "Cut before the token")
+  }
+
   @Test func namesEveryWayOutOfAnIf() {
     let plain = BlockKind.if(condition: .screen(Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: [])), then: nil, elseIf: [], otherwise: nil)
     #expect(summary(plain) == "If “a” is on screen")

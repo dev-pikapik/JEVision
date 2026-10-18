@@ -42,10 +42,10 @@ pub use schedule::{
     begin_schedule_check, calendar_intervals, due_schedules, launch_agent_plist, load_schedules,
     parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
 };
-pub use search::{SearchCandidate, rank};
+pub use search::{SearchCandidate, rank, test_keywords};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, saved_variables, validate,
-    validate_in,
+    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, saved_variables,
+    unbreakable_placeholders, validate, validate_in,
 };
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.
