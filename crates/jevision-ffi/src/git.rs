@@ -310,6 +310,7 @@ pub struct PullRequestDraft {
     pub bases: Vec<String>,
     pub unpushed: bool,
     pub existing: Option<PullRequest>,
+    pub title: String,
 }
 
 #[uniffi::remote(Record)]

@@ -202,6 +202,7 @@ impl Runner<'_> {
             verdict: Verdict::Failed,
             flaky: false,
             baselines_created: Vec::new(),
+            nothing_checked: true,
             requested_by: options.requested_by.clone(),
             schedule: options.schedule.clone(),
             environment: options.environment.clone(),
@@ -329,12 +330,14 @@ impl Runner<'_> {
                             apps: Vec::new(),
                             launched: Vec::new(),
                             baselines: Vec::new(),
+                            checked: false,
                             video,
                             local_only,
                             hide: &hide,
                             display_scale: &display_scale,
                         };
-                        let (mut attempt, opened, baselines) = exec.run(&root, &start);
+                        let (mut attempt, opened, baselines, checked) = exec.run(&root, &start);
+                        report.nothing_checked &= !checked;
                         attempt.row = data_row.clone();
                         launched = opened;
                         report.baselines_created.extend(baselines);
@@ -359,6 +362,7 @@ impl Runner<'_> {
         }
 
         (report.verdict, report.flaky) = summarize(&report.attempts);
+        report.nothing_checked &= report.verdict == Verdict::Passed;
         report.duration_ms = millis(clock.elapsed());
         report.display_scale = display_scale.get();
         let path = dir.join("report.json");
@@ -674,6 +678,9 @@ struct Exec<'r> {
     apps: Vec<String>,
     launched: Vec<String>,
     baselines: Vec<String>,
+    /// A block that looks at the screen ran to the end: a check, or a wait for something to
+    /// appear or disappear.
+    checked: bool,
     /// When the run's video started, if one is being recorded.
     video: Option<Instant>,
     /// The project allows only AI models on this computer.
@@ -685,7 +692,7 @@ struct Exec<'r> {
 }
 
 impl Exec<'_> {
-    fn run(mut self, root: &TestFile, start: &str) -> (Attempt, Vec<String>, Vec<String>) {
+    fn run(mut self, root: &TestFile, start: &str) -> (Attempt, Vec<String>, Vec<String>, bool) {
         let clock = Instant::now();
         self.tests.push(root.path.clone());
         self.apps.push(root.flow.app.clone());
@@ -703,7 +710,7 @@ impl Exec<'_> {
             row: None,
             steps: self.steps,
         };
-        (attempt, self.launched, self.baselines)
+        (attempt, self.launched, self.baselines, self.checked)
     }
 
     /// Runs blocks from `from` along their edges until a block has nowhere to go or the chain
@@ -765,7 +772,10 @@ impl Exec<'_> {
             sent_masked: false,
         };
         let result = match self.perform(t, &block.kind, &mut step) {
-            Ok(next) => Ok(next),
+            Ok(next) => {
+                self.checked |= block.kind.checks_screen();
+                Ok(next)
+            }
             Err(Stop::Cancelled) => {
                 step.status = StepStatus::Cancelled;
                 Err(Stop::Cancelled)

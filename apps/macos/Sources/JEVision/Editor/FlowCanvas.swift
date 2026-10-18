@@ -189,7 +189,7 @@ struct FlowCanvas: View {
         let item = CanvasItem.block(id: laid.id)
         BlockNode(
           block: block,
-          summary: BlockSummary.text(block.kind, appName: appName),
+          summary: BlockSummary.text(block.kind, appName: appName, testApp: document.flow?.app),
           issues: document.issues(of: laid.id),
           isSelected: document.picked.contains(item),
           isLinkTarget: (link?.target ?? document.linking?.target) == laid.id,
