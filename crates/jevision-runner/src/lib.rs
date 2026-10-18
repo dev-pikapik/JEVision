@@ -13,6 +13,7 @@ mod env;
 mod machine;
 mod report;
 mod run;
+mod usage;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
@@ -23,13 +24,17 @@ pub use jevision_core::{MouseButton, Point};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, PixelArea, Provider,
-    Question, TIMEOUT, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
+    Question, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
 };
 pub use report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
     Verdict, VisionAnswer, branch_text, describe, describe_vision, html, junit_xml,
 };
 pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
+pub use usage::{
+    DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,
+    WARN_SHARE, default_prices, money, price_of,
+};
 
 /// Shown instead of a secret value wherever a secret would otherwise appear.
 pub const SECRET_MASK: &str = "••••";

@@ -179,6 +179,16 @@
         }
       }
     },
+    "%@ · no price for this model" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · для этой модели нет цены"
+          }
+        }
+      }
+    },
     "%@ × %@ of the window at %@, %@" : {
       "localizations" : {
         "ru" : {
@@ -769,6 +779,120 @@
         }
       }
     },
+    "%llu checks this month" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu check this month"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu checks this month"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверки в этом месяце"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверок в этом месяце"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверка в этом месяце"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверки в этом месяце"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%llu checks without a price" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu check without a price"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu checks without a price"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверки без цены"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверок без цены"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверка без цены"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%llu проверки без цены"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%llu tokens sent, %llu received" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Токенов отправлено: %1$llu, получено: %2$llu"
+          }
+        }
+      }
+    },
     "1. Open JEVision on your iPhone" : {
       "localizations" : {
         "ru" : {
@@ -1159,6 +1283,16 @@
         }
       }
     },
+    "Add Price" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить цену"
+          }
+        }
+      }
+    },
     "Add Reference…" : {
       "localizations" : {
         "ru" : {
@@ -1461,6 +1595,16 @@
         }
       }
     },
+    "All models" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все модели"
+          }
+        }
+      }
+    },
     "All set" : {
       "localizations" : {
         "ru" : {
@@ -1637,6 +1781,16 @@
         }
       }
     },
+    "Answered by %@ instead: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вместо основного ответил %1$@: %2$@"
+          }
+        }
+      }
+    },
     "App" : {
       "localizations" : {
         "ru" : {
@@ -1753,6 +1907,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спрашивать на Mac перед удалённым запуском"
+          }
+        }
+      }
+    },
+    "Asked when the main provider can’t be reached, is overloaded or has reached its limit. Problems with the setup, like a wrong key, still stop the check." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используется, когда основной провайдер недоступен, перегружен или исчерпал лимит. Ошибки настройки, например неверный ключ, по-прежнему останавливают проверку."
           }
         }
       }
@@ -2141,6 +2305,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся связаться с сервером. Проверьте подключение к интернету и попробуйте снова."
+          }
+        }
+      }
+    },
+    "Can’t read the AI usage journal: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать журнал использования ИИ: %@"
           }
         }
       }
@@ -3231,6 +3405,16 @@
         }
       }
     },
+    "Counted on this Mac from every AI check of the app and the jevision tool, at the prices below." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Считается на этом Mac по всем проверкам ИИ из приложения и инструмента jevision, по ценам ниже."
+          }
+        }
+      }
+    },
     "Covered before a screenshot goes to an AI model or into a report: names, emails, card numbers." : {
       "localizations" : {
         "ru" : {
@@ -3307,6 +3491,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Критическая"
+          }
+        }
+      }
+    },
+    "Daily limit for %@, US dollars" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дневной лимит для %@, в долларах США"
           }
         }
       }
@@ -3397,6 +3591,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таблица данных"
+          }
+        }
+      }
+    },
+    "Day" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "День"
           }
         }
       }
@@ -4379,6 +4583,16 @@
         }
       }
     },
+    "Fallback Provider" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запасной провайдер"
+          }
+        }
+      }
+    },
     "Field" : {
       "localizations" : {
         "ru" : {
@@ -5085,6 +5299,26 @@
         }
       }
     },
+    "Input" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход"
+          }
+        }
+      }
+    },
+    "Input price for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цена входа для %@"
+          }
+        }
+      }
+    },
     "Insert" : {
       "localizations" : {
         "ru" : {
@@ -5508,6 +5742,16 @@
         }
       }
     },
+    "Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставьте пустым, чтобы использовать модель из Настроек → ИИ. Другая модель того же провайдера подойдёт для более сложной или более простой проверки."
+          }
+        }
+      }
+    },
     "Left" : {
       "localizations" : {
         "ru" : {
@@ -5534,6 +5778,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Светлая"
+          }
+        }
+      }
+    },
+    "Limit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лимит"
+          }
+        }
+      }
+    },
+    "Limits" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лимиты"
           }
         }
       }
@@ -5734,6 +5998,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Модель"
+          }
+        }
+      }
+    },
+    "Monthly limit for %@, US dollars" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Месячный лимит для %@, в долларах США"
           }
         }
       }
@@ -5984,6 +6258,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет"
+          }
+        }
+      }
+    },
+    "No AI checks yet." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверок ИИ пока не было."
           }
         }
       }
@@ -6882,6 +7166,26 @@
         }
       }
     },
+    "Output" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выход"
+          }
+        }
+      }
+    },
+    "Output price for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цена выхода для %@"
+          }
+        }
+      }
+    },
     "Overlay" : {
       "localizations" : {
         "ru" : {
@@ -7168,6 +7472,26 @@
         }
       }
     },
+    "Per day" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В день"
+          }
+        }
+      }
+    },
+    "Per month" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В месяц"
+          }
+        }
+      }
+    },
     "Permission" : {
       "localizations" : {
         "ru" : {
@@ -7324,6 +7648,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Превью: %@"
+          }
+        }
+      }
+    },
+    "Prices" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цены"
           }
         }
       }
@@ -7900,6 +8234,26 @@
         }
       }
     },
+    "Remove Price" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить цену"
+          }
+        }
+      }
+    },
+    "Remove the price for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить цену для %@"
+          }
+        }
+      }
+    },
     "Remove this value" : {
       "localizations" : {
         "ru" : {
@@ -8136,6 +8490,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перезапустить"
+          }
+        }
+      }
+    },
+    "Restore Public Prices" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть публичные цены"
           }
         }
       }
@@ -9540,6 +9904,78 @@
         }
       }
     },
+    "Spending" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расходы"
+          }
+        }
+      }
+    },
+    "Spending per day over the last %lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spending over the last %lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Spending per day over the last %lld days"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Расходы по дням за последние %lld дня"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Расходы по дням за последние %lld дней"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Расходы за последний %lld день"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Расходы по дням за последние %lld дня"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Spent" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потрачено"
+          }
+        }
+      }
+    },
     "Standard" : {
       "localizations" : {
         "ru" : {
@@ -10842,6 +11278,16 @@
         }
       }
     },
+    "This month: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этом месяце: %@"
+          }
+        }
+      }
+    },
     "This project" : {
       "localizations" : {
         "ru" : {
@@ -11022,6 +11468,16 @@
         }
       }
     },
+    "Today: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сегодня: %@"
+          }
+        }
+      }
+    },
     "Took “%@: %@”" : {
       "localizations" : {
         "ru" : {
@@ -11188,6 +11644,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вводит текст; может сначала кликнуть в поле."
+          }
+        }
+      }
+    },
+    "US dollars per million tokens, the public prices JEVision knows. They can be changed: providers change prices, and an account can have its own. A model takes the price of the longest name it starts with; an empty name covers all of the provider’s models." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доллары США за миллион токенов — публичные цены, известные JEVision. Их можно изменить: провайдеры меняют цены, а у аккаунта могут быть свои. Модель получает цену самого длинного названия, с которого начинается её имя; пустое название подходит ко всем моделям провайдера."
           }
         }
       }
@@ -11618,6 +12084,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Действия во время паузы не записываются"
+          }
+        }
+      }
+    },
+    "When 80 percent of a limit is used, run reports warn. At the limit, AI checks with that provider stop with a message, or go to the fallback provider. Leave empty for no limit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда израсходовано 80 процентов лимита, отчёты о прогонах предупреждают. При достижении лимита проверки ИИ с этим провайдером останавливаются с сообщением или переходят к запасному провайдеру. Оставьте пустым, чтобы не ограничивать."
           }
         }
       }
@@ -12582,6 +13058,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ожидаемый текст работает только со сравнением «По смыслу»."
+          }
+        }
+      }
+    },
+    "flow.reference.modelNeedsMeaning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A model works only with “By Meaning” comparison."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель работает только со сравнением «По смыслу»."
           }
         }
       }
@@ -14048,6 +14540,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: этот проект разрешает только модели на этом Mac, а %2$@ работает в облаке. Выберите локальную модель или выключите «Только модели на этом Mac для этого проекта» в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.journalFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t write down the AI call in %@: %@. Without it the spending limits can’t be kept, so AI checks stop."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось записать обращение к ИИ в %1$@: %2$@. Без записи нельзя соблюдать лимиты расходов, поэтому проверки ИИ остановлены."
+          }
+        }
+      }
+    },
+    "run.vision.limitNear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has used $%@ of its daily limit of $%@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ израсходовал $%2$@ из дневного лимита $%3$@."
+          }
+        }
+      }
+    },
+    "run.vision.limitNear.month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has used $%@ of its monthly limit of $%@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ израсходовал $%2$@ из месячного лимита $%3$@."
+          }
+        }
+      }
+    },
+    "run.vision.limitReached" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has used $%@ of its daily limit of $%@. AI checks with it stop until tomorrow, or until the limit is raised in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ израсходовал $%2$@ из дневного лимита $%3$@. Проверки ИИ с ним остановлены до завтра или пока лимит не поднят в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.limitReached.month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has used $%@ of its monthly limit of $%@. AI checks with it stop until next month, or until the limit is raised in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ израсходовал $%2$@ из месячного лимита $%3$@. Проверки ИИ с ним остановлены до следующего месяца или пока лимит не поднят в Настройках → ИИ."
           }
         }
       }

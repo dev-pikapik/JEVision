@@ -31,6 +31,40 @@ struct AISettingsTests {
     #expect(ai.settings(provider: "skynet") == nil)
   }
 
+  @Test func runsKeepToTheLimitsPricesAndFallback() throws {
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let ai = AISettings(defaults)
+    #expect(ai.prices == aiDefaultPrices())
+    #expect(ai.limits.isEmpty)
+    #expect(ai.fallback() == nil)
+
+    defaults.set("anthropic", forKey: AISettings.providerKey)
+    defaults.set("anthropic", forKey: AISettings.fallbackKey)
+    // The main provider can't be its own fallback.
+    #expect(ai.fallback() == nil)
+    defaults.set("ollama", forKey: AISettings.fallbackKey)
+    defaults.set("llava", forKey: AISettings.modelKey("ollama"))
+    #expect(ai.fallback()?.provider == "ollama")
+    #expect(ai.fallback()?.model == "llava")
+    #expect(ai.fallback(besides: "ollama") == nil)
+
+    defaults.set(5.0, forKey: AISettings.dailyLimitKey("anthropic"))
+    defaults.set(40.0, forKey: AISettings.monthlyLimitKey("openai"))
+    #expect(
+      ai.limits == [
+        Limit(provider: "anthropic", daily: 5, monthly: nil), Limit(provider: "openai", daily: nil, monthly: 40),
+      ])
+
+    let prices = [Price(provider: "anthropic", model: "claude-sonnet", input: 2.5, output: 12)]
+    AISettings.save(prices: prices, in: defaults)
+    #expect(ai.prices == prices)
+    #expect(ai.usage.prices == prices)
+    #expect(ai.usage.journal.hasSuffix("JEVision/ai-usage.jsonl"))
+    #expect(aiDefaultPrices().contains { $0.provider == "anthropic" && $0.input > 0 })
+  }
+
   @Test func everyProviderCanBeChosen() {
     let providers = AISettings.providers
     #expect(providers.map(\.name) == ["Anthropic", "OpenAI", "Google Gemini", "Ollama", "LM Studio", "OpenAI-compatible server"])
@@ -47,7 +81,8 @@ struct VisionTextTests {
   private let codes = [
     "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
     "run.vision.badKey", "run.vision.unknownModel", "run.vision.rateLimited", "run.vision.serviceError",
-    "run.vision.refused", "run.vision.badAnswer",
+    "run.vision.refused", "run.vision.badAnswer", "run.vision.limitReached", "run.vision.limitNear",
+    "run.vision.journalFailed",
   ]
 
   @Test func everyProblemHasItsOwnWords() {
@@ -74,6 +109,11 @@ struct VisionTextTests {
     #expect(RunText.failure(blocked).contains("OpenAI"))
     #expect(RunText.needsAISetup(Failure(code: "run.compare.meaningUnavailable", params: ["block": "b"])))
     #expect(!RunText.needsAISetup(Failure(code: "run.vision.timeout", params: [:])))
+    let limit = Failure(
+      code: "run.vision.limitReached",
+      params: ["block": "b", "provider": "OpenAI", "period": "month", "limit": "40.00", "spent": "40.12"])
+    #expect(RunText.needsAISetup(limit))
+    #expect(VisionText.failure(limit).hasPrefix("OpenAI has used $40.12 of its monthly limit of $40.00."))
     let mismatch = Failure(code: "run.check.meaningMismatch", params: ["block": "b", "provider": "Anthropic", "reason": "The cart is empty."])
     #expect(RunText.failure(mismatch) == "Block “b”: the screen doesn’t show what’s expected. Anthropic: The cart is empty.")
   }
@@ -87,7 +127,7 @@ struct VisionTextTests {
 
   @Test func checksByMeaningReadAsTheirExpectation() {
     let reference = Reference(
-      image: "", compare: .meaning(expect: "The cart shows 2 items"), area: nil, ignore: [], hide: [])
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: ""), area: nil, ignore: [], hide: [])
     #expect(BlockSummary.text(.check(reference: reference, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
   }
 }

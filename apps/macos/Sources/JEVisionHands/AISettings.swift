@@ -12,9 +12,18 @@ public struct AISettings {
   public static let localOnlyKey = "ai.localOnly"
   public static let assistantsRunKey = "assistants.allowRuns"
   public static let assistantsCaptureKey = "assistants.allowScreenshots"
+  public static let fallbackKey = "ai.fallback"
+  public static let pricesKey = "ai.prices"
 
   public static func modelKey(_ provider: String) -> String { "ai.model.\(provider)" }
   public static func addressKey(_ provider: String) -> String { "ai.address.\(provider)" }
+  public static func dailyLimitKey(_ provider: String) -> String { "ai.limit.daily.\(provider)" }
+  public static func monthlyLimitKey(_ provider: String) -> String { "ai.limit.monthly.\(provider)" }
+
+  /// The journal of every AI call, shared by the app and the `jevision` tool.
+  public static var journal: URL {
+    URL.applicationSupportDirectory.appending(path: "JEVision/ai-usage.jsonl", directoryHint: .notDirectory)
+  }
 
   /// The app's settings, from the app or from the `jevision` tool.
   public static var app: AISettings {
@@ -69,6 +78,50 @@ public struct AISettings {
     return VisionSettings(
       provider: provider.id, model: model ?? self.model(for: provider), address: address(for: provider),
       key: Self.key(for: provider))
+  }
+
+  /// The provider asked when the main one can't answer; empty for none.
+  public var fallbackID: String { defaults.string(forKey: Self.fallbackKey) ?? "" }
+
+  /// What a run passes to the core as the fallback: nil when there is none or it is `main`.
+  public func fallback(besides main: String? = nil) -> VisionSettings? {
+    let id = fallbackID
+    guard !id.isEmpty, id != (main ?? providerID) else { return nil }
+    return settings(provider: id)
+  }
+
+  /// The price table: the user's, or the public prices JEVision starts from.
+  public var prices: [Price] {
+    guard let rows = defaults.array(forKey: Self.pricesKey) as? [[String: Any]] else { return aiDefaultPrices() }
+    return rows.compactMap { row in
+      guard let provider = row["provider"] as? String, let model = row["model"] as? String,
+        let input = row["input"] as? Double, let output = row["output"] as? Double
+      else { return nil }
+      return Price(provider: provider, model: model, input: input, output: output)
+    }
+  }
+
+  /// Saves the user's price table.
+  public static func save(prices: [Price], in defaults: UserDefaults) {
+    let rows: [[String: Any]] = prices.map {
+      ["provider": $0.provider, "model": $0.model, "input": $0.input, "output": $0.output]
+    }
+    defaults.set(rows, forKey: pricesKey)
+  }
+
+  /// Spending limits in US dollars, for the providers that have one.
+  public var limits: [Limit] {
+    Self.providers.compactMap { provider in
+      let daily = defaults.object(forKey: Self.dailyLimitKey(provider.id)) as? Double
+      let monthly = defaults.object(forKey: Self.monthlyLimitKey(provider.id)) as? Double
+      guard daily != nil || monthly != nil else { return nil }
+      return Limit(provider: provider.id, daily: daily, monthly: monthly)
+    }
+  }
+
+  /// Where a run logs its AI calls, at what prices and within which limits.
+  public var usage: AiUsageSettings {
+    AiUsageSettings(journal: Self.journal.path(percentEncoded: false), prices: prices, limits: limits)
   }
 
   /// The API key, from the provider's environment variable or the Keychain.

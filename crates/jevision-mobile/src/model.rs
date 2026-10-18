@@ -11,7 +11,6 @@ pub use jevision_remote::{
     PauseReason, Permission, Position, ProjectInfo, Relay, RunList, RunState, RunStatus,
     RunSummary, StepStatus, TestEntry, TestSummary, Verdict,
 };
-pub use jevision_runner::VisionAnswer;
 
 /// A paired Mac as the phone saves it, with [`crate::host_record_to_json`].
 #[uniffi::remote(Record)]
@@ -232,7 +231,7 @@ pub enum PauseReason {
 }
 
 /// A vision model's verdict on a screen.
-#[uniffi::remote(Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct VisionAnswer {
     /// Provider name, such as `Anthropic`.
     pub provider: String,
@@ -240,6 +239,17 @@ pub struct VisionAnswer {
     pub passed: bool,
     /// The model's explanation, in a sentence.
     pub reason: String,
+}
+
+impl From<jevision_runner::VisionAnswer> for VisionAnswer {
+    fn from(a: jevision_runner::VisionAnswer) -> Self {
+        Self {
+            provider: a.provider,
+            model: a.model,
+            passed: a.passed,
+            reason: a.reason,
+        }
+    }
 }
 
 /// Why a block or a run failed: a localization key (`run.waitFor.timeout`) and the values its
@@ -494,7 +504,7 @@ impl From<jevision_runner::Step> for Step {
             diff: s.diff,
             reference: s.reference,
             similarity: s.similarity,
-            vision: s.vision,
+            vision: s.vision.map(Into::into),
             branch: s.branch,
             branches: s.branches,
             branch_condition: s.branch_condition,

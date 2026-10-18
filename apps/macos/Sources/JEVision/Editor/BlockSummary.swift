@@ -107,7 +107,7 @@ enum BlockSummary {
 
   /// What a comparison by meaning expects, when it says.
   private static func expectation(_ reference: Reference) -> String? {
-    guard case .meaning(let expect) = reference.compare else { return nil }
+    guard case .meaning(let expect, _) = reference.compare else { return nil }
     let text = expect.trimmingCharacters(in: .whitespacesAndNewlines)
     return text.isEmpty ? nil : text
   }
