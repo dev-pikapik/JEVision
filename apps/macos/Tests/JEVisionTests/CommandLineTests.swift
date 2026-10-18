@@ -44,7 +44,9 @@ struct CommandLineArgumentTests {
   }
 
   @Test func videoSettings() throws {
-    let defaults = try #require(UserDefaults(suiteName: "jevision-tests-\(UUID().uuidString)"))
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
     let settings = VideoSettings(defaults)
     #expect(settings.mode == .onFailure)
     #expect(settings.keepDays == 30)
@@ -75,7 +77,9 @@ struct CommandLineArgumentTests {
     #expect(MCPCommand.defaultProject(from: inner.path) == root.path)
     #expect(MCPCommand.defaultProject(from: "/") == nil)
 
-    let defaults = try #require(UserDefaults(suiteName: "jevision-tests-\(UUID().uuidString)"))
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
     let settings = AISettings(defaults)
     #expect(!settings.assistantsMayRun && !settings.assistantsMayCapture)
     defaults.set(true, forKey: AISettings.assistantsRunKey)

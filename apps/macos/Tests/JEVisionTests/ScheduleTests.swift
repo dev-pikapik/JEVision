@@ -127,7 +127,9 @@ struct ScheduleAgentsTests {
 struct ScheduleNotifierTests {
   @Test func tellsOnlyAboutNewRuns() throws {
     let project = try scratch().path
-    let defaults = try #require(UserDefaults(suiteName: "jevision-schedule-tests-\(UUID().uuidString)"))
+    let suite = "jevision-schedule-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
     func record(_ ms: Int64, failed: UInt32) throws {
       try recordScheduledRun(
         project: project,
