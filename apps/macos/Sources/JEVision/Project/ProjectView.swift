@@ -26,7 +26,8 @@ struct ProjectView: View {
           testList
         }
       }
-      .safeAreaInset(edge: .top, spacing: 0) {
+      // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
+      .safeAreaBar(edge: .top, spacing: 0) {
         if !project.runs.isEmpty || project.sidebar == .runs {
           Picker("Show", selection: $project.sidebar) {
             Text("Tests").tag(ProjectStore.Sidebar.tests)
@@ -38,7 +39,7 @@ struct ProjectView: View {
           .padding(.bottom, 6)
         }
       }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
+      .safeAreaBar(edge: .bottom, spacing: 0) {
         VStack(spacing: 0) {
           EnvironmentChip()
           ScheduleChip()

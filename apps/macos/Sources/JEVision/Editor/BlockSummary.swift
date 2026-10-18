@@ -69,11 +69,13 @@ enum BlockSummary {
     return quoted(base.replacing(/[-_]+/, with: " ").trimmingCharacters(in: .whitespaces))
   }
 
-  /// On one line: Return and Tab show as the symbols on their keys.
+  /// On one line: Return and Tab show as the symbols on their keys. The quotation marks are those of
+  /// the language the app speaks: “…” in English, «…» in Russian.
   static func quoted(_ text: String, limit: Int = 24) -> String {
     let line = String(text.map { $0.isNewline ? "⏎" : $0 == "\t" ? "⇥" : $0 })
     let short = line.count > limit ? line.prefix(limit - 1) + "…" : line
-    return "“\(short)”"
+    let language = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+    return (language.quotationBeginDelimiter ?? "“") + short + (language.quotationEndDelimiter ?? "”")
   }
 
   /// The secret's name when the whole text is one `${secret.NAME}` placeholder.

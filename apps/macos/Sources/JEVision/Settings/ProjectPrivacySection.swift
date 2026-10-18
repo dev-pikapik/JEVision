@@ -6,7 +6,7 @@ import SwiftUI
 struct ProjectPrivacySection: View {
   @Environment(ProjectStore.self) private var project
   @State private var failure: String?
-  @State private var isEditingAreas = false
+  @Environment(\.openWindow) private var openWindow
 
   var body: some View {
     Section {
@@ -33,11 +33,10 @@ struct ProjectPrivacySection: View {
             } else {
               Text(project.settings.hide.count, format: .number)
             }
-            Button("Edit…") { isEditingAreas = true }
+            Button("Edit…") { openWindow(id: SceneID.hiddenAreas) }
               .accessibilityLabel(Text("Edit Areas Always Hidden"))
           }
         }
-        .sheet(isPresented: $isEditingAreas) { ProjectHideEditor() }
       }
     } header: {
       Text("This project")

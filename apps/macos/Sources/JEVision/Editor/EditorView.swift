@@ -592,6 +592,8 @@ private struct LastRunChip: View {
       Label("Not run yet", systemImage: "circle.dashed")
         .labelStyle(.titleAndIcon)
         .foregroundStyle(.secondary)
+        // Plain text has no button insets, so it would touch the edge of the glass group.
+        .padding(.horizontal, 6)
         .help(Text("The test hasn’t been run yet"))
     }
   }

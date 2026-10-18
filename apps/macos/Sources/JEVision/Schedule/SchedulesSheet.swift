@@ -106,9 +106,14 @@ struct SchedulesSheet: View {
 
   /// “Nightly”, then “Nightly 2” and so on, whichever is free.
   private var newName: String {
-    let base = String(localized: "Nightly")
-    let taken = Set(schedules.all.map { $0.name.lowercased() })
-    return ([base] + (2...).lazy.map { "\(base) \($0)" }).first { !taken.contains($0.lowercased()) } ?? base
+    Self.freeName(String(localized: "Nightly"), taken: schedules.all.map(\.name))
+  }
+
+  /// `base`, or else `base 2`, `base 3` and so on: the first that isn't in `taken`, ignoring case.
+  nonisolated static func freeName(_ base: String, taken: [String]) -> String {
+    let taken = Set(taken.map { $0.lowercased() })
+    guard taken.contains(base.lowercased()) else { return base }
+    return (2...).lazy.map { "\(base) \($0)" }.first { !taken.contains($0.lowercased()) }!
   }
 
   /// Puts `saved` in place of the schedule named `name`, or at the end; without `saved`,

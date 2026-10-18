@@ -38,7 +38,8 @@ struct JEVisionApp: App {
         .environment(runs)
         .environment(records)
     }
-    .defaultSize(width: 960, height: 640)
+    // Wide enough for the whole editor toolbar, Run and Record included, next to the sidebar.
+    .defaultSize(width: 1200, height: 760)
     .commands { AppCommands(project: project, runs: runs, records: records, updates: updates) }
 
     Window("Welcome to JEVision", id: SceneID.onboarding) {
@@ -66,6 +67,14 @@ struct JEVisionApp: App {
     .defaultSize(width: 960, height: 640)
     .restorationBehavior(.disabled)
 
+    // A window of its own: as a sheet it is wider than the Settings window it would hang from.
+    Window("Areas Always Hidden", id: SceneID.hiddenAreas) {
+      ProjectHideEditor()
+        .environment(project)
+    }
+    .defaultPosition(.center)
+    .restorationBehavior(.disabled)
+
     Window("Pull Requests", id: SceneID.pullRequests) {
       PullRequestsView()
         .environment(project)
@@ -89,4 +98,5 @@ enum SceneID {
   static let commandLineTool = "commandLineTool"
   static let commit = "commit"
   static let pullRequests = "pullRequests"
+  static let hiddenAreas = "hiddenAreas"
 }
