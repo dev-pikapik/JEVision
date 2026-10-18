@@ -34,6 +34,28 @@ struct CommandLineArgumentTests {
         == .run(RunRequest(paths: ["t.flow.json"], project: "p", retries: 2, startAt: "b", junit: "j.xml", html: "h", json: true)))
   }
 
+  @Test func assistantServer() throws {
+    #expect(try Command.parse(["mcp"]) == .mcp(project: nil))
+    #expect(try Command.parse(["mcp", "--project", "p"]) == .mcp(project: "p"))
+    #expect(try Command.parse(["mcp", "-h"]) == .help("mcp"))
+    #expect(throws: UsageError.self) { try Command.parse(["mcp", "p"]) }
+
+    let root = FileManager.default.temporaryDirectory.appending(path: "jevision-mcp-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let inner = root.appending(path: "tests/login")
+    try FileManager.default.createDirectory(at: inner, withIntermediateDirectories: true)
+    #expect(MCPCommand.defaultProject(from: inner.path) == inner.path)
+    try FileManager.default.createDirectory(at: root.appending(path: ".jevision"), withIntermediateDirectories: true)
+    #expect(MCPCommand.defaultProject(from: inner.path) == root.path)
+    #expect(MCPCommand.defaultProject(from: "/") == nil)
+
+    let defaults = try #require(UserDefaults(suiteName: "jevision-tests-\(UUID().uuidString)"))
+    let settings = AISettings(defaults)
+    #expect(!settings.assistantsMayRun && !settings.assistantsMayCapture)
+    defaults.set(true, forKey: AISettings.assistantsRunKey)
+    #expect(settings.assistantsMayRun && !settings.assistantsMayCapture)
+  }
+
   @Test func aiProviderAndModel() throws {
     let run = try Command.parse(["run", "t.flow.json", "--provider", "ollama", "--model", "qwen2.5vl:7b"])
     #expect(run == .run(RunRequest(paths: ["t.flow.json"], provider: "ollama", model: "qwen2.5vl:7b")))

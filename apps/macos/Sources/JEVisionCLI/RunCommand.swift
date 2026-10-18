@@ -293,7 +293,10 @@ final class TestSession: @unchecked Sendable {
     }
     let listener = Progress(
       console: progress, blockCount: linear == true && request.startAt == nil ? flow?.blocks.count : nil
-    ) { [weak self] in self?.resumeWhenIdle(run) }
+    ) { [input] in
+      guard let input else { return run.resume() }
+      Self.resumeWhenIdle(run, input: input)
+    }
     progress.line()
     input?.ignoreInput(for: Self.handsOffTime)
     run.start(
@@ -319,8 +322,7 @@ final class TestSession: @unchecked Sendable {
 
   /// A person took the mouse or keyboard and the test paused: it goes on once they let go for
   /// `idleTime`, unless the run is stopped first.
-  private func resumeWhenIdle(_ run: TestRun) {
-    guard let input else { return run.resume() }
+  static func resumeWhenIdle(_ run: TestRun, input: InputWatcher) {
     Thread.detachNewThread {
       var quietSince = Date()
       while !run.isCancelled() {

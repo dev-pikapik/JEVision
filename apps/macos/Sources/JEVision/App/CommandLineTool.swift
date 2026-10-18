@@ -224,7 +224,7 @@ struct CommandLineToolView: View {
 }
 
 /// A command to copy into Terminal.
-private struct CommandText: View {
+struct CommandText: View {
   let command: String
 
   init(_ command: String) {

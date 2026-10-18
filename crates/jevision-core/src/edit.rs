@@ -212,22 +212,30 @@ impl Flow {
     }
 
     /// Adds `kinds` in order as one chain on `slot` (after the main chain without one): each
-    /// block leads to the following one and the last to whatever came after the slot. Ids come
+    /// block leads to the following one and the last to whatever came after the slot; a last
+    /// `if` goes there on both branches. A loop with an empty `body` starts empty. Ids come
     /// from the block types. Returns the new ids, or `None` (and changes nothing) when there is
-    /// nothing to add, a block has no `next` edge to chain on, or the slot is unknown.
+    /// nothing to add, a block before the last has no `next` edge to chain on, or the slot is
+    /// unknown.
     pub fn insert_blocks(
         &mut self,
         mut kinds: Vec<BlockKind>,
         slot: Option<&Slot>,
     ) -> Option<Vec<String>> {
-        if kinds.is_empty() || kinds.iter_mut().any(|k| k.next_mut().is_none()) {
+        let (_, chained) = kinds.split_last_mut()?;
+        if chained.iter_mut().any(|k| k.next_mut().is_none()) {
             return None;
         }
         let mut edited = self.clone();
         let mut ids = Vec::with_capacity(kinds.len());
         let mut slot = slot.cloned();
-        for kind in kinds {
+        for mut kind in kinds {
             let id = edited.unique_id(kind.type_name());
+            if let BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } = &mut kind {
+                if body.is_empty() {
+                    body.clone_from(&id);
+                }
+            }
             let id = edited.insert_kind(id, kind, slot.as_ref())?;
             slot = Some(Slot {
                 from: id.clone(),
@@ -423,12 +431,26 @@ mod tests {
         let original = f.clone();
         assert!(f.insert_blocks(Vec::new(), None).is_none());
         let branch = BlockKind::new("if", "if").unwrap();
-        assert!(f.insert_blocks(vec![keys("z"), branch], None).is_none());
+        assert!(f.insert_blocks(vec![branch, keys("z")], None).is_none());
         assert!(
             f.insert_blocks(vec![keys("z")], Some(&slot("nope", NEXT)))
                 .is_none()
         );
         assert_eq!(f, original);
+
+        let loop_ = BlockKind::Repeat {
+            times: 3,
+            body: String::new(),
+            next: None,
+        };
+        let branch = BlockKind::new("if", "if").unwrap();
+        let ids = f
+            .insert_blocks(vec![loop_, branch], Some(&slot("a", NEXT)))
+            .unwrap();
+        assert_eq!(ids, ["repeat", "if"]);
+        let edges = |id: &str| f.blocks.iter().find(|b| b.id == id).unwrap().kind.edges();
+        assert_eq!(edges("repeat"), [(BODY, "repeat"), (NEXT, "if")]);
+        assert_eq!(edges("if"), [(THEN, "pressKeys"), (ELSE, "pressKeys")]);
     }
 
     #[test]

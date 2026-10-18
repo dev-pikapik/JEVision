@@ -51,6 +51,21 @@ pub fn parse(text: &str) -> Result<Flow, ParseError> {
     }
 }
 
+/// Reads one block (`type` and its fields, as under `blocks` in a file), for adding it to a
+/// test. Like [`parse`], fails with every structural problem; issues name no block.
+pub fn parse_block(value: &Value) -> Result<BlockKind, ParseError> {
+    let Value::Object(map) = value else {
+        return Err(ParseError {
+            issues: vec![Issue::error("flow.json.notObject")],
+        });
+    };
+    let mut issues = Vec::new();
+    match block_kind(Obj::root(map), &mut issues) {
+        Some(kind) if issues.is_empty() => Ok(kind),
+        _ => Err(ParseError { issues }),
+    }
+}
+
 /// Brings `map` from its `format` to `oldest + steps.len()` by running the missing steps.
 pub(crate) fn migrate(
     map: &mut Map<String, Value>,

@@ -1114,3 +1114,30 @@ fn vision_problems_are_localizable_failures() {
     let step = &report.attempts[0].steps[0];
     assert_eq!(step.vision.as_ref().unwrap().reason, "The cart is empty.");
 }
+
+#[test]
+fn a_model_quoting_a_secret_from_the_screen_is_masked() {
+    let p = Project::new();
+    p.test(
+        r#""login":{"type":"type","text":"${secret.ACME_PASSWORD}","next":"check"},
+           "check":{"type":"check","reference":{"compare":"meaning","expect":"Signed in"}}"#,
+        "login",
+        0,
+    );
+    let hands = Fake::new(solid([0, 200, 0]));
+    let judge = Judge::new(
+        false,
+        Ok(Judgement {
+            passed: false,
+            reason: format!("The password field shows {SECRET}."),
+        }),
+    );
+    let run = run_judged(&p, &hands, Some(&judge), false);
+    let step = &run.report.attempts[0].steps[1];
+    assert_eq!(
+        step.vision.as_ref().unwrap().reason,
+        "The password field shows ••••."
+    );
+    let saved = std::fs::read_to_string(run.dir.join("report.json")).unwrap();
+    assert!(!saved.contains(SECRET));
+}

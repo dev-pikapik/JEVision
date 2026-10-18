@@ -927,7 +927,8 @@ impl Exec<'_> {
                 provider: judge.provider().to_owned(),
                 model: judge.model().to_owned(),
                 passed: judgement.passed,
-                reason: judgement.reason,
+                // The model may read a secret off the screen.
+                reason: self.mask(&judgement.reason),
             }),
         }))
     }

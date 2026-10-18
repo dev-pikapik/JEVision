@@ -11,9 +11,9 @@ mod layout;
 mod model;
 mod validate;
 
-pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse};
+pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use edit::{START, Slot};
-pub use issue::{Issue, IssueParam, ParseError, Severity};
+pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };

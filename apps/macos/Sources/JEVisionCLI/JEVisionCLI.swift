@@ -33,6 +33,8 @@ enum JEVisionCLI {
       return format(paths, check: check)
     case .run(let request):
       return RunCommand(request: request).execute()
+    case .mcp(let project):
+      return MCPCommand(project: project).execute()
     }
   }
 }
@@ -75,6 +77,7 @@ enum Command: Equatable {
   case validate(paths: [String], json: Bool)
   case fmt(paths: [String], check: Bool)
   case run(RunRequest)
+  case mcp(project: String?)
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }
@@ -120,6 +123,13 @@ enum Command: Equatable {
       request.html = options.values["--html"]
       request.json = options.flags.contains("--json")
       return .run(request)
+    case "mcp":
+      let options = try Options.parse(rest, command: name, flags: [], values: ["--project"])
+      if options.wantsHelp { return .help(name) }
+      if let extra = options.paths.first {
+        throw UsageError(message: "mcp takes no paths; name the project folder with --project, not “\(extra)”", command: name)
+      }
+      return .mcp(project: options.values["--project"])
     default:
       let what = name.hasPrefix("-") ? "option" : "command"
       throw UsageError(message: "there is no \(what) “\(name)”")
@@ -180,13 +190,14 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "fmt"]
+  static let commands = ["run", "validate", "fmt", "mcp"]
 
   static func usage(_ command: String?) -> String {
     switch command {
     case "run": "Usage: jevision run <tests>… [options]"
     case "validate": "Usage: jevision validate <tests>… [--json]"
     case "fmt": "Usage: jevision fmt <tests>… [--check]"
+    case "mcp": "Usage: jevision mcp [--project <folder>]"
     default: "Usage: jevision <command> [options]"
     }
   }
@@ -264,6 +275,26 @@ enum Help {
       a test, 2 — wrong arguments or a file could not be read or written.
 
       """
+    case "mcp":
+      """
+      Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or
+      Copilot, over the Model Context Protocol. The assistant starts this command itself and
+      talks to it over standard input and output; add it to the assistant's MCP servers.
+
+      \(usage(command))
+
+      Options:
+        --project <folder>  Project folder whose tests the assistant may see. Default: the
+                            nearest folder at or above the current one that has a .jevision
+                            folder, otherwise the current folder
+        -h, --help          Show this help
+
+      Assistants can list, read, write and check tests, read reports and see the test
+      format. Running tests and taking screenshots work only after you allow them in
+      JEVision → Settings → AI → Assistants. Assistants never get the values of secrets
+      or API keys, and can't touch files outside the project folder.
+
+      """
     default:
       """
       Runs, checks and formats JEVision tests.
@@ -274,6 +305,7 @@ enum Help {
         run        Run tests on this Mac
         validate   Check tests for errors and warnings
         fmt        Rewrite tests in canonical form
+        mcp        Let AI assistants read, edit and run tests (MCP server)
 
       Options:
         -h, --help     Show this help
