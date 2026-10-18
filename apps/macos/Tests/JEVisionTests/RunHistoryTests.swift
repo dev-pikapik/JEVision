@@ -66,14 +66,14 @@ struct RunHistoryTests {
   }
 
   @Test func remembersHowEachTestLastEnded() {
-    let latest = RunHistory.latest([
+    let latest = ProjectMap.latestRuns([
       Self.run("login", at: "2026-10-18T09:00:00.000Z"),
       Self.run("login", at: "2026-10-18T14:00:00.000Z", .failed),
       Self.run("home", at: "2026-10-18T10:00:00.000Z", .passed, flaky: true),
       Self.run("home", at: "2026-10-17T10:00:00.000Z", .failed),
       Self.run("draft", at: "2026-10-18T10:00:00.000Z", .cancelled),
     ])
-    #expect(latest == ["login.flow.json": .failed, "home.flow.json": .flaky, "draft.flow.json": .cancelled])
+    #expect(latest.mapValues(\.status) == ["login.flow.json": .failed, "home.flow.json": .flaky, "draft.flow.json": .cancelled])
   }
 
   @Test func tellsARealFailureFromAFlakyTest() {

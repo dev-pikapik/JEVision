@@ -36,9 +36,9 @@ final class ProjectStore {
   /// The command palette (⌘K) is shown.
   var showsCommandPalette = false
   /// Saved runs, newest first.
-  private(set) var runs: [SavedRun] = [] {
-    didSet { flaky = flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)) }
-  }
+  private(set) var runs: [SavedRun] = []
+  /// The newest run of each test, by test file relative to the project.
+  private(set) var latestRuns: [String: SavedRun] = [:]
   /// Tests whose recent runs both passed and failed without the test changing, by test file
   /// relative to the project, with the evidence.
   private(set) var flaky: [String: FlakyEvidence] = [:]
@@ -60,7 +60,7 @@ final class ProjectStore {
   private(set) var settingsProblem: String?
 
   @ObservationIgnored private var watcher: FolderWatcher?
-  @ObservationIgnored private var scanTask: Task<([ProjectItem], [SavedRun]), any Error>?
+  @ObservationIgnored private var scanTask: Task<([ProjectItem], History), any Error>?
   @ObservationIgnored private var accessedURL: URL?
 
   enum Key {
@@ -188,7 +188,7 @@ final class ProjectStore {
 
   func moveToTrash(_ run: SavedRun) throws {
     try FileManager.default.trashItem(at: run.url, resultingItemURL: nil)
-    runs.removeAll { $0.id == run.id }
+    show(History(runs.filter { $0.id != run.id }))
     if selectedRun == run.id { selectedRun = nil }
     if runs.isEmpty { sidebar = .tests }
   }
@@ -336,7 +336,7 @@ final class ProjectStore {
     showsMap = false
     showsCommandPalette = false
     items = []
-    runs = []
+    show(History([]))
     selectedRun = nil
     sidebar = .tests
     status = .loading
@@ -357,16 +357,18 @@ final class ProjectStore {
     let task = Task.detached(priority: .userInitiated) {
       let items = try ProjectScanner.scan(url)
       // Runs are a bonus to the tests: an unreadable history doesn't close the project.
-      return (items, (try? listRuns(project: url.path)) ?? [])
+      return (items, History((try? listRuns(project: url.path)) ?? []))
     }
     scanTask = task
     Task { [weak self] in
       let result = await task.result
       guard let self, scanTask == task, !task.isCancelled else { return }
       switch result {
-      case .success(let (found, saved)):
-        items = found
-        runs = saved
+      case .success(let (found, history)):
+        // The folder changes all the time while a test runs; unchanged lists don't redraw the sidebar.
+        if items != found { items = found }
+        show(history)
+        let saved = history.runs
         if let selectedRun, !saved.contains(where: { $0.id == selectedRun }),
           !FileManager.default.fileExists(atPath: selectedRun)
         {
@@ -387,11 +389,31 @@ final class ProjectStore {
           open(moved)
         } else {
           items = []
-          runs = []
+          show(History([]))
           status = .unavailable
         }
       }
     }
+  }
+
+  /// Saved runs and what the project shows from them, worked out off the main thread: in a
+  /// project with a long history that takes long enough to stall the window.
+  private struct History: Sendable {
+    let runs: [SavedRun]
+    let latest: [String: SavedRun]
+    let flaky: [String: FlakyEvidence]
+
+    init(_ runs: [SavedRun]) {
+      self.runs = runs
+      latest = ProjectMap.latestRuns(runs)
+      flaky = runs.isEmpty ? [:] : flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000))
+    }
+  }
+
+  private func show(_ history: History) {
+    if runs != history.runs { runs = history.runs }
+    if latestRuns != history.latest { latestRuns = history.latest }
+    if flaky != history.flaky { flaky = history.flaky }
   }
 
   private func save(_ url: URL) {

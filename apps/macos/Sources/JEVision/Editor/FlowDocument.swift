@@ -8,11 +8,33 @@ import Observation
 @Observable
 final class FlowDocument {
   let url: URL
-  private(set) var flow: Flow?
+  private(set) var flow: Flow? {
+    didSet {
+      blockIndex = Dictionary(
+        (flow?.blocks ?? []).enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+  }
   /// Why the file can't be opened, when it can't.
   private(set) var failure: String?
-  private(set) var issues: [Issue] = []
-  private(set) var layout = FlowLayout(width: 0, height: 0, blocks: [], frames: [], edges: [], slots: [], ports: [])
+  private(set) var issues: [Issue] = [] {
+    didSet { blockIssues = Dictionary(grouping: issues) { $0.param("block") } }
+  }
+  private(set) var layout = FlowLayout(width: 0, height: 0, blocks: [], frames: [], edges: [], slots: [], ports: []) {
+    didSet {
+      order = layout.blocks.sorted { ($0.rect.y, $0.rect.x) < ($1.rect.y, $1.rect.x) }.map(\.id)
+      steps = Dictionary(order.enumerated().map { ($1, $0 + 1) }, uniquingKeysWith: { first, _ in first })
+      linked = Set(
+        layout.edges.filter { $0.from != $0.to }.flatMap { $0.edge == "body" ? [$0.to] : [$0.from, $0.to] })
+    }
+  }
+  /// Blocks in reading order: top to bottom, then left to right.
+  private(set) var order: [String] = []
+  // Worked out once per change, so the canvas doesn't search the whole test for every block it
+  // draws: in a test of hundreds of blocks that made every frame of a drag slow.
+  @ObservationIgnored private var blockIndex: [String: Int] = [:]
+  private var blockIssues: [String?: [Issue]] = [:]
+  private var steps: [String: Int] = [:]
+  private var linked: Set<String> = []
   /// Why the last change couldn't be written to the file.
   private(set) var saveError: String?
   /// The block the inspector shows.
@@ -76,16 +98,17 @@ final class FlowDocument {
   }
 
   func block(_ id: String) -> Block? {
-    flow?.blocks.first { $0.id == id }
+    guard let flow, let index = blockIndex[id] else { return nil }
+    return flow.blocks[index]
   }
 
   func issues(of id: String) -> [Issue] {
-    issues.filter { $0.param("block") == id }
+    blockIssues[id] ?? []
   }
 
-  /// Blocks in reading order: top to bottom, then left to right.
-  var order: [String] {
-    layout.blocks.sorted { ($0.rect.y, $0.rect.x) < ($1.rect.y, $1.rect.x) }.map(\.id)
+  /// Where block `id` comes in reading order, counted from 1; 1 for a block not laid out.
+  func step(of id: String) -> Int {
+    steps[id] ?? 1
   }
 
   // MARK: Changes
@@ -224,7 +247,7 @@ final class FlowDocument {
 
   /// Whether a link leads into or out of block `id`, other than a loop's own body.
   func hasLinks(_ id: String) -> Bool {
-    layout.edges.contains { ($0.from == id || $0.to == id) && $0.from != $0.to && !($0.from == id && $0.edge == "body") }
+    linked.contains(id)
   }
 
   /// Removes every link into and out of block `id`, so it stands alone.
