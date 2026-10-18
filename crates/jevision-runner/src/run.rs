@@ -65,6 +65,44 @@ pub struct Run {
     pub report: RunReport,
 }
 
+impl Run {
+    /// Reads the run saved in `dir`.
+    pub fn load(dir: &Path) -> io::Result<Self> {
+        let text = fs::read_to_string(dir.join("report.json"))?;
+        let report: RunReport = serde_json::from_str(&text)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        if report.format > REPORT_FORMAT {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "the report has format {}, this version reads up to {REPORT_FORMAT}",
+                    report.format
+                ),
+            ));
+        }
+        Ok(Self {
+            dir: dir.to_path_buf(),
+            report,
+        })
+    }
+
+    /// Runs saved in `<project>/.jevision/runs`, newest first. Runs still going and folders
+    /// without a readable report are left out.
+    pub fn list(project: &Path) -> io::Result<Vec<Self>> {
+        let entries = match fs::read_dir(project.join(".jevision").join("runs")) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(e),
+        };
+        let mut runs: Vec<Self> = entries
+            .filter_map(|entry| Self::load(&entry.ok()?.path()).ok())
+            .collect();
+        // RFC 3339 times in UTC sort as text; the folder breaks ties within a millisecond.
+        runs.sort_by(|a, b| (&b.report.started_at, &b.dir).cmp(&(&a.report.started_at, &a.dir)));
+        Ok(runs)
+    }
+}
+
 impl Runner<'_> {
     /// Runs the test file `test` (relative to `project`, or absolute) and saves the report and
     /// screenshots in a new folder `<project>/.jevision/runs/<time>-<test>`. A test that fails
@@ -411,6 +449,7 @@ impl Exec<'_> {
             after: None,
             expected: None,
             diff: None,
+            reference: None,
             similarity: None,
             branch: None,
             failure: None,
@@ -540,6 +579,8 @@ impl Exec<'_> {
                 let shot = self.capture(id)?;
                 match self.evaluate(t, id, reference, &shot, true, &mut None)? {
                     Ok(e) => {
+                        let path = self.resolve(t, id, &e.reference.name)?;
+                        step.reference = Some(relative(self.project, &path));
                         self.record_comparison(step, reference, &e)?;
                         if !e.passed {
                             let threshold = match reference.compare {
@@ -856,6 +897,7 @@ impl Exec<'_> {
         write(&path, &png)?;
         step.after = Some(self.record(step, "after", &png)?);
         step.status = StepStatus::BaselineCreated;
+        step.reference = Some(relative(self.project, &path));
         self.baselines.push(relative(self.project, &path));
         Ok(())
     }

@@ -5,6 +5,7 @@ import SwiftUI
 /// How the last run ended, at the bottom of the editor, with the report a click away.
 struct RunResultBar: View {
   @Environment(RunCenter.self) private var runs
+  @Environment(ProjectStore.self) private var project
   @Environment(\.openSettings) private var openSettings
   let result: RunCenter.Result
   @State private var gitIgnoreError: String?
@@ -27,8 +28,8 @@ struct RunResultBar: View {
           }
           .buttonStyle(.glassProminent)
         }
-        if let report = result.report {
-          Button("Open Report") { NSWorkspace.shared.open(report) }
+        if let run = result.run {
+          Button("Open Report") { project.showRun(run) }
             .buttonStyle(.glass)
         }
         Button("Close", systemImage: "xmark", action: runs.dismissResult)
