@@ -68,7 +68,7 @@ struct BlockSummaryTests {
         == "“app.sqlite”: “select count(*) from notes” → rows")
     let value = BlockKind.if(
       condition: .value(ValueCheck(of: "${var.total}", is: .greaterThan, to: "3")), then: nil, elseIf: [], otherwise: nil)
-    #expect(summary(value) == "If ${var.total} > “3”")
+    #expect(summary(value) == unbreakablePlaceholders(text: "If ${var.total} > “3”"))
     for kind in BlockInfo.catalog.map(\.typeName) {
       #expect(BlockInfo.symbol(kind) != "square.dashed", "\(kind) has no symbol")
       #expect(BlockInfo.title(kind) != kind || kind == "if", "\(kind) has no title")
