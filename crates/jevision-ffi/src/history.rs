@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use jevision_runner::Run;
+use jevision_runner::{Run, StepStatus, Verdict};
 
 use crate::RunReport;
 
@@ -109,10 +109,199 @@ pub fn export_junit(dirs: Vec<String>, to: String) -> Result<(), ReportError> {
     Ok(())
 }
 
+/// How a test has been doing lately, as its saved runs tell. Stopped runs don't count.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TestHealth {
+    /// Runs that passed or failed in the 30 days before now.
+    pub runs_30_days: u32,
+    /// Share of those runs that passed, in whole percent rounded down; `None` without runs.
+    pub pass_percent: Option<u32>,
+    /// The last 20 runs that passed or failed, oldest first.
+    pub recent: Vec<HealthMark>,
+    /// The block the failed runs of the 30 days stopped at most often; of two blocks as
+    /// often, the one that failed last.
+    pub fails_most_at: Option<FailurePoint>,
+    /// Start of the first of the failed runs the test has ended with since it last passed,
+    /// RFC 3339; `None` when its latest run passed.
+    pub failing_since: Option<String>,
+}
+
+/// How one run went, for the health bars.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum HealthMark {
+    Passed,
+    /// Passed after failing first.
+    Flaky,
+    Failed,
+}
+
+/// A block runs failed at.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FailurePoint {
+    /// Test file the block belongs to, relative to the project folder: another test's for a
+    /// block of a test this one runs.
+    pub test: String,
+    pub block: String,
+    /// Type of the block, such as `waitFor`.
+    pub block_type: String,
+    /// Failed runs that stopped there.
+    pub failures: u32,
+}
+
+const HEALTH_WINDOW_MS: i64 = 30 * 86_400_000;
+const HEALTH_BARS: usize = 20;
+
+/// The health of a test from `runs`, its saved runs in any order, at `now_ms` milliseconds
+/// since 1970.
+#[uniffi::export]
+pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
+    let mut finished: Vec<(i64, &RunReport)> = runs
+        .iter()
+        .filter(|run| run.verdict != Verdict::Cancelled)
+        .map(|run| (unix_ms(&run.started_at).unwrap_or(i64::MIN), run))
+        .collect();
+    finished.sort_by_key(|(at, _)| *at);
+
+    let since = now_ms.saturating_sub(HEALTH_WINDOW_MS);
+    let month: Vec<&RunReport> = finished
+        .iter()
+        .filter(|(at, _)| *at >= since)
+        .map(|(_, run)| *run)
+        .collect();
+    let passed = month
+        .iter()
+        .filter(|run| run.verdict == Verdict::Passed)
+        .count();
+
+    let mut points: Vec<(FailurePoint, usize)> = Vec::new();
+    for (index, step) in month.iter().enumerate().filter_map(|(i, run)| {
+        run.attempts
+            .last()?
+            .steps
+            .iter()
+            .rev()
+            .find(|step| step.status == StepStatus::Failed && step.failure.is_some())
+            .map(|step| (i, step))
+    }) {
+        match points
+            .iter_mut()
+            .find(|(p, _)| p.test == step.test && p.block == step.block)
+        {
+            Some((point, last)) => {
+                point.failures += 1;
+                *last = index;
+            }
+            None => points.push((
+                FailurePoint {
+                    test: step.test.clone(),
+                    block: step.block.clone(),
+                    block_type: step.block_type.clone(),
+                    failures: 1,
+                },
+                index,
+            )),
+        }
+    }
+
+    let recent = finished[finished.len().saturating_sub(HEALTH_BARS)..]
+        .iter()
+        .map(|(_, run)| match run.verdict {
+            Verdict::Passed if run.flaky => HealthMark::Flaky,
+            Verdict::Passed => HealthMark::Passed,
+            _ => HealthMark::Failed,
+        })
+        .collect();
+    let failing_since = finished
+        .iter()
+        .rev()
+        .take_while(|(_, run)| run.verdict == Verdict::Failed)
+        .last()
+        .map(|(_, run)| run.started_at.clone());
+
+    TestHealth {
+        runs_30_days: u32::try_from(month.len()).unwrap_or(u32::MAX),
+        pass_percent: (!month.is_empty())
+            .then(|| u32::try_from(passed * 100 / month.len()).unwrap_or(100)),
+        recent,
+        fails_most_at: points
+            .into_iter()
+            .max_by_key(|(point, last)| (point.failures, *last))
+            .map(|(point, _)| point),
+        failing_since,
+    }
+}
+
+/// Milliseconds since 1970 of an RFC 3339 time, such as `2026-10-18T14:30:05.123Z` or
+/// `2026-10-18T16:30:05+02:00`.
+fn unix_ms(text: &str) -> Option<i64> {
+    let number = |from: usize, to: usize| -> Option<i64> {
+        let digits = text.get(from..to)?;
+        digits
+            .bytes()
+            .all(|b| b.is_ascii_digit())
+            .then(|| digits.parse().ok())?
+    };
+    let separators = [(4, b'-'), (7, b'-'), (13, b':'), (16, b':')];
+    let bytes = text.as_bytes();
+    if bytes.len() < 20
+        || !separators.iter().all(|&(i, c)| bytes[i] == c)
+        || !matches!(bytes[10], b'T' | b't' | b' ')
+    {
+        return None;
+    }
+    let (year, month, day) = (number(0, 4)?, number(5, 7)?, number(8, 10)?);
+    let (hour, minute, second) = (number(11, 13)?, number(14, 16)?, number(17, 19)?);
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || minute > 59 {
+        return None;
+    }
+    if second > 60 {
+        return None;
+    }
+    let mut rest = &text[19..];
+    let mut ms = 0;
+    if let Some(fraction) = rest.strip_prefix('.') {
+        let digits = fraction.bytes().take_while(u8::is_ascii_digit).count();
+        if digits == 0 {
+            return None;
+        }
+        ms = format!("{:0<3}", &fraction[..digits.min(3)]).parse().ok()?;
+        rest = &fraction[digits..];
+    }
+    let offset = match rest {
+        "Z" | "z" => 0,
+        _ => {
+            let sign = match rest.as_bytes().first()? {
+                b'+' => 1,
+                b'-' => -1,
+                _ => return None,
+            };
+            let parts = rest.get(1..)?;
+            let digits = |range: std::ops::Range<usize>| -> Option<i64> {
+                let part = parts.get(range)?;
+                part.bytes()
+                    .all(|b| b.is_ascii_digit())
+                    .then(|| part.parse().ok())?
+            };
+            if parts.len() != 5 || parts.as_bytes()[2] != b':' {
+                return None;
+            }
+            sign * (digits(0..2)? * 60 + digits(3..5)?)
+        }
+    };
+    // Civil date to days, after Howard Hinnant's `days_from_civil`.
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * ((month + 9) % 12) + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    let seconds = days * 86_400 + hour * 3600 + minute * 60 + second - offset * 60;
+    Some(seconds * 1000 + ms)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jevision_runner::{StepStatus, Verdict};
     use std::path::PathBuf;
 
     struct Folder(PathBuf);
@@ -132,6 +321,141 @@ mod tests {
                 "durationMs":300,"after":"shots/1-001-check-after.png","reference":"refs/home.png",
                 "similarity":0.5}}]}}]}}"#
         )
+    }
+
+    fn saved(test: &str, started: &str, verdict: &str) -> RunReport {
+        serde_json::from_str::<jevision_runner::RunReport>(&report(test, started, verdict))
+            .unwrap()
+            .into()
+    }
+
+    #[test]
+    fn reads_rfc3339_times() {
+        assert_eq!(unix_ms("2023-11-14T22:13:20.123Z"), Some(1_700_000_000_123));
+        assert_eq!(
+            unix_ms("2023-11-15T00:13:20.1+02:00"),
+            Some(1_700_000_000_100)
+        );
+        assert_eq!(
+            unix_ms("2023-11-14T20:13:20-02:00"),
+            Some(1_700_000_000_000)
+        );
+        assert_eq!(unix_ms("1970-01-01T00:00:00Z"), Some(0));
+        assert_eq!(unix_ms("2000-02-29T00:00:00.000Z"), Some(951_782_400_000));
+        assert_eq!(unix_ms("1969-12-31T23:59:59Z"), Some(-1000));
+        for bad in [
+            "",
+            "2023-11-14",
+            "2023-11-14T22:13:20",
+            "2023-13-14T22:13:20Z",
+            "2023-11-14T22:13:20.Z",
+            "2023-11-14T22:13:20+0200",
+            "2023-11-1xT22:13:20Z",
+            "2023-11-14T22:13:2\u{e9}Z",
+        ] {
+            assert_eq!(unix_ms(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn health_of_a_test() {
+        let now = unix_ms("2026-10-18T15:00:00.000Z").unwrap();
+        let empty = test_health(vec![], now);
+        assert_eq!(empty.runs_30_days, 0);
+        assert_eq!(empty.pass_percent, None);
+        assert!(empty.recent.is_empty());
+        assert_eq!(empty.fails_most_at, None);
+        assert_eq!(empty.failing_since, None);
+
+        let at_block = |run: RunReport, test: &str, block: &str| {
+            let mut run = run;
+            let step = &mut run.attempts[0].steps[0];
+            step.test = test.into();
+            step.block = block.into();
+            step.failure = Some(crate::Failure {
+                code: "run.check.mismatch".into(),
+                params: Default::default(),
+            });
+            run
+        };
+        let mut runs = vec![
+            // Older than 30 days: a bar, but not in the percentage or the failure count.
+            at_block(
+                saved("t", "2026-09-01T10:00:00.000Z", "failed"),
+                "t.flow.json",
+                "old",
+            ),
+            saved("t", "2026-10-10T10:00:00.000Z", "passed"),
+            at_block(
+                saved("t", "2026-10-11T10:00:00.000Z", "failed"),
+                "t.flow.json",
+                "wait",
+            ),
+            at_block(
+                saved("t", "2026-10-12T10:00:00.000Z", "failed"),
+                "shared/login.flow.json",
+                "wait",
+            ),
+            at_block(
+                saved("t", "2026-10-13T10:00:00.000Z", "failed"),
+                "shared/login.flow.json",
+                "wait",
+            ),
+            saved("t", "2026-10-17T10:00:00.000Z", "cancelled"),
+        ];
+        let mut flaky = saved("t", "2026-10-18T09:00:00.000Z", "passed");
+        flaky.flaky = true;
+        runs.push(flaky);
+        runs.push(at_block(
+            saved("t", "2026-10-18T14:28:00.000Z", "failed"),
+            "t.flow.json",
+            "wait",
+        ));
+        runs.push(at_block(
+            saved("t", "2026-10-18T14:40:00.000Z", "failed"),
+            "t.flow.json",
+            "check",
+        ));
+        runs.reverse();
+
+        let health = test_health(runs, now);
+        assert_eq!(health.runs_30_days, 7);
+        assert_eq!(health.pass_percent, Some(28));
+        assert_eq!(
+            health.recent,
+            [
+                HealthMark::Failed,
+                HealthMark::Passed,
+                HealthMark::Failed,
+                HealthMark::Failed,
+                HealthMark::Failed,
+                HealthMark::Flaky,
+                HealthMark::Failed,
+                HealthMark::Failed,
+            ]
+        );
+        assert_eq!(
+            health.fails_most_at,
+            Some(FailurePoint {
+                test: "t.flow.json".into(),
+                block: "wait".into(),
+                block_type: "check".into(),
+                failures: 2,
+            }),
+            "a tie goes to the block that failed last"
+        );
+        assert_eq!(
+            health.failing_since.as_deref(),
+            Some("2026-10-18T14:28:00.000Z")
+        );
+
+        let many: Vec<RunReport> = (0..25)
+            .map(|i| saved("t", &format!("2026-10-18T10:{i:02}:00.000Z"), "passed"))
+            .collect();
+        let health = test_health(many, now);
+        assert_eq!(health.recent.len(), 20);
+        assert_eq!(health.pass_percent, Some(100));
+        assert_eq!(health.failing_since, None);
     }
 
     #[test]

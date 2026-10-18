@@ -252,7 +252,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     return url
   }
 
-  static func runningApps(_ app: String) -> [NSRunningApplication] {
+  public static func runningApps(_ app: String) -> [NSRunningApplication] {
     NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
   }
 
@@ -299,7 +299,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   /// The front window of any of `apps`: its id, frame in global top-left coordinates and title.
-  static func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
+  public static func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
     windows(of: apps).first
   }
 

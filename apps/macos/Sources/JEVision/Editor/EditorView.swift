@@ -44,7 +44,11 @@ struct EditorView: View {
   }
 
   private func editor(_ flow: Flow) -> some View {
-    canvas
+    let lastRun = project.rootURL.map {
+      LastRun(
+        file: RelativePath.from($0, to: document.url), flow: flow, runs: project.runs, pinned: document.reportRun)
+    }
+    return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:])
       .overlay(alignment: .topLeading) {
         if let target = palette {
           GeometryReader { box in
@@ -85,10 +89,14 @@ struct EditorView: View {
       .animation(.snappy(duration: 0.2), value: palette)
       .animation(.snappy, value: runs.result)
       .onChange(of: document.flow) { runs.clearMarks(of: document) }
+      .onChange(of: runs.result) { _, result in
+        // A new run of the test is what the blocks show from now on.
+        if result?.test == document.url { document.reportRun = nil }
+      }
       .inspector(isPresented: inspectorShown) {
         Group {
           if let selection = document.selection {
-            InspectorView(document: document, id: selection)
+            InspectorView(document: document, id: selection, failure: lastRun?.failure(of: selection))
           }
         }
         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
@@ -108,6 +116,17 @@ struct EditorView: View {
             TestDetailsView(document: document)
           }
         }
+        ToolbarItemGroup(placement: .primaryAction) {
+          AppPicker(
+            bundleID: Binding(
+              get: { flow.app.isEmpty ? nil : flow.app },
+              set: { app in document.updateFlow(field: "app") { $0.app = app ?? "" } }),
+            noneTitle: Text("Choose App")
+          )
+          .help(Text("The app the test runs in. Click to choose another one."))
+          LastRunChip(run: lastRun?.own)
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItem(placement: .primaryAction) {
           Menu {
             Button("Add Note", systemImage: "note.text") { addNote(at: nil) }
@@ -196,11 +215,11 @@ struct EditorView: View {
     Binding(get: { showsInspector && document.selection != nil }, set: { showsInspector = $0 })
   }
 
-  private var canvas: some View {
+  private func canvas(outcomes: [String: BlockOutcome]) -> some View {
     GeometryReader { viewport in
       ScrollView([.horizontal, .vertical]) {
         let visible = CGSize(width: viewport.size.width / zoom, height: viewport.size.height / zoom)
-        FlowCanvas(document: document, appName: apps.name(of:), minSize: visible) { items, block in
+        FlowCanvas(document: document, appName: apps.name(of:), minSize: visible, outcomes: outcomes) { items, block in
           document.pick(items, prefer: block)
           showsInspector = true
           canvasFocused = true
@@ -380,6 +399,40 @@ enum Zoom {
   static func step(_ value: Double, up: Bool) -> Double {
     let steps = [0.3, 0.5, 0.75, 1, 1.25, 1.5, 2]
     return up ? steps.first { $0 > value + 0.01 } ?? range.upperBound : steps.last { $0 < value - 0.01 } ?? range.lowerBound
+  }
+}
+
+/// How the test's newest run ended and how long ago; a click opens its report.
+private struct LastRunChip: View {
+  @Environment(ProjectStore.self) private var project
+  let run: SavedRun?
+
+  var body: some View {
+    if let run {
+      Button { project.showRun(run.url) } label: {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+          Label {
+            Text(verbatim: "\(run.status.title) · \(Self.ago(run.startedAt, now: context.date))")
+          } icon: {
+            Image(systemName: run.status.symbol)
+              .foregroundStyle(run.status.color)
+          }
+          .labelStyle(.titleAndIcon)
+        }
+      }
+      .help(Text("Open the report of the last run"))
+    } else {
+      Label("Not run yet", systemImage: "circle.dashed")
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(.secondary)
+        .help(Text("The test hasn’t been run yet"))
+    }
+  }
+
+  /// "2 min ago", or "just now" within the first minute.
+  static func ago(_ date: Date, now: Date) -> String {
+    guard now.timeIntervalSince(date) >= 60 else { return String(localized: "just now") }
+    return date.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
   }
 }
 

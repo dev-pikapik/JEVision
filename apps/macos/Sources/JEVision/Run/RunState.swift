@@ -8,9 +8,7 @@ struct RunState: Equatable {
     case finished(Verdict)
   }
 
-  enum Mark: Equatable {
-    case passed, failed
-  }
+  typealias Mark = BlockOutcome
 
   /// The test file, relative to the project, as the run reports it.
   private(set) var file = ""

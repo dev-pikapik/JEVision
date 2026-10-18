@@ -4,6 +4,7 @@ import SwiftUI
 struct ProjectView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
+  @Environment(RecordCenter.self) private var records
   @State private var query = ""
   @State private var renaming: ProjectItem?
   @State private var newName = ""
@@ -46,23 +47,14 @@ struct ProjectView: View {
         prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search tests"))
       .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
     } detail: {
-      if project.sidebar == .runs {
-        if let dir = project.selectedRun {
-          RunReportView(dir: dir)
-            .id(dir)
-        } else {
-          ContentUnavailableView(
-            "Select a run", systemImage: "clock.arrow.circlepath",
-            description: Text("Its report shows every step, with screenshots."))
+      detail
+        .overlay(alignment: .bottom) {
+          if let result = runs.batchResult {
+            BatchResultBar(result: result)
+              .transition(.move(edge: .bottom).combined(with: .opacity))
+          }
         }
-      } else if let document = project.document {
-        EditorView(document: document)
-          .id(document.url)
-      } else if let id = project.selection, let item = project.items.item(withID: id) {
-        ItemDetailView(item: item)
-      } else {
-        ContentUnavailableView("Select a test", systemImage: "flowchart")
-      }
+        .animation(.snappy, value: runs.batchResult)
     }
     .onChange(of: runs.result) { _, result in
       // Run Again from a report: the new run's report takes its place.
@@ -87,13 +79,47 @@ struct ProjectView: View {
     } message: { Text($0) }
   }
 
+  @ViewBuilder private var detail: some View {
+    if project.sidebar == .runs {
+      if let dir = project.selectedRun {
+        RunReportView(dir: dir)
+          .id(dir)
+      } else {
+        ContentUnavailableView(
+          "Select a run", systemImage: "clock.arrow.circlepath",
+          description: Text("Its report shows every step, with screenshots."))
+      }
+    } else if project.showsMap {
+      ProjectMapView()
+    } else if let document = project.document {
+      EditorView(document: document)
+        .id(document.url)
+    } else if let id = project.selection, let item = project.items.item(withID: id) {
+      ItemDetailView(item: item)
+    } else {
+      ContentUnavailableView("Select a test", systemImage: "flowchart")
+    }
+  }
+
   private var testList: some View {
     @Bindable var project = project
     let latest = RunHistory.latest(project.runs)
-    return List(selection: $project.selection) {
+    let selection = Binding<ProjectItem.ID?>(
+      get: { project.showsMap ? Self.mapTag : project.selection },
+      set: { id in
+        if id == Self.mapTag {
+          project.showsMap = true
+          project.selection = nil
+        } else {
+          project.selection = id
+        }
+      })
+    return List(selection: selection) {
         if isSearching {
           ForEach(ProjectScanner.tests(in: project.items, matching: query)) { row($0, showsPath: true, latest: latest) }
         } else {
+          MapRow(run: canRun ? { runAll(project.items, title: String(localized: "All tests")) } : nil)
+            .tag(Self.mapTag)
           Section("Tests") {
             ForEach(project.items) { tree($0, latest: latest) }
           }
@@ -131,8 +157,11 @@ struct ProjectView: View {
   }
 
   private func row(_ item: ProjectItem, showsPath: Bool, latest: [String: RunStatus]) -> some View {
-    SidebarRow(item: item, showsPath: showsPath, status: latest[item.id])
+    SidebarRow(item: item, showsPath: showsPath, status: latest[item.id], run: canRun ? { run(item) } : nil)
       .contextMenu {
+        Button(item.kind == .test ? "Run" : "Run Folder") { run(item) }
+          .disabled(!canRun)
+        Divider()
         if item.kind == .test {
           Button("Rename…") {
             newName = item.name
@@ -146,6 +175,28 @@ struct ProjectView: View {
           Button("Show History…") { project.historyPath = item.id }
         }
       }
+  }
+
+  /// Tag of the Project Map row: no test or folder path looks like it.
+  private static let mapTag = "\u{1}map"
+
+  private var canRun: Bool { !runs.isRunning && !records.isRecording && project.rootURL != nil }
+
+  /// Opens and runs a test; runs every test of a folder one after another.
+  private func run(_ item: ProjectItem) {
+    guard let root = project.rootURL else { return }
+    switch item.kind {
+    case .test:
+      project.selection = item.id
+      if let document = project.document { runs.run(document, in: root) }
+    case .folder:
+      runAll([item], title: item.name)
+    }
+  }
+
+  private func runAll(_ items: [ProjectItem], title: String) {
+    guard let root = project.rootURL else { return }
+    runs.runAll(items.flatMap(\.tests).map(\.url), in: root, title: title)
   }
 
   private func trash(_ item: ProjectItem) {
@@ -194,16 +245,56 @@ private struct GitChip: View {
   }
 }
 
+/// A Run button that shows while the pointer is over the row; VoiceOver offers it as an action.
+private struct RunOnHover: ViewModifier {
+  let title: Text
+  let run: (() -> Void)?
+  @State private var isHovering = false
+
+  func body(content: Content) -> some View {
+    HStack(spacing: 4) {
+      content
+      if isHovering, let run {
+        Spacer(minLength: 0)
+        Button(action: run) {
+          Image(systemName: "play.fill")
+            .font(.system(size: 9))
+            .frame(width: 18, height: 18)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.borderless)
+        .help(title)
+        .accessibilityHidden(true)
+      }
+    }
+    .onHover { isHovering = $0 }
+    .accessibilityAction(named: title) { run?() }
+  }
+}
+
+/// The first row of the test list: the project map, with Run All on hover.
+private struct MapRow: View {
+  let run: (() -> Void)?
+
+  var body: some View {
+    Label("Project Map", systemImage: "rectangle.3.group")
+      .modifier(RunOnHover(title: Text("Run All Tests"), run: run))
+  }
+}
+
 private struct SidebarRow: View {
   let item: ProjectItem
   let showsPath: Bool
   /// How the test's last run ended.
   let status: RunStatus?
+  /// Runs the test, or every test of the folder; `nil` while nothing can run.
+  let run: (() -> Void)?
 
   var body: some View {
     switch item.kind {
     case .folder:
       Label(item.name, systemImage: "folder")
+        .modifier(RunOnHover(title: Text("Run Folder"), run: run))
         .badge(item.testCount)
         .accessibilityValue(Text("\(item.testCount) tests"))
     case .test:
@@ -229,6 +320,7 @@ private struct SidebarRow: View {
       } icon: {
         Image(systemName: "flowchart")
       }
+      .modifier(RunOnHover(title: Text("Run"), run: run))
       .accessibilityValue(status.map { Text("Last run: \($0.title)") } ?? Text(verbatim: ""))
     }
   }

@@ -28,6 +28,8 @@ final class FlowDocument {
   private(set) var picked: Set<CanvasItem> = []
   /// How the next runs go, picked in the Run menu.
   var runChoices = RunChoices()
+  /// The run a report opened the test from: the blocks show how they did in it, not in the newest run.
+  var reportRun: SavedRun.ID?
 
   @ObservationIgnored weak var undoManager: UndoManager?
   /// The text last read from or written to the file, to tell our own writes from changes made elsewhere.

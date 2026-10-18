@@ -30,7 +30,7 @@ final class RecordCenter {
   var failure: String?
 
   @ObservationIgnored private var recorder: Recorder?
-  @ObservationIgnored private var app = ""
+  @ObservationIgnored private(set) var app = ""
   @ObservationIgnored private var panel: GlassPanel?
   @ObservationIgnored private var areaPicker: AreaPicker?
   @ObservationIgnored private var hiddenWindows: [NSWindow] = []

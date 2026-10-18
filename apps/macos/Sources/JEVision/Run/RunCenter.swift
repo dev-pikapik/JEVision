@@ -34,8 +34,36 @@ final class RunCenter {
     var needsAISetup = false
   }
 
+  /// Tests run one after another, as Run All or a folder's Run starts them.
+  struct Batch {
+    /// "All Tests" or the folder's name.
+    let title: String
+    let project: URL
+    /// Tests still to run.
+    var queue: [URL]
+    let total: Int
+    var passed = 0
+    var failed = 0
+    /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
+    var notRun = 0
+    var isStopping = false
+  }
+
+  /// How the tests of a batch did, once it's over.
+  struct BatchResult: Equatable {
+    let title: String
+    let total: Int
+    let passed: Int
+    let failed: Int
+    /// The batch was stopped before every test ran.
+    let stopped: Bool
+  }
+
   /// The run that waits for a permission, a secret or a fix; shown as a sheet.
-  var blocked: Request?
+  var blocked: Request? {
+    // Cancelling the sheet of a batch's test stops the batch.
+    didSet { if blocked == nil, !isRunning, batch != nil { endBatch() } }
+  }
   /// The test that runs now, while it runs.
   private(set) var running: Request?
   /// The current or last run, for the HUD and the canvas.
@@ -43,6 +71,9 @@ final class RunCenter {
   /// The test `state` belongs to.
   private(set) var stateURL: URL?
   private(set) var result: Result?
+  /// The batch running now.
+  private(set) var batch: Batch?
+  private(set) var batchResult: BatchResult?
   /// Blocks to pause before, by test file. Not part of the test: kept in this Mac's settings.
   private(set) var breakpoints: [URL: Set<String>]
 
@@ -107,8 +138,46 @@ final class RunCenter {
   /// Starts the run the sheet was holding back, now that nothing is missing.
   func confirm() {
     guard let request = blocked else { return }
-    blocked = nil
+    // Asks again, with a new sheet, if something is still missing.
     run(request.document, in: request.project, from: request.from, stepByStep: request.stepByStep)
+    if isRunning { blocked = nil }
+  }
+
+  /// Runs `tests` one after another, each saved in the history, and sums up how they did.
+  func runAll(_ tests: [URL], in project: URL, title: String) {
+    guard !isRunning, blocked == nil, !tests.isEmpty else { return }
+    batchResult = nil
+    batch = Batch(title: title, project: project, queue: tests, total: tests.count)
+    runNextInBatch()
+  }
+
+  func dismissBatchResult() { batchResult = nil }
+
+  private func runNextInBatch() {
+    while let current = batch, !current.isStopping, let test = current.queue.first {
+      batch?.queue.removeFirst()
+      run(FlowDocument(url: test), in: current.project)
+      if isRunning { return }
+      if blocked != nil {
+        showApp()
+        return
+      }
+      // Unreadable: `run` refuses it without a word.
+      batch?.notRun += 1
+    }
+    endBatch()
+  }
+
+  private func endBatch() {
+    guard let batch else { return }
+    self.batch = nil
+    let summary = BatchResult(
+      title: batch.title, total: batch.total, passed: batch.passed, failed: batch.failed,
+      stopped: batch.passed + batch.failed + batch.notRun < batch.total)
+    result = nil
+    batchResult = summary
+    if !hiddenWindows.isEmpty { showApp() }
+    AccessibilityNotification.Announcement(RunText.batchOutcome(summary)).post()
   }
 
   /// Starts the run; `false` when the emergency stop can't be armed.
@@ -167,7 +236,10 @@ final class RunCenter {
     run?.step()
   }
 
-  func stop() { run?.cancel() }
+  func stop() {
+    batch?.isStopping = true
+    run?.cancel()
+  }
 
   /// Time to take the hand off the mouse after pressing Run, Resume or Step.
   private static let handsOffTime: TimeInterval = 1.5
@@ -197,9 +269,10 @@ final class RunCenter {
 
   // MARK: Results
 
-  /// How each block of `document` did in the last run, and the block running now.
-  func marks(for document: FlowDocument) -> (marks: [String: RunState.Mark], current: String?) {
-    guard let state, stateURL == document.url else { return ([:], nil) }
+  /// How each block of `document` did in the run started from the app, and the block running
+  /// now; `nil` when there's no such run since the test last changed.
+  func marks(for document: FlowDocument) -> (marks: [String: RunState.Mark], current: String?)? {
+    guard let state, stateURL == document.url else { return nil }
     return (state.marks, isRunning ? state.current : nil)
   }
 
@@ -244,6 +317,28 @@ final class RunCenter {
     running = nil
     hud?.close()
     hud = nil
+    if var batch {
+      switch outcome {
+      case .finished(_, _, let report) where report.verdict == .passed: batch.passed += 1
+      case .finished(_, _, let report) where report.verdict == .failed: batch.failed += 1
+      case .finished: batch.isStopping = true
+      case .failed: batch.notRun += 1
+      }
+      self.batch = batch
+      if !batch.isStopping, !batch.queue.isEmpty {
+        // The window stays away: the next test starts right after this one.
+        if case .finished(let dir, _, let report) = outcome {
+          result = Result(
+            test: request.document.url, project: request.project, verdict: report.verdict,
+            message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),
+            permission: nil, offersGitIgnore: false)
+        }
+        runNextInBatch()
+        return
+      }
+      endBatch()
+      return
+    }
     showApp()
     let declined = defaults.stringArray(forKey: Self.declinedKey) ?? []
     let offers = !declined.contains(request.project.path) && GitIgnore.needsEntry(in: request.project)

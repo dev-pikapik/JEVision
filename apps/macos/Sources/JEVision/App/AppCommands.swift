@@ -45,6 +45,12 @@ struct AppCommands: Commands {
       Button("Run Step by Step") { run(stepByStep: true) }
         .keyboardShortcut("r", modifiers: [.command, .option])
         .disabled(!canRun)
+      Button("Run All Tests") {
+        guard let root = project.rootURL else { return }
+        runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
+      }
+      .keyboardShortcut("r", modifiers: [.command, .control])
+      .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.items.isEmpty)
       Divider()
       Button("Record") {
         if let document = project.document { records.record(document) }

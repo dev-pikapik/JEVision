@@ -31,6 +31,31 @@ struct TestDetailsView: View {
           IssueList(issues: issues.filter { $0.param("field") == "app" })
         }
         Section {
+          TagsField(tags: flow.tags) { tags in document.updateFlow(field: "tags") { $0.tags = tags } }
+          IssueList(issues: issues.filter { $0.param("field") == "tags" || $0.code == "flow.tags.duplicate" })
+          Picker(selection: binding(flow.testType, "testType") { $0.testType = $1 }) {
+            Text("Not Set").tag(TestType?.none)
+            Divider()
+            ForEach([TestType.smoke, .regression, .acceptance], id: \.self) { Text(TestFields.title($0)).tag(TestType?.some($0)) }
+          } label: {
+            Text("Type")
+          }
+          Picker(selection: binding(flow.priority, "priority") { $0.priority = $1 }) {
+            Text("Not Set").tag(Priority?.none)
+            Divider()
+            ForEach([Priority.critical, .high, .medium, .low], id: \.self) { Text(TestFields.title($0)).tag(Priority?.some($0)) }
+          } label: {
+            Text("Priority")
+          }
+          Picker(selection: binding(flow.status, "status") { $0.status = $1 }) {
+            Text("Not Set").tag(TestStatus?.none)
+            Divider()
+            ForEach([TestStatus.draft, .ready, .outdated], id: \.self) { Text(TestFields.title($0)).tag(TestStatus?.some($0)) }
+          } label: {
+            Text("Status")
+          }
+        }
+        Section {
           LabeledContent {
             Stepper(value: binding(Int(flow.retries), "retries") { $0.retries = UInt32(clamping: $1) }, in: 0...10) {
               Text(flow.retries, format: .number).monospacedDigit()
@@ -93,7 +118,9 @@ struct TestDetailsView: View {
             }
           }
         }
-        IssueList(issues: issues.filter { !["name", "app"].contains($0.param("field") ?? "") })
+        IssueList(issues: issues.filter {
+          !["name", "app", "tags"].contains($0.param("field") ?? "") && $0.code != "flow.tags.duplicate"
+        })
       }
       .formStyle(.grouped)
       .frame(width: 400)
@@ -109,6 +136,64 @@ struct TestDetailsView: View {
   private func binding<T>(_ value: T, _ field: String, _ set: @escaping (inout Flow, T) -> Void) -> Binding<T> {
     let document = document
     return Binding(get: { value }, set: { new in document.updateFlow(field: field) { set(&$0, new) } })
+  }
+}
+
+/// Tags typed as one line, separated by commas; saved when the field is left or Return is pressed.
+private struct TagsField: View {
+  let tags: [String]
+  let save: ([String]) -> Void
+  @State private var text = ""
+  @FocusState private var focused: Bool
+
+  var body: some View {
+    TextField(text: $text, prompt: Text(verbatim: "smoke, sign-in")) { Text("Tags") }
+      .focused($focused)
+      .onSubmit(commit)
+      .onChange(of: focused) { if !focused { commit() } }
+      .onDisappear(perform: commit)
+      .onChange(of: tags, initial: true) { if !focused { text = tags.joined(separator: ", ") } }
+  }
+
+  private func commit() {
+    let new = TestFields.tags(text)
+    if new != tags { save(new) }
+    text = new.joined(separator: ", ")
+  }
+}
+
+enum TestFields {
+  /// Tags from "a, b,, a": trimmed, without empty ones and repeats, in the order typed.
+  static func tags(_ text: String) -> [String] {
+    var seen = Set<String>()
+    return text.split(separator: ",")
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty && seen.insert($0).inserted }
+  }
+
+  static func title(_ type: TestType) -> String {
+    switch type {
+    case .smoke: String(localized: "Smoke")
+    case .regression: String(localized: "Regression")
+    case .acceptance: String(localized: "Acceptance")
+    }
+  }
+
+  static func title(_ priority: Priority) -> String {
+    switch priority {
+    case .critical: String(localized: "Critical")
+    case .high: String(localized: "High")
+    case .medium: String(localized: "Medium")
+    case .low: String(localized: "Low")
+    }
+  }
+
+  static func title(_ status: TestStatus) -> String {
+    switch status {
+    case .draft: String(localized: "Draft")
+    case .ready: String(localized: "Ready")
+    case .outdated: String(localized: "Outdated")
+    }
   }
 }
 

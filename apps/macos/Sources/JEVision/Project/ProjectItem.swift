@@ -16,6 +16,9 @@ struct ProjectItem: Identifiable, Hashable, Sendable {
   /// Children for an outline: `nil` marks a leaf.
   var outlineChildren: [ProjectItem]? { kind == .folder ? children : nil }
 
+  /// The tests in the item, at any depth, in sidebar order; the item itself for a test.
+  var tests: [ProjectItem] { kind == .test ? [self] : children.flatMap(\.tests) }
+
   /// Where the item lives inside the project, e.g. "Smoke/Login"; empty at the top level.
   var parentPath: String {
     let parts = id.split(separator: "/").dropLast()
