@@ -523,10 +523,11 @@ enum Zoom {
     min(max(value, range.lowerBound), range.upperBound)
   }
 
-  /// The next step up or down from `value`.
-  static func step(_ value: Double, up: Bool) -> Double {
-    let steps = [0.3, 0.5, 0.75, 1, 1.25, 1.5, 2]
-    return up ? steps.first { $0 > value + 0.01 } ?? range.upperBound : steps.last { $0 < value - 0.01 } ?? range.lowerBound
+  /// The next step up or down from `value`, within `range`.
+  static func step(_ value: Double, up: Bool, in range: ClosedRange<Double> = range) -> Double {
+    let steps = [0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.25, 1.5, 2].filter(range.contains)
+    return up
+      ? steps.first { $0 > value + 0.01 } ?? range.upperBound : steps.last { $0 < value - 0.01 } ?? range.lowerBound
   }
 
   /// The zoom that shows all of `content`, in canvas points, in `viewport` with `margin` around
@@ -564,16 +565,19 @@ struct CanvasZoom {
   let set: (Double) -> Void
   /// Zooms so the whole test is in view.
   let fit: () -> Void
+  /// How far it zooms out and in.
+  var range = Zoom.range
 }
 
 /// Zoom out, the zoom (a click goes to actual size), zoom in and fit, at the bottom of the canvas.
-private struct ZoomBar: View {
+struct ZoomBar: View {
   let zoom: CanvasZoom
+  var fitHelp = Text("Show the whole test (⌘0)")
 
   var body: some View {
     HStack(spacing: 2) {
-      Button("Zoom Out", systemImage: "minus") { zoom.set(Zoom.step(zoom.value, up: false)) }
-        .disabled(zoom.value <= Zoom.range.lowerBound)
+      Button("Zoom Out", systemImage: "minus") { zoom.set(Zoom.step(zoom.value, up: false, in: zoom.range)) }
+        .disabled(zoom.value <= zoom.range.lowerBound)
         .help(Text("Zoom out (⌘−)"))
       Button { zoom.set(1) } label: {
         Text(zoom.value, format: .percent.precision(.fractionLength(0)))
@@ -584,11 +588,11 @@ private struct ZoomBar: View {
       .accessibilityLabel(Text("Zoom"))
       .accessibilityValue(Text(zoom.value, format: .percent.precision(.fractionLength(0))))
       .accessibilityHint(Text("Sets the zoom to actual size."))
-      Button("Zoom In", systemImage: "plus") { zoom.set(Zoom.step(zoom.value, up: true)) }
-        .disabled(zoom.value >= Zoom.range.upperBound)
+      Button("Zoom In", systemImage: "plus") { zoom.set(Zoom.step(zoom.value, up: true, in: zoom.range)) }
+        .disabled(zoom.value >= zoom.range.upperBound)
         .help(Text("Zoom in (⌘+)"))
       Button("Zoom to Fit", systemImage: "arrow.up.left.and.arrow.down.right") { zoom.fit() }
-        .help(Text("Show the whole test (⌘0)"))
+        .help(fitHelp)
     }
     .labelStyle(.iconOnly)
     .buttonStyle(.borderless)

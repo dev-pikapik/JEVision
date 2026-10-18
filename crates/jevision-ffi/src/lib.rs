@@ -15,6 +15,7 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod board;
 mod env;
 mod git;
 mod history;
@@ -27,6 +28,7 @@ mod run;
 mod schedule;
 mod vision;
 
+pub use board::*;
 pub use env::*;
 pub use git::*;
 pub use history::*;

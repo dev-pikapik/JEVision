@@ -60,6 +60,27 @@ struct CommandPaletteTests {
     #expect(!actions(state).contains(.push), "Git is busy with another action")
   }
 
+  @Test func opensBoardsAndFindsWhatIsOnTheOneInView() {
+    var state = editing
+    state.boards = ["All Tests", "Plan"]
+    let away = actions(state)
+    #expect(away.contains(.newBoard))
+    #expect(away.suffix(2) == [.showBoard("All Tests"), .showBoard("Plan")])
+    #expect(!away.contains(.addToBoard(.note)), "No board is in view")
+
+    state.boardInView = "Plan"
+    state.boardItems = [("n1", "Release checklist", "Note on Plan")]
+    let found = actions(state)
+    for addition in [BoardAddition.note, .frame, .link, .board] {
+      #expect(found.contains(.addToBoard(addition)))
+    }
+    #expect(!found.contains(.addToBoard(.test)), "Every test is on the board already")
+    #expect(CommandPalette.search("checklist", in: CommandPalette.entries(state)).first?.action == .showOnBoard("n1"))
+
+    state.boardLacksTests = true
+    #expect(actions(state).contains(.addToBoard(.test)))
+  }
+
   @Test func searchFindsCommandsBlocksAndTests() {
     let entries = CommandPalette.entries(editing)
     func first(_ query: String) -> PaletteAction? { CommandPalette.search(query, in: entries).first?.action }

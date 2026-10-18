@@ -6,10 +6,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use jevision_core::{Board, BoardNodeKind, Point};
 use jevision_core::{Flow, Rect, SearchCandidate, Slot};
 use jevision_ffi::{
-    flaky_tests, layout_flow, list_runs, load_flow, map_link_route, project_map, rank_search,
-    remove_block, save_flow, validate_flow_in,
+    add_to_board, board_with_contents, flaky_tests, lay_out_board, layout_flow, list_runs,
+    load_board, load_flow, map_link_route, move_on_board, project_map, rank_search, remove_block,
+    save_board, save_flow, sync_board_tests, validate_flow_in,
 };
 use serde_json::{Map, Value, json};
 
@@ -281,6 +283,58 @@ fn a_large_project_stays_fast() {
             map_link_route(cards[from], cards[to], others);
         }
     });
+
+    let board = timed(
+        "put every test on the board",
+        Duration::from_secs(2),
+        || {
+            let board = Board {
+                all_tests: true,
+                ..Board::default()
+            };
+            sync_board_tests(board, files.clone(), "Project".into()).unwrap()
+        },
+    );
+    assert_eq!(
+        board.nodes.len(),
+        TESTS + FOLDERS + 1,
+        "a card per test, a frame per folder"
+    );
+    let mut board = board;
+    for n in 0..200 {
+        let kind = BoardNodeKind::Text {
+            text: format!("Note **{n}**"),
+        };
+        let at = Point {
+            x: -400.0 * f64::from(n % 10),
+            y: 300.0 * f64::from(n / 10),
+        };
+        board = add_to_board(board, kind, at).board;
+    }
+    timed("edit the board", Duration::from_secs(2), || {
+        let frames: Vec<String> = board
+            .nodes
+            .iter()
+            .filter(|n| matches!(n.kind, BoardNodeKind::Group { .. }))
+            .map(|n| n.id.clone())
+            .collect();
+        // A drag: what moves is worked out once, then every step of it lays the board out.
+        let moved = board_with_contents(board.clone(), frames.clone());
+        assert_eq!(moved.len(), TESTS + FOLDERS + 1);
+        for step in 0..30 {
+            let by = Point {
+                x: f64::from(step),
+                y: 0.0,
+            };
+            lay_out_board(move_on_board(board.clone(), frames.clone(), by, true));
+        }
+    });
+    let text = timed("save and read the board", Duration::from_secs(1), || {
+        let text = save_board(board.clone());
+        assert_eq!(load_board(text.clone()).unwrap(), board);
+        text
+    });
+    assert_eq!(text.lines().count(), TESTS + FOLDERS + 1 + 200 + 6);
 
     let runs = timed("list runs", Duration::from_secs(3), || {
         list_runs(path.clone()).unwrap()

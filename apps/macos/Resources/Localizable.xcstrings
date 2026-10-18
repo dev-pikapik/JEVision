@@ -499,6 +499,58 @@
         }
       }
     },
+    "%lld items" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld элемент"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld элемента"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld элементов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld элемента"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld other files" : {
       "localizations" : {
         "en" : {
@@ -799,6 +851,22 @@
         }
       }
     },
+    "A board of all tests appears once the project has a test. Make your own with the + button next to Boards." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A board of all tests appears once the project has a test. Make your own with the + button next to Boards."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доска всех тестов появится, когда в проекте будет хотя бы один тест. Свою доску можно создать кнопкой + рядом с «Доски»."
+          }
+        }
+      }
+    },
     "A branch keeps your changes apart until they’re ready. Your current changes come along." : {
       "localizations" : {
         "ru" : {
@@ -1009,6 +1077,22 @@
         }
       }
     },
+    "Add Arrow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Arrow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить стрелку"
+          }
+        }
+      }
+    },
     "Add Block" : {
       "localizations" : {
         "ru" : {
@@ -1025,6 +1109,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить блок…"
+          }
+        }
+      }
+    },
+    "Add Board Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Board Link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ссылку на доску"
           }
         }
       }
@@ -1099,6 +1199,22 @@
         }
       }
     },
+    "Add Frame to Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Frame to Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить рамку на доску"
+          }
+        }
+      }
+    },
     "Add If" : {
       "localizations" : {
         "ru" : {
@@ -1139,12 +1255,108 @@
         }
       }
     },
+    "Add Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ссылку"
+          }
+        }
+      }
+    },
+    "Add Link to Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Link to Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылка на доску"
+          }
+        }
+      }
+    },
+    "Add Link to Board…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Link to Board…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ссылку на доску…"
+          }
+        }
+      }
+    },
+    "Add Link to New Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Link to New Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылка на новую доску"
+          }
+        }
+      }
+    },
+    "Add Link…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Link…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ссылку…"
+          }
+        }
+      }
+    },
     "Add Note" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить заметку"
+          }
+        }
+      }
+    },
+    "Add Note to Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Note to Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить заметку на доску"
           }
         }
       }
@@ -1185,6 +1397,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить расписание…"
+          }
+        }
+      }
+    },
+    "Add Test to Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Test to Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить тест на доску"
+          }
+        }
+      }
+    },
+    "Add Test to Board…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Test to Board…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить тест на доску…"
+          }
+        }
+      }
+    },
+    "Add Test…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Test…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить тест…"
           }
         }
       }
@@ -1457,6 +1717,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все строки"
+          }
+        }
+      }
+    },
+    "All Tests" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All Tests"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все тесты"
           }
         }
       }
@@ -1959,6 +2235,54 @@
         }
       }
     },
+    "Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доска"
+          }
+        }
+      }
+    },
+    "Board %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Board %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доска %@"
+          }
+        }
+      }
+    },
+    "Boards" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boards"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доски"
+          }
+        }
+      }
+    },
     "Branch" : {
       "localizations" : {
         "ru" : {
@@ -2065,6 +2389,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Холст"
+          }
+        }
+      }
+    },
+    "Can’t Show This Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t Show This Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся показать доску"
           }
         }
       }
@@ -2277,6 +2617,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Передаёт зашифрованные данные, когда iPhone не может связаться с Mac напрямую. Без него работает только та же сеть Wi-Fi или VPN."
+          }
+        }
+      }
+    },
+    "Change Color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сменить цвет"
           }
         }
       }
@@ -2727,6 +3083,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет"
           }
         }
       }
@@ -3311,6 +3683,22 @@
         }
       }
     },
+    "Cyan" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cyan"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Голубой"
+          }
+        }
+      }
+    },
     "Dark" : {
       "localizations" : {
         "ru" : {
@@ -3791,6 +4179,22 @@
         }
       }
     },
+    "Drag to another item to draw an arrow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to another item to draw an arrow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите на другой элемент, чтобы провести стрелку"
+          }
+        }
+      }
+    },
     "Drag to choose the first step inside the loop" : {
       "localizations" : {
         "ru" : {
@@ -3837,6 +4241,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рисовать"
+          }
+        }
+      }
+    },
+    "Draws a frame that groups what is inside it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draws a frame that groups what is inside it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рисует рамку, которая объединяет всё внутри неё."
           }
         }
       }
@@ -3911,6 +4331,38 @@
         }
       }
     },
+    "Edit Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить ссылку"
+          }
+        }
+      }
+    },
+    "Edit Link…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Link…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить ссылку…"
+          }
+        }
+      }
+    },
     "Edit Note" : {
       "localizations" : {
         "ru" : {
@@ -3977,6 +4429,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Email"
+          }
+        }
+      }
+    },
+    "Empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empty"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пусто"
           }
         }
       }
@@ -4147,6 +4615,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все настройки вернутся к тем, что были сразу после установки JEVision, и JEVision откроется заново."
+          }
+        }
+      }
+    },
+    "Every test of the project, in the frames of their folders" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every test of the project, in the frames of their folders"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все тесты проекта в рамках их папок"
           }
         }
       }
@@ -4535,6 +5019,90 @@
         }
       }
     },
+    "Fold" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fold"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть"
+          }
+        }
+      }
+    },
+    "Fold Frame" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fold Frame"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свернуть рамку"
+          }
+        }
+      }
+    },
+    "Folded, %lld tests" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Folded, %lld test"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Folded, %lld tests"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свёрнута, %lld тест"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свёрнута, %lld теста"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свёрнута, %lld тестов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свёрнута, %lld теста"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Folder" : {
       "localizations" : {
         "ru" : {
@@ -4581,6 +5149,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рамка"
+          }
+        }
+      }
+    },
+    "Frame %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frame %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамка %@"
+          }
+        }
+      }
+    },
+    "Frame Title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frame Title"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название рамки"
+          }
+        }
+      }
+    },
+    "Frame on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frame on %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамка на доске %@"
           }
         }
       }
@@ -4785,6 +5401,22 @@
         }
       }
     },
+    "Green" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Green"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зелёный"
+          }
+        }
+      }
+    },
     "Groups blocks into a section with a title" : {
       "localizations" : {
         "ru" : {
@@ -4831,6 +5463,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скрыть"
+          }
+        }
+      }
+    },
+    "Hide Minimap" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Minimap"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть мини-карту"
+          }
+        }
+      }
+    },
+    "Hide the minimap" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide the minimap"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть мини-карту"
           }
         }
       }
@@ -5538,6 +6202,22 @@
         }
       }
     },
+    "Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылка"
+          }
+        }
+      }
+    },
     "Link %@ of %@ to a block" : {
       "localizations" : {
         "ru" : {
@@ -5574,6 +6254,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь от %@ к первому шагу внутри него, %@"
+          }
+        }
+      }
+    },
+    "Link on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link on %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылка на доске %@"
           }
         }
       }
@@ -5658,6 +6354,22 @@
         }
       }
     },
+    "Make a new board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make a new board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать новую доску"
+          }
+        }
+      }
+    },
     "Make this screenshot the reference?" : {
       "localizations" : {
         "ru" : {
@@ -5674,6 +6386,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создайте первый тест"
+          }
+        }
+      }
+    },
+    "Makes a new board and puts a way to it on this one." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Makes a new board and puts a way to it on this one."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаёт новую доску и ставит на эту ссылку на неё."
+          }
+        }
+      }
+    },
+    "Makes an empty board to lay tests and notes out on." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Makes an empty board to lay tests and notes out on."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаёт пустую доску, чтобы разложить на ней тесты и заметки."
           }
         }
       }
@@ -5724,6 +6468,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщение"
+          }
+        }
+      }
+    },
+    "Minimap" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minimap"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-карта"
           }
         }
       }
@@ -5834,6 +6594,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Никогда"
+          }
+        }
+      }
+    },
+    "New Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая доска"
+          }
+        }
+      }
+    },
+    "New Board…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Board…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая доска…"
           }
         }
       }
@@ -5984,6 +6776,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет"
+          }
+        }
+      }
+    },
+    "No Boards Yet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Boards Yet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Досок пока нет"
+          }
+        }
+      }
+    },
+    "No Color" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Color"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без цвета"
           }
         }
       }
@@ -6284,6 +7108,22 @@
         }
       }
     },
+    "Not in the project any more" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not in the project any more"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этого теста больше нет в проекте"
+          }
+        }
+      }
+    },
     "Not installed" : {
       "localizations" : {
         "ru" : {
@@ -6356,6 +7196,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заметка"
+          }
+        }
+      }
+    },
+    "Note on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note on %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка на доске %@"
           }
         }
       }
@@ -6550,6 +7406,22 @@
         }
       }
     },
+    "Open Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть доску"
+          }
+        }
+      }
+    },
     "Open Failed Block" : {
       "localizations" : {
         "ru" : {
@@ -6576,6 +7448,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть последний отчёт"
+          }
+        }
+      }
+    },
+    "Open Link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть ссылку"
           }
         }
       }
@@ -6616,6 +7504,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Open Test" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Test"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть тест"
           }
         }
       }
@@ -6750,22 +7654,6 @@
         }
       }
     },
-    "Open the test" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open the test"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть тест"
-          }
-        }
-      }
-    },
     "Opens Git settings" : {
       "localizations" : {
         "ru" : {
@@ -6796,28 +7684,28 @@
         }
       }
     },
+    "Opens it" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens it"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает его"
+          }
+        }
+      }
+    },
     "Opens the reference editor" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает редактор эталона"
-          }
-        }
-      }
-    },
-    "Opens the test" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opens the test"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открывает тест"
           }
         }
       }
@@ -6848,6 +7736,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Или установите сами"
+          }
+        }
+      }
+    },
+    "Orange" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orange"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оранжевый"
           }
         }
       }
@@ -7348,22 +8252,6 @@
         }
       }
     },
-    "Project Map" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Project Map"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Карта проекта"
-          }
-        }
-      }
-    },
     "Project default" : {
       "localizations" : {
         "ru" : {
@@ -7474,6 +8362,22 @@
         }
       }
     },
+    "Purple" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purple"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиолетовый"
+          }
+        }
+      }
+    },
     "Push" : {
       "localizations" : {
         "ru" : {
@@ -7530,6 +8434,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернуть файл к виду после этого коммита. Правка › Отменить вернёт как было."
+          }
+        }
+      }
+    },
+    "Puts a test of the project on the board." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts a test of the project on the board."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ставит тест проекта на доску."
+          }
+        }
+      }
+    },
+    "Puts a web address on the board." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts a web address on the board."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ставит веб-адрес на доску."
           }
         }
       }
@@ -7740,6 +8676,22 @@
         }
       }
     },
+    "Red" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Red"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Красный"
+          }
+        }
+      }
+    },
     "Redo" : {
       "localizations" : {
         "ru" : {
@@ -7890,12 +8842,96 @@
         }
       }
     },
+    "Remove %lld Items from Board" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %lld Item from Board"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Remove %lld Items from Board"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Убрать %lld элемент с доски"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Убрать %lld элемента с доски"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Убрать %lld элементов с доски"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Убрать %lld элемента с доски"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Remove Arrow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Arrow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить стрелку"
+          }
+        }
+      }
+    },
     "Remove Condition" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать условие"
+          }
+        }
+      }
+    },
+    "Remove from Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать с доски"
           }
         }
       }
@@ -7940,12 +8976,44 @@
         }
       }
     },
+    "Rename Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать доску"
+          }
+        }
+      }
+    },
     "Rename Frame" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переименование рамки"
+          }
+        }
+      }
+    },
+    "Rename Frame…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename Frame…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать рамку…"
           }
         }
       }
@@ -8428,6 +9496,22 @@
         }
       }
     },
+    "Run Tests in Frame" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run Tests in Frame"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить тесты в рамке"
+          }
+        }
+      }
+    },
     "Run all tests every night, a folder every weekday morning, or a few tests every few hours." : {
       "localizations" : {
         "ru" : {
@@ -8460,6 +9544,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускается из %@"
+          }
+        }
+      }
+    },
+    "Run every test on this board, one after another" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run every test on this board, one after another"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить все тесты на этой доске по очереди"
           }
         }
       }
@@ -8600,6 +9700,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выполняется сейчас"
+          }
+        }
+      }
+    },
+    "Running…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт запуск…"
           }
         }
       }
@@ -8994,6 +10110,22 @@
         }
       }
     },
+    "Select" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать"
+          }
+        }
+      }
+    },
     "Select All" : {
       "localizations" : {
         "ru" : {
@@ -9194,6 +10326,22 @@
         }
       }
     },
+    "Show Everything" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Everything"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать всё"
+          }
+        }
+      }
+    },
     "Show Failed Block" : {
       "localizations" : {
         "ru" : {
@@ -9220,6 +10368,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать JEVision"
+          }
+        }
+      }
+    },
+    "Show Minimap" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Minimap"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать мини-карту"
           }
         }
       }
@@ -9270,6 +10434,22 @@
         }
       }
     },
+    "Show everything on the board (⌘0)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show everything on the board (⌘0)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать всё, что есть на доске (⌘0)"
+          }
+        }
+      }
+    },
     "Show in Finder" : {
       "localizations" : {
         "ru" : {
@@ -9300,6 +10480,22 @@
         }
       }
     },
+    "Show the whole board small in the corner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the whole board small in the corner"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать всю доску в уменьшенном виде в углу"
+          }
+        }
+      }
+    },
     "Show the whole test (⌘0)" : {
       "localizations" : {
         "ru" : {
@@ -9316,16 +10512,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показывает, как прошёл последний запуск открытого теста."
-          }
-        }
-      }
-    },
-    "Shows how the tests use each other." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Показывает, как тесты используют друг друга."
           }
         }
       }
@@ -9516,6 +10702,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Смоук"
+          }
+        }
+      }
+    },
+    "Snap to Grid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap to Grid"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привязка к сетке"
+          }
+        }
+      }
+    },
+    "Snap what you move to the grid; hold ⌘ while moving to do the opposite" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap what you move to the grid; hold ⌘ while moving to do the opposite"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привязывать перемещаемое к сетке; ⌘ при перемещении делает наоборот"
           }
         }
       }
@@ -10732,6 +11950,22 @@
         }
       }
     },
+    "This board can’t be read: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This board can’t be read: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать доску: %@"
+          }
+        }
+      }
+    },
     "This branch already has an open pull request" : {
       "localizations" : {
         "ru" : {
@@ -11212,6 +12446,38 @@
         }
       }
     },
+    "Unfold" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unfold"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Развернуть"
+          }
+        }
+      }
+    },
+    "Unfold Frame" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unfold Frame"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Развернуть рамку"
+          }
+        }
+      }
+    },
     "Unknown device" : {
       "localizations" : {
         "ru" : {
@@ -11278,6 +12544,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без названия"
+          }
+        }
+      }
+    },
+    "Untitled Board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Untitled Board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доска без названия"
           }
         }
       }
@@ -11562,6 +12844,22 @@
         }
       }
     },
+    "Web address" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web address"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Веб-адрес"
+          }
+        }
+      }
+    },
     "Weekday Mornings" : {
       "localizations" : {
         "ru" : {
@@ -11688,6 +12986,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них macOS не даст JEVision видеть другие приложения и нажимать в них."
+          }
+        }
+      }
+    },
+    "Writes a note on the board." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writes a note on the board."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пишет заметку на доске."
+          }
+        }
+      }
+    },
+    "Yellow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yellow"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жёлтый"
           }
         }
       }
@@ -11858,6 +13188,134 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "точке %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска"
+          }
+        }
+      }
+    },
+    "board canvas map" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board canvas map"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска холст карта"
+          }
+        }
+      }
+    },
+    "board card" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board card"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска карточка"
+          }
+        }
+      }
+    },
+    "board find show" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board find show"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска найти показать"
+          }
+        }
+      }
+    },
+    "board group section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board group section"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска группа раздел"
+          }
+        }
+      }
+    },
+    "board map project open" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board map project open"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска карта проект открыть"
+          }
+        }
+      }
+    },
+    "board text markdown comment" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board text markdown comment"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска текст markdown комментарий"
+          }
+        }
+      }
+    },
+    "board url web" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board url web"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска url веб адрес"
           }
         }
       }
@@ -14384,6 +15842,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» подключён."
+          }
+        }
+      }
+    },
+    "“%@” isn’t a web address." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a web address."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — это не веб-адрес."
           }
         }
       }
