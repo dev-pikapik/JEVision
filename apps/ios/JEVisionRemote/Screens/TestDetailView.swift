@@ -10,7 +10,9 @@ struct TestDetailView: View {
   @State private var runs: [RunSummary] = []
   @State private var starting = false
   @State private var runError: RemoteError?
-  @State private var startedRun: String?
+  @Environment(\.push) private var push
+  /// Row of the data table to run, counted from 0; `nil` runs every row.
+  @State private var row: Int?
 
   var body: some View {
     LoadableView(state: flow, retry: load) { flow in
@@ -51,13 +53,10 @@ struct TestDetailView: View {
         .padding(.vertical)
       }
       .refreshable { await load() }
-      .safeAreaInset(edge: .bottom) { runBar }
+      .safeAreaInset(edge: .bottom) { runBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
     }
     .navigationTitle(flow.value?.name ?? "")
     .navigationBarTitleDisplayMode(.inline)
-    .navigationDestination(item: $startedRun) { run in
-      LiveRunView(host: host, project: project, run: run)
-    }
     .alert(runError?.title ?? "", isPresented: Binding(get: { runError != nil }, set: { if !$0 { runError = nil } })) {
       Button("OK", role: .cancel) {}
     } message: {
@@ -69,22 +68,12 @@ struct TestDetailView: View {
   @ViewBuilder private var runBar: some View {
     switch model.permission(on: host) {
     case .run:
-      Button(action: run) {
-        Group {
-          if starting {
-            HStack(spacing: 10) {
-              ProgressView()
-              Text("Waiting for the Mac…")
-            }
-          } else {
-            Label("Run on \(host.name)", systemImage: "play.fill")
-          }
+      VStack(spacing: 10) {
+        if let rows = flow.value?.rows, !rows.isEmpty {
+          rowMenu(rows)
         }
-        .frame(maxWidth: .infinity)
+        runButton
       }
-      .buttonStyle(.glassProminent)
-      .controlSize(.large)
-      .disabled(starting)
       .padding(.horizontal, 24)
       .padding(.bottom, 8)
     case .view:
@@ -101,10 +90,62 @@ struct TestDetailView: View {
     }
   }
 
+  private var runButton: some View {
+    Button(action: run) {
+      Group {
+        if starting {
+          HStack(spacing: 10) {
+            ProgressView()
+            Text("Waiting for the Mac…")
+          }
+        } else {
+          Label("Run on \(host.name)", systemImage: "play.fill")
+        }
+      }
+      .frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.glassProminent)
+    .controlSize(.large)
+    .disabled(starting)
+    .accessibilityIdentifier("run")
+  }
+
+  /// Picks the data row to run: the test runs once per row unless one is chosen.
+  private func rowMenu(_ rows: [String]) -> some View {
+    Menu {
+      Picker("Data Rows", selection: $row) {
+        Text("All Rows").tag(Int?.none)
+        ForEach(rows.indices, id: \.self) { index in
+          Text(Self.rowTitle(number: index + 1, label: rows[index])).tag(Int?.some(index))
+        }
+      }
+    } label: {
+      Label {
+        Text(row.map { Self.rowTitle(number: $0 + 1, label: rows[$0]) } ?? String(localized: "Data Rows: All \(rows.count)"))
+          .lineLimit(1)
+      } icon: {
+        Image(systemName: "tablecells")
+      }
+      .frame(maxWidth: .infinity)
+    }
+    .buttonStyle(.glass)
+    .controlSize(.large)
+    .disabled(starting)
+    .accessibilityLabel("Data Rows")
+    .accessibilityIdentifier("rowMenu")
+    .accessibilityValue(row.map { Self.rowTitle(number: $0 + 1, label: rows[$0]) } ?? String(localized: "All Rows"))
+  }
+
+  /// “Row 2: anna”, from the row's `name` column or else its first, as the Mac names it.
+  nonisolated static func rowTitle(number: Int, label: String) -> String {
+    label.isEmpty ? String(localized: "Row \(number)") : String(localized: "Row \(number): \(label)")
+  }
+
   private func load() async {
     if flow.value == nil { flow = .loading }
     let (project, path) = (project, path)
     flow = await model.fetch(host) { session throws(RemoteError) in try await session.getTest(project: project, path: path) }
+    if let row, row >= flow.value?.rows.count ?? 0 { self.row = nil }
     if case .loaded(let list) = await model.fetch(host, { session throws(RemoteError) in try await session.listRuns(project: project) }) {
       runs = list.saved.filter { $0.file == path }.sorted { $0.startedAt > $1.startedAt }
     }
@@ -112,10 +153,12 @@ struct TestDetailView: View {
 
   private func run() {
     starting = true
-    let (project, path) = (project, path)
+    let (project, path, row) = (project, path, row)
     Task {
-      switch await model.fetch(host, { session throws(RemoteError) in try await session.runTest(project: project, path: path) }) {
-      case .loaded(let run): startedRun = run
+      switch await model.fetch(host, { session throws(RemoteError) in
+        try await session.runTest(project: project, path: path, row: row)
+      }) {
+      case .loaded(let run): push(.run(host, project: project, run: run))
       case .failed(let error): runError = error
       case .loading: break
       }

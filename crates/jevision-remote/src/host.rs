@@ -88,11 +88,13 @@ pub trait HostDelegate: Send + Sync {
     /// wait for the answer; return `false` when nobody answers in reasonable time. Only asked
     /// while [`Host::set_confirm_runs`] is on.
     fn confirm_run(&self, device: Device, project: String, test: String) -> bool;
-    /// Starts a run and returns its id once the run folder exists.
+    /// Starts a run and returns its id once the run folder exists. `row` limits the run to that
+    /// row of the test's data table, counted from 0 and known to exist; `None` runs every row.
     fn start_run(
         &self,
         project_root: String,
         test: String,
+        row: Option<u32>,
         requested_by: Device,
     ) -> Result<String, RemoteError>;
     fn stop_run(&self, project_root: String, run: String) -> Result<(), RemoteError>;
@@ -679,12 +681,21 @@ impl Shared {
             Request::GetTest { project, path } => {
                 let (_, root) = self.project(&project)?;
                 let test = blocking(move || project::summary(&root, &path)).await??;
-                Response::Test { test }
+                Response::Test {
+                    test: Box::new(test),
+                }
             }
-            Request::RunTest { project, path } => {
+            Request::RunTest { project, path, row } => {
                 let (given, root) = self.project(&project)?;
                 let checked = path.clone();
-                blocking(move || project::test_file(&root, &checked)).await??;
+                blocking(move || match row {
+                    Some(row) => match project::data_rows(&root, &checked)?.len() {
+                        rows if (row as usize) < rows => Ok(()),
+                        _ => Err(RemoteError::DataRowNotFound),
+                    },
+                    None => project::test_file(&root, &checked).map(drop),
+                })
+                .await??;
                 let delegate = Arc::clone(&self.delegate);
                 let confirm = self.state().confirm_runs;
                 let device = device.clone();
@@ -693,7 +704,7 @@ impl Shared {
                     if confirm && !delegate.confirm_run(device.clone(), project, path.clone()) {
                         return Err(RemoteError::DeclinedOnMac);
                     }
-                    delegate.start_run(given, path, device)
+                    delegate.start_run(given, path, row, device)
                 })
                 .await??;
                 Response::RunStarted { run }
@@ -747,7 +758,7 @@ impl Shared {
     /// Runs, stops, reports read and anything refused for permission or path go to the log.
     fn audit(&self, device: &Device, request: &Request, error: Option<RemoteError>) {
         let (kind, subject) = match request {
-            Request::RunTest { project, path } => {
+            Request::RunTest { project, path, .. } => {
                 (ActivityKind::RunStarted, format!("{project}/{path}"))
             }
             Request::StopRun { project, run } => {

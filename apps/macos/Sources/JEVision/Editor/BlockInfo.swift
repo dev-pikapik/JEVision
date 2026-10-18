@@ -54,11 +54,31 @@ enum BlockInfo {
     }
   }
 
+  /// What the block does, short enough for one line of the palette.
+  static func tagline(_ type: String) -> String {
+    switch type {
+    case "openApp": String(localized: "Launches an app")
+    case "openFile": String(localized: "Opens a file or a web page")
+    case "click": String(localized: "Clicks a button or a point")
+    case "type": String(localized: "Types text into a field")
+    case "pressKeys": String(localized: "Presses a key combination")
+    case "waitFor": String(localized: "Waits for the screen to change")
+    case "check": String(localized: "Fails unless the screen matches")
+    case "if": String(localized: "Takes a path by what’s on screen")
+    case "repeat": String(localized: "Repeats the steps inside")
+    case "useData": String(localized: "Repeats the steps for each table row")
+    case "runTest": String(localized: "Runs another test as one step")
+    default: ""
+    }
+  }
+
   static func color(_ group: BlockGroup) -> Color {
     switch group {
     case .actions: .blue
-    case .waitAndCheck: .orange
+    case .waiting: .orange
+    case .checks: .teal
     case .logic: .purple
+    case .subTests: .indigo
     case .data: .green
     }
   }
@@ -66,8 +86,10 @@ enum BlockInfo {
   static func groupTitle(_ group: BlockGroup) -> String {
     switch group {
     case .actions: String(localized: "Actions")
-    case .waitAndCheck: String(localized: "Wait and Check")
-    case .logic: String(localized: "Logic")
+    case .waiting: String(localized: "Waiting")
+    case .checks: String(localized: "Checks")
+    case .logic: String(localized: "Conditions and Loops")
+    case .subTests: String(localized: "Sub-Tests")
     case .data: String(localized: "Data")
     }
   }

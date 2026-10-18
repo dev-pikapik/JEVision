@@ -20,6 +20,7 @@ struct CoreMappingTests {
     (.RunInProgress, .runInProgress),
     (.NotAllowed, .notAllowed),
     (.DeclinedOnMac, .declinedOnMac),
+    (.DataRowNotFound, .dataRowNotFound),
     (.SignerFailed, .other),
     (.TestNotFound, .other),
   ])
@@ -57,6 +58,8 @@ struct CoreMappingTests {
 
 /// Talks to a real Mac. Turn on pairing in JEVision on the Mac, copy the pairing link and run
 /// `TEST_RUNNER_JEVISION_REMOTE_E2E=1 TEST_RUNNER_JEVISION_REMOTE_OFFER='jevision://pair?…' xcodebuild test …`.
+/// `cargo run -p jevision-remote --example test-host` stands in for the Mac. The build must be
+/// signed, even ad hoc, for the device key to reach the keychain.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["JEVISION_REMOTE_E2E"] == "1"))
 struct RemoteEndToEndTests {
   @Test func pairsBrowsesAndSignsInAgain() async throws {
@@ -65,7 +68,11 @@ struct RemoteEndToEndTests {
     let client = CoreRemoteClient(signer: DeviceKey())
 
     let paired = try await client.pair(offer: link.text, deviceName: "JEVision end-to-end test")
-    let record = paired.record
+    var record = paired.record
+    // A Mac offered on loopback, as `test-host` is, may not be reachable at the network
+    // addresses it reports afterwards, so sign in again where the code pointed.
+    let offered = URLComponents(string: offer)?.queryItems?.filter { $0.name == "addr" }.compactMap(\.value) ?? []
+    if !offered.isEmpty, offered.allSatisfy({ $0.hasPrefix("127.0.0.1:") }) { record.addrs = offered }
     #expect(record.name == link.macName)
     let projects = try await paired.listProjects()
     let project = try #require(projects.first)
@@ -79,10 +86,43 @@ struct RemoteEndToEndTests {
       let report = try await paired.report(project: project.name, run: saved.run)
       #expect(report.file == saved.file)
     }
+    if ProcessInfo.processInfo.environment["JEVISION_REMOTE_E2E_RUN"] == "1" {
+      try await runsOneRow(of: tests, in: project.name, on: paired)
+    }
     await paired.close()
 
     let again = try await client.connect(record)
     #expect(try await again.listProjects() == projects)
     await again.close()
+  }
+
+  /// Runs the second row of the first test with a data table, follows it live and reads its
+  /// report. It drives the Mac, so it runs only with `TEST_RUNNER_JEVISION_REMOTE_E2E_RUN=1`;
+  /// `cargo run -p jevision-remote --example test-host` plays runs without driving anything.
+  private func runsOneRow(of tests: [JEVisionRemote.TestEntry], in project: String, on mac: any JEVisionRemote.MacSession) async throws {
+    var table: (path: String, rows: [String])?
+    for test in tests where !test.isFolder {
+      let flow = try await mac.getTest(project: project, path: test.path)
+      if flow.rows.count > 1 {
+        table = (test.path, flow.rows)
+        break
+      }
+    }
+    let (path, rows) = try #require(table, "the project has a test with a data table of two rows or more")
+    let run = try await mac.runTest(project: project, path: path, row: 1)
+    var blocks = 0
+    var verdict: JEVisionRemote.Verdict?
+    for try await update in mac.runEvents(project: project, run: run) {
+      switch update {
+      case .event(.blockStarted): blocks += 1
+      case .event(.finished(let end, _)): verdict = end
+      default: break
+      }
+    }
+    #expect(blocks > 0)
+    let report = try await mac.report(project: project, run: run)
+    #expect(report.verdict == verdict)
+    #expect(report.attempts.map(\.row) == [JEVisionRemote.RunReport.DataRow(number: 2, label: rows[1])])
+    #expect(try await mac.listRuns(project: project).saved.contains { $0.run == run })
   }
 }

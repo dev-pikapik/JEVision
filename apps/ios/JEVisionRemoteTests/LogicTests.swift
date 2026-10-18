@@ -301,3 +301,33 @@ struct TestTreeTests {
     #expect(TestTree.children(of: "log", in: entries).isEmpty)
   }
 }
+
+struct ReportTitleTests {
+  private func attempt(_ number: Int, row: RunReport.DataRow? = nil) -> RunReport.Attempt {
+    .init(number: number, verdict: .passed, durationMs: 1, failure: nil, row: row, steps: [])
+  }
+
+  private func report(_ attempts: [RunReport.Attempt]) -> RunReport {
+    RunReport(
+      test: "T", file: "t.flow.json", app: "a", startedAt: .now, durationMs: 1, verdict: .passed, flaky: false,
+      baselinesCreated: [], attempts: attempts)
+  }
+
+  @Test func namesTriesOnlyWhenThereAreSeveral() {
+    let one = report([attempt(1)])
+    #expect(ReportView.title(of: one.attempts[0], in: one) == nil)
+    let two = report([attempt(1), attempt(2)])
+    #expect(ReportView.title(of: two.attempts[1], in: two)?.contains("2") == true)
+  }
+
+  @Test func namesTheRowOfEachAttempt() {
+    let anna = RunReport.DataRow(number: 1, label: "Anna")
+    let boris = RunReport.DataRow(number: 2, label: "Boris")
+    let rows = report([attempt(1, row: anna), attempt(1, row: boris)])
+    #expect(ReportView.title(of: rows.attempts[1], in: rows) == TestDetailView.rowTitle(number: 2, label: "Boris"))
+    let retried = report([attempt(1, row: anna), attempt(2, row: anna)])
+    let title = ReportView.title(of: retried.attempts[1], in: retried)
+    #expect(title?.hasPrefix(TestDetailView.rowTitle(number: 1, label: "Anna")) == true)
+    #expect(title != ReportView.title(of: retried.attempts[0], in: retried))
+  }
+}

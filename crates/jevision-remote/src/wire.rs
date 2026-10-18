@@ -90,9 +90,13 @@ pub(crate) enum Request {
         project: String,
         path: String,
     },
+    /// `row` runs only that row of the test's data table, counted from 0; `None` runs every
+    /// row. Phones that predate data rows leave it out.
     RunTest {
         project: String,
         path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        row: Option<u32>,
     },
     StopRun {
         project: String,
@@ -152,7 +156,7 @@ pub(crate) enum Response {
         tests: Vec<TestEntry>,
     },
     Test {
-        test: TestSummary,
+        test: Box<TestSummary>,
     },
     RunStarted {
         run: String,
@@ -226,6 +230,10 @@ pub struct TestSummary {
     /// Frames around loops and their bodies.
     pub frames: Vec<FrameSummary>,
     pub edges: Vec<EdgeSummary>,
+    /// What each row of the test's data table is called, in order, when the whole test runs
+    /// once per row; a run can be limited to one of them. Empty without such a table.
+    #[serde(default)]
+    pub rows: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

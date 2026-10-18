@@ -223,40 +223,49 @@ struct ProjectView: View {
   }
 }
 
-/// The branch and how many files changed, at the foot of the sidebar; opens Settings › Git.
+/// The branch and how many files changed, at the foot of the sidebar; opens Settings › Git. With
+/// changes, a Commit button next to it opens the commit window directly.
 private struct GitChip: View {
   let status: GitStatus
   @Environment(\.openSettings) private var openSettings
+  @Environment(\.openWindow) private var openWindow
   @AppStorage(SettingsTab.key) private var tab = SettingsTab.general
 
   var body: some View {
     let branch = status.branch ?? String(localized: "No branch")
-    Button {
-      tab = .git
-      openSettings()
-    } label: {
-      HStack(spacing: 6) {
-        Image(systemName: "arrow.triangle.branch")
-        Text(verbatim: branch)
-          .lineLimit(1)
-          .truncationMode(.middle)
-        if !status.changes.isEmpty {
-          Text(verbatim: "· \(status.changes.count)")
-            .monospacedDigit()
+    HStack(spacing: 8) {
+      Button {
+        tab = .git
+        openSettings()
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: "arrow.triangle.branch")
+          Text(verbatim: branch)
+            .lineLimit(1)
+            .truncationMode(.middle)
+          if !status.changes.isEmpty {
+            Text(verbatim: "· \(status.changes.count)")
+              .monospacedDigit()
+          }
+          Spacer(minLength: 0)
         }
-        Spacer(minLength: 0)
+        .foregroundStyle(.secondary)
+        .contentShape(.rect)
       }
-      .font(.callout)
-      .foregroundStyle(.secondary)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 8)
-      .contentShape(.rect)
+      .buttonStyle(.plain)
+      .help(Text("Commit, pull and push in Settings › Git"))
+      .accessibilityLabel(Text("Branch \(branch)"))
+      .accessibilityValue(Text(GitText.summary(status.changes)))
+      .accessibilityHint(Text("Opens Git settings"))
+      if !status.changes.isEmpty {
+        Button("Commit…") { openWindow(id: SceneID.commit) }
+          .buttonStyle(.borderless)
+          .help(Text("Save a version of the changed tests (⌥⌘C)"))
+      }
     }
-    .buttonStyle(.plain)
-    .help(Text("Commit, pull and push in Settings › Git"))
-    .accessibilityLabel(Text("Branch \(branch)"))
-    .accessibilityValue(Text(GitText.summary(status.changes)))
-    .accessibilityHint(Text("Opens Git settings"))
+    .font(.callout)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 8)
   }
 }
 

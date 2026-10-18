@@ -10,6 +10,17 @@ enum Route: Hashable {
   case runs(HostRecord, project: String)
 }
 
+/// Opens a screen on the Macs stack from code, for screens that open one after some work
+/// rather than from a link. Pushing onto the same path keeps later links working.
+struct PushAction {
+  let action: (Route) -> Void
+  func callAsFunction(_ route: Route) { action(route) }
+}
+
+extension EnvironmentValues {
+  @Entry var push = PushAction { _ in }
+}
+
 /// The paired Macs, which of them can be reached, and the way into each.
 struct MacsView: View {
   @Environment(AppModel.self) private var model
@@ -56,6 +67,7 @@ struct MacsView: View {
         }
       }
     }
+    .environment(\.push, PushAction { path.append($0) })
     .sheet(isPresented: $showsSettings, onDismiss: scanIfAsked) {
       SettingsView {
         scanAfterSettings = true

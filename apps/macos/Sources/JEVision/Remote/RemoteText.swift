@@ -70,6 +70,9 @@ enum RemoteText {
       return String(localized: "remote.error.storage", defaultValue: "The list of paired devices can’t be saved.")
     case .HostFailed:
       return String(localized: "remote.error.hostFailed", defaultValue: "The Mac couldn’t do it. See the run on the Mac.")
+    case .DataRowNotFound:
+      return String(
+        localized: "remote.error.dataRowNotFound", defaultValue: "The test’s data table doesn’t have that row anymore.")
     }
   }
 

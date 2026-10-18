@@ -25,7 +25,7 @@ struct LiveRunView: View {
           VStack(alignment: .leading, spacing: 10) {
             Text("Steps").font(.headline)
             ForEach(progress.steps.reversed()) { step in
-              StepLine(step: step)
+              StepLine(step: step, kind: kind(of: step))
             }
           }
         }
@@ -34,7 +34,7 @@ struct LiveRunView: View {
     }
     .navigationTitle(flow?.name ?? String(localized: "Run"))
     .navigationBarTitleDisplayMode(.inline)
-    .safeAreaInset(edge: .bottom) { bottomBar }
+    .safeAreaInset(edge: .bottom) { bottomBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
     .alert(stopError?.title ?? "", isPresented: Binding(get: { stopError != nil }, set: { if !$0 { stopError = nil } })) {
       Button("OK", role: .cancel) {}
     } message: {
@@ -104,6 +104,13 @@ struct LiveRunView: View {
     return nil
   }
 
+  /// A block that started before the phone was following the run only reports finishing, so
+  /// its kind comes from the flow when the block is one of the run's own test.
+  private func kind(of step: RunProgress.Step) -> String {
+    guard step.kind.isEmpty, progress.test == nil || progress.test == step.test else { return step.kind }
+    return flow?.blocks.first { $0.id == step.block }?.kind ?? ""
+  }
+
   @ViewBuilder private var bottomBar: some View {
     Group {
       if lost != nil {
@@ -116,6 +123,7 @@ struct LiveRunView: View {
           Label("Show Report", systemImage: "doc.text.magnifyingglass").frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
+        .accessibilityIdentifier("showReport")
       } else if model.permission(on: host) == .run {
         Button(role: .destructive, action: stop) {
           Label(stopping ? "Stopping…" : "Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
@@ -170,12 +178,13 @@ struct LiveRunView: View {
 
 private struct StepLine: View {
   let step: RunProgress.Step
+  let kind: String
 
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
       VerdictStyle(step.status).image
       VStack(alignment: .leading, spacing: 2) {
-        Text(step.kind.isEmpty ? step.block : BlockInfo.title(step.kind))
+        Text(kind.isEmpty ? step.block : BlockInfo.title(kind))
         if let failure = step.failure {
           Text(RunText.failure(failure))
             .font(.subheadline)

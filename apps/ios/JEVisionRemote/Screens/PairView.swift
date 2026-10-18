@@ -43,7 +43,7 @@ struct PairView: View {
         .padding(24)
       }
       .scrollBounceBehavior(.basedOnSize)
-      .safeAreaInset(edge: .bottom) { actions }
+      .safeAreaInset(edge: .bottom) { actions.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           if case .paired = step {
@@ -97,6 +97,7 @@ struct PairView: View {
           Text("Pair").frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
+        .accessibilityIdentifier("pair")
         .disabled(deviceName.trimmingCharacters(in: .whitespaces).isEmpty)
       case .pairing:
         Button(action: {}) {
@@ -113,6 +114,7 @@ struct PairView: View {
           Text("Done").frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
+        .accessibilityIdentifier("pairDone")
       case .failed(let error):
         if error == .invalidCode || error == .codeExpired {
           Button(action: scanAgain) {

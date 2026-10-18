@@ -66,13 +66,16 @@ impl DeviceSigner for Impostor {
     }
 }
 
+/// A run the Mac was asked to start: project root, test, data row and device.
+type Started = (String, String, Option<u32>, String);
+
 #[derive(Default)]
 struct Fake {
     locked: Mutex<bool>,
     busy: Mutex<bool>,
     confirm: Mutex<bool>,
     asked: Mutex<Vec<(String, String, String)>>,
-    started: Mutex<Vec<(String, String, String)>>,
+    started: Mutex<Vec<Started>>,
     stopped: Mutex<Vec<String>>,
     active: Mutex<HashMap<String, RunStatus>>,
 }
@@ -100,6 +103,7 @@ impl HostDelegate for Fake {
         &self,
         project_root: String,
         test: String,
+        row: Option<u32>,
         requested_by: Device,
     ) -> Result<String, RemoteError> {
         let run = "20261018-130000-live".to_owned();
@@ -117,7 +121,7 @@ impl HostDelegate for Fake {
         self.started
             .lock()
             .unwrap()
-            .push((project_root, test, requested_by.name));
+            .push((project_root, test, row, requested_by.name));
         Ok(run)
     }
 
@@ -389,7 +393,7 @@ async fn revoking_closes_live_connections() {
     let setup = Setup::new("revoke").await;
     let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
     let run = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await
         .unwrap();
     let watch = client.watch("Demo".into(), run).await.unwrap();
@@ -414,7 +418,7 @@ async fn view_devices_cannot_run_until_allowed() {
     let setup = Setup::new("view").await;
     let client = setup.pair(Permission::View, TestSigner::new(1)).await;
     let refused = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await;
     assert_eq!(refused, Err(RemoteError::NotAllowed));
     let stop = client.stop_run("Demo".into(), RUN.into()).await;
@@ -429,7 +433,7 @@ async fn view_devices_cannot_run_until_allowed() {
         .set_permission(&client.record().device_id, Permission::Run)
         .unwrap();
     client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await
         .unwrap();
     let started = setup.fake.started.lock().unwrap().clone();
@@ -438,6 +442,7 @@ async fn view_devices_cannot_run_until_allowed() {
         vec![(
             setup.root(),
             "smoke.flow.json".into(),
+            None,
             "Anna's iPhone".into()
         )]
     );
@@ -460,7 +465,7 @@ async fn refuses_paths_outside_the_project() {
             "{path}"
         );
         assert_eq!(
-            client.run_test(demo(), path.into()).await,
+            client.run_test(demo(), path.into(), None).await,
             Err(RemoteError::PathOutsideProject),
             "{path}"
         );
@@ -500,14 +505,14 @@ async fn runs_wait_for_confirmation_on_the_mac() {
     setup.host.set_confirm_runs(true);
 
     let declined = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await;
     assert_eq!(declined, Err(RemoteError::DeclinedOnMac));
     assert!(setup.fake.started.lock().unwrap().is_empty());
 
     *setup.fake.confirm.lock().unwrap() = true;
     client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await
         .unwrap();
     let asked = setup.fake.asked.lock().unwrap().clone();
@@ -525,13 +530,13 @@ async fn refuses_runs_while_the_mac_is_locked_or_busy() {
     let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
     *setup.fake.locked.lock().unwrap() = true;
     let locked = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await;
     assert_eq!(locked, Err(RemoteError::MacLocked));
     *setup.fake.locked.lock().unwrap() = false;
     *setup.fake.busy.lock().unwrap() = true;
     let busy = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await;
     assert_eq!(busy, Err(RemoteError::RunInProgress));
     assert!(setup.fake.started.lock().unwrap().is_empty());
@@ -542,7 +547,7 @@ async fn streams_run_events_to_watchers() {
     let setup = Setup::new("events").await;
     let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
     let run = client
-        .run_test("Demo".into(), "smoke.flow.json".into())
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
         .await
         .unwrap();
     let watch = client.watch("Demo".into(), run.clone()).await.unwrap();
@@ -652,6 +657,152 @@ async fn lists_tests_as_a_tree_and_summarizes_one() {
             && e.edge == "next"
             && e.to == "email"
             && !e.points.is_empty())
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn signs_in_again_after_the_connection_drops() {
+    let setup = Setup::new("reconnect").await;
+    let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let run = client
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
+        .await
+        .unwrap();
+    let watch = client.watch("Demo".into(), run.clone()).await.unwrap();
+    assert!(matches!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Status { .. }))
+    ));
+
+    // The phone loses its network, for example while it sleeps.
+    let first = client.connection().await.unwrap();
+    first.close(iroh::endpoint::VarInt::from_u32(wire::CLOSE_DONE), b"");
+    assert_eq!(watch.next().await, Err(RemoteError::HostOffline));
+
+    // The next request signs in again on its own; watching again starts from the status.
+    assert_eq!(client.list_projects().await.unwrap().len(), 1);
+    assert_ne!(
+        client.connection().await.unwrap().stable_id(),
+        first.stable_id()
+    );
+    assert_eq!(setup.host.activity(1)[0].kind, ActivityKind::SignedIn);
+    let watch = client.watch("Demo".into(), run.clone()).await.unwrap();
+    let Ok(Some(RunUpdate::Status { status })) = watch.next().await else {
+        panic!("a new watch starts with the status");
+    };
+    assert_eq!(status.block.as_deref(), Some("open"));
+    let finished = RunEvent::Finished {
+        verdict: Verdict::Passed,
+        flaky: false,
+    };
+    setup.host.publish(setup.root(), run, finished.clone());
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Event { event: finished }))
+    );
+    assert_eq!(watch.next().await, Ok(None));
+}
+
+/// A test that runs once per row of a data table.
+fn data_test(file: &str) -> String {
+    format!(
+        r#"{{"format":1,"name":"Rows","app":"com.example.AcmeMail","start":"rows","blocks":{{
+          "rows":{{"type":"useData","file":"{file}","body":"type"}},
+          "type":{{"type":"type","text":"${{data.email}}","next":"rows"}}}}}}"#
+    )
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runs_one_data_row_of_a_test() {
+    let setup = Setup::new("rows").await;
+    let project = setup.scratch.0.join("project");
+    write(&project, "data/rows.flow.json", &data_test("users.csv"));
+    write(
+        &project,
+        "data/users.csv",
+        "email,name\na@x.io,Ann\nb@x.io,\n",
+    );
+    write(&setup.scratch.0, "users.csv", "email\nc@x.io\n");
+    write(
+        &project,
+        "data/leak.flow.json",
+        &data_test("../../users.csv"),
+    );
+    let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
+
+    let test = client
+        .get_test("Demo".into(), "data/rows.flow.json".into())
+        .await
+        .unwrap();
+    assert_eq!(test.rows, ["Ann", "b@x.io"]);
+    let plain = client
+        .get_test("Demo".into(), "smoke.flow.json".into())
+        .await
+        .unwrap();
+    assert!(plain.rows.is_empty());
+    // A table outside the project stays unread, as the run would refuse it.
+    let leak = client
+        .get_test("Demo".into(), "data/leak.flow.json".into())
+        .await
+        .unwrap();
+    assert!(leak.rows.is_empty());
+
+    for (path, row) in [
+        ("data/rows.flow.json", 2),
+        ("smoke.flow.json", 0),
+        ("data/leak.flow.json", 0),
+    ] {
+        assert_eq!(
+            client.run_test("Demo".into(), path.into(), Some(row)).await,
+            Err(RemoteError::DataRowNotFound),
+            "{path} row {row}"
+        );
+    }
+    assert_eq!(
+        client
+            .run_test("Demo".into(), "missing.flow.json".into(), Some(0))
+            .await,
+        Err(RemoteError::TestNotFound)
+    );
+    assert!(setup.fake.started.lock().unwrap().is_empty());
+
+    client
+        .run_test("Demo".into(), "data/rows.flow.json".into(), Some(1))
+        .await
+        .unwrap();
+    let started = setup.fake.started.lock().unwrap().clone();
+    assert_eq!(
+        started,
+        vec![(
+            setup.root(),
+            "data/rows.flow.json".into(),
+            Some(1),
+            "Anna's iPhone".into()
+        )]
+    );
+}
+
+#[test]
+fn requests_without_a_row_run_every_row() {
+    let old: wire::Request =
+        serde_json::from_str(r#"{"type":"runTest","project":"Demo","path":"a.flow.json"}"#)
+            .unwrap();
+    assert_eq!(
+        old,
+        wire::Request::RunTest {
+            project: "Demo".into(),
+            path: "a.flow.json".into(),
+            row: None,
+        }
+    );
+    let one = wire::Request::RunTest {
+        project: "Demo".into(),
+        path: "a.flow.json".into(),
+        row: Some(2),
+    };
+    assert_eq!(
+        serde_json::to_string(&one).unwrap(),
+        r#"{"type":"runTest","project":"Demo","path":"a.flow.json","row":2}"#
     );
 }
 

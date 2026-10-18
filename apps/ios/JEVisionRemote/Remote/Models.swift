@@ -60,6 +60,9 @@ struct TestFlow: Hashable, Sendable {
   /// Frames around loops and their bodies.
   var frames: [Frame]
   var edges: [Edge]
+  /// What each row of the test's data table is called, when the test runs once per row; a run
+  /// can be limited to one of them. Empty without such a table.
+  var rows: [String] = []
 
   struct Block: Hashable, Identifiable, Sendable {
     var id: String
@@ -170,7 +173,15 @@ struct RunReport: Hashable, Sendable {
     var verdict: Verdict
     var durationMs: UInt64
     var failure: Failure?
+    /// Row of the test's data table the attempt ran with; `nil` for a test without one.
+    var row: DataRow? = nil
     var steps: [Step]
+  }
+
+  /// A row of the test's data table, counted from 1.
+  struct DataRow: Hashable, Sendable {
+    var number: Int
+    var label: String
   }
 
   /// One block as it ran. Picture names are what `MacSession.picture` takes.

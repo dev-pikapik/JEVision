@@ -18,6 +18,8 @@ final class RunCenter {
     let stepByStep: Bool
     /// The paired device that asked for the run from afar.
     var requestedBy: String? = nil
+    /// Row of the data table the device chose, counted from 0, in place of the test's Run menu.
+    var dataRow: Int? = nil
   }
 
   struct Result: Equatable {
@@ -133,11 +135,12 @@ final class RunCenter {
 
   /// Runs `test`, relative to `project`, for a paired device, or says why it can't. Nothing
   /// waits for a person here: what a local run would ask for refuses the remote one.
-  func runRemotely(_ test: String, in project: URL, requestedBy device: String) -> RemoteError? {
+  /// `dataRow` runs only that row of the test's data table; `nil` runs every row.
+  func runRemotely(_ test: String, in project: URL, dataRow: Int? = nil, requestedBy device: String) -> RemoteError? {
     guard !isRunning, blocked == nil else { return .RunInProgress }
     let request = Request(
       document: FlowDocument(url: project.appending(path: test)), project: project, from: nil, stepByStep: false,
-      requestedBy: device)
+      requestedBy: device, dataRow: dataRow)
     let missing = Self.missing(for: request)
     guard request.document.flow != nil, missing.errors == 0 else { return .TestUnreadable }
     guard missing.permissions.isEmpty, missing.values.isEmpty, start(request) else { return .HostFailed }
@@ -215,7 +218,8 @@ final class RunCenter {
     let clicking: @Sendable (CGRect?) -> Void = { [weak hud] window in
       DispatchQueue.main.sync { MainActor.assumeIsolated { hud?.clicking(into: window) } }
     }
-    let choices = request.document.runChoices
+    var choices = request.document.runChoices
+    if let row = request.dataRow { choices.dataRow = row }
     let folder = request.document.url.deletingLastPathComponent()
     let table = choices.dataRow == nil ? nil : request.document.flow.flatMap { RunChoices.dataTable(of: $0, folder: folder) }
     run.start(

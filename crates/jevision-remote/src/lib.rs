@@ -146,6 +146,9 @@ pub enum RemoteError {
     /// The Mac app failed to do what was asked.
     #[error("the Mac could not do that")]
     HostFailed,
+    /// The test's data table has no such row, or the test has no data table.
+    #[error("there is no such data row")]
+    DataRowNotFound,
 }
 
 impl RemoteError {

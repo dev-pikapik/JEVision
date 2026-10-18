@@ -116,6 +116,7 @@ private struct BlockCard: View {
         Text(BlockInfo.title(block.kind))
           .font(.headline)
           .lineLimit(1)
+          .minimumScaleFactor(0.6)
         if !block.title.isEmpty {
           Text(block.title)
             .font(.subheadline)

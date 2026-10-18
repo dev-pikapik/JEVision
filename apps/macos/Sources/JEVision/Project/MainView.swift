@@ -16,6 +16,7 @@ struct MainView: View {
     @Bindable var runs = runs
     @Bindable var records = records
     @Bindable var schedules = project.schedules
+    @Bindable var git = project.git
     Group {
       switch project.status {
       case .closed:
@@ -55,6 +56,7 @@ struct MainView: View {
       if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
     }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
+    .sheet(isPresented: $git.isComposingPullRequest) { NewPullRequestView() }
     .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
     .sheet(item: $records.blocked) { RecordReadinessSheet(request: $0) }
     // The recording typed secrets that have no value yet: ask for each in turn.
@@ -70,6 +72,19 @@ struct MainView: View {
       Button("OK") {}
     } message: {
       Text(records.failure ?? "")
+    }
+    .overlay(alignment: .top) {
+      if project.showsCommandPalette {
+        ZStack(alignment: .top) {
+          Color.clear
+            .contentShape(.rect)
+            .onTapGesture { project.showsCommandPalette = false }
+            .accessibilityHidden(true)
+          CommandPaletteView()
+            .padding(.top, 72)
+            .padding(.bottom, 24)
+        }
+      }
     }
     .frame(minWidth: 640, minHeight: 420)
     .navigationTitle(project.rootURL == nil ? "JEVision" : project.name)

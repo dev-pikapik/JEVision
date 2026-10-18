@@ -62,8 +62,8 @@ final class CoreMacSession: MacSession {
     try await core { TestFlow(try await connection.getTest(project: project, path: path)) }
   }
 
-  func runTest(project: String, path: String) async throws(RemoteError) -> String {
-    try await core { try await connection.runTest(project: project, path: path) }
+  func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String {
+    try await core { try await connection.runTest(project: project, path: path, row: row.map(UInt32.init)) }
   }
 
   func stopRun(project: String, run: String) async throws(RemoteError) {
@@ -146,6 +146,7 @@ extension RemoteError {
     case .MacLocked: self = .macLocked
     case .RunInProgress: self = .runInProgress
     case .DeclinedOnMac: self = .declinedOnMac
+    case .DataRowNotFound: self = .dataRowNotFound
     case .HostOffline, .HostNotRunning, .Network: self = .macOffline
     case .BadSignature, .ProjectNotFound, .TestNotFound, .TestUnreadable, .RunNotFound, .PictureNotFound,
       .PathOutsideProject, .TooLarge, .UnexpectedMessage, .InvalidSecretKey, .InvalidRelayUrl, .SignerFailed,
@@ -228,7 +229,8 @@ extension TestFlow {
       frames: test.frames.map { Frame(block: $0.block, area: CGRect($0.area)) },
       edges: test.edges.map {
         Edge(from: $0.from, edge: $0.edge, to: $0.to, points: $0.points.map { CGPoint(x: $0.x, y: $0.y) })
-      })
+      },
+      rows: test.rows)
   }
 }
 
@@ -298,6 +300,7 @@ extension RunReport {
         Attempt(
           number: Int(attempt.number), verdict: Verdict(attempt.verdict), durationMs: attempt.durationMs,
           failure: attempt.failure.map(Failure.init),
+          row: attempt.row.map { DataRow(number: Int($0.number), label: $0.label) },
           steps: attempt.steps.map { step in
             Step(
               seq: Int(step.seq), test: step.test, block: step.block, kind: step.blockType,

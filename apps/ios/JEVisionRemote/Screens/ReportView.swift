@@ -15,7 +15,7 @@ struct ReportView: View {
         Section {
           ReportHeader(report: report)
         }
-        ForEach(report.attempts.reversed(), id: \.number) { attempt in
+        ForEach(Array(report.attempts.enumerated()).reversed(), id: \.offset) { _, attempt in
           Section {
             ForEach(attempt.steps) { step in
               StepRow(step: step) { name in
@@ -25,8 +25,8 @@ struct ReportView: View {
               }
             }
           } header: {
-            if report.attempts.count > 1 {
-              Text("Try \(attempt.number)")
+            if let title = Self.title(of: attempt, in: report) {
+              Text(title)
             }
           }
         }
@@ -35,6 +35,18 @@ struct ReportView: View {
     }
     .navigationBarTitleDisplayMode(.inline)
     .task { await load() }
+  }
+
+  /// `Row 2: Anna`, `Try 2`, or both when a row was retried; `nil` for a run with one try.
+  nonisolated static func title(of attempt: RunReport.Attempt, in report: RunReport) -> String? {
+    let row = attempt.row.map { TestDetailView.rowTitle(number: $0.number, label: $0.label) }
+    let retried = report.attempts.contains { $0.number > 1 }
+    switch (row, retried) {
+    case (let row?, true): return String(localized: "\(row) · Try \(attempt.number)")
+    case (let row?, false): return row
+    case (nil, _) where report.attempts.count > 1: return String(localized: "Try \(attempt.number)")
+    case (nil, _): return nil
+    }
   }
 
   private func load() async {

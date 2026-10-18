@@ -20,8 +20,10 @@ struct FlowCanvas: View {
   /// Selects these items; the inspector shows the block, when there is one.
   let onPick: (Set<CanvasItem>, String?) -> Void
   let onAdd: (Slot) -> Void
-  /// A right click on the empty canvas: the point on the canvas, and the same point in this view.
-  let onPalette: (Point, CGPoint) -> Void
+  /// Opens the block palette for a block at a point on the canvas: on a right click on the empty
+  /// canvas, with no slot, to add after the selection; where a link is dropped on the empty
+  /// canvas, with the link's slot. Also gives the same point in this view.
+  let onPalette: (Slot?, Point, CGPoint) -> Void
 
   /// The test while something is dragged: drawn, but saved only when the drag ends.
   @State private var preview: (flow: Flow, layout: FlowLayout)?
@@ -48,6 +50,11 @@ struct FlowCanvas: View {
       if case .active(let at) = phase { pointer = at } else { pointer = nil }
     }
     .coordinateSpace(.named(Self.space))
+    .dropDestination(for: BlockDrag.self) { drags, location in
+      guard let type = drags.first?.type else { return false }
+      drop(type, at: onCanvas(location))
+      return true
+    }
     .onChange(of: document.picked) {
       if let editing, !document.picked.contains(editing) { self.editing = nil }
     }
@@ -57,6 +64,20 @@ struct FlowCanvas: View {
   private var inset: Double {
     let spare = max(0, minSize.width - document.layout.width) / 2
     return (spare / Self.grid).rounded(.down) * Self.grid
+  }
+
+  /// Adds a block dragged from the palette: after the block it was dropped on, otherwise after the
+  /// selection, centered where it was dropped.
+  private func drop(_ type: String, at point: CGPoint) {
+    guard let flow = document.flow else { return }
+    if let hit = document.layout.blocks.first(where: { $0.rect.cgRect.contains(point) }) {
+      document.insert(type, at: slotAfterBlock(flow: flow, id: hit.id))
+    } else {
+      let size = document.layout.blocks.first?.rect
+      document.insert(
+        type, at: document.slotAfterSelection,
+        placedAt: Point(x: point.x - (size?.width ?? 0) / 2, y: point.y - (size?.height ?? 0) / 2))
+    }
   }
 
   /// A point of this view on the canvas the core lays out.
@@ -70,7 +91,7 @@ struct FlowCanvas: View {
         RightClickCatcher {
           guard let pointer else { return }
           let at = onCanvas(pointer)
-          onPalette(Point(x: at.x, y: at.y), pointer)
+          onPalette(nil, Point(x: at.x, y: at.y), pointer)
         }
       }
       .contentShape(.rect)
@@ -178,6 +199,11 @@ struct FlowCanvas: View {
           toggleBreakpoint: { runs.toggleBreakpoint(laid.id, in: document) },
           runFromHere: runs.isRunning || project.rootURL == nil
             ? nil : { project.rootURL.map { runs.run(document, in: $0, from: laid.id) } },
+          addCondition: {
+            onPick([item], laid.id)
+            document.addCondition()
+          },
+          disconnect: document.hasLinks(laid.id) ? { document.disconnect(laid.id) } : nil,
           actions: actions(for: item))
         .frame(width: laid.rect.width, height: laid.rect.height)
         .onHover { hover(laid.id, $0) }
@@ -351,9 +377,18 @@ struct FlowCanvas: View {
         drag.target = document.layout.blocks.first { drag.targets.contains($0.id) && $0.rect.cgRect.contains(to) }?.id
         link = drag
       }
-      .onEnded { _ in
-        if let link, let target = link.target { document.connect(link.slot.from, edge: link.slot.edge, to: target) }
-        link = nil
+      .onEnded { value in
+        defer { link = nil }
+        guard let link else { return }
+        if let target = link.target {
+          document.connect(link.slot.from, edge: link.slot.edge, to: target)
+        } else if hypot(link.to.x - link.from.x, link.to.y - link.from.y) > 2 * Self.grid,
+          !document.layout.blocks.contains(where: { $0.rect.cgRect.contains(link.to) })
+        {
+          // Dropped on the empty canvas: choose the block the link leads to, placed there.
+          let width = document.layout.blocks.first { $0.id == link.slot.from }?.rect.width ?? 0
+          onPalette(link.slot, Point(x: link.to.x - width / 2, y: link.to.y), value.location)
+        }
       }
   }
 
@@ -693,6 +728,10 @@ private struct BlockNode: View {
   let toggleBreakpoint: () -> Void
   /// `nil` while the test can't be run from here.
   let runFromHere: (() -> Void)?
+  /// One more condition on this If, or a new If after this block.
+  let addCondition: () -> Void
+  /// Removes the links into and out of the block; `nil` when it has none.
+  let disconnect: (() -> Void)?
   let actions: ItemActions
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
@@ -770,6 +809,12 @@ private struct BlockNode: View {
         .disabled(runFromHere == nil)
       Toggle("Pause Here", systemImage: "pause", isOn: Binding(get: { hasBreakpoint }, set: { _ in toggleBreakpoint() }))
       Divider()
+      Button(action: addCondition) {
+        Label { addConditionTitle } icon: { Image(systemName: "arrow.triangle.branch") }
+      }
+      Button("Disconnect", systemImage: "scissors", action: { disconnect?() })
+        .disabled(disconnect == nil)
+      Divider()
       ItemMenu(actions: actions)
     }
     .accessibilityElement(children: .ignore)
@@ -782,9 +827,15 @@ private struct BlockNode: View {
     .accessibilityAction(named: Text("Link to Another Block"), startLink)
     .accessibilityAction(named: Text("Run from Here")) { runFromHere?() }
     .accessibilityAction(named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint)
+    .accessibilityAction(named: addConditionTitle, addCondition)
+    .accessibilityActions {
+      if let disconnect { Button("Disconnect", action: disconnect) }
+    }
     .accessibilityAction(named: Text("Duplicate"), actions.duplicate)
     .accessibilityAction(named: Text("Delete"), actions.delete)
   }
+
+  private var addConditionTitle: Text { type == "if" ? Text("Add Condition") : Text("Add If After") }
 
   @ViewBuilder
   private var badge: some View {

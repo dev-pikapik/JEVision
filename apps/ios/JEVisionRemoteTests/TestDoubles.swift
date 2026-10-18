@@ -20,7 +20,7 @@ final class FakeSession: MacSession {
   func listProjects() async throws(RemoteError) -> [Project] { [Project(name: "Notes")] }
   func listTests(project: String) async throws(RemoteError) -> [TestEntry] { [] }
   func getTest(project: String, path: String) async throws(RemoteError) -> TestFlow { throw .other }
-  func runTest(project: String, path: String) async throws(RemoteError) -> String { "run-1" }
+  func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String { "run-1" }
   func stopRun(project: String, run: String) async throws(RemoteError) {}
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus { throw .other }
   func runEvents(project: String, run: String) -> AsyncThrowingStream<RunUpdate, any Error> {
