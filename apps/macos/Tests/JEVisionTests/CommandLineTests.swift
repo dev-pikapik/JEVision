@@ -122,6 +122,12 @@ struct CommandLineArgumentTests {
       #expect(error.message == message)
     }
   }
+
+  @Test func permissionsOverSSHGoToTheSSHServer() {
+    #expect(Readiness.isSSHServer("/usr/libexec/sshd-session"))
+    #expect(Readiness.isSSHServer("/usr/libexec/sshd-keygen-wrapper"))
+    #expect(!Readiness.isSSHServer("/System/Applications/Utilities/Terminal.app"))
+  }
 }
 
 /// Runs the built `jevision` like a person or a CI script would.

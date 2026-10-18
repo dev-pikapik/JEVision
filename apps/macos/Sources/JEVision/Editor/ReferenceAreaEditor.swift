@@ -180,28 +180,17 @@ struct ReferenceAreaEditor: View {
 
   private enum Appearance: Hashable { case light, dark }
 
-  /// What the pointer does on the picture.
-  private enum Action {
-    case draw(from: CGPoint)
-    case move(AreaID, Rect)
-    case resize(AreaID, Rect, AreaDrag.Corner)
-  }
-
   @State private var tool = AreaKind.ignore
   @State private var selection: AreaID?
   @State private var appearance = Appearance.light
   @State private var picture: ReferencePicture?
-  @State private var action: Action?
-  /// The area being dragged, before it's saved.
-  @State private var draft: (id: AreaID?, kind: AreaKind, rect: Rect)?
-  @State private var hover: CGPoint?
   @State private var isCapturing = false
   @State private var problem: Problem?
   /// Kind of the last change, so that changes of one kind in a row, like nudges, undo together.
   @State private var lastChange: String?
   @FocusState private var canvasFocused: Bool
 
-  private struct Problem: Identifiable {
+  struct Problem: Identifiable {
     let id = UUID()
     let message: String
     var needsPermission = false
@@ -307,33 +296,9 @@ struct ReferenceAreaEditor: View {
   @ViewBuilder
   private var canvas: some View {
     if let picture {
-      GeometryReader { geometry in
-        let frame = ImageFrame(pixels: picture.pixels, bounds: geometry.size)
-        ReferenceCanvas(picture: picture, reference: shown, selection: draft?.id ?? selection)
-          .contentShape(.rect)
-          .gesture(dragGesture(frame))
-          .onContinuousHover { phase in
-            if case .active(let point) = phase { hover = point } else { hover = nil }
-          }
-          .pointerStyle(pointer(frame))
-          .overlay { accessibilityAreas(frame) }
-          .accessibilityElement(children: .contain)
-          .accessibilityLabel(Text("Reference image, \(picture.image.width) by \(picture.image.height) pixels"))
-      }
-      .padding(16)
-      .focusable()
-      .focusEffectDisabled()
-      .focused($canvasFocused)
-      .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-        guard let selection else { return .ignored }
-        remove(selection)
-        return .handled
-      }
-      .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-        guard let selection else { return .ignored }
-        nudge(selection, press.key, by: press.modifiers.contains(.shift) ? 10 : 1)
-        return .handled
-      }
+      AreaCanvas(
+        picture: picture, reference: reference, tool: tool, selection: $selection, focus: $canvasFocused,
+        label: Text("Reference image, \(picture.image.width) by \(picture.image.height) pixels"), change: change)
     } else {
       ContentUnavailableView {
         Label(appearance == .dark ? "No Dark Picture" : "No Reference Image", systemImage: appearance == .dark ? "moon" : "photo")
@@ -395,10 +360,20 @@ struct ReferenceAreaEditor: View {
           }
         }
         ForEach(reference.areaIDs, id: \.self) { id in
-          areaRow(id)
+          if let rect = reference[area: id] {
+            AreaRow(
+              id: id, rect: rect, picture: picture, isSelected: selection == id,
+              select: {
+                selection = id
+                canvasFocused = true
+              },
+              delete: { remove(id) })
+          }
         }
         if let selection, let rect = reference[area: selection], let picture {
-          pixelFields(selection, rect, ImageFrame(pixels: picture.pixels, bounds: picture.pixels))
+          AreaPixelFields(rect: rect, frame: ImageFrame(pixels: picture.pixels, bounds: picture.pixels)) { new in
+            change("field.\(selection)") { $0[area: selection] = new }
+          }
         }
         IssueList(
           issues: context.issues(field + ".area") + context.issues(field + ".ignore") + context.issues(field + ".hide"))
@@ -425,62 +400,6 @@ struct ReferenceAreaEditor: View {
     .formStyle(.grouped)
   }
 
-  private func areaRow(_ id: AreaID) -> some View {
-    let pixels = picture.map { ImageFrame(pixels: $0.pixels, bounds: $0.pixels).pixels(reference[area: id]!) }
-    return HStack(spacing: 8) {
-      AreaSwatch(kind: id.kind)
-      VStack(alignment: .leading, spacing: 1) {
-        Text(id.kind.name(id.index))
-        if let pixels {
-          Text("\(pixels.width) × \(pixels.height) px at \(pixels.x), \(pixels.y)")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-        }
-      }
-      Spacer()
-      Button {
-        remove(id)
-      } label: {
-        Image(systemName: "trash")
-      }
-      .buttonStyle(.borderless)
-      .accessibilityLabel(Text("Delete \(id.kind.name(id.index))"))
-    }
-    .contentShape(.rect)
-    .onTapGesture {
-      selection = id
-      canvasFocused = true
-    }
-    .listRowBackground(selection == id ? Color.accentColor.opacity(0.15) : nil)
-    .accessibilityElement(children: .combine)
-    .accessibilityAddTraits(selection == id ? [.isSelected, .isButton] : .isButton)
-    .accessibilityAction(named: Text("Delete")) { remove(id) }
-  }
-
-  private func pixelFields(_ id: AreaID, _ rect: Rect, _ frame: ImageFrame) -> some View {
-    let pixels = frame.pixels(rect)
-    func field(_ label: LocalizedStringKey, _ path: WritableKeyPath<PixelRect, Int>) -> some View {
-      TextField(
-        value: Binding(
-          get: { pixels[keyPath: path] },
-          set: { value in
-            var p = pixels
-            p[keyPath: path] = value
-            change("field.\(id)") { $0[area: id] = frame.fraction(p) }
-          }),
-        format: .number
-      ) { Text(label) }
-      .monospacedDigit()
-    }
-    return Group {
-      field("From Left, px", \.x)
-      field("From Top, px", \.y)
-      field("Width, px", \.width)
-      field("Height, px", \.height)
-    }
-  }
-
   private var footer: some View {
     HStack {
       Text("Areas are the same for the light and dark pictures. Arrow keys move the selected area, Delete removes it.")
@@ -500,105 +419,6 @@ struct ReferenceAreaEditor: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 10)
-  }
-
-  // MARK: Pointer
-
-  /// The reference as it looks right now, with the area being dragged in its new place.
-  private var shown: Reference {
-    guard let draft else { return reference }
-    var r = reference
-    if let id = draft.id { r[area: id] = draft.rect } else { r.add(draft.kind, draft.rect) }
-    return r
-  }
-
-  /// What a press at `point` would do: resize the selected area by a corner, move an area, or draw.
-  private func action(at point: CGPoint, _ frame: ImageFrame) -> Action {
-    if let selection, let r = reference[area: selection] {
-      let view = frame.view(r)
-      for corner in AreaDrag.Corner.allCases {
-        let p = corner.point(of: Rect(x: view.minX, y: view.minY, width: view.width, height: view.height))
-        if hypot(p.x - point.x, p.y - point.y) <= 8 { return .resize(selection, r, corner) }
-      }
-    }
-    // Areas drawn last are on top.
-    for id in reference.areaIDs.reversed() {
-      if let r = reference[area: id], frame.view(r).insetBy(dx: -2, dy: -2).contains(point) { return .move(id, r) }
-    }
-    return .draw(from: frame.fraction(point))
-  }
-
-  private func pointer(_ frame: ImageFrame) -> PointerStyle {
-    guard let hover else { return .default }
-    if case .move = action { return .grabActive }
-    switch action ?? action(at: hover, frame) {
-    case .draw: return frame.rect.contains(hover) ? .rectSelection : .default
-    case .move: return .grabIdle
-    case .resize(_, _, let corner):
-      switch corner {
-      case .topLeft: return .frameResize(position: .topLeading)
-      case .topRight: return .frameResize(position: .topTrailing)
-      case .bottomLeft: return .frameResize(position: .bottomLeading)
-      case .bottomRight: return .frameResize(position: .bottomTrailing)
-      }
-    }
-  }
-
-  private func dragGesture(_ frame: ImageFrame) -> some Gesture {
-    DragGesture(minimumDistance: 0)
-      .onChanged { value in
-        canvasFocused = true
-        let action = self.action ?? action(at: value.startLocation, frame)
-        self.action = action
-        switch action {
-        case .draw(let start):
-          draft = (nil, tool, frame.snapped(AreaDrag.rect(from: start, to: frame.fraction(value.location))))
-        case .move(let id, let r):
-          selection = id
-          draft = (id, id.kind, frame.snapped(AreaDrag.moved(r, by: frame.fraction(value.translation))))
-        case .resize(let id, let r, let corner):
-          draft = (id, id.kind, frame.snapped(AreaDrag.resized(r, corner: corner, to: frame.fraction(value.location))))
-        }
-      }
-      .onEnded { value in
-        defer {
-          action = nil
-          draft = nil
-        }
-        guard let action = self.action, let draft else { return }
-        switch action {
-        case .draw:
-          // A click without a drag only clears the selection.
-          let moved = hypot(value.translation.width, value.translation.height) >= 4
-          guard moved else {
-            selection = nil
-            return
-          }
-          change(nil) { selection = $0.add(draft.kind, draft.rect) }
-        case .move(let id, let r), .resize(let id, let r, _):
-          if draft.rect != r { change(nil) { $0[area: id] = draft.rect } }
-        }
-      }
-  }
-
-  /// One invisible element per area, so VoiceOver can find, select and delete each.
-  private func accessibilityAreas(_ frame: ImageFrame) -> some View {
-    ForEach(reference.areaIDs, id: \.self) { id in
-      if let r = reference[area: id] {
-        let view = frame.view(r)
-        let pixels = frame.pixels(r)
-        Color.clear
-          .frame(width: view.width, height: view.height)
-          .position(x: view.midX, y: view.midY)
-          .allowsHitTesting(false)
-          .accessibilityElement()
-          .accessibilityLabel(Text(id.kind.name(id.index)))
-          .accessibilityValue(Text("\(pixels.width) × \(pixels.height) px at \(pixels.x), \(pixels.y)"))
-          .accessibilityAddTraits(selection == id ? [.isSelected, .isButton] : .isButton)
-          .accessibilityAction { selection = id }
-          .accessibilityAction(named: Text("Delete")) { remove(id) }
-      }
-    }
   }
 
   // MARK: Changes
@@ -623,19 +443,6 @@ struct ReferenceAreaEditor: View {
     let frame = ImageFrame(pixels: picture.pixels, bounds: picture.pixels)
     change(nil) { selection = $0.add(tool, frame.snapped(Rect(x: 0.35, y: 0.4, width: 0.3, height: 0.2))) }
     canvasFocused = true
-  }
-
-  private func nudge(_ id: AreaID, _ key: KeyEquivalent, by step: Int) {
-    guard let picture, let r = reference[area: id] else { return }
-    let frame = ImageFrame(pixels: picture.pixels, bounds: picture.pixels)
-    var p = frame.pixels(r)
-    switch key {
-    case .leftArrow: p.x = max(p.x - step, 0)
-    case .rightArrow: p.x = min(p.x + step, Int(picture.pixels.width) - p.width)
-    case .upArrow: p.y = max(p.y - step, 0)
-    default: p.y = min(p.y + step, Int(picture.pixels.height) - p.height)
-    }
-    change("nudge.\(id)") { $0[area: id] = frame.fraction(p) }
   }
 
   // MARK: Replacing the picture
@@ -671,7 +478,7 @@ struct ReferenceAreaEditor: View {
     }
   }
 
-  private static func problem(_ error: HandsError, app: String) -> Problem {
+  static func problem(_ error: HandsError, app: String) -> Problem {
     switch error {
     case .PermissionDenied:
       Problem(

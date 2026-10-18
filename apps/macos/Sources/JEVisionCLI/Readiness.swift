@@ -12,8 +12,9 @@ enum Readiness {
       return """
         jevision can’t run tests here: there is no logged-in user with a screen.
         Tests look at windows and click in them, so they run only in the session of a user
-        who is logged in on this Mac — from Terminal, or from a CI agent started in that
-        session (not over SSH and not as a system service).
+        who is logged in on this Mac: from Terminal, from a CI agent started in that session,
+        or over SSH as that same user while they stay logged in. Not as a system service.
+        For runs nobody starts by hand, turn on automatic login in System Settings → Users & Groups.
         """
     }
     if MacHands.screenIsLocked {
@@ -32,14 +33,30 @@ enum Readiness {
     let steps = lists.enumerated().map { index, list in
       "  \(index + 1). Open System Settings → Privacy & Security → \(list) and turn on “\(app.name)”."
     }
+    let viaSSH = isSSHServer(app.path)
+    let works = viaSSH
+      ? "jevision runs over SSH, so macOS asks on behalf of the SSH server, and the permission goes to it."
+      : "jevision works through the app it runs in, so the permission goes to that app."
+    let choose = viaSSH
+      ? "click + under the list, press Command-Shift-G and type \(app.path)."
+      : "click + under the list and choose \(app.path)."
+    let warning = viaSSH
+      ? "\n  Every command started over SSH gets these permissions: do this only on a Mac or virtual machine used just for testing."
+      : ""
     return """
       jevision can’t run tests yet: macOS hasn’t allowed “\(app.name)” to \(needs.joined(separator: " and ")).
-      jevision works through the app it runs in, so the permission goes to that app.
+      \(works)
 
       \(steps.joined(separator: "\n"))
-        If “\(app.name)” isn’t in the list, click + under the list and choose \(app.path).
-        If macOS offers to quit and reopen “\(app.name)”, do it, then run the command again.
+        If “\(app.name)” isn’t in the list, \(choose)
+        If macOS offers to quit and reopen “\(app.name)”, do it, then run the command again.\(warning)
       """
+  }
+
+  /// The program macOS holds responsible for a command started over SSH: `sshd-session` on
+  /// recent macOS, `sshd-keygen-wrapper` on older ones.
+  static func isSSHServer(_ path: String) -> Bool {
+    path.hasPrefix("/usr/libexec/sshd")
   }
 
   /// The list macOS 27 renamed from Accessibility.

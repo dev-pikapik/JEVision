@@ -3,6 +3,9 @@
 # Contents/Helpers (not Contents/MacOS: on a case-insensitive disk "jevision" is "JEVision").
 #   ARCHS="arm64"          build for one architecture (default: arm64 x86_64)
 #   SIGN_IDENTITY="Name"   sign with a certificate (default: ad-hoc)
+#   BUILD_NUMBER=42        CFBundleVersion (default: the number of commits)
+#   SPARKLE_PUBLIC_ED_KEY  public key of update archives; without it the app never looks for updates
+# The version is the workspace version in the root Cargo.toml, shared with the core.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,8 +27,15 @@ if [ ! -f "$STAMP" ] || [ -n "$(find "$ROOT/crates" "$ROOT/Cargo.toml" "$ROOT/Ca
   "$ROOT/scripts/build-core-apple.sh"
 fi
 
+# Sparkle, at the version Package.swift pins, from the binary package SwiftPM downloads.
+swift package resolve >/dev/null
+SPARKLE=.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64
+
+VERSION=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml")
+BUILD_NUMBER=${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}
+
 rm -rf build
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources" build/strings
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Frameworks" "$APP/Contents/Resources" build/strings
 
 SOURCES=()
 while IFS= read -r -d '' f; do SOURCES+=("$f"); done < <(find Sources/JEVision -name '*.swift' -print0)
@@ -63,6 +73,7 @@ for ARCH in $ARCHS; do
     -target "$ARCH-apple-macos$MIN_OS" \
     -I "$MODULES" -I "$FFI/Headers" \
     -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi -framework SystemConfiguration \
+    -F "$SPARKLE" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
     ${EMIT[@]+"${EMIT[@]}"} \
     "${SOURCES[@]}" \
     -o "build/JEVision-$ARCH"
@@ -86,13 +97,39 @@ python3 scripts/check-localization.py build/strings
 rm -rf build/strings
 
 cp Resources/Info.plist "$APP/Contents/"
+PLIST="$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $VERSION" -c "Add :CFBundleVersion string $BUILD_NUMBER" "$PLIST"
+if [ -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]; then
+  if ! [[ $SPARKLE_PUBLIC_ED_KEY =~ ^[A-Za-z0-9+/]{43}=$ ]]; then
+    echo "SPARKLE_PUBLIC_ED_KEY isn't an EdDSA public key (44 characters of base64): $SPARKLE_PUBLIC_ED_KEY" >&2
+    exit 2
+  fi
+  /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" "$PLIST"
+fi
+ditto "$SPARKLE/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 xcrun xcstringstool compile Resources/InfoPlist.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 
-# Nested code first: signing the app seals what is inside it.
-codesign --force --options runtime --identifier io.github.dev-pikapik.jevision.cli \
-  --sign "${SIGN_IDENTITY:--}" "$APP/Contents/Helpers/jevision"
-codesign --force --options runtime --sign "${SIGN_IDENTITY:--}" "$APP"
-codesign --verify --strict "$APP"
+# Nested code first, innermost out: signing a bundle seals what is inside it. Everything runs
+# with the hardened runtime; with a Developer ID nothing needs entitlements (Sparkle's downloader
+# keeps its own).
+SIGN=(codesign --force --options runtime --sign "${SIGN_IDENTITY:--}")
+if [ -n "${SIGN_IDENTITY:-}" ]; then SIGN+=(--timestamp); fi
+SPARKLE_CODE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+"${SIGN[@]}" "$SPARKLE_CODE/XPCServices/Installer.xpc"
+"${SIGN[@]}" --preserve-metadata=entitlements "$SPARKLE_CODE/XPCServices/Downloader.xpc"
+"${SIGN[@]}" "$SPARKLE_CODE/Autoupdate"
+"${SIGN[@]}" "$SPARKLE_CODE/Updater.app"
+"${SIGN[@]}" "$APP/Contents/Frameworks/Sparkle.framework"
+"${SIGN[@]}" --identifier io.github.dev-pikapik.jevision.cli "$APP/Contents/Helpers/jevision"
+if [ -n "${SIGN_IDENTITY:-}" ]; then
+  "${SIGN[@]}" "$APP"
+else
+  # Library validation wants the app and Sparkle from one team, and ad-hoc code has none.
+  /usr/libexec/PlistBuddy -c "Add :com.apple.security.cs.disable-library-validation bool true" build/adhoc.entitlements >/dev/null
+  "${SIGN[@]}" --entitlements build/adhoc.entitlements "$APP"
+  rm build/adhoc.entitlements
+fi
+codesign --verify --deep --strict "$APP"
 echo "Built $PWD/$APP"

@@ -40,6 +40,7 @@
     <li><a href="retries.html" aria-current="page">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -65,6 +66,7 @@
     <li><a href="#verdict">What the retries tell you</a></li>
     <li><a href="#flaky">Flaky tests from history</a></li>
     <li><a href="#quarantine">Quarantine</a></li>
+    <li><a href="#privacy">Screenshots and privacy</a></li>
   </ul>
 </nav>
 
@@ -75,12 +77,18 @@
   "retries": 2,
   "quarantine": [
     { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
+  ],
+  "localOnly": true,
+  "hide": [
+    { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 }
   ]
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
   <li><code>retries</code> (optional) is the project's default number of retries, 0 to 10.</li>
   <li><code>quarantine</code> (optional) lists tests in <a href="#quarantine">quarantine</a>: <code>test</code> is a path relative to the project folder, <code>reason</code> is optional.</li>
+  <li><code>localOnly</code> (optional) is <code>true</code> to keep the project's screenshots on this Mac: see <a href="#privacy">Screenshots and privacy</a>.</li>
+  <li><code>hide</code> (optional) lists areas of the window painted over in every screenshot of the project: see <a href="#privacy">Screenshots and privacy</a>.</li>
 </ul>
 
 <h2 id="retries">Retries</h2>
@@ -116,6 +124,17 @@
 <pre><code>jevision run tests/ --include-quarantined-failures</code></pre>
 <div class="note">
   <p>Quarantine is meant to be short. Give a <code>reason</code> that says what must happen to release the test, such as an issue number.</p>
+</div>
+
+<h2 id="privacy">Screenshots and privacy</h2>
+<p>Screens of the app under test can show names, email addresses or account numbers. Two settings in <code>jevision.project.json</code> protect them for everyone who runs the project's tests, whatever each person's own settings say. Both are in <strong>Settings › AI › This project</strong>.</p>
+<ul>
+  <li><strong>Areas always hidden</strong> (<code>hide</code>). Parts of the window painted over in solid grey in every screenshot of the project: before it is saved in a report or as a new reference image, sent to an AI model for a <a href="checks.html">check by meaning</a>, or given to an <a href="mcp.html">AI assistant</a>. Each area is <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 of the window, from its top-left corner, like the areas of a check, so it fits the window at any size. Click <strong>Edit…</strong> next to “Areas always hidden” to draw them over a picture of the app's window; the picture only helps you place them and isn't saved.</li>
+  <li><strong>Only models on this Mac</strong> (<code>localOnly</code>). Screenshots never go to a cloud service: checks by meaning work only with models that run on this Mac, a check that would need a cloud model stops with a message, and assistants get no screenshots.</li>
+</ul>
+<p>Before any picture leaves the Mac, JEVision also paints over the areas the check itself hides or ignores and every password field it finds through the Accessibility permission. The report shows the picture exactly as it was sent, marked “masked before sending”.</p>
+<div class="note">
+  <p>Run videos record the window as it is, without these areas painted over. For screens that must never be recorded, turn videos off in <strong>Settings › Advanced</strong>, or run with <code>--video off</code>.</p>
 </div>
 </main>
 </div>

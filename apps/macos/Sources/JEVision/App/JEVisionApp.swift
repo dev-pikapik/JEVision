@@ -12,6 +12,7 @@ struct JEVisionApp: App {
   @State private var remote: RemoteAccess
   /// Tells about failed scheduled runs, of every project with schedules.
   @State private var scheduleNotifier: ScheduleNotifier
+  @State private var updates = Updates()
 
   init() {
     _ = AppLanguage.atLaunch
@@ -38,7 +39,7 @@ struct JEVisionApp: App {
         .environment(records)
     }
     .defaultSize(width: 960, height: 640)
-    .commands { AppCommands(project: project, runs: runs, records: records) }
+    .commands { AppCommands(project: project, runs: runs, records: records, updates: updates) }
 
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()
@@ -77,6 +78,7 @@ struct JEVisionApp: App {
         .environment(project)
         .environment(permissions)
         .environment(remote)
+        .environment(updates)
     }
   }
 }

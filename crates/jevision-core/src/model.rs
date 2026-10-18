@@ -254,7 +254,7 @@ pub struct Reference {
     pub area: Option<Rect>,
     /// Parts left out of the comparison: clocks, avatars, counters.
     pub ignore: Vec<Rect>,
-    /// Parts blurred out before a screenshot is sent anywhere or stored in a report.
+    /// Parts painted over in grey before a screenshot is sent anywhere or stored in a report.
     pub hide: Vec<Rect>,
 }
 

@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -92,9 +93,9 @@ open apps/macos/build/JEVision.app</code></pre>
 <h2 id="permissions">Allow permissions</h2>
 <p>JEVision needs two permissions from macOS, set in <strong>System Settings → Privacy &amp; Security</strong>. The app explains each one before it asks.</p>
 <dl>
-  <dt>Screen Recording</dt>
+  <dt>Screen &amp; System Audio Recording</dt>
   <dd>To take screenshots of the app under test: to find what to click, to wait for screens and to compare them with reference images.</dd>
-  <dt>Accessibility</dt>
+  <dt>Accessibility (Device Control and Data Access from macOS 27)</dt>
   <dd>To click, type and press keys for you; to read the names of buttons and fields while recording, so blocks get readable names; and to notice your own mouse and keyboard, so a run pauses when you take over.</dd>
 </dl>
 <p><strong>Settings → Permissions</strong> in JEVision shows what is allowed and opens the right page of System Settings. If something doesn't work, see <a href="faq.html#permissions">Permissions</a> in the FAQ.</p>

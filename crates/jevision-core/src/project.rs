@@ -104,14 +104,7 @@ impl ProjectSettings {
                 twice[0].test
             ));
         }
-        if let Some(i) = file.hide.iter().position(|r| !rect_fits(r)) {
-            return Err(format!(
-                "area {} in \"hide\" doesn't fit the window; x, y, width and height are \
-                 fractions from 0 to 1 of the window, and the area must have a size and end \
-                 inside it",
-                i + 1
-            ));
-        }
+        check_hide(&file.hide)?;
         Ok(Self {
             retries: file.retries,
             quarantine,
@@ -181,11 +174,31 @@ impl ProjectSettings {
         Ok(())
     }
 
+    /// Replaces the areas hidden in every screenshot; `Err` names the first one that doesn't
+    /// fit the window.
+    pub fn set_hide(&mut self, hide: Vec<Rect>) -> Result<(), String> {
+        check_hide(&hide)?;
+        self.hide = hide;
+        Ok(())
+    }
+
     /// Takes the test file `test` out of quarantine; `false` when it wasn't in.
     pub fn release(&mut self, test: &str) -> bool {
         let before = self.quarantine.len();
         self.quarantine.retain(|q| q.test != test);
         self.quarantine.len() != before
+    }
+}
+
+fn check_hide(hide: &[Rect]) -> Result<(), String> {
+    match hide.iter().position(|r| !rect_fits(r)) {
+        Some(i) => Err(format!(
+            "area {} in \"hide\" doesn't fit the window; x, y, width and height are \
+             fractions from 0 to 1 of the window, and the area must have a size and end \
+             inside it",
+            i + 1
+        )),
+        None => Ok(()),
     }
 }
 

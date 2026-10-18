@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -330,7 +331,7 @@
 </ul>
 
 <h2 id="canonical">Canonical form</h2>
-<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation and most default values left out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
+<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation, settings that are off or empty left out, and the click button, the comparison and the <code>waitFor</code> timeout always written out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
 
 <h2 id="editor">Editing on the canvas</h2>
 <ul>

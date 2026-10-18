@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GeneralSettingsView: View {
+  @Environment(Updates.self) private var updates
   @AppStorage(Appearance.key) private var appearance = Appearance.system
   @State private var language = AppLanguage.saved
   @State private var asksToRestart = false
@@ -38,6 +39,7 @@ struct GeneralSettingsView: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
+      UpdatesSection(updates: updates)
     }
     .formStyle(.grouped)
     .onChange(of: appearance) { appearance.apply() }
@@ -60,5 +62,42 @@ struct GeneralSettingsView: View {
 
   private func restart() {
     restartFailed = !Relaunch.now()
+  }
+}
+
+private struct UpdatesSection: View {
+  @Bindable var updates: Updates
+
+  var body: some View {
+    Section {
+      if updates.isAvailable {
+        Toggle("Check for updates automatically", isOn: $updates.checksAutomatically)
+        LabeledContent {
+          Button("Check Now") { updates.check() }
+            .disabled(!updates.canCheck)
+        } label: {
+          Text("Version \(Self.version)")
+        }
+      } else {
+        LabeledContent("Version", value: Self.version)
+      }
+    } header: {
+      Text("Updates")
+    } footer: {
+      Group {
+        if updates.isAvailable {
+          Text("JEVision asks before installing an update and installs only updates signed by the JEVision project.")
+        } else {
+          Text("This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub.")
+        }
+      }
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private static var version: String {
+    Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
   }
 }

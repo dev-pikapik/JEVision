@@ -25,6 +25,7 @@ LANGUAGES = {'en': {'one', 'other'}, 'ru': {'one', 'few', 'many', 'other'}}
 XCODE = '/Applications/Xcode.app/Contents/Developer'
 CORE = os.path.join(ROOT, '..', '..', 'build', 'apple', 'JEVisionCore')
 FFI_HEADERS = os.path.join(CORE, 'JEVisionCoreFFI.xcframework', 'macos-arm64_x86_64', 'Headers')
+SPARKLE = os.path.join(ROOT, '.build', 'artifacts', 'sparkle', 'Sparkle', 'Sparkle.xcframework', 'macos-arm64_x86_64')
 TARGET = 'arm64-apple-macos26.0'
 SPEC = re.compile(r'%(?:\d+\$)?[-+ 0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j)?[@dDiuUxXoOfFeEgGcCsSp]')
 
@@ -54,9 +55,11 @@ def extract(out_dir, env):
          os.path.join(modules, 'JEVisionHands.swiftmodule'), *hands],
         check=True, env=env)
     sources = sorted(glob.glob(os.path.join(ROOT, 'Sources', 'JEVision', '**', '*.swift'), recursive=True))
+    if not os.path.isdir(SPARKLE):
+        subprocess.run(['swift', 'package', 'resolve', '--package-path', ROOT], check=True, env=env)
     subprocess.run(
         ['xcrun', 'swiftc', '-wmo', '-c', '-parse-as-library', '-swift-version', '6',
-         '-module-name', 'JEVision', '-target', TARGET, '-I', modules, '-I', FFI_HEADERS,
+         '-module-name', 'JEVision', '-target', TARGET, '-I', modules, '-I', FFI_HEADERS, '-F', SPARKLE,
          '-Xfrontend', '-emit-localized-strings', '-Xfrontend', '-emit-localized-strings-path', '-Xfrontend', out_dir,
          *sources, '-o', os.path.join(out_dir, 'app.o')],
         check=True, env=env)

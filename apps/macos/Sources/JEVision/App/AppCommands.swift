@@ -4,11 +4,18 @@ struct AppCommands: Commands {
   let project: ProjectStore
   let runs: RunCenter
   let records: RecordCenter
+  let updates: Updates
   @Environment(\.openWindow) private var openWindow
   @FocusedValue(\.canvasZoom) private var zoom
   @FocusedValue(\.canvasDocument) private var canvas
 
   var body: some Commands {
+    CommandGroup(after: .appInfo) {
+      if updates.isAvailable {
+        Button("Check for Updates…") { updates.check() }
+          .disabled(!updates.canCheck)
+      }
+    }
     CommandGroup(after: .appSettings) {
       Button("Install Command Line Tool…") { openWindow(id: SceneID.commandLineTool) }
     }

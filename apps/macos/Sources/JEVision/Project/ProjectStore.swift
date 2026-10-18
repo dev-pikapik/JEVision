@@ -251,6 +251,18 @@ final class ProjectStore {
     try changeSettings { try setProjectLocalOnly(project: $0, localOnly: localOnly) }
   }
 
+  /// The areas of the window, in fractions, covered in every screenshot of the project. Undo
+  /// puts the previous areas back; with `undoManager` nil the change joins the last undo step.
+  func setHiddenAreas(_ hide: [Rect], undoManager: UndoManager?) throws {
+    let old = settings.hide
+    guard hide != old else { return }
+    try changeSettings { try setProjectHide(project: $0, hide: hide) }
+    undoManager?.registerUndo(withTarget: self) { store in
+      MainActor.assumeIsolated { try? store.setHiddenAreas(old, undoManager: undoManager) }
+    }
+    undoManager?.setActionName(String(localized: "Change Hidden Areas"))
+  }
+
   private func changeSettings(_ change: (String) throws -> ProjectSettings) throws {
     guard let rootURL else { return }
     settings = try change(rootURL.path(percentEncoded: false))

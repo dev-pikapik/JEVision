@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html" aria-current="page">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -121,7 +122,7 @@
 <ul>
   <li><strong>A logged-in user.</strong> Nobody logged in means no screen to test on.</li>
   <li><strong>An unlocked screen.</strong> A run due while the screen is locked is skipped and recorded as “skipped: screen locked”. JEVision never types into a locked screen. Turn off the automatic lock in <strong>System Settings → Lock Screen</strong>.</li>
-  <li><strong>Screen Recording and Accessibility</strong> allowed for <code>jevision</code>. Without them the run is skipped and nothing is clicked or typed. See <a href="faq.html#permissions">Permissions</a>.</li>
+  <li><strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong> (<strong>Device Control and Data Access</strong> from macOS 27) allowed for <code>jevision</code>. Without them the run is skipped and nothing is clicked or typed. See <a href="faq.html#permissions">Permissions</a>.</li>
   <li><strong>Secrets</strong> the tests need, saved in the Keychain, with <strong>Always Allow</strong> chosen the first time macOS asks. See <a href="environments.html#secret-order">Secrets</a>.</li>
 </ul>
 

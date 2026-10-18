@@ -44,11 +44,13 @@ it and a failure points at the block where it happened.
   debug tests. See [Assistants (MCP)](#assistants-mcp).
 - **Git and GitHub.** Commit, pull, push and switch branches without a terminal, see what each
   version of a test changed, and open and review pull requests. See [Git](#git).
+- **iPhone remote.** Browse tests, start a run and follow it, and read reports from an iPhone,
+  while tests and pictures stay on the Mac. See [iPhone remote](#iphone-remote).
 
 ## Requirements
 
 - macOS 26 or later, on Apple silicon or Intel.
-- To build from source: Xcode 26 and Rust 1.85 or later, installed with
+- To build from source: Xcode 26 or later and Rust 1.85 or later, installed with
   [rustup](https://rustup.rs).
 
 ## Build from source
@@ -79,9 +81,9 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 JEVision asks for two permissions in System Settings → Privacy & Security, and explains each
 before asking:
 
-- **Screen Recording**, to take screenshots of the app under test: finding what to click,
-  waiting for screens and comparing them with reference images.
-- **Accessibility**, to click, type and press keys for you; to read the names of controls while
+- **Screen & System Audio Recording**, to take screenshots of the app under test: finding what
+  to click, waiting for screens and comparing them with reference images.
+- **Accessibility** (called **Device Control and Data Access** from macOS 27), to click, type and press keys for you; to read the names of controls while
   recording, so blocks and pictures get readable names; and to notice your own mouse and keyboard,
   so a run pauses when you take over.
 
@@ -248,8 +250,10 @@ is optional:
   areas of a block, painted over in every screenshot of the project before it goes to an AI model
   or an assistant, for example an account name in the corner of every screen.
 
-`jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order and leaves out default
-values, so every change shows up as a small, readable diff.
+`jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order, leaves out settings that
+are off or empty and always writes the click `button`, the reference's `compare` (with its
+`threshold` for `similar`) and the `waitFor` `timeout`, so every change shows up as a small,
+readable diff.
 
 ## Block types
 
@@ -257,7 +261,7 @@ values, so every change shows up as a small, readable diff.
 | --- | --- | --- |
 | `openApp` | actions | Opens the application under test, or another one by bundle identifier |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
-| `click` | actions | Clicks an image on screen or a point, left or right, single or double |
+| `click` | actions | Clicks an image on screen or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
 | `type` | actions | Types text, optionally into a field found by its image |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
@@ -269,6 +273,11 @@ values, so every change shows up as a small, readable diff.
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
+
+When the app under test is drawn in dark appearance, a run uses the dark version of a picture,
+named with `.dark` before the extension: `refs/inbox.dark.png` for `refs/inbox.png`. A `check`
+saves it on its first dark run, like any new reference; `waitFor`, `if` and click targets use it
+when it exists and the light picture otherwise. The test file names only the light picture.
 
 With `"compare": "meaning"`, an AI model looks at the screen and decides whether it shows what
 `expect` says, in plain words: `{ "compare": "meaning", "expect": "The cart shows 2 items" }`.
@@ -315,15 +324,19 @@ is installed and which version.
 ```sh
 jevision run tests/                       # run every *.flow.json in tests/ and save reports
 jevision run tests/sign-in.flow.json --start-at submit
+jevision run tests/ --project ~/ui-tests  # project folder (default: nearest folder with .jevision)
+jevision run tests/ --retries 2           # run a failed test up to 2 more times
 jevision run tests/ --env staging         # read ${env.NAME} from the staging environment
 jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data table (--row 3 for one)
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
 jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
+jevision run tests/ --json                # print results as JSON; progress goes to standard error
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
 jevision schedule run ~/Projects/AcmeMail # run the schedules of a project that are due now
+jevision --version                        # print the version (-V for short)
 ```
 
 `jevision help <command>` lists every option. Exit status: **0** means all tests passed (or all
@@ -333,10 +346,12 @@ files are valid and formatted); tests in quarantine may have failed (see
 
 `jevision run` uses the real mouse, keyboard and screen. These requirements apply wherever it runs:
 
-- **A logged-in user with an unlocked screen.** Tests can't run over SSH, as a system service or
-  while the screen is locked. For unattended runs, keep the user logged in and turn off the
+- **A logged-in user with an unlocked screen.** Tests can't run as a system service or while the
+  screen is locked. Over SSH they run only as the user logged in at the screen, with the
+  permissions below given to `/usr/libexec/sshd-session` (see [In a virtual machine](#in-a-virtual-machine)). For unattended runs, keep the user logged in and turn off the
   automatic lock in System Settings → Lock Screen.
-- **Screen Recording and Accessibility** for the app that starts `jevision`: Terminal, your
+- **Screen & System Audio Recording and Accessibility** (Device Control and Data Access from
+  macOS 27) for the app that starts `jevision`: Terminal, your
   editor or the CI agent. If one is missing, `jevision` names the program that needs it and the
   list in System Settings → Privacy & Security where to turn it on.
 - **Secrets** (`${secret.NAME}`) come from the environment variable `NAME` or from the Keychain,
@@ -354,8 +369,9 @@ Press Esc twice or Ctrl-C to stop a run. The stopped test is reported as cancell
 Hosted runners have no logged-in user, so use a
 [self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners) on a Mac.
 Install it as a service with `./svc.sh install` while logged in as the user who runs the tests.
-On macOS this makes a launch agent that runs in that user's session. Then allow Screen Recording
-and Accessibility for the program that the first run names.
+On macOS this makes a launch agent that runs in that user's session. Then allow Screen & System
+Audio Recording and Accessibility (Device Control and Data Access from macOS 27) for the program
+that the first run names.
 
 ```yaml
 jobs:
@@ -424,6 +440,31 @@ skipped and recorded as "skipped: screen locked" — JEVision never types into a
 unattended runs turn off the automatic screen lock. The app posts a notification when a
 scheduled run fails, is skipped or can't start. Deleting every schedule removes the launch agent.
 
+### In a virtual machine
+
+Tests can run inside a macOS virtual machine on a Mac with Apple silicon, made with
+[Tart](https://tart.run), [UTM](https://mac.getutm.app) or another tool built on Apple's
+virtualization. The tests then click and type inside the virtual machine, so your own Mac stays
+free, and every run can start from a clean copy. You set the virtual machine up once: install
+JEVision in it, allow Screen & System Audio Recording and Accessibility inside it, and turn on
+automatic login and turn off the screen lock for runs nobody watches. Then start runs in its
+window, from a CI runner inside it, or from your Mac over SSH:
+
+```sh
+ssh admin@192.168.64.5 /usr/local/bin/jevision run my-tests --junit junit.xml --html reports
+```
+
+A virtual machine often has a standard display, while references saved on a Retina Mac are twice
+as large. Clicks and found pictures work at either density and checks scale the pictures, but an
+`exact` check fails, with a failure that says the reference comes from a display of another
+density. Save references in the virtual machine, or give it a Retina display. Every report records
+where it ran: the header and the HTML report show "Virtual machine" or "Physical Mac" and the
+display, such as "Standard display (1×)", and `report.json` has `virtualMachine` and
+`displayScale`.
+
+The step-by-step guide, with SSH, CI and limits such as Apple's two virtual machines per Mac:
+[docs/vm.html](docs/vm.html).
+
 ## Assistants (MCP)
 
 `jevision mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server for AI
@@ -468,6 +509,25 @@ Safety:
 - A run started by an assistant pauses while you use the mouse or keyboard, and Esc pressed
   twice stops it.
 
+## iPhone remote
+
+JEVision Remote turns an iPhone into a remote for JEVision on your Mac. With it you can browse
+the projects and tests of each paired Mac, see a test drawn as its flow with its last results,
+run a test and follow it block by block or stop it, read reports with a short reason for each
+failure, and look through a project's run history.
+
+- **Pairing.** On the Mac, open Settings → iPhone & Remote, turn on **Allow remote access** and
+  choose what the next device may do: **Can run tests** or **View only**. In the app on the
+  iPhone, tap **Pair a Mac**, scan the code and confirm with Face ID or the passcode. A code
+  works once, for five minutes.
+- **Privacy.** Tests, pictures and secrets stay on the Mac; the iPhone keeps only the list of
+  paired Macs. Each iPhone signs in with its own key from the Secure Enclave, over an end-to-end
+  encrypted connection, directly or through a relay that can't read it. The Mac lists every
+  paired iPhone and can revoke it at once.
+
+The app isn't in the App Store yet: build it from [`apps/ios`](apps/ios/README.md), which also
+explains building for the Simulator.
+
 ## Git
 
 Tests are plain files, so git keeps their history. Settings → Git and GitHub shows the project's branch and
@@ -495,9 +555,49 @@ Keychain or SSH keys. For GitHub itself (the account and pull requests) the app 
 sign-in: it asks `gh auth token` when it needs it and never stores, shows or shares the token.
 The app has no sign-in of its own.
 
+## Releasing
+
+Releases are made by the maintainer on a Mac. The version is `version` in the root
+`Cargo.toml`, shared by the core, the app and the `jevision` tool; the build number is the
+number of commits, so build releases from a full clone.
+
+One-time setup:
+
+1. **Signing.** Install a *Developer ID Application* certificate in the login keychain
+   (`security find-identity -v -p codesigning` lists it).
+2. **Notarization.** Create an app-specific password at
+   [appleid.apple.com](https://appleid.apple.com) and store it as a keychain profile:
+   `xcrun notarytool store-credentials jevision --apple-id <Apple ID> --team-id <Team ID>`.
+3. **Update key.** Sparkle checks every update against a key pair. Create it once; the private
+   key stays in the login keychain (back it up with `generate_keys --account jevision -x <file>`):
+   `apps/macos/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account jevision`
+   (run `swift package resolve --package-path apps/macos` first if the folder is missing).
+   `release.sh` reads the public key from the keychain, or from `SPARKLE_PUBLIC_ED_KEY`.
+4. **Appcast.** The app looks for updates at `https://dev-pikapik.github.io/JEVision/appcast.xml`
+   (`SUFeedURL` in `apps/macos/Resources/Info.plist`). Turn on GitHub Pages for the repository
+   and publish `appcast.xml` at its root. Until it exists, the app simply finds no updates.
+5. **Homebrew.** Create the tap repository `dev-pikapik/homebrew-jevision` with a `Casks` folder.
+
+Each release:
+
+```sh
+# 1. Build, sign, notarize and staple; makes apps/macos/build/JEVision-<version>.dmg
+SIGN_IDENTITY="Developer ID Application: <Name> (<Team ID>)" NOTARY_PROFILE=jevision \
+  apps/macos/scripts/release.sh
+# 2. Appcast with the new version, signed with the update key (RELEASE_NOTES=notes.md to embed notes)
+apps/macos/scripts/make-appcast.sh apps/macos/build/JEVision-<version>.dmg
+# 3. Homebrew cask with the new version and checksum
+packaging/homebrew/update-cask.sh apps/macos/build/JEVision-<version>.dmg
+```
+
+Then tag the commit `v<version>`, attach the disk image to a GitHub release of that tag, publish
+`apps/macos/build/appcast/appcast.xml` to GitHub Pages, and copy `packaging/homebrew/jevision.rb`
+to `Casks/` in the tap. Without `NOTARY_PROFILE`, `release.sh` stops after signing, which is
+enough to check a build; `ADHOC=1` builds the same disk image without any certificate, as CI does.
+
 ## Roadmap
 
-- Testing remote devices, starting with iPhone
+- Testing iPhone apps in the iOS Simulator
 - GitHub in the app: run results on pull requests, sign-in without GitHub CLI
 - Windows and Linux, each with an interface of its own
 

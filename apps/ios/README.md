@@ -13,7 +13,7 @@ nothing but the list of paired Macs.
 
 ## Requirements
 
-- Xcode 27 or later
+- Xcode 26 or later
 - iOS 26 or later (the app uses Liquid Glass)
 - Rust (install from [rustup.rs](https://rustup.rs)): the app's network layer is the JEVision core
 - JEVision on the Mac, with pairing turned on in Settings → iPhone & Remote
@@ -27,6 +27,7 @@ xcodebuild -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO build
 ```
 
+Any iPhone Simulator works; `xcrun simctl list devices available` lists the ones installed.
 Run the unit tests the same way, with `test` in place of `build`.
 
 The first build also builds the Rust core: the JEVisionMobile target runs

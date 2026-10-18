@@ -55,6 +55,13 @@ pub struct RunReport {
     /// Why the test was in quarantine, as the project's settings say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub quarantine_reason: Option<String>,
+    /// The run ran in a virtual machine; absent where that couldn't be told.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub virtual_machine: Option<bool>,
+    /// Device pixels per point of the display the run looked at: 2 on Retina, 1 on most
+    /// virtual machines and external displays; absent when the run took no screenshot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_scale: Option<f64>,
     pub attempts: Vec<Attempt>,
 }
 
@@ -62,6 +69,28 @@ impl RunReport {
     /// The run failed while the test was in quarantine, so it doesn't fail a batch of runs.
     pub fn is_quarantined_failure(&self) -> bool {
         self.quarantined && self.verdict == Verdict::Failed
+    }
+
+    /// Where the run ran, for the report's header: `Virtual machine` or `Physical Mac`, then the
+    /// display, such as `Retina display (2×)`; `None` when the report doesn't say.
+    pub fn machine(&self) -> Option<String> {
+        let computer = self
+            .virtual_machine
+            .map(|v| if v { "Virtual machine" } else { "Physical Mac" });
+        let display = self.display_scale.map(|scale| {
+            let density = if scale >= 2.0 { "Retina" } else { "Standard" };
+            format!("{density} display ({scale}×)")
+        });
+        match (computer, display) {
+            (None, None) => None,
+            (computer, display) => Some(
+                [computer.map(str::to_owned), display]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+        }
     }
 }
 
@@ -441,6 +470,18 @@ pub fn describe(f: &Failure) -> String {
             p("similarity"),
             p("threshold")
         ),
+        "run.check.mismatchDensity" => format!(
+            "Block {}: the screen matches {} by {}, at least {} is required. The reference is {} \
+             pixels and the screen {}: the reference was saved on a display with a different \
+             pixel density (Retina or not), where text and edges are drawn differently. Run on a \
+             display like the one the reference was saved on, or save the reference again.",
+            p("block"),
+            p("image"),
+            p("similarity"),
+            p("threshold"),
+            p("expected"),
+            p("actual")
+        ),
         "run.data.unreadable" => format!(
             "Block {}: table {} cannot be read: {}.",
             p("block"),
@@ -659,7 +700,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{title} — {label}</title>\n<style>{CSS}</style>\n</head>\n<body>\n<main>\n\
          <header><h1>{title}</h1><span class=\"badge {badge}\">{label}</span></header>\n\
-         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}\
+         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}{machine}\
          <dt>Started</dt><dd>{started}</dd><dt>Duration</dt><dd>{duration}</dd>\
          <dt>Attempts</dt><dd>{attempts}</dd></dl>\n",
         title = xml(&report.test),
@@ -672,6 +713,10 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 "<dt>Environment</dt><dd>{}</dd>",
                 xml(e)
             )),
+        machine = report.machine().map_or_else(String::new, |m| format!(
+            "<dt>Computer</dt><dd>{}</dd>",
+            xml(&m)
+        )),
         started = xml(&report.started_at.replace('T', " ")),
         duration = duration(report.duration_ms),
         attempts = report.attempts.len(),

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -77,3 +78,32 @@ jobs:
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision validate examples
       - name: Test app
         run: swift test --package-path apps/macos
+
+  release-build:
+    name: Release build and packaging
+    # Packaging is slow on the shared macOS queue: run it on main and on demand.
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count.
+          fetch-depth: 0
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: apps/macos/.build/artifacts
+          key: swiftpm-artifacts-${{ hashFiles('apps/macos/Package.resolved') }}
+      # Ad-hoc signed: proves the release build, Sparkle embedding and the disk image without secrets.
+      - name: Build release disk image
+        run: apps/macos/scripts/release.sh
+        env:
+          ADHOC: "1"
+      - name: Fill the Homebrew cask from the disk image
+        run: packaging/homebrew/update-cask.sh apps/macos/build/JEVision-*.dmg
