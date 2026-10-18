@@ -21,11 +21,17 @@ final class FlowDocument {
       if selection != oldValue {
         coalescing = nil
         picked = selection.map { [.block(id: $0)] } ?? []
+        pickedLinks = []
+        linking = nil
       }
     }
   }
   /// Everything selected on the canvas: the selected block and any other blocks, frames and notes.
   private(set) var picked: Set<CanvasItem> = []
+  /// Links selected on the canvas, each named by the edge it leaves its block from.
+  private(set) var pickedLinks: Set<Slot> = []
+  /// A link being made from the keyboard.
+  private(set) var linking: PendingLink?
   /// How the next runs go, picked in the Run menu.
   var runChoices = RunChoices()
   /// The run a report opened the test from: the blocks show how they did in it, not in the newest run.
@@ -155,6 +161,15 @@ final class FlowDocument {
     let blocks = order.filter { items.contains(.block(id: $0)) }
     selection = [prefer, selection].compactMap { $0 }.first(where: blocks.contains) ?? blocks.first
     picked = items
+    pickedLinks = []
+    linking = nil
+  }
+
+  /// Selects links `links` and nothing else.
+  func pickLinks(_ links: Set<Slot>) {
+    selection = nil
+    picked = []
+    pickedLinks = links
   }
 
   /// The selected items: blocks in reading order, then frames and notes.
@@ -190,6 +205,65 @@ final class FlowDocument {
   /// link makes no loop outside a Repeat block.
   func canConnect(_ from: String, edge: String, to: String) -> Bool {
     flow.map { connectBlocks(flow: $0, from: from, edge: edge, to: to) != nil } ?? false
+  }
+
+  /// Deletes links `links` as one step.
+  func unlink(_ links: [Slot]) {
+    guard let flow, !links.isEmpty else { return }
+    let edited = links.reduce(flow) { flow, link in
+      connectBlocks(flow: flow, from: link.from, edge: link.edge, to: nil) ?? flow
+    }
+    apply(
+      edited, select: selection,
+      action: links.count == 1 ? String(localized: "Delete Link") : String(localized: "Delete Links"))
+    pickedLinks = []
+  }
+
+  /// Starts making a link from the keyboard, from edge `slot`; without one, from an edge of the
+  /// selected block, the next one each time while a link from it is being made. The block it
+  /// would lead to starts as the nearest block it may lead to. Returns `false` when there is no
+  /// such block.
+  @discardableResult
+  func startLink(from slot: Slot? = nil) -> Bool {
+    let ports = layout.ports.map(\.slot).filter { $0.from == slot?.from ?? selection }
+    let current = linking.flatMap { ports.firstIndex(of: $0.slot) }
+    guard let slot = slot ?? (current.map { ports[($0 + 1) % ports.count] } ?? ports.first),
+      let from = layout.blocks.first(where: { $0.id == slot.from })
+    else { return false }
+    let targets = layout.blocks.filter { canConnect(slot.from, edge: slot.edge, to: $0.id) }
+    guard
+      let nearest = targets.min(by: {
+        CanvasNavigation.distance($0.rect, from.rect) < CanvasNavigation.distance($1.rect, from.rect)
+      })
+    else { return false }
+    if selection != slot.from { pick([.block(id: slot.from)], prefer: slot.from) }
+    linking = PendingLink(slot: slot, targets: targets.map(\.id), target: nearest.id)
+    return true
+  }
+
+  /// Moves the block the link being made would lead to, to the nearest one it may lead to that way.
+  func moveLinkTarget(_ direction: CanvasDirection) {
+    guard var link = linking else { return }
+    let candidates = layout.blocks.filter { link.targets.contains($0.id) }
+    guard let from = layout.blocks.first(where: { $0.id == link.target }),
+      let next = CanvasNavigation.nearest(from: from.rect, among: candidates, toward: direction)
+    else { return }
+    link.target = next
+    linking = link
+  }
+
+  /// Ends the link being made at block `target`, or at the block it leads to now. Returns `false`,
+  /// keeping the link going, when it may not lead there.
+  @discardableResult
+  func finishLink(at target: String? = nil) -> Bool {
+    guard let link = linking, let target = target ?? link.target, link.targets.contains(target) else { return false }
+    linking = nil
+    connect(link.slot.from, edge: link.slot.edge, to: target)
+    return true
+  }
+
+  func cancelLink() {
+    linking = nil
   }
 
   /// Adds an empty note with its top-left corner at `point`, signed by `author`, and selects it.
@@ -274,6 +348,8 @@ final class FlowDocument {
       case .note(let id): new.canvas.notes.contains { $0.id == id }
       }
     }
+    pickedLinks = pickedLinks.filter { link in layout.edges.contains { $0.from == link.from && $0.edge == link.edge } }
+    if let linking, !layout.ports.contains(where: { $0.slot == linking.slot }) { self.linking = nil }
   }
 
   /// Checks the test again after something it depends on changed, like the project's environments.
@@ -302,4 +378,14 @@ extension CanvasItem {
   var blockID: String? {
     if case .block(let id) = self { id } else { nil }
   }
+}
+
+/// A link being made from the keyboard.
+struct PendingLink: Equatable {
+  /// The edge the link leaves its block from.
+  let slot: Slot
+  /// Blocks the link may lead to.
+  let targets: [String]
+  /// The block it leads to when finished now.
+  var target: String?
 }

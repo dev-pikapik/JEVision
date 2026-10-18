@@ -130,7 +130,8 @@ final class ActivityIndicators: NSObject, NSMenuDelegate {
     switch activity {
     case .running:
       let (step, total) = runs.state.map { RunHUD.step(of: $0, in: runs.running?.document) } ?? (1, 1)
-      title = String(localized: "Step \(step) of \(total)")
+      let steps = String(localized: "Step \(step) of \(total)")
+      title = runs.batch.map { "\($0.progress) · \(steps)" } ?? steps
     case .paused, .recordingPaused: title = String(localized: "Paused")
     case .recording: title = String(localized: "Recording")
     }
@@ -163,6 +164,9 @@ final class ActivityIndicators: NSObject, NSMenuDelegate {
     let paused: Bool
     if runs.isRunning, let state = runs.state {
       let (step, total) = RunHUD.step(of: state, in: runs.running?.document)
+      if let batch = runs.batch {
+        menu.addItem(withTitle: "\(batch.title) · \(batch.progress)", action: nil, keyEquivalent: "")
+      }
       menu.addItem(withTitle: state.name.isEmpty ? String(localized: "Untitled Test") : state.name, action: nil, keyEquivalent: "")
       menu.addItem(
         withTitle: "\(RunHUD.status(of: state)) · \(String(localized: "Step \(step) of \(total)"))", action: nil,

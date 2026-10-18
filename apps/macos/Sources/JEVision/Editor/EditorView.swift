@@ -17,6 +17,12 @@ struct EditorView: View {
   @State private var palette: PaletteTarget?
   /// How far the canvas is scrolled, in zoomed points.
   @State private var scroll = CGPoint.zero
+  @State private var scrollPosition = ScrollPosition()
+  /// Where to scroll once the canvas has its size at a new zoom.
+  @State private var pendingScroll: CGPoint?
+  @State private var viewport = CGSize.zero
+  /// The pointer over the canvas, in the visible part of it; zooming keeps the spot under it in place.
+  @State private var pointer: CGPoint?
   @FocusState private var canvasFocused: Bool
   private let apps = AppCatalog.shared
 
@@ -73,6 +79,10 @@ struct EditorView: View {
       }
       .overlay(alignment: .bottom) {
         VStack(spacing: 0) {
+          if !document.layout.blocks.isEmpty {
+            ZoomBar(zoom: canvasZoom)
+              .padding(.bottom, 12)
+          }
           if let result = runs.result, result.test == document.url {
             RunResultBar(result: result)
               .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -162,7 +172,47 @@ struct EditorView: View {
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
       }
-      .focusedSceneValue(\.canvasZoom, $zoom)
+      .focusedSceneValue(\.canvasZoom, canvasZoom)
+  }
+
+  private var canvasZoom: CanvasZoom {
+    CanvasZoom(value: zoom, set: { setZoom($0) }, fit: fitZoom)
+  }
+
+  /// The size of the canvas in the scroll view at zoom `zoom`.
+  private func contentSize(at zoom: Double) -> CGSize {
+    CGSize(
+      width: max(document.layout.width * zoom, viewport.width),
+      height: max(document.layout.height * zoom, viewport.height))
+  }
+
+  /// Zooms to `value`, keeping the canvas under `anchor`, a point of the visible part, in place;
+  /// without one, under the pointer or in the middle.
+  private func setZoom(_ value: Double, anchor: CGPoint? = nil) {
+    let new = Zoom.clamp(value)
+    guard new != zoom else { return }
+    let at = anchor ?? pointer ?? CGPoint(x: viewport.width / 2, y: viewport.height / 2)
+    let target = Zoom.offset(
+      scroll, keeping: at, from: zoom, to: new, content: contentSize(at: new), viewport: viewport)
+    let resized = contentSize(at: new) != contentSize(at: zoom)
+    zoom = new
+    scrollCanvas(to: target, resized: resized)
+  }
+
+  /// Zooms so the whole test is in view, centered.
+  private func fitZoom() {
+    let new = Zoom.fit(CGSize(width: document.layout.width, height: document.layout.height), in: viewport)
+    let content = contentSize(at: new)
+    let resized = content != contentSize(at: zoom)
+    zoom = new
+    scrollCanvas(
+      to: CGPoint(x: (content.width - viewport.width) / 2, y: (content.height - viewport.height) / 2), resized: resized)
+  }
+
+  /// Scrolls to `point`; again once the canvas has its new size, when the zoom just resized it.
+  private func scrollCanvas(to point: CGPoint, resized: Bool) {
+    pendingScroll = resized ? point : nil
+    scrollPosition.scrollTo(point: point)
   }
 
   /// The environment, data row and retries the next runs use.
@@ -239,7 +289,13 @@ struct EditorView: View {
           canvasFocused = true
         }
       }
+      .scrollPosition($scrollPosition)
       .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { scroll = $1 }
+      .onScrollGeometryChange(for: CGSize.self) { $0.contentSize } action: { _, _ in
+        // A new zoom resizes the canvas after it asked to scroll; scroll again to where it asked.
+        if let pendingScroll { scrollPosition.scrollTo(point: pendingScroll) }
+        pendingScroll = nil
+      }
       .overlay {
         if document.layout.blocks.isEmpty {
           ContentUnavailableView {
@@ -253,12 +309,18 @@ struct EditorView: View {
         }
       }
     }
+    .onGeometryChange(for: CGSize.self) { $0.size } action: { viewport = $0 }
+    .onContinuousHover { phase in
+      if case .active(let at) = phase { pointer = at } else { pointer = nil }
+    }
     .gesture(
       MagnifyGesture()
         .onChanged { value in
           let start = pinchStart ?? zoom
           pinchStart = start
-          zoom = Zoom.clamp(start * value.magnification)
+          setZoom(
+            start * value.magnification,
+            anchor: CGPoint(x: value.startAnchor.x * viewport.width, y: value.startAnchor.y * viewport.height))
         }
         .onEnded { _ in pinchStart = nil }
     )
@@ -277,8 +339,22 @@ struct EditorView: View {
     })
     .onPasteCommand(of: [.utf8PlainText]) { _ in CanvasClipboard.paste(into: document) }
     .focusedValue(\.canvasDocument, document)
+    .onChange(of: document.linking) { old, new in announce(old: old, new: new) }
+    .onChange(of: document.pickedLinks) { if !document.pickedLinks.isEmpty { canvasFocused = true } }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Canvas"))
+  }
+
+  /// Tells VoiceOver which block a link being made from the keyboard leads to.
+  private func announce(old: PendingLink?, new: PendingLink?) {
+    guard let new, let target = new.target, let block = document.block(target) else { return }
+    let step = (document.order.firstIndex(of: target) ?? 0) + 1
+    let title = BlockInfo.title(block.kind.typeName)
+    let text =
+      old?.slot == new.slot
+      ? String(localized: "Step \(step), \(title)")
+      : String(localized: "Linking to step \(step), \(title). Choose another block with the arrow keys, then press Return to link or Escape to cancel.")
+    AccessibilityNotification.Announcement(text).post()
   }
 
   private func openPalette() {
@@ -343,7 +419,7 @@ struct EditorView: View {
 
   private func handle(_ key: KeyEquivalent) -> KeyPress.Result {
     guard palette == nil else { return .ignored }
-    let order = document.order
+    if document.linking != nil { return handleLinking(key) }
     switch key {
     case .space:
       openPalette()
@@ -351,32 +427,53 @@ struct EditorView: View {
       guard document.selection != nil else { return .ignored }
       showsInspector = true
     case .escape:
-      if inspectorShown.wrappedValue { showsInspector = false } else if !document.picked.isEmpty { document.pick([]) } else { return .ignored }
+      if inspectorShown.wrappedValue {
+        showsInspector = false
+      } else if !document.picked.isEmpty || !document.pickedLinks.isEmpty {
+        document.pick([])
+      } else {
+        return .ignored
+      }
     case .delete, .deleteForward:
-      guard !document.picked.isEmpty else { return .ignored }
-      document.remove(document.pickedInOrder)
-    case .upArrow, .downArrow:
-      guard !order.isEmpty else { return .ignored }
-      let step = key == .downArrow ? 1 : -1
-      let index = document.selection.flatMap(order.firstIndex) ?? (step > 0 ? -1 : order.count)
-      document.selection = order[min(max(index + step, 0), order.count - 1)]
+      if !document.pickedLinks.isEmpty {
+        document.unlink(document.pickedLinks.sorted { ($0.from, $0.edge) < ($1.from, $1.edge) })
+      } else if !document.picked.isEmpty {
+        document.remove(document.pickedInOrder)
+      } else {
+        return .ignored
+      }
     default:
-      guard let id = document.selection, let next = neighbour(of: id, right: key == .rightArrow) else { return .ignored }
+      guard let direction = Self.direction(of: key),
+        let next = CanvasNavigation.next(
+          from: document.selection, toward: direction, in: document.layout, order: document.order)
+      else { return .ignored }
       document.selection = next
     }
     return .handled
   }
 
-  /// The closest block to the left or right, preferring ones at the same height.
-  private func neighbour(of id: String, right: Bool) -> String? {
-    let blocks = document.layout.blocks
-    guard let from = blocks.first(where: { $0.id == id })?.rect else { return nil }
-    return blocks
-      .filter { right ? $0.rect.x > from.x : $0.rect.x < from.x }
-      .min { a, b in
-        func cost(_ r: Rect) -> Double { abs(r.y - from.y) * 2 + abs(r.x - from.x) }
-        return cost(a.rect) < cost(b.rect)
-      }?.id
+  /// Keys while a link is made from the keyboard: arrows choose the block, Return links, Escape cancels.
+  private func handleLinking(_ key: KeyEquivalent) -> KeyPress.Result {
+    switch key {
+    case .return:
+      if !document.finishLink() { NSSound.beep() }
+    case .escape:
+      document.cancelLink()
+    default:
+      guard let direction = Self.direction(of: key) else { return .ignored }
+      document.moveLinkTarget(direction)
+    }
+    return .handled
+  }
+
+  private static func direction(of key: KeyEquivalent) -> CanvasDirection? {
+    switch key {
+    case .upArrow: .up
+    case .downArrow: .down
+    case .leftArrow: .left
+    case .rightArrow: .right
+    default: nil
+    }
   }
 }
 
@@ -399,6 +496,72 @@ enum Zoom {
   static func step(_ value: Double, up: Bool) -> Double {
     let steps = [0.3, 0.5, 0.75, 1, 1.25, 1.5, 2]
     return up ? steps.first { $0 > value + 0.01 } ?? range.upperBound : steps.last { $0 < value - 0.01 } ?? range.lowerBound
+  }
+
+  /// The zoom that shows all of `content`, in canvas points, in `viewport` with `margin` around
+  /// it; never above actual size, so a small test isn't blown up.
+  static func fit(_ content: CGSize, in viewport: CGSize, margin: Double = 24) -> Double {
+    guard content.width > 0, content.height > 0 else { return 1 }
+    let width = (viewport.width - 2 * margin) / content.width
+    let height = (viewport.height - 2 * margin) / content.height
+    return clamp(min(1, width, height))
+  }
+
+  /// Where to scroll, when the zoom goes from `old` to `new`, so the canvas under `anchor`, a
+  /// point of the visible part, stays under it; inside `content`, the zoomed canvas.
+  static func offset(
+    _ offset: CGPoint, keeping anchor: CGPoint, from old: Double, to new: Double, content: CGSize, viewport: CGSize
+  ) -> CGPoint {
+    let ratio = new / old
+    func axis(_ offset: Double, _ anchor: Double, _ content: Double, _ visible: Double) -> Double {
+      min(max((offset + anchor) * ratio - anchor, 0), max(content - visible, 0))
+    }
+    return CGPoint(
+      x: axis(offset.x, anchor.x, content.width, viewport.width),
+      y: axis(offset.y, anchor.y, content.height, viewport.height))
+  }
+}
+
+/// The zoom of the canvas in view, for the View menu and the zoom bar.
+struct CanvasZoom {
+  let value: Double
+  let set: (Double) -> Void
+  /// Zooms so the whole test is in view.
+  let fit: () -> Void
+}
+
+/// Zoom out, the zoom (a click goes to actual size), zoom in and fit, at the bottom of the canvas.
+private struct ZoomBar: View {
+  let zoom: CanvasZoom
+
+  var body: some View {
+    HStack(spacing: 2) {
+      Button("Zoom Out", systemImage: "minus") { zoom.set(Zoom.step(zoom.value, up: false)) }
+        .disabled(zoom.value <= Zoom.range.lowerBound)
+        .help(Text("Zoom out (⌘−)"))
+      Button { zoom.set(1) } label: {
+        Text(zoom.value, format: .percent.precision(.fractionLength(0)))
+          .monospacedDigit()
+          .frame(minWidth: 40)
+      }
+      .help(Text("Actual size"))
+      .accessibilityLabel(Text("Zoom"))
+      .accessibilityValue(Text(zoom.value, format: .percent.precision(.fractionLength(0))))
+      .accessibilityHint(Text("Sets the zoom to actual size."))
+      Button("Zoom In", systemImage: "plus") { zoom.set(Zoom.step(zoom.value, up: true)) }
+        .disabled(zoom.value >= Zoom.range.upperBound)
+        .help(Text("Zoom in (⌘+)"))
+      Button("Zoom to Fit", systemImage: "arrow.up.left.and.arrow.down.right") { zoom.fit() }
+        .help(Text("Show the whole test (⌘0)"))
+    }
+    .labelStyle(.iconOnly)
+    .buttonStyle(.borderless)
+    .controlSize(.small)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
+    .glassEffect(.regular, in: .capsule)
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text("Zoom"))
   }
 }
 
@@ -437,7 +600,7 @@ private struct LastRunChip: View {
 }
 
 extension FocusedValues {
-  @Entry var canvasZoom: Binding<Double>?
+  @Entry var canvasZoom: CanvasZoom?
   /// The test whose canvas has the keyboard focus.
   @Entry var canvasDocument: FlowDocument?
 }

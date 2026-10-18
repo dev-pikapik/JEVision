@@ -10,8 +10,8 @@ use std::{fs, io};
 use serde::Deserialize;
 
 use crate::issue::Issue;
-use crate::model::{BlockKind, Flow};
-use crate::validate::{is_identifier, placeholders};
+use crate::model::Flow;
+use crate::validate::{is_identifier, placeholder_fields, placeholders};
 
 /// Name of the environments file in the project folder.
 pub const ENVIRONMENTS_FILE: &str = "jevision.environments.json";
@@ -22,14 +22,21 @@ const MAX_NAME_LEN: usize = 64;
 /// Values of one environment, by name.
 pub type EnvironmentValues = BTreeMap<String, String>;
 
-/// The environments of a project, by name.
+/// The environments of a project.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Environments(pub BTreeMap<String, EnvironmentValues>);
+pub struct Environments {
+    /// Every environment, by name.
+    pub all: BTreeMap<String, EnvironmentValues>,
+    /// The environment a run uses when none is chosen; always one of `all`.
+    pub default: Option<String>,
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct File {
     format: u32,
+    #[serde(default)]
+    default: Option<String>,
     environments: BTreeMap<String, EnvironmentValues>,
 }
 
@@ -59,7 +66,19 @@ impl Environments {
                 ));
             }
         }
-        Ok(Self(file.environments))
+        if let Some(name) = file
+            .default
+            .as_deref()
+            .filter(|name| !file.environments.contains_key(*name))
+        {
+            return Err(format!(
+                "the default environment \"{name}\" isn't one of \"environments\""
+            ));
+        }
+        Ok(Self {
+            all: file.environments,
+            default: file.default,
+        })
     }
 
     /// Reads the environments file of the project folder `project`; a project without one has
@@ -83,14 +102,14 @@ impl Environments {
     }
 
     pub fn get(&self, name: &str) -> Option<&EnvironmentValues> {
-        self.0.get(name)
+        self.all.get(name)
     }
 }
 
 /// Names of the environment values the test reads through `${env.NAME}`, sorted, without
 /// repeats.
 pub fn required_env_values(flow: &Flow) -> Vec<String> {
-    let names: BTreeSet<&str> = used(flow).into_iter().map(|(_, name)| name).collect();
+    let names: BTreeSet<&str> = used(flow).into_iter().map(|(_, _, name)| name).collect();
     names.into_iter().map(str::to_owned).collect()
 }
 
@@ -112,25 +131,25 @@ pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
         }
     };
     let mut out = Vec::new();
-    for (block, name) in used {
+    for (block, field, name) in used {
         let lacking: Vec<&str> = environments
-            .0
+            .all
             .iter()
             .filter(|(_, values)| !values.contains_key(name))
             .map(|(env, _)| env.as_str())
             .collect();
-        if lacking.len() == environments.0.len() {
+        if lacking.len() == environments.all.len() {
             out.push(
                 Issue::error("flow.env.unknown")
                     .with("block", block)
-                    .with("field", "text")
+                    .with("field", &field)
                     .with("name", name),
             );
         } else if !lacking.is_empty() {
             out.push(
                 Issue::warning("flow.env.partial")
                     .with("block", block)
-                    .with("field", "text")
+                    .with("field", &field)
                     .with("name", name)
                     .with("environments", lacking.join(", ")),
             );
@@ -139,14 +158,14 @@ pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
     out
 }
 
-/// `(block, name)` of every `${env.NAME}`, by block id, each pair once.
-fn used(flow: &Flow) -> BTreeSet<(&str, &str)> {
+/// `(block, field, name)` of every `${env.NAME}`, by block id, each triple once.
+fn used(flow: &Flow) -> BTreeSet<(&str, String, &str)> {
     let mut found = BTreeSet::new();
     for b in &flow.blocks {
-        if let BlockKind::Type { text, .. } = &b.kind {
-            for (ns, name) in placeholders(text).into_iter().flatten() {
+        for (field, value) in placeholder_fields(&b.kind) {
+            for (ns, name) in placeholders(value).into_iter().flatten() {
                 if ns == "env" {
-                    found.insert((b.id.as_str(), name));
+                    found.insert((b.id.as_str(), field.clone(), name));
                 }
             }
         }
@@ -196,8 +215,12 @@ mod tests {
             r#"{"format":1,"environments":{"staging":{"HOST":"s.example.com"},"prod-eu":{}}}"#,
         )
         .unwrap();
-        assert_eq!(envs.0.keys().collect::<Vec<_>>(), ["prod-eu", "staging"]);
+        assert_eq!(envs.all.keys().collect::<Vec<_>>(), ["prod-eu", "staging"]);
         assert_eq!(envs.get("staging").unwrap()["HOST"], "s.example.com");
+        assert_eq!(envs.default, None);
+        let envs = Environments::parse(r#"{"format":1,"default":"dev","environments":{"dev":{}}}"#)
+            .unwrap();
+        assert_eq!(envs.default.as_deref(), Some("dev"));
         for (bad, says) in [
             (r#"{"format":2,"environments":{}}"#, "format 2"),
             (r#"{"format":1,"environments":{"st age":{}}}"#, "st age"),
@@ -207,6 +230,10 @@ mod tests {
                 "invalid type",
             ),
             (r#"{"format":1,"envs":{}}"#, "unknown field"),
+            (
+                r#"{"format":1,"default":"prod","environments":{"dev":{}}}"#,
+                "default environment \"prod\"",
+            ),
         ] {
             let error = Environments::parse(bad).unwrap_err();
             assert!(error.contains(says), "{bad}: {error}");

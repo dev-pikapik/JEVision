@@ -66,7 +66,12 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
         );
     }
     for (block, field, path) in read {
-        if is_relative_path(path) && !saved_by_check.contains(path) && !dir.join(path).exists() {
+        // A path with placeholders names a file only once a run fills them in.
+        if is_relative_path(path)
+            && placeholders(path).is_empty()
+            && !saved_by_check.contains(path)
+            && !dir.join(path).exists()
+        {
             out.push(
                 Issue::warning("flow.file.missing")
                     .with("block", block)
@@ -115,8 +120,8 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
 pub fn required_secrets(flow: &Flow) -> Vec<String> {
     let mut names = BTreeSet::new();
     for b in &flow.blocks {
-        if let BlockKind::Type { text, .. } = &b.kind {
-            for p in placeholders(text).into_iter().flatten() {
+        for (_, value) in placeholder_fields(&b.kind) {
+            for p in placeholders(value).into_iter().flatten() {
                 if p.0 == "secret" {
                     names.insert(p.1.to_owned());
                 }
@@ -124,6 +129,22 @@ pub fn required_secrets(flow: &Flow) -> Vec<String> {
         }
     }
     names.into_iter().collect()
+}
+
+/// Fields of a block that may contain `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}`
+/// placeholders: text to type and the paths and addresses of files the block reads.
+pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
+    match kind {
+        BlockKind::Type { text, .. } => vec![("text".to_owned(), text.as_str())],
+        BlockKind::OpenFile { files, .. } => files
+            .iter()
+            .enumerate()
+            .map(|(i, f)| (format!("files.{i}"), f.as_str()))
+            .collect(),
+        BlockKind::UseData { file, .. } => vec![("file".to_owned(), file.as_str())],
+        BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test.as_str())],
+        _ => Vec::new(),
+    }
 }
 
 fn root(flow: &Flow, out: &mut Vec<Issue>) {
@@ -184,11 +205,6 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             if text.is_empty() {
                 out.push(err("flow.field.empty", "text"));
             }
-            for p in placeholders(text) {
-                if let Err(bad) = p {
-                    out.push(err("flow.placeholder.invalid", "text").with("placeholder", bad));
-                }
-            }
             if let Some(t) = into {
                 target(id, "into", t, out);
             }
@@ -231,6 +247,11 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             loop_body(id, body, out);
         }
         BlockKind::RunTest { test, .. } => path_with_extension(id, "test", test, ".flow.json", out),
+    }
+    for (field, value) in placeholder_fields(&b.kind) {
+        for bad in placeholders(value).into_iter().filter_map(Result::err) {
+            out.push(err("flow.placeholder.invalid", &field).with("placeholder", bad));
+        }
     }
 }
 

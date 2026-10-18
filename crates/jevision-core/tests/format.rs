@@ -367,6 +367,43 @@ fn missing_files_are_warnings_next_to_the_test() {
 }
 
 #[test]
+fn paths_take_placeholders_like_text() {
+    let dir = std::env::temp_dir().join(format!("jevision-path-vars-{}", std::process::id()));
+    fs::create_dir_all(dir.join(".jevision")).unwrap();
+    fs::write(
+        dir.join(ENVIRONMENTS_FILE),
+        r#"{"format":1,"environments":{"dev":{"SET":"a"},"prod":{}}}"#,
+    )
+    .unwrap();
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "useData", "file": "data/${env.SET}.csv", "body": "b", "next": "c"},
+            "b": {"type": "openFile", "files": ["docs/${data.name}.txt", "${env.NOPE}/x", "${home.X}"], "next": "a"},
+            "c": {"type": "runTest", "test": "subs/${secret.WHO}.flow.json"}}"#,
+    ))
+    .unwrap();
+    let issues = validate_in(&flow, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+    let found: Vec<(&str, &str, &str)> = issues
+        .iter()
+        .map(|i| {
+            let p = |n| i.param(n).unwrap_or("");
+            (i.code.as_str(), p("block"), p("field"))
+        })
+        .collect();
+    // No file is reported missing: a path with placeholders names one only during a run.
+    assert_eq!(
+        found,
+        [
+            ("flow.placeholder.invalid", "b", "files.2"),
+            ("flow.env.partial", "a", "file"),
+            ("flow.env.unknown", "b", "files.1"),
+        ]
+    );
+    assert_eq!(required_secrets(&flow), ["WHO"]);
+    assert_eq!(required_env_values(&flow), ["NOPE", "SET"]);
+}
+
+#[test]
 fn a_file_a_check_block_saves_is_not_reported_twice() {
     let flow = parse(&minimal(
         r#"{"a": {"type": "check", "reference": {"image": "refs/home.png"}, "next": "b"},

@@ -1,8 +1,8 @@
 import JEVisionCore
 import SwiftUI
 
-/// Two versions of a test on one flowchart: added blocks are green, removed red, changed
-/// yellow, with what each changed block was and is now listed below.
+/// Two versions of a test on one flowchart: added blocks, notes and frames are green, removed
+/// red, changed yellow, with what each changed one was and is now listed below.
 struct FlowDiffView: View {
   enum Side: Hashable {
     case before, after
@@ -31,7 +31,9 @@ struct FlowDiffView: View {
           .frame(maxWidth: .infinity)
         }
         if let flow {
-          DiffCanvas(flow: flow, marks: marks(diff, on: shown))
+          DiffCanvas(
+            flow: flow, blocks: Self.marks(diff.blocks, on: shown), notes: Self.marks(diff.notes, on: shown),
+            sections: Self.marks(diff.sections, on: shown))
         }
         ChangeList(diff: diff, before: before, after: after)
       }
@@ -39,10 +41,10 @@ struct FlowDiffView: View {
     }
   }
 
-  /// How each block on the shown version is highlighted.
-  private func marks(_ diff: FlowDiff, on side: Side) -> [String: BlockChangeKind] {
+  /// How each item on the shown version is highlighted, by id.
+  static func marks(_ changes: [BlockChange], on side: Side) -> [String: BlockChangeKind] {
     var marks: [String: BlockChangeKind] = [:]
-    for change in diff.blocks {
+    for change in changes {
       switch (change.kind, side) {
       case (.changed, _), (.added, .after), (.removed, .before): marks[change.id] = change.kind
       default: break
@@ -87,6 +89,10 @@ struct FlowDiffView: View {
     case "double": String(localized: "Double-click")
     case "waitForChange": String(localized: "Wait until the screen changes")
     case "text": String(localized: "Text")
+    case "title": String(localized: "Title")
+    case "author": String(localized: "Author")
+    case "position": String(localized: "Position")
+    case "size": String(localized: "Size")
     case "into": String(localized: "Field")
     case "keys": String(localized: "Keys")
     case "until": String(localized: "Wait Until")
@@ -107,10 +113,12 @@ struct FlowDiffView: View {
   }
 }
 
-/// The flowchart, read-only, scaled down to fit the width.
+/// The flowchart with its frames and notes, read-only, scaled down to fit the width.
 private struct DiffCanvas: View {
   let flow: Flow
-  let marks: [String: BlockChangeKind]
+  let blocks: [String: BlockChangeKind]
+  let notes: [String: BlockChangeKind]
+  let sections: [String: BlockChangeKind]
   @State private var width = 0.0
 
   var body: some View {
@@ -118,6 +126,15 @@ private struct DiffCanvas: View {
     let scale = layout.width > 0 && width > 0 ? min(1, width / layout.width) : 1
     ZStack(alignment: .topLeading) {
       GridDots(inset: 0)
+      ForEach(flow.canvas.sections, id: \.id) { section in
+        FrameView(section: section, isPicked: false, isEditing: false, title: .constant(section.title), endEditing: {})
+          .modifier(ChangeMark(mark: sections[section.id], radius: 16))
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel(Text("Frame"))
+          .accessibilityValue(Text(verbatim: [sections[section.id].map(FlowDiffView.title), section.title]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
+          .offset(x: section.rect.x, y: section.rect.y)
+      }
       Edges(layout: layout)
       ForEach(layout.edges.filter { $0.edge == "then" || $0.edge == "else" }, id: \.self) { edge in
         let at = BranchLabel.position(of: edge)
@@ -126,10 +143,20 @@ private struct DiffCanvas: View {
       }
       ForEach(layout.blocks, id: \.id) { laid in
         if let block = flow.blocks.first(where: { $0.id == laid.id }) {
-          DiffBlockNode(block: block, appName: { AppCatalog.shared.name(of: $0) }, mark: marks[laid.id])
+          DiffBlockNode(block: block, appName: { AppCatalog.shared.name(of: $0) }, mark: blocks[laid.id])
             .frame(width: laid.rect.width, height: laid.rect.height)
             .offset(x: laid.rect.x, y: laid.rect.y)
         }
+      }
+      ForEach(flow.canvas.notes, id: \.id) { note in
+        NoteView(note: note, isPicked: false, isEditing: false, text: .constant(note.text), endEditing: {})
+          .frame(width: note.rect.width, height: note.rect.height)
+          .modifier(ChangeMark(mark: notes[note.id], radius: 14))
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel(Text("Note"))
+          .accessibilityValue(Text(verbatim: [notes[note.id].map(FlowDiffView.title), note.text, note.author]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
+          .offset(x: note.rect.x, y: note.rect.y)
       }
     }
     .frame(width: layout.width, height: layout.height, alignment: .topLeading)
@@ -138,6 +165,32 @@ private struct DiffCanvas: View {
     .frame(maxWidth: .infinity)
     .onGeometryChange(for: Double.self) { $0.size.width } action: { width = $0 }
     .accessibilityElement(children: .contain)
+  }
+}
+
+/// The outline and corner badge of a changed note or frame; an unchanged one fades.
+private struct ChangeMark: ViewModifier {
+  let mark: BlockChangeKind?
+  let radius: Double
+
+  func body(content: Content) -> some View {
+    content
+      .allowsHitTesting(false)
+      .overlay {
+        if let mark {
+          RoundedRectangle(cornerRadius: radius).strokeBorder(FlowDiffView.color(mark), lineWidth: 2.5)
+        }
+      }
+      .overlay(alignment: .topTrailing) {
+        if let mark {
+          Image(systemName: FlowDiffView.symbol(mark))
+            .font(.system(size: 16))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, FlowDiffView.color(mark))
+            .offset(x: 6, y: -6)
+        }
+      }
+      .opacity(mark == nil ? 0.6 : 1)
   }
 }
 
@@ -198,8 +251,9 @@ private struct ChangeList: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      if diff.blocks.isEmpty, diff.testFields.isEmpty {
-        (before == nil && after == nil ? Text("This test is empty.") : Text("No blocks or test details changed."))
+      if diff.blocks.isEmpty, diff.testFields.isEmpty, diff.notes.isEmpty, diff.sections.isEmpty {
+        (before == nil && after == nil
+          ? Text("This test is empty.") : Text("No blocks, notes, frames or test details changed."))
           .foregroundStyle(.secondary)
       }
       if !diff.testFields.isEmpty {
@@ -215,22 +269,44 @@ private struct ChangeList: View {
           row(
             symbol: FlowDiffView.symbol(change.kind), color: FlowDiffView.color(change.kind),
             title: Text("\(FlowDiffView.title(change.kind)): \(BlockInfo.title(block.kind.typeName))"),
-            detail: detail(change, was: was, now: now))
+            detail: detail(change, was: was.map(summary), now: now.map(summary)))
         }
+      }
+      ForEach(diff.sections, id: \.id) { change in
+        let title = { (section: CanvasSection) in
+          section.title.isEmpty ? String(localized: "Untitled Frame") : section.title
+        }
+        row(
+          symbol: FlowDiffView.symbol(change.kind), color: FlowDiffView.color(change.kind),
+          title: Text("\(FlowDiffView.title(change.kind)): \(String(localized: "Frame"))"),
+          detail: detail(
+            change, was: before?.canvas.sections.first { $0.id == change.id }.map(title),
+            now: after?.canvas.sections.first { $0.id == change.id }.map(title)))
+      }
+      ForEach(diff.notes, id: \.id) { change in
+        row(
+          symbol: FlowDiffView.symbol(change.kind), color: FlowDiffView.color(change.kind),
+          title: Text("\(FlowDiffView.title(change.kind)): \(String(localized: "Note"))"),
+          detail: detail(
+            change, was: before?.canvas.notes.first { $0.id == change.id }?.text,
+            now: after?.canvas.notes.first { $0.id == change.id }?.text))
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  private func detail(_ change: BlockChange, was: Block?, now: Block?) -> Text {
-    let appName = { AppCatalog.shared.name(of: $0) }
+  private func summary(_ block: Block) -> String {
+    BlockSummary.text(block.kind, appName: { AppCatalog.shared.name(of: $0) })
+  }
+
+  /// What an item was and is now, described by `was` and `now`, and what of it changed.
+  private func detail(_ change: BlockChange, was: String?, now: String?) -> Text {
     switch change.kind {
-    case .added: return Text(now.map { BlockSummary.text($0.kind, appName: appName) } ?? "")
-    case .removed: return Text(was.map { BlockSummary.text($0.kind, appName: appName) } ?? "")
+    case .added: return Text(verbatim: now ?? "")
+    case .removed: return Text(verbatim: was ?? "")
     case .changed:
       let fields = change.fields.map(FlowDiffView.fieldName).formatted(.list(type: .and))
-      let old = was.map { BlockSummary.text($0.kind, appName: appName) } ?? ""
-      let new = now.map { BlockSummary.text($0.kind, appName: appName) } ?? ""
+      let old = was ?? "", new = now ?? ""
       guard old != new else { return Text("Changed: \(fields)") }
       return Text("Was: \(old)\nNow: \(new)\nChanged: \(fields)")
     }

@@ -123,7 +123,7 @@ struct RunHUD: View {
         Text(state.name.isEmpty ? String(localized: "Untitled Test") : state.name)
           .font(.headline)
           .lineLimit(1)
-        Text(Self.status(of: state))
+        Text(center.batch.map { "\(Self.status(of: state)) · \($0.progress)" } ?? Self.status(of: state))
           .font(.subheadline)
           .foregroundStyle(.secondary)
       }

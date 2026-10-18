@@ -953,6 +953,60 @@ fn open_file_opens_a_fresh_copy() {
     assert_eq!(failure_code(&report), "run.path.outsideProject");
 }
 
+#[test]
+fn placeholders_fill_the_paths_of_files_blocks_read() {
+    let p = Project::new();
+    p.write(
+        "jevision.environments.json",
+        r#"{"format":1,"environments":{"staging":{"SET":"users","HOST":"example.com"}}}"#,
+    )
+    .write("data/users.csv", "name\nann\n")
+    .write("docs/ann.txt", "original")
+    .write(
+        "subs/ann.flow.json",
+        format!(
+            r#"{{"format":1,"name":"Ann","app":"{APP}","start":"k","blocks":{{
+                "k":{{"type":"pressKeys","keys":"cmd+l"}}}}}}"#
+        ),
+    )
+    .test(
+        r#""rows":{"type":"useData","file":"data/${env.SET}.csv","body":"open"},
+           "open":{"type":"openFile","files":["docs/${data.name}.txt","https://${env.HOST}/a"],
+                   "next":"sub"},
+           "sub":{"type":"runTest","test":"subs/${data.name}.flow.json","next":"rows"}"#,
+        "rows",
+        0,
+    );
+    let staging = RunOptions {
+        environment: Some("staging".into()),
+        ..options()
+    };
+    let hands = Fake::new(solid([0, 0, 0]));
+    let run = run_with(&p, &hands, RunControl::new(), &staging).0;
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    let expected = vec![
+        Openable::File(run.dir.join("files/1-002-0/ann.txt")),
+        Openable::Url("https://example.com/a".to_owned()),
+    ];
+    assert_eq!(
+        hands.log(),
+        [
+            format!("open {expected:?} in None"),
+            "keys cmd+l".to_owned()
+        ]
+    );
+
+    // A secret in a path is used but never shown, even when the path is refused.
+    p.test(
+        r#""open":{"type":"openFile","files":["../${secret.ACME_PASSWORD}.txt"]}"#,
+        "open",
+        0,
+    );
+    let (run, events) = run_with(&p, &hands, RunControl::new(), &options());
+    assert_eq!(failure_code(&run.report), "run.path.outsideProject");
+    assert!(!outputs(&run, &events).contains(SECRET));
+}
+
 /// A vision model that gives a fixed answer and keeps what it was shown.
 struct Judge {
     local: bool,

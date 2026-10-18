@@ -16,7 +16,7 @@ struct RunCommand {
   }
 
   func execute() -> ExitStatus {
-    let plan: (project: String, tests: [String])
+    let plan: (project: String, tests: [String], environment: String?)
     do {
       plan = try Self.plan(request)
     } catch {
@@ -36,6 +36,7 @@ struct RunCommand {
     let input = InputWatcher()
     let videos = VideoSettings.app
     var request = request
+    request.environment = plan.environment
     request.video = request.video ?? videos.mode
     let session = TestSession(
       project: plan.project, tests: plan.tests, request: request, progress: progress, input: input,
@@ -59,8 +60,9 @@ struct RunCommand {
 
   // MARK: Planning
 
-  /// The project folder and the test files to run, as real absolute paths.
-  static func plan(_ request: RunRequest) throws(UsageError) -> (project: String, tests: [String]) {
+  /// The project folder and the test files to run, as real absolute paths, and the environment
+  /// to run in: the one asked for, otherwise the default of the project's environments file.
+  static func plan(_ request: RunRequest) throws(UsageError) -> (project: String, tests: [String], environment: String?) {
     var targets: [String] = []
     for path in request.paths {
       guard let real = realPath(path) else { throw UsageError(message: "there is no file or folder “\(path)”") }
@@ -81,29 +83,35 @@ struct RunCommand {
       throw UsageError(
         message: "“\(outside)” is outside the project folder \(project). Choose a folder that holds all the tests with --project.")
     }
-    if let environment = request.environment {
-      try checkEnvironment(environment, in: project)
+    guard let environment = request.environment else {
+      return (project, tests, try readEnvironments(in: project) { try defaultEnvironment(project: project) })
     }
-    return (project, tests)
+    try checkEnvironment(environment, in: project)
+    return (project, tests, environment)
   }
 
   /// Fails unless the project has the environment `name`, saying which ones it has.
   private static func checkEnvironment(_ name: String, in project: String) throws(UsageError) {
     let file = environmentsFileName()
-    let all: [ProjectEnvironment]
-    do {
-      all = try projectEnvironments(project: project)
-    } catch EnvironmentsError.Unreadable(_, let reason) {
-      throw UsageError(message: "\(file) in \(project) can’t be read: \(reason)")
-    } catch {
-      throw UsageError(message: "\(file) in \(project) can’t be read: \(error.localizedDescription)")
-    }
+    let all = try readEnvironments(in: project) { try projectEnvironments(project: project) }
     guard !all.contains(where: { $0.name == name }) else { return }
     if all.isEmpty {
       throw UsageError(message: "there is no environment “\(name)”: the project has no \(file) in \(project)")
     }
     throw UsageError(
       message: "there is no environment “\(name)” in \(file); use one of: \(all.map(\.name).joined(separator: ", "))")
+  }
+
+  /// What `read` gets from the environments file of `project`, or why the file can't be read.
+  private static func readEnvironments<T>(in project: String, _ read: () throws -> T) throws(UsageError) -> T {
+    let file = environmentsFileName()
+    do {
+      return try read()
+    } catch EnvironmentsError.Unreadable(_, let reason) {
+      throw UsageError(message: "\(file) in \(project) can’t be read: \(reason)")
+    } catch {
+      throw UsageError(message: "\(file) in \(project) can’t be read: \(error.localizedDescription)")
+    }
   }
 
   /// The nearest folder above `target` that has a `.jevision` folder, as the app makes one in

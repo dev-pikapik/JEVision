@@ -1,12 +1,13 @@
-//! What changed between two versions of a test, block by block, for showing on the flowchart.
+//! What changed between two versions of a test, block by block, for showing on the flowchart,
+//! and which notes and frames on its canvas changed.
 
 use std::collections::{BTreeSet, HashMap};
 
 use serde_json::Value;
 
-use crate::model::{BODY, Block, ELSE, Flow, NEXT, THEN};
+use crate::model::{BODY, Block, CanvasSection, ELSE, Flow, NEXT, Note, Rect, THEN};
 
-/// How a block differs between the two versions.
+/// How a block, note or frame differs between the two versions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockChangeKind {
     Added,
@@ -14,13 +15,14 @@ pub enum BlockChangeKind {
     Changed,
 }
 
-/// One block that differs.
+/// One block, note or frame that differs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockChange {
     pub id: String,
     pub kind: BlockChangeKind,
-    /// Keys of the settings that differ, as in the file (`target`, `timeout`, `type` when the
-    /// block became another kind), for a changed block; empty otherwise.
+    /// What differs, for a changed item; empty otherwise. For a block, keys of its settings as in
+    /// the file (`target`, `timeout`, `type` when the block became another kind). For a note or
+    /// frame, `text`, `title` or `author`, and `position` or `size` when it was moved or resized.
     pub fields: Vec<String>,
 }
 
@@ -31,6 +33,10 @@ pub struct FlowDiff {
     pub blocks: Vec<BlockChange>,
     /// Keys of the test's own settings that differ (`name`, `app`, `tags`, …).
     pub test_fields: Vec<String>,
+    /// Notes of the newer version in their order, then removed notes in their old order.
+    pub notes: Vec<BlockChange>,
+    /// Frames of the newer version in their order, then removed frames in their old order.
+    pub sections: Vec<BlockChange>,
 }
 
 /// Compares `before` with `after`; a missing version counts as a test without blocks. Blocks
@@ -73,10 +79,85 @@ pub fn diff(before: Option<&Flow>, after: Option<&Flow>) -> FlowDiff {
         (Some(a), Some(b)) => changed_keys(test_settings(a), test_settings(b)),
         _ => Vec::new(),
     };
+    let canvas = |flow: Option<&Flow>| flow.map(|f| f.canvas.clone()).unwrap_or_default();
+    let (old_canvas, new_canvas) = (canvas(before), canvas(after));
     FlowDiff {
         blocks,
         test_fields,
+        notes: changed_items(&old_canvas.notes, &new_canvas.notes, |n| &n.id, note_fields),
+        sections: changed_items(
+            &old_canvas.sections,
+            &new_canvas.sections,
+            |s| &s.id,
+            section_fields,
+        ),
     }
+}
+
+/// Items matched by id between `old` and `new`: added and changed ones in their new order, then
+/// removed ones in their old order. `fields` names what differs between two versions of one.
+fn changed_items<T>(
+    old: &[T],
+    new: &[T],
+    id: fn(&T) -> &str,
+    fields: fn(&T, &T) -> Vec<String>,
+) -> Vec<BlockChange> {
+    let change = |id: &str, kind, fields| BlockChange {
+        id: id.to_owned(),
+        kind,
+        fields,
+    };
+    let mut changes: Vec<BlockChange> = new
+        .iter()
+        .filter_map(|now| match old.iter().find(|was| id(was) == id(now)) {
+            None => Some(change(id(now), BlockChangeKind::Added, Vec::new())),
+            Some(was) => {
+                let fields = fields(was, now);
+                (!fields.is_empty()).then(|| change(id(now), BlockChangeKind::Changed, fields))
+            }
+        })
+        .collect();
+    changes.extend(
+        old.iter()
+            .filter(|was| !new.iter().any(|now| id(now) == id(was)))
+            .map(|was| change(id(was), BlockChangeKind::Removed, Vec::new())),
+    );
+    changes
+}
+
+/// What differs between two versions of a note. Its time changes with its text, so it isn't
+/// named on its own.
+fn note_fields(was: &Note, now: &Note) -> Vec<String> {
+    let mut fields = Vec::new();
+    if was.text != now.text {
+        fields.push("text".to_owned());
+    }
+    if was.author != now.author {
+        fields.push("author".to_owned());
+    }
+    fields.extend(rect_fields(&was.rect, &now.rect));
+    fields
+}
+
+fn section_fields(was: &CanvasSection, now: &CanvasSection) -> Vec<String> {
+    let mut fields = Vec::new();
+    if was.title != now.title {
+        fields.push("title".to_owned());
+    }
+    fields.extend(rect_fields(&was.rect, &now.rect));
+    fields
+}
+
+/// `position` when the rectangle moved, `size` when it was resized.
+fn rect_fields(was: &Rect, now: &Rect) -> Vec<String> {
+    let mut fields = Vec::new();
+    if (was.x, was.y) != (now.x, now.y) {
+        fields.push("position".to_owned());
+    }
+    if (was.width, was.height) != (now.width, now.height) {
+        fields.push("size".to_owned());
+    }
+    fields
 }
 
 /// A block's settings as in the file, without its arrows to other blocks.
@@ -90,12 +171,12 @@ fn settings(block: &Block) -> serde_json::Map<String, Value> {
     map
 }
 
-/// The test's own settings as in the file, without its blocks.
+/// The test's own settings as in the file, without its blocks and canvas.
 fn test_settings(flow: &Flow) -> serde_json::Map<String, Value> {
     let Ok(Value::Object(mut map)) = serde_json::to_value(flow) else {
         return serde_json::Map::new();
     };
-    for key in ["format", "start", "blocks"] {
+    for key in ["format", "start", "blocks", "canvas"] {
         map.remove(key);
     }
     map
@@ -210,5 +291,74 @@ mod tests {
             [change("open", BlockChangeKind::Removed, &[])]
         );
         assert_eq!(diff(None, None), FlowDiff::default());
+    }
+
+    #[test]
+    fn notes_and_frames_are_added_removed_and_changed_by_id() {
+        let rect = |x, width| Rect {
+            x,
+            y: 0.0,
+            width,
+            height: 80.0,
+        };
+        let note = |id: &str, text: &str, rect| Note {
+            id: id.into(),
+            text: text.into(),
+            author: "Ann".into(),
+            time: "2026-01-01T00:00:00Z".into(),
+            rect,
+        };
+        let frame = |id: &str, title: &str, rect| CanvasSection {
+            id: id.into(),
+            title: title.into(),
+            rect,
+        };
+        let mut before = flow(OPEN);
+        before.canvas.notes = vec![
+            note("kept", "Same", rect(0.0, 200.0)),
+            note("edited", "Old", rect(0.0, 200.0)),
+            note("gone", "Bye", rect(0.0, 200.0)),
+        ];
+        before.canvas.sections = vec![
+            frame("moved", "Sign in", rect(0.0, 300.0)),
+            frame("renamed", "Old", rect(0.0, 300.0)),
+        ];
+        let mut after = before.clone();
+        after.canvas.notes[1].text = "New".into();
+        after.canvas.notes[1].time = "2026-02-01T00:00:00Z".into();
+        after.canvas.notes[2] = note("new", "Hi", rect(40.0, 200.0));
+        after.canvas.sections[0].rect = rect(40.0, 400.0);
+        after.canvas.sections[1].title = "New".into();
+        after
+            .canvas
+            .positions
+            .insert("open".into(), crate::model::Point { x: 40.0, y: 40.0 });
+
+        let diff = diff(Some(&before), Some(&after));
+        assert_eq!(
+            diff.notes,
+            [
+                change("edited", BlockChangeKind::Changed, &["text"]),
+                change("new", BlockChangeKind::Added, &[]),
+                change("gone", BlockChangeKind::Removed, &[]),
+            ]
+        );
+        assert_eq!(
+            diff.sections,
+            [
+                change("moved", BlockChangeKind::Changed, &["position", "size"]),
+                change("renamed", BlockChangeKind::Changed, &["title"]),
+            ]
+        );
+        assert!(diff.blocks.is_empty());
+        assert!(
+            diff.test_fields.is_empty(),
+            "the canvas is not a test setting"
+        );
+        assert_eq!(
+            super::diff(None, Some(&before)).notes.len(),
+            3,
+            "every note of a new test is added"
+        );
     }
 }

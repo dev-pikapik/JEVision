@@ -257,6 +257,19 @@ pub struct Reference {
     pub hide: Vec<Rect>,
 }
 
+/// `refs/inbox.png` → `refs/inbox.dark.png`: the reference a run compares with when the app is
+/// drawn dark. Without one, the light reference stands in.
+pub fn dark_variant(image: &str) -> String {
+    let name_start = image.rfind('/').map_or(0, |i| i + 1);
+    match image[name_start..].rfind('.') {
+        Some(dot) if dot > 0 => {
+            let at = name_start + dot;
+            format!("{}.dark{}", &image[..at], &image[at..])
+        }
+        _ => format!("{image}.dark"),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Compare {
     /// Pixel by pixel.
@@ -610,6 +623,14 @@ pub fn parse_duration(text: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dark_variants_go_before_the_extension() {
+        assert_eq!(dark_variant("refs/inbox.png"), "refs/inbox.dark.png");
+        assert_eq!(dark_variant("a.b/inbox"), "a.b/inbox.dark");
+        assert_eq!(dark_variant(".hidden"), ".hidden.dark");
+        assert_eq!(dark_variant("refs/.hidden.png"), "refs/.hidden.dark.png");
+    }
 
     #[test]
     fn durations_round_trip_in_largest_exact_unit() {

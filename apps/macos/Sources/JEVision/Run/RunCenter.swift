@@ -47,6 +47,11 @@ final class RunCenter {
     /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
     var notRun = 0
     var isStopping = false
+
+    /// "Test 2 of 5": the test running now, counted from 1.
+    var progress: String {
+      String(localized: "Test \(total - queue.count) of \(total)")
+    }
   }
 
   /// How the tests of a batch did, once it's over.

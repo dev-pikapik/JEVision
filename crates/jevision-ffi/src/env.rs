@@ -26,20 +26,28 @@ pub struct ProjectEnvironment {
 /// name; none when the file isn't there.
 #[uniffi::export]
 pub fn project_environments(project: String) -> Result<Vec<ProjectEnvironment>, EnvironmentsError> {
-    let environments = Environments::load(Path::new(&project)).map_err(|reason| {
-        EnvironmentsError::Unreadable {
-            file: jevision_core::ENVIRONMENTS_FILE.to_owned(),
-            reason,
-        }
-    })?;
-    Ok(environments
-        .0
+    Ok(load(&project)?
+        .all
         .into_iter()
         .map(|(name, values)| ProjectEnvironment {
             name,
             values: values.into_iter().collect(),
         })
         .collect())
+}
+
+/// The environment a run of the project folder `project` uses when none is chosen: the
+/// `default` of its environments file, if it names one.
+#[uniffi::export]
+pub fn default_environment(project: String) -> Result<Option<String>, EnvironmentsError> {
+    Ok(load(&project)?.default)
+}
+
+fn load(project: &str) -> Result<Environments, EnvironmentsError> {
+    Environments::load(Path::new(project)).map_err(|reason| EnvironmentsError::Unreadable {
+        file: jevision_core::ENVIRONMENTS_FILE.to_owned(),
+        reason,
+    })
 }
 
 /// Name of the environments file in a project folder.

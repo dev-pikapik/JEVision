@@ -182,7 +182,7 @@ pub fn github_create_pull_request(
     repo.create_pull_request(&hub, &base, &title, &description)
 }
 
-/// What changed between two versions of a test; a missing version has no blocks.
+/// What changed between two versions of a test and its canvas; a missing version has no blocks.
 #[uniffi::export]
 pub fn diff_flows(before: Option<Flow>, after: Option<Flow>) -> FlowDiff {
     jevision_core::diff(before.as_ref(), after.as_ref())
@@ -330,6 +330,8 @@ pub struct BlockChange {
 pub struct FlowDiff {
     pub blocks: Vec<BlockChange>,
     pub test_fields: Vec<String>,
+    pub notes: Vec<BlockChange>,
+    pub sections: Vec<BlockChange>,
 }
 
 #[uniffi::remote(Record)]

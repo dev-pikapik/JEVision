@@ -87,9 +87,9 @@ struct ReferenceAreaModelTests {
 
 struct ReferenceFileTests {
   @Test func namesTheDarkPictureLikeTheRunner() {
-    #expect(ReferenceFile.darkVariant("refs/inbox.png") == "refs/inbox.dark.png")
-    #expect(ReferenceFile.darkVariant("a.b/inbox") == "a.b/inbox.dark")
-    #expect(ReferenceFile.darkVariant(".hidden") == ".hidden.dark")
+    #expect(referenceDarkVariant(image: "refs/inbox.png") == "refs/inbox.dark.png")
+    #expect(referenceDarkVariant(image: "a.b/inbox") == "a.b/inbox.dark")
+    #expect(referenceDarkVariant(image: ".hidden") == ".hidden.dark")
   }
 
   @Test func picksAFreeNameForANewPicture() throws {

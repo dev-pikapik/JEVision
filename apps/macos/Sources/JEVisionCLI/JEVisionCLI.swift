@@ -233,7 +233,8 @@ enum Help {
         --env <name>        Environment from jevision.environments.json in the project
                             folder whose values the tests read as ${env.NAME}, such as
                             staging. Secrets come from the Keychain items of that
-                            environment first
+                            environment first. Default: the "default" environment
+                            named in that file, if any
         --retries <n>       Run a failed test up to <n> more times (instead of the
                             number in the test)
         --start-at <block>  Start from this block instead of the first one (one test only)

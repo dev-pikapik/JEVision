@@ -125,7 +125,7 @@ pub(super) fn definitions() -> Vec<Value> {
             json!({
                 "path": path("Test file or folder, relative to the project folder."),
                 "retries": { "type": "integer", "minimum": 0, "maximum": jevision_core::MAX_RETRIES, "description": "Try a failed test this many more times, instead of the number in the test." },
-                "env": { "type": "string", "description": "Environment from the project's jevision.environments.json, such as staging: its values fill ${env.NAME} in the tests and its secrets are used. Leave out when the tests read no environment values." },
+                "env": { "type": "string", "description": "Environment from the project's jevision.environments.json, such as staging: its values fill ${env.NAME} in the tests and its secrets are used. Leave out to use the file's \"default\" environment, or none when it names no default." },
             }),
             &["path"],
             json!({ "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": true }),
@@ -414,12 +414,17 @@ impl Server {
                     ))?,
             ),
         };
+        let known = jevision_core::Environments::load(&self.project).map_err(|reason| {
+            format!(
+                "{} can't be read: {reason}",
+                jevision_core::ENVIRONMENTS_FILE
+            )
+        })?;
         let environment = match optional(args, "env")? {
-            None => None,
+            None => known.default,
             Some(name) => {
-                let known = jevision_core::Environments::load(&self.project)?;
                 if known.get(name).is_none() {
-                    let names: Vec<&str> = known.0.keys().map(String::as_str).collect();
+                    let names: Vec<&str> = known.all.keys().map(String::as_str).collect();
                     return Err(if names.is_empty() {
                         format!(
                             "The project has no environments: add them to {}.",

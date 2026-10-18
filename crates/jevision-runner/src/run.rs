@@ -8,7 +8,7 @@ use std::{fs, io};
 
 use jevision_core::{
     BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, Point, Reference, Severity, Target,
-    WaitUntil,
+    WaitUntil, dark_variant,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -646,8 +646,9 @@ impl Exec<'_> {
             } => {
                 let mut items = Vec::with_capacity(files.len());
                 for (i, file) in files.iter().enumerate() {
-                    if file.starts_with("http://") || file.starts_with("https://") {
-                        items.push(Openable::Url(file.clone()));
+                    let address = self.substitute(id, file)?;
+                    if address.starts_with("http://") || address.starts_with("https://") {
+                        items.push(Openable::Url(address));
                     } else {
                         let copy = self.fresh_copy(t, id, file, step.seq, i)?;
                         items.push(Openable::File(copy));
@@ -763,7 +764,7 @@ impl Exec<'_> {
                 Ok(next.clone())
             }
             BlockKind::UseData { file, body, next } => {
-                let path = self.resolve(t, id, file)?;
+                let path = self.resolve_filled(t, id, file)?;
                 let table = DataTable::load(&path).map_err(|e| {
                     fail(
                         Failure::new("run.data.unreadable")
@@ -800,7 +801,7 @@ impl Exec<'_> {
                 Ok(next.clone())
             }
             BlockKind::RunTest { test, next } => {
-                let path = self.resolve(t, id, test)?;
+                let path = self.resolve_filled(t, id, test)?;
                 if self.tests.contains(&path) {
                     return Err(fail(
                         Failure::new("run.runTest.recursion")
@@ -1200,7 +1201,7 @@ impl Exec<'_> {
         seq: u32,
         index: usize,
     ) -> Result<PathBuf, Stop> {
-        let source = self.resolve(t, id, file)?;
+        let source = self.resolve_filled(t, id, file)?;
         if !source.exists() {
             return Err(fail(
                 Failure::new("run.file.missing")
@@ -1225,7 +1226,8 @@ impl Exec<'_> {
         Ok(copy)
     }
 
-    /// Replaces `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` in text to be typed.
+    /// Replaces `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` in text to be typed or in
+    /// the path of a file a block reads.
     fn substitute(&self, id: &str, text: &str) -> Result<String, Stop> {
         let mut out = String::with_capacity(text.len());
         let mut rest = text;
@@ -1386,8 +1388,25 @@ impl Exec<'_> {
         self.record(step, kind, &png)
     }
 
+    /// [`Self::resolve`] for a path that may contain placeholders; problems name the path as
+    /// written in the test, so no secret shows.
+    fn resolve_filled(&self, t: &TestFile, id: &str, path: &str) -> Result<PathBuf, Stop> {
+        let filled = self.substitute(id, path)?;
+        self.inside_project(t, id, &filled, path)
+    }
+
     /// A path from the test, relative to its file, that must stay inside the project.
     fn resolve(&self, t: &TestFile, id: &str, path: &str) -> Result<PathBuf, Stop> {
+        self.inside_project(t, id, path, path)
+    }
+
+    fn inside_project(
+        &self,
+        t: &TestFile,
+        id: &str,
+        path: &str,
+        shown: &str,
+    ) -> Result<PathBuf, Stop> {
         let full = normalize(&t.dir.join(path));
         if full.starts_with(self.project) {
             Ok(full)
@@ -1395,7 +1414,7 @@ impl Exec<'_> {
             Err(fail(
                 Failure::new("run.path.outsideProject")
                     .with("block", id)
-                    .with("path", path),
+                    .with("path", shown),
             ))
         }
     }
@@ -1520,18 +1539,6 @@ fn write(path: &Path, bytes: &[u8]) -> Result<(), Stop> {
         fs::create_dir_all(parent).map_err(|e| write_failed(path, e))?;
     }
     fs::write(path, bytes).map_err(|e| write_failed(path, e))
-}
-
-/// `refs/inbox.png` → `refs/inbox.dark.png`: the reference for dark appearance.
-fn dark_variant(image: &str) -> String {
-    let name_start = image.rfind('/').map_or(0, |i| i + 1);
-    match image[name_start..].rfind('.') {
-        Some(dot) if dot > 0 => {
-            let at = name_start + dot;
-            format!("{}.dark{}", &image[..at], &image[at..])
-        }
-        _ => format!("{image}.dark"),
-    }
 }
 
 fn size(image: &Image) -> String {
@@ -1665,10 +1672,7 @@ mod tests {
     }
 
     #[test]
-    fn dark_variants_and_paths() {
-        assert_eq!(dark_variant("refs/inbox.png"), "refs/inbox.dark.png");
-        assert_eq!(dark_variant("a.b/inbox"), "a.b/inbox.dark");
-        assert_eq!(dark_variant(".hidden"), ".hidden.dark");
+    fn paths_and_durations() {
         assert_eq!(
             normalize(Path::new("/p/t/../refs/./a.png")),
             Path::new("/p/refs/a.png")
