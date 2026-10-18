@@ -498,6 +498,9 @@ private final class Progress: RunListener, @unchecked Sendable {
       if step.status == .baselineCreated, let reference = step.reference {
         text += "  new reference \(reference)"
       }
+      if let branch = branchText(step: step) {
+        text += "  " + branch
+      }
       console.line(text)
       if let failure = step.failure {
         console.line("    " + console.paint(describeFailure(failure: failure), .red))

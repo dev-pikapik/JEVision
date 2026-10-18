@@ -1148,18 +1148,26 @@ fn if_takes_the_first_matching_case_or_else() {
             "if",
             0,
         );
-    for (screen, keys, branch) in [
-        ([0, 200, 0], "keys g", "then"),
-        ([200, 0, 0], "keys r", "elseIf1"),
-        ([0, 0, 200], "keys b", "elseIf2"),
-        ([90, 90, 90], "keys o", "else"),
+    for (screen, keys, branch, text) in [
+        ([0, 200, 0], "keys g", "then", "Took “Condition 1: green”"),
+        ([200, 0, 0], "keys r", "elseIf1", "Took “Condition 2: red”"),
+        ([0, 0, 200], "keys b", "elseIf2", "Took “Condition 3: blue”"),
+        ([90, 90, 90], "keys o", "else", "Took “Otherwise”"),
     ] {
         let hands = Fake::new(solid(screen));
-        let report = run(&p, &hands).report;
+        let done = run(&p, &hands);
+        assert!(html(&done.report, &done.dir, None).contains(&format!(">{text}<")));
+        assert!(
+            junit_xml(std::slice::from_ref(&done.report))
+                .contains(&format!("<system-out>if: {text}</system-out>"))
+        );
+        let report = done.report;
         assert_eq!(report.verdict, Verdict::Passed, "{branch}");
         assert_eq!(hands.log(), [keys]);
         let step = &report.attempts[0].steps[0];
         assert_eq!(step.branch.as_deref(), Some(branch));
+        assert_eq!(step.branches, Some(4));
+        assert_eq!(step.branch_text().as_deref(), Some(text));
         assert!(
             step.similarity.is_some(),
             "{branch}: the comparison is in the report"
@@ -1417,8 +1425,18 @@ fn an_expectation_needs_no_reference_and_if_follows_the_verdict() {
     let report = run_judged(&p, &hands, Some(&judge), false).report;
     assert_eq!(report.verdict, Verdict::Passed);
     assert_eq!(report.attempts[0].steps[0].branch.as_deref(), Some("else"));
+    assert_eq!(
+        report.attempts[0].steps[0].branch_text().as_deref(),
+        Some("Took “No”")
+    );
     assert!(judge.asked.lock().unwrap()[0].reference.is_none());
     assert!(report.attempts[0].steps[0].expected.is_none());
+
+    let report = run_judged(&p, &hands, Some(&Judge::says(true)), false).report;
+    assert_eq!(
+        report.attempts[0].steps[0].branch_text().as_deref(),
+        Some("Took “Yes: A dialog is open”")
+    );
 }
 
 #[test]

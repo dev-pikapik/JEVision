@@ -17,6 +17,8 @@ struct FlowCanvas: View {
   let minSize: CGSize
   /// How each block did in the last saved run; a run started since replaces them.
   let outcomes: [String: BlockOutcome]
+  /// Ways out of the `if`s the last saved run took; a run started since replaces them.
+  let taken: Set<Slot>
   /// Selects these items; the inspector shows the block, when there is one.
   let onPick: (Set<CanvasItem>, String?) -> Void
   let onAdd: (Slot) -> Void
@@ -145,13 +147,18 @@ struct FlowCanvas: View {
   }
 
   private func links(_ layout: FlowLayout) -> some View {
-    ZStack(alignment: .topLeading) {
-      Edges(layout: layout)
+    let taken = runs.taken(for: document) ?? self.taken
+    let decided = Set(taken.map(\.from))
+    return ZStack(alignment: .topLeading) {
+      Edges(layout: layout, taken: taken)
       Edges(layout: layout, only: document.pickedLinks)
       ForEach(layout.edges.filter { $0.points.count > 1 }, id: \.self) { edge in
         let slot = Slot(from: edge.from, edge: edge.edge)
         EdgeHit(
-          edge: edge, label: linkLabel(edge), isPicked: document.pickedLinks.contains(slot),
+          edge: edge, label: linkLabel(edge),
+          value: taken.contains(slot)
+            ? Text("Taken in the last run") : decided.contains(edge.from) ? Text("Not taken in the last run") : nil,
+          isPicked: document.pickedLinks.contains(slot),
           pick: { pickLink(slot) },
           delete: { document.unlink([slot]) })
       }
@@ -583,14 +590,26 @@ struct Edges: View {
   let layout: FlowLayout
   /// Draws only these links, highlighted as selected; `nil` draws every link plainly.
   var only: Set<Slot>?
+  /// Ways out of `if`s a run took, drawn green; the other ways out of those `if`s are dashed.
+  var taken: Set<Slot> = []
 
   var body: some View {
     Canvas { context, _ in
-      let shading: GraphicsContext.Shading = only == nil ? .style(.secondary) : .color(.accentColor)
+      let decided = Set(taken.map(\.from))
       for edge in layout.edges where edge.points.count > 1 {
-        if let only, !only.contains(Slot(from: edge.from, edge: edge.edge)) { continue }
+        let slot = Slot(from: edge.from, edge: edge.edge)
+        if let only, !only.contains(slot) { continue }
+        var shading: GraphicsContext.Shading = only == nil ? .style(.secondary) : .color(.accentColor)
+        var style = StrokeStyle(lineWidth: only == nil ? 1.5 : 3, lineJoin: .round)
+        if only == nil, taken.contains(slot) {
+          shading = .color(.green)
+          style.lineWidth = 2.5
+        } else if only == nil, decided.contains(edge.from) {
+          shading = .style(.tertiary)
+          style.dash = [4, 4]
+        }
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
-        context.stroke(Self.line(points), with: shading, style: StrokeStyle(lineWidth: only == nil ? 1.5 : 3, lineJoin: .round))
+        context.stroke(Self.line(points), with: shading, style: style)
         context.fill(Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: shading)
       }
     }
@@ -627,6 +646,8 @@ struct Edges: View {
 private struct EdgeHit: View {
   let edge: LaidEdge
   let label: Text
+  /// Whether the last run took this way out of an `if`.
+  let value: Text?
   let isPicked: Bool
   let pick: () -> Void
   let delete: () -> Void
@@ -645,6 +666,7 @@ private struct EdgeHit: View {
       }
       .accessibilityElement()
       .accessibilityLabel(label)
+      .accessibilityValue(value ?? Text(verbatim: ""))
       .accessibilityAddTraits(isPicked ? [.isButton, .isSelected] : .isButton)
       .accessibilityAction(.default, pick)
       .accessibilityAction(named: Text("Delete Link"), delete)

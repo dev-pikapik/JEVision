@@ -25,6 +25,40 @@ struct RunStateTests {
     return state
   }
 
+  private static func choice(
+    _ branch: String, of branches: UInt32?, saw condition: String? = nil, in test: String = "a.flow.json"
+  ) -> Step {
+    Step(
+      seq: 0, test: test, block: "if", blockType: "if", status: .passed, durationMs: 0, before: nil, after: nil,
+      expected: nil, diff: nil, reference: nil, similarity: nil, vision: nil, branch: branch, failure: nil,
+      branches: branches, branchCondition: condition)
+  }
+
+  @MainActor @Test func saysWhichWayAnIfWentAsTheCanvasNamesIt() {
+    #expect(RunText.branch(Self.choice("then", of: 3, saw: "Sign in window")) == "Took “Condition 1: Sign in window”")
+    #expect(RunText.branch(Self.choice("elseIf1", of: 3, saw: "Inbox is empty")) == "Took “Condition 2: Inbox is empty”")
+    #expect(RunText.branch(Self.choice("else", of: 3)) == "Took “Otherwise”")
+    #expect(RunText.branch(Self.choice("then", of: 2, saw: "update dialog")) == "Took “Yes: update dialog”")
+    #expect(RunText.branch(Self.choice("else", of: 2)) == "Took “No”")
+    // Reports from before an `if` could have more conditions.
+    #expect(RunText.branch(Self.choice("then", of: nil)) == "Took “Yes”")
+    #expect(RunText.branch(Self.choice("elseIf2", of: nil)) == "Took “Condition 3”")
+    #expect(RunText.branch(Self.choice("next", of: nil)) == nil)
+  }
+
+  @Test func remembersTheWaysOutTheIfsTook() {
+    let state = run([
+      .stepFinished(attempt: 1, step: Self.choice("elseIf1", of: 3, saw: "Inbox is empty")),
+      .stepFinished(attempt: 1, step: Self.choice("then", of: 2, in: "other.flow.json")),
+    ])
+    #expect(state.taken == [Slot(from: "if", edge: "elseIf1")])
+    #expect(state.lastChoice?.test == "other.flow.json")
+    var next = state
+    next.apply(.attemptStarted(attempt: 2))
+    #expect(next.taken.isEmpty)
+    #expect(next.lastChoice == nil)
+  }
+
   @Test func followsTheBlocksOfTheTest() {
     let state = run([started("open"), finished("open", .passed), started("check")])
     #expect(state.name == "Sign in")

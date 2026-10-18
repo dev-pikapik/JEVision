@@ -27,7 +27,7 @@ pub use jevision_vision::{
 };
 pub use report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
-    Verdict, VisionAnswer, describe, describe_vision, html, junit_xml,
+    Verdict, VisionAnswer, branch_text, describe, describe_vision, html, junit_xml,
 };
 pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
 
