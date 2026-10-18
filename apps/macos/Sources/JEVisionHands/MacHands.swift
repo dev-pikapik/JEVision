@@ -414,12 +414,32 @@ public final class MacHands: Hands, @unchecked Sendable {
     return try Self.captureFrontWindow(app)
   }
 
-  /// A picture of the app's front window, the window it shows, and pixels per point.
+  /// The app's windows above its front window and over it, front to back: tooltips, menus and
+  /// popovers are windows of their own. `list` is `CGWindowListCopyWindowInfo` output.
+  static func overlays(above front: CGWindowID, bounds: CGRect, pids: Set<pid_t>, in list: [[String: Any]]) -> [CGWindowID] {
+    var ids: [CGWindowID] = []
+    for info in list {
+      guard let id = info[kCGWindowNumber as String] as? CGWindowID else { continue }
+      if id == front { break }
+      guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pids.contains(pid),
+        let dict = info[kCGWindowBounds as String] as? NSDictionary,
+        let rect = CGRect(dictionaryRepresentation: dict), rect.intersects(bounds)
+      else { continue }
+      ids.append(id)
+    }
+    return ids
+  }
+
+  /// A picture of the app's front window with whatever of the app shows over it, the window it
+  /// shows, and pixels per point.
   static func captureFrontWindow(_ app: String) throws(HandsError) -> (
     image: CGImage, scale: Double, window: (id: CGWindowID, bounds: CGRect, title: String?)
   ) {
-    guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
+    let apps = runningApps(app)
+    guard let window = frontWindow(of: apps) else { throw .NoWindow(app: app) }
     let id = window.id
+    let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    let above = Set(overlays(above: id, bounds: window.bounds, pids: Set(apps.map(\.processIdentifier)), in: list))
     let result = wait { (done: @escaping @Sendable (Result<Shot, HandsError>) -> Void) in
       Task {
         do {
@@ -427,13 +447,28 @@ public final class MacHands: Hands, @unchecked Sendable {
           guard let scWindow = content.windows.first(where: { $0.windowID == id }) else {
             return done(.failure(.NoWindow(app: app)))
           }
-          let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-          let scale = Double(filter.pointPixelScale)
           let config = SCStreamConfiguration()
-          config.width = Int((filter.contentRect.width * CGFloat(scale)).rounded())
-          config.height = Int((filter.contentRect.height * CGFloat(scale)).rounded())
+          let filter: SCContentFilter
+          let size: CGSize
+          let center = CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+          let shown = content.windows.filter { above.contains($0.windowID) }
+          if !shown.isEmpty, let display = content.displays.first(where: { $0.frame.contains(center) }) {
+            // The window's part of the screen with only this app's windows on it, so other apps
+            // never cover it and a tooltip or menu over it is in the picture.
+            filter = SCContentFilter(display: display, including: [scWindow] + shown)
+            config.sourceRect = window.bounds.offsetBy(dx: -display.frame.minX, dy: -display.frame.minY)
+            config.backgroundColor = .clear
+            config.ignoreShadowsDisplay = true
+            size = window.bounds.size
+          } else {
+            filter = SCContentFilter(desktopIndependentWindow: scWindow)
+            config.ignoreShadowsSingleWindow = true
+            size = filter.contentRect.size
+          }
+          let scale = Double(filter.pointPixelScale)
+          config.width = Int((size.width * CGFloat(scale)).rounded())
+          config.height = Int((size.height * CGFloat(scale)).rounded())
           config.showsCursor = false
-          config.ignoreShadowsSingleWindow = true
           let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
           done(.success(Shot(image: image, scale: scale)))
         } catch {
