@@ -5,6 +5,7 @@ import SwiftUI
 struct RunReadinessSheet: View {
   @Environment(RunCenter.self) private var runs
   @Environment(PermissionsMonitor.self) private var monitor
+  @Environment(ProjectStore.self) private var project
   let request: RunCenter.Request
   @State private var settingSecret: SecretName?
   /// Bumped after a secret is saved, to check again.
@@ -13,7 +14,8 @@ struct RunReadinessSheet: View {
   var body: some View {
     let _ = (secretsVersion, monitor.granted)
     let missing = RunCenter.missing(for: request)
-    let ready = missing.permissions.isEmpty && missing.secrets.isEmpty && missing.errors == 0
+    let values = missing.values
+    let ready = missing.permissions.isEmpty && values.isEmpty && missing.errors == 0
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 4) {
         Text("Before the test can run")
@@ -29,9 +31,41 @@ struct RunReadinessSheet: View {
             ForEach(Permission.allCases) { PermissionRow(permission: $0) }
           }
         }
-        if !missing.secrets.isEmpty {
+        if let problem = values.problem {
+          Section("Environment") {
+            Label {
+              Text(problem)
+            } icon: {
+              Image(systemName: "exclamationmark.octagon.fill").foregroundStyle(.red)
+            }
+            Button("Edit Environments…", action: editEnvironments)
+          }
+        } else if !values.values.isEmpty {
           Section {
-            ForEach(missing.secrets, id: \.self) { name in
+            ForEach(values.values, id: \.self) { name in
+              Label {
+                Text(verbatim: name)
+              } icon: {
+                Image(systemName: "server.rack").foregroundStyle(.orange)
+              }
+            }
+            Button("Edit Environments…", action: editEnvironments)
+          } header: {
+            Text("Environment Values")
+          } footer: {
+            Group {
+              if let environment = values.environment {
+                Text("The environment \(environment) has no value for these names. Add them to \(environmentsFileName()).")
+              } else {
+                Text("The test reads these values from an environment, and the project has none. Add environments to \(environmentsFileName()).")
+              }
+            }
+            .foregroundStyle(.secondary)
+          }
+        }
+        if !values.secrets.isEmpty {
+          Section {
+            ForEach(values.secrets, id: \.self) { name in
               LabeledContent {
                 Button("Set…") { settingSecret = SecretName(id: name) }
                   .accessibilityLabel(Text("Set \(name)"))
@@ -46,8 +80,14 @@ struct RunReadinessSheet: View {
           } header: {
             Text("Secrets")
           } footer: {
-            Text("The test types these values. They’re kept in the Keychain and never shown.")
-              .foregroundStyle(.secondary)
+            Group {
+              if let environment = values.environment {
+                Text("The test types these values in \(environment). They’re kept in the Keychain and never shown.")
+              } else {
+                Text("The test types these values. They’re kept in the Keychain and never shown.")
+              }
+            }
+            .foregroundStyle(.secondary)
           }
         }
         if missing.errors > 0 {
@@ -76,7 +116,11 @@ struct RunReadinessSheet: View {
     .frame(minHeight: 280)
     .task { await monitor.watch() }
     .sheet(item: $settingSecret) { secret in
-      SetSecretSheet(name: secret.id) { secretsVersion += 1 }
+      SetSecretSheet(name: secret.id, environment: missing.values.environment) { secretsVersion += 1 }
     }
+  }
+
+  private func editEnvironments() {
+    try? project.environments.edit()
   }
 }

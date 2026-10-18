@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Mutex, mpsc};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
     Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point, Question, Run,
-    RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus, Verdict, VisionAnswer,
-    VisionError, VisionJudge, html, junit_xml,
+    RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus, VIDEO_FILE, Verdict,
+    VideoMode, VisionAnswer, VisionError, VisionJudge, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -30,6 +30,9 @@ struct State {
     not_findable: bool,
     reject_typing: bool,
     user_input: bool,
+    /// Recording a video fails, as without the Screen Recording permission.
+    no_video: bool,
+    video: Option<PathBuf>,
     log: Vec<String>,
     typed: Vec<String>,
 }
@@ -126,6 +129,25 @@ impl Hands for Fake {
     }
     fn user_input_detected(&self) -> bool {
         std::mem::take(&mut self.state.lock().unwrap().user_input)
+    }
+    fn start_video(&self, app: &str, path: &Path) -> Result<(), HandsError> {
+        let mut s = self.state.lock().unwrap();
+        if s.no_video {
+            return Err(HandsError::PermissionDenied("screenRecording".to_owned()));
+        }
+        s.log.push(format!("video {app}"));
+        s.video = Some(path.to_path_buf());
+        Ok(())
+    }
+    fn stop_video(&self) -> Result<(), HandsError> {
+        let mut s = self.state.lock().unwrap();
+        s.log.push("video end".to_owned());
+        let path = s
+            .video
+            .take()
+            .expect("stopping a video that was not started");
+        std::fs::write(path, b"movie").unwrap();
+        Ok(())
     }
 }
 
@@ -268,7 +290,7 @@ fn outputs(run: &Run, events: &[Event]) -> String {
         .collect();
     format!(
         "{report}\n{}\n{}\n{}",
-        html(&run.report, &run.dir),
+        html(&run.report, &run.dir, run.report.video.as_deref()),
         junit_xml(std::slice::from_ref(&run.report)),
         events.join("\n")
     )
@@ -589,6 +611,54 @@ fn use_data_types_each_row() {
 }
 
 #[test]
+fn environment_values_and_one_data_row() {
+    let p = Project::new();
+    p.write(
+        "jevision.environments.json",
+        r#"{"format":1,"environments":{"staging":{"HOST":"s.example.com"},"empty":{}}}"#,
+    )
+    .write("data/users.csv", "name\nAnn\nBo\n")
+    .test(
+        r#""rows":{"type":"useData","file":"data/users.csv","body":"type"},
+           "type":{"type":"type","text":"${data.name}@${env.HOST}","next":"rows"}"#,
+        "rows",
+        0,
+    );
+    let staging = RunOptions {
+        environment: Some("staging".into()),
+        data_row: Some(1),
+        ..options()
+    };
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, events) = run_with(&p, &hands, RunControl::new(), &staging);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(hands.typed(), ["Bo@s.example.com"]);
+    assert_eq!(run.report.environment.as_deref(), Some("staging"));
+    assert!(events.iter().any(|e| matches!(e,
+        Event::StepStarted { variables, .. } if variables["env.HOST"] == "s.example.com")));
+    let saved = Run::load(&run.dir).unwrap();
+    assert_eq!(saved.report.environment.as_deref(), Some("staging"));
+
+    // Nothing touches the computer when a value can't be found.
+    for (environment, data_row, code) in [
+        (None, None, "run.env.notChosen"),
+        (Some("empty"), None, "run.env.missing"),
+        (Some("prod"), None, "run.env.unknown"),
+        (Some("staging"), Some(2), "run.data.noRow"),
+    ] {
+        let hands = Fake::new(solid([0, 0, 0]));
+        let options = RunOptions {
+            environment: environment.map(str::to_owned),
+            data_row,
+            ..options()
+        };
+        let report = run_with(&p, &hands, RunControl::new(), &options).0.report;
+        assert_eq!(failure_code(&report), code);
+        assert!(hands.typed().is_empty(), "{code}");
+    }
+}
+
+#[test]
 fn cancel_stops_a_long_wait_at_once() {
     let p = Project::new();
     p.write("refs/ok.png", solid([0, 255, 0])).test(
@@ -658,7 +728,7 @@ fn breakpoints_step_mode_and_user_input_pause() {
         });
         let mut pauses = Vec::new();
         for event in rx.iter() {
-            if let Event::Paused { block, reason } = &event {
+            if let Event::Paused { block, reason, .. } = &event {
                 pauses.push((block.clone(), *reason, hands.log().len()));
                 match reason {
                     PauseReason::Breakpoint => control.step(),
@@ -812,7 +882,7 @@ fn click_by_image_fails_when_target_is_not_on_screen() {
         ("run.target.notFound", "refs/button.png")
     );
     assert!(
-        html(&report, Path::new("/nonexistent"))
+        html(&report, Path::new("/nonexistent"), None)
             .contains("refs/button.png was not found on screen")
     );
 }
@@ -1140,4 +1210,196 @@ fn a_model_quoting_a_secret_from_the_screen_is_masked() {
     );
     let saved = std::fs::read_to_string(run.dir.join("report.json")).unwrap();
     assert!(!saved.contains(SECRET));
+}
+
+#[test]
+fn a_pause_shows_the_variables_of_the_block_ahead() {
+    let p = Project::new();
+    p.write("data/users.csv", "email\na@x.io\nb@x.io\n").test(
+        r#""rows":{"type":"useData","file":"data/users.csv","body":"type"},
+           "type":{"type":"type","text":"${data.email}","next":"rows"}"#,
+        "rows",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let control = RunControl::new();
+    control.set_breakpoints(["type".to_owned()]);
+    let (tx, rx) = mpsc::channel();
+    let sink = move |e: &Event| tx.send(e.clone()).unwrap();
+    let secrets = secrets();
+    let runner = Runner {
+        hands: &hands,
+        secrets: &secrets,
+        events: &sink,
+        control: control.clone(),
+        vision: None,
+    };
+    let seen = std::thread::scope(|s| {
+        let handle = s.spawn(|| {
+            runner
+                .run(&p.0, Path::new("t.flow.json"), &options())
+                .unwrap()
+        });
+        let mut seen = Vec::new();
+        for event in rx.iter() {
+            if let Event::Paused { variables, .. } = &event {
+                seen.push(variables["data.email"].clone());
+                control.resume();
+            }
+            if matches!(event, Event::RunFinished { .. }) {
+                break;
+            }
+        }
+        assert_eq!(handle.join().unwrap().report.verdict, Verdict::Passed);
+        seen
+    });
+    assert_eq!(seen, ["a@x.io", "b@x.io"]);
+}
+
+fn with_video(mode: VideoMode) -> RunOptions {
+    RunOptions {
+        video: mode,
+        ..options()
+    }
+}
+
+fn markers(report: &RunReport) -> Vec<Option<u64>> {
+    report
+        .attempts
+        .iter()
+        .flat_map(|a| a.steps.iter().map(|s| s.video_at_ms))
+        .collect()
+}
+
+#[test]
+fn video_has_step_markers_and_is_kept_as_asked() {
+    let p = Project::new();
+    p.test(
+        r#""a":{"type":"pressKeys","keys":"a","next":"b"},
+           "b":{"type":"pressKeys","keys":"b"}"#,
+        "a",
+        0,
+    );
+
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::Always),
+    );
+    assert_eq!(run.report.video.as_deref(), Some(VIDEO_FILE));
+    assert!(run.dir.join(VIDEO_FILE).is_file());
+    assert_eq!(
+        hands.log(),
+        ["video com.example.App", "keys a", "keys b", "video end"]
+    );
+    let at: Vec<u64> = markers(&run.report)
+        .into_iter()
+        .map(Option::unwrap)
+        .collect();
+    assert_eq!(at.len(), 2);
+    assert!(at[0] <= at[1], "{at:?}");
+    assert!(at[1] <= run.report.duration_ms);
+    let saved = Run::load(&run.dir).unwrap();
+    assert_eq!(saved.report, run.report);
+
+    // A passed run records, then lets the video go.
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::OnFailure),
+    );
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(run.report.video, None);
+    assert!(!run.dir.join(VIDEO_FILE).exists());
+    assert_eq!(markers(&run.report), [None, None]);
+    assert!(hands.log().contains(&"video end".to_owned()));
+
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(&p, &hands, RunControl::new(), &options());
+    assert!(!hands.log().iter().any(|l| l.starts_with("video")));
+    assert_eq!(markers(&run.report), [None, None]);
+
+    // Without a recording the run goes on and simply has no video.
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.no_video = true);
+    let (run, _) = run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::Always),
+    );
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(run.report.video, None);
+    assert_eq!(markers(&run.report), [None, None]);
+}
+
+#[test]
+fn a_failed_run_keeps_one_video_for_all_its_tries() {
+    let p = Project::new();
+    p.test(r#""login":{"type":"type","text":"x"}"#, "login", 1);
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.reject_typing = true);
+    let (run, _) = run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::OnFailure),
+    );
+    assert_eq!(run.report.verdict, Verdict::Failed);
+    assert_eq!(run.report.attempts.len(), 2);
+    assert_eq!(run.report.video.as_deref(), Some(VIDEO_FILE));
+    let at = markers(&run.report);
+    assert!(at[0].unwrap() <= at[1].unwrap(), "{at:?}");
+    let starts = hands
+        .log()
+        .iter()
+        .filter(|l| *l == "video com.example.App")
+        .count();
+    assert_eq!(starts, 1);
+    let page = html(&run.report, &run.dir, run.report.video.as_deref());
+    assert!(page.contains(r#"<video id="video" controls preload="metadata" src="video.mp4">"#));
+    assert_eq!(page.matches("class=\"seek\"").count(), 2);
+}
+
+#[test]
+fn old_videos_are_pruned_and_reports_stay() {
+    let p = Project::new();
+    let now = SystemTime::now();
+    let day = Duration::from_secs(24 * 60 * 60);
+    p.write(".jevision/runs/old/report.json", "{}")
+        .write(".jevision/runs/old/video.mp4", "movie")
+        .write(".jevision/runs/new/video.mp4", "movie")
+        .write(".jevision/runs/none/report.json", "{}");
+    std::fs::File::options()
+        .write(true)
+        .open(p.0.join(".jevision/runs/old/video.mp4"))
+        .unwrap()
+        .set_modified(now - 31 * day)
+        .unwrap();
+
+    assert_eq!(prune_videos(&p.0, 30 * day, now).unwrap(), 1);
+    assert!(!p.0.join(".jevision/runs/old/video.mp4").exists());
+    assert!(p.0.join(".jevision/runs/old/report.json").exists());
+    assert!(p.0.join(".jevision/runs/new/video.mp4").exists());
+    assert_eq!(prune_videos(&p.0, 30 * day, now).unwrap(), 0);
+    assert_eq!(prune_videos(&p.0.join("elsewhere"), day, now).unwrap(), 0);
+}
+
+#[test]
+fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
+    let p = Project::new();
+    p.write(
+        "t.flow.json",
+        r#"{"format":1,"name":"T","start":"a","blocks":{"a":{"type":"openApp","colour":1}}}"#,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let failure = run(&p, &hands).report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.test.unreadable");
+    assert_eq!(
+        jevision_runner::describe(&failure),
+        "Test file t.flow.json cannot be read: Field \"app\": required, but missing. \
+         Block \"a\", field \"colour\": not a known field."
+    );
 }

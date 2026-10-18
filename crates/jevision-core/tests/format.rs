@@ -232,7 +232,7 @@ fn suspicious_graphs_are_warnings() {
 #[test]
 fn parameters_are_checked() {
     let issues = issues_of(
-        r#"{"a": {"type": "type", "text": "${secret.ok} ${env.HOME}", "next": "b"},
+        r#"{"a": {"type": "type", "text": "${secret.ok} ${env.HOME} ${home.X}", "next": "b"},
             "b": {"type": "openFile", "files": ["/etc/hosts"], "app": "Safari", "next": "c"},
             "c": {"type": "repeat", "times": 0, "body": "d", "next": "e"},
             "d": {"type": "click", "target": {"point": {"x": 1.5, "y": 0}}, "next": "c"},
@@ -260,7 +260,7 @@ fn parameters_are_checked() {
             ("flow.keys.invalid", "keys"),
         ]
     );
-    assert_eq!(issues[0].param("placeholder"), Some("${env.HOME}"));
+    assert_eq!(issues[0].param("placeholder"), Some("${home.X}"));
 }
 
 #[test]
@@ -322,4 +322,190 @@ fn catalog_matches_the_file_format() {
             );
         }
     }
+}
+
+#[test]
+fn missing_files_are_warnings_next_to_the_test() {
+    let dir = std::env::temp_dir().join(format!("jevision-files-{}", std::process::id()));
+    fs::create_dir_all(dir.join("refs")).unwrap();
+    fs::create_dir_all(dir.join("data")).unwrap();
+    fs::write(dir.join("refs/menu.png"), b"png").unwrap();
+    fs::write(dir.join("data/users.csv"), b"name\n").unwrap();
+    let flow = parse(ALL_BLOCKS).unwrap();
+    let issues = validate_in(&flow, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+
+    assert!(issues.iter().all(|i| i.severity == Severity::Warning));
+    let found: Vec<(&str, &str, &str)> = issues
+        .iter()
+        .map(|i| {
+            let p = |n| i.param(n).unwrap();
+            (i.code.as_str(), p("block"), p("path"))
+        })
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.file.missing", "doc", "fixtures/a.txt"),
+            ("flow.reference.notSaved", "done", "refs/done.png"),
+            (
+                "flow.file.missing",
+                "shared",
+                "../shared/close-dialog.flow.json"
+            ),
+            ("flow.file.missing", "spinner", "refs/spinner.png"),
+        ]
+    );
+    assert_eq!(
+        describe(&issues[1]),
+        "Block \"done\", field \"reference.image\": refs/done.png doesn't exist yet; the first run will save the screen there as the reference."
+    );
+    assert_eq!(
+        describe(&issues[3]),
+        "Block \"spinner\", field \"until.disappears.image\": refs/spinner.png doesn't exist; the run will stop at this block until it's added."
+    );
+}
+
+#[test]
+fn a_file_a_check_block_saves_is_not_reported_twice() {
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "check", "reference": {"image": "refs/home.png"}, "next": "b"},
+            "b": {"type": "click", "target": {"image": "refs/home.png"}}}"#,
+    ))
+    .unwrap();
+    let issues = validate_in(&flow, Path::new("/nonexistent"));
+    assert_eq!(codes(&issues), ["flow.reference.notSaved"]);
+}
+
+#[test]
+fn parse_errors_read_as_sentences() {
+    let err = parse(r#"{"format": 1, "name": "t", "start": "a", "blocks": {"a": {"type": "openApp", "colour": 1}}}"#)
+        .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Field \"app\": required, but missing. Block \"a\", field \"colour\": not a known field."
+    );
+}
+
+const CANVAS: &str = r#"{
+  "format": 1,
+  "name": "Drawn",
+  "app": "com.apple.TextEdit",
+  "start": "a",
+  "blocks": {
+    "a": { "type": "pressKeys", "keys": "a", "next": "b" },
+    "b": { "type": "pressKeys", "keys": "b" }
+  },
+  "canvas": {
+    "positions": { "gone": { "x": 1, "y": 1 }, "b": { "x": 32, "y": 160.5 }, "a": { "y": 32, "x": 32 } },
+    "sections": { "verify": { "frame": { "x": 0, "y": 128, "width": 400, "height": 96 }, "title": "Verify" },
+                  "prepare": { "title": "Prepare", "frame": { "x": 0, "y": 0, "width": 400, "height": 112 } } },
+    "notes": { "n": { "text": "Flaky on CI", "time": "2026-10-18T09:30:00Z", "author": "Anna",
+                      "frame": { "x": 448, "y": 32, "width": 224, "height": 144 } },
+               "bare": { "text": "", "frame": { "x": 448, "y": 192, "width": 224, "height": 144 } } }
+  }
+}"#;
+
+#[test]
+fn the_canvas_round_trips_in_canonical_form() {
+    let flow = parse(CANVAS).unwrap();
+    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(flow.canvas.sections.len(), 2);
+    assert_eq!(
+        flow.canvas
+            .notes
+            .iter()
+            .find(|n| n.id == "n")
+            .unwrap()
+            .author,
+        "Anna"
+    );
+    let text = to_canonical_json(&flow);
+    assert!(
+        text.ends_with(
+            r#"  "canvas": {
+    "positions": {
+      "a": {
+        "x": 32,
+        "y": 32
+      },
+      "b": {
+        "x": 32,
+        "y": 160.5
+      }
+    },
+    "sections": {
+      "prepare": {
+        "title": "Prepare",
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "height": 112
+        }
+      },
+      "verify": {
+        "title": "Verify",
+        "frame": {
+          "x": 0,
+          "y": 128,
+          "width": 400,
+          "height": 96
+        }
+      }
+    },
+    "notes": {
+      "bare": {
+        "text": "",
+        "frame": {
+          "x": 448,
+          "y": 192,
+          "width": 224,
+          "height": 144
+        }
+      },
+      "n": {
+        "text": "Flaky on CI",
+        "author": "Anna",
+        "time": "2026-10-18T09:30:00Z",
+        "frame": {
+          "x": 448,
+          "y": 32,
+          "width": 224,
+          "height": 144
+        }
+      }
+    }
+  }
+}
+"#
+        ),
+        "{text}"
+    );
+    let again = parse(&text).unwrap();
+    assert_eq!(to_canonical_json(&again), text);
+    // A position of a block that isn't there is not written.
+    assert!(!text.contains("gone"));
+
+    let plain = parse(&minimal(r#"{"a": {"type": "pressKeys", "keys": "a"}}"#)).unwrap();
+    assert!(!to_canonical_json(&plain).contains("canvas"));
+}
+
+#[test]
+fn a_malformed_canvas_is_reported() {
+    let issues =
+        parse_err(&CANVAS.replace(r#""title": "Verify""#, r#""title": 3, "colour": "red""#));
+    assert_eq!(codes(&issues), ["flow.field.type", "flow.field.unknown"]);
+    assert_eq!(
+        issues[0].param("field"),
+        Some("canvas.sections.verify.title")
+    );
+    let issues = parse_err(&CANVAS.replace(r#""text": "Flaky on CI","#, ""));
+    assert_eq!(codes(&issues), ["flow.field.missing"]);
+    assert_eq!(issues[0].param("field"), Some("canvas.notes.n.text"));
+    let issues = parse_err(&CANVAS.replace(r#""a": { "y": 32, "x": 32 }"#, r#""a": [32, 32]"#));
+    assert_eq!(codes(&issues), ["flow.field.type"]);
+    let issues = parse_err(&CANVAS.replace(r#""canvas": {"#, r#""canvas": { "zoom": 2,"#));
+    assert_eq!(codes(&issues), ["flow.field.unknown"]);
+    assert_eq!(issues[0].param("field"), Some("canvas.zoom"));
 }

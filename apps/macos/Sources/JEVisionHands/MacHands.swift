@@ -19,6 +19,8 @@ public final class MacHands: Hands, @unchecked Sendable {
   private let clicking: @Sendable (CGRect?) -> Void
   /// Keeps the display on while a run has hands: a sleeping display gives no picture to look at.
   private var displayOn: IOPMAssertionID = 0
+  /// The run's video while it records.
+  private var video: RunVideo?
 
   /// `input` reports the person's own mouse and keyboard; `isCancelled` tells long actions to
   /// stop early. `clicking` hears the frame of the window about to be clicked (global, top-left
@@ -227,6 +229,22 @@ public final class MacHands: Hands, @unchecked Sendable {
     return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
   }
 
+  // MARK: Video
+
+  public func startVideo(app: String, path: String) throws(HandsError) {
+    guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
+    wakeDisplay()
+    let video = RunVideo(app: app, url: URL(filePath: path))
+    try video.start()
+    self.video = video
+  }
+
+  public func stopVideo() throws(HandsError) {
+    guard let video else { return }
+    self.video = nil
+    try video.stop()
+  }
+
   // MARK: Helpers
 
   private func appURL(_ app: String) throws(HandsError) -> URL {
@@ -269,7 +287,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   /// Runs `start` and blocks this (non-main) thread until it calls back.
-  private static func wait<T: Sendable>(_ start: (@escaping @Sendable (T) -> Void) -> Void) -> T {
+  static func wait<T: Sendable>(_ start: (@escaping @Sendable (T) -> Void) -> Void) -> T {
     let box = Box<T>()
     let done = DispatchSemaphore(value: 0)
     start { value in
@@ -282,21 +300,25 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   /// The front window of any of `apps`: its id, frame in global top-left coordinates and title.
   static func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect, title: String?)? {
+    windows(of: apps).first
+  }
+
+  /// The apps' ordinary windows on screen, front to back; bounds in global points, top-left origin.
+  static func windows(of apps: [NSRunningApplication]) -> [(id: CGWindowID, bounds: CGRect, title: String?)] {
     let pids = Set(apps.map(\.processIdentifier))
     guard !pids.isEmpty,
       let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
         as? [[String: Any]]
-    else { return nil }
-    for info in list {
+    else { return [] }
+    return list.compactMap { info in
       guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pids.contains(pid),
         info[kCGWindowLayer as String] as? Int == 0,
         let id = info[kCGWindowNumber as String] as? CGWindowID,
         let dict = info[kCGWindowBounds as String] as? NSDictionary,
         let bounds = CGRect(dictionaryRepresentation: dict), bounds.width > 1, bounds.height > 1
-      else { continue }
+      else { return nil }
       return (id, bounds, info[kCGWindowName as String] as? String)
     }
-    return nil
   }
 
   private func captureWindow(_ app: String) throws(HandsError) -> (CGImage, Double) {

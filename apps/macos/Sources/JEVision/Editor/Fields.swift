@@ -10,6 +10,9 @@ struct FieldContext {
   /// Folder of the test file: paths are relative to it.
   let folder: URL
   let projectRoot: URL?
+  let document: FlowDocument
+  /// Id of the block being edited.
+  let block: String
 
   /// Problems with `field` or anything inside it, like `reference` for `reference.image`.
   func issues(_ field: String) -> [Issue] {
@@ -157,11 +160,13 @@ struct KeyRecorder: View {
   }
 }
 
-/// Text to type, with menus that insert secrets and data columns as placeholders.
+/// Text to type, with menus that insert secrets, environment values and data columns as
+/// placeholders.
 struct PlaceholderTextField: View {
   @Binding var text: String
   let secrets: [String]
   let columns: [String]
+  var environmentValues: [String] = []
   @State private var isNamingSecret = false
   @State private var secretName = ""
 
@@ -177,6 +182,13 @@ struct PlaceholderTextField: View {
           Button("New Secret…") {
             secretName = ""
             isNamingSecret = true
+          }
+        }
+        if !environmentValues.isEmpty {
+          Section("Environment Values") {
+            ForEach(environmentValues, id: \.self) { name in
+              Button(name) { insert("env", name) }
+            }
           }
         }
         if !columns.isEmpty {
@@ -255,6 +267,9 @@ struct ReferenceEditor: View {
   let context: FieldContext
   @AppStorage(AISettings.providerKey) private var aiProvider = ""
   @Environment(\.openSettings) private var openSettings
+  @State private var isEditing = false
+  @State private var picture: ReferencePicture?
+  @Environment(ProjectStore.self) private var project
 
   private enum Mode: Hashable { case exact, similar, meaning }
 
@@ -292,22 +307,21 @@ struct ReferenceEditor: View {
       set: { reference.compare = .similar(threshold: ($0 * 100).rounded() / 100) })
   }
 
-  private var hasArea: Binding<Bool> {
-    Binding(
-      get: { reference.area != nil },
-      set: { reference.area = $0 ? Rect(x: 0, y: 0, width: 1, height: 1) : nil })
-  }
-
-  private func area(_ path: WritableKeyPath<Rect, Double>) -> Binding<Double> {
-    Binding(
-      get: { reference.area?[keyPath: path] ?? 0 },
-      set: { reference.area?[keyPath: path] = $0 })
-  }
-
   var body: some View {
     FilePathField(label: Text("Reference Image"), path: $reference.image, types: [.png], context: context)
     IssueList(issues: context.issues(field + ".image"))
-    ImagePreview(path: reference.image, context: context)
+    ReferenceThumbnail(picture: picture, reference: reference) { isEditing = true }
+    LabeledContent {
+      Button("Edit Reference…") { isEditing = true }
+        .sheet(isPresented: $isEditing) { ReferenceAreaEditor(reference: $reference, field: field, context: context) }
+    } label: {
+      AreaLegend(reference: reference)
+    }
+    .task(id: "\(reference.image)#\(context.folder.path)#\(project.referenceChanges)") {
+      picture = reference.image.isEmpty
+        ? nil : ReferencePicture(url: RelativePath.resolve(reference.image, in: context.folder))
+    }
+    IssueList(issues: context.issues(field + ".area") + context.issues(field + ".ignore") + context.issues(field + ".hide"))
     Picker(selection: mode) {
       Text("Exactly").tag(Mode.exact)
       Text("Similar").tag(Mode.similar)
@@ -338,32 +352,10 @@ struct ReferenceEditor: View {
       }
       .font(.callout)
     }
-    if case .similar(let t) = reference.compare {
-      LabeledContent {
-        HStack {
-          Slider(value: threshold, in: 0.5...1) { Text("Similarity") }
-            .labelsHidden()
-          Text(BlockSummary.percent(t))
-            .monospacedDigit()
-            .frame(width: 44, alignment: .trailing)
-        }
-      } label: {
-        Text("Similarity")
-      }
+    if case .similar = reference.compare {
+      SimilaritySlider(threshold: threshold)
     }
     IssueList(issues: context.issues(field + ".threshold") + context.issues(field + ".compare"))
-    DisclosureGroup {
-      Toggle(isOn: hasArea) { Text("Compare only part of the image") }
-      if reference.area != nil {
-        PercentField(label: Text("From Left"), value: area(\.x))
-        PercentField(label: Text("From Top"), value: area(\.y))
-        PercentField(label: Text("Width"), value: area(\.width))
-        PercentField(label: Text("Height"), value: area(\.height))
-      }
-      IssueList(issues: context.issues(field + ".area"))
-    } label: {
-      Text("More")
-    }
   }
 }
 

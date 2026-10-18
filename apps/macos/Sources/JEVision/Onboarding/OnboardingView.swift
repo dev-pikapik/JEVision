@@ -6,15 +6,20 @@ struct OnboardingView: View {
   static let doneKey = "onboardingDone"
 
   private enum Step: Int, CaseIterable {
-    case welcome, permissions, ai
+    case welcome, permissions, ai, firstTest
   }
 
   @AppStorage(doneKey) private var done = false
   @AppStorage(AISettings.providerKey) private var aiProvider = ""
   @Environment(PermissionsMonitor.self) private var monitor
+  @Environment(ProjectStore.self) private var project
+  @Environment(RecordCenter.self) private var records
+  @Environment(\.openWindow) private var openWindow
   @Environment(\.dismissWindow) private var dismissWindow
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var step = Step.welcome
+  @State private var app: String?
+  @State private var failure: String?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -23,6 +28,7 @@ struct OnboardingView: View {
         case .welcome: WelcomeStep()
         case .permissions: PermissionsStep()
         case .ai: AIStep()
+        case .firstTest: FirstTestStep(app: $app, needsFolder: project.rootURL == nil, record: recordFirstTest)
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -32,6 +38,11 @@ struct OnboardingView: View {
     .frame(width: 700, height: 580)
     .task { await monitor.watch() }
     .onDisappear { done = true }
+    .alert("Couldn’t create the test", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+      Button("OK") {}
+    } message: {
+      Text(failure ?? "")
+    }
   }
 
   private var bottomBar: some View {
@@ -62,11 +73,15 @@ struct OnboardingView: View {
           Button("Later") { go(to: .ai) }
             .buttonStyle(.glass)
         case .ai where aiProvider.isEmpty:
-          Button("Skip", action: finish)
+          Button("Skip") { go(to: .firstTest) }
             .buttonStyle(.glass)
         case .ai:
-          Button("Done", action: finish)
+          Button("Continue") { go(to: .firstTest) }
             .buttonStyle(.glassProminent)
+        case .firstTest:
+          Button("Skip", action: finish)
+            .buttonStyle(.glass)
+            .keyboardShortcut(.cancelAction)
         }
       }
       .keyboardShortcut(.defaultAction)
@@ -96,5 +111,23 @@ struct OnboardingView: View {
   private func finish() {
     done = true
     dismissWindow(id: SceneID.onboarding)
+  }
+
+  /// Creates a test for the chosen app, in a folder chosen first if no project is open, and records into it.
+  private func recordFirstTest() {
+    guard let app else { return }
+    if project.rootURL == nil { project.choose() }
+    guard project.rootURL != nil else { return }
+    do {
+      try project.createTest(name: String(localized: "First Test"), app: app)
+    } catch {
+      failure = error.localizedDescription
+      return
+    }
+    guard let document = project.document else { return }
+    finish()
+    openWindow(id: SceneID.main)
+    // After the main window is up, so the recording puts it out of the app's way.
+    Task { records.record(document) }
   }
 }

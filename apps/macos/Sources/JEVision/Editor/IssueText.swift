@@ -57,7 +57,13 @@ enum IssueText {
     case "flow.path.extension":
       return String(localized: "flow.path.extension", defaultValue: "Choose a \(p("expected")) file.")
     case "flow.placeholder.invalid":
-      return String(localized: "flow.placeholder.invalid", defaultValue: "“\(p("placeholder"))” isn’t a valid placeholder. Use ${secret.NAME} or ${data.column}.")
+      return String(localized: "flow.placeholder.invalid", defaultValue: "“\(p("placeholder"))” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME} or ${data.column}.")
+    case "flow.env.unknown":
+      return String(localized: "flow.env.unknown", defaultValue: "No environment has the value \(p("name")). Add it to \(environmentsFileName()).")
+    case "flow.env.partial":
+      return String(localized: "flow.env.partial", defaultValue: "The value \(p("name")) is missing in these environments: \(p("environments")).")
+    case "flow.environments.invalid":
+      return String(localized: "flow.environments.invalid", defaultValue: "\(p("file")) can’t be read: \(p("reason")).")
     case "flow.keys.invalid":
       return String(localized: "flow.keys.invalid", defaultValue: "“\(p("value"))” isn’t a key combination. Record the keys again.")
     case "flow.point.invalid":

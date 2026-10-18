@@ -4,14 +4,18 @@
 //! `jevision-core` field by field (the compiler rejects any mismatch), so the bindings expose
 //! the core model itself instead of a converted copy.
 
+use std::collections::HashMap;
+
 use jevision_core::{
-    Block, BlockGroup, BlockKind, BlockSpec, Compare, Flow, FlowLayout, Issue, IssueParam,
-    LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton, Point, Priority, Rect, Reference,
-    Severity, Slot, Target, TestStatus, TestType, WaitUntil,
+    Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
+    Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton,
+    Note, Point, Priority, Rect, Reference, Severity, Slot, Target, TestStatus, TestType,
+    WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
 
+mod env;
 mod git;
 mod history;
 mod mcp;
@@ -19,6 +23,7 @@ mod remote;
 mod run;
 mod vision;
 
+pub use env::*;
 pub use git::*;
 pub use history::*;
 pub use mcp::*;
@@ -54,6 +59,19 @@ pub fn load_flow(json: String) -> Result<Flow, FlowError> {
 #[uniffi::export]
 pub fn validate_flow(flow: Flow) -> Vec<Issue> {
     jevision_core::validate(&flow)
+}
+
+/// The problems in a test saved in `folder`, including warnings about the images and files it
+/// reads that are not there.
+#[uniffi::export]
+pub fn validate_flow_in(flow: Flow, folder: String) -> Vec<Issue> {
+    jevision_core::validate_in(&flow, std::path::Path::new(&folder))
+}
+
+/// English sentence for a problem, saying which block and field it concerns.
+#[uniffi::export]
+pub fn describe_issue(issue: Issue) -> String {
+    jevision_core::describe(&issue)
 }
 
 /// Writes a test in canonical form, ready to be saved to its `*.flow.json` file.
@@ -116,6 +134,104 @@ pub fn remove_block(mut flow: Flow, id: String) -> Edited {
     Edited { flow, selection }
 }
 
+/// Step of the canvas grid, in canvas points.
+#[uniffi::export]
+pub fn canvas_grid() -> f64 {
+    jevision_core::GRID
+}
+
+/// A test after an edit on the canvas, and the items to select.
+#[derive(uniffi::Record)]
+pub struct CanvasEdit {
+    pub flow: Flow,
+    pub items: Vec<CanvasItem>,
+}
+
+/// Moves `items` by `dx`, `dy` canvas points, snapped to the grid. `None` when nothing moves.
+#[uniffi::export]
+pub fn move_on_canvas(mut flow: Flow, items: Vec<CanvasItem>, dx: f64, dy: f64) -> Option<Flow> {
+    flow.move_items(&items, dx, dy).then_some(flow)
+}
+
+/// Puts block `id` with its top-left corner at `at`, snapped to the grid.
+#[uniffi::export]
+pub fn place_block(mut flow: Flow, id: String, at: Point) -> Option<Flow> {
+    flow.place_block(&id, at).then_some(flow)
+}
+
+/// Gives a section or a note a new frame, snapped to the grid.
+#[uniffi::export]
+pub fn resize_on_canvas(mut flow: Flow, item: CanvasItem, rect: Rect) -> Option<Flow> {
+    flow.resize_item(&item, rect).then_some(flow)
+}
+
+/// Forgets where blocks were placed by hand, so the test lays out automatically again.
+#[uniffi::export]
+pub fn arrange_automatically(mut flow: Flow) -> Flow {
+    flow.arrange_automatically();
+    flow
+}
+
+/// Points edge `edge` of block `from` at `to`, or disconnects it. `None` when the edge can't
+/// go there: an unknown edge or block, or a cycle other than through a loop's body.
+#[uniffi::export]
+pub fn connect_blocks(
+    mut flow: Flow,
+    from: String,
+    edge: String,
+    to: Option<String>,
+) -> Option<Flow> {
+    flow.connect(&from, &edge, to.as_deref()).then_some(flow)
+}
+
+/// Adds a section titled `title` with the frame `rect` and selects it.
+#[uniffi::export]
+pub fn add_section(mut flow: Flow, title: String, rect: Rect) -> CanvasEdit {
+    let item = flow.add_section(&title, rect);
+    CanvasEdit {
+        flow,
+        items: vec![item],
+    }
+}
+
+/// Adds a note at `at` written by `author` at `time` (RFC 3339) and selects it.
+#[uniffi::export]
+pub fn add_note(
+    mut flow: Flow,
+    text: String,
+    author: String,
+    time: String,
+    at: Point,
+) -> CanvasEdit {
+    let item = flow.add_note(&text, &author, &time, at);
+    CanvasEdit {
+        flow,
+        items: vec![item],
+    }
+}
+
+/// Removes `items`, joining the neighbours of removed blocks, and selects the block that took
+/// the place of the last one.
+#[uniffi::export]
+pub fn remove_from_canvas(mut flow: Flow, items: Vec<CanvasItem>) -> Edited {
+    let selection = flow.remove_items(&items);
+    Edited { flow, selection }
+}
+
+/// `items` as the text of a test file, for the clipboard.
+#[uniffi::export]
+pub fn copy_from_canvas(flow: Flow, items: Vec<CanvasItem>) -> String {
+    flow.copy_items(&items)
+}
+
+/// Adds the blocks, sections and notes of a test file's `text`, after block `after` when it
+/// can take them, and selects them. `None` when the text isn't a test.
+#[uniffi::export]
+pub fn paste_on_canvas(mut flow: Flow, text: String, after: Option<String>) -> Option<CanvasEdit> {
+    let items = flow.paste_items(&text, after.as_deref())?;
+    Some(CanvasEdit { flow, items })
+}
+
 #[uniffi::remote(Record)]
 pub struct Flow {
     pub name: String,
@@ -128,6 +244,37 @@ pub struct Flow {
     pub retries: u32,
     pub start: String,
     pub blocks: Vec<Block>,
+    pub canvas: CanvasContent,
+}
+
+#[uniffi::remote(Record)]
+pub struct CanvasContent {
+    pub positions: HashMap<String, Point>,
+    pub sections: Vec<CanvasSection>,
+    pub notes: Vec<Note>,
+}
+
+#[uniffi::remote(Record)]
+pub struct CanvasSection {
+    pub id: String,
+    pub title: String,
+    pub rect: Rect,
+}
+
+#[uniffi::remote(Record)]
+pub struct Note {
+    pub id: String,
+    pub text: String,
+    pub author: String,
+    pub time: String,
+    pub rect: Rect,
+}
+
+#[uniffi::remote(Enum)]
+pub enum CanvasItem {
+    Block { id: String },
+    Section { id: String },
+    Note { id: String },
 }
 
 #[uniffi::remote(Enum)]
@@ -313,6 +460,7 @@ pub struct FlowLayout {
     pub frames: Vec<LaidFrame>,
     pub edges: Vec<LaidEdge>,
     pub slots: Vec<LaidSlot>,
+    pub ports: Vec<LaidSlot>,
 }
 
 #[uniffi::remote(Record)]

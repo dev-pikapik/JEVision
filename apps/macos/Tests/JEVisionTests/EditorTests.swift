@@ -142,6 +142,120 @@ struct FlowDocumentTests {
     #expect(document.block("b")?.kind == .pressKeys(keys: "b", next: nil))
   }
 
+  @Test func movesTheSelectionTogetherAndUndoes() throws {
+    let url = try file(Self.chain)
+    let document = FlowDocument(url: url)
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    let before = document.layout.blocks
+    document.pick([.block(id: "a"), .block(id: "b")], prefer: "b")
+    #expect(document.selection == "b")
+    #expect(document.pickedInOrder == [.block(id: "a"), .block(id: "b")])
+
+    undo.beginUndoGrouping()
+    document.move(document.pickedInOrder, dx: 165, dy: 0)
+    undo.endUndoGrouping()
+    let positions = try #require(document.flow?.canvas.positions)
+    #expect(positions.count == 2)
+    for laid in before {
+      let moved = try #require(positions[laid.id])
+      #expect(moved.x.truncatingRemainder(dividingBy: FlowCanvas.grid) == 0)
+      #expect(abs(moved.x - (laid.rect.x + 165)) <= FlowCanvas.grid)
+    }
+    #expect(document.picked.count == 2, "moving keeps the selection")
+    #expect(try String(contentsOf: url, encoding: .utf8).contains("\"canvas\""))
+
+    undo.undo()
+    #expect(document.flow?.canvas.positions.isEmpty == true)
+    #expect(document.layout.blocks == before)
+  }
+
+  @Test func linksAndUnlinksBlocksButMakesNoLoops() throws {
+    let document = FlowDocument(url: try file(Self.chain))
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    #expect(!document.canConnect("b", edge: "next", to: "a"), "b → a would loop back")
+    #expect(!document.canConnect("a", edge: "next", to: "b"), "a already leads to b")
+    #expect(!document.canConnect("a", edge: "then", to: "b"), "Press Keys has no Yes branch")
+
+    undo.beginUndoGrouping()
+    document.connect("a", edge: "next", to: nil)
+    undo.endUndoGrouping()
+    #expect(nextOf(document, "a") == nil)
+    #expect(document.canConnect("a", edge: "next", to: "b"))
+    #expect(document.canConnect("b", edge: "next", to: "a"))
+    undo.undo()
+    #expect(nextOf(document, "a") == "b")
+  }
+
+  @Test func duplicatesAfterTheSelectedBlockAndPastesIntoAnotherTest() throws {
+    let document = FlowDocument(url: try file(Self.chain))
+    document.undoManager = UndoManager()
+    document.pick([.block(id: "a")])
+    document.duplicate()
+    #expect(document.order == ["a", "a2", "b"])
+    #expect(nextOf(document, "a") == "a2")
+    #expect(nextOf(document, "a2") == "b")
+    #expect(document.selection == "a2")
+    #expect(document.picked == [.block(id: "a2")])
+
+    document.pick([.block(id: "a2"), .block(id: "b")])
+    let copied = document.copyPicked()
+    let other = FlowDocument(url: try file(Self.chain))
+    other.pick([])
+    #expect(other.paste(copied))
+    #expect(other.flow?.blocks.count == 4)
+    #expect(other.picked.count == 2)
+    #expect(!other.paste("not a test"))
+    #expect(other.flow?.blocks.count == 4)
+  }
+
+  @Test func addsEditsAndDeletesNotesAndFrames() throws {
+    let url = try file(Self.chain)
+    let document = FlowDocument(url: url)
+    let undo = CountingUndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    undo.beginUndoGrouping()
+    document.addNote(at: Point(x: 600, y: 40), author: "Anna")
+    for text in ["C", "Ch", "Check twice"] {
+      let id = try #require(document.flow?.canvas.notes.first?.id)
+      document.editNote(id, text: text)
+    }
+    undo.endUndoGrouping()
+    #expect(undo.registrations == 2, "adding is one step, typing another")
+    let note = try #require(document.flow?.canvas.notes.first)
+    #expect(note.text == "Check twice")
+    #expect(note.author == "Anna")
+    #expect(!note.time.isEmpty)
+    #expect(document.picked == [.note(id: note.id)])
+    #expect(document.selection == nil)
+
+    undo.beginUndoGrouping()
+    document.addFrame(Rect(x: 0, y: 0, width: 400, height: 300))
+    let frame = try #require(document.flow?.canvas.sections.first)
+    document.editFrame(frame.id, title: "Sign in")
+    document.resize(.section(id: frame.id), to: Rect(x: 0, y: 0, width: 500, height: 300))
+    undo.endUndoGrouping()
+    #expect(document.flow?.canvas.sections.first?.title == "Sign in")
+    #expect(document.flow?.canvas.sections.first?.rect.width == 496)
+    #expect(try String(contentsOf: url, encoding: .utf8).contains("Sign in"))
+
+    document.pick([.note(id: note.id), .section(id: frame.id)])
+    undo.beginUndoGrouping()
+    document.remove(document.pickedInOrder)
+    undo.endUndoGrouping()
+    #expect(document.flow?.canvas.notes.isEmpty == true)
+    #expect(document.flow?.canvas.sections.isEmpty == true)
+    #expect(document.picked.isEmpty)
+    #expect(document.order == ["a", "b"])
+    undo.undo()
+    #expect(document.flow?.canvas.notes.count == 1)
+    #expect(document.flow?.canvas.sections.count == 1)
+  }
+
   @Test func reloadsChangesMadeElsewhereKeepingTheSelection() throws {
     let url = try file(Self.chain)
     let document = FlowDocument(url: url)

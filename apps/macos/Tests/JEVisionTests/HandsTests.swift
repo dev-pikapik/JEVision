@@ -101,3 +101,25 @@ struct TemplateMatcherTests {
     #expect(TemplateMatcher.find(crop(screen, x: 0, y: 0, width: 10, height: 10), in: screen, minSimilarity: 0.9, isCancelled: { true }) == nil)
   }
 }
+
+struct RunVideoTests {
+  @Test func videoSizeFitsAndIsEven() {
+    #expect(RunVideo.videoSize(width: 1280, height: 800) == (1280, 800))
+    #expect(RunVideo.videoSize(width: 3024, height: 1964) == (1920, 1246))
+    #expect(RunVideo.videoSize(width: 1964, height: 3024) == (1246, 1920))
+    #expect(RunVideo.videoSize(width: 1001, height: 601) == (1002, 602))
+    #expect(RunVideo.videoSize(width: 0, height: 0) == (2, 2))
+  }
+
+  @Test func framingClosesInOnTheWindowsInTheDisplaysProportions() {
+    let display = CGRect(x: 1000, y: 0, width: 2000, height: 1000)
+    #expect(RunVideo.framing([], on: display) == CGRect(x: 0, y: 0, width: 2000, height: 1000))
+    // A 552×352 window with room around becomes 600×400, widened to 2:1.
+    #expect(RunVideo.framing([CGRect(x: 1500, y: 300, width: 552, height: 352)], on: display) == CGRect(x: 376, y: 276, width: 800, height: 400))
+    // Near the edge the picture moves inside the display instead of showing what's beyond it.
+    #expect(RunVideo.framing([CGRect(x: 1000, y: 0, width: 552, height: 352)], on: display) == CGRect(x: 0, y: 0, width: 800, height: 400))
+    // Windows on other displays don't count; windows filling the display show all of it.
+    #expect(RunVideo.framing([CGRect(x: 0, y: 0, width: 500, height: 500)], on: display) == CGRect(x: 0, y: 0, width: 2000, height: 1000))
+    #expect(RunVideo.framing([CGRect(x: 1000, y: 0, width: 2000, height: 980)], on: display) == CGRect(x: 0, y: 0, width: 2000, height: 1000))
+  }
+}

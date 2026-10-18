@@ -1,24 +1,27 @@
-//! Automatic placement of a test's blocks on the editor canvas.
+//! Placement of a test's blocks on the editor canvas.
 //!
-//! Positions are never stored in the file: the same test always lays out the same way, so
-//! diffs show only real changes. The chain reads top to bottom, the branches of an `if` sit
-//! side by side, and a loop is a frame around its body. Coordinates are canvas points from the
-//! top-left corner, not fractions of a window.
+//! A test without positions in its file lays out automatically, always the same way, so diffs
+//! show only real changes: the chain reads top to bottom, the branches of an `if` sit side by
+//! side, and a loop is a frame around its body. Once blocks are moved by hand, they stay where
+//! they were put and the connectors are routed between them. Coordinates are canvas points from
+//! the top-left corner, not fractions of a window.
 
 use std::collections::{HashMap, HashSet};
 
 use crate::edit::{START, Slot};
 use crate::model::{BODY, BlockKind, ELSE, Flow, NEXT, Point, Rect, THEN};
 
-pub const BLOCK_WIDTH: f64 = 240.0;
+pub const BLOCK_WIDTH: f64 = 208.0;
 pub const BLOCK_HEIGHT: f64 = 64.0;
+/// Step of the canvas grid that moved blocks, sections and notes snap to.
+pub const GRID: f64 = 16.0;
 /// Vertical space between blocks; it holds the connector and the place to add a block.
-const GAP: f64 = 52.0;
-const COLUMN_GAP: f64 = 40.0;
+const GAP: f64 = 48.0;
+const COLUMN_GAP: f64 = 48.0;
 /// Space between a loop’s frame and its blocks, and around the whole canvas.
-const PAD: f64 = 20.0;
+const PAD: f64 = 16.0;
 /// How far before a block a connector makes its last turn.
-const TURN: f64 = 14.0;
+const TURN: f64 = 16.0;
 /// Distance between connectors that jump to a block placed elsewhere.
 const LANE: f64 = 12.0;
 
@@ -32,6 +35,9 @@ pub struct FlowLayout {
     pub frames: Vec<LaidFrame>,
     pub edges: Vec<LaidEdge>,
     pub slots: Vec<LaidSlot>,
+    /// Where each edge a block can have leaves it, connected or not: the handle to drag a
+    /// connector from.
+    pub ports: Vec<LaidSlot>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,9 +103,42 @@ fn pt(x: f64, y: f64) -> Point {
     Point { x, y }
 }
 
-/// Lays out `flow`. Blocks that cannot be reached from `start` get columns of their own on the
-/// right. With duplicate ids only the first block of each id is placed.
+/// Lays out `flow`: automatically, or around the blocks placed by hand when there are any. In
+/// both cases blocks that cannot be reached from `start` get columns of their own on the right,
+/// and only the first block of each duplicate id is placed. The canvas covers sections and
+/// notes too.
 pub fn layout(flow: &Flow) -> FlowLayout {
+    let auto = auto_layout(flow);
+    let pinned = auto
+        .blocks
+        .iter()
+        .any(|b| flow.canvas.positions.contains_key(&b.id));
+    let mut out = if pinned {
+        free_layout(flow, &auto)
+    } else {
+        auto
+    };
+    let drawn = flow.canvas.sections.iter().map(|s| &s.rect);
+    for r in drawn.chain(flow.canvas.notes.iter().map(|n| &n.rect)) {
+        out.width = out.width.max(r.x + r.width + PAD);
+        out.height = out.height.max(r.y + r.height + PAD);
+    }
+    out
+}
+
+/// Exit point of each edge a block can have, along its bottom: one in the middle, two at a
+/// quarter from either side.
+pub(crate) fn port_xs(kind: &BlockKind, rect: &Rect) -> Vec<(&'static str, f64)> {
+    let names = kind.edge_names();
+    let step = rect.width / (2.0 * names.len() as f64);
+    names
+        .iter()
+        .enumerate()
+        .map(|(n, name)| (*name, rect.x + step * (2 * n + 1) as f64))
+        .collect()
+}
+
+fn auto_layout(flow: &Flow) -> FlowLayout {
     let mut b = Builder {
         flow,
         index: flow
@@ -119,6 +158,7 @@ pub fn layout(flow: &Flow) -> FlowLayout {
             frames: Vec::new(),
             edges: Vec::new(),
             slots: Vec::new(),
+            ports: Vec::new(),
         },
     };
     let mut columns = vec![b.column(Some(flow.start.as_str()), &[])];
@@ -320,13 +360,19 @@ impl<'a> Builder<'a> {
                 let bottom = top + BLOCK_HEIGHT;
                 let lanes_top = bottom + GAP;
                 let mut exits = Vec::new();
-                for (edge, items, lane) in [
+                let rect = self.rects[*at].expect("the block was just placed");
+                let ports = port_xs(self.kind(*at), &rect);
+                for ((edge, items, lane), (_, port)) in [
                     (THEN, then, left + tw / 2.0),
                     (ELSE, otherwise, left + width - ew / 2.0),
-                ] {
+                ]
+                .into_iter()
+                .zip(ports)
+                {
+                    self.port(*at, edge, pt(port, bottom));
                     let lead = vec![
-                        pt(cx, bottom),
-                        pt(cx, bottom + TURN),
+                        pt(port, bottom),
+                        pt(port, bottom + TURN),
                         pt(lane, bottom + TURN),
                         pt(lane, lanes_top),
                     ];
@@ -363,6 +409,7 @@ impl<'a> Builder<'a> {
                 let node_bottom = node_top + BLOCK_HEIGHT;
                 let body_top = node_bottom + GAP;
                 self.slot(*at, BODY, pt(cx, node_bottom + GAP / 2.0));
+                self.port(*at, BODY, pt(cx, node_bottom));
                 let own = self.id(*at);
                 if let Some(first) = body.first() {
                     let to = self.id(first.first());
@@ -415,6 +462,7 @@ impl<'a> Builder<'a> {
     /// The slot below a block and its edge `edge`, still to connect, if it leads anywhere.
     fn exit_down(&mut self, i: usize, edge: &'static str, cx: f64, bottom: f64) -> Vec<Exit> {
         self.slot(i, edge, pt(cx, bottom + GAP / 2.0));
+        self.port(i, edge, pt(cx, bottom));
         self.kind(i)
             .edge(edge)
             .map(|target| Exit {
@@ -474,28 +522,26 @@ impl<'a> Builder<'a> {
     }
 
     fn edge(&mut self, from: usize, edge: &str, to: &str, points: Vec<Point>) {
-        let mut clean: Vec<Point> = Vec::with_capacity(points.len());
-        for p in points {
-            if clean.last() == Some(&p) {
-                continue;
-            }
-            if let [.., a, b] = clean[..] {
-                if (a.x == b.x && b.x == p.x) || (a.y == b.y && b.y == p.y) {
-                    clean.pop();
-                }
-            }
-            clean.push(p);
-        }
         self.out.edges.push(LaidEdge {
             from: self.id(from).to_owned(),
             edge: edge.to_owned(),
             to: to.to_owned(),
-            points: clean,
+            points: straighten(points),
         });
     }
 
     fn slot(&mut self, i: usize, edge: &str, at: Point) {
         self.slot_at(self.id(i).to_owned(), edge, at);
+    }
+
+    fn port(&mut self, i: usize, edge: &str, at: Point) {
+        self.out.ports.push(LaidSlot {
+            slot: Slot {
+                from: self.id(i).to_owned(),
+                edge: edge.to_owned(),
+            },
+            at,
+        });
     }
 
     fn slot_at(&mut self, from: String, edge: &str, at: Point) {
@@ -529,6 +575,239 @@ impl<'a> Builder<'a> {
         self.out.width += PAD;
         self.out
     }
+}
+
+/// Lays out a test with blocks placed by hand. A block without a position goes below the first
+/// block that leads to it, or where the automatic layout put it, moved right until it overlaps
+/// nothing. Connectors leave the bottom of a block and enter the top of the next one; one going
+/// back up passes on the right of both blocks. A loop's frame surrounds its body.
+fn free_layout(flow: &Flow, auto: &FlowLayout) -> FlowLayout {
+    let index: HashMap<&str, &BlockKind> = flow
+        .blocks
+        .iter()
+        .rev()
+        .map(|b| (b.id.as_str(), &b.kind))
+        .collect();
+    let placed: HashSet<&str> = auto.blocks.iter().map(|b| b.id.as_str()).collect();
+    let mut order: Vec<&str> = Vec::new();
+    for b in flow.blocks_in_flow_order() {
+        if placed.contains(b.id.as_str()) && !order.contains(&b.id.as_str()) {
+            order.push(&b.id);
+        }
+    }
+    let mut rects: HashMap<&str, Rect> = HashMap::new();
+    for &id in &order {
+        if let Some(p) = flow.canvas.positions.get(id) {
+            rects.insert(id, block_rect(p.x, p.y));
+        }
+    }
+    for &id in &order {
+        if rects.contains_key(id) {
+            continue;
+        }
+        let before = order
+            .iter()
+            .find(|&&o| rects.contains_key(o) && index[o].edges().iter().any(|(_, t)| *t == id));
+        let mut r = match before {
+            Some(o) => block_rect(rects[o].x, rects[o].y + BLOCK_HEIGHT + GAP),
+            None => {
+                auto.blocks
+                    .iter()
+                    .find(|b| b.id == id)
+                    .expect("placed")
+                    .rect
+            }
+        };
+        while rects.values().any(|o| overlaps(o, &r)) {
+            r.x += BLOCK_WIDTH + COLUMN_GAP;
+        }
+        rects.insert(id, r);
+    }
+
+    let mut out = FlowLayout {
+        width: 0.0,
+        height: 0.0,
+        blocks: order
+            .iter()
+            .map(|&id| LaidBlock {
+                id: id.to_owned(),
+                rect: rects[id],
+            })
+            .collect(),
+        frames: Vec::new(),
+        edges: Vec::new(),
+        slots: Vec::new(),
+        ports: Vec::new(),
+    };
+    if let Some(start) = rects.get(flow.start.as_str()) {
+        let at = pt(start.x + start.width / 2.0, start.y - GAP / 2.0);
+        out.slots.push(slot(String::new(), START, at));
+    }
+    for &id in &order {
+        let kind = index[id];
+        let rect = rects[id];
+        if let BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } = kind {
+            let mut frame = rect;
+            for inside in loop_body(&index, id, body) {
+                if let Some(r) = rects.get(inside) {
+                    frame = union(&frame, r);
+                }
+            }
+            out.frames.push(LaidFrame {
+                block: id.to_owned(),
+                rect: Rect {
+                    x: frame.x - PAD,
+                    y: frame.y - PAD,
+                    width: frame.width + 2.0 * PAD,
+                    height: frame.height + 2.0 * PAD,
+                },
+            });
+        }
+        for (edge, x) in port_xs(kind, &rect) {
+            let from = pt(x, rect.y + rect.height);
+            out.ports.push(slot(id.to_owned(), edge, from));
+            let target = kind.edge(edge).filter(|t| *t != id || edge != BODY);
+            match target.and_then(|t| Some((t, rects.get(t)?))) {
+                Some((to, target)) => {
+                    let points = route(from, &rect, target);
+                    out.slots.push(slot(id.to_owned(), edge, middle(&points)));
+                    out.edges.push(LaidEdge {
+                        from: id.to_owned(),
+                        edge: edge.to_owned(),
+                        to: to.to_owned(),
+                        points,
+                    });
+                }
+                None => out
+                    .slots
+                    .push(slot(id.to_owned(), edge, pt(from.x, from.y + GAP / 2.0))),
+            }
+        }
+    }
+
+    let corners = (out.blocks.iter().map(|b| &b.rect))
+        .chain(out.frames.iter().map(|f| &f.rect))
+        .map(|r| pt(r.x + r.width, r.y + r.height));
+    let points = out.edges.iter().flat_map(|e| e.points.iter().copied());
+    let slots = out.slots.iter().map(|s| pt(s.at.x, s.at.y + GAP / 2.0));
+    let far: Vec<Point> = corners.chain(points).chain(slots).collect();
+    for p in far {
+        out.width = out.width.max(p.x + PAD);
+        out.height = out.height.max(p.y + PAD);
+    }
+    out
+}
+
+fn block_rect(x: f64, y: f64) -> Rect {
+    Rect {
+        x,
+        y,
+        width: BLOCK_WIDTH,
+        height: BLOCK_HEIGHT,
+    }
+}
+
+fn slot(from: String, edge: &str, at: Point) -> LaidSlot {
+    LaidSlot {
+        slot: Slot {
+            from,
+            edge: edge.to_owned(),
+        },
+        at,
+    }
+}
+
+/// Whether two blocks are closer than a connector needs.
+fn overlaps(a: &Rect, b: &Rect) -> bool {
+    let room = GRID;
+    a.x < b.x + b.width + room
+        && b.x < a.x + a.width + room
+        && a.y < b.y + b.height + room
+        && b.y < a.y + a.height + room
+}
+
+fn union(a: &Rect, b: &Rect) -> Rect {
+    let (x, y) = (a.x.min(b.x), a.y.min(b.y));
+    Rect {
+        x,
+        y,
+        width: (a.x + a.width).max(b.x + b.width) - x,
+        height: (a.y + a.height).max(b.y + b.height) - y,
+    }
+}
+
+/// Blocks reachable from a loop's `body` without passing the loop itself.
+fn loop_body<'a>(
+    index: &HashMap<&'a str, &'a BlockKind>,
+    own: &str,
+    body: &'a str,
+) -> Vec<&'a str> {
+    let mut seen: Vec<&str> = Vec::new();
+    let mut stack = vec![body];
+    while let Some(id) = stack.pop() {
+        if id == own || seen.contains(&id) {
+            continue;
+        }
+        let Some(kind) = index.get(id) else { continue };
+        seen.push(id);
+        stack.extend(kind.edges().into_iter().map(|(_, t)| t));
+    }
+    seen
+}
+
+/// A connector from `from`, on the bottom of `source`, to the top middle of `target`.
+fn route(from: Point, source: &Rect, target: &Rect) -> Vec<Point> {
+    let to = pt(target.x + target.width / 2.0, target.y);
+    let below = pt(from.x, from.y + TURN);
+    let points = if to.y - TURN >= below.y {
+        vec![from, below, pt(to.x, below.y), pt(to.x, to.y - TURN), to]
+    } else {
+        let lane = (source.x + source.width).max(target.x + target.width) + COLUMN_GAP / 2.0;
+        vec![
+            from,
+            below,
+            pt(lane, below.y),
+            pt(lane, to.y - TURN),
+            pt(to.x, to.y - TURN),
+            to,
+        ]
+    };
+    straighten(points)
+}
+
+/// `points` without repeated points and without the middle one of three in a straight line.
+fn straighten(points: Vec<Point>) -> Vec<Point> {
+    let mut clean: Vec<Point> = Vec::with_capacity(points.len());
+    for p in points {
+        if clean.last() == Some(&p) {
+            continue;
+        }
+        if let [.., a, b] = clean[..] {
+            if (a.x == b.x && b.x == p.x) || (a.y == b.y && b.y == p.y) {
+                clean.pop();
+            }
+        }
+        clean.push(p);
+    }
+    clean
+}
+
+/// The point halfway along a polyline.
+fn middle(points: &[Point]) -> Point {
+    let length = |a: &Point, b: &Point| (b.x - a.x).hypot(b.y - a.y);
+    let mut left = points.windows(2).map(|w| length(&w[0], &w[1])).sum::<f64>() / 2.0;
+    for w in points.windows(2) {
+        let l = length(&w[0], &w[1]);
+        if l >= left && l > 0.0 {
+            let t = left / l;
+            return pt(
+                w[0].x + (w[1].x - w[0].x) * t,
+                w[0].y + (w[1].y - w[0].y) * t,
+            );
+        }
+        left -= l;
+    }
+    points[0]
 }
 
 #[cfg(test)]

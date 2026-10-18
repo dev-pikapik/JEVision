@@ -82,12 +82,20 @@ impl Hands for FakeHands {
     fn user_input_detected(&self) -> bool {
         false
     }
+
+    fn start_video(&self, _: String, _: String) -> Result<(), HandsError> {
+        Ok(())
+    }
+
+    fn stop_video(&self) -> Result<(), HandsError> {
+        Ok(())
+    }
 }
 
 struct Secrets;
 
 impl SecretSource for Secrets {
-    fn secret(&self, _: String) -> Option<String> {
+    fn secret(&self, _: String, _: Option<String>) -> Option<String> {
         Some(SECRET.to_owned())
     }
 }
@@ -294,6 +302,32 @@ fn write_test_explains_what_is_wrong_and_saves_nothing() {
 }
 
 #[test]
+fn missing_reference_images_are_reported_next_to_the_test() {
+    let (project, _, server) = setup();
+    let mut test: Value = serde_json::from_str(&sign_in()).unwrap();
+    test["blocks"]["password"]["next"] = json!("done");
+    test["blocks"]["done"] = json!({ "type": "check", "reference": { "image": "refs/none.png" } });
+    let (failed, text) = call(
+        &server,
+        "write_test",
+        json!({ "path": "login/new.flow.json", "test": test }),
+    );
+    assert!(!failed, "{text}");
+    assert!(
+        text.contains("- warning: Block \"done\", field \"reference.image\": refs/none.png doesn't exist yet; the first run will save the screen there as the reference."),
+        "{text}"
+    );
+
+    project.write("login/refs/none.png", "png");
+    let (_, text) = call(
+        &server,
+        "validate_test",
+        json!({ "path": "login/new.flow.json" }),
+    );
+    assert!(text.ends_with("No problems found."), "{text}");
+}
+
+#[test]
 fn edits_blocks_in_place() {
     let (project, _, server) = setup();
     let path = "login/sign-in.flow.json";
@@ -404,6 +438,43 @@ fn runs_and_screenshots_need_permission() {
     let reply: Value = serde_json::from_str(&reply).unwrap();
     assert_eq!(reply["result"]["content"][1]["type"], "image");
     assert_eq!(reply["result"]["content"][1]["mimeType"], "image/png");
+}
+
+#[test]
+fn runs_in_an_environment_of_the_project() {
+    let (project, host, server) = setup();
+    host.permissions.lock().unwrap().run_tests = true;
+    let (failed, text) = call(
+        &server,
+        "run_test",
+        json!({ "path": "login", "env": "prod" }),
+    );
+    assert!(failed && text.contains("no environments"), "{text}");
+
+    project.write(
+        "jevision.environments.json",
+        r#"{"format":1,"environments":{"staging":{}}}"#,
+    );
+    let (failed, text) = call(
+        &server,
+        "run_test",
+        json!({ "path": "login", "env": "prod" }),
+    );
+    assert!(
+        failed && text.contains("The project has: staging"),
+        "{text}"
+    );
+    let (failed, text) = call(
+        &server,
+        "run_test",
+        json!({ "path": "login", "env": "staging" }),
+    );
+    assert!(!failed, "{text}");
+    let (_, status) = call(&server, "get_run", json!({ "run": "1", "wait": 60 }));
+    let status: Value = serde_json::from_str(&status).unwrap();
+    assert_eq!(status["passed"], 1, "{status}");
+    let runs = jevision_runner::Run::list(&project.0).unwrap();
+    assert_eq!(runs[0].report.environment.as_deref(), Some("staging"));
 }
 
 #[test]

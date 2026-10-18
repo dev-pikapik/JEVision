@@ -9,7 +9,8 @@ func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) 
     guard let text = read(file, status: &status) else { continue }
     let issues: [Issue]
     do {
-      issues = validateFlow(flow: try loadFlow(json: text))
+      let folder = URL(filePath: file).deletingLastPathComponent().path
+      issues = validateFlowIn(flow: try loadFlow(json: text), folder: folder)
     } catch let FlowError.Invalid(found) {
       issues = found
     } catch {
@@ -70,31 +71,8 @@ private func printIssues(_ issues: [Issue], of file: String, to output: Console)
   output.line("\(file): \(errors) error\(errors == 1 ? "" : "s"), \(warnings) warning\(warnings == 1 ? "" : "s")")
   for issue in issues {
     let level = issue.severity == .error ? "error  " : "warning"
-    let params = issue.params.map { param in
-      let plain = !param.value.isEmpty && !param.value.contains { $0.isWhitespace }
-      return "\(param.name)=\(plain ? param.value : quoted(param.value))"
-    }
-    output.line("  \(level) \(issue.code) \(params.joined(separator: " "))")
+    output.line("  \(level) \(describeIssue(issue: issue))")
   }
-}
-
-/// A value in double quotes with its special characters escaped, as Rust's `{:?}` writes it.
-private func quoted(_ text: String) -> String {
-  var out = "\""
-  for scalar in text.unicodeScalars {
-    switch scalar {
-    case "\"": out += "\\\""
-    case "\\": out += "\\\\"
-    case "\n": out += "\\n"
-    case "\r": out += "\\r"
-    case "\t": out += "\\t"
-    case "\0": out += "\\0"
-    case _ where scalar.properties.generalCategory == .control:
-      out += "\\u{\(String(scalar.value, radix: 16))}"
-    default: out.unicodeScalars.append(scalar)
-    }
-  }
-  return out + "\""
 }
 
 extension Issue {
@@ -144,6 +122,13 @@ private func walk(_ folder: String, into files: inout [String]) throws {
 func isFolder(_ path: String) -> Bool {
   var isDirectory: ObjCBool = false
   return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+}
+
+/// Whether `folder` is a project: the app made its `.jevision` folder there, or it has the
+/// environments file.
+func isProjectFolder(_ folder: String) -> Bool {
+  isFolder((folder as NSString).appendingPathComponent(".jevision"))
+    || FileManager.default.fileExists(atPath: (folder as NSString).appendingPathComponent(environmentsFileName()))
 }
 
 private func read(_ file: String, status: inout ExitStatus) -> String? {

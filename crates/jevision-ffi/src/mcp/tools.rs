@@ -9,11 +9,12 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use jevision_core::{
     Flow, Issue, NEXT, START, Severity, Slot, describe, parse, parse_block, to_canonical_json,
-    validate,
+    validate_in,
 };
 use jevision_runner::{Run, StepStatus};
 use serde_json::{Map, Value, json};
 
+use super::jobs::RunChoices;
 use super::{Server, blocks, hands_message, text};
 
 /// Longest a `get_run` call waits for a run to end.
@@ -124,6 +125,7 @@ pub(super) fn definitions() -> Vec<Value> {
             json!({
                 "path": path("Test file or folder, relative to the project folder."),
                 "retries": { "type": "integer", "minimum": 0, "maximum": jevision_core::MAX_RETRIES, "description": "Try a failed test this many more times, instead of the number in the test." },
+                "env": { "type": "string", "description": "Environment from the project's jevision.environments.json, such as staging: its values fill ${env.NAME} in the tests and its secrets are used. Leave out when the tests read no environment values." },
             }),
             &["path"],
             json!({ "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": true }),
@@ -242,7 +244,7 @@ impl Server {
                     json!({ "path": path, "errors": e.issues.len(), "problems": described(&e.issues) })
                 }
                 Ok(Ok(flow)) => {
-                    let issues = validate(&flow);
+                    let issues = checked(&flow, &file);
                     let errors = issues
                         .iter()
                         .filter(|i| i.severity == Severity::Error)
@@ -280,7 +282,7 @@ impl Server {
         let file = self.test_file(required(args, "path")?)?;
         let content = fs::read_to_string(&file).map_err(|e| self.io_error(&file, &e))?;
         let issues = match parse(&content) {
-            Ok(flow) => validate(&flow),
+            Ok(flow) => checked(&flow, &file),
             Err(e) => e.issues,
         };
         Ok(vec![text(content), text(problems(&issues))])
@@ -295,7 +297,7 @@ impl Server {
         };
         let file = self.test_file(path)?;
         let flow = parse(&content).map_err(|e| not_saved(&e.issues))?;
-        let issues = validate(&flow);
+        let issues = checked(&flow, &file);
         if issues.iter().any(|i| i.severity == Severity::Error) {
             return Err(not_saved(&issues));
         }
@@ -355,7 +357,7 @@ impl Server {
                     .collect::<Vec<_>>()
                     .join(", "),
                 self.relative(&file),
-                problems(&validate(&flow))
+                problems(&checked(&flow, &file))
             )),
             pretty(&json!({ "added": ids })),
         ])
@@ -373,7 +375,7 @@ impl Server {
         Ok(vec![text(format!(
             "Removed \"{id}\" from {}. {}",
             self.relative(&file),
-            problems(&validate(&flow))
+            problems(&checked(&flow, &file))
         ))])
     }
 
@@ -388,7 +390,7 @@ impl Server {
                     continue;
                 }
                 Ok(Err(e)) => e.issues,
-                Ok(Ok(flow)) => validate(&flow),
+                Ok(Ok(flow)) => checked(&flow, file),
             };
             lines.push(format!("{}: {}", self.relative(file), problems(&issues)));
         }
@@ -412,6 +414,27 @@ impl Server {
                     ))?,
             ),
         };
+        let environment = match optional(args, "env")? {
+            None => None,
+            Some(name) => {
+                let known = jevision_core::Environments::load(&self.project)?;
+                if known.get(name).is_none() {
+                    let names: Vec<&str> = known.0.keys().map(String::as_str).collect();
+                    return Err(if names.is_empty() {
+                        format!(
+                            "The project has no environments: add them to {}.",
+                            jevision_core::ENVIRONMENTS_FILE
+                        )
+                    } else {
+                        format!(
+                            "There is no environment \"{name}\". The project has: {}.",
+                            names.join(", ")
+                        )
+                    });
+                }
+                Some(name.to_owned())
+            }
+        };
         let tests: Vec<String> = self
             .tests_at(&target)?
             .iter()
@@ -420,9 +443,15 @@ impl Server {
         if let Some(problem) = self.host.readiness_problem() {
             return Err(format!("This Mac can't run tests right now. {problem}"));
         }
-        let job = self
-            .jobs
-            .start(&self.project, tests.clone(), retries, self.host.clone())?;
+        let job = self.jobs.start(
+            &self.project,
+            tests.clone(),
+            RunChoices {
+                retries,
+                environment,
+            },
+            self.host.clone(),
+        )?;
         Ok(vec![
             text(format!(
                 "Run {} started. Call get_run with run \"{}\" and wait to get the result.",
@@ -822,6 +851,11 @@ fn problems(issues: &[Issue]) -> String {
     } else {
         format!("Problems:\n{}", list(issues))
     }
+}
+
+/// Every problem of a test saved at `file`, including the files it reads that are missing.
+fn checked(flow: &Flow, file: &Path) -> Vec<Issue> {
+    validate_in(flow, file.parent().unwrap_or(file))
 }
 
 fn list(issues: &[Issue]) -> String {

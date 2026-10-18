@@ -465,7 +465,7 @@ impl RunListener for RunReporter {
                 duration_ms: step.duration_ms,
                 failure: step.failure.map(failure),
             },
-            RunEvent::Paused { block, reason } => {
+            RunEvent::Paused { block, reason, .. } => {
                 self.update(&run, |s| {
                     s.state = remote::RunState::Paused;
                     s.block = Some(block.clone());

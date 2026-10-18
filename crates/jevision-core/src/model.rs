@@ -27,6 +27,40 @@ pub struct Flow {
     pub start: String,
     /// Blocks in any order; saved in reading order, see [`Flow::blocks_in_flow_order`].
     pub blocks: Vec<Block>,
+    /// How the test is drawn; changes nothing in how it runs.
+    pub canvas: CanvasContent,
+}
+
+/// The drawing of a test on the editor canvas: blocks placed by hand, section frames and sticky
+/// notes. Coordinates are canvas points from the top-left corner.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CanvasContent {
+    /// Top-left corners of blocks, by block id. Empty: every block is laid out automatically.
+    pub positions: HashMap<String, Point>,
+    pub sections: Vec<CanvasSection>,
+    pub notes: Vec<Note>,
+}
+
+/// A titled frame that groups the blocks drawn inside it, like a heading in a text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CanvasSection {
+    /// Unique among the sections of the test.
+    pub id: String,
+    pub title: String,
+    pub rect: Rect,
+}
+
+/// A sticky note on the canvas.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Note {
+    /// Unique among the notes of the test.
+    pub id: String,
+    pub text: String,
+    /// Who last wrote the note; empty when unknown.
+    pub author: String,
+    /// When the note was last written, as an RFC 3339 timestamp; empty when unknown.
+    pub time: String,
+    pub rect: Rect,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -106,7 +140,7 @@ pub enum BlockKind {
     },
     /// Types text, optionally clicking into a field first.
     Type {
-        /// May contain `${secret.NAME}` and `${data.COLUMN}` placeholders.
+        /// May contain `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` placeholders.
         text: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         into: Option<Target>,
@@ -270,6 +304,15 @@ impl BlockKind {
         }
     }
 
+    /// Names of the outgoing edges a block of this type can have, in drawing order.
+    pub fn edge_names(&self) -> &'static [&'static str] {
+        match self {
+            Self::If { .. } => &[THEN, ELSE],
+            Self::Repeat { .. } | Self::UseData { .. } => &[BODY, NEXT],
+            _ => &[NEXT],
+        }
+    }
+
     /// Outgoing edges as `(edge name, target block id)`.
     pub fn edges(&self) -> Vec<(&'static str, &str)> {
         let mut out = Vec::new();
@@ -323,6 +366,132 @@ impl Serialize for Flow {
         }
         map.serialize_entry("start", &self.start)?;
         map.serialize_entry("blocks", &BlocksInFlowOrder(self))?;
+        let canvas = CanvasOfFlow(self);
+        if !canvas.is_empty() {
+            map.serialize_entry("canvas", &canvas)?;
+        }
+        map.end()
+    }
+}
+
+/// The canvas as saved: positions of blocks that exist, everything sorted by id, whole numbers
+/// without a fraction.
+struct CanvasOfFlow<'a>(&'a Flow);
+
+impl CanvasOfFlow<'_> {
+    fn positions(&self) -> Vec<(&str, &Point)> {
+        let mut out: Vec<(&str, &Point)> = self
+            .0
+            .canvas
+            .positions
+            .iter()
+            .filter(|(id, _)| self.0.blocks.iter().any(|b| &b.id == *id))
+            .map(|(id, p)| (id.as_str(), p))
+            .collect();
+        out.sort_by_key(|(id, _)| *id);
+        out
+    }
+
+    fn is_empty(&self) -> bool {
+        self.positions().is_empty()
+            && self.0.canvas.sections.is_empty()
+            && self.0.canvas.notes.is_empty()
+    }
+}
+
+impl Serialize for CanvasOfFlow<'_> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let canvas = &self.0.canvas;
+        let mut map = s.serialize_map(None)?;
+        let positions = self.positions();
+        if !positions.is_empty() {
+            let at: Vec<(&str, Coords)> = positions
+                .into_iter()
+                .map(|(id, p)| (id, Coords(vec![("x", p.x), ("y", p.y)])))
+                .collect();
+            map.serialize_entry("positions", &Entries(at))?;
+        }
+        if !canvas.sections.is_empty() {
+            let mut sections: Vec<&CanvasSection> = canvas.sections.iter().collect();
+            sections.sort_by(|a, b| a.id.cmp(&b.id));
+            map.serialize_entry(
+                "sections",
+                &Entries(sections.into_iter().map(|s| (s.id.as_str(), s)).collect()),
+            )?;
+        }
+        if !canvas.notes.is_empty() {
+            let mut notes: Vec<&Note> = canvas.notes.iter().collect();
+            notes.sort_by(|a, b| a.id.cmp(&b.id));
+            map.serialize_entry(
+                "notes",
+                &Entries(notes.into_iter().map(|n| (n.id.as_str(), n)).collect()),
+            )?;
+        }
+        map.end()
+    }
+}
+
+/// Key–value pairs written as a JSON object in the given order.
+struct Entries<'a, T>(Vec<(&'a str, T)>);
+
+impl<T: Serialize> Serialize for Entries<'_, T> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(Some(self.0.len()))?;
+        for (key, value) in &self.0 {
+            map.serialize_entry(key, value)?;
+        }
+        map.end()
+    }
+}
+
+/// Canvas coordinates: whole numbers are written without a fraction.
+struct Coords(Vec<(&'static str, f64)>);
+
+impl Coords {
+    fn of(r: &Rect) -> Self {
+        Self(vec![
+            ("x", r.x),
+            ("y", r.y),
+            ("width", r.width),
+            ("height", r.height),
+        ])
+    }
+}
+
+impl Serialize for Coords {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(Some(self.0.len()))?;
+        for (key, v) in &self.0 {
+            if v.fract() == 0.0 && v.abs() < 1e15 {
+                map.serialize_entry(key, &(*v as i64))?;
+            } else {
+                map.serialize_entry(key, v)?;
+            }
+        }
+        map.end()
+    }
+}
+
+impl Serialize for CanvasSection {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(None)?;
+        map.serialize_entry("title", &self.title)?;
+        map.serialize_entry("frame", &Coords::of(&self.rect))?;
+        map.end()
+    }
+}
+
+impl Serialize for Note {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(None)?;
+        map.serialize_entry("text", &self.text)?;
+        if !self.author.is_empty() {
+            map.serialize_entry("author", &self.author)?;
+        }
+        if !self.time.is_empty() {
+            map.serialize_entry("time", &self.time)?;
+        }
+        map.serialize_entry("frame", &Coords::of(&self.rect))?;
         map.end()
     }
 }

@@ -80,7 +80,7 @@ struct TextEditEndToEndTests {
     let run = TestRun()
     let listener = Listener()
     run.start(
-      project: project.path, test: test, options: RunOptions(startAt: nil, retries: nil, vision: nil, localOnly: false),
+      project: project.path, test: test, options: RunOptions(startAt: nil, retries: nil, vision: nil, localOnly: false, video: .off),
       hands: MacHands(input: InputWatcher(), isCancelled: { run.isCancelled() }),
       secrets: StoredSecrets(), listener: listener)
     guard listener.done.wait(timeout: .now() + 90) == .success else {

@@ -2,6 +2,7 @@
 //! empty or out-of-range parameters, malformed placeholders.
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
@@ -34,6 +35,80 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
     }
     graph(flow, &blocks, &mut out);
     out
+}
+
+/// [`validate`], plus warnings about files the test reads that are not in `dir`, the folder of
+/// the test file. A missing reference of a check block is expected before the first run, which
+/// saves the screen as that reference; other missing files stop the run at their block.
+pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
+    let mut out = validate(flow);
+    let checked = out.len();
+    let mut blocks: Vec<&Block> = flow.blocks.iter().collect();
+    blocks.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut saved_by_check = HashSet::new();
+    let mut read = Vec::new();
+    for &b in &blocks {
+        if let BlockKind::Check { reference: r, .. } = &b.kind {
+            if is_relative_path(&r.image) && !dir.join(&r.image).exists() {
+                saved_by_check.insert(r.image.as_str());
+                out.push(
+                    Issue::warning("flow.reference.notSaved")
+                        .with("block", &b.id)
+                        .with("field", "reference.image")
+                        .with("path", &r.image),
+                );
+            }
+        }
+        read.extend(
+            files_read(&b.kind)
+                .into_iter()
+                .map(|(field, path)| (&b.id, field, path)),
+        );
+    }
+    for (block, field, path) in read {
+        if is_relative_path(path) && !saved_by_check.contains(path) && !dir.join(path).exists() {
+            out.push(
+                Issue::warning("flow.file.missing")
+                    .with("block", block)
+                    .with("field", field)
+                    .with("path", path),
+            );
+        }
+    }
+    out.extend(crate::env::validate_environment_values(flow, dir));
+    out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
+    out
+}
+
+/// Fields of a block that name a file to read, other than a check block's reference.
+fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
+    use crate::model::WaitUntil::*;
+    let image = |field: &str, t: Option<&'a Target>| match t {
+        Some(Target::Image(path)) => vec![(format!("{field}.image"), path)],
+        _ => Vec::new(),
+    };
+    let found: Vec<(String, &'a String)> = match kind {
+        BlockKind::OpenFile { files, .. } => files
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| !is_web_address(f))
+            .map(|(i, f)| (format!("files.{i}"), f))
+            .collect(),
+        BlockKind::Click { target, .. } => image("target", Some(target)),
+        BlockKind::Type { into, .. } => image("into", into.as_ref()),
+        BlockKind::WaitFor {
+            until: Appears(r), ..
+        } => vec![("until.appears.image".to_owned(), &r.image)],
+        BlockKind::WaitFor {
+            until: Disappears(r),
+            ..
+        } => vec![("until.disappears.image".to_owned(), &r.image)],
+        BlockKind::If { reference: r, .. } => vec![("reference.image".to_owned(), &r.image)],
+        BlockKind::UseData { file, .. } => vec![("file".to_owned(), file)],
+        BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test)],
+        _ => Vec::new(),
+    };
+    found.into_iter().map(|(f, p)| (f, p.as_str())).collect()
 }
 
 /// Names of the secrets the test reads through `${secret.NAME}`, sorted, without repeats.
@@ -379,7 +454,7 @@ fn cycles(edges: &[Vec<usize>]) -> Vec<Vec<usize>> {
 }
 
 /// Splits `${namespace.name}` placeholders out of text; malformed ones are returned as `Err`.
-fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
+pub(crate) fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
     let mut found = Vec::new();
     let mut rest = text;
     while let Some(at) = rest.find("${") {
@@ -391,7 +466,7 @@ fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
         let whole = &rest[..=end];
         let parsed = whole[2..end]
             .split_once('.')
-            .filter(|(ns, name)| matches!(*ns, "secret" | "data") && is_identifier(name));
+            .filter(|(ns, name)| matches!(*ns, "secret" | "env" | "data") && is_identifier(name));
         found.push(parsed.ok_or(whole));
         rest = &rest[end + 1..];
     }
@@ -402,7 +477,7 @@ fn is_fraction(v: f64) -> bool {
     (0.0..=1.0).contains(&v)
 }
 
-fn is_identifier(s: &str) -> bool {
+pub(crate) fn is_identifier(s: &str) -> bool {
     let mut chars = s.chars();
     chars
         .next()
@@ -522,8 +597,13 @@ mod tests {
             vec![Ok(("secret", "PASS")), Ok(("data", "user_1"))]
         );
         assert_eq!(
-            placeholders("${env.X} ${secret.} ${secret.A"),
-            vec![Err("${env.X}"), Err("${secret.}"), Err("${secret.A")]
+            placeholders("${env.X} ${host.X} ${secret.} ${secret.A"),
+            vec![
+                Ok(("env", "X")),
+                Err("${host.X}"),
+                Err("${secret.}"),
+                Err("${secret.A")
+            ]
         );
         assert!(placeholders("plain $ text {}").is_empty());
     }

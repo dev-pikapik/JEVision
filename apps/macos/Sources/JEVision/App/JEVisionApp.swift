@@ -33,6 +33,8 @@ struct JEVisionApp: App {
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()
         .environment(permissions)
+        .environment(project)
+        .environment(records)
     }
     .windowResizability(.contentSize)
     .windowStyle(.hiddenTitleBar)

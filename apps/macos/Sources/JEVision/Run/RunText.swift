@@ -59,6 +59,16 @@ enum RunText {
       return String(
         localized: "run.check.mismatch",
         defaultValue: "Block “\(block)”: the screen matches \(p("image")) by \(p("similarity")), and at least \(p("threshold")) is needed.")
+    case "run.env.notChosen":
+      return String(localized: "run.env.notChosen", defaultValue: "The test reads the environment value \(p("name")), but no environment is chosen. Add one to \(environmentsFileName()).")
+    case "run.env.missing":
+      return String(localized: "run.env.missing", defaultValue: "The environment \(p("environment")) has no value \(p("name")). Add it to \(environmentsFileName()).")
+    case "run.env.unknown":
+      return String(localized: "run.env.unknown", defaultValue: "There’s no environment \(p("environment")) in \(p("file")).")
+    case "run.environments.unreadable":
+      return String(localized: "run.environments.unreadable", defaultValue: "\(p("file")) can’t be read: \(p("reason")).")
+    case "run.data.noRow":
+      return String(localized: "run.data.noRow", defaultValue: "Block “\(block)”: the table \(p("file")) has \(p("rows")) rows, so there’s no row \(p("row")).")
     case "run.data.unreadable":
       return String(localized: "run.data.unreadable", defaultValue: "Block “\(block)”: can’t read the table \(p("file")): \(p("reason")).")
     case "run.data.unknownColumn":

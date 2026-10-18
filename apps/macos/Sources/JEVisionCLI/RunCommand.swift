@@ -34,9 +34,12 @@ struct RunCommand {
       return .failure
     }
     let input = InputWatcher()
+    let videos = VideoSettings.app
+    var request = request
+    request.video = request.video ?? videos.mode
     let session = TestSession(
       project: plan.project, tests: plan.tests, request: request, progress: progress, input: input,
-      vision: vision, localOnly: ai.localOnly
+      vision: vision, localOnly: ai.localOnly, keepVideosDays: videos.keepDays
     ) { run in
       MacHands(input: input, isCancelled: { run.isCancelled() })
     }
@@ -78,17 +81,39 @@ struct RunCommand {
       throw UsageError(
         message: "“\(outside)” is outside the project folder \(project). Choose a folder that holds all the tests with --project.")
     }
+    if let environment = request.environment {
+      try checkEnvironment(environment, in: project)
+    }
     return (project, tests)
   }
 
+  /// Fails unless the project has the environment `name`, saying which ones it has.
+  private static func checkEnvironment(_ name: String, in project: String) throws(UsageError) {
+    let file = environmentsFileName()
+    let all: [ProjectEnvironment]
+    do {
+      all = try projectEnvironments(project: project)
+    } catch EnvironmentsError.Unreadable(_, let reason) {
+      throw UsageError(message: "\(file) in \(project) can’t be read: \(reason)")
+    } catch {
+      throw UsageError(message: "\(file) in \(project) can’t be read: \(error.localizedDescription)")
+    }
+    guard !all.contains(where: { $0.name == name }) else { return }
+    if all.isEmpty {
+      throw UsageError(message: "there is no environment “\(name)”: the project has no \(file) in \(project)")
+    }
+    throw UsageError(
+      message: "there is no environment “\(name)” in \(file); use one of: \(all.map(\.name).joined(separator: ", "))")
+  }
+
   /// The nearest folder above `target` that has a `.jevision` folder, as the app makes one in
-  /// the project it opens; otherwise the current folder if it holds all the tests; otherwise
+  /// the project it opens, or the environments file; otherwise the current folder if it holds all the tests; otherwise
   /// the folder of `target`.
   private static func defaultProject(for target: String, tests: [String]) -> String {
     let start = isFolder(target) ? target : (target as NSString).deletingLastPathComponent
     var folder = start
     while true {
-      if isFolder((folder as NSString).appendingPathComponent(".jevision")) { return folder }
+      if isProjectFolder(folder) { return folder }
       guard folder != "/" else { break }
       folder = (folder as NSString).deletingLastPathComponent
     }
@@ -208,6 +233,7 @@ struct TestResult {
         ("failure", failure.map { .object([("code", .string($0.code)), ("message", .string(describeFailure(failure: $0)))]) } ?? .null),
         ("report", .string((dir as NSString).appendingPathComponent("report.json"))),
         ("html", .string(html)),
+        ("video", report.video.map { .string((dir as NSString).appendingPathComponent($0)) } ?? .null),
       ]
     case .error(let reason):
       members.append(("error", .string(reason)))
@@ -227,6 +253,7 @@ final class TestSession: @unchecked Sendable {
   private let makeHands: (TestRun) -> any Hands
   private let vision: VisionSettings?
   private let localOnly: Bool
+  private let keepVideosDays: UInt32?
   /// The person's mouse and keyboard, watched while a test runs.
   private let input: InputWatcher?
   private let lock = NSLock()
@@ -235,10 +262,12 @@ final class TestSession: @unchecked Sendable {
 
   init(
     project: String, tests: [String], request: RunRequest, progress: Console, input: InputWatcher?,
-    vision: VisionSettings? = nil, localOnly: Bool = false, makeHands: @escaping (TestRun) -> any Hands
+    vision: VisionSettings? = nil, localOnly: Bool = false, keepVideosDays: UInt32? = nil,
+    makeHands: @escaping (TestRun) -> any Hands
   ) {
     self.vision = vision
     self.localOnly = localOnly
+    self.keepVideosDays = keepVideosDays
     self.project = project
     self.tests = tests
     self.request = request
@@ -300,12 +329,15 @@ final class TestSession: @unchecked Sendable {
     progress.line()
     input?.ignoreInput(for: Self.handsOffTime)
     run.start(
-      project: project, test: test, options: RunOptions(startAt: request.startAt, retries: request.retries, vision: vision, localOnly: localOnly),
+      project: project, test: test, options: RunOptions(
+        startAt: request.startAt, retries: request.retries, environment: request.environment, vision: vision,
+        localOnly: localOnly,
+        video: request.video ?? .off, keepVideosDays: keepVideosDays),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
-      printVerdict(report, html: html ?? dir)
+      printVerdict(report, dir: dir, html: html ?? dir)
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
       progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
@@ -337,7 +369,7 @@ final class TestSession: @unchecked Sendable {
     }
   }
 
-  private func printVerdict(_ report: RunReport, html: String) {
+  private func printVerdict(_ report: RunReport, dir: String, html: String) {
     let took = duration(report.durationMs)
     let attempts = report.attempts.count
     let line =
@@ -354,6 +386,9 @@ final class TestSession: @unchecked Sendable {
       progress.line("  New reference images: \(report.baselinesCreated.joined(separator: ", ")). Look at them and commit them.")
     }
     progress.line("  " + progress.paint("Report: \(html)", .dim))
+    if let video = report.video {
+      progress.line("  " + progress.paint("Video: \(URL(filePath: dir).appending(path: video).path)", .dim))
+    }
   }
 
   private func printSummary(_ results: [TestResult], duration seconds: TimeInterval) {
@@ -421,7 +456,7 @@ private final class Progress: RunListener, @unchecked Sendable {
         console.line("    " + console.paint(describeFailure(failure: failure), .red))
         failureShown = true
       }
-    case .paused(_, let reason):
+    case .paused(_, let reason, _):
       closeLine()
       guard reason == .userInput else { return }
       console.line(

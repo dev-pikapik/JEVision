@@ -4,23 +4,32 @@
 //! [`validate`] lists problems as localizable [`Issue`]s, and [`to_canonical_json`] writes it
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
+mod canvas;
 mod decode;
 mod diff;
 mod edit;
+mod env;
 mod issue;
 mod layout;
 mod model;
 mod validate;
 
+pub use canvas::CanvasItem;
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{START, Slot};
+pub use env::{
+    ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments, required_env_values,
+    validate_environment_values,
+};
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
-    BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
+    BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
 pub use model::*;
-pub use validate::{MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, validate};
+pub use validate::{
+    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, validate, validate_in,
+};
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.
 pub const FORMAT_VERSION: u32 = decode::OLDEST_FORMAT + decode::MIGRATIONS.len() as u32;

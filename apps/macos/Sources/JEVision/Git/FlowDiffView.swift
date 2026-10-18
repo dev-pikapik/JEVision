@@ -117,10 +117,12 @@ private struct DiffCanvas: View {
     let layout = layoutFlow(flow: flow)
     let scale = layout.width > 0 && width > 0 ? min(1, width / layout.width) : 1
     ZStack(alignment: .topLeading) {
+      GridDots(inset: 0)
       Edges(layout: layout)
       ForEach(layout.edges.filter { $0.edge == "then" || $0.edge == "else" }, id: \.self) { edge in
+        let at = BranchLabel.position(of: edge)
         BranchLabel(isThen: edge.edge == "then")
-          .offset(x: edge.points[min(2, edge.points.count - 1)].x + 6, y: edge.points[min(2, edge.points.count - 1)].y + 3)
+          .offset(x: at.x, y: at.y)
       }
       ForEach(layout.blocks, id: \.id) { laid in
         if let block = flow.blocks.first(where: { $0.id == laid.id }) {
