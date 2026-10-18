@@ -15,6 +15,7 @@ struct MainView: View {
     @Bindable var project = project
     @Bindable var runs = runs
     @Bindable var records = records
+    @Bindable var schedules = project.schedules
     Group {
       switch project.status {
       case .closed:
@@ -53,6 +54,7 @@ struct MainView: View {
     .sheet(isPresented: Binding(get: { project.historyPath != nil }, set: { if !$0 { project.historyPath = nil } })) {
       if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
     }
+    .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
     .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
     .sheet(item: $records.blocked) { RecordReadinessSheet(request: $0) }
     // The recording typed secrets that have no value yet: ask for each in turn.

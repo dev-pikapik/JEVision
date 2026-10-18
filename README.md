@@ -131,7 +131,8 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   `repeat` or `useData`; any other cycle is an error.
 - **Optional metadata:** `description`, `testType` (`smoke`, `regression`, `acceptance`),
   `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
-  `tags` and `retries`.
+  `tags` and `retries` (how many more times to run the test when it fails; without it, the
+  project's default applies, see below).
 - **`canvas`** (optional) keeps how the test looks in the editor: `positions` of blocks moved by
   hand, `sections` (titled frames around a part of the test) and `notes` (text with its author,
   time and frame). It never changes how the test runs; without it the blocks are laid out
@@ -170,6 +171,75 @@ folder, next to the tests, and are committed with them:
   environment is kept per project on this Mac. Before a run the app lists the names of missing
   values and secrets, never the values. The report says which environment the run used.
 
+### Data-driven tests
+
+One test can run with many sets of values, such as several users or languages. Put the values in
+a CSV file next to the test, one row per set and one column per value, and read it with a
+`useData` block; a block after it reads the current row's value as `${data.COLUMN}`:
+
+```csv
+name,email,password
+Anna,anna@example.com,first-try
+Bo,bo@example.com,"quotes ""inside"", and a comma"
+```
+
+- **Once per row.** The first `useData` block on the way from `start` names the test's table:
+  the whole test runs once for each of its rows, and every block of the test reads that row's
+  values. Each row is a result of its own, with its own retries, named by its `name` column (any
+  case), or else by its first column, like "Row 2: Bo". The run passes when every row passes,
+  and the report and the run summary say how many did, like "4 of 5 rows passed". In JUnit XML
+  each row is a test case of its own, like `Sign in [Row 2: Bo]`. A table whose path holds a
+  placeholder, and any further `useData` block, loops through its rows inside the run instead.
+- **Choosing rows.** All rows run by default. Run one row or a range with
+  `jevision run --row 3` or `--rows 2-4`, the Run menu in the app, or `rows` of an assistant's
+  `run_test`. Rows count from 1; the header line isn't a row. A row the table doesn't have stops
+  the run before it starts.
+- **CSV rules** ([RFC 4180](https://www.rfc-editor.org/rfc/rfc4180)). The first line names the
+  columns: every name must be filled in and different from the others. Values are separated by
+  `,`, `;` or a tab, whichever the first line uses most. A value with the separator, a quote or
+  a line break goes in double quotes, with a quote inside written twice (`""`). Every line has
+  as many values as the header; a value may be empty. Blank lines are skipped. The file is UTF-8,
+  with or without a byte order mark, with LF or CR LF line ends.
+- **Checks.** `jevision validate` and the editor report a table that breaks these rules, with
+  the line where it goes wrong, and a `${data.COLUMN}` that the table doesn't have, with the
+  columns it does have.
+- **Editing.** In the app, select the `useData` block and click **Edit Data…** to view the table,
+  change cells, and add or remove rows and columns. Saving keeps the file's separator, line ends
+  and byte order mark.
+
+### Retries, flaky tests and quarantine
+
+Settings shared by every test of a project go into `jevision.project.json` in the project folder,
+committed with the tests. The app writes it in Settings › Advanced and from the sidebar; the file
+is optional:
+
+```json
+{
+  "format": 1,
+  "retries": 2,
+  "quarantine": [
+    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
+  ]
+}
+```
+
+- **Retries.** A failed test runs again up to its number of retries: `jevision run --retries`
+  first, then the test's own `retries`, then the project's `retries`, otherwise none. At most 10.
+- **Verdict.** Every run says how its retries went: passed on retry after failing (the test is
+  flaky), failed each time differently (it may be flaky), or failed every time in a row (a real
+  failure, not flakiness). The report, the app and `jevision run` show this line.
+- **Flaky from history.** When the same test file, unchanged since (same content hash), both
+  passed and failed in the same environment over the last 30 days, the app marks it flaky in the
+  sidebar, the project map and the run history, with the dates and counts as evidence.
+- **Quarantine.** `quarantine` lists tests, by path relative to the project folder, whose failures
+  shouldn't block anyone while they are fixed. They still run and their reports show the failure,
+  but a failure doesn't fail Run All or the `jevision run` exit status, and the JUnit report lists
+  it as skipped with the reason and the failure. `reason` is optional. The sidebar, the project
+  map and the reports mark these tests. To put a test in quarantine or release it, use its menu
+  in the sidebar, the test's details, or Settings › Advanced. `jevision run
+  --include-quarantined-failures` counts their failures like any other, for example in a nightly
+  build.
+
 `jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order and leaves out default
 values, so every change shows up as a small, readable diff.
 
@@ -187,7 +257,7 @@ values, so every change shows up as a small, readable diff.
 | `if` | logic | Goes to `then` or `else` depending on what is on screen |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
-| `useData` | data | Runs its `body` once for every row of a CSV file |
+| `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
@@ -234,15 +304,19 @@ is installed and which version.
 jevision run tests/                       # run every *.flow.json in tests/ and save reports
 jevision run tests/sign-in.flow.json --start-at submit
 jevision run tests/ --env staging         # read ${env.NAME} from the staging environment
+jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data table (--row 3 for one)
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
+jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
+jevision schedule run ~/Projects/AcmeMail # run the schedules of a project that are due now
 ```
 
 `jevision help <command>` lists every option. Exit status: **0** means all tests passed (or all
-files are valid and formatted). **1** means a test failed or was stopped, or a file has problems.
+files are valid and formatted); tests in quarantine may have failed (see
+[Retries, flaky tests and quarantine](#retries-flaky-tests-and-quarantine)). **1** means a test failed or was stopped, or a file has problems.
 **2** means wrong arguments, a file that can't be read, or a Mac that can't run tests right now.
 
 `jevision run` uses the real mouse, keyboard and screen. These requirements apply wherever it runs:
@@ -292,44 +366,51 @@ jobs:
 
 ### On a schedule
 
-Use a launch agent, not cron: cron jobs don't run in the user's session, so they can't see the
-screen. Save the plist below as `~/Library/LaunchAgents/com.example.ui-tests.plist`. It runs the
-tests every day at 03:00 and writes the output to a log:
+Choose **Test → Schedules…**, or click the schedule line at the foot of the sidebar, to run tests
+on their own: all tests, the tests in one folder, or chosen tests; every day, on chosen days of
+the week, or every 1, 2, 3, 4, 6, 8 or 12 hours from a start time; with an environment and a
+video mode of your choice. The sheet shows each schedule in words, its next run and how its last
+run went.
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.example.ui-tests</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/jevision</string>
-    <string>run</string>
-    <string>/Users/me/Projects/AcmeMail/tests</string>
-  </array>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key>
-    <integer>3</integer>
-    <key>Minute</key>
-    <integer>0</integer>
-  </dict>
-  <key>StandardOutPath</key>
-  <string>/Users/me/Library/Logs/ui-tests.log</string>
-  <key>StandardErrorPath</key>
-  <string>/Users/me/Library/Logs/ui-tests.log</string>
-</dict>
-</plist>
+Schedules are saved in `jevision.schedule.json` in the project folder and committed with the
+tests:
+
+```json
+{
+  "format": 1,
+  "schedules": [
+    { "name": "Nightly", "tests": "all", "repeat": "daily", "at": "03:00" },
+    { "name": "Smoke", "tests": { "files": ["sign-in.flow.json", "mail/send.flow.json"] },
+      "repeat": { "days": ["mon", "tue", "wed", "thu", "fri"] }, "at": "09:05",
+      "environment": "staging", "video": "on-failure" },
+    { "name": "Checkout", "tests": { "folder": "checkout" }, "repeat": { "everyHours": 6 },
+      "at": "01:30" }
+  ]
+}
 ```
 
-```sh
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.ui-tests.plist
-```
+- `name` is required and unique within the file, regardless of case.
+- `tests` is `"all"`, `{ "folder": "path" }` or `{ "files": ["path", …] }`, with paths relative to
+  the project folder and never leaving it.
+- `repeat` is `"daily"`, `{ "days": [...] }` with any of `sun`, `mon`, `tue`, `wed`, `thu`, `fri`,
+  `sat`, or `{ "everyHours": N }` with N one of 1, 2, 3, 4, 6, 8, 12. `at` is the local time as
+  `HH:MM`; for `everyHours` it is the first run of the day, and the others follow every N hours.
+- `environment` (optional) names an environment from `jevision.environments.json`; without it the
+  project's default is used. `video` (optional) is `off`, `on-failure` or `always`; without it the
+  app's setting is used.
 
-Reports are saved in the project's `.jevision/runs` folder, where the app shows them in its run
-history.
+Schedules run on a Mac only after you save them or click **Turn On** in the sheet there: the app
+then installs a launch agent for the project
+(`~/Library/LaunchAgents/io.github.dev-pikapik.jevision.schedule.<id>.plist`) and keeps it in
+step with the file. The agent starts `jevision schedule run <project>` at the schedules' times.
+The command runs every schedule that is due, catches up once on a run missed by up to 12 hours
+(the Mac was asleep), and saves reports with the other runs, where the app's run history marks
+them "Schedule". What came of each scheduled run is kept in `.jevision/schedule-history.json`.
+
+Runs need a logged-in user and an unlocked screen. A run due while the screen is locked is
+skipped and recorded as "skipped: screen locked" — JEVision never types into a locked screen; for
+unattended runs turn off the automatic screen lock. The app posts a notification when a
+scheduled run fails, is skipped or can't start. Deleting every schedule removes the launch agent.
 
 ## Assistants (MCP)
 
@@ -359,7 +440,7 @@ Without `--project`, the project is the nearest folder above the current one tha
 | `add_blocks`, `remove_block` | Edit a test the way the editor does |
 | `validate_test` | Checks a test or a folder of tests |
 | `list_block_types` | Describes the file format and every block type, with examples |
-| `run_test`, `get_run`, `stop_run` | Run a test or a folder (optionally in an environment, `env`), wait for the result, stop it |
+| `run_test`, `get_run`, `stop_run` | Run a test or a folder (optionally in an environment, `env`, and with some rows of its data table, `rows`), wait for the result, stop it |
 | `get_report` | A run's verdict, steps, failures, AI model answers and, on request, screenshots |
 | `screenshot` | The front window of an app as it is now |
 

@@ -4,12 +4,13 @@ import SwiftUI
 
 /// How a saved run ended, as the sidebar and the report show it: by shape and colour.
 enum RunStatus: Equatable {
-  case passed, failed, flaky, cancelled
+  /// `quarantined`: failed while the test was in quarantine, so it didn't fail Run All.
+  case passed, failed, flaky, quarantined, cancelled
 
   init(_ report: RunReport) {
     switch report.verdict {
     case .passed: self = report.flaky ? .flaky : .passed
-    case .failed: self = .failed
+    case .failed: self = report.quarantined ? .quarantined : .failed
     case .cancelled: self = .cancelled
     }
   }
@@ -20,6 +21,7 @@ enum RunStatus: Equatable {
     case .passed: "circle.fill"
     case .failed: "square.fill"
     case .flaky: "triangle.fill"
+    case .quarantined: "bandage.fill"
     case .cancelled: "circle.dotted"
     }
   }
@@ -29,6 +31,7 @@ enum RunStatus: Equatable {
     case .passed: "checkmark.circle.fill"
     case .failed: "xmark.square.fill"
     case .flaky: "exclamationmark.triangle.fill"
+    case .quarantined: "bandage.fill"
     case .cancelled: "stop.circle.fill"
     }
   }
@@ -38,6 +41,7 @@ enum RunStatus: Equatable {
     case .passed: .green
     case .failed: .red
     case .flaky: .orange
+    case .quarantined: .indigo
     case .cancelled: .secondary
     }
   }
@@ -47,6 +51,7 @@ enum RunStatus: Equatable {
     case .passed: String(localized: "Passed")
     case .failed: String(localized: "Failed")
     case .flaky: String(localized: "Flaky")
+    case .quarantined: String(localized: "Failed in Quarantine")
     case .cancelled: String(localized: "Stopped")
     }
   }
@@ -130,22 +135,35 @@ enum RunHistory {
 
   /// What the retries say about a failure: a real one, or a flaky test. `nil` for a single try.
   static func retryVerdict(_ report: RunReport) -> String? {
-    let tries = report.attempts.count
-    guard tries > 1 else { return nil }
-    switch report.verdict {
-    case .passed:
-      return String(localized: "Passed on retry \(tries - 1) after failing — the test is flaky.")
-    case .failed where report.flaky:
-      return String(localized: "Failed \(tries) of \(tries) times, each time differently — the test may be flaky.")
-    case .failed:
-      return String(localized: "Failed \(tries) of \(tries) times the same way — a real failure, not a flaky test.")
-    case .cancelled:
-      return nil
+    switch JEVisionCore.retryVerdict(report: report) {
+    case .passedOnRetry(let retry)?:
+      String(localized: "Passed on retry \(retry) after failing — the test is flaky.")
+    case .failedDifferently(let attempts)?:
+      String(localized: "Failed \(attempts) of \(attempts) times, each time differently — the test may be flaky.")
+    case .failedEveryTime(let attempts)?:
+      String(localized: "Failed \(attempts) times in a row — a real failure, not flakiness.")
+    case nil:
+      nil
     }
   }
 
-  /// The step that failed the last try: the innermost one, inside loops and other tests.
+  /// Why a test counts as flaky, from its runs of the last 30 days.
+  static func flakyEvidence(_ evidence: FlakyEvidence) -> String {
+    let since = date(evidence.since).formatted(date: .abbreviated, time: .omitted)
+    var counts = [
+      String(localized: "Passed: \(evidence.passed + evidence.passedOnRetry)"),
+      String(localized: "Failed: \(evidence.failed)"),
+    ]
+    if evidence.passedOnRetry > 0 { counts.append(String(localized: "Passed on retry: \(evidence.passedOnRetry)")) }
+    let what =
+      evidence.environment.map {
+        String(localized: "Flaky: since \(since), the unchanged test both passed and failed in \($0).")
+      } ?? String(localized: "Flaky: since \(since), the unchanged test both passed and failed.")
+    return what + " " + counts.joined(separator: " · ")
+  }
+
+  /// The step that failed the deciding try: the innermost one, inside loops and other tests.
   static func failedStep(_ report: RunReport) -> Step? {
-    report.attempts.last?.steps.last { $0.status == .failed && $0.failure != nil }
+    decidingAttempt(report: report)?.steps.last { $0.status == .failed && $0.failure != nil }
   }
 }

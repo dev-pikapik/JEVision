@@ -12,20 +12,22 @@ struct RunChoices: Equatable {
   /// Retries the Run menu offers.
   static let retryChoices = Array(0...3)
 
-  /// The data table the Data Rows menu offers rows of: the first one the test reads.
+  /// The data table the Data Rows menu offers rows of: the one the whole test runs once per
+  /// row of, read by the first Use Data block on the way from the start.
   static func dataTable(of flow: Flow, folder: URL) -> DataRows? {
-    guard let file = DataColumns.files(in: flow).first else { return nil }
-    return readDataRows(path: RelativePath.resolve(file, in: folder).path(percentEncoded: false))
+    guard let file = testDataFile(flow: flow) else { return nil }
+    return try? readDataRows(path: RelativePath.resolve(file, in: folder).path(percentEncoded: false))
   }
 
-  /// One title per row, such as “Row 2: anna@example.com”, from the row's first filled value.
+  /// One title per row, such as “Row 2: anna”, from its `name` column or else its first.
   static func rowTitles(of table: DataRows) -> [String] {
-    table.rows.enumerated().map { index, row in
-      guard let value = row.first(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else {
-        return String(localized: "Row \(index + 1)")
-      }
-      return String(localized: "Row \(index + 1): \(value)")
+    dataRowLabels(table: table).enumerated().map { index, label in
+      rowTitle(number: index + 1, label: label)
     }
+  }
+
+  static func rowTitle(number: Int, label: String) -> String {
+    label.isEmpty ? String(localized: "Row \(number)") : String(localized: "Row \(number): \(label)")
   }
 
   /// Title of the Data Rows menu for the current choice.
@@ -40,9 +42,9 @@ struct RunChoices: Equatable {
     return String(localized: "Retries: \(retries)")
   }
 
-  /// The row to run: a row the table no longer has means every row again.
-  func row(in table: DataRows?) -> UInt32? {
+  /// The rows to run: a row the table no longer has means every row again.
+  func rows(in table: DataRows?) -> DataRowRange? {
     guard let dataRow, let table, dataRow < table.rows.count else { return nil }
-    return UInt32(dataRow)
+    return DataRowRange(first: UInt32(dataRow), last: UInt32(dataRow))
   }
 }

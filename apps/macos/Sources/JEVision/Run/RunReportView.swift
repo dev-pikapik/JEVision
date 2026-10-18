@@ -49,9 +49,9 @@ struct RunReportView: View {
       let loaded = try loadRun(dir: dir)
       run = loaded
       player = RunVideoView.file(of: loaded).map(AVPlayer.init(url:))
-      attempt = max(0, loaded.report.attempts.count - 1)
+      attempt = Self.decidingIndex(loaded.report)
       // A failure or a new reference is what the report is opened for: show it at once.
-      let new = loaded.report.attempts.last?.steps.filter { $0.status == .baselineCreated }.map(\.seq) ?? []
+      let new = decidingAttempt(report: loaded.report)?.steps.filter { $0.status == .baselineCreated }.map(\.seq) ?? []
       expanded = Set(new + (RunHistory.failedStep(loaded.report).map { [$0.seq] } ?? []))
       if let root = project.rootURL {
         let files = Set(loaded.report.attempts.flatMap { $0.steps.map(\.test) } + [loaded.report.file])
@@ -68,6 +68,8 @@ struct RunReportView: View {
   private func report(_ run: SavedRun) -> some View {
     let report = run.report
     let steps = report.attempts.indices.contains(attempt) ? report.attempts[attempt].steps : []
+    let row = report.attempts.indices.contains(attempt) ? report.attempts[attempt].row : nil
+    let tries = report.attempts.indices.filter { report.attempts[$0].row == row }
     let images = steps.flatMap { StepImages(step: $0, in: run.url).all }
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
@@ -79,15 +81,26 @@ struct RunReportView: View {
         if let player {
           RunVideoView(player: player, steps: steps)
         }
+        if !report.rows.isEmpty {
+          RowResults(report: report, shown: row?.number) { number in
+            attempt = report.attempts.lastIndex { $0.row?.number == number } ?? attempt
+            expanded = Set(report.attempts[attempt].steps.filter { $0.status == .failed && $0.failure != nil }.suffix(1).map(\.seq))
+          }
+        }
         VStack(alignment: .leading, spacing: 8) {
           HStack {
-            Text("Steps")
-              .font(.headline)
+            if let row {
+              Text("Steps of \(RunChoices.rowTitle(number: Int(row.number), label: row.label))")
+                .font(.headline)
+            } else {
+              Text("Steps")
+                .font(.headline)
+            }
             Spacer()
-            if report.attempts.count > 1 {
+            if tries.count > 1 {
               Picker("Try", selection: $attempt) {
-                ForEach(report.attempts.indices, id: \.self) { index in
-                  Text("Try \(index + 1)").tag(index)
+                ForEach(tries, id: \.self) { index in
+                  Text("Try \(Int(report.attempts[index].number))").tag(index)
                 }
               }
               .pickerStyle(.segmented)
@@ -130,6 +143,13 @@ struct RunReportView: View {
     .navigationSubtitle(Text("Run Report"))
   }
 
+  /// Index of the try that decided the verdict, the one a report is opened for.
+  static func decidingIndex(_ report: RunReport) -> Int {
+    let deciding = decidingAttempt(report: report)
+    return report.attempts.lastIndex { $0.number == deciding?.number && $0.row == deciding?.row }
+      ?? max(0, report.attempts.count - 1)
+  }
+
   private func runAgain(_ report: RunReport) {
     guard let root = project.rootURL else { return }
     project.selection = report.file
@@ -155,7 +175,7 @@ struct RunReportView: View {
     do {
       switch format {
       case .html: try exportHtml(dir: run.dir, to: url.path)
-      case .junit: try exportJunit(dirs: [run.dir], to: url.path)
+      case .junit: try exportJunit(dirs: [run.dir], to: url.path, includeQuarantinedFailures: false)
       }
     } catch {
       failure = String(localized: "Can’t save the report: \(RunHistory.reason(error))")
@@ -199,6 +219,15 @@ private struct ReportHeader: View {
         if report.verdict == .failed, let verdict {
           Label(verdict, systemImage: "arrow.clockwise")
             .foregroundStyle(.secondary)
+        }
+        if report.quarantined {
+          Label {
+            Text(QuarantineText.describe(report))
+          } icon: {
+            Image(systemName: RunStatus.quarantined.symbol).foregroundStyle(RunStatus.quarantined.color)
+          }
+          .foregroundStyle(.secondary)
+          .textSelection(.enabled)
         }
         HStack(spacing: 8) {
           if let failed {
@@ -445,6 +474,100 @@ private struct StepStatusText {
     case .baselineCreated:
       (title, symbol, color) = (String(localized: "New reference saved"), "plus.circle.fill", .blue)
     case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    }
+  }
+}
+
+/// How each row of a data-driven run ended; picking a row shows its steps.
+private struct RowResults: View {
+  let report: RunReport
+  /// Number of the row whose steps are shown.
+  let shown: UInt32?
+  let show: (UInt32) -> Void
+
+  var body: some View {
+    let passed = report.rows.count { $0.verdict == .passed }
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline) {
+        Text("Data Rows")
+          .font(.headline)
+        Spacer()
+        Text("Passed: \(passed) of \(report.rows.count)")
+          .foregroundStyle(.secondary)
+      }
+      VStack(spacing: 0) {
+        ForEach(Array(report.rows.enumerated()), id: \.element.row.number) { index, result in
+          if index > 0 { Divider().padding(.leading, 44) }
+          Button { show(result.row.number) } label: {
+            row(result)
+          }
+          .buttonStyle(.plain)
+          .background(result.row.number == shown ? Color.accentColor.opacity(0.12) : .clear, in: .rect(cornerRadius: 8))
+          .accessibilityAddTraits(result.row.number == shown ? .isSelected : [])
+          .accessibilityHint(Text("Shows the steps of this row"))
+        }
+      }
+      .padding(.horizontal, 6)
+      .background(.background, in: .rect(cornerRadius: 14))
+      .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.separator))
+    }
+  }
+
+  private func row(_ result: RowResult) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 10) {
+      Image(systemName: Self.symbol(result.verdict))
+        .foregroundStyle(Self.color(result.verdict))
+        .frame(width: 24)
+        .accessibilityLabel(Text(Self.verdict(result.verdict)))
+      VStack(alignment: .leading, spacing: 2) {
+        Text(RunChoices.rowTitle(number: Int(result.row.number), label: result.row.label))
+          .lineLimit(1)
+          .truncationMode(.tail)
+        if let failure = result.failure, result.verdict == .failed {
+          Text(RunText.failure(failure))
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        } else if result.flaky {
+          Text("Passed on try \(Int(result.attempts)), so it may be flaky: it failed before that.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
+      }
+      Spacer(minLength: 0)
+      if result.attempts > 1 {
+        Text("Tries: \(Int(result.attempts))")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .monospacedDigit()
+      }
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 8)
+    .contentShape(.rect)
+  }
+
+  private static func symbol(_ verdict: Verdict) -> String {
+    switch verdict {
+    case .passed: "checkmark.circle.fill"
+    case .failed: "xmark.square.fill"
+    case .cancelled: "stop.circle.fill"
+    }
+  }
+
+  private static func color(_ verdict: Verdict) -> Color {
+    switch verdict {
+    case .passed: .green
+    case .failed: .red
+    case .cancelled: .secondary
+    }
+  }
+
+  private static func verdict(_ verdict: Verdict) -> String {
+    switch verdict {
+    case .passed: String(localized: "Passed")
+    case .failed: String(localized: "Failed")
+    case .cancelled: String(localized: "Stopped")
     }
   }
 }

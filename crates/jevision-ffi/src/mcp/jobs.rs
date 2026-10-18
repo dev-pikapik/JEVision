@@ -10,7 +10,7 @@ use jevision_runner::{Event, PauseReason, Verdict};
 use serde_json::{Value, json};
 
 use super::{AssistantHost, hands_message};
-use crate::{RunOutcome, TestRun, describe_failure};
+use crate::{DataRowRange, RunOutcome, TestRun, describe_failure};
 
 /// Every run started since the server started, oldest first.
 #[derive(Default)]
@@ -26,6 +26,8 @@ pub(super) struct RunChoices {
     pub retries: Option<u32>,
     /// Environment of the project to run in.
     pub environment: Option<String>,
+    /// Rows of the tests' data tables to run; `None` for all of them.
+    pub rows: Option<DataRowRange>,
 }
 
 impl Jobs {
@@ -112,6 +114,9 @@ struct State {
 
 #[derive(Default)]
 struct Now {
+    /// Data row being run, counted from 1, with how many the run goes through; 0 without one.
+    row: u32,
+    label: String,
     attempt: u32,
     step: u32,
     block: String,
@@ -156,6 +161,10 @@ impl Job {
                 "step": now.step,
                 "block": now.block,
             });
+            if now.row > 0 {
+                running["row"] = json!(now.row);
+                running["rowLabel"] = json!(now.label);
+            }
             if now.paused {
                 running["paused"] = json!(
                     "A person is using the mouse or keyboard. The test goes on once they stop."
@@ -231,6 +240,7 @@ impl Job {
         let mut options = host.run_options();
         options.retries = choices.retries;
         options.environment = choices.environment.clone();
+        options.data_rows = choices.rows;
         let events = |event: &Event| self.progress(event, run, host);
         let outcome = crate::run::run(
             &project.to_string_lossy(),
@@ -250,6 +260,10 @@ impl Job {
         self.update(|state| {
             let Some(now) = &mut state.now else { return };
             match event {
+                Event::RowStarted { row, label, .. } => {
+                    now.row = *row;
+                    now.label.clone_from(label);
+                }
                 Event::AttemptStarted { attempt } => now.attempt = *attempt,
                 Event::StepStarted {
                     attempt,
@@ -278,10 +292,8 @@ impl Job {
 fn outcome_json(file: &str, outcome: RunOutcome) -> Value {
     match outcome {
         RunOutcome::Finished { dir, html, report } => {
-            let failure = report
-                .attempts
-                .last()
-                .and_then(|a| a.failure.clone())
+            let failure = crate::run::deciding_attempt(&report)
+                .and_then(|a| a.failure)
                 .map(describe_failure);
             json!({
                 "path": file,
@@ -289,7 +301,16 @@ fn outcome_json(file: &str, outcome: RunOutcome) -> Value {
                 "report": PathBuf::from(&dir).file_name().map(|n| n.to_string_lossy().into_owned()),
                 "failure": failure,
                 "flaky": report.flaky,
+                "quarantined": report.quarantined,
                 "attempts": report.attempts.len(),
+                "rows": report.rows.iter().map(|r| json!({
+                    "row": r.row.number,
+                    "label": r.row.label,
+                    "verdict": verdict_name(r.verdict),
+                    "flaky": r.flaky,
+                    "attempts": r.attempts,
+                    "failure": r.failure.clone().map(describe_failure),
+                })).collect::<Vec<_>>(),
                 "durationMs": report.duration_ms,
                 "newReferences": report.baselines_created,
                 "html": html,

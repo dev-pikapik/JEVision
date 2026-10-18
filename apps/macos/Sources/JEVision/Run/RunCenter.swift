@@ -44,6 +44,8 @@ final class RunCenter {
     let total: Int
     var passed = 0
     var failed = 0
+    /// Tests in quarantine that failed: they don't fail the batch.
+    var quarantined = 0
     /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
     var notRun = 0
     var isStopping = false
@@ -60,6 +62,8 @@ final class RunCenter {
     let total: Int
     let passed: Int
     let failed: Int
+    /// Tests in quarantine that failed, not counted in `failed`.
+    var quarantined = 0
     /// The batch was stopped before every test ran.
     let stopped: Bool
   }
@@ -178,7 +182,8 @@ final class RunCenter {
     self.batch = nil
     let summary = BatchResult(
       title: batch.title, total: batch.total, passed: batch.passed, failed: batch.failed,
-      stopped: batch.passed + batch.failed + batch.notRun < batch.total)
+      quarantined: batch.quarantined,
+      stopped: batch.passed + batch.failed + batch.quarantined + batch.notRun < batch.total)
     result = nil
     batchResult = summary
     if !hiddenWindows.isEmpty { showApp() }
@@ -217,7 +222,7 @@ final class RunCenter {
       project: request.project.path, test: request.document.url.path,
       options: RunOptions(
         startAt: request.from, retries: choices.retries.map(UInt32.init),
-        environment: ProjectEnvironments.read(request.project).selected?.name, dataRow: choices.row(in: table),
+        environment: ProjectEnvironments.read(request.project).selected?.name, dataRows: choices.rows(in: table),
         vision: ai.settings(), localOnly: ai.localOnly,
         requestedBy: request.requestedBy, video: videos.mode, keepVideosDays: videos.keepDays),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
@@ -325,6 +330,7 @@ final class RunCenter {
     if var batch {
       switch outcome {
       case .finished(_, _, let report) where report.verdict == .passed: batch.passed += 1
+      case .finished(_, _, let report) where report.verdict == .failed && report.quarantined: batch.quarantined += 1
       case .finished(_, _, let report) where report.verdict == .failed: batch.failed += 1
       case .finished: batch.isStopping = true
       case .failed: batch.notRun += 1
@@ -349,7 +355,7 @@ final class RunCenter {
     let offers = !declined.contains(request.project.path) && GitIgnore.needsEntry(in: request.project)
     switch outcome {
     case .finished(let dir, _, let report):
-      let failure = report.attempts.last?.failure
+      let failure = decidingAttempt(report: report)?.failure
       result = Result(
         test: request.document.url, project: request.project, verdict: report.verdict,
         message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),

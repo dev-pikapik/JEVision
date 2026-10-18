@@ -21,8 +21,9 @@ pub struct Flow {
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
-    /// How many times a failed run is retried before it counts as failed.
-    pub retries: u32,
+    /// How many times a failed run is retried before it counts as failed; `None` uses the
+    /// project's default retries.
+    pub retries: Option<u32>,
     /// Id of the first block to run.
     pub start: String,
     /// Blocks in any order; saved in reading order, see [`Flow::blocks_in_flow_order`].
@@ -374,8 +375,8 @@ impl Serialize for Flow {
         if !self.tags.is_empty() {
             map.serialize_entry("tags", &self.tags)?;
         }
-        if self.retries != 0 {
-            map.serialize_entry("retries", &self.retries)?;
+        if let Some(retries) = self.retries {
+            map.serialize_entry("retries", &retries)?;
         }
         map.serialize_entry("start", &self.start)?;
         map.serialize_entry("blocks", &BlocksInFlowOrder(self))?;

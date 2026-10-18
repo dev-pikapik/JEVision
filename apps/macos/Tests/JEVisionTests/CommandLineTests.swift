@@ -38,6 +38,9 @@ struct CommandLineArgumentTests {
     #expect(try Command.parse(["run", "t.flow.json", "--video=on-failure"]) == .run(RunRequest(paths: ["t.flow.json"], video: .onFailure)))
     #expect(try Command.parse(["run", "t.flow.json"]) == .run(RunRequest(paths: ["t.flow.json"], video: nil)))
     #expect(throws: UsageError.self) { try Command.parse(["run", "t.flow.json", "--video", "sometimes"]) }
+    var counting = RunRequest(paths: ["t.flow.json"])
+    counting.includeQuarantinedFailures = true
+    #expect(try Command.parse(["run", "t.flow.json", "--include-quarantined-failures"]) == .run(counting))
   }
 
   @Test func videoSettings() throws {
@@ -86,6 +89,13 @@ struct CommandLineArgumentTests {
     for provider in AISettings.providers { #expect(help.contains(provider.id)) }
   }
 
+  @Test func dataRows() throws {
+    #expect(try Command.parse(["run", "t", "--row", "3"]) == .run(RunRequest(paths: ["t"], rows: DataRowRange(first: 2, last: 2))))
+    #expect(try Command.parse(["run", "t", "--rows", "2-4"]) == .run(RunRequest(paths: ["t"], rows: DataRowRange(first: 1, last: 3))))
+    #expect(try Command.parse(["run", "t", "--rows", "all"]) == .run(RunRequest(paths: ["t"])))
+    #expect(Help.text("run").contains("--rows <which>"))
+  }
+
   @Test(arguments: [
     (["validate"], "name at least one test file or folder"),
     (["validate", "--check", "a"], "there is no option “--check”"),
@@ -95,6 +105,9 @@ struct CommandLineArgumentTests {
     (["run", "a", "--retries", "two"], "--retries needs a whole number of times, such as 2, not “two”"),
     (["run", "a", "--retries"], "--retries needs a value"),
     (["run", "a", "--junit", "x", "--junit", "y"], "--junit is given twice"),
+    (["run", "a", "--row", "1", "--rows", "2"], "use either --row or --rows, not both"),
+    (["run", "a", "--rows", "4-2"], "\"4-2\" ends before it starts; write the smaller row first, like 2-4."),
+    (["run", "a", "--row", "0"], "\"0\" isn't a choice of data rows; write all, a row like 2 or a range like 2-4."),
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
     (
       ["run", "a", "--provider", "skynet"],
@@ -315,6 +328,48 @@ struct CommandLineRunTests {
     #expect(FileManager.default.fileExists(atPath: report))
     let junit = try String(contentsOfFile: try #require(request.junit), encoding: .utf8)
     #expect(junit.contains("<skipped message=\"The run was cancelled.\"/>"))
+  }
+
+  @Test func quarantinedFailuresCountOnlyWhenAsked() throws {
+    let dir = try Scratch()
+    let test = try dir.file(
+      "broken.flow.json",
+      #"{"format": 1, "name": "Broken", "app": "com.example.App", "start": "open", "blocks": {"open": {"type": "openApp"}}}"#)
+    _ = try dir.file(
+      "jevision.project.json",
+      #"{"format": 1, "quarantine": [{"test": "broken.flow.json", "reason": "Bug 42"}]}"#)
+
+    func run(counting: Bool) throws -> (status: Int32, json: [String: Any], junit: String) {
+      // A block the test doesn't have fails the run before the app is touched.
+      var request = RunRequest(paths: [test], startAt: "nowhere", json: true)
+      request.junit = dir.url.appending(path: "junit.xml").path
+      request.includeQuarantinedFailures = counting
+      let quiet = Console(write: { _ in })
+      let session = TestSession(project: dir.url.path, tests: [test], request: request, progress: quiet, input: nil) { _ in
+        WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { true })
+      }
+      var command = RunCommand(request: request)
+      let output = Lines()
+      command.output = Console(write: { output.append($0) })
+      command.progress = quiet
+      let status = command.finish(session.runAll()).rawValue
+      let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+      return (status, json, try String(contentsOfFile: try #require(request.junit), encoding: .utf8))
+    }
+
+    let honoured = try run(counting: false)
+    #expect(honoured.status == 0)
+    #expect(honoured.json["quarantined"] as? Int == 1)
+    #expect(honoured.json["failed"] as? Int == 0)
+    let entry = try #require((honoured.json["tests"] as? [[String: Any]])?.first)
+    #expect(entry["verdict"] as? String == "quarantined")
+    #expect(entry["quarantineReason"] as? String == "Bug 42")
+    #expect(honoured.junit.contains("<skipped message=\"Quarantined (Bug 42)."))
+    #expect(!honoured.junit.contains("<failure"))
+
+    let counted = try run(counting: true)
+    #expect(counted.status == 1)
+    #expect(counted.junit.contains("<failure"))
   }
 
   @Test func planFindsTestsAndTheProject() throws {

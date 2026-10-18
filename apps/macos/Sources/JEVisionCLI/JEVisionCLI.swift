@@ -35,6 +35,8 @@ enum JEVisionCLI {
       return RunCommand(request: request).execute()
     case .mcp(let project):
       return MCPCommand(project: project).execute()
+    case .scheduleRun(let project):
+      return ScheduleCommand(project: project).execute()
     }
   }
 }
@@ -62,6 +64,8 @@ struct RunRequest: Equatable {
   var paths: [String] = []
   var project: String?
   var retries: UInt32?
+  /// Rows of the tests' data tables to run, counted from 0; `nil` runs all of them.
+  var rows: DataRowRange?
   /// Environment of the project whose values `${env.NAME}` reads.
   var environment: String?
   var startAt: String?
@@ -72,6 +76,10 @@ struct RunRequest: Equatable {
   var html: String?
   /// Whether to record a video of the app; `nil` follows the app's setting.
   var video: VideoMode?
+  /// Name of the schedule that started the run, saved in its report.
+  var schedule: String?
+  /// Failures of tests in quarantine count toward the exit status and the JUnit report.
+  var includeQuarantinedFailures = false
   var json = false
 }
 
@@ -82,6 +90,7 @@ enum Command: Equatable {
   case fmt(paths: [String], check: Bool)
   case run(RunRequest)
   case mcp(project: String?)
+  case scheduleRun(project: String)
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }
@@ -103,7 +112,8 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json"], values: ["--project", "--env", "--retries", "--start-at", "--provider", "--model", "--junit", "--html", "--video"])
+        rest, command: name, flags: ["--json", "--include-quarantined-failures"],
+        values: ["--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
       request.project = options.values["--project"]
@@ -112,6 +122,18 @@ enum Command: Equatable {
           throw UsageError(message: "--retries needs a whole number of times, such as 2, not “\(retries)”", command: name)
         }
         request.retries = count
+      }
+      if options.values["--row"] != nil, options.values["--rows"] != nil {
+        throw UsageError(message: "use either --row or --rows, not both", command: name)
+      }
+      if let rows = options.values["--rows"] ?? options.values["--row"] {
+        do {
+          request.rows = try parseDataRows(text: rows)
+        } catch DataRowsChoiceError.Invalid(let message) {
+          throw UsageError(message: message, command: name)
+        } catch {
+          throw UsageError(message: "\(error)", command: name)
+        }
       }
       request.environment = options.values["--env"]
       request.startAt = options.values["--start-at"]
@@ -133,6 +155,7 @@ enum Command: Equatable {
         }
         request.video = mode
       }
+      request.includeQuarantinedFailures = options.flags.contains("--include-quarantined-failures")
       request.json = options.flags.contains("--json")
       return .run(request)
     case "mcp":
@@ -142,6 +165,16 @@ enum Command: Equatable {
         throw UsageError(message: "mcp takes no paths; name the project folder with --project, not “\(extra)”", command: name)
       }
       return .mcp(project: options.values["--project"])
+    case "schedule":
+      let options = try Options.parse(rest, command: name, flags: [])
+      if options.wantsHelp || options.paths.isEmpty { return .help(name) }
+      guard options.paths[0] == "run" else {
+        throw UsageError(message: "there is no schedule command “\(options.paths[0])”", command: name)
+      }
+      guard options.paths.count == 2 else {
+        throw UsageError(message: "name one project folder", command: name)
+      }
+      return .scheduleRun(project: options.paths[1])
     default:
       let what = name.hasPrefix("-") ? "option" : "command"
       throw UsageError(message: "there is no \(what) “\(name)”")
@@ -202,7 +235,7 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "fmt", "mcp"]
+  static let commands = ["run", "validate", "fmt", "mcp", "schedule"]
 
   static func usage(_ command: String?) -> String {
     switch command {
@@ -210,6 +243,7 @@ enum Help {
     case "validate": "Usage: jevision validate <tests>… [--json]"
     case "fmt": "Usage: jevision fmt <tests>… [--check]"
     case "mcp": "Usage: jevision mcp [--project <folder>]"
+    case "schedule": "Usage: jevision schedule run <project>"
     default: "Usage: jevision <command> [options]"
     }
   }
@@ -236,7 +270,13 @@ enum Help {
                             environment first. Default: the "default" environment
                             named in that file, if any
         --retries <n>       Run a failed test up to <n> more times (instead of the
-                            number in the test)
+                            number in the test, or the project's default from
+                            jevision.project.json)
+        --row <n>           Run a data-driven test with row <n> of its CSV table only,
+                            counting from 1 (the header line isn't a row)
+        --rows <which>      Rows of a data-driven test's CSV table to run: all (the
+                            default), one row such as 3, or a range such as 2-4. Each
+                            row runs the whole test and has its own retries
         --start-at <block>  Start from this block instead of the first one (one test only)
         --provider <id>     AI provider for checks by meaning instead of the one chosen
                             in the app (Settings → AI): anthropic, openai, gemini,
@@ -247,6 +287,11 @@ enum Help {
         --video <when>      Record a video of the app: off, on-failure (keep it only
                             when the test fails) or always. Default: as chosen in the
                             app (Settings → Advanced), otherwise on-failure
+        --include-quarantined-failures
+                            Count failures of tests in quarantine (listed in
+                            jevision.project.json) like any other failure. Without it
+                            they still run, but don't change the exit status and are
+                            skipped in the JUnit report
         --json              Print the result as JSON; progress goes to standard error
         -h, --help          Show this help
 
@@ -256,8 +301,8 @@ enum Help {
       your CI agent). Secrets (${secret.NAME}) come from environment variables or the
       Keychain. So do API keys of AI providers, such as ANTHROPIC_API_KEY.
 
-      Exit status: 0 — all tests passed, 1 — a test failed or was stopped, 2 — wrong
-      arguments, a file could not be read or written, or this Mac can't run tests now.
+      Exit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a
+      test failed or was stopped, 2 — wrong arguments, a file could not be read or written, or this Mac can't run tests now.
 
       """
     case "validate":
@@ -315,6 +360,31 @@ enum Help {
       or API keys, and can't touch files outside the project folder.
 
       """
+    case "schedule":
+      """
+      Runs the schedules of a project that are due now, from jevision.schedule.json in the
+      project folder. The JEVision app sets up macOS to start this command at the times of
+      the schedules you make in it (Test → Schedules…); you don’t need to run it yourself.
+
+      \(usage(command))
+
+      Arguments:
+        <project>   Project folder
+
+      Options:
+        -h, --help  Show this help
+
+      A schedule is due once for its latest time since the last check, even when the Mac
+      slept through it, unless that time is more than 12 hours ago. When the screen is
+      locked, nobody is logged in or macOS hasn’t allowed jevision to record the screen
+      and control the computer, the run is skipped and nothing is clicked or typed. What
+      came of every scheduled run is kept in .jevision/schedule-history.json, and reports
+      of the tests are saved like those of jevision run.
+
+      Exit status: 0 — nothing was due or all tests passed, 1 — a test failed or a run was
+      skipped, 2 — the project or its schedule file couldn’t be read, or a run couldn’t start.
+
+      """
     default:
       """
       Runs, checks and formats JEVision tests.
@@ -326,6 +396,7 @@ enum Help {
         validate   Check tests for errors and warnings
         fmt        Rewrite tests in canonical form
         mcp        Let AI assistants read, edit and run tests (MCP server)
+        schedule   Run the schedules of a project that are due now
 
       Options:
         -h, --help     Show this help

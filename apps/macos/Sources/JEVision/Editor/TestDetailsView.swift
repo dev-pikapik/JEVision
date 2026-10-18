@@ -56,14 +56,17 @@ struct TestDetailsView: View {
           }
         }
         Section {
-          LabeledContent {
-            Stepper(value: binding(Int(flow.retries), "retries") { $0.retries = UInt32(clamping: $1) }, in: 0...10) {
-              Text(flow.retries, format: .number).monospacedDigit()
-            }
+          Picker(selection: binding(flow.retries, "retries") { $0.retries = $1 }) {
+            Text("Project Default (\(project.settings.retries ?? 0))").tag(UInt32?.none)
+            Divider()
+            ForEach(UInt32(0)...10, id: \.self) { Text($0, format: .number).tag(UInt32?.some($0)) }
           } label: {
             Text("Retries")
-            Text("How many more times to run the test if it fails.")
+            Text("How many more times to run the test if it fails. The project default is set in Settings › Advanced.")
           }
+        }
+        if let file = project.testID(document.url) {
+          QuarantineSection(file: file, name: flow.name)
         }
         let files = DataColumns.files(in: flow)
         if !files.isEmpty {

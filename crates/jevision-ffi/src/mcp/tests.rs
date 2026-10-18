@@ -569,3 +569,45 @@ fn the_format_guide_covers_every_block_type() {
         );
     }
 }
+
+#[test]
+fn runs_chosen_rows_of_a_data_table() {
+    let (project, host, server) = setup();
+    host.permissions.lock().unwrap().run_tests = true;
+    project.write("data/users.csv", "name;user\nAnn;ann\nBo;bo\nCy;cy\n");
+    project.write(
+        "data/each.flow.json",
+        &json!({
+            "format": FORMAT_VERSION,
+            "name": "Each user",
+            "app": "com.example.mail",
+            "start": "rows",
+            "blocks": {
+                "rows": { "type": "useData", "file": "users.csv", "body": "type" },
+                "type": { "type": "type", "text": "${data.user}" },
+            },
+        })
+        .to_string(),
+    );
+    let (failed, text) = call(
+        &server,
+        "run_test",
+        json!({ "path": "data", "rows": "4-2" }),
+    );
+    assert!(failed, "{text}");
+
+    let (failed, text) = call(
+        &server,
+        "run_test",
+        json!({ "path": "data", "rows": "2-3" }),
+    );
+    assert!(!failed, "{text}");
+    let (_, status) = call(&server, "get_run", json!({ "run": "1", "wait": 60 }));
+    let status: Value = serde_json::from_str(&status).unwrap();
+    assert_eq!(status["passed"], 1, "{status}");
+    let rows = &status["tests"][0]["rows"];
+    assert_eq!(rows[0]["row"], 2, "{status}");
+    assert_eq!(rows[1]["label"], "Cy", "{status}");
+    assert_eq!(rows[1]["verdict"], "passed", "{status}");
+    assert_eq!(*host.hands.typed.lock().unwrap(), ["bo", "cy"]);
+}

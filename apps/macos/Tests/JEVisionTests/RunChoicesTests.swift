@@ -27,17 +27,17 @@ struct RunChoicesTests {
     let flow = try Self.flow("${data.email}")
     #expect(RunChoices.dataTable(of: flow, folder: folder) == nil)
 
-    try "email,name\nann@example.com,Ann\n,Bo\n".write(to: folder.appending(path: "rows.csv"), atomically: true, encoding: .utf8)
+    try "email;name\nann@example.com;Ann\n;\"Bo\"\"s\"\nc@example.com;\n".write(to: folder.appending(path: "rows.csv"), atomically: true, encoding: .utf8)
     let table = try #require(RunChoices.dataTable(of: flow, folder: folder))
-    #expect(RunChoices.rowTitles(of: table) == ["Row 1: ann@example.com", "Row 2: Bo"])
-    #expect(RunChoices.dataTitle(row: nil, of: table) == "Data Rows: All 2")
+    #expect(RunChoices.rowTitles(of: table) == ["Row 1: Ann", "Row 2: Bo\"s", "Row 3: c@example.com"])
+    #expect(RunChoices.dataTitle(row: nil, of: table) == "Data Rows: All 3")
     #expect(RunChoices.dataTitle(row: 1, of: table) == "Data Rows: Row 2")
     // A row the table lost since it was chosen means every row again.
-    #expect(RunChoices.dataTitle(row: 5, of: table) == "Data Rows: All 2")
-    #expect(RunChoices(dataRow: 1).row(in: table) == 1)
-    #expect(RunChoices(dataRow: 5).row(in: table) == nil)
-    #expect(RunChoices().row(in: table) == nil)
-    #expect(RunChoices(dataRow: 0).row(in: nil) == nil)
+    #expect(RunChoices.dataTitle(row: 5, of: table) == "Data Rows: All 3")
+    #expect(RunChoices(dataRow: 1).rows(in: table) == DataRowRange(first: 1, last: 1))
+    #expect(RunChoices(dataRow: 5).rows(in: table) == nil)
+    #expect(RunChoices().rows(in: table) == nil)
+    #expect(RunChoices(dataRow: 0).rows(in: nil) == nil)
   }
 
   @Test func retriesKeepTheTestsNumberUnlessChosen() {

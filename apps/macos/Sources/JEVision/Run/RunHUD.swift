@@ -138,6 +138,16 @@ struct RunHUD: View {
     VStack(alignment: .leading, spacing: 4) {
       ProgressView(value: Double(min(state.done, total)), total: Double(total))
         .accessibilityHidden(true)
+      if state.rows > 0 {
+        Text(
+          state.rowLabel.isEmpty
+            ? "Row \(Int(state.row)) of \(Int(state.rows))"
+            : "Row \(Int(state.row)) of \(Int(state.rows)): \(state.rowLabel)"
+        )
+        .font(.caption.weight(.medium))
+        .lineLimit(1)
+        .truncationMode(.tail)
+      }
       HStack {
         Text("Step \(step) of \(total)")
         Spacer()

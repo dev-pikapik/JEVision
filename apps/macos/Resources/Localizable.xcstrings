@@ -3039,26 +3039,6 @@
         }
       }
     },
-    "Failed %lld of %lld times the same way — a real failure, not a flaky test." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Провал в %lld из %lld попыток с одной и той же ошибкой — это настоящая ошибка, а не нестабильный тест."
-          }
-        }
-      }
-    },
-    "Failed %lld of %lld times, each time differently — the test may be flaky." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Провал в %lld из %lld попыток, и каждый раз по-разному — возможно, тест нестабилен."
-          }
-        }
-      }
-    },
     "Fails the test unless the screen looks as expected." : {
       "localizations" : {
         "ru" : {
@@ -3505,16 +3485,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Как JEVision выглядит и на каком языке говорит."
-          }
-        }
-      }
-    },
-    "How many more times to run the test if it fails." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сколько раз ещё запустить тест, если он провалится."
           }
         }
       }
@@ -5118,16 +5088,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пройден за %@. Сохранены новые эталоны — проверьте их в отчёте."
-          }
-        }
-      }
-    },
-    "Passed on retry %lld after failing — the test is flaky." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прошёл с %lld-го повтора после провала — тест нестабилен."
           }
         }
       }
@@ -11392,6 +11352,1622 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "%@ To put a test in quarantine, choose Quarantine… in its menu in the sidebar. The settings are saved in %@ in the project folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ Чтобы отправить тест в карантин, выберите «В карантин…» в его меню в боковой панели. Настройки сохраняются в файле %2$@ в папке проекта."
+          }
+        }
+      }
+    },
+    "%@ can’t be saved: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сохранить %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "A test in quarantine still runs, but its failures don’t fail Run All, the command line or the JUnit report. The quarantine is saved in the project, so everyone who runs its tests sees it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест в карантине по-прежнему запускается, но его провалы не делают провальными «Запустить все», командную строку и отчёт JUnit. Карантин сохраняется в проекте, поэтому его видят все, кто запускает эти тесты."
+          }
+        }
+      }
+    },
+    "Can’t change the project settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся изменить настройки проекта"
+          }
+        }
+      }
+    },
+    "Can’t change the quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся изменить карантин"
+          }
+        }
+      }
+    },
+    "Failed %u of %u times, each time differently — the test may be flaky." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провал в %1$u из %2$u попыток, и каждый раз по-разному — возможно, тест нестабилен."
+          }
+        }
+      }
+    },
+    "Failed %u times in a row — a real failure, not flakiness." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провал %u раз подряд — настоящая ошибка, а не нестабильность."
+          }
+        }
+      }
+    },
+    "Failed in Quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провал в карантине"
+          }
+        }
+      }
+    },
+    "Failed in quarantine: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провалено в карантине: %lld"
+          }
+        }
+      }
+    },
+    "Failed: %u" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провалено: %u"
+          }
+        }
+      }
+    },
+    "Flaky: since %@, the unchanged test both passed and failed in %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нестабилен: с %1$@ неизменённый тест и проходил, и падал в окружении %2$@."
+          }
+        }
+      }
+    },
+    "Flaky: since %@, the unchanged test both passed and failed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нестабилен: с %@ неизменённый тест и проходил, и падал."
+          }
+        }
+      }
+    },
+    "How many more times to run a failed test whose file doesn’t say. A test that fails, then passes, is marked flaky." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько ещё раз запускать упавший тест, если в его файле число не задано. Тест, который упал, а потом прошёл, помечается как нестабильный."
+          }
+        }
+      }
+    },
+    "How many more times to run the test if it fails. The project default is set in Settings › Advanced." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько ещё раз запускать тест, если он упал. Значение по умолчанию для проекта задаётся в «Настройки › Дополнительно»."
+          }
+        }
+      }
+    },
+    "In quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантине"
+          }
+        }
+      }
+    },
+    "In quarantine: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантине: %@"
+          }
+        }
+      }
+    },
+    "No tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет тестов"
+          }
+        }
+      }
+    },
+    "Not in quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не в карантине"
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to set its retries and quarantine." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы задать её повторы и карантин."
+          }
+        }
+      }
+    },
+    "Passed on retry %u after failing — the test is flaky." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошёл с %u-го повтора после провала — тест нестабилен."
+          }
+        }
+      }
+    },
+    "Passed on retry: %u" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошли с повтора: %u"
+          }
+        }
+      }
+    },
+    "Passed: %u" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройдено: %u"
+          }
+        }
+      }
+    },
+    "Project Default (%u)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По умолчанию в проекте (%u)"
+          }
+        }
+      }
+    },
+    "Put in Quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить в карантин"
+          }
+        }
+      }
+    },
+    "Quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карантин"
+          }
+        }
+      }
+    },
+    "Quarantine “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить «%@» в карантин?"
+          }
+        }
+      }
+    },
+    "Quarantine…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантин…"
+          }
+        }
+      }
+    },
+    "Reason, such as a link to the bug" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Причина, например ссылка на баг"
+          }
+        }
+      }
+    },
+    "Release" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть"
+          }
+        }
+      }
+    },
+    "Release from Quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть из карантина"
+          }
+        }
+      }
+    },
+    "Retries and quarantine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторы и карантин"
+          }
+        }
+      }
+    },
+    "The failure doesn’t fail Run All, the command line or the JUnit report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот провал не делает провальными «Запустить все», командную строку и отчёт JUnit."
+          }
+        }
+      }
+    },
+    "run.project.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "%@ at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ в %2$@"
+          }
+        }
+      }
+    },
+    "%@, started by the schedule %@, %@, took %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, запущен по расписанию %2$@, %3$@, длительность %4$@"
+          }
+        }
+      }
+    },
+    "Add Schedule…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить расписание…"
+          }
+        }
+      }
+    },
+    "Another schedule has this name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание с таким названием уже есть."
+          }
+        }
+      }
+    },
+    "As in Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в настройках"
+          }
+        }
+      }
+    },
+    "At" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время"
+          }
+        }
+      }
+    },
+    "Can’t save the schedules" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сохранить расписания"
+          }
+        }
+      }
+    },
+    "Choose a folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку."
+          }
+        }
+      }
+    },
+    "Choose at least one day." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите хотя бы один день."
+          }
+        }
+      }
+    },
+    "Choose at least one test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите хотя бы один тест."
+          }
+        }
+      }
+    },
+    "Chosen tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные тесты"
+          }
+        }
+      }
+    },
+    "Couldn’t start: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось запустить: %@"
+          }
+        }
+      }
+    },
+    "Delete Schedule" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить расписание"
+          }
+        }
+      }
+    },
+    "Delete the schedule “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить расписание «%@»?"
+          }
+        }
+      }
+    },
+    "Edit Schedule" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить расписание"
+          }
+        }
+      }
+    },
+    "Edit…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить…"
+          }
+        }
+      }
+    },
+    "Every %lld hours" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждые %lld ч"
+          }
+        }
+      }
+    },
+    "Every %lld hours from %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждые %1$lld ч, начиная с %2$@"
+          }
+        }
+      }
+    },
+    "Every day" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый день"
+          }
+        }
+      }
+    },
+    "Every day at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый день в %@"
+          }
+        }
+      }
+    },
+    "Every few hours" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждые несколько часов"
+          }
+        }
+      }
+    },
+    "Every hour" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый час"
+          }
+        }
+      }
+    },
+    "Every hour from %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый час, начиная с %@"
+          }
+        }
+      }
+    },
+    "Every weekday" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По будням"
+          }
+        }
+      }
+    },
+    "Every weekday at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По будням в %@"
+          }
+        }
+      }
+    },
+    "Every weekend at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По выходным в %@"
+          }
+        }
+      }
+    },
+    "Failed: %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не прошли: %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "Folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка"
+          }
+        }
+      }
+    },
+    "Give the schedule a name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дайте расписанию название."
+          }
+        }
+      }
+    },
+    "How often" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как часто"
+          }
+        }
+      }
+    },
+    "Its tests stay; they just stop running on their own." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты останутся, просто перестанут запускаться сами."
+          }
+        }
+      }
+    },
+    "New Schedule" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новое расписание"
+          }
+        }
+      }
+    },
+    "Next run %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий запуск: %@"
+          }
+        }
+      }
+    },
+    "Nightly" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ночной прогон"
+          }
+        }
+      }
+    },
+    "No Schedules" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет расписаний"
+          }
+        }
+      }
+    },
+    "No schedules yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписаний пока нет"
+          }
+        }
+      }
+    },
+    "On chosen days" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В выбранные дни"
+          }
+        }
+      }
+    },
+    "Passed: %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошли: %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "Project default" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в проекте"
+          }
+        }
+      }
+    },
+    "Run all tests every night, a folder every weekday morning, or a few tests every few hours." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускайте все тесты каждую ночь, папку — каждое утро по будням или несколько тестов — каждые несколько часов."
+          }
+        }
+      }
+    },
+    "Run tests on their own at set times" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускать тесты самостоятельно в заданное время"
+          }
+        }
+      }
+    },
+    "Schedule · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание · %@"
+          }
+        }
+      }
+    },
+    "Schedules" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания"
+          }
+        }
+      }
+    },
+    "Schedules are off on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания на этом Mac выключены"
+          }
+        }
+      }
+    },
+    "Schedules can’t be read" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать расписания"
+          }
+        }
+      }
+    },
+    "Schedules…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания…"
+          }
+        }
+      }
+    },
+    "Skipped: nobody was logged in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущен: никто не вошёл в систему"
+          }
+        }
+      }
+    },
+    "Skipped: the jevision tool isn’t allowed to control this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущен: инструменту jevision не разрешено управлять этим Mac"
+          }
+        }
+      }
+    },
+    "Skipped: the screen was locked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущен: экран был заблокирован"
+          }
+        }
+      }
+    },
+    "Starting at" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начиная с"
+          }
+        }
+      }
+    },
+    "Tests in a folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты из папки"
+          }
+        }
+      }
+    },
+    "Tests in “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты из «%@»"
+          }
+        }
+      }
+    },
+    "Tests run on their own at the times you choose, on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты запускаются сами в выбранное время на этом Mac."
+          }
+        }
+      }
+    },
+    "The project has no folders with tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте нет папок с тестами."
+          }
+        }
+      }
+    },
+    "The project has none" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте их нет"
+          }
+        }
+      }
+    },
+    "These schedules don’t run on this Mac yet." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac эти расписания пока не работают."
+          }
+        }
+      }
+    },
+    "They run while you’re logged in and the Mac is awake. A run is skipped while the screen is locked; for runs nobody watches, turn off the automatic screen lock." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Они работают, пока вы вошли в систему и Mac не спит. Пока экран заблокирован, запуск пропускается; чтобы тесты шли без присмотра, отключите автоматическую блокировку экрана."
+          }
+        }
+      }
+    },
+    "This copy of JEVision can’t run tests on a schedule." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта копия JEVision не может запускать тесты по расписанию."
+          }
+        }
+      }
+    },
+    "Turn On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить"
+          }
+        }
+      }
+    },
+    "today at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сегодня в %@"
+          }
+        }
+      }
+    },
+    "tomorrow at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "завтра в %@"
+          }
+        }
+      }
+    },
+    "yesterday at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вчера в %@"
+          }
+        }
+      }
+    },
+    "“%@” couldn’t start" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание «%@»: не удалось запустить"
+          }
+        }
+      }
+    },
+    "“%@” didn’t run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание «%@»: запуск пропущен"
+          }
+        }
+      }
+    },
+    "“%@” failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание «%@»: тесты не прошли"
+          }
+        }
+      }
+    },
+    "%@, row %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, строка %2$lld"
+          }
+        }
+      }
+    },
+    "Add Column" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить столбец"
+          }
+        }
+      }
+    },
+    "Add Row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить строку"
+          }
+        }
+      }
+    },
+    "Column %@ actions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действия со столбцом %@"
+          }
+        }
+      }
+    },
+    "Column Name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название столбца"
+          }
+        }
+      }
+    },
+    "Create Table…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать таблицу…"
+          }
+        }
+      }
+    },
+    "Data Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки данных"
+          }
+        }
+      }
+    },
+    "Data Table" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таблица данных"
+          }
+        }
+      }
+    },
+    "Delete Column" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить столбец"
+          }
+        }
+      }
+    },
+    "Delete Row %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить строку %lld"
+          }
+        }
+      }
+    },
+    "Delete Row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить строку"
+          }
+        }
+      }
+    },
+    "Delete this row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить эту строку"
+          }
+        }
+      }
+    },
+    "Discard Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить изменения"
+          }
+        }
+      }
+    },
+    "Discard the changes to the table?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить изменения в таблице?"
+          }
+        }
+      }
+    },
+    "Each row runs the whole test once. Reports name a row by its “name” column, or else by its first column." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С каждой строкой тест проходит целиком один раз. В отчётах строка названа по столбцу «name», а если его нет — по первому столбцу."
+          }
+        }
+      }
+    },
+    "Edit Data…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить данные…"
+          }
+        }
+      }
+    },
+    "Fix the file, then open the table again: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исправьте файл и откройте таблицу снова: %@."
+          }
+        }
+      }
+    },
+    "Insert Column After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить столбец справа"
+          }
+        }
+      }
+    },
+    "Insert Column Before" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить столбец слева"
+          }
+        }
+      }
+    },
+    "Insert Row Above" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить строку выше"
+          }
+        }
+      }
+    },
+    "Insert Row Below" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить строку ниже"
+          }
+        }
+      }
+    },
+    "Keep Editing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить правку"
+          }
+        }
+      }
+    },
+    "Name of column %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название столбца %lld"
+          }
+        }
+      }
+    },
+    "No rows yet. Each row runs the whole test once; add one with Add Row." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строк пока нет. С каждой строкой тест проходит целиком один раз — добавьте строку кнопкой «Добавить строку»."
+          }
+        }
+      }
+    },
+    "Open in Another App" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в другой программе"
+          }
+        }
+      }
+    },
+    "Passed on try %lld, so it may be flaky: it failed before that." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошла с попытки %lld, а до этого не проходила — возможно, нестабильна."
+          }
+        }
+      }
+    },
+    "Row %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "Row %lld of %lld: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %1$lld из %2$lld: %3$@"
+          }
+        }
+      }
+    },
+    "Row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка"
+          }
+        }
+      }
+    },
+    "Shows the steps of this row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает шаги этой строки"
+          }
+        }
+      }
+    },
+    "Steps of %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаги — %@"
+          }
+        }
+      }
+    },
+    "Table" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таблица"
+          }
+        }
+      }
+    },
+    "The Table Can’t Be Opened" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таблицу не открыть"
+          }
+        }
+      }
+    },
+    "The table wasn’t saved: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таблица не сохранена: %@."
+          }
+        }
+      }
+    },
+    "Tries: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попыток: %lld"
+          }
+        }
+      }
+    },
+    "data.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the file can’t be read (%@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файл не читается (%@)"
+          }
+        }
+      }
+    },
+    "data.unwritable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the file can’t be saved (%@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файл не сохраняется (%@)"
+          }
+        }
+      }
+    },
+    "data.notText" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the file isn’t text in UTF-8"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файл — не текст в UTF-8"
+          }
+        }
+      }
+    },
+    "data.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the file is empty, and its first line must name the columns"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файл пуст, а в первой строке должны быть названия столбцов"
+          }
+        }
+      }
+    },
+    "data.blankColumn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "column %@ of the first line has no name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "у столбца %@ в первой строке нет названия"
+          }
+        }
+      }
+    },
+    "data.duplicateColumn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the first line names the column “%@” twice"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "в первой строке столбец «%@» назван дважды"
+          }
+        }
+      }
+    },
+    "data.unclosedQuote" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the quote opened on line %@ is never closed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "кавычка, открытая в строке %@, не закрыта"
+          }
+        }
+      }
+    },
+    "data.strayQuote" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "line %@ has a quote in the middle of a value; put the whole value in quotes and double the quote inside"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "в строке %@ кавычка стоит посреди значения; возьмите всё значение в кавычки, а кавычку внутри удвойте"
+          }
+        }
+      }
+    },
+    "data.rowLength" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "line %@ has %@ values, but the first line names %@ columns"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "в строке %1$@ значений: %2$@, а в первой строке названо столбцов: %3$@"
+          }
+        }
+      }
+    },
+    "flow.data.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be used as a data table: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не подходит как таблица данных: %2$@."
+          }
+        }
+      }
+    },
+    "flow.data.unknownColumn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has no column “%@”. Its columns are: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В %1$@ нет столбца «%2$@». Его столбцы: %3$@."
+          }
+        }
+      }
+    },
+    "%lld rows" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld row"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld rows"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строка"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строк"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld columns" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld column"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld columns"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld столбец"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld столбца"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld столбцов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld столбца"
+                }
+              }
+            }
           }
         }
       }

@@ -83,8 +83,11 @@ struct RunHistoryTests {
     let real = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .failed,
       attempts: [1, 2, 3].map { Self.attempt($0, .failed, failure: "run.check.mismatch") })
-    #expect(RunHistory.retryVerdict(real.report) == String(localized: "Failed 3 of 3 times the same way — a real failure, not a flaky test."))
+    #expect(RunHistory.retryVerdict(real.report) == String(localized: "Failed 3 times in a row — a real failure, not flakiness."))
     #expect(real.status == .failed)
+    var quarantined = real
+    quarantined.report.quarantined = true
+    #expect(quarantined.status == .quarantined)
 
     let flakyPass = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .passed, flaky: true,

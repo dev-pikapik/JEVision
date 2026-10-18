@@ -85,7 +85,7 @@ private struct RunRow: View {
           Text(run.report.test.isEmpty ? String(localized: "Untitled Test") : run.report.test)
             .lineLimit(1)
           // Runs started from a phone name it first.
-          Text(verbatim: [run.report.requestedBy ?? String(localized: "This Mac"), time, duration].joined(separator: " · "))
+          Text(verbatim: [run.report.requestedBy ?? run.report.schedule.map { String(localized: "Schedule · \($0)") } ?? String(localized: "This Mac"), time, duration].joined(separator: " · "))
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -95,6 +95,7 @@ private struct RunRow: View {
       .accessibilityLabel(Text(run.report.test))
       .accessibilityValue(
         run.report.requestedBy.map { Text("\(status.title), started from \($0), \(time), took \(duration)") }
+          ?? run.report.schedule.map { Text("\(status.title), started by the schedule \($0), \(time), took \(duration)") }
           ?? Text("\(status.title), \(time), took \(duration)"))
     }
   }
@@ -126,6 +127,17 @@ private struct HealthView: View {
           .foregroundStyle(.secondary)
       }
       HealthBars(marks: health.recent)
+      if let flaky = health.flaky {
+        Label {
+          Text(RunHistory.flakyEvidence(flaky))
+            .foregroundStyle(.secondary)
+        } icon: {
+          Image(systemName: RunStatus.flaky.symbol)
+            .foregroundStyle(RunStatus.flaky.color)
+        }
+        .font(.caption)
+        .fixedSize(horizontal: false, vertical: true)
+      }
       if let point = health.failsMostAt {
         Text("Fails most often at \(place(point))")
           .font(.caption)

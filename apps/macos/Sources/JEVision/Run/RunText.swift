@@ -67,10 +67,12 @@ enum RunText {
       return String(localized: "run.env.unknown", defaultValue: "There’s no environment \(p("environment")) in \(p("file")).")
     case "run.environments.unreadable":
       return String(localized: "run.environments.unreadable", defaultValue: "\(p("file")) can’t be read: \(p("reason")).")
+    case "run.project.unreadable":
+      return String(localized: "run.project.unreadable", defaultValue: "\(p("file")) can’t be read: \(p("reason")).")
     case "run.data.noRow":
       return String(localized: "run.data.noRow", defaultValue: "Block “\(block)”: the table \(p("file")) has \(p("rows")) rows, so there’s no row \(p("row")).")
     case "run.data.unreadable":
-      return String(localized: "run.data.unreadable", defaultValue: "Block “\(block)”: can’t read the table \(p("file")): \(p("reason")).")
+      return String(localized: "run.data.unreadable", defaultValue: "Block “\(block)”: can’t read the table \(p("file")): \(IssueText.dataProblem(p("problem"), p)).")
     case "run.data.unknownColumn":
       return String(localized: "run.data.unknownColumn", defaultValue: "Block “\(block)”: there’s no table column “\(p("column"))” here.")
     case "run.runTest.recursion":
@@ -119,7 +121,8 @@ enum RunText {
   /// How the tests of a batch did, in a sentence.
   static func batchOutcome(_ result: RunCenter.BatchResult) -> String {
     var counts = [String(localized: "Passed: \(result.passed)"), String(localized: "Failed: \(result.failed)")]
-    let notRun = result.total - result.passed - result.failed
+    if result.quarantined > 0 { counts.append(String(localized: "Failed in quarantine: \(result.quarantined)")) }
+    let notRun = result.total - result.passed - result.failed - result.quarantined
     if notRun > 0 { counts.append(String(localized: "Not run: \(notRun)")) }
     let summary = counts.joined(separator: " · ")
     return result.stopped
@@ -132,7 +135,10 @@ enum RunText {
     case .cancelled:
       return String(localized: "You stopped the test.")
     case .failed:
-      return report.attempts.last?.failure.map(failure) ?? String(localized: "The test failed.")
+      let attempt = decidingAttempt(report: report)
+      let text = attempt?.failure.map(failure) ?? String(localized: "The test failed.")
+      guard let row = attempt?.row else { return text }
+      return String(localized: "\(RunChoices.rowTitle(number: Int(row.number), label: row.label)): \(text)")
     case .passed:
       let time = Duration.milliseconds(report.durationMs).formatted(.units(allowed: [.minutes, .seconds], width: .abbreviated))
       if report.flaky {

@@ -5,9 +5,10 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point, Question, Run,
-    RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus, VIDEO_FILE, Verdict,
-    VideoMode, VisionAnswer, VisionError, VisionJudge, html, junit_xml, prune_videos,
+    DataRow, Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point,
+    Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus,
+    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, html, junit_xml,
+    prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -608,6 +609,117 @@ fn use_data_types_each_row() {
             ("b@x.io".into(), "row 2 of 2".into())
         ]
     );
+    // Each row is a run of the whole test of its own.
+    let rows: Vec<_> = run
+        .report
+        .attempts
+        .iter()
+        .map(|a| (a.number, a.row.as_ref().map(DataRow::title)))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (1, Some("Row 1: Ann".into())),
+            (1, Some("Row 2: Bo, Jr".into()))
+        ]
+    );
+    assert_eq!(
+        run.report.rows_summary().as_deref(),
+        Some("2 of 2 rows passed")
+    );
+    assert!(events.iter().any(|e| matches!(e,
+        Event::RowStarted { row: 2, rows: 2, label } if label == "Bo, Jr")));
+}
+
+#[test]
+fn data_rows_run_one_by_one_with_their_own_retries() {
+    let p = Project::new();
+    p.write("data/users.csv", "name,expected\nAnn,ok\nBo,bad\nCy,ok\n")
+        .write("refs/ok.png", solid([0, 0, 0]))
+        .test(
+            // The row's values are there before and after the loop too.
+            r#""hello":{"type":"type","text":"hi ${data.name}","next":"rows"},
+               "rows":{"type":"useData","file":"data/users.csv","body":"type","next":"check"},
+               "type":{"type":"type","text":"${data.name}","next":"rows"},
+               "check":{"type":"openFile","files":["refs/${data.expected}.png"]}"#,
+            "hello",
+            1,
+        );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(&p, &hands, RunControl::new(), &options());
+    let report = run.report;
+    assert_eq!(report.verdict, Verdict::Failed);
+    assert!(!report.flaky);
+    let attempts: Vec<_> = report
+        .attempts
+        .iter()
+        .map(|a| (a.row.as_ref().unwrap().number, a.number, a.verdict))
+        .collect();
+    assert_eq!(
+        attempts,
+        [
+            (1, 1, Verdict::Passed),
+            (2, 1, Verdict::Failed),
+            (2, 2, Verdict::Failed),
+            (3, 1, Verdict::Passed)
+        ]
+    );
+    assert_eq!(report.rows_summary().as_deref(), Some("2 of 3 rows passed"));
+    assert_eq!(&hands.typed()[..2], ["hi Ann", "Ann"]);
+    let cases = report.split_rows();
+    assert_eq!(cases[1].test, "T [Row 2: Bo]");
+    assert_eq!(cases[1].attempts.len(), 2);
+    assert_eq!(cases[1].verdict, Verdict::Failed);
+    let junit = jevision_runner::junit_xml(std::slice::from_ref(&report));
+    assert!(junit.contains("tests=\"3\""), "{junit}");
+    assert!(junit.contains("name=\"T [Row 2: Bo]\""), "{junit}");
+    let page = html(&report, &run.dir, None);
+    assert!(page.contains("2 of 3 rows passed."), "{page}");
+    assert!(page.contains("Row 2: Bo · Attempt 2"), "{page}");
+
+    // A range of rows, and a range past the end stops at the last row.
+    let options = RunOptions {
+        rows: Some(1..=7),
+        retries: Some(0),
+        ..options()
+    };
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run_with(&p, &hands, RunControl::new(), &options).0.report;
+    assert_eq!(report.rows_summary().as_deref(), Some("1 of 2 rows passed"));
+    assert_eq!(hands.typed(), ["hi Bo", "Bo", "hi Cy", "Cy"]);
+}
+
+#[test]
+fn a_broken_or_empty_table_stops_the_run_before_it_starts() {
+    let p = Project::new();
+    p.test(
+        r#""rows":{"type":"useData","file":"data/users.csv","body":"type"},
+           "type":{"type":"type","text":"${data.name}","next":"rows"}"#,
+        "rows",
+        0,
+    );
+    for (csv, code) in [
+        ("name,name\nAnn,Bo\n", "data.duplicateColumn"),
+        ("name\n\"Ann\n", "data.unclosedQuote"),
+    ] {
+        p.write("data/users.csv", csv);
+        let hands = Fake::new(solid([0, 0, 0]));
+        let report = run_with(&p, &hands, RunControl::new(), &options()).0.report;
+        let failure = report.attempts[0].failure.clone().unwrap();
+        assert_eq!(failure.code, "run.data.unreadable");
+        assert_eq!(failure.param("problem"), code);
+        assert!(hands.log().is_empty());
+    }
+    p.write("data/users.csv", "name\n");
+    let report = run_with(
+        &p,
+        &Fake::new(solid([0, 0, 0])),
+        RunControl::new(),
+        &options(),
+    )
+    .0
+    .report;
+    assert_eq!(failure_code(&report), "run.data.noRow");
 }
 
 #[test]
@@ -626,7 +738,7 @@ fn environment_values_and_one_data_row() {
     );
     let staging = RunOptions {
         environment: Some("staging".into()),
-        data_row: Some(1),
+        rows: Some(1..=1),
         ..options()
     };
     let hands = Fake::new(solid([0, 0, 0]));
@@ -640,16 +752,16 @@ fn environment_values_and_one_data_row() {
     assert_eq!(saved.report.environment.as_deref(), Some("staging"));
 
     // Nothing touches the computer when a value can't be found.
-    for (environment, data_row, code) in [
+    for (environment, rows, code) in [
         (None, None, "run.env.notChosen"),
         (Some("empty"), None, "run.env.missing"),
         (Some("prod"), None, "run.env.unknown"),
-        (Some("staging"), Some(2), "run.data.noRow"),
+        (Some("staging"), Some(2..=2), "run.data.noRow"),
     ] {
         let hands = Fake::new(solid([0, 0, 0]));
         let options = RunOptions {
             environment: environment.map(str::to_owned),
-            data_row,
+            rows,
             ..options()
         };
         let report = run_with(&p, &hands, RunControl::new(), &options).0.report;
@@ -795,6 +907,75 @@ fn retries_tell_flaky_from_stable_failure() {
     assert!(xml.contains(r#"tests="2" failures="1""#));
     assert_eq!(xml.matches("<failure ").count(), 1);
     assert_eq!(xml.matches("<rerunFailure ").count(), 2);
+}
+
+#[test]
+fn project_retries_and_quarantine_apply_to_runs() {
+    let p = Project::new();
+    let failing = format!(
+        r#"{{"format":1,"name":"T","app":"{APP}","start":"check","blocks":{{
+            "check":{{"type":"check","reference":{{"image":"refs/ok.png","compare":"exact"}}}}}}}}"#
+    );
+    p.write("refs/ok.png", solid([0, 128, 0]))
+        .write("t.flow.json", &failing)
+        .write(
+            "jevision.project.json",
+            r#"{"format":1,"retries":2,"quarantine":[{"test":"t.flow.json","reason":"Bug 12"}]}"#,
+        );
+    let report = run(&p, &Fake::new(solid([128, 0, 0]))).report;
+    assert_eq!(report.attempts.len(), 3, "the project's default retries");
+    assert!(report.quarantined && report.is_quarantined_failure());
+    assert_eq!(report.quarantine_reason.as_deref(), Some("Bug 12"));
+    assert_eq!(report.file_hash.as_ref().map(String::len), Some(64));
+    assert_eq!(
+        RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
+            .unwrap()
+            .describe(),
+        "Failed 3 times in a row — a real failure, not flakiness."
+    );
+    let xml = junit_xml(std::slice::from_ref(&report));
+    assert_well_formed_xml(&xml);
+    assert!(
+        xml.contains(r#"failures="0" errors="0" skipped="1""#),
+        "{xml}"
+    );
+    assert!(
+        xml.contains(r#"<skipped message="Quarantined (Bug 12). "#),
+        "{xml}"
+    );
+
+    // The test's own retries win over the project's, even 0.
+    p.write(
+        "t.flow.json",
+        failing.replace(r#""start""#, r#""retries":0,"start""#),
+    );
+    let report = run(&p, &Fake::new(solid([128, 0, 0]))).report;
+    assert_eq!(report.attempts.len(), 1);
+
+    p.write("jevision.project.json", r#"{"format":1,"retries":99}"#);
+    let report = run(&p, &Fake::new(solid([0, 128, 0]))).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.project.unreadable");
+    assert!(!report.quarantined);
+}
+
+#[test]
+fn retry_verdicts_say_flaky_or_real() {
+    use Verdict::{Cancelled, Failed, Passed};
+    assert_eq!(RetryVerdict::of(Failed, false, 1), None);
+    assert_eq!(RetryVerdict::of(Cancelled, false, 3), None);
+    assert_eq!(
+        RetryVerdict::of(Passed, true, 3),
+        Some(RetryVerdict::PassedOnRetry { retry: 2 })
+    );
+    assert_eq!(
+        RetryVerdict::of(Failed, true, 2),
+        Some(RetryVerdict::FailedDifferently { attempts: 2 })
+    );
+    assert_eq!(
+        RetryVerdict::PassedOnRetry { retry: 1 }.describe(),
+        "Passed on retry 1 after failing — the test is flaky."
+    );
 }
 
 #[test]

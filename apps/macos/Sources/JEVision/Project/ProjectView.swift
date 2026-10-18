@@ -8,6 +8,7 @@ struct ProjectView: View {
   @State private var query = ""
   @State private var renaming: ProjectItem?
   @State private var newName = ""
+  @State private var quarantining: QuarantineRequest?
   @State private var failure: String?
   /// Open folders; the folders around the selected test open by themselves.
   @State private var expanded: Set<ProjectItem.ID> = []
@@ -39,6 +40,7 @@ struct ProjectView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) {
         VStack(spacing: 0) {
           EnvironmentChip()
+          ScheduleChip()
           if let status = project.git.status { GitChip(status: status) }
         }
       }
@@ -63,6 +65,7 @@ struct ProjectView: View {
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       project.git.refresh()
     }
+    .quarantineAlert($quarantining)
     .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
       TextField("Name", text: $newName)
       Button("Rename") {
@@ -157,7 +160,10 @@ struct ProjectView: View {
   }
 
   private func row(_ item: ProjectItem, showsPath: Bool, latest: [String: RunStatus]) -> some View {
-    SidebarRow(item: item, showsPath: showsPath, status: latest[item.id], run: canRun ? { run(item) } : nil)
+    SidebarRow(
+      item: item, showsPath: showsPath, status: latest[item.id], quarantine: project.quarantine(of: item.id),
+      flaky: project.flaky[item.id], run: canRun ? { run(item) } : nil
+    )
       .contextMenu {
         Button(item.kind == .test ? "Run" : "Run Folder") { run(item) }
           .disabled(!canRun)
@@ -166,6 +172,13 @@ struct ProjectView: View {
           Button("Rename…") {
             newName = item.name
             renaming = item
+          }
+          if project.quarantine(of: item.id) != nil {
+            Button("Release from Quarantine") {
+              do { try project.releaseFromQuarantine(item.id) } catch { failure = ProjectStore.message(error) }
+            }
+          } else {
+            Button("Quarantine…") { quarantining = QuarantineRequest(file: item.id, name: item.name) }
           }
           Button("Move to Trash") { trash(item) }
           Divider()
@@ -287,6 +300,9 @@ private struct SidebarRow: View {
   let showsPath: Bool
   /// How the test's last run ended.
   let status: RunStatus?
+  let quarantine: Quarantined?
+  /// Why the test counts as flaky, when its recent runs say so.
+  let flaky: FlakyEvidence?
   /// Runs the test, or every test of the folder; `nil` while nothing can run.
   let run: (() -> Void)?
 
@@ -308,8 +324,22 @@ private struct SidebarRow: View {
                 .foregroundStyle(.secondary)
             }
           }
-          if let status {
+          if status != nil || quarantine != nil || flaky != nil {
             Spacer(minLength: 0)
+          }
+          if let quarantine {
+            QuarantineMark(entry: quarantine)
+              .font(.system(size: 9))
+              .accessibilityHidden(true)
+          }
+          if let flaky, status != .flaky {
+            Image(systemName: RunStatus.flaky.dot)
+              .font(.system(size: 7))
+              .foregroundStyle(RunStatus.flaky.color)
+              .help(Text(RunHistory.flakyEvidence(flaky)))
+              .accessibilityHidden(true)
+          }
+          if let status {
             Image(systemName: status.dot)
               .font(.system(size: 7))
               .foregroundStyle(status.color)
@@ -321,7 +351,15 @@ private struct SidebarRow: View {
         Image(systemName: "flowchart")
       }
       .modifier(RunOnHover(title: Text("Run"), run: run))
-      .accessibilityValue(status.map { Text("Last run: \($0.title)") } ?? Text(verbatim: ""))
+      .accessibilityValue(Text(verbatim: accessibilityValue))
     }
+  }
+
+  private var accessibilityValue: String {
+    var parts: [String] = []
+    if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
+    if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
+    if let status { parts.append(String(localized: "Last run: \(status.title)")) }
+    return parts.joined(separator: ". ")
   }
 }

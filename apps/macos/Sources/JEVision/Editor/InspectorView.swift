@@ -285,6 +285,7 @@ struct InspectorView: View {
               .textSelection(.enabled)
           }
         }
+        DataTableButton(file: file, context: context)
       } footer: {
         Text("Use a column in Type Text blocks inside the loop with Insert.")
           .foregroundStyle(.secondary)
@@ -376,13 +377,8 @@ private struct WaitForFields: View {
 /// Column names of the CSV files a test reads, from their first line.
 enum DataColumns {
   static func read(_ file: String, folder: URL) -> [String] {
-    guard !file.isEmpty,
-      let text = try? String(contentsOf: RelativePath.resolve(file, in: folder), encoding: .utf8),
-      let header = text.split(whereSeparator: \.isNewline).first
-    else { return [] }
-    return header.split(separator: ",", omittingEmptySubsequences: false)
-      .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "\"")) }
-      .filter { !$0.isEmpty }
+    guard !file.isEmpty, !file.contains("${") else { return [] }
+    return (try? readDataRows(path: RelativePath.resolve(file, in: folder).path(percentEncoded: false)))?.columns ?? []
   }
 
   static func all(in flow: Flow, folder: URL) -> [String] {

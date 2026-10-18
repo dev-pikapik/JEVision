@@ -27,7 +27,8 @@ struct ProjectMapView: View {
             ForEach(group.tests) { test in
               let info = map[test.id]
               MapCard(
-                test: test, info: info, last: latest[test.id],
+                test: test, info: info, last: latest[test.id], quarantine: project.quarantine(of: test.id),
+                flaky: project.flaky[test.id],
                 uses: (info?.uses ?? []).compactMap { names[$0] },
                 usedBy: (usedBy[test.id] ?? []).compactMap { names[$0] }
               ) { project.selection = test.id }
@@ -210,6 +211,8 @@ private struct MapCard: View {
   let test: ProjectItem
   let info: MapTest?
   let last: SavedRun?
+  let quarantine: Quarantined?
+  let flaky: FlakyEvidence?
   /// Names of the tests it runs, and of the tests that run it.
   let uses: [String]
   let usedBy: [String]
@@ -230,6 +233,25 @@ private struct MapCard: View {
         }
         .font(.caption)
         .foregroundStyle(.secondary)
+        if let quarantine {
+          Label {
+            Text(QuarantineText.describe(quarantine)).lineLimit(2)
+          } icon: {
+            Image(systemName: RunStatus.quarantined.symbol).foregroundStyle(RunStatus.quarantined.color)
+          }
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        }
+        if let flaky, last?.status != .flaky {
+          Label {
+            Text("Flaky").lineLimit(1)
+          } icon: {
+            Image(systemName: RunStatus.flaky.symbol).foregroundStyle(RunStatus.flaky.color)
+          }
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .help(Text(RunHistory.flakyEvidence(flaky)))
+        }
         if let blocks = info?.blocks, blocks > 0 {
           // A short bar per block, up to ten: how big the test is at a glance.
           HStack(spacing: 3) {
@@ -274,6 +296,8 @@ private struct MapCard: View {
 
   private var accessibilityValue: String {
     var parts = [state.text]
+    if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
+    if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
     if !uses.isEmpty { parts.append(String(localized: "Runs \(uses.formatted(.list(type: .and)))")) }
     if !usedBy.isEmpty { parts.append(String(localized: "Run by \(usedBy.formatted(.list(type: .and)))")) }
     return parts.joined(separator: ". ")

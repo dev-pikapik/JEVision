@@ -16,6 +16,10 @@ struct RunState: Equatable {
   private(set) var phase = Phase.running
   private(set) var attempt: UInt32 = 1
   private(set) var maxAttempts: UInt32 = 1
+  /// Data row being run, counted from 1, of `rows`; 0 when the test has no data table.
+  private(set) var row: UInt32 = 0
+  private(set) var rows: UInt32 = 0
+  private(set) var rowLabel = ""
   /// The block of this test that runs now or is about to; `nil` while a test it runs is busy.
   private(set) var current: String?
   /// Type of the block that runs now, wherever it is.
@@ -48,6 +52,10 @@ struct RunState: Equatable {
       self.file = file
       name = test
       self.maxAttempts = max(1, maxAttempts)
+    case .rowStarted(let row, let rows, let label):
+      self.row = row
+      self.rows = rows
+      rowLabel = label
     case .attemptStarted(let attempt):
       self.attempt = attempt
       marks = [:]

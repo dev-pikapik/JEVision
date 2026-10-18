@@ -5,6 +5,7 @@
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
 mod canvas;
+mod data;
 mod decode;
 mod diff;
 mod edit;
@@ -12,9 +13,12 @@ mod env;
 mod issue;
 mod layout;
 mod model;
+mod project;
+mod schedule;
 mod validate;
 
 pub use canvas::CanvasItem;
+pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{START, Slot};
@@ -27,6 +31,14 @@ pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
 pub use model::*;
+pub use project::{PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use schedule::{
+    CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
+    SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES, Schedule, ScheduleHistory,
+    ScheduleTests, ScheduledOutcome, ScheduledRun, SkipReason, TimeOfDay, Weekday,
+    begin_schedule_check, calendar_intervals, due_schedules, launch_agent_plist, load_schedules,
+    parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
+};
 pub use validate::{
     MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, validate, validate_in,
 };
