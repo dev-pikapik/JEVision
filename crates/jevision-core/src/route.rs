@@ -84,11 +84,20 @@ pub fn route_around(from: &Rect, to: &Rect, obstacles: &[Rect]) -> Vec<Point> {
         .map(|r| r.y)
         .fold(f64::INFINITY, f64::min)
         - LANE;
+    // Checking a path against every box is the costly part, so paths are checked cheapest
+    // first and the first clear one wins; the sort is stable, so ties keep their order.
+    let mut candidates: Vec<(f64, Vec<Point>)> = candidates
+        .into_iter()
+        .map(|path| {
+            let path = straighten(path);
+            (cost(&path), path)
+        })
+        .collect();
+    candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
     candidates
         .into_iter()
-        .map(straighten)
-        .filter(|path| clear(path))
-        .min_by(|a, b| cost(a).total_cmp(&cost(b)))
+        .map(|(_, path)| path)
+        .find(|path| clear(path))
         .unwrap_or_else(|| straighten(through(over)))
 }
 

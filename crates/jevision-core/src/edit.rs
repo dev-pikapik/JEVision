@@ -1,7 +1,7 @@
 //! Edits that keep a test connected: adding a block on an edge, and removing one so that its
 //! neighbours are joined back together.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::decode::DEFAULT_WAIT_TIMEOUT_MS;
 use crate::model::{
@@ -228,17 +228,23 @@ impl Flow {
         self.blocks.iter().position(|b| b.id == id)
     }
 
+    /// Where each id is in `blocks`; the first block of a duplicate id wins, as in [`Self::position`].
+    fn index(&self) -> HashMap<&str, usize> {
+        let ids = self.blocks.iter().enumerate().rev();
+        ids.map(|(i, b)| (b.id.as_str(), i)).collect()
+    }
+
     /// Ids of the blocks reachable from `start` over any edge.
-    fn reachable(&self) -> HashSet<String> {
+    fn reachable(&self, start: &str) -> HashSet<String> {
+        let index = self.index();
         let mut seen = HashSet::new();
-        let mut stack = vec![self.start.clone()];
+        let mut stack = vec![start];
         while let Some(id) = stack.pop() {
-            let Some(i) = self.position(&id) else {
+            let Some(&i) = index.get(id) else {
                 continue;
             };
-            if seen.insert(id) {
-                let edges = self.blocks[i].kind.edges();
-                stack.extend(edges.into_iter().map(|(_, t)| t.to_owned()));
+            if seen.insert(id.to_owned()) {
+                stack.extend(self.blocks[i].kind.edges().into_iter().map(|(_, t)| t));
             }
         }
         seen
@@ -260,8 +266,9 @@ impl Flow {
             from: String::new(),
             edge: START.to_owned(),
         };
+        let index = self.index();
         let mut cur = self.start.as_str();
-        while let Some(i) = self.position(cur) {
+        while let Some(&i) = index.get(cur) {
             if !seen.insert(cur) {
                 break;
             }
@@ -433,7 +440,7 @@ impl Flow {
     /// `None` when nothing is left to select or there is no such block.
     pub fn remove_block(&mut self, id: &str) -> Option<String> {
         let i = self.position(id)?;
-        let before = self.reachable();
+        let before = self.reachable(&self.start);
         let removed = self.blocks.remove(i);
         // `outer` replaces the block for edges from outside, `inner` for a loop body's way back.
         let (outer, inner) = match &removed.kind {
@@ -457,9 +464,7 @@ impl Flow {
         };
         let inside = match &removed.kind {
             BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } if body != id => {
-                let mut part = self.clone();
-                part.start = body.clone();
-                part.reachable()
+                self.reachable(body)
             }
             _ => HashSet::new(),
         };
@@ -489,7 +494,7 @@ impl Flow {
             self.start = outer.clone().unwrap_or_default();
         }
 
-        let after = self.reachable();
+        let after = self.reachable(&self.start);
         self.blocks
             .retain(|b| !before.contains(&b.id) || after.contains(&b.id));
         let kept: HashSet<&str> = self.blocks.iter().map(|b| b.id.as_str()).collect();
