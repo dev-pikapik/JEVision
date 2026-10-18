@@ -739,7 +739,11 @@ fn dependencies_round_trip_and_are_validated() {
     let saved = to_canonical_json(&flow);
     assert!(saved.contains("\"retries\": 1,\n  \"dependsOn\": [\n    \"../login.flow.json\""));
     assert_eq!(parse(&saved).unwrap(), flow);
-    assert!(validate(&flow).is_empty());
+    assert!(
+        validate(&flow)
+            .iter()
+            .all(|i| i.severity == Severity::Warning)
+    );
 
     let mut bad = flow;
     bad.depends_on = vec![
@@ -754,7 +758,8 @@ fn dependencies_round_trip_and_are_validated() {
         [
             "flow.dependency.invalid",
             "flow.dependency.invalid",
-            "flow.dependency.duplicate"
+            "flow.dependency.duplicate",
+            "flow.noCheck"
         ]
     );
     assert_eq!(

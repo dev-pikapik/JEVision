@@ -194,6 +194,7 @@ impl Run {
             display_scale: None,
             blocked: Some(blocker),
             added_as_dependency: options.added_as_dependency,
+            nothing_checked: false,
             attempts: Vec::new(),
         };
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;

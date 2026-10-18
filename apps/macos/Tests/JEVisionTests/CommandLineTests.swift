@@ -175,6 +175,18 @@ struct CommandLineToolTests {
     #expect(missing.err.contains("cannot read: No such file or directory"))
   }
 
+  @Test func validateFindsTestsWaitingForEachOther() throws {
+    let dir = try Scratch()
+    let test = { (name: String, after: String) in
+      #"{"format": 1, "name": "\#(name)", "app": "com.example.App", "dependsOn": ["\#(after)"], "start": "a", "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s"}}}"#
+    }
+    let a = try dir.file("a.flow.json", test("A", "b.flow.json"))
+    _ = try dir.file("b.flow.json", test("B", "a.flow.json"))
+    let result = try jevision("validate", a)
+    #expect(result.status == 1)
+    #expect(result.out.contains("in a circle: a.flow.json → b.flow.json → a.flow.json"))
+  }
+
   @Test func validateWarnsAboutMissingFilesNextToTheTest() throws {
     let dir = try Scratch()
     let test = try dir.file("click.flow.json", #"""
@@ -418,18 +430,6 @@ struct CommandLineRunTests {
     #expect(tests[1]["blockedBy"] as? String == "Blocked: Login failed")
     let junit = try String(contentsOfFile: try #require(request.junit), encoding: .utf8)
     #expect(junit.contains("<skipped message=\"Blocked: Login failed."))
-  }
-
-  @Test func validateFindsTestsWaitingForEachOther() throws {
-    let dir = try Scratch()
-    let test = { (name: String, after: String) in
-      #"{"format": 1, "name": "\#(name)", "app": "com.example.App", "dependsOn": ["\#(after)"], "start": "a", "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s"}}}"#
-    }
-    let a = try dir.file("a.flow.json", test("A", "b.flow.json"))
-    _ = try dir.file("b.flow.json", test("B", "a.flow.json"))
-    let result = try jevision("validate", a)
-    #expect(result.status == 1)
-    #expect(result.out.contains("in a circle: a.flow.json → b.flow.json → a.flow.json"))
   }
 
   @Test func planFindsTestsAndTheProject() throws {
