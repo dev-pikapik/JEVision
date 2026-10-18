@@ -16,6 +16,8 @@ final class RunCenter {
     /// Block to start from instead of the test's first one.
     let from: String?
     let stepByStep: Bool
+    /// The paired device that asked for the run from afar.
+    var requestedBy: String? = nil
   }
 
   struct Result: Equatable {
@@ -51,6 +53,8 @@ final class RunCenter {
   @ObservationIgnored private var hiddenWindows: [NSWindow] = []
 
   @ObservationIgnored private let defaults: UserDefaults
+  /// Also hears every run of the project at the URL, for remote access.
+  @ObservationIgnored var remoteListener: ((URL) -> (any RunListener)?)?
 
   private static let declinedKey = "gitIgnoreDeclined"
   private static let breakpointsKey = "breakpoints"
@@ -78,11 +82,22 @@ final class RunCenter {
     guard !isRunning, document.flow != nil else { return }
     let request = Request(document: document, project: project, from: block, stepByStep: stepByStep)
     let missing = Self.missing(for: request)
-    if missing.permissions.isEmpty, missing.secrets.isEmpty, missing.errors == 0 {
-      start(request)
-    } else {
+    if !missing.permissions.isEmpty || !missing.secrets.isEmpty || missing.errors > 0 || !start(request) {
       blocked = request
     }
+  }
+
+  /// Runs `test`, relative to `project`, for a paired device, or says why it can't. Nothing
+  /// waits for a person here: what a local run would ask for refuses the remote one.
+  func runRemotely(_ test: String, in project: URL, requestedBy device: String) -> RemoteError? {
+    guard !isRunning, blocked == nil else { return .RunInProgress }
+    let request = Request(
+      document: FlowDocument(url: project.appending(path: test)), project: project, from: nil, stepByStep: false,
+      requestedBy: device)
+    let missing = Self.missing(for: request)
+    guard request.document.flow != nil, missing.errors == 0 else { return .TestUnreadable }
+    guard missing.permissions.isEmpty, missing.secrets.isEmpty, start(request) else { return .HostFailed }
+    return nil
   }
 
   /// Starts the run the sheet was holding back, now that nothing is missing.
@@ -92,14 +107,12 @@ final class RunCenter {
     run(request.document, in: request.project, from: request.from, stepByStep: request.stepByStep)
   }
 
-  private func start(_ request: Request) {
+  /// Starts the run; `false` when the emergency stop can't be armed.
+  private func start(_ request: Request) -> Bool {
     let run = TestRun()
     let ai = AISettings(defaults)
     // Esc Esc stops the run right on the watcher's thread, whatever the main thread is doing.
-    guard input.start(onEmergencyStop: { run.cancel() }) else {
-      blocked = request
-      return
-    }
+    guard input.start(onEmergencyStop: { run.cancel() }) else { return false }
     input.ignoreInput(for: Self.handsOffTime)
     self.run = run
     running = request
@@ -107,7 +120,10 @@ final class RunCenter {
     state = RunState()
     stateURL = request.document.url
     run.setStepMode(on: request.stepByStep)
-    run.setBreakpoints(blocks: Array(breakpoints[request.document.url] ?? []))
+    // Breakpoints are for debugging here; a run from afar would wait at them for nobody.
+    if request.requestedBy == nil {
+      run.setBreakpoints(blocks: Array(breakpoints[request.document.url] ?? []))
+    }
     let hud = GlassPanel(RunHUD(center: self), width: RunHUD.width, height: RunHUD.height)
     self.hud = hud
     getOutOfTheWay()
@@ -117,9 +133,12 @@ final class RunCenter {
     }
     run.start(
       project: request.project.path, test: request.document.url.path,
-      options: RunOptions(startAt: request.from, retries: nil, vision: ai.settings(), localOnly: ai.localOnly),
+      options: RunOptions(
+        startAt: request.from, retries: nil, vision: ai.settings(), localOnly: ai.localOnly,
+        requestedBy: request.requestedBy),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
-      secrets: StoredSecrets(), listener: RunBridge(center: self))
+      secrets: StoredSecrets(), listener: RunBridge(center: self, remote: remoteListener?(request.project)))
+    return true
   }
 
   // MARK: Control
@@ -254,21 +273,26 @@ final class RunCenter {
   }
 }
 
-/// Passes a run's progress from its thread to the main thread, in order.
+/// Passes a run's progress from its thread to the main thread, in order. Remote access hears it
+/// right away, on the run's thread.
 private final class RunBridge: RunListener {
   let center: RunCenter
+  let remote: (any RunListener)?
 
-  init(center: RunCenter) {
+  init(center: RunCenter, remote: (any RunListener)?) {
     self.center = center
+    self.remote = remote
   }
 
   func event(event: RunEvent) {
+    remote?.event(event: event)
     DispatchQueue.main.async { [center] in
       MainActor.assumeIsolated { center.apply(event) }
     }
   }
 
   func finished(outcome: RunOutcome) {
+    remote?.finished(outcome: outcome)
     DispatchQueue.main.async { [center] in
       MainActor.assumeIsolated { center.finish(outcome) }
     }

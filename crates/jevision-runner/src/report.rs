@@ -31,6 +31,10 @@ pub struct RunReport {
     /// References saved by this run because they did not exist, relative to the project folder.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub baselines_created: Vec<String>,
+    /// Name of the paired device that started the run from afar, such as `Anna's iPhone`;
+    /// absent for a run started on this computer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_by: Option<String>,
     pub attempts: Vec<Attempt>,
 }
 

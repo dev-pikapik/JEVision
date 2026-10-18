@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEVision finds your iPhone on the same Wi-Fi, so it can run tests on this Mac."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JEVision находит ваш iPhone в той же сети Wi-Fi, чтобы с него можно было запускать тесты на этом Mac."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

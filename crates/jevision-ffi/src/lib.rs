@@ -15,12 +15,14 @@ uniffi::setup_scaffolding!();
 mod git;
 mod history;
 mod mcp;
+mod remote;
 mod run;
 mod vision;
 
 pub use git::*;
 pub use history::*;
 pub use mcp::*;
+pub use remote::*;
 pub use run::*;
 
 /// The text is not a readable test file.

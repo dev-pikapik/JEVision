@@ -67,7 +67,8 @@ private struct RunRow: View {
         VStack(alignment: .leading, spacing: 1) {
           Text(run.report.test.isEmpty ? String(localized: "Untitled Test") : run.report.test)
             .lineLimit(1)
-          Text(verbatim: "\(time) · \(duration)")
+          // Runs started from a phone name it first.
+          Text(verbatim: [run.report.requestedBy, time, duration].compactMap { $0 }.joined(separator: " · "))
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -75,7 +76,9 @@ private struct RunRow: View {
       }
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(Text(run.report.test))
-      .accessibilityValue(Text("\(status.title), \(time), took \(duration)"))
+      .accessibilityValue(
+        run.report.requestedBy.map { Text("\(status.title), started from \($0), \(time), took \(duration)") }
+          ?? Text("\(status.title), \(time), took \(duration)"))
     }
   }
 }

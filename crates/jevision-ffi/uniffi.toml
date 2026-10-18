@@ -2,3 +2,7 @@
 module_name = "JEVisionCore"
 ffi_module_name = "JEVisionCoreFFI"
 ffi_module_filename = "JEVisionCoreFFI"
+
+# Swift reserves `.Protocol` on every type.
+[bindings.swift.rename]
+"RemoteError.Protocol" = "ProtocolMismatch"

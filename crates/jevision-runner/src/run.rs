@@ -43,6 +43,8 @@ pub struct RunOptions {
     /// Screenshots must not leave this computer: checks by meaning fail instead of asking a
     /// cloud provider.
     pub local_only: bool,
+    /// Name of the paired device that asked for the run, saved in the report.
+    pub requested_by: Option<String>,
 }
 
 impl Default for RunOptions {
@@ -52,6 +54,7 @@ impl Default for RunOptions {
             retries: None,
             poll_interval: Duration::from_millis(250),
             local_only: false,
+            requested_by: None,
         }
     }
 }
@@ -142,6 +145,7 @@ impl Runner<'_> {
             verdict: Verdict::Failed,
             flaky: false,
             baselines_created: Vec::new(),
+            requested_by: options.requested_by.clone(),
             attempts: Vec::new(),
         };
         let prepared = loaded.and_then(|t| {
