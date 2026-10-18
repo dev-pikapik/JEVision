@@ -192,4 +192,17 @@ struct RunVideoViewTests {
     #expect(RunVideoView.clock(61.9) == "1:01")
     #expect(RunVideoView.clock(.nan) == "0:00")
   }
+
+  @Test func reportsSayWhereTheyRan() {
+    var report = RunReport(
+      test: "login", file: "login.flow.json", app: "com.example.App", startedAt: "2026-10-18T09:00:00.000Z",
+      durationMs: 1500, verdict: .passed, flaky: false, baselinesCreated: [], attempts: [])
+    #expect(report.machine.isEmpty)
+    report.virtualMachine = true
+    report.displayScale = 1
+    #expect(report.machine == ["Virtual machine", "Standard display (1×)"])
+    report.virtualMachine = false
+    report.displayScale = 2
+    #expect(report.machine == ["Physical Mac", "Retina display (2×)"])
+  }
 }

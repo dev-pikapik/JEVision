@@ -6,6 +6,7 @@ import SwiftUI
 struct ProjectPrivacySection: View {
   @Environment(ProjectStore.self) private var project
   @State private var failure: String?
+  @State private var isEditingAreas = false
 
   var body: some View {
     Section {
@@ -26,12 +27,17 @@ struct ProjectPrivacySection: View {
           Text("Its screenshots never go to a cloud service or to AI assistants, whatever each person’s settings say.")
         }
         LabeledContent("Areas always hidden") {
-          if project.settings.hide.isEmpty {
-            Text("None")
-          } else {
-            Text(project.settings.hide.count, format: .number)
+          HStack {
+            if project.settings.hide.isEmpty {
+              Text("None")
+            } else {
+              Text(project.settings.hide.count, format: .number)
+            }
+            Button("Edit…") { isEditingAreas = true }
+              .accessibilityLabel(Text("Edit Areas Always Hidden"))
           }
         }
+        .sheet(isPresented: $isEditingAreas) { ProjectHideEditor() }
       }
     } header: {
       Text("This project")

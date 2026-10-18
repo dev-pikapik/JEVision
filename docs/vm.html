@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual machines — JEVision</title>
+<meta name="description" content="Run tests inside a macOS virtual machine with Tart or UTM: setup, permissions, Retina, SSH and CI.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html" aria-current="page">Virtual machines</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Virtual machines</h1>
+<p class="lead">Run your tests in a macOS virtual machine: a whole Mac inside a window on your Mac. Tests take over the virtual screen, mouse and keyboard, and yours stay free.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#why">Why use a virtual machine</a></li>
+    <li><a href="#host">What you need</a></li>
+    <li><a href="#tart">Make a virtual machine with Tart</a></li>
+    <li><a href="#utm">Make a virtual machine with UTM</a></li>
+    <li><a href="#install">Install JEVision inside</a></li>
+    <li><a href="#permissions">Allow permissions inside</a></li>
+    <li><a href="#unattended">Keep it ready for runs nobody watches</a></li>
+    <li><a href="#display">Display size and Retina</a></li>
+    <li><a href="#ssh">Run tests from your Mac over SSH</a></li>
+    <li><a href="#ci">CI on a virtual machine</a></li>
+    <li><a href="#report">How a report shows the virtual machine</a></li>
+    <li><a href="#limits">Limits</a></li>
+  </ul>
+</nav>
+
+<h2 id="why">Why use a virtual machine</h2>
+<p>A test moves the real mouse and types on the real keyboard, so while it runs on your Mac you can't use your Mac. In a virtual machine it's different:</p>
+<ul>
+  <li><strong>You keep working.</strong> The test clicks and types inside the virtual machine's window, not on your desktop.</li>
+  <li><strong>Every run starts clean.</strong> Prepare a virtual machine once, then start each run from a fresh copy of it: no leftover settings, files or sign-ins from the last run.</li>
+  <li><strong>Two runs at once.</strong> Two virtual machines can run tests at the same time.</li>
+</ul>
+<p>JEVision doesn't make the virtual machine for you. You set it up once with a free tool, such as Tart or UTM, and JEVision works inside it like on any Mac. Other tools built on Apple's virtualization, such as Parallels Desktop or VirtualBuddy, work the same way.</p>
+
+<h2 id="host">What you need</h2>
+<ul>
+  <li><strong>A Mac with Apple silicon</strong> (M1 or later) to run the virtual machine. Macs with Intel processors can't run macOS virtual machines with these tools.</li>
+  <li><strong>macOS 26 or later inside the virtual machine</strong>, like on any Mac that runs JEVision. Your own Mac needs a macOS version that can run it: the newest one is safest.</li>
+  <li><strong>Memory and disk:</strong> give the virtual machine at least 8 GB of memory and 4 processor cores. macOS with your app and Xcode tools takes 60–100 GB of disk.</li>
+</ul>
+
+<h2 id="tart">Make a virtual machine with Tart</h2>
+<p><a href="https://tart.run">Tart</a> is a free command-line tool. It downloads ready-made macOS virtual machines, so you don't install macOS yourself. In Terminal on your Mac:</p>
+<ol>
+  <li><strong>Install Tart</strong> with <a href="https://brew.sh">Homebrew</a>:
+<pre><code>brew install cirruslabs/cli/tart</code></pre></li>
+  <li><strong>Download a macOS virtual machine</strong> and name it <code>jevision</code>. This downloads about 25 GB once:
+<pre><code>tart clone ghcr.io/cirruslabs/macos-tahoe-base:latest jevision</code></pre>
+  <code>macos-tahoe-base</code> is macOS 26. Its user is <code>admin</code> with the password <code>admin</code>; it logs in on its own and allows SSH. Change the password if others can reach the virtual machine over the network.</li>
+  <li><strong>Give it more memory and a bigger screen</strong> (optional; the virtual machine must be stopped):
+<pre><code>tart set jevision --memory 8192 --cpu 4 --display 1920x1200</code></pre></li>
+  <li><strong>Start it.</strong> A window opens with the virtual Mac's screen:
+<pre><code>tart run jevision</code></pre></li>
+</ol>
+<p>To share a folder of your Mac, such as your test project, start it with <code>tart run jevision --dir=project:$HOME/my-tests</code>. Inside, the folder appears as <code>/Volumes/My Shared Files/project</code>.</p>
+
+<h2 id="utm">Make a virtual machine with UTM</h2>
+<p><a href="https://mac.getutm.app">UTM</a> is a free app with windows and buttons instead of commands.</p>
+<ol>
+  <li>Install UTM from <a href="https://mac.getutm.app">mac.getutm.app</a> and open it.</li>
+  <li>Click <strong>Create a New Virtual Machine</strong>, then <strong>Virtualize</strong>, then <strong>macOS 12+</strong>.</li>
+  <li>Leave the macOS installer file empty: UTM downloads the newest macOS that your Mac can run. Click <strong>Continue</strong>.</li>
+  <li>Choose at least 8 GB of memory, 4 cores and 100 GB of disk, then <strong>Save</strong>.</li>
+  <li>Start the virtual machine with the ▶ button. macOS installs itself, then shows the same setup assistant as a new Mac. Create a user and finish the setup.</li>
+</ol>
+<p>To share a folder of your Mac, choose it under <strong>Shared Directory</strong> in the virtual machine's window. Inside, it appears in <code>/Volumes/My Shared Files</code>.</p>
+
+<h2 id="install">Install JEVision inside</h2>
+<p>The simplest way is to copy the app you built on your Mac. In Terminal on your Mac, with the virtual machine running:</p>
+<pre><code>scp -r apps/macos/build/JEVision.app admin@<var>address</var>:/Applications/</code></pre>
+<p>Here <code>admin</code> is the user inside and <var>address</var> is the virtual machine's network address: <code>tart ip jevision</code> prints it; in UTM, open <strong>System Settings → Network</strong> inside. For <code>scp</code> and <code>ssh</code> to work in a UTM virtual machine, turn on <strong>System Settings → General → Sharing → Remote Login</strong> inside it first. You can also build JEVision inside, as in <a href="getting-started.html#build">Getting started</a>.</p>
+<p>Then, inside the virtual machine, open <strong>JEVision</strong> from Applications and choose <strong>JEVision → Install Command Line Tool…</strong> to get the <code>jevision</code> command. See <a href="getting-started.html#cli">Install the command-line tool</a>.</p>
+<p>Install the app you are testing inside too, from its <code>.app</code>, <code>.dmg</code> or <code>.pkg</code> file.</p>
+
+<h2 id="permissions">Allow permissions inside</h2>
+<p>A virtual machine is a separate Mac, so it needs its own permissions. The ones you gave JEVision on your own Mac don't count inside. In the virtual machine's window, open <strong>System Settings → Privacy &amp; Security</strong> and turn on the program that runs the tests in both lists:</p>
+<ul>
+  <li><strong>Screen &amp; System Audio Recording</strong>, to take screenshots;</li>
+  <li><strong>Accessibility</strong> (<strong>Device Control and Data Access</strong> from macOS 27), to click and type.</li>
+</ul>
+<p>Which program that is depends on how you start tests:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">You start tests</th><th scope="col">Turn on</th></tr></thead>
+  <tbody>
+    <tr><td>In the JEVision app</td><td>JEVision. The app asks for both when it needs them.</td></tr>
+    <tr><td>With <code>jevision run</code> in Terminal inside</td><td>Terminal</td></tr>
+    <tr><td>Over SSH from your Mac</td><td><code>sshd-session</code> (<code>sshd-keygen-wrapper</code> on older macOS). It isn't in the list by itself: click <strong>+</strong>, press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>G</kbd>, type <code>/usr/libexec/sshd-session</code> and click <strong>Open</strong>.</td></tr>
+    <tr><td>From a CI runner</td><td>The runner's program, as named by the first run.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Not sure? Run <code>jevision run</code> the way you will run it for real. If something is missing, it names the program and the lists to turn it on in, and exits without clicking anything.</p>
+<div class="warning">
+<p>Allowing <code>sshd-session</code> lets every command started over SSH see the screen and control the virtual machine. Do it only in a virtual machine used just for testing, never on your own Mac.</p>
+</div>
+<p>With Tart, do this once in a virtual machine you keep as a template, then start every run from a copy of it (see <a href="#ci">CI</a>). Copies keep the permissions.</p>
+
+<h2 id="unattended">Keep it ready for runs nobody watches</h2>
+<p>Tests need a logged-in user and an unlocked screen, also in a virtual machine. For <a href="schedules.html">schedules</a>, SSH and CI, set it up so it never waits for a person. Inside the virtual machine:</p>
+<ol>
+  <li><strong>Log in automatically.</strong> In <strong>System Settings → Users &amp; Groups</strong>, set <strong>Automatically log in as</strong> to the test user. If the menu is dimmed, turn off <strong>FileVault</strong> in <strong>Privacy &amp; Security</strong> first. Tart's ready-made virtual machines already log in by themselves.</li>
+  <li><strong>Never lock the screen.</strong> In <strong>System Settings → Lock Screen</strong>, set <strong>Start Screen Saver when inactive</strong> and <strong>Turn display off when inactive</strong> to <strong>Never</strong>, and <strong>Require password after screen saver begins or display is turned off</strong> to <strong>Never</strong>.</li>
+  <li><strong>Never sleep.</strong> In Terminal inside, run <code>sudo pmset -a sleep 0 displaysleep 0</code>.</li>
+  <li><strong>Secrets.</strong> If tests read <a href="environments.html#secrets">secrets</a> from the Keychain, run each test once inside and choose <strong>Always Allow</strong> when macOS asks. Over SSH and in CI it's easier to pass them as environment variables, as in <a href="cli.html#ci">Running in CI</a>.</li>
+</ol>
+<p>JEVision keeps the display awake while a test runs, and never types into a locked screen: a run that finds the screen locked stops, and a scheduled run is skipped and marked “skipped: screen locked”.</p>
+
+<h2 id="display">Display size and Retina</h2>
+<p>A virtual machine's screen is often a <strong>standard display</strong>, with one pixel per point, while a MacBook or an iMac has a <strong>Retina display</strong> with two. The same window is then twice as large in pixels on a Retina display, and text is drawn a little differently.</p>
+<ul>
+  <li><strong>Clicks and found pictures work on either.</strong> JEVision clicks in points, not pixels, and looks for a picture at both densities, so a button saved on a Retina Mac is found in a standard-display virtual machine and the other way round.</li>
+  <li><strong>Checks compare across densities</strong> by scaling the larger picture down. But text and thin lines don't match pixel for pixel, so an <code>exact</code> check, or a <code>similar</code> one with a high threshold, can fail. When it does, the failure says that the reference was saved on a display with a different pixel density.</li>
+</ul>
+<p>The fix is to save references on the kind of display the tests run on:</p>
+<ul>
+  <li><strong>Save references in the virtual machine</strong> where the tests run. This is the most reliable way.</li>
+  <li>Or <strong>give the virtual machine a Retina display</strong> like your Mac's. In UTM, open the virtual machine's settings, choose <strong>Display</strong> and turn on <strong>HiDPI (Retina)</strong>. Then check in <strong>System Settings → Displays</strong> inside that the resolution looks like your Mac's.</li>
+  <li>Or compare by <a href="checks.html#meaning">meaning</a> for screens with a lot of text.</li>
+</ul>
+<p>Keep the virtual machine's screen size the same from run to run. Positions in tests are relative to the app's window, so a different screen size matters only when the window itself changes size.</p>
+
+<h2 id="ssh">Run tests from your Mac over SSH</h2>
+<p>You can start tests in the virtual machine from Terminal on your Mac, without opening its window. This works when, inside the virtual machine, the test user is logged in (automatic login), the screen is unlocked and <code>sshd-session</code> has its <a href="#permissions">permissions</a>. Log in over SSH as that same user.</p>
+<pre><code>ssh admin@<var>address</var> /usr/local/bin/jevision run my-tests --junit junit.xml --html reports</code></pre>
+<p>The command runs in the user's home folder inside, so <code>my-tests</code> here is <code>~/my-tests</code> there. Write the full path <code>/usr/local/bin/jevision</code> (or <code>~/.local/bin/jevision</code> if you installed it just for yourself): a command given to <code>ssh</code> doesn't search the folders Terminal does. The exit status of <code>jevision run</code> comes back through <code>ssh</code>, so a script can tell whether the tests passed. See <a href="cli.html#run">jevision run</a>.</p>
+<p>To get the reports to your Mac, copy them:</p>
+<pre><code>mkdir vm-results
+scp -r admin@<var>address</var>:junit.xml admin@<var>address</var>:reports vm-results/</code></pre>
+<p>Open the files in <code>vm-results/reports</code> in a browser. Each HTML report is a single file with its screenshots inside. The full runs, with the video, stay inside in the project's <code>.jevision/runs</code> folder. With a <a href="#tart">shared folder</a>, run the project from <code>/Volumes/My Shared Files</code> and the reports appear on your Mac directly.</p>
+
+<h2 id="ci">CI on a virtual machine</h2>
+<p>There are two ways to run tests in a virtual machine for CI.</p>
+<h3 id="ci-runner">A runner inside the virtual machine</h3>
+<p>Set the virtual machine up as in <a href="#unattended">Keep it ready</a>, then install a GitHub Actions <a href="https://docs.github.com/actions/hosting-your-own-runners">self-hosted runner</a> inside it, logged in as the test user, and install the runner as a service with <code>./svc.sh install</code>. The workflow is the same as on a real Mac: see <a href="cli.html#ci">Running in CI</a>. Allow Screen Recording and Accessibility for the program the first run names.</p>
+<h3 id="ci-fresh">A fresh virtual machine for every run</h3>
+<p>For a clean Mac every time, keep the virtual machine you prepared as a template and run each job in a copy. A job on your Mac, for example on a runner installed there, can do it with Tart:</p>
+<pre><code>tart clone jevision run-$GITHUB_RUN_ID
+tart run --no-graphics run-$GITHUB_RUN_ID &amp;
+address=$(tart ip --wait 120 run-$GITHUB_RUN_ID)
+scp -r -o StrictHostKeyChecking=no my-tests admin@$address:
+ssh admin@$address /usr/local/bin/jevision run my-tests --junit junit.xml --html reports
+status=$?
+scp -r admin@$address:junit.xml admin@$address:reports .
+tart stop run-$GITHUB_RUN_ID
+tart delete run-$GITHUB_RUN_ID
+exit $status</code></pre>
+<p>Here <code>my-tests</code> is the project folder in the job's checkout. Install the app you test in the template, so every copy has it. <code>--no-graphics</code> only hides the window: the virtual machine still has its screen, and tests see it. To sign in over SSH without a password, add your Mac's SSH key to <code>~/.ssh/authorized_keys</code> inside the template.</p>
+
+<h2 id="report">How a report shows the virtual machine</h2>
+<p>Every report records where the run ran. The report's header in the app and the HTML report show the computer, “Virtual machine” or “Physical Mac”, and the display, such as “Retina display (2×)” or “Standard display (1×)”. In <code>report.json</code> they are <code>virtualMachine</code> and <code>displayScale</code>. When a check fails in a virtual machine but passes on your Mac, look at the display first. See <a href="reports.html#report">The report of a run</a>.</p>
+
+<h2 id="limits">Limits</h2>
+<ul>
+  <li><strong>Two at a time.</strong> macOS lets one Mac run at most two macOS virtual machines at the same time.</li>
+  <li><strong>Apple Account.</strong> Signing in to an Apple Account inside, for the App Store or iCloud, works only when both your Mac and the virtual machine run macOS 15 or later, and with some tools not at all. Install the app you test from its file instead of the App Store.</li>
+  <li><strong>No camera and no microphone</strong> unless the tool passes them through. Tests of features that need them can't pass inside.</li>
+  <li><strong>Graphics.</strong> A virtual machine has a simpler graphics processor than a real Mac. Most apps look the same, but heavy 3D, games and some video features may draw differently or not at all.</li>
+  <li><strong>Speed.</strong> Apps start and draw a little slower. If a <code>waitFor</code> sometimes times out inside but never on your Mac, give it a few more seconds.</li>
+</ul>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

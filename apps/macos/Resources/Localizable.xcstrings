@@ -13077,6 +13077,332 @@
           }
         }
       }
+    },
+    "Physical Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Физический Mac"
+          }
+        }
+      }
+    },
+    "Retina display (%@×)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплей Retina (%@×)"
+          }
+        }
+      }
+    },
+    "Standard display (%@×)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обычный дисплей (%@×)"
+          }
+        }
+      }
+    },
+    "Virtual machine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виртуальная машина"
+          }
+        }
+      }
+    },
+    "run.check.mismatchDensity" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen matches %@ by %@, and at least %@ is needed. The reference is %@ pixels and the screen %@: the reference was saved on a display with a different pixel density (Retina or not), where text and edges are drawn differently. Run on a display like the one the reference was saved on, or save the reference again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран совпадает с %2$@ на %3$@, а нужно не меньше %4$@. Эталон — %5$@ пикселей, а экран — %6$@: эталон сохранён на дисплее с другой плотностью пикселей (Retina или обычном), где текст и края рисуются иначе. Запустите тест на таком же дисплее, как тот, где сохранён эталон, или сохраните эталон заново."
+          }
+        }
+      }
+    },
+    "%@ × %@ of the window at %@, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ × %2$@ окна в точке %3$@, %4$@"
+          }
+        }
+      }
+    },
+    "Add Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку"
+          }
+        }
+      }
+    },
+    "Areas Always Hidden" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда скрытые области"
+          }
+        }
+      }
+    },
+    "Arrow keys move the selected area, Delete removes it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стрелки двигают выбранную область, Delete удаляет её."
+          }
+        }
+      }
+    },
+    "Before a screenshot of this project is saved in a report or goes to an AI model or an assistant, these areas are painted over in grey. They’re saved under “hide” in %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прежде чем снимок экрана этого проекта попадёт в отчёт, к модели ИИ или к ассистенту, эти области закрашиваются серым. Они хранятся в «hide» в файле %@."
+          }
+        }
+      }
+    },
+    "Capture the Window of…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять окно приложения…"
+          }
+        }
+      }
+    },
+    "Capture the window of the app you test, or choose a picture of it, to draw the areas on. The picture only helps you place them; it isn’t saved." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимите окно тестируемого приложения или выберите его картинку, чтобы нарисовать на ней области. Картинка нужна только для разметки и не сохраняется."
+          }
+        }
+      }
+    },
+    "Change Hidden Areas" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменение скрытых областей"
+          }
+        }
+      }
+    },
+    "Choose a Picture…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать картинку…"
+          }
+        }
+      }
+    },
+    "Drag on the picture to draw an area. Drag an area to move it, its corners to resize it. Areas are measured in parts of the window, so they fit it at any size." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потяните по картинке, чтобы нарисовать область. Перетащите область, чтобы сдвинуть её, или её углы, чтобы изменить размер. Области задаются в долях окна, поэтому подходят к окну любого размера."
+          }
+        }
+      }
+    },
+    "Edit Areas Always Hidden" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить всегда скрытые области"
+          }
+        }
+      }
+    },
+    "No Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет картинки"
+          }
+        }
+      }
+    },
+    "No areas yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Областей пока нет"
+          }
+        }
+      }
+    },
+    "No other app is open" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Других открытых приложений нет"
+          }
+        }
+      }
+    },
+    "Painted over in every screenshot of this project, for everyone who runs its tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрашиваются на каждом снимке экрана этого проекта — у всех, кто запускает его тесты."
+          }
+        }
+      }
+    },
+    "Picture of the window, %lld by %lld pixels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка окна, %1$lld на %2$lld пикселей"
+          }
+        }
+      }
+    },
+    "Replace Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить картинку"
+          }
+        }
+      }
+    },
+    "The Picture Wasn’t Opened" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка не открылась"
+          }
+        }
+      }
+    },
+    "The Picture Wasn’t Taken" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимок не сделан"
+          }
+        }
+      }
+    },
+    "This file can’t be read as a picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот файл не читается как картинка."
+          }
+        }
+      }
+    },
+    "Check for Updates…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить обновления…"
+          }
+        }
+      }
+    },
+    "Check for updates automatically" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверять обновления автоматически"
+          }
+        }
+      }
+    },
+    "Check Now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить сейчас"
+          }
+        }
+      }
+    },
+    "Version %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %@"
+          }
+        }
+      }
+    },
+    "Updates" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновления"
+          }
+        }
+      }
+    },
+    "JEVision asks before installing an update and installs only updates signed by the JEVision project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision спрашивает перед установкой обновления и ставит только обновления, подписанные проектом JEVision."
+          }
+        }
+      }
+    },
+    "This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта сборка JEVision не обновляется сама. Новые версии скачивайте со страницы JEVision на GitHub."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

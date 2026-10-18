@@ -7,8 +7,8 @@ use std::time::{Duration, Instant, SystemTime};
 use jevision_runner::{
     DataRow, Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point,
     Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus,
-    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, html, junit_xml,
-    prune_videos,
+    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe, html,
+    junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -534,6 +534,12 @@ fn check_creates_baseline_then_passes_then_fails() {
     let diff = std::fs::read(third.dir.join(step.diff.as_ref().unwrap())).unwrap();
     assert_eq!(pixel(&diff, 39, 19), [230, 20, 60], "differences are red");
 
+    assert_eq!(third.report.display_scale, Some(2.0));
+    assert_eq!(
+        third.report.virtual_machine.is_some(),
+        cfg!(target_os = "macos")
+    );
+
     let history = Run::list(&p.0).unwrap();
     assert_eq!(history.len(), 3);
     assert_eq!(history[0].report, third.report, "newest first");
@@ -563,7 +569,18 @@ fn ignore_masks_area_and_dark_references() {
 
     hands.state.lock().unwrap().screen =
         png(80, 40, |x, _| if x < 2 { [0, 0, 0] } else { [50, 50, 50] });
-    assert_eq!(failure_code(&run(&p, &hands).report), "run.check.mismatch");
+    // The failure tells that the reference comes from a display of another density.
+    let ran = run(&p, &hands);
+    let report = &ran.report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.check.mismatchDensity");
+    assert_eq!(
+        (failure.param("expected"), failure.param("actual")),
+        ("40×20", "80×40")
+    );
+    assert_eq!(report.display_scale, Some(2.0));
+    assert!(describe(failure).contains("different pixel density"));
+    assert!(html(report, &ran.dir, None).contains("Retina display (2×)</dd>"));
 
     hands.state.lock().unwrap().dark = true;
     let dark = run(&p, &hands).report;

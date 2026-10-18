@@ -63,6 +63,10 @@ enum RunText {
       return String(
         localized: "run.check.mismatch",
         defaultValue: "Block “\(block)”: the screen matches \(p("image")) by \(p("similarity")), and at least \(p("threshold")) is needed.")
+    case "run.check.mismatchDensity":
+      return String(
+        localized: "run.check.mismatchDensity",
+        defaultValue: "Block “\(block)”: the screen matches \(p("image")) by \(p("similarity")), and at least \(p("threshold")) is needed. The reference is \(p("expected")) pixels and the screen \(p("actual")): the reference was saved on a display with a different pixel density (Retina or not), where text and edges are drawn differently. Run on a display like the one the reference was saved on, or save the reference again.")
     case "run.env.notChosen":
       return String(localized: "run.env.notChosen", defaultValue: "The test reads the environment value \(p("name")), but no environment is chosen. Add one to \(environmentsFileName()).")
     case "run.env.missing":

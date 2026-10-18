@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -83,7 +84,7 @@
     <tr><td>Images, such as <code>refs/inbox.png</code></td><td>Reference images and the pictures of click targets</td><td>Yes</td></tr>
     <tr><td><code>*.csv</code></td><td>Tables for <a href="data-driven.html">data-driven tests</a></td><td>Yes</td></tr>
     <tr><td><code>jevision.environments.json</code></td><td><a href="environments.html">Environments</a></td><td>Yes</td></tr>
-    <tr><td><code>jevision.project.json</code></td><td>Retries and quarantine for the whole project</td><td>Yes</td></tr>
+    <tr><td><code>jevision.project.json</code></td><td>Retries, quarantine and privacy for the whole project</td><td>Yes</td></tr>
     <tr><td><code>jevision.schedule.json</code></td><td><a href="schedules.html">Schedules</a></td><td>Yes</td></tr>
     <tr><td><code>.jevision/runs/</code></td><td>Reports, screenshots and videos of runs</td><td>No</td></tr>
     <tr><td><code>.jevision/schedule-history.json</code></td><td>What came of scheduled runs on this Mac</td><td>No</td></tr>
@@ -147,9 +148,17 @@
 <pre><code>{
   "format": 1,
   "retries": 2,
-  "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42" } ]
+  "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42" } ],
+  "localOnly": true,
+  "hide": [ { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 } ]
 }</code></pre>
-<p>See <a href="retries.html#project-file">Project settings file</a>.</p>
+<ul>
+  <li><code>format</code> is <code>1</code>. A file from a newer JEVision is refused instead of being misread.</li>
+  <li><code>retries</code> (optional), 0 to 10, and <code>quarantine</code> (optional): see <a href="retries.html#project-file">Project settings file</a>.</li>
+  <li><code>localOnly</code> (optional, <code>false</code> when left out): <code>true</code> sends the project's screenshots only to AI models on this Mac, and never to assistants.</li>
+  <li><code>hide</code> (optional): areas of the window, as <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 from its top-left corner, painted over in grey in every screenshot before it is saved in a report or sent to an AI model or an assistant. Each area must have a size and end inside the window.</li>
+</ul>
+<p>Unknown keys are an error, so a typo doesn't go unnoticed. See <a href="retries.html#privacy">Screenshots and privacy</a>.</p>
 
 <h2 id="schedule">Schedules</h2>
 <p><code>jevision.schedule.json</code>, in the project folder:</p>
@@ -182,6 +191,7 @@
     <tr><td><code>video</code></td><td>The run's video; absent when none was kept</td></tr>
     <tr><td><code>fileHash</code></td><td>A fingerprint (SHA-256) of the test file, which tells runs of the same test apart from runs after it changed</td></tr>
     <tr><td><code>quarantined</code>, <code>quarantineReason</code></td><td>Whether the test was in <a href="retries.html#quarantine">quarantine</a>, and why</td></tr>
+    <tr><td><code>virtualMachine</code>, <code>displayScale</code></td><td>Whether the run ran in a <a href="vm.html">virtual machine</a>, and the pixels per point of its display: <code>2</code> on Retina, <code>1</code> on a standard display; absent when unknown</td></tr>
     <tr><td><code>attempts</code></td><td>Every attempt: <code>number</code>, <code>verdict</code>, <code>durationMs</code>, <code>failure</code>, the data <code>row</code> for a data-driven test, and its <code>steps</code></td></tr>
   </tbody>
 </table>

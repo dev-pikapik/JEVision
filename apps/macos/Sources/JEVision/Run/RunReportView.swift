@@ -276,8 +276,21 @@ private struct ReportHeader: View {
   private func meta(_ report: RunReport) -> String {
     let when = run.startedAt.formatted(date: .abbreviated, time: .shortened)
     let environment = report.environment.map { String(localized: "Environment: \($0)") }
-    let parts = [report.test, when, environment ?? "", RunHistory.duration(report.durationMs)]
+    let parts = [report.test, when, environment ?? ""] + report.machine + [RunHistory.duration(report.durationMs)]
     return parts.filter { !$0.isEmpty }.joined(separator: " · ")
+  }
+}
+
+extension RunReport {
+  /// Where the run ran, such as “Virtual machine” and “Standard display (1×)”; empty for a
+  /// report that doesn't say.
+  var machine: [String] {
+    let computer = virtualMachine.map { $0 ? String(localized: "Virtual machine") : String(localized: "Physical Mac") }
+    let display = displayScale.map { scale in
+      let times = scale.formatted()
+      return scale >= 2 ? String(localized: "Retina display (\(times)×)") : String(localized: "Standard display (\(times)×)")
+    }
+    return [computer, display].compactMap(\.self)
   }
 }
 

@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -216,7 +217,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
 <h2 id="ready">What a Mac needs to run tests</h2>
 <p>Before running anything, <code>jevision run</code> checks that the Mac can run tests, and if not, says what to do and exits with status <code>2</code>. A Mac can run tests when:</p>
 <ul>
-  <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal or from a CI agent started in that session, not over SSH and not as a system service;</li>
+  <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal, from a CI agent started in that session, or over SSH as that same user while they stay logged in at the screen, as in a <a href="vm.html#ssh">virtual machine</a>; not as a system service;</li>
   <li><strong>the screen is unlocked</strong>;</li>
   <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong>. The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>.</li>
 </ul>

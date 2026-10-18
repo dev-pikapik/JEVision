@@ -34,7 +34,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
         "type" => (
             "Types text, optionally clicking into a field first.",
             json!({
-                "text": "text to type; may hold ${secret.NAME} and ${data.COLUMN} placeholders",
+                "text": "text to type; may hold ${secret.NAME}, ${env.NAME} and ${data.COLUMN} placeholders",
                 "into": "optional target (see shapes) to click before typing",
             }),
             json!({ "type": "type", "text": "${secret.ACME_PASSWORD}", "into": { "image": "refs/password-field.png" } }),
@@ -120,6 +120,7 @@ pub(super) fn guide() -> Value {
             "duration": "text like 500ms, 10s or 2m",
             "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",
             "secrets": "${secret.NAME} in a type block's text is typed as the secret's value, which the person keeps in JEVision or the environment. Secret values never appear in tests, reports or here.",
+            "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder.",
         },
     })
 }

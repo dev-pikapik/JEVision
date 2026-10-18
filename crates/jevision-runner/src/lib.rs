@@ -10,6 +10,7 @@
 
 mod control;
 mod env;
+mod machine;
 mod report;
 mod run;
 

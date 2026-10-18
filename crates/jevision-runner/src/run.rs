@@ -1,5 +1,6 @@
 //! The engine: walks a test's flowchart block by block and records what happened.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write as _;
 use std::ops::RangeInclusive;
@@ -212,8 +213,11 @@ impl Runner<'_> {
                 .map(|bytes| content_hash(&bytes)),
             quarantined: quarantine.is_some(),
             quarantine_reason: quarantine.and_then(|q| q.reason),
+            virtual_machine: crate::machine::is_virtual(),
+            display_scale: None,
             attempts: Vec::new(),
         };
+        let display_scale = Cell::new(None);
         let (local_only, hide) = settings
             .as_ref()
             .map(|s| (s.local_only, s.hide.clone()))
@@ -328,6 +332,7 @@ impl Runner<'_> {
                             video,
                             local_only,
                             hide: &hide,
+                            display_scale: &display_scale,
                         };
                         let (mut attempt, opened, baselines) = exec.run(&root, &start);
                         attempt.row = data_row.clone();
@@ -355,6 +360,7 @@ impl Runner<'_> {
 
         (report.verdict, report.flaky) = summarize(&report.attempts);
         report.duration_ms = millis(clock.elapsed());
+        report.display_scale = display_scale.get();
         let path = dir.join("report.json");
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
         json.push('\n');
@@ -674,6 +680,8 @@ struct Exec<'r> {
     local_only: bool,
     /// Areas the project covers in every screenshot.
     hide: &'r [Rect],
+    /// Scale of the first screenshot of the run, for its report.
+    display_scale: &'r Cell<Option<f64>>,
 }
 
 impl Exec<'_> {
@@ -1520,7 +1528,15 @@ impl Exec<'_> {
 
     fn capture(&self, id: &str) -> Result<Screenshot, Stop> {
         let app = self.app();
-        self.hands(id, |h| h.capture(&app))
+        let shot = self.hands(id, |h| h.capture(&app))?;
+        self.saw(&shot);
+        Ok(shot)
+    }
+
+    fn saw(&self, shot: &Screenshot) {
+        if self.display_scale.get().is_none() {
+            self.display_scale.set(Some(shot.scale));
+        }
     }
 
     /// Saves a screenshot for the report if one can be taken; a missing window is not an error
@@ -1532,6 +1548,7 @@ impl Exec<'_> {
         let Ok(shot) = self.runner.hands.capture(&self.app()) else {
             return Ok(None);
         };
+        self.saw(&shot);
         let path = Some(self.record_shot(step, kind, &shot, &[])?);
         if kind == "before" {
             step.before = path;
@@ -1690,26 +1707,51 @@ fn write_failed(path: &Path, e: impl ToString) -> Stop {
 
 /// Why a `check` failed: too few matching pixels, or a vision model said no.
 fn mismatch(id: &str, r: &Reference, e: &Evaluation) -> Failure {
-    match &e.judged {
-        Judged::Model(answer) => Failure::new("run.check.meaningMismatch")
-            .with("block", id)
-            .with("provider", &answer.provider)
-            .with("reason", &answer.reason),
-        Judged::Pixels(comparison) => {
-            let threshold = match r.compare {
-                Compare::Similar { threshold } => threshold,
-                _ => 1.0,
-            };
-            Failure::new("run.check.mismatch")
+    let comparison = match &e.judged {
+        Judged::Model(answer) => {
+            return Failure::new("run.check.meaningMismatch")
                 .with("block", id)
-                .with(
-                    "image",
-                    e.reference.as_ref().map_or("", |l| l.name.as_str()),
-                )
-                .with("similarity", percent(comparison.similarity))
-                .with("threshold", percent(threshold))
+                .with("provider", &answer.provider)
+                .with("reason", &answer.reason);
         }
+        Judged::Pixels(comparison) => comparison,
+    };
+    let threshold = match r.compare {
+        Compare::Similar { threshold } => threshold,
+        _ => 1.0,
+    };
+    let expected = e.reference.as_ref().map(|l| &l.image);
+    let density = expected.filter(|expected| other_density(&e.actual, expected));
+    let failure = Failure::new(if density.is_some() {
+        "run.check.mismatchDensity"
+    } else {
+        "run.check.mismatch"
+    })
+    .with("block", id)
+    .with(
+        "image",
+        e.reference.as_ref().map_or("", |l| l.name.as_str()),
+    )
+    .with("similarity", percent(comparison.similarity))
+    .with("threshold", percent(threshold));
+    match density {
+        Some(expected) => failure
+            .with("expected", size(expected))
+            .with("actual", size(&e.actual)),
+        None => failure,
     }
+}
+
+/// The two pictures are the same window on displays of different pixel density: one is a
+/// whole number of times as wide as the other, such as a Retina screenshot of a window whose
+/// reference was saved in a virtual machine.
+fn other_density(a: &Image, b: &Image) -> bool {
+    let (wide, narrow) = (a.width.max(b.width), a.width.min(b.width));
+    if narrow == 0 || wide == narrow {
+        return false;
+    }
+    let ratio = f64::from(wide) / f64::from(narrow);
+    ratio >= 1.9 && (ratio - ratio.round()).abs() <= 0.02 * ratio
 }
 
 /// What a vision model gets to see: the compared area only, with the parts left out of the

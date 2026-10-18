@@ -40,6 +40,7 @@
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
   </ul>
   <p class="nav-group" id="nav-reference">Reference</p>
   <ul aria-labelledby="nav-reference">
@@ -100,7 +101,7 @@
 <p><code>jevision run</code> checks the Mac before it starts, and says what is in the way:</p>
 <dl>
   <dt>“there is no logged-in user with a screen”</dt>
-  <dd>Tests need a screen, so they run only in the session of a user logged in at the Mac: from Terminal, or from a CI agent started in that session. They can't run over SSH or as a system service.</dd>
+  <dd>Tests need a screen, so they run only in the session of a user logged in at the Mac: from Terminal, from a CI agent started in that session, or over SSH as that same user while they stay logged in at the screen (see <a href="vm.html#ssh">Virtual machines</a>). They can't run as a system service.</dd>
   <dt>“the screen of this Mac is locked”</dt>
   <dd>Unlock it and run again. For runs nobody watches, turn off the automatic lock in <strong>System Settings → Lock Screen</strong>. JEVision never types into a locked screen, where a password field would get the input.</dd>
   <dt>“macOS hasn't allowed … to record the screen and control the computer”</dt>
@@ -127,6 +128,7 @@
 <ul>
   <li><strong>Parts that change on their own:</strong> a clock, a date, a counter, an animation, a blinking cursor. Add them to the reference's <code>ignore</code> areas, or check a smaller <code>area</code>. See <a href="checks.html#areas">Areas</a>.</li>
   <li><strong>A real change you wanted.</strong> Accept the new screen as the reference. See <a href="checks.html#accept">Accepting changes</a>.</li>
+  <li><strong>A reference from a display of another density</strong>, such as a Retina Mac, compared in a virtual machine with a standard display. The failure says so. See <a href="vm.html#display">Display size and Retina</a>.</li>
   <li><strong>Slightly different drawing</strong> on another Mac or display. Lower the <code>threshold</code> a little, or check by <a href="checks.html#meaning">meaning</a> instead.</li>
 </ul>
 <p>When a test sometimes passes and sometimes fails, see <a href="retries.html">Retries, flaky tests and quarantine</a>.</p>

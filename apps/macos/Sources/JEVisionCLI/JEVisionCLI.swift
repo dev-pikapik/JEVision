@@ -296,10 +296,11 @@ enum Help {
         -h, --help          Show this help
 
       While tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C
-      to stop. Running needs a logged-in user with an unlocked screen, and Screen
-      Recording and Accessibility allowed for the app jevision runs in (Terminal or
-      your CI agent). Secrets (${secret.NAME}) come from environment variables or the
-      Keychain. So do API keys of AI providers, such as ANTHROPIC_API_KEY.
+      to stop. Running needs a logged-in user with an unlocked screen, and Screen &
+      System Audio Recording and Accessibility (Device Control and Data Access from
+      macOS 27) allowed for the app jevision runs in (Terminal or your CI agent).
+      Secrets (${secret.NAME}) come from environment variables or the Keychain. So do
+      API keys of AI providers, such as ANTHROPIC_API_KEY.
 
       Exit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a
       test failed or was stopped, 2 — wrong arguments, a file could not be read or written, or this Mac can't run tests now.
@@ -325,7 +326,8 @@ enum Help {
     case "fmt":
       """
       Rewrites test files in canonical form: fixed key order, blocks in reading order,
-      no default values, so every change shows up as a small, readable diff.
+      settings that are off or empty left out, and the click button, comparison and
+      wait timeout always written, so every change shows up as a small, readable diff.
 
       \(usage(command))
 

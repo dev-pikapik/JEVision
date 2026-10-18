@@ -8,12 +8,17 @@ let package = Package(
   name: "JEVision",
   platforms: [.macOS(.v26)],
   dependencies: [
-    .package(path: "../../build/apple/JEVisionCore")
+    .package(path: "../../build/apple/JEVisionCore"),
+    // build.sh links the framework from the resolved package, and release.sh uses its tools.
+    .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
   ],
   targets: [
     .executableTarget(
       name: "JEVision",
-      dependencies: ["JEVisionHands", .product(name: "JEVisionCore", package: "JEVisionCore")],
+      dependencies: [
+        "JEVisionHands", .product(name: "JEVisionCore", package: "JEVisionCore"),
+        .product(name: "Sparkle", package: "Sparkle"),
+      ],
       path: "Sources/JEVision"),
     // The macOS side of a run, without UI, so a command-line tool can use it too.
     .target(

@@ -25,10 +25,6 @@
   <string>JEVision</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
-  <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
-  <key>CFBundleVersion</key>
-  <string>1</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.developer-tools</string>
   <key>LSMinimumSystemVersion</key>
@@ -45,5 +41,7 @@
   <string>MIT License</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>SUFeedURL</key>
+  <string>https://dev-pikapik.github.io/JEVision/appcast.xml</string>
 </dict>
 </plist>

@@ -566,6 +566,12 @@ pub struct RunReport {
     pub quarantined: bool,
     #[uniffi(default = None)]
     pub quarantine_reason: Option<String>,
+    /// The run ran in a virtual machine; `None` where that couldn't be told.
+    #[uniffi(default = None)]
+    pub virtual_machine: Option<bool>,
+    /// Device pixels per point of the display the run looked at: 2 on Retina.
+    #[uniffi(default = None)]
+    pub display_scale: Option<f64>,
     pub attempts: Vec<Attempt>,
     /// One result per row of the test's data table, in the order they ran; empty for a test
     /// without one.
@@ -636,6 +642,8 @@ impl From<jevision_runner::RunReport> for RunReport {
             file_hash: r.file_hash,
             quarantined: r.quarantined,
             quarantine_reason: r.quarantine_reason,
+            virtual_machine: r.virtual_machine,
+            display_scale: r.display_scale,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }

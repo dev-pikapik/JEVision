@@ -1,5 +1,6 @@
 //! Settings a project shares through its `jevision.project.json`: default retries, the tests
-//! in quarantine, and whether screenshots may go to AI models outside this computer.
+//! in quarantine, whether screenshots may go to AI models outside this computer, and the areas
+//! covered in every screenshot.
 
 use std::path::Path;
 
@@ -96,6 +97,19 @@ pub fn set_project_local_only(
     })
 }
 
+/// Replaces the areas of the window, in fractions from its top-left corner, covered in every
+/// screenshot of the project. Returns the saved settings.
+#[uniffi::export]
+pub fn set_project_hide(
+    project: String,
+    hide: Vec<Rect>,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.set_hide(hide)
+            .map_err(|reason| ProjectSettingsError::Rejected { reason })
+    })
+}
+
 /// Name of the project settings file in a project folder.
 #[uniffi::export]
 pub fn project_settings_file_name() -> String {
@@ -165,9 +179,27 @@ mod tests {
                 .unwrap()
                 .local_only
         );
+        let corner = Rect {
+            x: 0.7,
+            y: 0.0,
+            width: 0.3,
+            height: 0.08,
+        };
+        assert_eq!(
+            set_project_hide(project.clone(), vec![corner])
+                .unwrap()
+                .hide,
+            vec![corner]
+        );
+        let outside = Rect { x: 0.8, ..corner };
+        assert!(matches!(
+            set_project_hide(project.clone(), vec![corner, outside]),
+            Err(ProjectSettingsError::Rejected { reason }) if reason.starts_with("area 2 ")
+        ));
         let read = project_settings(project.clone()).unwrap();
         assert_eq!((read.retries, read.quarantine.len()), (Some(2), 1));
         assert!(read.local_only);
+        assert_eq!(read.hide, vec![corner]);
         assert!(
             release_from_quarantine(project.clone(), "login.flow.json".into())
                 .unwrap()

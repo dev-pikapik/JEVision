@@ -179,6 +179,8 @@ mod tests {
             file_hash: None,
             quarantined: false,
             quarantine_reason: None,
+            virtual_machine: None,
+            display_scale: None,
             rows: Vec::new(),
             attempts: attempts
                 .into_iter()

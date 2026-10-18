@@ -46,7 +46,8 @@ pub use validate::{
 /// File format version written by this build. Files with an older `format` are upgraded on read.
 pub const FORMAT_VERSION: u32 = decode::OLDEST_FORMAT + decode::MIGRATIONS.len() as u32;
 
-/// Writes `flow` in canonical form: fixed key order, blocks sorted by id, defaults left out,
+/// Writes `flow` in canonical form: fixed key order, blocks in reading order, settings that are
+/// off or empty left out but the click button, comparison and wait timeout always written,
 /// two-space indentation and a trailing newline.
 pub fn to_canonical_json(flow: &Flow) -> String {
     let mut text = serde_json::to_string_pretty(flow).expect("a flow always serializes to JSON");
