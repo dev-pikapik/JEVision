@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checks and references — JEVision</title>
+<meta name="description" content="How JEVision compares the screen with reference images or checks it by meaning with an AI model.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html" aria-current="page">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Checks and references</h1>
+<p class="lead">A reference says how the screen should look. JEVision compares the screen with it to pass or fail a <code>check</code>, to finish a <code>waitFor</code> and to choose the way of an <code>if</code>.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#reference">What a reference is</a></li>
+    <li><a href="#compare">Ways to compare</a></li>
+    <li><a href="#areas">Compare part of the window, ignore or hide parts</a></li>
+    <li><a href="#first-run">The first run saves the picture</a></li>
+    <li><a href="#dark">Dark appearance</a></li>
+    <li><a href="#accept">When the app changed on purpose</a></li>
+    <li><a href="#meaning">Checks by meaning</a></li>
+    <li><a href="#models">AI models</a></li>
+    <li><a href="#targets">Pictures of buttons and fields</a></li>
+  </ul>
+</nav>
+
+<h2 id="reference">What a reference is</h2>
+<p>A reference is a picture of the window of the app under test, as it should look, plus how to compare the screen with it. In a test file it is an object:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>image</code></td><td>Yes, except for a check by meaning with <code>expect</code></td><td>Path of the picture, relative to the test file, such as <code>refs/inbox.png</code>.</td></tr>
+    <tr><td><code>compare</code></td><td>No</td><td><code>"similar"</code> (default), <code>"exact"</code> or <code>"meaning"</code>. See <a href="#compare">Ways to compare</a>.</td></tr>
+    <tr><td><code>threshold</code></td><td>No</td><td>Only with <code>"similar"</code>: how much of the picture must match, above 0 and at most 1. Default: <code>0.95</code>.</td></tr>
+    <tr><td><code>expect</code></td><td>No</td><td>Only with <code>"meaning"</code>: what the screen should show, in plain words.</td></tr>
+    <tr><td><code>area</code></td><td>No</td><td>The part of the window to compare, an <a href="writing-tests.html#rect">area</a>. Default: the whole window.</td></tr>
+    <tr><td><code>ignore</code></td><td>No</td><td>List of areas left out of the comparison, such as a clock or a counter.</td></tr>
+    <tr><td><code>hide</code></td><td>No</td><td>List of areas that must not appear anywhere: left out of the comparison, covered in every saved screenshot and covered before a screenshot is sent to an AI model.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Areas are in fractions of the window, from 0 to 1, so they keep fitting when the window is bigger or on a Retina screen. In the app, you draw them on the picture in the reference editor.</p>
+<p>The screen and the reference must have the same shape. A window of another size and proportions can't match; a <code>check</code> then fails and a <code>waitFor</code> keeps waiting. Retina and non-Retina pictures of the same window are compared at the smaller size.</p>
+
+<h2 id="compare">Ways to compare</h2>
+<dl>
+  <dt><code>"similar"</code> (default)</dt>
+  <dd>A pixel matches when its colour is close to the reference: each of red, green and blue is off by at most 16 of 255. This absorbs font smoothing and small colour differences. The screen matches when the share of matching pixels is at least <code>threshold</code>, 0.95 by default, that is 95%.</dd>
+  <dt><code>"exact"</code></dt>
+  <dd>Every compared pixel must be exactly the same colour. Use it for small areas whose colour matters.</dd>
+  <dt><code>"meaning"</code></dt>
+  <dd>An AI model looks at the screen and decides whether it shows what <code>expect</code> says. See <a href="#meaning">Checks by meaning</a>.</dd>
+</dl>
+<pre><code>{ "image": "refs/message-list.png", "compare": "similar", "threshold": 0.9 }
+{ "image": "refs/logo.png", "compare": "exact", "area": { "x": 0, "y": 0, "width": 0.2, "height": 0.1 } }
+{ "compare": "meaning", "expect": "The cart shows 2 items" }</code></pre>
+
+<h2 id="areas">Compare part of the window, ignore or hide parts</h2>
+<ul>
+  <li><strong><code>area</code></strong> limits the comparison to one part of the window, for example only the message list.</li>
+  <li><strong><code>ignore</code></strong> leaves out parts that change on their own: clocks, dates, avatars, counters, animations. Without them, such a check fails at random.</li>
+  <li><strong><code>hide</code></strong> is for private data: passwords, personal details, account numbers. Hidden parts are covered in screenshots before they are saved in a report or sent to an AI model, and are also left out of the comparison.</li>
+</ul>
+<pre><code>{
+  "image": "refs/message-list.png",
+  "compare": "similar",
+  "threshold": 0.9,
+  "ignore": [{ "x": 0.8, "y": 0, "width": 0.2, "height": 0.1 }],
+  "hide": [{ "x": 0, "y": 0, "width": 0.3, "height": 0.1 }]
+}</code></pre>
+
+<h2 id="first-run">The first run saves the picture</h2>
+<p>You don't need to take reference pictures by hand. When the picture of a <code>check</code> block doesn't exist yet, the run saves the screen as that picture, with the hidden parts covered, and the report marks the step “Reference saved”. Before that first run, the editor and <code>jevision validate</code> show a warning that the picture isn't saved yet.</p>
+<p>A <code>waitFor</code> or <code>if</code> block can't do this, because it has to know what it waits or looks for: a missing picture stops the run at that block.</p>
+
+<h2 id="dark">Dark appearance</h2>
+<p>An app can look different in dark appearance. When the window of the app under test is drawn dark, JEVision compares it with a dark version of the reference: <code>refs/inbox.png</code> becomes <code>refs/inbox.dark.png</code>, with <code>.dark</code> before the extension.</p>
+<ul>
+  <li>A <code>check</code> always uses the dark version in dark appearance. If it doesn't exist yet, the run saves it, just like the first light picture.</li>
+  <li><code>waitFor</code> and <code>if</code> use the dark version when it exists and the light picture otherwise.</li>
+</ul>
+<p>The test file names only the light picture; the dark one sits next to it.</p>
+
+<h2 id="accept">When the app changed on purpose</h2>
+<p>If a check fails because the app was redesigned, not because of a bug, open the run's report and accept the screenshot as the new reference. The old picture goes to the Trash, and <strong>Edit → Undo</strong> brings it back. In git, the change shows up as a changed picture you can compare side by side, under a sliding divider, one over the other or with the differing pixels in red.</p>
+
+<h2 id="meaning">Checks by meaning</h2>
+<p>Comparing pixels is sometimes too strict: a list may hold different messages each day, but you only care that it isn't empty. Then describe the screen in words:</p>
+<pre><code>{ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }</code></pre>
+<ul>
+  <li>With <code>expect</code>, the picture is optional. With a picture as well, the model compares the screen with it.</li>
+  <li>With a picture and no <code>expect</code>, the model decides whether the screen means the same as the picture.</li>
+  <li><code>check</code>, <code>waitFor</code> and <code>if</code> all accept a check by meaning.</li>
+  <li><code>area</code>, <code>ignore</code> and <code>hide</code> still apply: only the compared part of the screen is sent, with ignored and hidden parts covered.</li>
+  <li>The report keeps the provider, the model and its explanation for each check by meaning.</li>
+</ul>
+
+<h2 id="models">AI models</h2>
+<p>Checks by meaning use the model chosen in <strong>Settings → AI</strong>. Without one, JEVision compares pictures only and sends nothing anywhere.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Provider</th><th scope="col">Runs</th><th scope="col">API key</th><th scope="col">Id for <code>--provider</code></th></tr></thead>
+  <tbody>
+    <tr><td>Anthropic</td><td>In the cloud</td><td><code>ANTHROPIC_API_KEY</code></td><td><code>anthropic</code></td></tr>
+    <tr><td>OpenAI</td><td>In the cloud</td><td><code>OPENAI_API_KEY</code></td><td><code>openai</code></td></tr>
+    <tr><td>Google Gemini</td><td>In the cloud</td><td><code>GEMINI_API_KEY</code></td><td><code>gemini</code></td></tr>
+    <tr><td>Ollama</td><td>On this Mac</td><td>None</td><td><code>ollama</code></td></tr>
+    <tr><td>LM Studio</td><td>On this Mac</td><td>None</td><td><code>lmstudio</code></td></tr>
+    <tr><td>OpenAI-compatible server</td><td>At the address you give</td><td><code>OPENAI_COMPATIBLE_API_KEY</code>, if the server asks for one</td><td><code>openai-compatible</code></td></tr>
+  </tbody>
+</table>
+</div>
+<ul>
+  <li><strong>What is sent.</strong> For each check by meaning: the compared part of the screen, the reference picture if there is one, and the expected text. Hidden and ignored parts are covered before anything leaves the Mac. Nothing else is sent.</li>
+  <li><strong>API keys</strong> come from the environment variable in the table or from the Keychain, where Settings → AI saves them. They are never shown, logged or written to reports.</li>
+  <li><strong>Only models on this Mac.</strong> With this setting on, screenshots never go to a cloud service: a check that would need one stops with a message.</li>
+  <li><strong>Test Connection</strong> in Settings asks the model about a small built-in picture, to check the address, key and model in one go.</li>
+  <li>On the command line, <code>--provider</code> and <code>--model</code> choose another model for one run. See <a href="cli.html#run">jevision run</a>.</li>
+</ul>
+
+<h2 id="targets">Pictures of buttons and fields</h2>
+<p>The <code>target</code> of a <code>click</code> and the <code>into</code> of a <code>type</code> also use pictures, but differently: such a picture shows only one element, such as a button, and JEVision looks for it anywhere on the current screen. That's why a click keeps working when the window moves. Recording makes these pictures for you from what you click.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

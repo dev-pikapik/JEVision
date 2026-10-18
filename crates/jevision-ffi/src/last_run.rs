@@ -150,6 +150,8 @@ mod tests {
             branch: branch.map(Into::into),
             failure: (status == StepStatus::Failed).then(|| failure("run.keys.failed")),
             video_at_ms: None,
+            sent: None,
+            sent_masked: false,
         }
     }
 

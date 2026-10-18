@@ -1,9 +1,9 @@
-//! Settings a project shares through its `jevision.project.json`: default retries and the
-//! tests in quarantine.
+//! Settings a project shares through its `jevision.project.json`: default retries, the tests
+//! in quarantine, and whether screenshots may go to AI models outside this computer.
 
 use std::path::Path;
 
-use jevision_core::{MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined};
+use jevision_core::{MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect};
 
 /// The project settings file can't be read or written, or the change isn't allowed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -20,6 +20,10 @@ pub enum ProjectSettingsError {
 pub struct ProjectSettings {
     pub retries: Option<u32>,
     pub quarantine: Vec<Quarantined>,
+    #[uniffi(default = false)]
+    pub local_only: bool,
+    #[uniffi(default = [])]
+    pub hide: Vec<Rect>,
 }
 
 #[uniffi::remote(Record)]
@@ -75,6 +79,19 @@ pub fn set_default_retries(
             });
         }
         s.retries = retries;
+        Ok(())
+    })
+}
+
+/// Lets the project's screenshots go only to AI models on this computer, or to any. Returns
+/// the saved settings.
+#[uniffi::export]
+pub fn set_project_local_only(
+    project: String,
+    local_only: bool,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.local_only = local_only;
         Ok(())
     })
 }
@@ -143,8 +160,14 @@ mod tests {
             quarantine_test(project.clone(), "../x.flow.json".into(), None),
             Err(ProjectSettingsError::Rejected { .. })
         ));
+        assert!(
+            set_project_local_only(project.clone(), true)
+                .unwrap()
+                .local_only
+        );
         let read = project_settings(project.clone()).unwrap();
         assert_eq!((read.retries, read.quarantine.len()), (Some(2), 1));
+        assert!(read.local_only);
         assert!(
             release_from_quarantine(project.clone(), "login.flow.json".into())
                 .unwrap()

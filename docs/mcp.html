@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI assistants (MCP) — JEVision</title>
+<meta name="description" content="Let Claude, Cursor, Copilot and other MCP clients find, write, run and debug tests.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html" aria-current="page">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>AI assistants (MCP)</h1>
+<p class="lead">Let an AI assistant such as Claude, Cursor or Copilot write, fix and run your tests. JEVision speaks the Model Context Protocol (MCP), the common way assistants use outside tools.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#connect">Connect an assistant</a></li>
+    <li><a href="#allowed">What assistants may do</a></li>
+    <li><a href="#tools">Tools</a></li>
+    <li><a href="#example">An example</a></li>
+  </ul>
+</nav>
+
+<h2 id="connect">Connect an assistant</h2>
+<ol>
+  <li><a href="getting-started.html#cli">Install the command-line tool</a>.</li>
+  <li>Open your project in JEVision and go to <strong>Settings → AI → Assistants</strong>. Under <strong>Connect an Assistant</strong>, copy the configuration. It names the project open now:
+<pre><code>{
+  "mcpServers" : {
+    "jevision" : {
+      "args" : [
+        "mcp",
+        "--project",
+        "/Users/you/Projects/acme-tests"
+      ],
+      "command" : "/usr/local/bin/jevision"
+    }
+  }
+}</code></pre></li>
+  <li>Add it to the MCP servers of your assistant, as its documentation describes. The assistant starts <code>jevision mcp</code> itself when it needs it.</li>
+</ol>
+<p>Without <code>--project</code>, the assistant sees the nearest folder at or above the one it starts <code>jevision</code> in that has a <code>.jevision</code> folder, otherwise that folder itself. See <a href="cli.html#mcp"><code>jevision mcp</code></a>.</p>
+
+<h2 id="allowed">What assistants may do</h2>
+<p>An assistant can always find, read, write and check the tests of the project and read its reports. Two things work only after the person at the Mac turns them on in <strong>Settings → AI → Assistants</strong>, because they act on the Mac or may show private things:</p>
+<ul>
+  <li><strong>Allow assistants to run tests.</strong> Tests open apps, click and type on this Mac. Press <kbd>Esc</kbd> twice to stop one.</li>
+  <li><strong>Allow assistants to take screenshots.</strong> An assistant sees the front window of an app, which may show private information.</li>
+</ul>
+<p>Whatever the settings:</p>
+<ul>
+  <li>Assistants never get the values of <a href="environments.html#secrets">secrets</a> or API keys. Tests show secrets only as <code>${secret.NAME}</code>, and reports mask them.</li>
+  <li>Assistants can't open files outside the project folder.</li>
+  <li>A test with errors is never saved, so an assistant can't break a working test file.</li>
+</ul>
+
+<h2 id="tools">Tools</h2>
+<p>Every path is relative to the project folder, such as <code>login/sign-in.flow.json</code>. Fields marked “required” must be given; the rest are optional.</p>
+
+<h3 id="list_tests"><code>list_tests</code></h3>
+<p>Lists the tests in the project with their name, app, tags, status and how many problems each has.</p>
+<ul>
+  <li><code>query</code>: words to look for in the path, name, description, app or tags. Every word must match; case doesn't matter.</li>
+  <li><code>folder</code>: only list tests in this folder.</li>
+</ul>
+
+<h3 id="read_test"><code>read_test</code></h3>
+<p>Returns the JSON of a test file exactly as saved, and the problems found in it.</p>
+<ul><li><code>path</code> (required): the test file.</li></ul>
+
+<h3 id="write_test"><code>write_test</code></h3>
+<p>Creates or replaces a test file, saved in <a href="writing-tests.html#canonical">canonical form</a>. Nothing is saved if the test has errors; the answer lists them with the block and field each concerns.</p>
+<ul>
+  <li><code>path</code> (required): the test file, ending in <code>.flow.json</code>. Missing folders are created.</li>
+  <li><code>test</code> (required): the whole test, as a JSON object or its text.</li>
+</ul>
+
+<h3 id="add_blocks"><code>add_blocks</code></h3>
+<p>Adds blocks to a test as one chain: each leads to the next, and the last one to whatever came after the place they go. Give each block as in a test file, without an id or arrows; ids are made from the block types and returned.</p>
+<ul>
+  <li><code>path</code> (required): the test file.</li>
+  <li><code>blocks</code> (required): the blocks in order, such as <code>{ "type": "pressKeys", "keys": "cmd+s" }</code>. Only the last one may be an <code>if</code> block.</li>
+  <li><code>after</code>: the id of the block to add them after; or <code>atStart</code>: <code>true</code> to add them before the first block.</li>
+  <li><code>edge</code>: which way out of the <code>after</code> block they go: <code>next</code> (default), <code>then</code> or <code>else</code> for an <code>if</code> block, <code>body</code> to put them inside a <code>repeat</code> or <code>useData</code> block.</li>
+</ul>
+
+<h3 id="remove_block"><code>remove_block</code></h3>
+<p>Removes a block and joins its neighbours: whatever led to it then leads to what came after it. Removing a <code>repeat</code> or <code>useData</code> block keeps the blocks inside it; removing an <code>if</code> block keeps its <code>then</code> branch.</p>
+<ul>
+  <li><code>path</code> (required): the test file.</li>
+  <li><code>block</code> (required): the id of the block to remove.</li>
+</ul>
+
+<h3 id="validate_test"><code>validate_test</code></h3>
+<p>Checks a test file, or every test in a folder, for errors and warnings, each with the block and field it concerns. Tests with errors can't run.</p>
+<ul><li><code>path</code> (required): a test file or folder; <code>.</code> for the whole project.</li></ul>
+
+<h3 id="list_block_types"><code>list_block_types</code></h3>
+<p>Describes the test format: the fields of a test, every block type with its fields and an example, how blocks lead to each other, and the shapes of targets, references, areas and durations. Takes no arguments. Assistants call it before writing a test.</p>
+
+<h3 id="run_test"><code>run_test</code></h3>
+<p>Runs a test, or every test in a folder one after another, on this Mac for real. Needs <strong>Allow assistants to run tests</strong> and an unlocked screen. Answers at once with a run id; one run at a time.</p>
+<ul>
+  <li><code>path</code> (required): a test file or folder.</li>
+  <li><code>retries</code>: run a failed test this many more times, 0 to 10, instead of the number in the test.</li>
+  <li><code>env</code>: the <a href="environments.html">environment</a> to use, such as <code>staging</code>. Default: the <code>default</code> environment of <code>jevision.environments.json</code>, or none when it names no default.</li>
+  <li><code>rows</code>: rows of a <a href="data-driven.html">data-driven test</a> to run: <code>all</code> (default), one row such as <code>2</code>, or a range such as <code>2-4</code>.</li>
+</ul>
+
+<h3 id="get_run"><code>get_run</code></h3>
+<p>Tells how a run is going: running or finished, and for each test its verdict (<code>passed</code>, <code>failed</code>, <code>cancelled</code>, <code>notRun</code>, <code>error</code>, <code>running</code> or <code>waiting</code>), the step it is on, why it failed, and the name of its report.</p>
+<ul>
+  <li><code>run</code>: the run id from <code>run_test</code>. Default: the newest run.</li>
+  <li><code>wait</code>: seconds to wait for the run to end before answering, 0 to 600. Default: 0, answer at once.</li>
+</ul>
+
+<h3 id="stop_run"><code>stop_run</code></h3>
+<p>Stops a run: the running test ends as cancelled and the ones after it don't run.</p>
+<ul><li><code>run</code>: the run id. Default: the newest run.</li></ul>
+
+<h3 id="get_report"><code>get_report</code></h3>
+<p>Returns the saved report of one test run: the verdict, every step with its status, why it failed, and what the AI model answered for checks by meaning. Secret values are masked.</p>
+<ul>
+  <li><code>report</code>: the report name from <code>get_run</code>. Default: the newest report in the project.</li>
+  <li><code>images</code>: screenshots to include: <code>none</code> (default), <code>failed</code> (those of failed steps) or <code>all</code>, at most 30.</li>
+</ul>
+
+<h3 id="screenshot"><code>screenshot</code></h3>
+<p>Returns a picture of the front window of an app, as it is now. Needs <strong>Allow assistants to take screenshots</strong>. Private parts of the window, such as password fields, are covered with grey boxes.</p>
+<ul>
+  <li><code>app</code>: the bundle id of the app, such as <code>com.apple.TextEdit</code>; or</li>
+  <li><code>path</code>: a test file, whose app is pictured.</li>
+</ul>
+
+<h2 id="example">An example</h2>
+<p>Ask your assistant something like:</p>
+<blockquote><p>Write a JEVision test that opens TextEdit, makes a new document, types “Hello” and checks the window. Then run it and tell me what failed.</p></blockquote>
+<p>A typical assistant calls <code>list_block_types</code> to learn the format, <code>write_test</code> to save the test, fixes any errors the answer lists, then <code>run_test</code>, <code>get_run</code> with <code>wait</code>, and <code>get_report</code> with <code>images</code> set to <code>failed</code> to see what went wrong. The first run saves the reference picture of the <code>check</code>, so look at it in JEVision before trusting it. See <a href="checks.html#first-run">The first run</a>.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

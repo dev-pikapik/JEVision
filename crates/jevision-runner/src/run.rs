@@ -9,12 +9,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, PROJECT_FILE, Point, ProjectSettings,
+    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, PROJECT_FILE, Point, ProjectSettings, Rect,
     Reference, Severity, Target, WaitUntil, dark_variant,
 };
 
 use crate::control::{Cancelled, PauseReason};
-use crate::image::{Comparison, Image};
 use crate::report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
     percent, summarize,
@@ -24,6 +23,8 @@ use crate::{
     SecretSource, VisionError, VisionJudge,
 };
 use jevision_core::DataTable;
+use jevision_vision::MaskedImage;
+use jevision_vision::image::{Comparison, Image};
 
 /// How far a pixel channel may be off and still count as the same colour when comparing by
 /// similarity; absorbs font smoothing and colour-profile noise.
@@ -213,6 +214,10 @@ impl Runner<'_> {
             quarantine_reason: quarantine.and_then(|q| q.reason),
             attempts: Vec::new(),
         };
+        let (local_only, hide) = settings
+            .as_ref()
+            .map(|s| (s.local_only, s.hide.clone()))
+            .unwrap_or_default();
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
             let default_retries = settings?.retries;
@@ -321,6 +326,8 @@ impl Runner<'_> {
                             launched: Vec::new(),
                             baselines: Vec::new(),
                             video,
+                            local_only,
+                            hide: &hide,
                         };
                         let (mut attempt, opened, baselines) = exec.run(&root, &start);
                         attempt.row = data_row.clone();
@@ -627,6 +634,10 @@ struct Evaluation {
     actual: Image,
     judged: Judged,
     passed: bool,
+    /// Areas covered before any of these pictures is saved or sent.
+    private: Vec<Rect>,
+    /// The screenshot as a vision model got it.
+    sent: Option<MaskedImage>,
 }
 
 enum Judged {
@@ -659,6 +670,10 @@ struct Exec<'r> {
     baselines: Vec<String>,
     /// When the run's video started, if one is being recorded.
     video: Option<Instant>,
+    /// The project allows only AI models on this computer.
+    local_only: bool,
+    /// Areas the project covers in every screenshot.
+    hide: &'r [Rect],
 }
 
 impl Exec<'_> {
@@ -736,6 +751,8 @@ impl Exec<'_> {
             branch: None,
             failure: None,
             video_at_ms: self.video.map(|start| millis(start.elapsed())),
+            sent: None,
+            sent_masked: false,
         };
         let result = match self.perform(t, &block.kind, &mut step) {
             Ok(next) => Ok(next),
@@ -867,7 +884,7 @@ impl Exec<'_> {
                             let path = self.resolve(t, id, &loaded.name)?;
                             step.reference = Some(relative(self.project, &path));
                         }
-                        self.record_comparison(step, reference, &e)?;
+                        self.record_comparison(step, &e)?;
                         if !e.passed {
                             return Err(fail(mismatch(id, reference, &e)));
                         }
@@ -885,7 +902,7 @@ impl Exec<'_> {
                 let e = self
                     .evaluate(t, id, reference, &shot, false, &mut None)?
                     .map_err(|name| missing_reference(id, &name))?;
-                self.record_comparison(step, reference, &e)?;
+                self.record_comparison(step, &e)?;
                 let (branch, target) = if e.passed {
                     ("then", then)
                 } else {
@@ -965,6 +982,7 @@ impl Exec<'_> {
     ) -> Result<(), Stop> {
         let timeout = Duration::from_millis(timeout_ms);
         let mut last: Option<Screenshot> = None;
+        let mut sent = None;
         let (reached, target, reference) = match until {
             WaitUntil::Appears(r) | WaitUntil::Disappears(r) => {
                 let want = matches!(until, WaitUntil::Appears(_));
@@ -977,6 +995,7 @@ impl Exec<'_> {
                             cache = e.reference;
                             if let Judged::Model(answer) = e.judged {
                                 step.vision = Some(answer);
+                                sent = e.sent;
                             }
                             e.passed
                         }
@@ -1016,14 +1035,11 @@ impl Exec<'_> {
             }
         };
         if let Some(shot) = last {
-            step.after = Some(match reference.filter(|r| !r.hide.is_empty()) {
-                Some(r) => {
-                    let mut image = decode_screenshot(id, &shot)?;
-                    image.cover(&r.hide);
-                    self.record_image(step, "after", &image)?
-                }
-                None => self.record(step, "after", &shot.png)?,
-            });
+            let hide = reference.map_or(&[][..], |r| &r.hide);
+            step.after = Some(self.record_shot(step, "after", &shot, hide)?);
+        }
+        if let Some(sent) = sent {
+            self.record_sent(step, &sent)?;
         }
         if reached.is_none() {
             return Err(fail(
@@ -1100,7 +1116,9 @@ impl Exec<'_> {
             Err(name) => return Ok(Err(name)),
         };
         let actual = decode_screenshot(id, shot)?;
-        let skip: Vec<_> = r.ignore.iter().chain(&r.hide).copied().collect();
+        // Covered areas are left out: the reference has them covered too.
+        let private = self.private_areas(shot, &r.hide);
+        let skip: Vec<_> = r.ignore.iter().chain(&private).copied().collect();
         let comparison = actual
             .compare(&reference.image, r.area.as_ref(), &skip, tolerance)
             .map_err(|_| {
@@ -1121,6 +1139,8 @@ impl Exec<'_> {
             actual,
             judged: Judged::Pixels(comparison),
             passed,
+            private,
+            sent: None,
         }))
     }
 
@@ -1142,12 +1162,14 @@ impl Exec<'_> {
             Compare::Meaning { expect } => expect.trim(),
             _ => "",
         };
-        if self.options.local_only && !judge.is_local() {
-            return Err(fail(
-                Failure::new("run.vision.cloudBlocked")
-                    .with("block", id)
-                    .with("provider", judge.provider()),
-            ));
+        if (self.options.local_only || self.local_only) && !judge.is_local() {
+            let mut failure = Failure::new("run.vision.cloudBlocked")
+                .with("block", id)
+                .with("provider", judge.provider());
+            if self.local_only {
+                failure = failure.with("setting", "project");
+            }
+            return Err(fail(failure));
         }
         let reference = if expect.is_empty() {
             match self.load_reference(t, id, r, shot, strict, cache)? {
@@ -1160,15 +1182,16 @@ impl Exec<'_> {
             self.load_reference(t, id, r, shot, strict, cache)?.ok()
         };
         let actual = decode_screenshot(id, shot)?;
-        let screenshot = for_model(id, &actual, r)?;
-        let reference_png = match &reference {
-            Some(loaded) => Some(for_model(id, &loaded.image, r)?),
+        let private = self.private_areas(shot, &r.hide);
+        let screenshot = for_model(id, &actual, r, &private)?;
+        let reference_picture = match &reference {
+            Some(loaded) => Some(for_model(id, &loaded.image, r, &private)?),
             None => None,
         };
         let question = Question {
             expect,
             screenshot: &screenshot,
-            reference: reference_png.as_deref(),
+            reference: reference_picture.as_ref(),
         };
         let judgement = judge
             .judge(&question)
@@ -1184,6 +1207,8 @@ impl Exec<'_> {
                 // The model may read a secret off the screen.
                 reason: self.mask(&judgement.reason),
             }),
+            private,
+            sent: Some(screenshot),
         }))
     }
 
@@ -1219,12 +1244,7 @@ impl Exec<'_> {
     }
 
     /// Saves the screenshot, the reference and the diff picture, private areas covered.
-    fn record_comparison(
-        &self,
-        step: &mut Step,
-        r: &Reference,
-        e: &Evaluation,
-    ) -> Result<(), Stop> {
+    fn record_comparison(&self, step: &mut Step, e: &Evaluation) -> Result<(), Stop> {
         let mut images = vec![("after", e.actual.clone())];
         images.extend(e.reference.as_ref().map(|l| ("expected", l.image.clone())));
         match &e.judged {
@@ -1234,15 +1254,24 @@ impl Exec<'_> {
             }
             Judged::Model(answer) => step.vision = Some(answer.clone()),
         }
-        for (kind, mut image) in images {
-            image.cover(&r.hide);
-            let path = Some(self.record_image(step, kind, &image)?);
+        for (kind, image) in images {
+            let path = Some(self.record_image(step, kind, &image, &e.private)?);
             match kind {
                 "after" => step.after = path,
                 "expected" => step.expected = path,
                 _ => step.diff = path,
             }
         }
+        if let Some(sent) = &e.sent {
+            self.record_sent(step, sent)?;
+        }
+        Ok(())
+    }
+
+    /// Saves the picture a vision model got, so the report shows exactly what left the computer.
+    fn record_sent(&self, step: &mut Step, sent: &MaskedImage) -> Result<(), Stop> {
+        step.sent = Some(self.record(step, "sent", sent)?);
+        step.sent_masked = sent.is_masked();
         Ok(())
     }
 
@@ -1257,11 +1286,11 @@ impl Exec<'_> {
         step: &mut Step,
     ) -> Result<(), Stop> {
         let path = self.resolve(t, id, name)?;
-        let mut image = decode_screenshot(id, shot)?;
-        image.cover(&r.hide);
-        let png = image.encode().map_err(|e| write_failed(&path, e))?;
-        write(&path, &png)?;
-        step.after = Some(self.record(step, "after", &png)?);
+        let image = decode_screenshot(id, shot)?;
+        let picture = MaskedImage::new(&image, &self.private_areas(shot, &r.hide))
+            .map_err(|e| write_failed(&path, e))?;
+        write(&path, picture.png())?;
+        step.after = Some(self.record(step, "after", &picture)?);
         step.status = StepStatus::BaselineCreated;
         step.reference = Some(relative(self.project, &path));
         self.baselines.push(relative(self.project, &path));
@@ -1503,7 +1532,7 @@ impl Exec<'_> {
         let Ok(shot) = self.runner.hands.capture(&self.app()) else {
             return Ok(None);
         };
-        let path = Some(self.record(step, kind, &shot.png)?);
+        let path = Some(self.record_shot(step, kind, &shot, &[])?);
         if kind == "before" {
             step.before = path;
         } else {
@@ -1512,21 +1541,57 @@ impl Exec<'_> {
         Ok(Some(shot))
     }
 
-    /// Writes a PNG into the run folder; returns its path relative to the folder.
-    fn record(&self, step: &Step, kind: &str, png: &[u8]) -> Result<String, Stop> {
+    /// Areas covered before `shot`, or another picture of its window, is saved or sent: those
+    /// the project hides, `hide` of the block, and the password fields on screen.
+    fn private_areas(&self, shot: &Screenshot, hide: &[Rect]) -> Vec<Rect> {
+        self.hide
+            .iter()
+            .chain(hide)
+            .chain(&shot.secure)
+            .copied()
+            .collect()
+    }
+
+    /// Writes a picture into the run folder; returns its path relative to the folder. Only
+    /// masked pictures are saved, so a report never shows what the project hides.
+    fn record(&self, step: &Step, kind: &str, picture: &MaskedImage) -> Result<String, Stop> {
         let name = format!(
             "shots/{}-{:03}-{}-{kind}.png",
             self.attempt, step.seq, step.block
         );
-        write(&self.dir.join(&name), png)?;
+        write(&self.dir.join(&name), picture.png())?;
         Ok(name)
     }
 
-    fn record_image(&self, step: &Step, kind: &str, image: &Image) -> Result<String, Stop> {
-        let png = image
-            .encode()
+    fn record_shot(
+        &self,
+        step: &Step,
+        kind: &str,
+        shot: &Screenshot,
+        hide: &[Rect],
+    ) -> Result<String, Stop> {
+        let picture = MaskedImage::from_png(&shot.png, &self.private_areas(shot, hide)).map_err(
+            |reason| {
+                fail(
+                    Failure::new("run.screenshot.unreadable")
+                        .with("block", &step.block)
+                        .with("reason", reason),
+                )
+            },
+        )?;
+        self.record(step, kind, &picture)
+    }
+
+    fn record_image(
+        &self,
+        step: &Step,
+        kind: &str,
+        image: &Image,
+        private: &[Rect],
+    ) -> Result<String, Stop> {
+        let picture = MaskedImage::new(image, private)
             .map_err(|e| write_failed(&self.dir.join("shots"), e))?;
-        self.record(step, kind, &png)
+        self.record(step, kind, &picture)
     }
 
     /// [`Self::resolve`] for a path that may contain placeholders; problems name the path as
@@ -1648,15 +1713,15 @@ fn mismatch(id: &str, r: &Reference, e: &Evaluation) -> Failure {
 }
 
 /// What a vision model gets to see: the compared area only, with the parts left out of the
-/// comparison and the hidden ones covered, scaled down to a sensible size.
-fn for_model(id: &str, image: &Image, r: &Reference) -> Result<Vec<u8>, Stop> {
-    let mut image = image.clone();
-    image.cover(&r.ignore);
-    image.cover(&r.hide);
-    if let Some(area) = &r.area {
-        image = image.crop(area);
-    }
-    image.fit(VISION_MAX_SIDE).encode().map_err(|reason| {
+/// comparison and the `private` ones covered, scaled down to a sensible size.
+fn for_model(
+    id: &str,
+    image: &Image,
+    r: &Reference,
+    private: &[Rect],
+) -> Result<MaskedImage, Stop> {
+    let covered: Vec<_> = r.ignore.iter().chain(private).copied().collect();
+    MaskedImage::view(image, &covered, r.area.as_ref(), VISION_MAX_SIDE).map_err(|reason| {
         fail(
             Failure::new("run.screenshot.unreadable")
                 .with("block", id)

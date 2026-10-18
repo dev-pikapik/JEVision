@@ -246,6 +246,11 @@ final class ProjectStore {
     try changeSettings { try JEVisionCore.setDefaultRetries(project: $0, retries: retries) }
   }
 
+  /// Whether screenshots of the project's apps may go to cloud models.
+  func setLocalOnly(_ localOnly: Bool) throws {
+    try changeSettings { try setProjectLocalOnly(project: $0, localOnly: localOnly) }
+  }
+
   private func changeSettings(_ change: (String) throws -> ProjectSettings) throws {
     guard let rootURL else { return }
     settings = try change(rootURL.path(percentEncoded: false))

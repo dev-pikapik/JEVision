@@ -51,7 +51,7 @@ struct RecordHUD: View {
     }
     .padding(16)
     .frame(width: Self.width - 16, alignment: .leading)
-    .glassEffect(.regular, in: .rect(cornerRadius: 22))
+    .adaptiveGlass(in: .rect(cornerRadius: 22))
     .padding(8)
     .fixedSize(horizontal: false, vertical: true)
     .accessibilityElement(children: .contain)
@@ -218,7 +218,7 @@ private struct AreaPickerView: View {
       }
       .padding(.horizontal, 18)
       .padding(.vertical, 10)
-      .glassEffect(.regular, in: .capsule)
+      .adaptiveGlass(in: .capsule)
       .padding(.top, 60)
       .allowsHitTesting(false)
     }

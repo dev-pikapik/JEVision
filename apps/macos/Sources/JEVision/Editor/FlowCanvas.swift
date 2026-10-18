@@ -693,6 +693,8 @@ private struct BlockNode: View {
   /// `nil` while the test can't be run from here.
   let runFromHere: (() -> Void)?
   let actions: ItemActions
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorSchemeContrast) private var contrast
 
   private var type: String { block.kind.typeName }
   private var hasError: Bool { issues.contains { $0.severity == .error } }
@@ -702,7 +704,7 @@ private struct BlockNode: View {
     if isCurrent { return (.orange, 2.5) }
     if isSelected { return (.accentColor, 2.5) }
     if mark == .failed { return (.red, 2) }
-    return (.primary.opacity(0.1), 1)
+    return (.primary.opacity(contrast == .increased ? 0.6 : 0.1), 1)
   }
 
   private var runValue: String? {
@@ -759,7 +761,7 @@ private struct BlockNode: View {
       }
     }
     .shadow(color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: isCurrent ? 10 : 3, y: 1)
-    .animation(.snappy, value: isCurrent)
+    .animation(reduceMotion ? nil : .snappy, value: isCurrent)
     .contentShape(.rect(cornerRadius: 14))
     .onTapGesture(perform: select)
     .contextMenu {
@@ -811,6 +813,7 @@ struct FrameView: View {
   let title: Binding<String>
   let endEditing: () -> Void
   @FocusState private var focused: Bool
+  @Environment(\.colorSchemeContrast) private var contrast
 
   var body: some View {
     titleBar
@@ -818,7 +821,7 @@ struct FrameView: View {
       .background {
         RoundedRectangle(cornerRadius: 16)
           .fill(Color.primary.opacity(0.03))
-          .strokeBorder(isPicked ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: isPicked ? 2 : 1)
+          .strokeBorder(isPicked ? Color.accentColor : Color.primary.opacity(contrast == .increased ? 0.6 : 0.15), lineWidth: isPicked ? 2 : 1)
           .allowsHitTesting(false)
       }
   }

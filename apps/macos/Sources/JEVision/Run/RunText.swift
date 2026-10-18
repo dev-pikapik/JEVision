@@ -43,6 +43,10 @@ enum RunText {
       return String(
         localized: "run.check.meaningMismatch",
         defaultValue: "Block “\(block)”: the screen doesn’t show what’s expected. \(p("provider")): \(p("reason"))")
+    case "run.vision.cloudBlocked" where p("setting") == "project":
+      return String(
+        localized: "run.vision.cloudBlocked.project",
+        defaultValue: "Block “\(block)”: this project allows only models on this Mac, and \(p("provider")) works in the cloud. Choose a local model, or turn off “Only models on this Mac for this project” in Settings → AI.")
     case "run.vision.cloudBlocked":
       return String(
         localized: "run.vision.cloudBlocked",

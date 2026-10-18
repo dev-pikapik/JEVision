@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data-driven tests — JEVision</title>
+<meta name="description" content="Run one test with many sets of values from a CSV table.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html" aria-current="page">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Data-driven tests</h1>
+<p class="lead">Run one test with many sets of values, such as several users, languages or products, from a table in a CSV file.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#example">An example</a></li>
+    <li><a href="#rows">Once per row</a></li>
+    <li><a href="#choose">Choosing rows</a></li>
+    <li><a href="#csv">CSV rules</a></li>
+    <li><a href="#inner">Loops inside a run</a></li>
+    <li><a href="#edit">Editing the table in the app</a></li>
+  </ul>
+</nav>
+
+<h2 id="how">How it works</h2>
+<p>Put the values in a CSV file next to the test: one row per set of values and one column per value. Add a <a href="writing-tests.html#useData"><code>useData</code></a> block that names the file. Blocks after it read the current row's values as <code>${data.COLUMN}</code>, where <code>COLUMN</code> is the name in the first line of the file.</p>
+
+<h2 id="example">An example</h2>
+<p><code>data/accounts.csv</code>:</p>
+<pre><code>name,email,password
+Anna,anna@example.com,first-try
+Bo,bo@example.com,"quotes ""inside"", and a comma"</code></pre>
+<p>The test:</p>
+<pre><code>{
+  "format": 1,
+  "name": "Sign in",
+  "app": "com.example.AcmeMail",
+  "start": "open",
+  "blocks": {
+    "open":     { "type": "openApp", "next": "accounts" },
+    "accounts": { "type": "useData", "file": "data/accounts.csv", "body": "email" },
+    "email":    { "type": "type", "text": "${data.email}", "into": { "image": "refs/email-field.png" }, "next": "password" },
+    "password": { "type": "type", "text": "${data.password}", "into": { "image": "refs/password-field.png" }, "next": "inbox" },
+    "inbox":    { "type": "waitFor", "until": { "appears": { "image": "refs/inbox.png" } }, "next": "accounts" }
+  }
+}</code></pre>
+<p>The last block of the body, <code>inbox</code>, leads back to <code>accounts</code>, as every loop body does.</p>
+
+<h2 id="rows">Once per row</h2>
+<p>The first <code>useData</code> block on the way from <code>start</code> names the test's table. The whole test runs once for each of its rows, and every block of the test reads that row's values.</p>
+<ul>
+  <li>Each row is a result of its own, with its own <a href="retries.html">retries</a>.</li>
+  <li>A row is named by its <code>name</code> column (in any case, such as <code>Name</code>), or else by its first column: “Row 2: Bo”.</li>
+  <li>The run passes when every row passes. The report and the run summary say how many did, such as “4 of 5 rows passed”.</li>
+  <li>In JUnit XML, each row is a test case of its own, such as <code>Sign in [Row 2: Bo]</code>.</li>
+</ul>
+
+<h2 id="choose">Choosing rows</h2>
+<p>All rows run by default. To run some of them:</p>
+<ul>
+  <li><strong>Command line:</strong> <code>jevision run tests/sign-in.flow.json --row 3</code> or <code>--rows 2-4</code>.</li>
+  <li><strong>App:</strong> the Run menu, which picks one row or all of them for the next runs.</li>
+  <li><strong>AI assistant:</strong> <code>rows</code> of <a href="mcp.html#run_test"><code>run_test</code></a>, such as <code>"2"</code> or <code>"2-4"</code>.</li>
+</ul>
+<p>Rows count from 1; the header line isn't a row. Asking for a row the table doesn't have stops the run before it starts.</p>
+
+<h2 id="csv">CSV rules</h2>
+<p>JEVision reads CSV as described in <a href="https://www.rfc-editor.org/rfc/rfc4180">RFC 4180</a>, the format spreadsheet apps export:</p>
+<ul>
+  <li>The first line names the columns. Every name must be filled in and different from the others.</li>
+  <li>Values are separated by <code>,</code>, <code>;</code> or a tab, whichever the first line uses most. Spreadsheets in many languages export <code>;</code>, and that works as is.</li>
+  <li>A value with the separator, a quote or a line break goes in double quotes, with a quote inside written twice (<code>""</code>).</li>
+  <li>Every line has as many values as the header. A value may be empty.</li>
+  <li>Blank lines are skipped.</li>
+  <li>The file is UTF-8, with or without a byte order mark, with LF or CR LF line ends.</li>
+</ul>
+<p>The editor and <code>jevision validate</code> report a table that breaks these rules, with the line where it goes wrong, and a <code>${data.COLUMN}</code> that the table doesn't have, with the columns it does have.</p>
+
+<h2 id="inner">Loops inside a run</h2>
+<p>Only the first <code>useData</code> table runs the whole test per row. Two kinds of tables loop through their rows inside one run instead, like a <code>repeat</code> block:</p>
+<ul>
+  <li>a table whose path holds a placeholder, such as <code>data/${env.REGION}.csv</code>;</li>
+  <li>any further <code>useData</code> block of the test.</li>
+</ul>
+
+<h2 id="edit">Editing the table in the app</h2>
+<p>Select the <code>useData</code> block and click <strong>Edit Data…</strong> to see the table, change cells, and add or remove rows and columns. Saving keeps the file's separator, line ends and byte order mark, so the diff shows only what you changed.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

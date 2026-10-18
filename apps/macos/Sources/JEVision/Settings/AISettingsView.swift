@@ -12,6 +12,7 @@ struct AISettingsView: View {
           message: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       }
       AISections()
+      ProjectPrivacySection()
       AssistantsSection()
     }
     .formStyle(.grouped)
@@ -143,7 +144,7 @@ private struct ProviderSection: View {
       Text("The model runs on this Mac: screenshots and expected texts stay here.")
     } else {
       Text(
-        "For each check by meaning, JEVision sends \(provider.needsKey ? provider.name : (address.isEmpty ? provider.name : address)) the compared part of the screen, the reference image if there is one, and the expected text. Areas a test hides are covered first. Test Connection sends a small built-in picture."
+        "For each check by meaning, JEVision sends \(provider.needsKey ? provider.name : (address.isEmpty ? provider.name : address)) the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture."
       )
     }
   }

@@ -219,7 +219,9 @@ is optional:
   "retries": 2,
   "quarantine": [
     { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
-  ]
+  ],
+  "localOnly": true,
+  "hide": [{ "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 }]
 }
 ```
 
@@ -239,6 +241,12 @@ is optional:
   in the sidebar, the test's details, or Settings › Advanced. `jevision run
   --include-quarantined-failures` counts their failures like any other, for example in a nightly
   build.
+- **Only models on this Mac.** `localOnly: true` keeps the project's screenshots on the Mac for
+  everyone who runs its tests, whatever their own settings: checks by meaning work with local
+  models only and assistants get no screenshots. Set it in Settings → AI.
+- **Areas always hidden.** `hide` lists parts of the window, in fractions from 0 to 1 like the
+  areas of a block, painted over in every screenshot of the project before it goes to an AI model
+  or an assistant, for example an account name in the corner of every screen.
 
 `jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order and leaves out default
 values, so every change shows up as a small, readable diff.
@@ -282,12 +290,16 @@ only and sends nothing anywhere.
 | OpenAI-compatible server | at the address you give | `OPENAI_COMPATIBLE_API_KEY`, if the server asks for one |
 
 - **What is sent.** For each check by meaning: the compared part of the screen, the reference
-  image if there is one, and the expected text. Regions the reference hides or ignores are covered
-  before anything leaves the Mac. Nothing else is sent.
+  image if there is one, and the expected text. Nothing else is sent.
+- **Masking.** Before a picture leaves the Mac, solid grey blocks cover the regions the reference
+  hides or ignores, the project's `hide` areas and every password field the Accessibility
+  permission lets JEVision find. The report shows the picture exactly as it was sent, marked
+  "masked before sending". The same masking applies to screenshots given to assistants.
 - **API keys** come from the environment variable in the table or from the Keychain, where
   Settings → AI saves them. They are never shown, logged or written to reports.
 - **Only models on this Mac.** With this setting on, screenshots never go to a cloud service:
-  a check that would need one stops with a message.
+  a check that would need one stops with a message. A project can require it for everyone with
+  `localOnly` in `jevision.project.json`.
 - **Reports** keep the provider, the model and its explanation for each check by meaning.
 - **Test Connection** in Settings asks the model about a small built-in picture, to check the
   address, key and model in one go.
@@ -450,6 +462,8 @@ Safety:
   Assistants. Everything else only reads and writes test files.
 - Assistants see the same JSON you do. Secrets stay `${secret.NAME}` in tests and are masked in
   reports; API keys of AI providers are never available.
+- Screenshots from `screenshot` and `get_report` are masked like those sent to AI models. In a
+  project with `localOnly`, or with "Only models on this Mac" on, assistants get no screenshots.
 - Paths stay inside the project folder: `..` and symbolic links that lead outside are refused.
 - A run started by an assistant pauses while you use the mouse or keyboard, and Esc pressed
   twice stops it.

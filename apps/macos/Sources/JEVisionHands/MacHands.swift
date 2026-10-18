@@ -103,16 +103,19 @@ public final class MacHands: Hands, @unchecked Sendable {
   // MARK: Screen
 
   public func capture(app: String) throws(HandsError) -> Screenshot {
-    let (image, scale) = try captureWindow(app)
+    let (image, scale, window) = try captureWindow(app)
     guard let png = Self.png(image) else { throw .Failed(reason: "The screenshot can’t be saved as PNG.") }
-    return Screenshot(png: png, scale: scale, dark: Self.systemIsDark)
+    let pids = Set(Self.runningApps(app).map(\.processIdentifier))
+    return Screenshot(
+      png: png, scale: scale, dark: Self.systemIsDark,
+      secure: Accessibility.secureFields(pids: pids, window: window.bounds))
   }
 
   public func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? {
     guard let source = CGImageSourceCreateWithData(template as CFData, nil),
       let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
     else { throw .Failed(reason: "The image to look for can’t be read.") }
-    let (shot, scale) = try captureWindow(app)
+    let (shot, scale, _) = try captureWindow(app)
     guard let screen = Self.bitmap(shot) else { throw .Failed(reason: "The screenshot can’t be read.") }
     // The image may come from a display of another density: one taken on a Retina screen is
     // twice as large in pixels as the same button on a regular one, and the other way round.
@@ -321,11 +324,12 @@ public final class MacHands: Hands, @unchecked Sendable {
     }
   }
 
-  private func captureWindow(_ app: String) throws(HandsError) -> (CGImage, Double) {
+  private func captureWindow(_ app: String) throws(HandsError) -> (
+    CGImage, Double, (id: CGWindowID, bounds: CGRect, title: String?)
+  ) {
     guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
     wakeDisplay()
-    let shot = try Self.captureFrontWindow(app)
-    return (shot.image, shot.scale)
+    return try Self.captureFrontWindow(app)
   }
 
   /// A picture of the app's front window, the window it shows, and pixels per point.

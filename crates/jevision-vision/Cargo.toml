@@ -8,6 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+jevision-core.workspace = true
+png = "0.18"
 base64 = "0.23"
 serde_json.workspace = true
 ureq = { version = "3.1", default-features = false, features = ["rustls"] }

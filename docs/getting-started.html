@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started — JEVision</title>
+<meta name="description" content="Build JEVision, allow its permissions and record and run your first test.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html" aria-current="page">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Getting started</h1>
+<p class="lead">From nothing to a recorded test that runs, in about fifteen minutes.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#build">Build the app</a></li>
+    <li><a href="#permissions">Allow permissions</a></li>
+    <li><a href="#first-test">Your first test</a></li>
+    <li><a href="#example">Try the example test</a></li>
+    <li><a href="#project">What a project folder holds</a></li>
+    <li><a href="#cli">Install the command-line tool</a></li>
+    <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+  </ul>
+</nav>
+
+<h2 id="build">Build the app</h2>
+<p>JEVision is built from its source code. You need:</p>
+<ul>
+  <li>a Mac with macOS 26 or later (Apple silicon or Intel);</li>
+  <li><a href="https://developer.apple.com/xcode/">Xcode</a> 26 or later;</li>
+  <li>Rust 1.85 or later, installed with <a href="https://rustup.rs">rustup</a>.</li>
+</ul>
+<p>Open Terminal and run:</p>
+<pre><code>git clone https://github.com/dev-pikapik/JEVision.git
+cd JEVision
+apps/macos/scripts/build.sh
+open apps/macos/build/JEVision.app</code></pre>
+<p><code>build.sh</code> builds the Rust core for both Mac architectures, then the app and the <code>jevision</code> command-line tool, into <code>apps/macos/build/JEVision.app</code>. Two settings change how it builds:</p>
+<ul>
+  <li><code>ARCHS=arm64</code> builds for one architecture only, which is faster: <code>ARCHS=arm64 apps/macos/scripts/build.sh</code>.</li>
+  <li><code>SIGN_IDENTITY</code> signs the app with your own certificate instead of an ad-hoc signature.</li>
+</ul>
+<p>Move <code>JEVision.app</code> to your Applications folder if you like; the app works from anywhere.</p>
+
+<h2 id="permissions">Allow permissions</h2>
+<p>JEVision needs two permissions from macOS, set in <strong>System Settings → Privacy &amp; Security</strong>. The app explains each one before it asks.</p>
+<dl>
+  <dt>Screen Recording</dt>
+  <dd>To take screenshots of the app under test: to find what to click, to wait for screens and to compare them with reference images.</dd>
+  <dt>Accessibility</dt>
+  <dd>To click, type and press keys for you; to read the names of buttons and fields while recording, so blocks get readable names; and to notice your own mouse and keyboard, so a run pauses when you take over.</dd>
+</dl>
+<p><strong>Settings → Permissions</strong> in JEVision shows what is allowed and opens the right page of System Settings. If something doesn't work, see <a href="faq.html#permissions">Permissions</a> in the FAQ.</p>
+
+<h2 id="first-test">Your first test</h2>
+<ol>
+  <li><strong>Open a project.</strong> Choose <strong>Open Project…</strong> (<kbd>⌘</kbd><kbd>O</kbd>) and pick a folder. A project is just a folder; the tests are the <code>*.flow.json</code> files in it. One folder per application you test works well.</li>
+  <li><strong>Create a test.</strong> Choose <strong>New Test…</strong> (<kbd>⌘</kbd><kbd>N</kbd>), give it a name and choose the application to test.</li>
+  <li><strong>Record.</strong> Click <strong>Record</strong> (<kbd>⇧</kbd><kbd>⌘</kbd><kbd>R</kbd>) and use the app as you normally would. Every click, every piece of typed text and every key combination becomes a block, with a picture of what you clicked. Drag a frame over part of the window to add a check. Passwords you type become secrets kept in the Keychain, never in the test file. Press <kbd>Esc</kbd> twice or click <strong>Done</strong> to stop; the steps appear on the canvas.</li>
+  <li><strong>Run.</strong> Choose <strong>Run</strong> (<kbd>⌘</kbd><kbd>R</kbd>). The app under test comes to the front and JEVision repeats your steps. A small panel shows progress without getting in the way of the clicks. Move the mouse to pause; press <kbd>Esc</kbd> twice to stop the run from any app.</li>
+  <li><strong>Read the report.</strong> When the run ends, open its report to see every step with screenshots. If a step failed, the report starts with the reason. See <a href="reports.html">Run video and reports</a>.</li>
+</ol>
+<div class="note">
+  <p><strong>The first run of a check saves the picture.</strong> When a <code>check</code> block has no reference image yet, its first run saves the screen as that image and the report marks the step “Reference saved”. Later runs compare with it. See <a href="checks.html#first-run">Checks and references</a>.</p>
+</div>
+
+<h2 id="example">Try the example test</h2>
+<p>The repository has a test that works on any Mac: <a href="https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit"><code>examples/textedit</code></a>. It opens a copy of <code>note.txt</code> in TextEdit, adds a line at the end, checks how the window looks and quits TextEdit.</p>
+<ol>
+  <li>Choose <strong>Open Project…</strong> and pick the <code>examples/textedit</code> folder of your clone.</li>
+  <li>Select <strong>Add a line to a note</strong> and run it.</li>
+  <li>The first run saves <code>refs/note.png</code>, the picture the check compares with. Run it again: now the check compares the window with that picture.</li>
+</ol>
+<p>The original <code>note.txt</code> is never changed: an <code>openFile</code> block always opens a fresh copy.</p>
+
+<h2 id="project">What a project folder holds</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Path</th><th scope="col">What it is</th><th scope="col">In git?</th></tr></thead>
+  <tbody>
+    <tr><td><code>*.flow.json</code></td><td>Tests, one per file, in any sub-folder.</td><td>Yes</td></tr>
+    <tr><td>Pictures, CSV files and other files the tests use</td><td>Usually next to the tests, for example in <code>refs/</code>. Paths in a test are relative to the test file.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.environments.json</code></td><td>Optional. <a href="environments.html">Environments</a>, such as staging and production.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.project.json</code></td><td>Optional. Project-wide <a href="retries.html">retries and quarantine</a>.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.schedule.json</code></td><td>Optional. <a href="schedules.html">Schedules</a>.</td><td>Yes</td></tr>
+    <tr><td><code>.jevision/</code></td><td>Runs with their screenshots, videos and reports, and the history of scheduled runs.</td><td>No</td></tr>
+  </tbody>
+</table>
+</div>
+<p>After the first run in a project that uses git, JEVision offers to add <code>.jevision/</code> to the project's <code>.gitignore</code>: screenshots and videos are results, not something to commit.</p>
+<p>The full description of every file is in <a href="file-formats.html">File formats</a>.</p>
+
+<h2 id="cli">Install the command-line tool</h2>
+<p>The <code>jevision</code> command comes inside the app. Choose <strong>JEVision → Install Command Line Tool…</strong> and click <strong>Install…</strong>. macOS asks for an administrator's password and links the tool into <code>/usr/local/bin</code>. Without a password, click <strong>Install Just for Me</strong> to link it into <code>~/.local/bin</code> instead. The window shows whether the tool is installed and which version. See <a href="cli.html">Command line</a>.</p>
+
+<h2 id="shortcuts">Keyboard shortcuts</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Shortcut</th><th scope="col">Command</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>⌘</kbd><kbd>O</kbd></td><td>Open Project…</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>N</kbd></td><td>New Test…</td></tr>
+    <tr><td><kbd>⇧</kbd><kbd>⌘</kbd><kbd>R</kbd></td><td>Record</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>R</kbd></td><td>Run</td></tr>
+    <tr><td><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></td><td>Run Step by Step</td></tr>
+    <tr><td><kbd>⌃</kbd><kbd>⌘</kbd><kbd>R</kbd></td><td>Run All Tests</td></tr>
+    <tr><td><kbd>Esc</kbd> <kbd>Esc</kbd></td><td>Stop recording or stop a run, from any app</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>D</kbd></td><td>Duplicate the selected block</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>L</kbd></td><td>Link to Another Block</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>Z</kbd> / <kbd>⇧</kbd><kbd>⌘</kbd><kbd>Z</kbd></td><td>Undo / Redo</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>+</kbd> / <kbd>⌘</kbd><kbd>-</kbd></td><td>Zoom In / Zoom Out</td></tr>
+    <tr><td><kbd>⌘</kbd><kbd>0</kbd></td><td>Zoom to Fit</td></tr>
+    <tr><td><kbd>⌥</kbd><kbd>⌘</kbd><kbd>0</kbd></td><td>Actual Size</td></tr>
+  </tbody>
+</table>
+</div>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

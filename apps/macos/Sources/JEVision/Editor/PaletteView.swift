@@ -90,6 +90,8 @@ struct PaletteView: View {
                 .id(PaletteChoice.block(spec.typeName))
                 .contentShape(.rect)
                 .onTapGesture { pick(.block(spec.typeName)) }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { pick(.block(spec.typeName)) }
               }
             }
           }
@@ -104,6 +106,8 @@ struct PaletteView: View {
                 .id(choice)
                 .contentShape(.rect)
                 .onTapGesture { pick(choice) }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { pick(choice) }
               }
             }
           }
@@ -117,7 +121,7 @@ struct PaletteView: View {
       }
     }
     .frame(width: Self.size.width, height: Self.size.height)
-    .glassEffect(.regular, in: .rect(cornerRadius: 20))
+    .adaptiveGlass(in: .rect(cornerRadius: 20))
     .onAppear {
       searchFocused = true
       highlighted = choices.first

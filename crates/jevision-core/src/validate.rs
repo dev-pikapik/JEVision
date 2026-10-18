@@ -327,13 +327,17 @@ fn point(block: &str, field: &str, p: &Point, out: &mut Vec<Issue>) {
     }
 }
 
-fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
-    let fits = [r.x, r.y, r.width, r.height].into_iter().all(is_fraction)
+/// The rectangle has a size and lies inside the window or image.
+pub(crate) fn rect_fits(r: &Rect) -> bool {
+    [r.x, r.y, r.width, r.height].into_iter().all(is_fraction)
         && r.width > 0.0
         && r.height > 0.0
         && r.x + r.width <= 1.0
-        && r.y + r.height <= 1.0;
-    if !fits {
+        && r.y + r.height <= 1.0
+}
+
+fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
+    if !rect_fits(r) {
         out.push(
             Issue::error("flow.area.invalid")
                 .with("block", block)

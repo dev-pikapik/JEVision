@@ -145,6 +145,7 @@ fn screen() -> Screenshot {
         png,
         scale: 1.0,
         dark: false,
+        secure: Vec::new(),
     }
 }
 
@@ -438,6 +439,66 @@ fn runs_and_screenshots_need_permission() {
     let reply: Value = serde_json::from_str(&reply).unwrap();
     assert_eq!(reply["result"]["content"][1]["type"], "image");
     assert_eq!(reply["result"]["content"][1]["mimeType"], "image/png");
+}
+
+/// The picture of an image content block, as RGB rows.
+fn picture(content: &Value) -> Vec<[u8; 3]> {
+    use base64::Engine;
+    let png = base64::engine::general_purpose::STANDARD
+        .decode(content["data"].as_str().unwrap())
+        .unwrap();
+    let mut reader = png::Decoder::new(std::io::Cursor::new(png))
+        .read_info()
+        .unwrap();
+    let mut buf = vec![0; reader.output_buffer_size().unwrap()];
+    let info = reader.next_frame(&mut buf).unwrap();
+    let channels = info.line_size / info.width as usize;
+    buf.chunks_exact(channels)
+        .take((info.width * info.height) as usize)
+        .map(|p| [p[0], p[1], p[2]])
+        .collect()
+}
+
+#[test]
+fn screenshots_for_assistants_are_masked_or_kept_on_this_mac() {
+    let (project, host, server) = setup();
+    host.permissions.lock().unwrap().screenshots = true;
+    // The project hides the left half of every window.
+    project.write(
+        "jevision.project.json",
+        r#"{"format":1,"hide":[{"x":0,"y":0,"width":0.5,"height":1}]}"#,
+    );
+    let ask = || {
+        let reply = server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "screenshot", "arguments": { "app": "com.example.mail" } } }).to_string())
+            .unwrap();
+        serde_json::from_str::<Value>(&reply).unwrap()["result"].clone()
+    };
+    let result = ask();
+    assert!(
+        result["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Grey boxes")
+    );
+    // 4 × 2 pixels: the left two of each row covered, the rest as captured.
+    let grey = [128, 128, 128];
+    let shown = [200, 200, 200];
+    assert_eq!(
+        picture(&result["content"][1]),
+        [grey, grey, shown, shown, grey, grey, shown, shown]
+    );
+
+    project.write("jevision.project.json", r#"{"format":1,"localOnly":true}"#);
+    let result = ask();
+    assert_eq!(result["isError"], true);
+    assert!(
+        result["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("stay on this Mac")
+    );
+    assert!(result["content"].as_array().unwrap().len() == 1);
 }
 
 #[test]

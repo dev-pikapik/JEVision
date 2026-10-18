@@ -1,12 +1,12 @@
 //! Screenshots as RGBA pixels: PNG decoding and encoding, comparison with a reference, diff
-//! pictures and covering of private areas.
+//! pictures, cutting and scaling.
 
 use std::io::Cursor;
 
 use jevision_core::Rect;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct Image {
+pub struct Image {
     pub width: u32,
     pub height: u32,
     /// Row-major, 4 bytes per pixel.
@@ -15,7 +15,7 @@ pub(crate) struct Image {
 
 /// Result of comparing a screenshot with a reference.
 #[derive(Debug, Clone)]
-pub(crate) struct Comparison {
+pub struct Comparison {
     /// Share of compared pixels that match, 0–1.
     pub similarity: f64,
     /// Number of compared pixels that differ.
@@ -26,7 +26,7 @@ pub(crate) struct Comparison {
 
 /// Screenshot and reference have different shapes, so they cannot be the same screen.
 #[derive(Debug)]
-pub(crate) struct ShapeMismatch;
+pub struct ShapeMismatch;
 
 /// Largest relative difference in aspect ratio still treated as the same window at another
 /// scale (rounding of odd point sizes on Retina displays).
@@ -71,30 +71,6 @@ impl Image {
             .map_err(|e| e.to_string())?;
         writer.finish().map_err(|e| e.to_string())?;
         Ok(out)
-    }
-
-    /// Covers each area with its average colour, so nothing inside stays readable.
-    pub fn cover(&mut self, areas: &[Rect]) {
-        for area in areas {
-            let (x0, y0, x1, y1) = self.pixels_of(area);
-            let mut sum = [0u64; 4];
-            for y in y0..y1 {
-                for x in x0..x1 {
-                    let p = self.at(x, y);
-                    for (s, &v) in sum.iter_mut().zip(&self.rgba[p..p + 4]) {
-                        *s += u64::from(v);
-                    }
-                }
-            }
-            let count = u64::from((x1 - x0) * (y1 - y0)).max(1);
-            let average = sum.map(|s| (s / count) as u8);
-            for y in y0..y1 {
-                for x in x0..x1 {
-                    let p = self.at(x, y);
-                    self.rgba[p..p + 4].copy_from_slice(&average);
-                }
-            }
-        }
     }
 
     /// Compares colours of `self` (the screenshot) with `reference` inside `area` (whole image
@@ -365,17 +341,6 @@ mod tests {
                 .compare(&reference, None, &[], 0)
                 .is_err()
         );
-    }
-
-    #[test]
-    fn cover_hides_content() {
-        let mut img = solid(4, 4, [0, 0, 0]);
-        let p = img.at(1, 1);
-        img.rgba[p..p + 3].copy_from_slice(&[255, 255, 255]);
-        img.cover(&[rect(0.0, 0.0, 0.5, 0.5)]);
-        let corner = &img.rgba[..4];
-        assert_eq!(corner, &img.rgba[img.at(1, 1)..img.at(1, 1) + 4]);
-        assert_eq!(corner, &[63, 63, 63, 255]);
     }
 
     #[test]

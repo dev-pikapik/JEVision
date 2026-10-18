@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run video and reports — JEVision</title>
+<meta name="description" content="What a run leaves behind: screenshots, video, HTML and JUnit reports.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html" aria-current="page">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Run video and reports</h1>
+<p class="lead">Every run leaves a record: a screenshot of each step, a video of the app if you want one, and reports to share or feed to CI.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#report">The report of a run</a></li>
+    <li><a href="#statuses">Verdicts and step statuses</a></li>
+    <li><a href="#video">Run video</a></li>
+    <li><a href="#html">HTML reports</a></li>
+    <li><a href="#junit">JUnit XML</a></li>
+    <li><a href="#where">Where runs are saved</a></li>
+    <li><a href="#privacy">What reports never contain</a></li>
+  </ul>
+</nav>
+
+<h2 id="report">The report of a run</h2>
+<p>When a run ends, open its report from the result bar, the run history or the block that failed. A report shows:</p>
+<ul>
+  <li>the <strong>verdict</strong> and, when the test failed, the <strong>reason</strong> in one sentence, such as which picture didn't appear within how many seconds;</li>
+  <li>every <strong>step</strong>, with screenshots of the window before and after it;</li>
+  <li>for a check, the <strong>screen</strong>, the <strong>reference</strong>, their <strong>differences</strong> (differing pixels in red, left-out parts tinted) or one <strong>over</strong> the other, and how similar they were;</li>
+  <li>for a check by meaning, the AI provider, the model and its explanation;</li>
+  <li>the environment, the data row and, after retries, a sentence on <a href="retries.html#verdict">what the retries tell you</a>;</li>
+  <li>the video, if one was recorded, with a mark for each step.</li>
+</ul>
+<p>When the app changed on purpose, accept the run's screenshot as the new reference right from the report. See <a href="checks.html#accept">Checks and references</a>.</p>
+<p>On the canvas, every block shows how it did in the last run, and a failed block shows the reason in the inspector.</p>
+
+<h2 id="statuses">Verdicts and step statuses</h2>
+<p>A run is <strong>passed</strong>, <strong>failed</strong> or <strong>cancelled</strong> (stopped with <kbd>Esc</kbd> twice, Ctrl-C or Stop). Each step is:</p>
+<ul>
+  <li><strong>passed</strong>;</li>
+  <li><strong>failed</strong>, the step where the test stopped;</li>
+  <li><strong>Reference saved</strong>, when a <code>check</code> had no picture yet and saved the screen as its reference;</li>
+  <li><strong>cancelled</strong>, when the run was stopped during the step.</li>
+</ul>
+
+<h2 id="video">Run video</h2>
+<p>JEVision can record a video of the app under test during a run. The video shows only the app under test, not the rest of the screen, and the report marks the moment of each step on it.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Setting</th><th scope="col">Where</th><th scope="col">Choices</th></tr></thead>
+  <tbody>
+    <tr><td>Record video</td><td>Settings → Advanced</td><td>Never, Only when a test fails (default), Always</td></tr>
+    <tr><td>Keep run videos for</td><td>Settings → Advanced</td><td>7, 30 (default) or 90 days, or Forever</td></tr>
+    <tr><td><code>--video</code></td><td><a href="cli.html#run"><code>jevision run</code></a></td><td><code>off</code>, <code>on-failure</code>, <code>always</code>; default: the app's setting</td></tr>
+    <tr><td><code>video</code></td><td>A <a href="schedules.html#file">schedule</a></td><td><code>off</code>, <code>on-failure</code>, <code>always</code>; default: the app's setting</td></tr>
+  </tbody>
+</table>
+</div>
+<p>With “only when a test fails”, the video is recorded during every run and kept only if the test failed. Videos older than the chosen number of days are deleted after the next run. The video is saved as <code>video.mp4</code> in the run's folder.</p>
+
+<h2 id="html">HTML reports</h2>
+<p>An HTML report is one file with every screenshot inside it, easy to attach to an issue or send to someone without JEVision. The run's video, too large to put inside, is copied next to the file under the same name ending in <code>.mp4</code>.</p>
+<ul>
+  <li><strong>In the app:</strong> export the report from the report window.</li>
+  <li><strong>On the command line:</strong> <code>jevision run tests/ --html reports</code> saves the HTML report of every run in the <code>reports</code> folder.</li>
+</ul>
+
+<h2 id="junit">JUnit XML</h2>
+<p>JUnit XML is the format CI systems such as GitHub Actions, GitLab and Jenkins read to show test results. <code>jevision run tests/ --junit junit.xml</code> saves one file for all the tests of the run.</p>
+<ul>
+  <li>Each test is a test case. In a <a href="data-driven.html">data-driven test</a>, each row is a test case of its own, such as <code>Sign in [Row 2: Bo]</code>.</li>
+  <li>A failure of a test in <a href="retries.html#quarantine">quarantine</a> is listed as skipped, with the reason and the failure.</li>
+</ul>
+
+<h2 id="where">Where runs are saved</h2>
+<p>Every run is saved in the project's <code>.jevision/runs</code> folder, in a folder named after the time and the test, such as <code>.jevision/runs/20261018-031500-sign-in</code>. It holds:</p>
+<ul>
+  <li><code>report.json</code>, the report in a form programs can read;</li>
+  <li>the screenshots of the steps;</li>
+  <li><code>video.mp4</code>, when a video was kept;</li>
+  <li>copies of the files that <code>openFile</code> blocks opened.</li>
+</ul>
+<p>The <code>.jevision</code> folder holds results, not tests, so keep it out of git. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>.</p>
+
+<h2 id="privacy">What reports never contain</h2>
+<ul>
+  <li><strong>Secret values.</strong> They are masked wherever they would appear.</li>
+  <li><strong>Hidden areas.</strong> Parts of the window listed in a reference's <code>hide</code> are covered in every screenshot before it is saved. See <a href="checks.html#areas">Checks and references</a>.</li>
+  <li><strong>API keys</strong> of AI providers.</li>
+</ul>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

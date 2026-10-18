@@ -10,8 +10,10 @@ repository.workspace = true
 [dependencies]
 jevision-core.workspace = true
 jevision-vision.workspace = true
-png = "0.18"
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { version = "0.11", default-features = false }
 thiserror.workspace = true
+
+[dev-dependencies]
+png = "0.18"

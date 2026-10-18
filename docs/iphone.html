@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iPhone remote — JEVision</title>
+<meta name="description" content="Run tests and read reports on your Mac from an iPhone.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html" aria-current="page">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>iPhone remote</h1>
+<p class="lead">JEVision Remote turns an iPhone into a remote for JEVision on your Mac: look through tests, start a run, follow it block by block and read why a test failed, from anywhere.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#what">What you can do</a></li>
+    <li><a href="#get">Get the app</a></li>
+    <li><a href="#pair">Pair an iPhone</a></li>
+    <li><a href="#settings">Settings on the Mac</a></li>
+    <li><a href="#reach">Reaching the Mac from anywhere</a></li>
+    <li><a href="#privacy">Privacy and security</a></li>
+  </ul>
+</nav>
+
+<h2 id="what">What you can do</h2>
+<ul>
+  <li>Browse the projects and tests on each paired Mac.</li>
+  <li>See a test drawn as its flow, with its last results.</li>
+  <li>Run a test, if the Mac allows it, and follow it block by block, or stop it.</li>
+  <li>Read reports with a one-phrase reason for each failure, and open screenshots only when you need them.</li>
+  <li>Look through a project's run history.</li>
+</ul>
+<p>Tests, pictures and secrets stay on the Mac. The iPhone asks for what you open and keeps nothing but the list of paired Macs.</p>
+
+<h2 id="get">Get the app</h2>
+<p>JEVision Remote isn't in the App Store yet, so you build it from the source code with Xcode. You need:</p>
+<ul>
+  <li>Xcode 27 or later, and Rust, installed with <a href="https://rustup.rs">rustup</a>;</li>
+  <li>an iPhone with iOS 26 or later and a passcode;</li>
+  <li>an Apple ID or developer team to sign the app.</li>
+</ul>
+<ol>
+  <li>Open <code>apps/ios/JEVisionRemote.xcodeproj</code> in Xcode.</li>
+  <li>In the JEVisionRemote target, open <strong>Signing &amp; Capabilities</strong> and choose your team. With your own Apple ID, also change the bundle identifier to one you own.</li>
+  <li>Connect the iPhone, select it as the run destination and press <strong>Run</strong>.</li>
+</ol>
+<p>The first build also builds the JEVision core, so it takes a few minutes. <code>apps/ios/README.md</code> in the repository explains building for the Simulator.</p>
+
+<h2 id="pair">Pair an iPhone</h2>
+<ol>
+  <li>On the Mac, open <strong>JEVision → Settings → iPhone &amp; Remote</strong> and turn on <strong>Allow remote access</strong>.</li>
+  <li>Choose what the next device can do: <strong>Can run tests</strong> or <strong>View only</strong>.</li>
+  <li>On the iPhone, open JEVision Remote and tap <strong>Pair a Mac</strong>.</li>
+  <li>Point the camera at the pairing code on the Mac and confirm with Face ID or the passcode.</li>
+</ol>
+<p>A pairing code works once and expires in five minutes. To pair another device, click <strong>Show a Code for Another Device</strong>.</p>
+
+<h2 id="settings">Settings on the Mac</h2>
+<dl>
+  <dt>Allow remote access</dt>
+  <dd>Paired iPhones can reach this Mac only while it is on.</dd>
+  <dt>Ask on this Mac before a remote run</dt>
+  <dd>A run started from an iPhone waits until someone at the Mac allows it.</dd>
+  <dt>Keep this Mac awake while remote access is on</dt>
+  <dd>The Mac won't fall asleep on its own, so it can be reached at any time.</dd>
+  <dt>Activity log</dt>
+  <dd>Who ran what, and when: pairings, connections and remote runs.</dd>
+  <dt>Devices</dt>
+  <dd>Each paired iPhone, what it can do and when it last connected. <strong>Revoke</strong> disconnects it at once; to use it again, pair it with a new code.</dd>
+  <dt>Relay</dt>
+  <dd><strong>Standard</strong>, <strong>My own</strong> (the address of a relay you run) or <strong>None</strong>. See <a href="#reach">below</a>.</dd>
+</dl>
+
+<h2 id="reach">Reaching the Mac from anywhere</h2>
+<p>The iPhone connects to the Mac directly when it can, for example on the same Wi-Fi; the first time, iOS asks to allow access to the local network. When a direct connection isn't possible, a <strong>relay</strong> forwards the traffic. The relay carries only encrypted data it can't read. With the relay set to <strong>None</strong>, the iPhone reaches the Mac only on the same Wi-Fi or over a VPN.</p>
+<p>No ports are opened on the Mac, and you don't need to set up your router.</p>
+
+<h2 id="privacy">Privacy and security</h2>
+<ul>
+  <li><strong>End-to-end encryption.</strong> Every request goes over an encrypted connection between the iPhone and the Mac, directly or through a relay that can't read it.</li>
+  <li><strong>A key that can't be copied.</strong> The iPhone makes its own key in the Secure Enclave the first time it is used. The key never leaves the iPhone, needs you present to use it and isn't backed up. The Mac knows the iPhone only by the public half of that key.</li>
+  <li><strong>App lock.</strong> The app asks for Face ID or the passcode when opened, after a chosen time in the background (immediately, or after 1, 5 or 15 minutes) and at least every 8 hours. Locking drops every connection, and the app switcher shows the app covered.</li>
+  <li><strong>The Mac decides.</strong> It chooses whether an iPhone may only view or also run tests, and can revoke it at any time. Secrets and API keys are never sent to the phone.</li>
+  <li><strong>Little stored.</strong> The iPhone saves only the list of paired Macs: name, identity and addresses, in a file protected by iOS data protection. Forgetting a Mac on the iPhone removes it from that list; to also revoke the iPhone, remove it on the Mac.</li>
+</ul>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

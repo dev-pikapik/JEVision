@@ -20,6 +20,7 @@ struct RunReportView: View {
   @State private var preview: URL?
   @State private var failure: String?
   @State private var player: AVPlayer?
+  @Namespace private var stepsNamespace
 
   var body: some View {
     Group {
@@ -92,9 +93,11 @@ struct RunReportView: View {
             if let row {
               Text("Steps of \(RunChoices.rowTitle(number: Int(row.number), label: row.label))")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             } else {
               Text("Steps")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
             }
             Spacer()
             if tries.count > 1 {
@@ -126,6 +129,13 @@ struct RunReportView: View {
                   },
                   preview: { preview = $0 },
                   failure: $failure)
+                .accessibilityRotorEntry(id: step.seq, in: stepsNamespace)
+              }
+            }
+            .accessibilityRotor(Text("Failed Steps")) {
+              ForEach(steps.filter { $0.status == .failed }, id: \.seq) { step in
+                AccessibilityRotorEntry(
+                  Text("Step \(Int(step.seq)), \(BlockInfo.title(step.blockType))"), id: step.seq, in: stepsNamespace)
               }
             }
             .padding(.horizontal, 6)
@@ -277,6 +287,8 @@ struct StepImages {
   var after: URL?
   var expected: URL?
   var diff: URL?
+  /// The picture a vision model was shown, private areas painted over.
+  var sent: URL?
 
   init(step: Step, in run: URL) {
     let file = { (path: String?) in path.map { run.appending(path: $0) } }
@@ -284,9 +296,10 @@ struct StepImages {
     after = file(step.after)
     expected = file(step.expected)
     diff = file(step.diff)
+    sent = file(step.sent)
   }
 
-  var all: [URL] { [before, expected, after, diff].compactMap(\.self) }
+  var all: [URL] { [before, expected, after, diff, sent].compactMap(\.self) }
   /// The step compared the screen with a reference.
   var isComparison: Bool { expected != nil && after != nil }
 }
@@ -430,6 +443,14 @@ private struct StepRow: View {
             ShotImage(url: after, label: String(localized: "After"), preview: preview)
           }
         }
+      }
+      if let sent = images.sent {
+        ShotImage(
+          url: sent,
+          label: step.sentMasked
+            ? String(localized: "Sent to the AI model, masked before sending")
+            : String(localized: "Sent to the AI model"),
+          preview: preview)
       }
     }
   }

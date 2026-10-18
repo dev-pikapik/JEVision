@@ -8,6 +8,7 @@ struct EditorView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   let document: FlowDocument
   @State private var zoom = 1.0
   @State private var pinchStart: Double?
@@ -74,7 +75,7 @@ struct EditorView: View {
             }
             .offset(paletteOffset(target, in: box.size))
           }
-          .transition(.scale(scale: 0.96).combined(with: .opacity))
+          .transition(reduceMotion ? .opacity : .scale(scale: 0.96).combined(with: .opacity))
         }
       }
       .overlay(alignment: .bottom) {
@@ -85,20 +86,23 @@ struct EditorView: View {
           }
           if let result = runs.result, result.test == document.url {
             RunResultBar(result: result)
-              .transition(.move(edge: .bottom).combined(with: .opacity))
+              .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
           }
           if let error = document.saveError {
             Label("Changes aren’t saved: \(error)", systemImage: "exclamationmark.triangle.fill")
               .padding(.horizontal, 14)
               .padding(.vertical, 8)
-              .glassEffect(.regular.tint(.red.opacity(0.3)))
+              .adaptiveGlass(tint: .red.opacity(0.3))
               .padding()
           }
         }
       }
-      .animation(.snappy(duration: 0.2), value: palette)
-      .animation(.snappy, value: runs.result)
+      .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: palette)
+      .animation(reduceMotion ? nil : .snappy, value: runs.result)
       .onChange(of: document.flow) { runs.clearMarks(of: document) }
+      .onChange(of: document.saveError) { _, error in
+        if let error { AccessibilityNotification.Announcement(String(localized: "Changes aren’t saved: \(error)")).post() }
+      }
       .onChange(of: runs.result) { _, result in
         // A new run of the test is what the blocks show from now on.
         if result?.test == document.url { document.reportRun = nil }
@@ -559,7 +563,7 @@ private struct ZoomBar: View {
     .controlSize(.small)
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
-    .glassEffect(.regular, in: .capsule)
+    .adaptiveGlass(in: .capsule)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Zoom"))
   }
