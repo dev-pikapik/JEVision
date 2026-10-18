@@ -619,6 +619,47 @@ fn wait_for_times_out_with_localizable_reason() {
 }
 
 #[test]
+fn a_run_that_never_looks_at_the_screen_says_nothing_was_checked() {
+    let p = Project::new();
+    p.test(
+        r#""keys":{"type":"pressKeys","keys":"cmd+n","next":"settle"},
+           "settle":{"type":"waitFor","until":"screenStable","timeout":"1s"}"#,
+        "keys",
+        0,
+    );
+    let hands = Fake::new(solid([1, 2, 3]));
+    let unchecked = run(&p, &hands);
+    assert_eq!(unchecked.report.verdict, Verdict::Passed);
+    assert!(unchecked.report.nothing_checked);
+    let xml = junit_xml(std::slice::from_ref(&unchecked.report));
+    assert!(xml.contains("skipped=\"1\"") && xml.contains("nothing was checked"));
+    assert!(html(&unchecked.report, &unchecked.dir, None).contains("Nothing checked"));
+
+    // The wait passes and saw what it waited for: the run checked the screen.
+    p.write("refs/screen.png", solid([1, 2, 3]));
+    p.test(
+        r#""keys":{"type":"pressKeys","keys":"cmd+n","next":"wait"},
+           "wait":{"type":"waitFor","until":{"appears":{"image":"refs/screen.png"}},"timeout":"1s"}"#,
+        "keys",
+        0,
+    );
+    let checked = run(&p, &hands).report;
+    assert_eq!(checked.verdict, Verdict::Passed);
+    assert!(!checked.nothing_checked);
+    assert!(!junit_xml(&[checked]).contains("skipped=\"1\""));
+
+    // A failed run is a failure, whatever it checked.
+    p.test(
+        r#""missing":{"type":"openFile","files":["nope.txt"]}"#,
+        "missing",
+        0,
+    );
+    let failed = run(&p, &hands).report;
+    assert_eq!(failed.verdict, Verdict::Failed);
+    assert!(!failed.nothing_checked);
+}
+
+#[test]
 fn check_creates_baseline_then_passes_then_fails() {
     let p = Project::new();
     p.test(

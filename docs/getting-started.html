@@ -110,9 +110,11 @@ open apps/macos/build/JEVision.app</code></pre>
 </ol>
 <div class="note">
   <p><strong>The first run of a check saves the picture.</strong> When a <code>check</code> block has no reference image yet, its first run saves the screen as that image and the report marks the step “Reference saved”. Later runs compare with it. See <a href="checks.html#first-run">Checks and references</a>.</p>
+  <p><strong>A test has to look to pass.</strong> A test with no <code>check</code> block and no wait for a picture can't notice a wrong result, so a run that ends without errors shows <strong>Nothing Checked</strong> instead of Passed, and the editor offers <strong>Add Check</strong>.</p>
 </div>
 
 <h2 id="example">Try the example test</h2>
+<p>The quickest way: on the app's first screen, click <strong>Run the Demo Test</strong>. JEVision asks for the two permissions if they are missing, puts the test in <code>Documents/JEVision Tests/Demo</code> and runs it. The same test is in the repository:</p>
 <p>The repository has a test that works on any Mac: <a href="https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit"><code>examples/textedit</code></a>. It opens a copy of <code>note.txt</code> in TextEdit, adds a line at the end, checks how the window looks and quits TextEdit.</p>
 <ol>
   <li>Choose <strong>Open Project…</strong> and pick the <code>examples/textedit</code> folder of your clone.</li>

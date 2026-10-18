@@ -134,11 +134,18 @@ struct KeyComboTests {
   }
 
   @Test func recordsKeysInFileOrder() {
-    #expect(KeyCombo.from(keyCode: 1, characters: "s", modifierFlags: [.shift, .command]) == "cmd+shift+s")
-    #expect(KeyCombo.from(keyCode: 36, characters: "\r", modifierFlags: []) == "return")
-    #expect(KeyCombo.from(keyCode: 96, characters: nil, modifierFlags: [.control]) == "ctrl+f5")
-    #expect(KeyCombo.from(keyCode: 0, characters: "é", modifierFlags: []) == nil)
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.shift, .command]) == "cmd+shift+s")
+    #expect(KeyCombo.from(keyCode: 36, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 76, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 96, modifierFlags: [.control]) == "ctrl+f5")
+    #expect(KeyCombo.from(keyCode: 10, modifierFlags: []) == nil)
   }
+
+  /// On a Russian layout ⌘S types "ы"; the shortcut is still recorded as the key's place.
+  @Test func recordsShortcutsTheSameOnEveryLayout() {
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.command]) == "cmd+s")
+    #expect(KeyCombo.from(keyCode: 45, modifierFlags: [.command]) == "cmd+n")
+    #expect(KeyCombo.from(keyCode: 43, modifierFlags: [.command]) == "cmd+,")  }
 }
 
 struct RelativePathTests {

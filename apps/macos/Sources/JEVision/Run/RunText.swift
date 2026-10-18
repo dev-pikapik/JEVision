@@ -151,7 +151,8 @@ enum RunText {
   static func batchOutcome(_ result: RunCenter.BatchResult) -> String {
     var counts = [String(localized: "Passed: \(result.passed)"), String(localized: "Failed: \(result.failed)")]
     if result.quarantined > 0 { counts.append(String(localized: "Failed in quarantine: \(result.quarantined)")) }
-    let notRun = result.total - result.passed - result.failed - result.quarantined
+    if result.unchecked > 0 { counts.append(String(localized: "Nothing checked: \(result.unchecked)")) }
+    let notRun = result.total - result.passed - result.failed - result.quarantined - result.unchecked
     if notRun > 0 { counts.append(String(localized: "Not run: \(notRun)")) }
     let summary = counts.joined(separator: " · ")
     return result.stopped
@@ -175,6 +176,9 @@ enum RunText {
       return String(localized: "\(RunChoices.rowTitle(number: Int(row.number), label: row.label)): \(text)")
     case .passed:
       let time = RunHistory.duration(report.durationMs)
+      if report.nothingChecked {
+        return String(localized: "Finished in \(time), but nothing was checked: the test has no Check block, so it can’t catch a wrong result.")
+      }
       if report.flaky {
         let tries = report.attempts.count
         return String(localized: "Passed on try \(tries), so the test is flaky: it failed before that.")
