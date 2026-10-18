@@ -2037,6 +2037,16 @@
         }
       }
     },
+    "Appearance and language follow the system again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оформление и язык снова будут как в системе."
+          }
+        }
+      }
+    },
     "Areas" : {
       "localizations" : {
         "ru" : {
@@ -3547,6 +3557,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключение работает"
+          }
+        }
+      }
+    },
+    "Connections" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключения"
           }
         }
       }
@@ -5205,6 +5225,16 @@
         }
       }
     },
+    "Forward" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вперёд"
+          }
+        }
+      }
+    },
     "Frame" : {
       "localizations" : {
         "ru" : {
@@ -6728,6 +6758,16 @@
         }
       }
     },
+    "No Results" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не найдено"
+          }
+        }
+      }
+    },
     "No Schedules" : {
       "localizations" : {
         "ru" : {
@@ -6864,6 +6904,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проект не открыт"
+          }
+        }
+      }
+    },
+    "No provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and the project’s own settings stay as they are." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер не будет выбран, модели и адреса забудутся, а ассистенты не смогут запускать тесты и делать снимки экрана. API-ключи останутся в Связке ключей, а настройки самого проекта не изменятся."
           }
         }
       }
@@ -8760,6 +8810,16 @@
         }
       }
     },
+    "Remote access turns off, remote runs start without asking, this Mac stays awake while remote access is on, and the standard relay is used. Paired devices stay paired." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалённый доступ выключится, удалённые запуски будут начинаться без вопроса, Mac не будет засыпать при удалённом доступе, а ретранслятор станет стандартным. Подключённые устройства останутся подключёнными."
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "ru" : {
@@ -9040,6 +9100,26 @@
         }
       }
     },
+    "Restore Defaults" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить"
+          }
+        }
+      }
+    },
+    "Restore Defaults…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить настройки по умолчанию…"
+          }
+        }
+      }
+    },
     "Restore This Version" : {
       "localizations" : {
         "ru" : {
@@ -9056,6 +9136,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Возврат версии"
+          }
+        }
+      }
+    },
+    "Restore default settings?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить настройки по умолчанию?"
           }
         }
       }
@@ -9490,6 +9580,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Видео прогонов"
+          }
+        }
+      }
+    },
+    "Run videos are recorded only when a test fails and kept for 30 days. Retries and quarantine stay: they belong to the project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео прогонов будут записываться, только если тест провален, и храниться 30 дней. Повторы и карантин останутся: они принадлежат проекту."
           }
         }
       }
@@ -11032,6 +11132,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прогон теста"
+          }
+        }
+      }
+    },
+    "Testing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестирование"
           }
         }
       }
