@@ -5,6 +5,7 @@
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
 mod decode;
+mod diff;
 mod edit;
 mod issue;
 mod layout;
@@ -12,6 +13,7 @@ mod model;
 mod validate;
 
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
+pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{START, Slot};
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{

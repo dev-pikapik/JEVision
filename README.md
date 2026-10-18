@@ -42,6 +42,8 @@ it and a failure points at the block where it happened.
   Terminal, scripts and CI.
 - **AI assistants.** Claude, Cursor, Copilot and other MCP clients can find, write, run and
   debug tests. See [Assistants (MCP)](#assistants-mcp).
+- **Git.** Commit, pull, push and switch branches without a terminal, and see what each version
+  of a test changed. See [Git](#git).
 
 ## Requirements
 
@@ -330,10 +332,31 @@ Safety:
 - A run started by an assistant pauses while you use the mouse or keyboard, and Esc pressed
   twice stops it.
 
+## Git
+
+Tests are plain files, so git keeps their history. Settings → Git shows the project's branch and
+changes; the foot of the sidebar shows them too and opens that page.
+
+- **Commit.** Check the changes to include and describe them. A commit contains only your message:
+  JEVision adds no trailers or signatures. Git asks for your name and email once.
+- **What changed.** A test is shown as one flowchart: added blocks are green, removed ones red,
+  changed ones yellow, with what each changed block was and is now. A picture can be compared side
+  by side, under a sliding divider, one over the other, or with the differing pixels in red.
+- **History.** Show History… on a test or a folder lists the commits that changed it, following
+  renames. Restore This Version writes the file back as it was; Edit → Undo takes that back.
+- **Pull, push and branches.** Pull merges the server's commits; when they touch the same lines
+  as yours, nothing is changed and the app names the files. Push sends a new branch to the
+  server too.
+- **Not tracked yet.** Start Tracking Changes creates the repository.
+
+JEVision runs the git installed on the Mac (the Command Line Developer Tools include it), so
+signing in to the server works the way it does in Terminal: GitHub CLI (`gh auth login`), the
+Keychain or SSH keys. The app has no sign-in of its own.
+
 ## Roadmap
 
 - Testing remote devices, starting with iPhone
-- Git and GitHub integration in the app
+- GitHub in the app: pull requests and run results on them
 - Windows and Linux, each with an interface of its own
 
 ## Contributing

@@ -5,6 +5,7 @@ import SwiftUI
 /// The test as a whole: its name, app, data, secrets and retries.
 struct TestDetailsView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(\.dismiss) private var dismiss
   let document: FlowDocument
   @State private var settingSecret: SecretName?
   /// Bumped after a secret is saved, to read the statuses again.
@@ -73,6 +74,19 @@ struct TestDetailsView: View {
         } footer: {
           Text("Values are kept in the Keychain on this Mac or read from environment variables of the same name.")
             .foregroundStyle(.secondary)
+        }
+        if project.git.status?.hasCommits == true, let path = project.selection {
+          Section {
+            LabeledContent {
+              Button("History…") {
+                dismiss()
+                project.historyPath = path
+              }
+            } label: {
+              Text("History")
+              Text("Every committed version of this test.")
+            }
+          }
         }
         IssueList(issues: issues.filter { !["name", "app"].contains($0.param("field") ?? "") })
       }

@@ -1,0 +1,11 @@
+[package]
+name = "jevision-git"
+description = "Git for JEVision projects: changes, test history, commits, branches and sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true

@@ -39,6 +39,13 @@ struct JEVisionApp: App {
     .defaultPosition(.center)
     .restorationBehavior(.disabled)
 
+    Window("Commit Changes", id: SceneID.commit) {
+      CommitView()
+        .environment(project)
+    }
+    .defaultSize(width: 960, height: 640)
+    .restorationBehavior(.disabled)
+
     Settings {
       SettingsView()
         .environment(project)
@@ -51,4 +58,5 @@ enum SceneID {
   static let main = "main"
   static let onboarding = "onboarding"
   static let commandLineTool = "commandLineTool"
+  static let commit = "commit"
 }

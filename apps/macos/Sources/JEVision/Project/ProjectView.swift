@@ -1,3 +1,4 @@
+import JEVisionCore
 import SwiftUI
 
 struct ProjectView: View {
@@ -34,6 +35,9 @@ struct ProjectView: View {
           .padding(.bottom, 6)
         }
       }
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        if let status = project.git.status { GitChip(status: status) }
+      }
       .searchable(
         text: $query, placement: .sidebar,
         prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search tests"))
@@ -60,6 +64,9 @@ struct ProjectView: View {
     .onChange(of: runs.result) { _, result in
       // Run Again from a report: the new run's report takes its place.
       if project.sidebar == .runs, project.selectedRun != nil, let run = result?.run { project.showRun(run) }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      project.git.refresh()
     }
     .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
       TextField("Name", text: $newName)
@@ -132,6 +139,9 @@ struct ProjectView: View {
           Divider()
         }
         Button("Show in Finder") { project.reveal(item) }
+        if project.git.status?.hasCommits == true {
+          Button("Show History…") { project.historyPath = item.id }
+        }
       }
   }
 
@@ -141,6 +151,43 @@ struct ProjectView: View {
 
   private func attempt(_ action: () throws -> Void) {
     do { try action() } catch { failure = error.localizedDescription }
+  }
+}
+
+/// The branch and how many files changed, at the foot of the sidebar; opens Settings › Git.
+private struct GitChip: View {
+  let status: GitStatus
+  @Environment(\.openSettings) private var openSettings
+  @AppStorage(SettingsTab.key) private var tab = SettingsTab.general
+
+  var body: some View {
+    let branch = status.branch ?? String(localized: "No branch")
+    Button {
+      tab = .git
+      openSettings()
+    } label: {
+      HStack(spacing: 6) {
+        Image(systemName: "arrow.triangle.branch")
+        Text(verbatim: branch)
+          .lineLimit(1)
+          .truncationMode(.middle)
+        if !status.changes.isEmpty {
+          Text(verbatim: "· \(status.changes.count)")
+            .monospacedDigit()
+        }
+        Spacer(minLength: 0)
+      }
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .padding(.horizontal, 16)
+      .padding(.vertical, 8)
+      .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .help(Text("Commit, pull and push in Settings › Git"))
+    .accessibilityLabel(Text("Branch \(branch)"))
+    .accessibilityValue(Text(GitText.summary(status.changes)))
+    .accessibilityHint(Text("Opens Git settings"))
   }
 }
 

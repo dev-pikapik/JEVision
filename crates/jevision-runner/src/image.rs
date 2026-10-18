@@ -273,6 +273,28 @@ fn same_size<'a>(
     }
 }
 
+/// How two versions of a picture differ, pixel by pixel.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PictureDiff {
+    /// Share of pixels that are the same, 0–1.
+    pub similarity: f64,
+    pub differing: u64,
+    /// PNG of the newer version faded, with the differing pixels in red.
+    pub png: Vec<u8>,
+}
+
+/// Compares two versions of a reference picture exactly, as a check with no tolerance would.
+/// `None` when either isn't a readable PNG or they have different shapes.
+pub fn picture_diff(before: &[u8], after: &[u8]) -> Option<PictureDiff> {
+    let (before, after) = (Image::decode(before).ok()?, Image::decode(after).ok()?);
+    let comparison = after.compare(&before, None, &[], 0).ok()?;
+    Some(PictureDiff {
+        similarity: comparison.similarity,
+        differing: comparison.differing,
+        png: comparison.diff.encode().ok()?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -379,5 +401,22 @@ mod tests {
         );
         let line = solid(1000, 1, [9, 9, 9]).fit(10);
         assert_eq!((line.width, line.height), (10, 1));
+    }
+
+    #[test]
+    fn picture_versions_show_their_differing_pixels() {
+        let before = solid(4, 2, [10, 20, 30]);
+        let mut after = before.clone();
+        after.rgba[0] = 11;
+        let diff = picture_diff(&before.encode().unwrap(), &after.encode().unwrap()).unwrap();
+        assert_eq!(diff.differing, 1);
+        assert_eq!(diff.similarity, 7.0 / 8.0);
+        let shown = Image::decode(&diff.png).unwrap();
+        assert_eq!((shown.width, shown.height), (4, 2));
+        assert_eq!(shown.rgba[..4], [230, 20, 60, 255]);
+
+        let tall = solid(2, 4, [10, 20, 30]).encode().unwrap();
+        assert_eq!(picture_diff(&before.encode().unwrap(), &tall), None);
+        assert_eq!(picture_diff(b"not a picture", &tall), None);
     }
 }

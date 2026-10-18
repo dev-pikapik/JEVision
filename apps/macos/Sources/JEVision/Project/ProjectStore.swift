@@ -38,6 +38,9 @@ final class ProjectStore {
   var selectedRun: SavedRun.ID?
   /// Counts reference images replaced or put back, so views that compare with them look again.
   private(set) var referenceChanges = 0
+  /// The test or folder, relative to the project, whose history is shown.
+  var historyPath: String?
+  let git = ProjectGit()
 
   @ObservationIgnored private var watcher: FolderWatcher?
   @ObservationIgnored private var scanTask: Task<([ProjectItem], [SavedRun]), any Error>?
@@ -192,6 +195,37 @@ final class ProjectStore {
     undoManager?.setActionName(action)
   }
 
+  // MARK: History
+
+  /// Writes `path` (relative to the project) as `source` was in `commit`. The current file goes
+  /// to the Trash; Undo brings it back.
+  func restore(_ path: String, from source: String, in commit: String, undoManager: UndoManager?) throws {
+    guard let rootURL, let file = Baseline.file(path, in: rootURL) else {
+      throw CocoaError(.fileWriteNoPermission, userInfo: [NSFilePathErrorKey: path])
+    }
+    let files = FileManager.default
+    let old = files.fileExists(atPath: file.path) ? try Baseline.moveToTrash(file) : nil
+    do {
+      try gitRestore(project: rootURL.path(percentEncoded: false), commit: commit, source: source, path: path)
+    } catch {
+      if let old { try? files.moveItem(at: old, to: file) }
+      throw error
+    }
+    let action = String(localized: "Restore Version")
+    undoManager?.registerUndo(withTarget: self) { store in
+      MainActor.assumeIsolated {
+        guard (try? Baseline.restore(old, to: file)) != nil else { return }
+        undoManager?.registerUndo(withTarget: store) { store in
+          MainActor.assumeIsolated {
+            try? store.restore(path, from: source, in: commit, undoManager: undoManager)
+          }
+        }
+        undoManager?.setActionName(action)
+      }
+    }
+    undoManager?.setActionName(action)
+  }
+
   private func open(_ url: URL) {
     accessedURL?.stopAccessingSecurityScopedResource()
     accessedURL = url.startAccessingSecurityScopedResource() ? url : nil
@@ -204,6 +238,7 @@ final class ProjectStore {
     sidebar = .tests
     status = .loading
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
+    git.open(url)
     rescan()
   }
 
@@ -236,6 +271,7 @@ final class ProjectStore {
           self.selection = nil
         }
         document?.reload()
+        git.refresh()
       case .failure:
         // A moved or renamed folder is still found through the bookmark.
         if let moved = resolveBookmark(), moved.standardizedFileURL != url.standardizedFileURL {
