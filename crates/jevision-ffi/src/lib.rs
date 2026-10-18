@@ -13,10 +13,12 @@ use jevision_core::{
 uniffi::setup_scaffolding!();
 
 mod history;
+mod mcp;
 mod run;
 mod vision;
 
 pub use history::*;
+pub use mcp::*;
 pub use run::*;
 
 /// The text is not a readable test file.

@@ -227,6 +227,16 @@
         }
       }
     },
+    "AI assistants on this Mac can always find, read, edit and check the tests of a project and read its reports. They never get the values of secrets or API keys, and can’t open files outside the project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ-ассистенты на этом Mac всегда могут находить, читать, изменять и проверять тесты проекта и читать его отчёты. Значения секретов и API-ключи им никогда не выдаются, а файлы за пределами проекта для них закрыты."
+          }
+        }
+      }
+    },
     "API Key" : {
       "localizations" : {
         "ru" : {
@@ -323,6 +333,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить файл…"
+          }
+        }
+      }
+    },
+    "Add JEVision to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with this configuration:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте JEVision в MCP-серверы вашего ассистента — например, Claude, Cursor или Copilot — с такой конфигурацией:"
           }
         }
       }
@@ -529,6 +549,26 @@
         }
       }
     },
+    "Allow assistants to run tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить ассистентам запускать тесты"
+          }
+        }
+      }
+    },
+    "Allow assistants to take screenshots" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить ассистентам делать снимки экрана"
+          }
+        }
+      }
+    },
     "Allowed" : {
       "localizations" : {
         "ru" : {
@@ -555,6 +595,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Модель ИИ может проверить экран по фразе вроде «В корзине 2 товара» — там, где сравнение картинок слишком строгое."
+          }
+        }
+      }
+    },
+    "An assistant sees the front window of an app, which may show private information." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент видит переднее окно приложения, а в нём могут быть личные данные."
           }
         }
       }
@@ -605,6 +655,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спрашивает модель о маленькой картинке"
+          }
+        }
+      }
+    },
+    "Assistants" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистенты"
           }
         }
       }
@@ -1005,6 +1065,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сравнивать только часть картинки"
+          }
+        }
+      }
+    },
+    "Connect an Assistant" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение ассистента"
           }
         }
       }
@@ -2372,6 +2442,16 @@
         }
       }
     },
+    "Open a project to name it here. Without --project, the assistant sees the folder it starts jevision in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте проект, чтобы он появился здесь. Без --project ассистент видит папку, в которой запускает jevision."
+          }
+        }
+      }
+    },
     "Open in a new copy of the app" : {
       "localizations" : {
         "ru" : {
@@ -3642,6 +3722,16 @@
         }
       }
     },
+    "Tests open apps, click and type on this Mac. Press Esc twice to stop one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты открывают приложения, нажимают и печатают на этом Mac. Чтобы остановить тест, дважды нажмите Esc."
+          }
+        }
+      }
+    },
     "Text" : {
       "localizations" : {
         "ru" : {
@@ -3688,6 +3778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Приложение, в котором вы будете записывать. Оно станет приложением теста."
+          }
+        }
+      }
+    },
+    "The assistant sees the project open now. To give it another one, change the folder after --project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент видит проект, открытый сейчас. Чтобы дать ему другой, замените папку после --project."
           }
         }
       }

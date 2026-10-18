@@ -10,6 +10,8 @@ public struct AISettings {
   public static let keyService = "JEVision AI"
   public static let providerKey = "ai.provider"
   public static let localOnlyKey = "ai.localOnly"
+  public static let assistantsRunKey = "assistants.allowRuns"
+  public static let assistantsCaptureKey = "assistants.allowScreenshots"
 
   public static func modelKey(_ provider: String) -> String { "ai.model.\(provider)" }
   public static func addressKey(_ provider: String) -> String { "ai.address.\(provider)" }
@@ -37,6 +39,17 @@ public struct AISettings {
 
   /// Checks by meaning may only use a model on this Mac.
   public var localOnly: Bool { defaults.bool(forKey: Self.localOnlyKey) }
+
+  /// AI assistants (`jevision mcp`) may run tests, which click and type on this Mac.
+  public var assistantsMayRun: Bool { defaults.bool(forKey: Self.assistantsRunKey) }
+
+  /// AI assistants may take screenshots of app windows.
+  public var assistantsMayCapture: Bool { defaults.bool(forKey: Self.assistantsCaptureKey) }
+
+  /// Picks up what the app changed since this process last read its settings.
+  public func refresh() {
+    CFPreferencesAppSynchronize(Self.appDomain as CFString)
+  }
 
   /// The chosen model, or the provider's suggestion.
   public func model(for provider: VisionProvider) -> String {

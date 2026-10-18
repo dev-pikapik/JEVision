@@ -126,7 +126,7 @@ pub struct RunOptions {
 /// at once; a run waiting for the screen wakes up on [`cancel`](Self::cancel).
 #[derive(uniffi::Object)]
 pub struct TestRun {
-    control: RunControl,
+    pub(crate) control: RunControl,
 }
 
 #[uniffi::export]
@@ -155,15 +155,8 @@ impl TestRun {
         let spawned = std::thread::Builder::new()
             .name("jevision-run".into())
             .spawn(move || {
-                let outcome = run(
-                    &project,
-                    &test,
-                    options,
-                    hands,
-                    secrets,
-                    &thread_listener,
-                    control,
-                );
+                let events = |e: &jevision_runner::Event| thread_listener.event(e.clone().into());
+                let outcome = run(&project, &test, options, hands, secrets, &events, control);
                 thread_listener.finished(outcome);
             });
         if let Err(e) = spawned {
@@ -218,23 +211,23 @@ impl Default for TestRun {
     }
 }
 
-fn run(
+/// Runs `test` on this thread and saves its reports; `events` hears the progress.
+pub(crate) fn run(
     project: &str,
     test: &str,
     options: RunOptions,
     hands: Arc<dyn Hands>,
     secrets: Arc<dyn SecretSource>,
-    listener: &Arc<dyn RunListener>,
+    events: &dyn jevision_runner::EventSink,
     control: RunControl,
 ) -> RunOutcome {
     let hands = HandsAdapter(hands);
     let secrets = SecretAdapter(secrets);
-    let events = |e: &jevision_runner::Event| listener.event(e.clone().into());
     let vision = options.vision.and_then(|v| v.client().ok());
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
-        events: &events,
+        events,
         control,
         vision: vision.as_ref().map(|c| c as &dyn VisionJudge),
     };

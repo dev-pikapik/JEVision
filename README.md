@@ -40,6 +40,8 @@ it and a failure points at the block where it happened.
   [AI models](#ai-models).
 - **Command line.** The `jevision` tool inside the app runs, validates and formats tests from
   Terminal, scripts and CI.
+- **AI assistants.** Claude, Cursor, Copilot and other MCP clients can find, write, run and
+  debug tests. See [Assistants (MCP)](#assistants-mcp).
 
 ## Requirements
 
@@ -286,11 +288,52 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.ui-tests.pli
 Reports are saved in the project's `.jevision/runs` folder, where the app shows them in its run
 history.
 
+## Assistants (MCP)
+
+`jevision mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server for AI
+assistants on the same Mac. The assistant starts it and talks to it over standard input and
+output; nothing listens on the network. Add it to the assistant's MCP servers — Settings → AI →
+Assistants in the app shows this configuration ready to copy, with your paths:
+
+```json
+{
+  "mcpServers": {
+    "jevision": {
+      "command": "/usr/local/bin/jevision",
+      "args": ["mcp", "--project", "/Users/you/ui-tests"]
+    }
+  }
+}
+```
+
+Without `--project`, the project is the nearest folder above the current one that has a
+`.jevision` folder, otherwise the current folder.
+
+| Tool | What it does |
+| --- | --- |
+| `list_tests` | Lists and searches the tests of the project |
+| `read_test`, `write_test` | Read a test file, or write one; invalid tests are not saved, and each problem names its block and field |
+| `add_blocks`, `remove_block` | Edit a test the way the editor does |
+| `validate_test` | Checks a test or a folder of tests |
+| `list_block_types` | Describes the file format and every block type, with examples |
+| `run_test`, `get_run`, `stop_run` | Run a test or a folder, wait for the result, stop it |
+| `get_report` | A run's verdict, steps, failures, AI model answers and, on request, screenshots |
+| `screenshot` | The front window of an app as it is now |
+
+Safety:
+
+- Running tests and taking screenshots are off until you turn them on in Settings → AI →
+  Assistants. Everything else only reads and writes test files.
+- Assistants see the same JSON you do. Secrets stay `${secret.NAME}` in tests and are masked in
+  reports; API keys of AI providers are never available.
+- Paths stay inside the project folder: `..` and symbolic links that lead outside are refused.
+- A run started by an assistant pauses while you use the mouse or keyboard, and Esc pressed
+  twice stops it.
+
 ## Roadmap
 
 - Testing remote devices, starting with iPhone
 - Git and GitHub integration in the app
-- An MCP server, so AI assistants can write and run tests
 - Windows and Linux, each with an interface of its own
 
 ## Contributing

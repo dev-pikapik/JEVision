@@ -12,6 +12,7 @@ struct AISettingsView: View {
           message: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       }
       AISections()
+      AssistantsSection()
     }
     .formStyle(.grouped)
   }

@@ -41,6 +41,7 @@ struct JEVisionApp: App {
 
     Settings {
       SettingsView()
+        .environment(project)
         .environment(permissions)
     }
   }
