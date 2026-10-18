@@ -60,13 +60,16 @@ final class FlowDocument {
   var reportRun: SavedRun.ID?
 
   @ObservationIgnored weak var undoManager: UndoManager?
+  @ObservationIgnored private let project: URL?
   /// The text last read from or written to the file, to tell our own writes from changes made elsewhere.
   @ObservationIgnored private var savedText: String?
   /// Changes with the same key in a row, like typing into one field, undo as one step.
   @ObservationIgnored private var coalescing: String?
 
-  init(url: URL) {
+  /// `project` is the folder the tests it depends on are looked up in; without one they aren't checked.
+  init(url: URL, project: URL? = nil) {
     self.url = url
+    self.project = project
     reload()
   }
 
@@ -408,7 +411,12 @@ final class FlowDocument {
 
   private func check(_ flow: Flow) -> [Issue] {
     let folder = url.deletingLastPathComponent().path(percentEncoded: false)
-    return validateFlow(flow: flow) + environmentIssues(flow: flow, folder: folder) + dataIssues(flow: flow, folder: folder)
+    var issues = validateFlow(flow: flow) + environmentIssues(flow: flow, folder: folder) + dataIssues(flow: flow, folder: folder)
+    if let project, RelativePath.isInside(url, folder: project) {
+      issues += dependencyIssues(
+        flow: flow, project: project.path(percentEncoded: false), file: RelativePath.from(project, to: url))
+    }
+    return issues
   }
 
   private func save() {

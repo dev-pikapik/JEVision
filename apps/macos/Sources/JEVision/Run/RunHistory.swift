@@ -5,13 +5,15 @@ import SwiftUI
 /// How a saved run ended, as the sidebar and the report show it: by shape and colour.
 enum RunStatus: Equatable {
   /// `quarantined`: failed while the test was in quarantine, so it didn't fail Run All.
-  case passed, failed, flaky, quarantined, cancelled
+  /// `blocked`: didn't run because a test it depends on didn't pass.
+  case passed, failed, flaky, quarantined, cancelled, blocked
 
   init(_ report: RunReport) {
     switch report.verdict {
     case .passed: self = report.flaky ? .flaky : .passed
     case .failed: self = report.quarantined ? .quarantined : .failed
     case .cancelled: self = .cancelled
+    case .blocked: self = .blocked
     }
   }
 
@@ -23,6 +25,7 @@ enum RunStatus: Equatable {
     case .flaky: "triangle.fill"
     case .quarantined: "bandage.fill"
     case .cancelled: "circle.dotted"
+    case .blocked: "minus.circle.fill"
     }
   }
 
@@ -33,6 +36,7 @@ enum RunStatus: Equatable {
     case .flaky: "exclamationmark.triangle.fill"
     case .quarantined: "bandage.fill"
     case .cancelled: "stop.circle.fill"
+    case .blocked: "minus.circle.fill"
     }
   }
 
@@ -43,6 +47,7 @@ enum RunStatus: Equatable {
     case .flaky: .orange
     case .quarantined: .indigo
     case .cancelled: .secondary
+    case .blocked: .yellow
     }
   }
 
@@ -53,6 +58,7 @@ enum RunStatus: Equatable {
     case .flaky: String(localized: "Flaky")
     case .quarantined: String(localized: "Failed in Quarantine")
     case .cancelled: String(localized: "Stopped")
+    case .blocked: String(localized: "Blocked")
     }
   }
 }

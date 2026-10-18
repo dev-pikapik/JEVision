@@ -125,6 +125,11 @@ enum RunText {
     switch report.verdict {
     case .cancelled:
       return String(localized: "You stopped the test.")
+    case .blocked:
+      guard let name = report.blockedBy else {
+        return String(localized: "The test didn’t run: a test it depends on didn’t pass.")
+      }
+      return String(localized: "Blocked: \(name) didn’t pass. The test didn’t run.")
     case .failed:
       return report.attempts.last?.failure.map(failure) ?? String(localized: "The test failed.")
     case .passed:

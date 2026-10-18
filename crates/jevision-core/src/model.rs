@@ -25,6 +25,9 @@ pub struct Flow {
     /// How many times a failed run is retried before it counts as failed; `None` uses the
     /// project's default retries.
     pub retries: Option<u32>,
+    /// Tests that must pass before this one runs, as paths relative to the folder of this test
+    /// file. When one of them fails, this test is blocked instead of run.
+    pub depends_on: Vec<String>,
     /// Id of the first block to run.
     pub start: String,
     /// Blocks in any order; saved in reading order, see [`Flow::blocks_in_flow_order`].
@@ -422,6 +425,9 @@ impl Serialize for Flow {
         }
         if let Some(retries) = self.retries {
             map.serialize_entry("retries", &retries)?;
+        }
+        if !self.depends_on.is_empty() {
+            map.serialize_entry("dependsOn", &self.depends_on)?;
         }
         map.serialize_entry("start", &self.start)?;
         map.serialize_entry("blocks", &BlocksInFlowOrder(self))?;

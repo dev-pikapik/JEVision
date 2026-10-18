@@ -173,6 +173,10 @@ struct RunHUD: View {
         .truncationMode(.middle)
     }
 
+    if let batch = center.batch, batch.entries.contains(where: Self.isWaiting) {
+      queue(batch)
+    }
+
     if state.isPaused, !state.variables.isEmpty {
       variables(state.variables)
     }
@@ -266,6 +270,62 @@ struct RunHUD: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Variables"))
+  }
+
+  /// The tests of the batch running now and the next ones waiting, with what each waits for.
+  private func queue(_ batch: RunCenter.Batch) -> some View {
+    let running = batch.entries.filter { $0.state == .running }
+    let waiting = batch.entries.filter(Self.isWaiting)
+    let names = Dictionary(batch.entries.map { ($0.file, $0.name) }, uniquingKeysWith: { first, _ in first })
+    return VStack(alignment: .leading, spacing: 3) {
+      Text(Self.mode(batch.plan.mode()))
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+      ForEach(running, id: \.file) { entry in
+        Label(entry.name, systemImage: "play.fill")
+          .accessibilityLabel(Text("Running: \(entry.name)"))
+      }
+      ForEach(waiting.prefix(3), id: \.file) { entry in
+        Label {
+          Text(verbatim: "\(entry.name) · \(Self.waits(entry, names: names))")
+        } icon: {
+          Image(systemName: "hourglass")
+        }
+        .accessibilityLabel(Text("Waiting: \(entry.name), \(Self.waits(entry, names: names))"))
+      }
+      if waiting.count > 3 {
+        Text("and \(waiting.count - 3) more waiting")
+          .foregroundStyle(.secondary)
+      }
+    }
+    .font(.caption)
+    .lineLimit(1)
+    .truncationMode(.middle)
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text("Tests of the run"))
+  }
+
+  private static func isWaiting(_ entry: BatchEntry) -> Bool {
+    if case .waiting = entry.state { return true }
+    return false
+  }
+
+  static func mode(_ mode: RunMode) -> String {
+    switch mode {
+    case .sequential: String(localized: "One after another")
+    case .parallel(let limit): String(localized: "Side by side, up to \(Int(limit)) at a time")
+    }
+  }
+
+  /// What a waiting test waits for, in a few words.
+  static func waits(_ entry: BatchEntry, names: [String: String]) -> String {
+    guard case .waiting(let reason) = entry.state else { return "" }
+    switch reason {
+    case .dependency(let test): return String(localized: "after \(names[test] ?? test)")
+    case .turn: return String(localized: "next in line")
+    case .screen: return String(localized: "waits for the screen")
+    case .limit: return String(localized: "waits for a free place")
+    }
   }
 
   /// The block that runs now and how many the test has, counted as "Step N of M" shows them.

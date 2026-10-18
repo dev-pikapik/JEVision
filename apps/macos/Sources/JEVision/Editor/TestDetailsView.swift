@@ -2,7 +2,7 @@ import JEVisionCore
 import JEVisionHands
 import SwiftUI
 
-/// The test as a whole: its name, app, data, secrets and retries.
+/// The test as a whole: its name, app, data, secrets, retries and the tests it runs after.
 struct TestDetailsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.dismiss) private var dismiss
@@ -65,6 +65,10 @@ struct TestDetailsView: View {
             Text("How many more times to run the test if it fails. The project default is set in Settings › Advanced.")
           }
         }
+        Section {
+          DependenciesField(document: document, dependsOn: flow.dependsOn)
+          IssueList(issues: issues.filter { $0.param("field") == "dependsOn" })
+        }
         if let file = project.testID(document.url) {
           QuarantineSection(file: file, name: flow.name)
         }
@@ -122,7 +126,7 @@ struct TestDetailsView: View {
           }
         }
         IssueList(issues: issues.filter {
-          !["name", "app", "tags"].contains($0.param("field") ?? "") && $0.code != "flow.tags.duplicate"
+          !["name", "app", "tags", "dependsOn"].contains($0.param("field") ?? "") && $0.code != "flow.tags.duplicate"
         })
       }
       .formStyle(.grouped)

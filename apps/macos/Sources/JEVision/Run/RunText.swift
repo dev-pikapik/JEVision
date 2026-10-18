@@ -149,12 +149,25 @@ enum RunText {
   static func batchOutcome(_ result: RunCenter.BatchResult) -> String {
     var counts = [String(localized: "Passed: \(result.passed)"), String(localized: "Failed: \(result.failed)")]
     if result.quarantined > 0 { counts.append(String(localized: "Failed in quarantine: \(result.quarantined)")) }
-    let notRun = result.total - result.passed - result.failed - result.quarantined
+    if result.blocked > 0 { counts.append(String(localized: "Blocked: \(result.blocked)")) }
+    let notRun = result.total - result.passed - result.failed - result.quarantined - result.blocked
     if notRun > 0 { counts.append(String(localized: "Not run: \(notRun)")) }
+    if result.added > 0 { counts.append(String(localized: "Added as dependencies: \(result.added)")) }
     let summary = counts.joined(separator: " · ")
     return result.stopped
       ? String(localized: "\(result.title) stopped. \(summary)")
       : String(localized: "\(result.title) finished. \(summary)")
+  }
+
+  /// Why a test didn't run, such as “Blocked: Sign in failed”.
+  static func blocker(_ blocker: Blocker) -> String {
+    switch blocker.reason {
+    case .failed: String(localized: "Blocked: \(blocker.causeName) failed")
+    case .notRun: String(localized: "Blocked: \(blocker.causeName) couldn’t run")
+    case .missing: String(localized: "Blocked: \(blocker.cause) doesn’t exist")
+    case .cycle(let tests):
+      String(localized: "Blocked: the tests depend on each other in a circle: \(tests.joined(separator: " → "))")
+    }
   }
 
   /// `sentence` as a heading: headings don't end with a period, as the other ones in reports.
@@ -166,6 +179,11 @@ enum RunText {
     switch report.verdict {
     case .cancelled:
       return String(localized: "You stopped the test.")
+    case .blocked:
+      guard let blocker = report.blocked else {
+        return String(localized: "The test didn’t run: a test it depends on didn’t pass.")
+      }
+      return String(localized: "\(Self.blocker(blocker)). The test didn’t run.")
     case .failed:
       let attempt = decidingAttempt(report: report)
       let text = attempt?.failure.map(failure) ?? String(localized: "The test failed.")

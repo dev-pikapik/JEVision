@@ -42,6 +42,16 @@ enum IssueText {
       return String(localized: "flow.app.invalid", defaultValue: "“\(p("value"))” isn’t an app identifier like com.apple.TextEdit. Choose the app again.")
     case "flow.tags.duplicate":
       return String(localized: "flow.tags.duplicate", defaultValue: "The tag “\(p("tag"))” is listed twice.")
+    case "flow.dependency.invalid":
+      return String(localized: "flow.dependency.invalid", defaultValue: "“\(p("value"))” isn’t a test file inside the project folder. Pick the test again in Runs After.")
+    case "flow.dependency.duplicate":
+      return String(localized: "flow.dependency.duplicate", defaultValue: "“\(p("test"))” is listed twice in Runs After.")
+    case "flow.dependency.missing":
+      return String(localized: "flow.dependency.missing", defaultValue: "The test “\(p("test"))” in Runs After doesn’t exist. Remove it or pick another test.")
+    case "flow.dependency.self":
+      return String(localized: "flow.dependency.self", defaultValue: "A test can’t run after itself. Remove it from Runs After.")
+    case "flow.dependency.cycle":
+      return String(localized: "flow.dependency.cycle", defaultValue: "The tests wait for each other in a circle: \(p("cycle")). Remove one of them from Runs After.")
     case "flow.block.duplicateId":
       return String(localized: "flow.block.duplicateId", defaultValue: "Two blocks are named “\(p("block"))”.")
     case "flow.block.invalidId":

@@ -181,6 +181,30 @@ fn root(flow: &Flow, out: &mut Vec<Issue>) {
     if flow.retries.is_some_and(|retries| retries > MAX_RETRIES) {
         out.push(range(None, "retries", 0, MAX_RETRIES));
     }
+    let mut dependencies = HashSet::new();
+    for test in &flow.depends_on {
+        if !is_relative_path(test) || !is_test_file_name(test) {
+            out.push(
+                Issue::error("flow.dependency.invalid")
+                    .with("field", "dependsOn")
+                    .with("value", test),
+            );
+        } else if !dependencies.insert(test) {
+            out.push(
+                Issue::error("flow.dependency.duplicate")
+                    .with("field", "dependsOn")
+                    .with("test", test),
+            );
+        }
+    }
+}
+
+/// `checkout.flow.json` or `login/sign-in.flow.json`: ends in a file name with the test suffix.
+pub(crate) fn is_test_file_name(path: &str) -> bool {
+    const SUFFIX: &str = ".flow.json";
+    path.rsplit('/')
+        .next()
+        .is_some_and(|name| name.len() > SUFFIX.len() && name.ends_with(SUFFIX))
 }
 
 fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {

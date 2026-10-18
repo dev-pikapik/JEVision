@@ -14387,6 +14387,416 @@
           }
         }
       }
+    },
+    "%@. The test didn’t run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Тест не запускался."
+          }
+        }
+      }
+    },
+    "Add Test…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить тест…"
+          }
+        }
+      }
+    },
+    "Added as dependencies: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавлено как зависимости: %lld"
+          }
+        }
+      }
+    },
+    "Added to the run because other tests in it depend on this one" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавлен в прогон, потому что от него зависят другие тесты прогона"
+          }
+        }
+      }
+    },
+    "After %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После: %@"
+          }
+        }
+      }
+    },
+    "Blocked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован"
+          }
+        }
+      }
+    },
+    "Blocked: %@ couldn’t run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован: тест «%@» не удалось запустить"
+          }
+        }
+      }
+    },
+    "Blocked: %@ doesn’t exist" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован: теста «%@» нет"
+          }
+        }
+      }
+    },
+    "Blocked: %@ failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован: тест «%@» не прошёл"
+          }
+        }
+      }
+    },
+    "Blocked: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокировано: %lld"
+          }
+        }
+      }
+    },
+    "Blocked: the tests depend on each other in a circle: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован: тесты ждут друг друга по кругу: %@"
+          }
+        }
+      }
+    },
+    "No other tests in the project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте нет других тестов"
+          }
+        }
+      }
+    },
+    "No tests match" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подходящих тестов нет"
+          }
+        }
+      }
+    },
+    "One after another" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По очереди"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать «%@»"
+          }
+        }
+      }
+    },
+    "Run Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск тестов"
+          }
+        }
+      }
+    },
+    "Running: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт: %@"
+          }
+        }
+      }
+    },
+    "Runs After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускать после"
+          }
+        }
+      }
+    },
+    "Runs after %@ pass" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускается, когда пройдут: %@"
+          }
+        }
+      }
+    },
+    "Runs every test. Open the menu to choose whether they run one after another or side by side." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает все тесты. В меню можно выбрать, идут ли они по очереди или параллельно."
+          }
+        }
+      }
+    },
+    "Runs this test first" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест запустится раньше"
+          }
+        }
+      }
+    },
+    "Side by side, up to %lld at a time" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параллельно, не больше %lld одновременно"
+          }
+        }
+      }
+    },
+    "Tests of the run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты прогона"
+          }
+        }
+      }
+    },
+    "Tests that must pass first. If one doesn’t, this test is blocked instead of run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты, которые должны пройти раньше. Если какой-то не пройдёт, этот тест будет заблокирован и не запустится."
+          }
+        }
+      }
+    },
+    "Tests that use the screen still take turns" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты, которые работают с экраном, всё равно идут по очереди"
+          }
+        }
+      }
+    },
+    "The test didn’t run: a test it depends on didn’t pass." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не запускался: не прошёл тест, после которого он идёт."
+          }
+        }
+      }
+    },
+    "Waiting: %@, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт: %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "after %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "после «%@»"
+          }
+        }
+      }
+    },
+    "and %lld more waiting" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "и ещё в очереди: %lld"
+          }
+        }
+      }
+    },
+    "needs it to pass first" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сначала должен пройти этот"
+          }
+        }
+      }
+    },
+    "next in line" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "следующий в очереди"
+          }
+        }
+      }
+    },
+    "waits for a free place" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ждёт свободного места"
+          }
+        }
+      }
+    },
+    "waits for the screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ждёт экран"
+          }
+        }
+      }
+    },
+    "flow.dependency.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a test file inside the project folder. Pick the test again in Runs After."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не файл теста в папке проекта. Выберите тест заново в «Запускать после»."
+          }
+        }
+      }
+    },
+    "flow.dependency.duplicate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is listed twice in Runs After."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» указан в «Запускать после» дважды."
+          }
+        }
+      }
+    },
+    "flow.dependency.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test “%@” in Runs After doesn’t exist. Remove it or pick another test."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Теста «%@» из «Запускать после» нет. Уберите его или выберите другой тест."
+          }
+        }
+      }
+    },
+    "flow.dependency.self" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A test can’t run after itself. Remove it from Runs After."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не может запускаться после самого себя. Уберите его из «Запускать после»."
+          }
+        }
+      }
+    },
+    "flow.dependency.cycle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The tests wait for each other in a circle: %@. Remove one of them from Runs After."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты ждут друг друга по кругу: %@. Уберите один из них из «Запускать после»."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

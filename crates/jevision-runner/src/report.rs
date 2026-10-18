@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
+use jevision_core::Blocker;
 use serde::{Deserialize, Serialize};
 
 /// Version of the `report.json` layout.
@@ -62,6 +63,13 @@ pub struct RunReport {
     /// virtual machines and external displays; absent when the run took no screenshot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_scale: Option<f64>,
+    /// Why the test didn't run: a test it depends on didn't pass. A blocked run has no
+    /// attempts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocked: Option<Blocker>,
+    /// The test wasn't chosen: it ran because a chosen test depends on it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub added_as_dependency: bool,
     pub attempts: Vec<Attempt>,
 }
 
@@ -119,7 +127,7 @@ impl RetryVerdict {
             }),
             Verdict::Failed if flaky => Some(Self::FailedDifferently { attempts }),
             Verdict::Failed => Some(Self::FailedEveryTime { attempts }),
-            Verdict::Cancelled => None,
+            Verdict::Cancelled | Verdict::Blocked => None,
         }
     }
 
@@ -145,6 +153,9 @@ pub enum Verdict {
     Passed,
     Failed,
     Cancelled,
+    /// Not run: a test it depends on didn't pass. Only a whole run is blocked, never an
+    /// attempt.
+    Blocked,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -647,7 +658,7 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
         "name=\"JEVision\" tests=\"{}\" failures=\"{}\" errors=\"0\" skipped=\"{}\" time=\"{}\"",
         reports.len(),
         count(Verdict::Failed),
-        count(Verdict::Cancelled) + quarantined,
+        count(Verdict::Cancelled) + count(Verdict::Blocked) + quarantined,
         seconds(total)
     );
     let _ = writeln!(out, "<testsuites {head}>");
@@ -719,6 +730,13 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             Verdict::Cancelled => {
                 out.push_str("      <skipped message=\"The run was cancelled.\"/>\n")
             }
+            Verdict::Blocked => {
+                let reason = r
+                    .blocked
+                    .as_ref()
+                    .map_or_else(|| "Blocked.".to_owned(), |b| format!("{}.", b.describe()));
+                let _ = writeln!(out, "      <skipped message=\"{}\"/>", xml(&reason));
+            }
         }
         if !paths.is_empty() {
             let _ = writeln!(
@@ -746,6 +764,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
         (Verdict::Failed, false) => ("fail", "Failed"),
         (Verdict::Failed, true) => ("fail", "Failed, flaky"),
         (Verdict::Cancelled, _) => ("skip", "Cancelled"),
+        (Verdict::Blocked, _) => ("skip", "Blocked"),
     };
     let _ = write!(
         o,
@@ -791,7 +810,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 Verdict::Passed if r.flaky => ("pass", "Passed, flaky"),
                 Verdict::Passed => ("pass", "Passed"),
                 Verdict::Failed => ("fail", "Failed"),
-                Verdict::Cancelled => ("skip", "Cancelled"),
+                Verdict::Cancelled | Verdict::Blocked => ("skip", "Cancelled"),
             };
             let tries = match r.attempts {
                 1 => String::new(),
@@ -806,6 +825,19 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             );
         }
         o.push_str("</ol>\n");
+    }
+    if let Some(blocked) = &report.blocked {
+        let _ = writeln!(
+            o,
+            "<p class=\"reason\">{}. The test didn’t run, so this says nothing about it.</p>",
+            xml(&blocked.describe())
+        );
+    }
+    if report.added_as_dependency {
+        let _ = writeln!(
+            o,
+            "<p class=\"note\">Added to the run because other tests depend on it.</p>"
+        );
     }
     if report.quarantined {
         let reason = report

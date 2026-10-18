@@ -1,14 +1,17 @@
 import JEVisionCore
 import SwiftUI
 
-/// Every test of the project as a card in its folder's frame, with how it last ran and dashed
-/// arrows to the tests it runs. A click opens the test.
+/// Every test of the project as a card in its folder's frame, with how it last ran, dashed
+/// arrows to the tests it runs and solid ones to the tests that must pass before it. A click
+/// opens the test.
 struct ProjectMapView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   /// What the core read from each test, by file relative to the project.
   @State private var map: [String: MapTest] = [:]
+  /// Why the run mode couldn't be saved.
+  @State private var failure: String?
 
   var body: some View {
     let groups = ProjectMap.groups(project.items, rootTitle: project.name)
@@ -30,7 +33,8 @@ struct ProjectMapView: View {
                 test: test, info: info, last: project.latestRuns[test.id], quarantine: project.quarantine(of: test.id),
                 flaky: project.flaky[test.id],
                 uses: (info?.uses ?? []).compactMap { names[$0] },
-                usedBy: (usedBy[test.id] ?? []).compactMap { names[$0] }
+                usedBy: (usedBy[test.id] ?? []).compactMap { names[$0] },
+                needs: (info?.dependsOn ?? []).map { names[$0] ?? $0 }
               ) { project.selection = test.id }
               .anchorPreference(key: CardBounds.self, value: .bounds) { [test.id: $0] }
             }
@@ -52,6 +56,12 @@ struct ProjectMapView: View {
     }
     .safeAreaInset(edge: .top, spacing: 0) { header(count: groups.reduce(0) { $0 + $1.tests.count }) }
     .task(id: project.items) { await load() }
+    .alert(
+      "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
+      presenting: failure
+    ) { _ in
+      Button("OK") {}
+    } message: { Text($0) }
   }
 
   private func header(count: Int) -> some View {
@@ -69,15 +79,27 @@ struct ProjectMapView: View {
           .stroke(.secondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
           .frame(width: 28, height: 2)
         Text("runs another test")
+        DashedLine()
+          .stroke(.tint, style: StrokeStyle(lineWidth: 1.5))
+          .frame(width: 28, height: 2)
+          .padding(.leading, 8)
+        Text("needs it to pass first")
       }
       .font(.callout)
       .foregroundStyle(.secondary)
       .accessibilityHidden(true)
-      Button("Run All", systemImage: "play.fill") {
+      Menu {
+        RunModePicker(folder: ".") { failure = $0 }
+      } label: {
+        Label("Run All", systemImage: "play.fill")
+      } primaryAction: {
         guard let root = project.rootURL else { return }
         runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
       }
+      .menuStyle(.button)
       .buttonStyle(.glassProminent)
+      .fixedSize()
+      .accessibilityHint(Text("Runs every test. Open the menu to choose whether they run one after another or side by side."))
       .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
     }
     .padding(.horizontal, 24)
@@ -108,6 +130,8 @@ enum ProjectMap {
     let to: CGRect
     /// Where the arrow runs, around the cards and folder titles between the two.
     let points: [CGPoint]
+    /// `to` must pass before `from` runs; otherwise `from` runs `to`.
+    var isDependency = false
   }
 
   /// The key of a folder title among the cards' frames: arrows go around it too.
@@ -142,17 +166,18 @@ enum ProjectMap {
     return usedBy
   }
 
-  /// An arrow from each test to each test it runs, between the cards' frames. `bounds` also
-  /// holds the frames of the folder titles.
+  /// An arrow from each test to each test it runs and each test it depends on, between the
+  /// cards' frames. `bounds` also holds the frames of the folder titles.
   static func links(_ map: [String: MapTest], bounds: [String: CGRect]) -> [Link] {
     let keys = bounds.keys.sorted()
     return map.keys.sorted().flatMap { file -> [Link] in
       guard let from = bounds[file], let test = map[file] else { return [] }
-      return test.uses.compactMap { used in
-        guard used != file, let to = bounds[used] else { return nil }
-        let others = keys.filter { $0 != file && $0 != used }.compactMap { bounds[$0].map(rect) }
+      let targets = test.uses.map { ($0, false) } + test.dependsOn.map { ($0, true) }
+      return targets.compactMap { target, isDependency in
+        guard target != file, let to = bounds[target] else { return nil }
+        let others = keys.filter { $0 != file && $0 != target }.compactMap { bounds[$0].map(rect) }
         let points = mapLinkRoute(from: rect(from), to: rect(to), others: others).map { CGPoint(x: $0.x, y: $0.y) }
-        return Link(from: from, to: to, points: points)
+        return Link(from: from, to: to, points: points, isDependency: isDependency)
       }
     }
   }
@@ -178,8 +203,8 @@ private struct DashedLine: Shape {
   }
 }
 
-/// Dashed arrows from a card to the cards of the tests it runs, in straight runs with rounded
-/// turns that go around the other cards.
+/// Arrows from a card to the cards of the tests it runs, dashed, and of the tests it depends on,
+/// solid in the accent colour; in straight runs with rounded turns that go around the other cards.
 private struct UsesArrows: View {
   let links: [ProjectMap.Link]
 
@@ -197,7 +222,8 @@ private struct UsesArrows: View {
           line.addArc(tangent1End: corner, tangent2End: after, radius: min(8, room / 2))
         }
         line.addLine(to: end)
-        context.stroke(line, with: .color(.secondary), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        let shading: GraphicsContext.Shading = link.isDependency ? .color(.accentColor) : .color(.secondary)
+        context.stroke(line, with: shading, style: StrokeStyle(lineWidth: 1.5, dash: link.isDependency ? [] : [5, 4]))
         // The head points the way the last run arrives.
         let last = points[points.count - 2]
         let angle = atan2(end.y - last.y, end.x - last.x)
@@ -206,7 +232,7 @@ private struct UsesArrows: View {
         head.addLine(to: CGPoint(x: end.x - 8 * cos(angle - 0.45), y: end.y - 8 * sin(angle - 0.45)))
         head.addLine(to: CGPoint(x: end.x - 8 * cos(angle + 0.45), y: end.y - 8 * sin(angle + 0.45)))
         head.closeSubpath()
-        context.fill(head, with: .color(.secondary))
+        context.fill(head, with: shading)
       }
     }
   }
@@ -223,6 +249,8 @@ private struct MapCard: View {
   /// Names of the tests it runs, and of the tests that run it.
   let uses: [String]
   let usedBy: [String]
+  /// Names of the tests that must pass before it runs.
+  let needs: [String]
   let open: () -> Void
   @State private var isHovering = false
 
@@ -258,6 +286,15 @@ private struct MapCard: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .help(Text(RunHistory.flakyEvidence(flaky)))
+        }
+        if !needs.isEmpty {
+          Label {
+            Text("After \(needs.formatted(.list(type: .and)))").lineLimit(2)
+          } icon: {
+            Image(systemName: "arrow.turn.down.right").foregroundStyle(.tint)
+          }
+          .font(.caption)
+          .foregroundStyle(.secondary)
         }
         if let blocks = info?.blocks, blocks > 0 {
           // A short bar per block, up to ten: how big the test is at a glance.
@@ -307,6 +344,7 @@ private struct MapCard: View {
     if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
     if !uses.isEmpty { parts.append(String(localized: "Runs \(uses.formatted(.list(type: .and)))")) }
     if !usedBy.isEmpty { parts.append(String(localized: "Run by \(usedBy.formatted(.list(type: .and)))")) }
+    if !needs.isEmpty { parts.append(String(localized: "Runs after \(needs.formatted(.list(type: .and))) pass")) }
     return parts.joined(separator: ". ")
   }
 }

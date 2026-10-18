@@ -4,7 +4,9 @@
 
 use std::path::Path;
 
-use jevision_core::{MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect};
+use jevision_core::{
+    FolderRunMode, MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect, RunMode,
+};
 
 /// The project settings file can't be read or written, or the change isn't allowed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -25,6 +27,14 @@ pub struct ProjectSettings {
     pub local_only: bool,
     #[uniffi(default = [])]
     pub hide: Vec<Rect>,
+    #[uniffi(default = [])]
+    pub run_modes: Vec<FolderRunMode>,
+}
+
+#[uniffi::remote(Record)]
+pub struct FolderRunMode {
+    pub folder: String,
+    pub mode: RunMode,
 }
 
 #[uniffi::remote(Record)]
@@ -108,6 +118,28 @@ pub fn set_project_hide(
         s.set_hide(hide)
             .map_err(|reason| ProjectSettingsError::Rejected { reason })
     })
+}
+
+/// Sets how the tests of `folder`, relative to the project folder (`.` for the project
+/// folder), run in a batch: one after another, or side by side up to a limit. Returns the
+/// saved settings.
+#[uniffi::export]
+pub fn set_folder_run_mode(
+    project: String,
+    folder: String,
+    mode: RunMode,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.set_run_mode(&folder, mode)
+            .map_err(|reason| ProjectSettingsError::Rejected { reason })
+    })
+}
+
+/// How the tests of `folder` run: as set for it or the nearest folder above it, otherwise one
+/// after another.
+#[uniffi::export]
+pub fn folder_run_mode(settings: &ProjectSettings, folder: String) -> RunMode {
+    settings.run_mode(&folder)
 }
 
 /// Name of the project settings file in a project folder.

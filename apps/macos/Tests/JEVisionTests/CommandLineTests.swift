@@ -382,6 +382,50 @@ struct CommandLineRunTests {
     #expect(counted.junit.contains("<failure"))
   }
 
+  @Test func aTestRunsAfterItsDependencyAndIsBlockedWhenItFails() throws {
+    let dir = try Scratch()
+    _ = try dir.file(
+      "login.flow.json",
+      #"{"format": 1, "name": "Login", "app": "com.example.App", "start": "open", "blocks": {"open": {"type": "openApp"}}}"#)
+    let inbox = try dir.file(
+      "inbox.flow.json",
+      #"{"format": 1, "name": "Inbox", "app": "com.example.App", "dependsOn": ["login.flow.json"], "start": "open", "blocks": {"open": {"type": "openApp"}}}"#)
+    // A block the test doesn't have fails Login before the app is touched.
+    var request = RunRequest(paths: [inbox], startAt: "nowhere", json: true)
+    request.junit = dir.url.appending(path: "junit.xml").path
+    let quiet = Console(write: { _ in })
+    let session = TestSession(project: dir.url.path, tests: [inbox], request: request, progress: quiet, input: nil) { _ in
+      WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { true })
+    }
+    var command = RunCommand(request: request)
+    let output = Lines()
+    command.output = Console(write: { output.append($0) })
+    command.progress = quiet
+    #expect(command.finish(session.runAll()) == .problems)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+    #expect(json["failed"] as? Int == 1)
+    #expect(json["blocked"] as? Int == 1)
+    let tests = try #require(json["tests"] as? [[String: Any]])
+    #expect(tests.map { $0["file"] as? String } == ["login.flow.json", "inbox.flow.json"])
+    #expect(tests[0]["addedAsDependency"] as? Bool == true)
+    #expect(tests[1]["verdict"] as? String == "blocked")
+    #expect(tests[1]["blockedBy"] as? String == "Blocked: Login failed")
+    let junit = try String(contentsOfFile: try #require(request.junit), encoding: .utf8)
+    #expect(junit.contains("<skipped message=\"Blocked: Login failed."))
+  }
+
+  @Test func validateFindsTestsWaitingForEachOther() throws {
+    let dir = try Scratch()
+    let test = { (name: String, after: String) in
+      #"{"format": 1, "name": "\#(name)", "app": "com.example.App", "dependsOn": ["\#(after)"], "start": "a", "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s"}}}"#
+    }
+    let a = try dir.file("a.flow.json", test("A", "b.flow.json"))
+    _ = try dir.file("b.flow.json", test("B", "a.flow.json"))
+    let result = try jevision("validate", a)
+    #expect(result.status == 1)
+    #expect(result.out.contains("in a circle: a.flow.json → b.flow.json → a.flow.json"))
+  }
+
   @Test func planFindsTestsAndTheProject() throws {
     let dir = try Scratch()
     try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)

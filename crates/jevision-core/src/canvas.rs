@@ -299,6 +299,7 @@ impl Flow {
             status: None,
             tags: Vec::new(),
             retries: None,
+            depends_on: Vec::new(),
             start: String::new(),
             blocks: Vec::new(),
             canvas: Default::default(),

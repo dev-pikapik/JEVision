@@ -87,6 +87,7 @@ struct RunResultBar: View {
     switch result.verdict {
     case .passed: "checkmark.circle.fill"
     case .cancelled: "stop.circle.fill"
+    case .blocked: "minus.circle.fill"
     case .failed, nil: "xmark.square.fill"
     }
   }
@@ -95,6 +96,7 @@ struct RunResultBar: View {
     switch result.verdict {
     case .passed: .green
     case .cancelled: .secondary
+    case .blocked: .yellow
     case .failed, nil: .red
     }
   }

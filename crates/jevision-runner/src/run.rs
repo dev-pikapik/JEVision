@@ -10,8 +10,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, ELSE, Flow, PROJECT_FILE, Point, ProjectSettings,
-    Rect, Reference, Severity, THEN, Target, WaitUntil, dark_variant, else_if_edge,
+    BlockKind, Blocker, Compare, DEFAULT_WAIT_TIMEOUT_MS, ELSE, Flow, PROJECT_FILE, Point,
+    ProjectSettings, Rect, Reference, Severity, THEN, Target, WaitUntil, dark_variant,
+    else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -87,6 +88,8 @@ pub struct RunOptions {
     /// Videos of the project's runs older than this are deleted after the run; `None` keeps
     /// them all.
     pub keep_videos_for: Option<Duration>,
+    /// The test wasn't chosen: it runs because a chosen test depends on it.
+    pub added_as_dependency: bool,
 }
 
 impl Default for RunOptions {
@@ -102,6 +105,7 @@ impl Default for RunOptions {
             schedule: None,
             video: VideoMode::Off,
             keep_videos_for: None,
+            added_as_dependency: false,
         }
     }
 }
@@ -143,6 +147,59 @@ impl Run {
             dir: dir.to_path_buf(),
             report,
         })
+    }
+
+    /// Saves the run of the test file `test` (relative to `project`, or absolute) that didn't
+    /// happen because a test it depends on didn't pass, so history and reports show it
+    /// blocked, with the reason.
+    pub fn blocked(
+        project: &Path,
+        test: &Path,
+        blocker: Blocker,
+        options: &RunOptions,
+    ) -> io::Result<Self> {
+        let project = fs::canonicalize(project)?;
+        let test = normalize(&project.join(test));
+        let file = relative(&project, &test);
+        let started_at = rfc3339(SystemTime::now());
+        let dir = create_run_dir(&project, &test, &started_at)?;
+        let bytes = fs::read(&test).ok();
+        let flow = bytes
+            .as_deref()
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .and_then(|text| jevision_core::parse(text).ok());
+        let quarantine = ProjectSettings::load(&project)
+            .ok()
+            .and_then(|s| s.quarantined(&file).cloned());
+        let report = RunReport {
+            format: REPORT_FORMAT,
+            test: flow
+                .as_ref()
+                .map_or_else(|| file.clone(), |f| f.name.clone()),
+            file,
+            app: flow.map(|f| f.app).unwrap_or_default(),
+            started_at,
+            duration_ms: 0,
+            verdict: Verdict::Blocked,
+            flaky: false,
+            baselines_created: Vec::new(),
+            requested_by: options.requested_by.clone(),
+            schedule: options.schedule.clone(),
+            environment: options.environment.clone(),
+            video: None,
+            file_hash: bytes.as_deref().map(content_hash),
+            quarantined: quarantine.is_some(),
+            quarantine_reason: quarantine.and_then(|q| q.reason),
+            virtual_machine: crate::machine::is_virtual(),
+            display_scale: None,
+            blocked: Some(blocker),
+            added_as_dependency: options.added_as_dependency,
+            attempts: Vec::new(),
+        };
+        let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
+        json.push('\n');
+        fs::write(dir.join("report.json"), json)?;
+        Ok(Self { dir, report })
     }
 
     /// Runs saved in `<project>/.jevision/runs`, newest first. Runs still going and folders
@@ -215,6 +272,8 @@ impl Runner<'_> {
             quarantine_reason: quarantine.and_then(|q| q.reason),
             virtual_machine: crate::machine::is_virtual(),
             display_scale: None,
+            blocked: None,
+            added_as_dependency: options.added_as_dependency,
             attempts: Vec::new(),
         };
         let display_scale = Cell::new(None);

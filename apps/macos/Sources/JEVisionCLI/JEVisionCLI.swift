@@ -253,6 +253,9 @@ enum Help {
     case "run":
       """
       Runs tests on this Mac, one after another, and saves a report of every run.
+      The tests a test runs after ("dependsOn") run before it, even when they aren't
+      named. When one of them doesn't pass, the tests that need it are blocked: they
+      don't run, and their reports say why.
 
       \(usage(command))
 

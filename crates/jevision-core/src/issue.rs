@@ -204,6 +204,18 @@ pub fn describe(issue: &Issue) -> String {
             p("column"),
             p("columns")
         ),
+        "flow.dependency.invalid" => format!(
+            "\"{}\" isn't a test file inside the project folder; write its path from this \
+             test's folder, such as login.flow.json.",
+            p("value")
+        ),
+        "flow.dependency.duplicate" => format!("{} is listed twice.", p("test")),
+        "flow.dependency.missing" => format!("the test {} doesn't exist.", p("test")),
+        "flow.dependency.self" => "a test can't depend on itself.".to_owned(),
+        "flow.dependency.cycle" => format!(
+            "the tests depend on each other in a circle: {}. Remove one of these dependencies.",
+            p("cycle")
+        ),
         _ => {
             let params: Vec<String> = issue
                 .params

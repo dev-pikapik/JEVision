@@ -327,6 +327,7 @@ pub(super) fn verdict_name(verdict: Verdict) -> &'static str {
         Verdict::Passed => "passed",
         Verdict::Failed => "failed",
         Verdict::Cancelled => "cancelled",
+        Verdict::Blocked => "blocked",
     }
 }
 

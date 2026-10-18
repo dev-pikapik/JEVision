@@ -4,6 +4,7 @@
 //! [`validate`] lists problems as localizable [`Issue`]s, and [`to_canonical_json`] writes it
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
+mod batch;
 mod canvas;
 mod data;
 mod decode;
@@ -19,6 +20,10 @@ mod schedule;
 mod search;
 mod validate;
 
+pub use batch::{
+    Batch, BatchTest, BlockReason, Blocker, DEFAULT_PARALLEL, Loaded, MAX_PARALLEL, RunMode,
+    TestOutcome, TestState, WaitingFor, dependency_issues, resolve_test,
+};
 pub use canvas::CanvasItem;
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
@@ -33,7 +38,7 @@ pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
 pub use model::*;
-pub use project::{PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use project::{FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
