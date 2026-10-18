@@ -374,10 +374,12 @@ private final class RemoteBridge: RemoteDelegate {
     return allowed.withLock { $0 }
   }
 
-  func startRun(projectRoot: String, test: String, requestedBy: PairedDevice) -> RemoteError? {
+  func startRun(projectRoot: String, test: String, dataRow: UInt32?, requestedBy: PairedDevice) -> RemoteError? {
     DispatchQueue.main.sync {
       MainActor.assumeIsolated {
-        runs.runRemotely(test, in: URL(filePath: projectRoot, directoryHint: .isDirectory), requestedBy: requestedBy.name)
+        runs.runRemotely(
+          test, in: URL(filePath: projectRoot, directoryHint: .isDirectory), dataRow: dataRow.map(Int.init),
+          requestedBy: requestedBy.name)
       }
     }
   }

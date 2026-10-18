@@ -6,7 +6,7 @@ use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use jevision_core::{BlockKind, Target, WaitUntil};
+use jevision_core::{BlockKind, DataTable, Target, WaitUntil};
 use jevision_runner::{Run, RunReport};
 
 use crate::RemoteError;
@@ -128,12 +128,7 @@ pub(crate) fn tests(root: &Path) -> Result<Vec<TestEntry>, RemoteError> {
 
 /// The test at `path` as the phone draws it.
 pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteError> {
-    let file = test_file(root, path)?;
-    if fs::metadata(&file).map_or(true, |m| m.len() > MAX_MESSAGE as u64) {
-        return Err(RemoteError::TestUnreadable);
-    }
-    let text = fs::read_to_string(&file).map_err(|_| RemoteError::TestUnreadable)?;
-    let flow = jevision_core::parse(&text).map_err(|_| RemoteError::TestUnreadable)?;
+    let (file, flow) = read_test(root, path)?;
     let layout = jevision_core::layout(&flow);
     let area = |r: jevision_core::Rect| Area {
         x: r.x,
@@ -185,7 +180,42 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
                     .collect(),
             })
             .collect(),
+        rows: row_labels(root, &file, &flow),
     })
+}
+
+/// What each row of the data table a run of the test at `path` goes through is called.
+pub(crate) fn data_rows(root: &Path, path: &str) -> Result<Vec<String>, RemoteError> {
+    let (file, flow) = read_test(root, path)?;
+    Ok(row_labels(root, &file, &flow))
+}
+
+fn read_test(root: &Path, path: &str) -> Result<(PathBuf, jevision_core::Flow), RemoteError> {
+    let file = test_file(root, path)?;
+    if fs::metadata(&file).map_or(true, |m| m.len() > MAX_MESSAGE as u64) {
+        return Err(RemoteError::TestUnreadable);
+    }
+    let text = fs::read_to_string(&file).map_err(|_| RemoteError::TestUnreadable)?;
+    let flow = jevision_core::parse(&text).map_err(|_| RemoteError::TestUnreadable)?;
+    Ok((file, flow))
+}
+
+/// Labels of the rows of the test's data table, the way the Mac's Data Rows menu reads them;
+/// empty when there is no table, it can't be read or it lies outside the project, as the run
+/// would refuse it then.
+fn row_labels(root: &Path, file: &Path, flow: &jevision_core::Flow) -> Vec<String> {
+    let Some(data) = jevision_core::primary_data_file(flow) else {
+        return Vec::new();
+    };
+    let Some(dir) = file.parent() else {
+        return Vec::new();
+    };
+    match fs::canonicalize(dir.join(data)) {
+        Ok(path) if path.starts_with(root) => DataTable::load(&path)
+            .map(|table| (0..table.rows.len()).map(|row| table.label(row)).collect())
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    }
 }
 
 fn title(kind: &BlockKind) -> String {

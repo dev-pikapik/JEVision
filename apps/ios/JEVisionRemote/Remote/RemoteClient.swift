@@ -21,8 +21,9 @@ protocol MacSession: AnyObject, Sendable {
   /// Every test and folder of the project, folders included, paths relative to its folder.
   func listTests(project: String) async throws(RemoteError) -> [TestEntry]
   func getTest(project: String, path: String) async throws(RemoteError) -> TestFlow
-  /// Starts a run and returns its id.
-  func runTest(project: String, path: String) async throws(RemoteError) -> String
+  /// Starts a run and returns its id. `row` runs only that row of the test's data table, an
+  /// index into `TestFlow.rows`; `nil` runs every row.
+  func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String
   func stopRun(project: String, run: String) async throws(RemoteError)
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus
   /// The run as it happens: the full status first, then events. The stream ends after the run
@@ -50,5 +51,7 @@ enum RemoteError: Error, Hashable, Sendable {
   case codeExpired
   /// The Mac no longer knows this iPhone.
   case revoked
+  /// The test's data table no longer has the chosen row.
+  case dataRowNotFound
   case other
 }

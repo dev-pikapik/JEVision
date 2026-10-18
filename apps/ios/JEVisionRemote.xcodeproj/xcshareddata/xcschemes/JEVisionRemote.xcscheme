@@ -39,6 +39,17 @@
                ReferencedContainer = "container:JEVisionRemote.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D43903FB68A15F3FBE5A1834"
+               BuildableName = "JEVisionRemoteUITests.xctest"
+               BlueprintName = "JEVisionRemoteUITests"
+               ReferencedContainer = "container:JEVisionRemote.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

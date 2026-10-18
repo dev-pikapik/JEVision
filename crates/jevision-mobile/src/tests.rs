@@ -17,7 +17,7 @@ const REPORT: &str = r#"{"format":1,"test":"Sign in with valid credentials","fil
     "app":"com.example.AcmeMail","startedAt":"2026-10-18T12:00:00.000Z","durationMs":900,
     "verdict":"failed","flaky":false,"attempts":[{"number":1,"verdict":"failed","durationMs":900,
     "failure":{"code":"run.target.notFound","params":{"block":"open","image":"x.png"}},
-    "steps":[{"seq":1,"test":"login/sign-in.flow.json","block":"open","type":"openApp",
+    "row":{"number":2,"label":"Bo"},"steps":[{"seq":1,"test":"login/sign-in.flow.json","block":"open","type":"openApp",
     "status":"failed","durationMs":900,"after":"shots/1-after.png",
     "failure":{"code":"run.target.notFound","params":{"block":"open","image":"x.png"}}}]}]}"#;
 
@@ -78,6 +78,7 @@ impl DeviceSigner for Cancelled {
 struct Fake {
     active: Mutex<HashMap<String, RunStatus>>,
     stopped: Mutex<Vec<String>>,
+    rows: Mutex<Vec<Option<u32>>>,
 }
 
 impl HostDelegate for Fake {
@@ -93,8 +94,10 @@ impl HostDelegate for Fake {
         &self,
         _project_root: String,
         test: String,
+        row: Option<u32>,
         _requested_by: Device,
     ) -> Result<String, jevision_remote::RemoteError> {
+        self.rows.lock().unwrap().push(row);
         let status = RunStatus {
             run: LIVE_RUN.into(),
             test,
@@ -145,6 +148,14 @@ impl Setup {
         let scratch = Scratch::new(name);
         let project = scratch.0.join("project");
         write(&project, "login/sign-in.flow.json", EXAMPLE);
+        write(
+            &project,
+            "people.flow.json",
+            r#"{"format":1,"name":"People","app":"com.example.AcmeMail","start":"rows","blocks":{
+              "rows":{"type":"useData","file":"people.csv","body":"type"},
+              "type":{"type":"type","text":"${data.name}","next":"rows"}}}"#,
+        );
+        write(&project, "people.csv", "name\nAnn\nBo\n");
         let run = project.join(".jevision/runs").join(SAVED_RUN);
         write(&run, "report.json", REPORT);
         fs::create_dir_all(run.join("shots")).unwrap();
@@ -242,7 +253,7 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
     );
 
     let run = phone
-        .run_test("Demo".into(), "login/sign-in.flow.json".into())
+        .run_test("Demo".into(), "login/sign-in.flow.json".into(), None)
         .await
         .unwrap();
     assert_eq!(run, LIVE_RUN);
@@ -316,6 +327,13 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
     assert_eq!(report.duration_ms, 900);
     let attempt = &report.attempts[0];
     assert_eq!(attempt.failure.as_ref().unwrap().params["image"], "x.png");
+    assert_eq!(
+        attempt.row,
+        Some(DataRow {
+            number: 2,
+            label: "Bo".into()
+        })
+    );
     let after = attempt.steps[0].after.clone().unwrap();
     let picture = phone
         .picture("Demo".into(), SAVED_RUN.into(), after)
@@ -347,7 +365,7 @@ async fn reports_errors_with_their_stable_codes() {
     .await
     .unwrap();
     let refused = viewer
-        .run_test("Demo".into(), "login/sign-in.flow.json".into())
+        .run_test("Demo".into(), "login/sign-in.flow.json".into(), None)
         .await;
     assert_eq!(refused, Err(RemoteError::NotAllowed));
     assert_eq!(RemoteError::NotAllowed.key(), "remote.error.notAllowed");
@@ -377,4 +395,35 @@ async fn reports_errors_with_their_stable_codes() {
     );
     assert_eq!(RemoteError::HostOffline.key(), "remote.error.hostOffline");
     assert_eq!(RemoteError::MacLocked.to_string(), "the Mac is locked");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runs_one_row_of_a_data_table() {
+    let setup = Setup::new("rows").await;
+    let phone = RemoteConnection::pair(
+        parse_pairing_offer(setup.qr(Permission::Run)).unwrap(),
+        "Anna's iPhone".into(),
+        TestSigner::new(1),
+        offline(),
+    )
+    .await
+    .unwrap();
+    let test = phone
+        .get_test("Demo".into(), "people.flow.json".into())
+        .await
+        .unwrap();
+    assert_eq!(test.rows, ["Ann", "Bo"]);
+    let missing = phone
+        .run_test("Demo".into(), "people.flow.json".into(), Some(2))
+        .await;
+    assert_eq!(missing, Err(RemoteError::DataRowNotFound));
+    assert_eq!(
+        RemoteError::DataRowNotFound.key(),
+        "remote.error.dataRowNotFound"
+    );
+    phone
+        .run_test("Demo".into(), "people.flow.json".into(), Some(1))
+        .await
+        .unwrap();
+    assert_eq!(*setup.fake.rows.lock().unwrap(), [Some(1)]);
 }

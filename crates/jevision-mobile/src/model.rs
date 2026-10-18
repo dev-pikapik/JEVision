@@ -114,6 +114,10 @@ pub struct TestSummary {
     /// Frames around loops and their bodies.
     pub frames: Vec<FrameSummary>,
     pub edges: Vec<EdgeSummary>,
+    /// What each row of the test's data table is called, in order, when the whole test runs
+    /// once per row; pass a row's index to [`crate::RemoteConnection::run_test`] to run only
+    /// it. Empty without such a table.
+    pub rows: Vec<String>,
 }
 
 #[uniffi::remote(Record)]
@@ -412,8 +416,19 @@ pub struct Attempt {
     pub verdict: Verdict,
     pub duration_ms: u64,
     pub failure: Option<Failure>,
+    /// Row of the test's data table the attempt ran with; absent for a test without one.
+    pub row: Option<DataRow>,
     /// In the order the blocks started.
     pub steps: Vec<Step>,
+}
+
+/// A row of a test's data table, as a run names it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DataRow {
+    /// Counted from 1.
+    pub number: u32,
+    /// The row's value in its `name` column, or else in its first; may be empty.
+    pub label: String,
 }
 
 impl From<jevision_runner::Attempt> for Attempt {
@@ -423,6 +438,10 @@ impl From<jevision_runner::Attempt> for Attempt {
             verdict: a.verdict,
             duration_ms: a.duration_ms,
             failure: a.failure.map(Into::into),
+            row: a.row.map(|row| DataRow {
+                number: row.number,
+                label: row.label,
+            }),
             steps: a.steps.into_iter().map(Into::into).collect(),
         }
     }

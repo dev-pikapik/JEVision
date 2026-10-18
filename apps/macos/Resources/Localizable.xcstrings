@@ -13403,6 +13403,22 @@
           }
         }
       }
+    },
+    "remote.error.dataRowNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test’s data table doesn’t have that row anymore."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В таблице данных теста больше нет этой строки."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

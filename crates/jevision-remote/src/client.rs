@@ -144,14 +144,20 @@ impl Client {
         path: String,
     ) -> Result<TestSummary, RemoteError> {
         match self.call(Request::GetTest { project, path }).await? {
-            (Response::Test { test }, _) => Ok(test),
+            (Response::Test { test }, _) => Ok(*test),
             _ => Err(RemoteError::Protocol),
         }
     }
 
-    /// Starts the test and returns the run's id.
-    pub async fn run_test(&self, project: String, path: String) -> Result<String, RemoteError> {
-        match self.call(Request::RunTest { project, path }).await? {
+    /// Starts the test and returns the run's id. `row` runs only that row of its data table,
+    /// counted from 0, one of [`crate::TestSummary::rows`]; `None` runs every row.
+    pub async fn run_test(
+        &self,
+        project: String,
+        path: String,
+        row: Option<u32>,
+    ) -> Result<String, RemoteError> {
+        match self.call(Request::RunTest { project, path, row }).await? {
             (Response::RunStarted { run }, _) => Ok(run),
             _ => Err(RemoteError::Protocol),
         }
