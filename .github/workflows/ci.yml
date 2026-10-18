@@ -50,6 +50,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build XCFramework and Swift bindings
         run: scripts/build-core-apple.sh
+        env:
+          PROFILE: debug
       - name: Test Swift bindings
         run: swift test --package-path build/apple/JEVisionCore
 
@@ -67,6 +69,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build core and app, check localization
         run: apps/macos/scripts/build.sh
+        env:
+          PROFILE: debug
       - name: Example tests are canonical
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision fmt --check examples
       - name: Example tests are valid
