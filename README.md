@@ -76,6 +76,8 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 4. **Run** (⌘R). The app under test comes to the front and JEVision repeats the steps. When the
    run ends, open its report to see each step with screenshots.
 
+⌘K opens the command palette: type a few letters of any command, block or test and press Return.
+
 ## Permissions
 
 JEVision asks for two permissions in System Settings → Privacy & Security, and explains each
