@@ -42,18 +42,6 @@ open apps/macos/build/JEVision.app
 <br>Добавляйте, соединяйте и меняйте блоки на холсте. Каждое изменение сразу сохраняется, его можно отменить, а проблема видна на том блоке, к которому относится.
 </td>
 <td width="50%" valign="top">
-<picture><source media="(prefers-color-scheme: dark)" srcset="../media/record-dark.png"><img src="../media/record-light.png" width="400" alt=""></picture>
-<br><b>Запись вместо кода</b>
-<br>Работайте в приложении как обычно. Каждый клик, текст и нажатие клавиши становится блоком с картинкой того, на что вы нажали. Пароли уходят в Связку ключей и никогда не попадают в файл.
-</td>
-</tr></tbody>
-<tbody><tr>
-<td width="50%" valign="top">
-<picture><source media="(prefers-color-scheme: dark)" srcset="../media/run-dark.png"><img src="../media/run-light.png" width="400" alt=""></picture>
-<br><b>Прогон у вас на глазах</b>
-<br>Запустите тест, пройдите его по шагам (⌥⌘R) или начните с любого блока, с точками останова. Двиньте мышь, чтобы поставить прогон на паузу. Дважды нажмите Esc в любом приложении, чтобы остановить его.
-</td>
-<td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="../media/report-dark.png"><img src="../media/report-light.png" width="400" alt=""></picture>
 <br><b>Видно, что сломалось</b>
 <br>Каждый прогон хранит снимок экрана на каждом шаге. Проверка показывает экран рядом с эталоном, одно поверх другого или только отличающиеся пиксели.
