@@ -1,26 +1,29 @@
 //! The engine: walks a test's flowchart block by block and records what happened.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt::Write as _;
+use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, Point, Reference, Severity, Target,
-    WaitUntil, dark_variant,
+    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, PROJECT_FILE, Point, ProjectSettings,
+    Reference, Severity, Target, WaitUntil, dark_variant,
 };
 
 use crate::control::{Cancelled, PauseReason};
-use crate::data::DataTable;
 use crate::image::{Comparison, Image};
 use crate::report::{
-    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer, percent,
+    Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
+    percent, summarize,
 };
 use crate::{
     Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
     SecretSource, VisionError, VisionJudge,
 };
+use jevision_core::DataTable;
 
 /// How far a pixel channel may be off and still count as the same colour when comparing by
 /// similarity; absorbs font smoothing and colour-profile noise.
@@ -65,8 +68,10 @@ pub struct RunOptions {
     /// Environment of the project whose values `${env.NAME}` reads, from
     /// `jevision.environments.json`.
     pub environment: Option<String>,
-    /// Runs only this row, counted from 0, of every `useData` table instead of all of them.
-    pub data_row: Option<usize>,
+    /// Rows of the data table to run, counted from 0; `None` runs every row. A test whose
+    /// first `useData` block names a table runs once per row; other tables run these rows of
+    /// theirs inside one run.
+    pub rows: Option<RangeInclusive<usize>>,
     /// Time between two looks at the screen while waiting.
     pub poll_interval: Duration,
     /// Screenshots must not leave this computer: checks by meaning fail instead of asking a
@@ -74,6 +79,8 @@ pub struct RunOptions {
     pub local_only: bool,
     /// Name of the paired device that asked for the run, saved in the report.
     pub requested_by: Option<String>,
+    /// Name of the schedule that started the run, saved in the report.
+    pub schedule: Option<String>,
     pub video: VideoMode,
     /// Videos of the project's runs older than this are deleted after the run; `None` keeps
     /// them all.
@@ -86,10 +93,11 @@ impl Default for RunOptions {
             start_at: None,
             retries: None,
             environment: None,
-            data_row: None,
+            rows: None,
             poll_interval: Duration::from_millis(250),
             local_only: false,
             requested_by: None,
+            schedule: None,
             video: VideoMode::Off,
             keep_videos_for: None,
         }
@@ -168,6 +176,16 @@ impl Runner<'_> {
 
         let mut secrets = HashMap::new();
         let loaded = load_test(&project, &test);
+        let settings = ProjectSettings::load(&project).map_err(|reason| {
+            Failure::new("run.project.unreadable")
+                .with("file", PROJECT_FILE)
+                .with("reason", reason)
+        });
+        let quarantine = settings
+            .as_ref()
+            .ok()
+            .and_then(|s| s.quarantined(&file))
+            .cloned();
         let mut report = RunReport {
             format: REPORT_FORMAT,
             test: loaded
@@ -183,12 +201,21 @@ impl Runner<'_> {
             flaky: false,
             baselines_created: Vec::new(),
             requested_by: options.requested_by.clone(),
+            schedule: options.schedule.clone(),
             environment: options.environment.clone(),
             video: None,
+            file_hash: loaded
+                .as_ref()
+                .ok()
+                .and_then(|_| fs::read(&test).ok())
+                .map(|bytes| content_hash(&bytes)),
+            quarantined: quarantine.is_some(),
+            quarantine_reason: quarantine.and_then(|q| q.reason),
             attempts: Vec::new(),
         };
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
+            let default_retries = settings?.retries;
             let environment = environment?;
             crate::env::check(&t.flow, environment.as_ref())?;
             fetch_secrets(&t.flow, self.secrets, &mut secrets)?;
@@ -199,10 +226,16 @@ impl Runner<'_> {
             if !t.flow.blocks.iter().any(|b| b.id == start) {
                 return Err(Failure::new("run.start.unknownBlock").with("block", start));
             }
-            Ok((t, start, environment))
+            Ok((t, start, environment, default_retries))
         });
         let max_attempts = match &prepared {
-            Ok((t, ..)) => 1 + options.retries.unwrap_or(t.flow.retries),
+            Ok((t, _, _, default_retries)) => {
+                1 + options
+                    .retries
+                    .or(t.flow.retries)
+                    .or(*default_retries)
+                    .unwrap_or(0)
+            }
             Err(_) => 1,
         };
         self.events.send(&Event::RunStarted {
@@ -212,6 +245,10 @@ impl Runner<'_> {
             max_attempts,
         });
 
+        let prepared = prepared.and_then(|(root, start, environment, _)| {
+            let data = data_rows(&project, &root, options.rows.as_ref())?;
+            Ok((root, start, environment, data))
+        });
         match prepared {
             Err(failure) => {
                 self.events.send(&Event::AttemptStarted { attempt: 1 });
@@ -222,11 +259,12 @@ impl Runner<'_> {
                         verdict: Verdict::Failed,
                         duration_ms: 0,
                         failure: Some(failure),
+                        row: None,
                         steps: Vec::new(),
                     },
                 );
             }
-            Ok((root, start, environment)) => {
+            Ok((root, start, environment, data)) => {
                 // The video's clock starts just before the recording does; step markers count
                 // from it.
                 let video = if options.video != VideoMode::Off && !report.app.is_empty() {
@@ -238,37 +276,67 @@ impl Runner<'_> {
                 } else {
                     None
                 };
+                // A test with a data table runs once per row, each row with its own attempts.
+                let (table, passes) = match data {
+                    Some((table, rows)) => (Some(table), rows.into_iter().map(Some).collect()),
+                    None => (None, vec![None]),
+                };
                 let mut launched: Vec<String> = Vec::new();
-                for number in 1..=max_attempts {
-                    // Each retry starts from a clean slate: quit what the last attempt opened.
-                    launched.dedup();
-                    for app in launched.drain(..).rev() {
-                        let _ = self.hands.quit(&app);
+                for pass in passes {
+                    let row = pass.zip(table.clone()).map(|(row, table)| (table, row));
+                    let data_row = row.as_ref().map(|(table, row)| DataRow {
+                        number: u32::try_from(row + 1).unwrap_or(u32::MAX),
+                        label: table.label(*row),
+                    });
+                    if let (Some(data_row), Some(table)) = (&data_row, &table) {
+                        self.events.send(&Event::RowStarted {
+                            row: data_row.number,
+                            rows: u32::try_from(table.rows.len()).unwrap_or(u32::MAX),
+                            label: data_row.label.clone(),
+                        });
                     }
-                    self.events.send(&Event::AttemptStarted { attempt: number });
-                    let exec = Exec {
-                        runner: self,
-                        options,
-                        project: &project,
-                        dir: &dir,
-                        attempt: number,
-                        secrets: &mut secrets,
-                        environment: environment.as_ref(),
-                        seq: 0,
-                        steps: Vec::new(),
-                        frames: Vec::new(),
-                        tests: Vec::new(),
-                        apps: Vec::new(),
-                        launched: Vec::new(),
-                        baselines: Vec::new(),
-                        video,
-                    };
-                    let (attempt, opened, baselines) = exec.run(&root, &start);
-                    launched = opened;
-                    report.baselines_created.extend(baselines);
-                    let done = attempt.verdict != Verdict::Failed;
-                    self.finish_attempt(&mut report, attempt);
-                    if done {
+                    for number in 1..=max_attempts {
+                        // Each retry and row starts from a clean slate: quit what the last
+                        // attempt opened.
+                        launched.dedup();
+                        for app in launched.drain(..).rev() {
+                            let _ = self.hands.quit(&app);
+                        }
+                        self.events.send(&Event::AttemptStarted { attempt: number });
+                        let exec = Exec {
+                            runner: self,
+                            options,
+                            project: &project,
+                            dir: &dir,
+                            attempt: number,
+                            secrets: &mut secrets,
+                            environment: environment.as_ref(),
+                            row: row.clone(),
+                            rows: pass.map_or_else(|| options.rows.clone(), |r| Some(r..=r)),
+                            seq: 0,
+                            steps: Vec::new(),
+                            frames: Vec::new(),
+                            tests: Vec::new(),
+                            apps: Vec::new(),
+                            launched: Vec::new(),
+                            baselines: Vec::new(),
+                            video,
+                        };
+                        let (mut attempt, opened, baselines) = exec.run(&root, &start);
+                        attempt.row = data_row.clone();
+                        launched = opened;
+                        report.baselines_created.extend(baselines);
+                        let done = attempt.verdict != Verdict::Failed;
+                        self.finish_attempt(&mut report, attempt);
+                        if done {
+                            break;
+                        }
+                    }
+                    if report
+                        .attempts
+                        .last()
+                        .is_some_and(|a| a.verdict == Verdict::Cancelled)
+                    {
                         break;
                     }
                 }
@@ -278,11 +346,7 @@ impl Runner<'_> {
             }
         }
 
-        report.verdict = report
-            .attempts
-            .last()
-            .map_or(Verdict::Failed, |a| a.verdict);
-        report.flaky = is_flaky(&report.attempts);
+        (report.verdict, report.flaky) = summarize(&report.attempts);
         report.duration_ms = millis(clock.elapsed());
         let path = dir.join("report.json");
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
@@ -305,10 +369,7 @@ impl Runner<'_> {
     fn finish_video(&self, report: &mut RunReport, dir: &Path, mode: VideoMode) {
         let path = dir.join(VIDEO_FILE);
         let saved = self.hands.stop_video().is_ok() && path.is_file();
-        let verdict = report
-            .attempts
-            .last()
-            .map_or(Verdict::Failed, |a| a.verdict);
+        let (verdict, _) = summarize(&report.attempts);
         if saved && mode.keeps(verdict) {
             report.video = Some(VIDEO_FILE.to_owned());
             return;
@@ -362,8 +423,86 @@ pub fn vision_failure(judge: &dyn VisionJudge, e: &VisionError) -> Failure {
         .fold(failure, |f, (name, value)| f.with(name, value))
 }
 
+/// A data table with the rows of it a run goes through, counted from 0.
+type TableRows = (Rc<DataTable>, Vec<usize>);
+
+/// The rows of the test's data table a run goes through one by one, when its first `useData`
+/// block names a table that can be read before the run.
+fn data_rows(
+    project: &Path,
+    t: &TestFile,
+    rows: Option<&RangeInclusive<usize>>,
+) -> Result<Option<TableRows>, Failure> {
+    let Some(file) = jevision_core::primary_data_file(&t.flow) else {
+        return Ok(None);
+    };
+    let block = t
+        .flow
+        .blocks
+        .iter()
+        .find(|b| matches!(&b.kind, BlockKind::UseData { file: f, .. } if f == file))
+        .map_or("", |b| b.id.as_str());
+    let path = normalize(&t.dir.join(file));
+    if !path.starts_with(project) {
+        return Err(Failure::new("run.path.outsideProject")
+            .with("block", block)
+            .with("path", file));
+    }
+    let table = DataTable::load(&path).map_err(|e| data_unreadable(block, file, &e))?;
+    // A table without rows would leave nothing to run.
+    let chosen = chosen_rows(&table, rows)
+        .ok()
+        .filter(|r| !r.is_empty())
+        .ok_or_else(|| no_row(block, file, rows.map_or(0, |r| *r.start()), &table))?;
+    Ok(Some((Rc::new(table), chosen.collect())))
+}
+
+/// The rows of `table` in `rows`, all when `None`; a range that goes past the end stops there.
+/// `Err` is the first row asked for, counted from 0, when the table doesn't have it.
+fn chosen_rows(
+    table: &DataTable,
+    rows: Option<&RangeInclusive<usize>>,
+) -> Result<std::ops::Range<usize>, usize> {
+    let count = table.rows.len();
+    match rows {
+        None => Ok(0..count),
+        Some(r) if *r.start() < count => Ok(*r.start()..(*r.end()).min(count - 1) + 1),
+        Some(r) => Err(*r.start()),
+    }
+}
+
+fn data_unreadable(block: &str, file: &str, e: &jevision_core::DataError) -> Failure {
+    let failure = Failure::new("run.data.unreadable")
+        .with("block", block)
+        .with("file", file)
+        .with("reason", e)
+        .with("problem", e.code());
+    e.params()
+        .into_iter()
+        .fold(failure, |f, (name, value)| f.with(name, value))
+}
+
+fn no_row(block: &str, file: &str, row: usize, table: &DataTable) -> Failure {
+    Failure::new("run.data.noRow")
+        .with("block", block)
+        .with("file", file)
+        .with("row", row + 1)
+        .with("rows", table.rows.len())
+}
+
+/// SHA-256 of a test file's bytes in hex: runs with the same hash ran the same test.
+fn content_hash(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::new(), |mut hex, b| {
+            let _ = write!(hex, "{b:02x}");
+            hex
+        })
+}
+
 /// Attempts disagree: some passed and some failed, or they failed in different ways.
-fn is_flaky(attempts: &[Attempt]) -> bool {
+pub(crate) fn is_flaky(attempts: &[Attempt]) -> bool {
     let finished = attempts.iter().filter(|a| a.verdict != Verdict::Cancelled);
     let passed = finished.clone().any(|a| a.verdict == Verdict::Passed);
     let failures: BTreeSet<(&str, &str)> = finished
@@ -504,6 +643,11 @@ struct Exec<'r> {
     attempt: u32,
     secrets: &'r mut HashMap<String, String>,
     environment: Option<&'r crate::env::Environment>,
+    /// Row of the test's data table this attempt runs with, for `${data.COLUMN}` anywhere in
+    /// the test.
+    row: Option<(Rc<DataTable>, usize)>,
+    /// Rows `useData` blocks go through; `None` for all of them.
+    rows: Option<RangeInclusive<usize>>,
     seq: u32,
     steps: Vec<Step>,
     frames: Vec<Frame>,
@@ -533,6 +677,7 @@ impl Exec<'_> {
             verdict,
             duration_ms: millis(clock.elapsed()),
             failure,
+            row: None,
             steps: self.steps,
         };
         (attempt, self.launched, self.baselines)
@@ -765,28 +910,11 @@ impl Exec<'_> {
             }
             BlockKind::UseData { file, body, next } => {
                 let path = self.resolve_filled(t, id, file)?;
-                let table = DataTable::load(&path).map_err(|e| {
-                    fail(
-                        Failure::new("run.data.unreadable")
-                            .with("block", id)
-                            .with("file", file)
-                            .with("reason", e),
-                    )
-                })?;
+                let table =
+                    DataTable::load(&path).map_err(|e| fail(data_unreadable(id, file, &e)))?;
                 let table = Rc::new(table);
-                let rows = match self.options.data_row {
-                    None => 0..table.rows.len(),
-                    Some(row) if row < table.rows.len() => row..row + 1,
-                    Some(row) => {
-                        return Err(fail(
-                            Failure::new("run.data.noRow")
-                                .with("block", id)
-                                .with("file", file)
-                                .with("row", row + 1)
-                                .with("rows", table.rows.len()),
-                        ));
-                    }
-                };
+                let rows = chosen_rows(&table, self.rows.as_ref())
+                    .map_err(|row| fail(no_row(id, file, row, &table)))?;
                 for row in rows {
                     self.frames.push(Frame::Data {
                         depth: self.tests.len(),
@@ -1256,10 +1384,18 @@ impl Exec<'_> {
                     out.push_str(value);
                 }
                 Some(("data", column)) => {
-                    let value = self.frames.iter().rev().find_map(|f| match f {
-                        Frame::Data { table, row, .. } => table.value(*row, column),
-                        Frame::Repeat { .. } => None,
-                    });
+                    let value = self
+                        .frames
+                        .iter()
+                        .rev()
+                        .find_map(|f| match f {
+                            Frame::Data { table, row, .. } => table.value(*row, column),
+                            Frame::Repeat { .. } => None,
+                        })
+                        .or_else(|| {
+                            let (table, row) = self.row.as_ref()?;
+                            table.value(*row, column)
+                        });
                     let value = value.ok_or_else(|| {
                         fail(
                             Failure::new("run.data.unknownColumn")
@@ -1287,6 +1423,11 @@ impl Exec<'_> {
         if let Some(environment) = self.environment {
             for (name, value) in &environment.values {
                 vars.insert(format!("env.{name}"), self.mask(value));
+            }
+        }
+        if let Some((table, row)) = &self.row {
+            for (column, value) in table.columns.iter().zip(&table.rows[*row]) {
+                vars.insert(format!("data.{column}"), self.mask(value));
             }
         }
         for frame in &self.frames {

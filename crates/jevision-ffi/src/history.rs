@@ -1,5 +1,6 @@
 //! Runs saved in a project: listing them, reading one back and exporting its report.
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use jevision_runner::{Run, StepStatus, Verdict};
@@ -98,13 +99,21 @@ fn link(name: &str) -> String {
 }
 
 /// Saves the reports of the runs in `dirs` as one JUnit XML file, a test case per run, for CI
-/// systems.
+/// systems. Failures of tests in quarantine are reported as skipped unless
+/// `include_quarantined_failures`.
 #[uniffi::export]
-pub fn export_junit(dirs: Vec<String>, to: String) -> Result<(), ReportError> {
-    let reports = dirs
+pub fn export_junit(
+    dirs: Vec<String>,
+    to: String,
+    include_quarantined_failures: bool,
+) -> Result<(), ReportError> {
+    let mut reports = dirs
         .iter()
         .map(|dir| Run::load(Path::new(dir)).map(|run| run.report))
         .collect::<std::io::Result<Vec<_>>>()?;
+    if include_quarantined_failures {
+        reports.iter_mut().for_each(|r| r.quarantined = false);
+    }
     std::fs::write(to, jevision_runner::junit_xml(&reports))?;
     Ok(())
 }
@@ -124,6 +133,24 @@ pub struct TestHealth {
     /// Start of the first of the failed runs the test has ended with since it last passed,
     /// RFC 3339; `None` when its latest run passed.
     pub failing_since: Option<String>,
+    /// Why the test counts as flaky; `None` when its recent runs agree.
+    pub flaky: Option<FlakyEvidence>,
+}
+
+/// Runs of the 30 days that both passed and failed with the test file exactly as it is in the
+/// latest run, in the same environment: nothing in the test changed, yet the result did.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FlakyEvidence {
+    /// Runs that passed on the first try.
+    pub passed: u32,
+    /// Runs that passed only on a retry, after failing.
+    pub passed_on_retry: u32,
+    /// Runs that failed every try.
+    pub failed: u32,
+    /// Environment of the runs; `None` when they used none.
+    pub environment: Option<String>,
+    /// Start of the first of the runs, RFC 3339.
+    pub since: String,
 }
 
 /// How one run went, for the health bars.
@@ -228,7 +255,58 @@ pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
             .max_by_key(|(point, last)| (point.failures, *last))
             .map(|(point, _)| point),
         failing_since,
+        flaky: flaky_evidence(&month),
     }
+}
+
+/// The tests of `runs` that count as flaky at `now_ms` milliseconds since 1970, by test file
+/// relative to the project folder, with the evidence; see [`TestHealth::flaky`].
+#[uniffi::export]
+pub fn flaky_tests(runs: Vec<RunReport>, now_ms: i64) -> HashMap<String, FlakyEvidence> {
+    let mut by_file: HashMap<String, Vec<RunReport>> = HashMap::new();
+    for run in runs {
+        by_file.entry(run.file.clone()).or_default().push(run);
+    }
+    by_file
+        .into_iter()
+        .filter_map(|(file, runs)| Some((file, test_health(runs, now_ms).flaky?)))
+        .collect()
+}
+
+/// Evidence that the test is flaky from `runs`, finished and oldest first: among the runs of
+/// the latest run's test file content, the environment whose runs disagree, the most recently
+/// run one if several do. Runs saved without the file's hash prove nothing.
+fn flaky_evidence(runs: &[&RunReport]) -> Option<FlakyEvidence> {
+    let hash = runs.last()?.file_hash.as_deref()?;
+    let mut groups: Vec<FlakyEvidence> = Vec::new();
+    for run in runs.iter().filter(|r| r.file_hash.as_deref() == Some(hash)) {
+        let index = match groups.iter().position(|g| g.environment == run.environment) {
+            Some(index) => index,
+            None => {
+                groups.push(FlakyEvidence {
+                    passed: 0,
+                    passed_on_retry: 0,
+                    failed: 0,
+                    environment: run.environment.clone(),
+                    since: run.started_at.clone(),
+                });
+                groups.len() - 1
+            }
+        };
+        let group = &mut groups[index];
+        match run.verdict {
+            Verdict::Passed if run.flaky => group.passed_on_retry += 1,
+            Verdict::Passed => group.passed += 1,
+            _ => group.failed += 1,
+        }
+        // The group run last comes last.
+        let latest = groups.remove(index);
+        groups.push(latest);
+    }
+    groups
+        .into_iter()
+        .rev()
+        .find(|g| g.passed_on_retry > 0 || (g.passed > 0 && g.failed > 0))
 }
 
 /// Milliseconds since 1970 of an RFC 3339 time, such as `2026-10-18T14:30:05.123Z` or
@@ -327,6 +405,80 @@ mod tests {
         serde_json::from_str::<jevision_runner::RunReport>(&report(test, started, verdict))
             .unwrap()
             .into()
+    }
+
+    #[test]
+    fn flaky_when_the_same_test_both_passes_and_fails() {
+        let now = unix_ms("2026-10-18T12:00:00Z").unwrap();
+        let run = |at: &str, verdict: &str, hash: &str, env: Option<&str>| {
+            let mut run = saved("t", &format!("2026-10-18T{at}:00.000Z"), verdict);
+            run.file_hash = Some(hash.into());
+            run.environment = env.map(Into::into);
+            run
+        };
+        let flaky = |runs: Vec<RunReport>| test_health(runs, now).flaky;
+
+        // A failure before the test was changed is not flakiness.
+        assert_eq!(
+            flaky(vec![
+                run("08:00", "failed", "old", None),
+                run("09:00", "passed", "new", None)
+            ]),
+            None
+        );
+        // Failing in one environment and passing in another is not either.
+        assert_eq!(
+            flaky(vec![
+                run("08:00", "failed", "a", Some("staging")),
+                run("09:00", "passed", "a", Some("production")),
+            ]),
+            None
+        );
+        // Old reports without a hash prove nothing.
+        let mut unhashed = run("08:00", "failed", "a", None);
+        unhashed.file_hash = None;
+        assert_eq!(
+            flaky(vec![unhashed, run("09:00", "passed", "a", None)]),
+            None
+        );
+
+        let mut retried = run("10:00", "passed", "a", None);
+        retried.flaky = true;
+        assert_eq!(
+            flaky(vec![
+                run("07:00", "failed", "old", None),
+                run("08:00", "failed", "a", None),
+                run("09:00", "passed", "a", None),
+                retried,
+                run("11:00", "passed", "a", None),
+            ]),
+            Some(FlakyEvidence {
+                passed: 2,
+                passed_on_retry: 1,
+                failed: 1,
+                environment: None,
+                since: "2026-10-18T08:00:00.000Z".into(),
+            })
+        );
+        // A pass after failing within one run is evidence on its own.
+        let mut retried = run("10:00", "passed", "a", None);
+        retried.flaky = true;
+        assert_eq!(flaky(vec![retried]).map(|e| e.passed_on_retry), Some(1));
+        let mut other = run("09:00", "passed", "b", None);
+        other.file = "other.flow.json".into();
+        let found = flaky_tests(
+            vec![
+                run("08:00", "failed", "a", None),
+                run("09:00", "passed", "a", None),
+                other,
+            ],
+            now,
+        );
+        assert_eq!(found.keys().collect::<Vec<_>>(), ["t.flow.json"]);
+        // Runs older than 30 days are forgotten.
+        let mut old = run("08:00", "failed", "a", None);
+        old.started_at = "2026-08-01T08:00:00.000Z".into();
+        assert_eq!(flaky(vec![old, run("09:00", "passed", "a", None)]), None);
     }
 
     #[test]
@@ -527,7 +679,12 @@ mod tests {
         let html = project.0.join("report.html");
         let junit = project.0.join("junit.xml");
         export_html(listed[0].dir.clone(), html.to_string_lossy().into()).unwrap();
-        export_junit(vec![listed[0].dir.clone()], junit.to_string_lossy().into()).unwrap();
+        export_junit(
+            vec![listed[0].dir.clone()],
+            junit.to_string_lossy().into(),
+            false,
+        )
+        .unwrap();
         assert!(std::fs::read_to_string(&html).unwrap().contains("login"));
         assert!(!std::fs::read_to_string(&html).unwrap().contains("<video"));
         assert!(
@@ -536,7 +693,7 @@ mod tests {
                 .contains("<failure")
         );
         let all = listed.iter().map(|r| r.dir.clone()).collect();
-        export_junit(all, junit.to_string_lossy().into()).unwrap();
+        export_junit(all, junit.to_string_lossy().into(), false).unwrap();
         let xml = std::fs::read_to_string(&junit).unwrap();
         assert!(
             xml.contains(r#"tests="3" failures="1" errors="0" skipped="1""#),
@@ -545,7 +702,8 @@ mod tests {
         assert!(
             export_junit(
                 vec![runs.join("20261018-110000-broken").to_string_lossy().into()],
-                junit.to_string_lossy().into()
+                junit.to_string_lossy().into(),
+                false,
             )
             .is_err()
         );

@@ -267,7 +267,7 @@ fn parameters_are_checked() {
 fn model_edits_are_validated_too() {
     let mut flow = parse(ALL_BLOCKS).unwrap();
     flow.name = " ".into();
-    flow.retries = MAX_RETRIES + 1;
+    flow.retries = Some(MAX_RETRIES + 1);
     flow.tags = vec!["a".into(), "a".into()];
     let dup = flow.blocks[0].clone();
     flow.blocks.push(dup);

@@ -28,7 +28,7 @@ struct LastRun {
   /// The newest run in which blocks of `file` ran: its own, or one of a test that ran it.
   static func ran(_ file: String, in runs: [SavedRun]) -> SavedRun? {
     runs.first { run in
-      run.report.file == file || run.report.attempts.last?.steps.contains { $0.test == file } == true
+      run.report.file == file || decidingAttempt(report: run.report)?.steps.contains { $0.test == file } == true
     }
   }
 

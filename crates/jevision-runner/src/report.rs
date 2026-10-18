@@ -35,13 +35,79 @@ pub struct RunReport {
     /// absent for a run started on this computer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_by: Option<String>,
+    /// Name of the schedule of the project that started the run; absent for a run someone
+    /// started.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule: Option<String>,
     /// Environment of the project the run used; absent when it used none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,
     /// Video of the run, relative to the run folder; absent when none was recorded or kept.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video: Option<String>,
+    /// SHA-256 of the test file's bytes in hex, so runs of the same test content can be told
+    /// apart from runs after a change; absent when the file couldn't be read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_hash: Option<String>,
+    /// The test was in the project's quarantine: its failure doesn't fail a batch of runs.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub quarantined: bool,
+    /// Why the test was in quarantine, as the project's settings say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quarantine_reason: Option<String>,
     pub attempts: Vec<Attempt>,
+}
+
+impl RunReport {
+    /// The run failed while the test was in quarantine, so it doesn't fail a batch of runs.
+    pub fn is_quarantined_failure(&self) -> bool {
+        self.quarantined && self.verdict == Verdict::Failed
+    }
+}
+
+/// What the retries of a run say about its result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryVerdict {
+    /// Failed, then passed on retry `retry`, 1 being the first retry: the test is flaky.
+    PassedOnRetry { retry: u32 },
+    /// Failed every attempt, not always the same way: the test may be flaky.
+    FailedDifferently { attempts: u32 },
+    /// Failed every attempt the same way: a real failure, not flakiness.
+    FailedEveryTime { attempts: u32 },
+}
+
+impl RetryVerdict {
+    /// The verdict of a run that ended with `verdict` after `attempts` attempts; `None` for a
+    /// run tried once or stopped.
+    pub fn of(verdict: Verdict, flaky: bool, attempts: usize) -> Option<Self> {
+        let attempts = u32::try_from(attempts).unwrap_or(u32::MAX);
+        if attempts < 2 {
+            return None;
+        }
+        match verdict {
+            Verdict::Passed => Some(Self::PassedOnRetry {
+                retry: attempts - 1,
+            }),
+            Verdict::Failed if flaky => Some(Self::FailedDifferently { attempts }),
+            Verdict::Failed => Some(Self::FailedEveryTime { attempts }),
+            Verdict::Cancelled => None,
+        }
+    }
+
+    /// The verdict in one English sentence, for the HTML report and the command line.
+    pub fn describe(self) -> String {
+        match self {
+            Self::PassedOnRetry { retry } => {
+                format!("Passed on retry {retry} after failing — the test is flaky.")
+            }
+            Self::FailedDifferently { attempts } => {
+                format!("Failed {attempts} times, each time differently — the test may be flaky.")
+            }
+            Self::FailedEveryTime { attempts } => {
+                format!("Failed {attempts} times in a row — a real failure, not flakiness.")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,14 +121,127 @@ pub enum Verdict {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attempt {
-    /// 1 for the first run, 2 for the first retry and so on.
+    /// 1 for the first run, 2 for the first retry and so on; counted anew for each data row.
     pub number: u32,
     pub verdict: Verdict,
     pub duration_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
+    /// Row of the test's data table the attempt ran with; absent for a test without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row: Option<DataRow>,
     /// In the order the blocks started.
     pub steps: Vec<Step>,
+}
+
+/// A row of the test's data table, as a run names it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DataRow {
+    /// Counted from 1.
+    pub number: u32,
+    /// The row's value in its `name` column, or else in its first; may be empty.
+    pub label: String,
+}
+
+impl DataRow {
+    /// `Row 2: anna@example.com`, or `Row 2` when the label is empty.
+    pub fn title(&self) -> String {
+        if self.label.is_empty() {
+            format!("Row {}", self.number)
+        } else {
+            format!("Row {}: {}", self.number, self.label)
+        }
+    }
+}
+
+/// How one data row of a run went: the verdict of its last attempt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RowResult {
+    pub row: DataRow,
+    pub verdict: Verdict,
+    pub flaky: bool,
+    pub attempts: usize,
+    /// Why the row's last attempt failed.
+    pub failure: Option<Failure>,
+}
+
+impl RunReport {
+    /// One result per data row, in the order the rows ran; empty for a run without a data
+    /// table.
+    pub fn rows(&self) -> Vec<RowResult> {
+        self.attempts
+            .chunk_by(|a, b| a.row == b.row)
+            .filter_map(|group| {
+                let last = group.last()?;
+                Some(RowResult {
+                    row: last.row.clone()?,
+                    verdict: last.verdict,
+                    flaky: crate::run::is_flaky(group),
+                    attempts: group.len(),
+                    failure: last.failure.clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// `4 of 5 rows passed` for a run with a data table.
+    pub fn rows_summary(&self) -> Option<String> {
+        let rows = self.rows();
+        if rows.is_empty() {
+            return None;
+        }
+        let passed = rows.iter().filter(|r| r.verdict == Verdict::Passed).count();
+        Some(match rows.len() {
+            1 => format!("{passed} of 1 row passed"),
+            n => format!("{passed} of {n} rows passed"),
+        })
+    }
+
+    /// The report of each data row on its own, named like `Login [Row 2: anna]`; just the
+    /// report for a run without a data table.
+    pub fn split_rows(&self) -> Vec<RunReport> {
+        let rows = self.rows();
+        if rows.is_empty() {
+            return vec![self.clone()];
+        }
+        rows.into_iter()
+            .map(|r| {
+                let attempts: Vec<Attempt> = self
+                    .attempts
+                    .iter()
+                    .filter(|a| a.row.as_ref() == Some(&r.row))
+                    .cloned()
+                    .collect();
+                RunReport {
+                    test: format!("{} [{}]", self.test, r.row.title()),
+                    duration_ms: attempts.iter().map(|a| a.duration_ms).sum(),
+                    verdict: r.verdict,
+                    flaky: r.flaky,
+                    attempts,
+                    ..self.clone()
+                }
+            })
+            .collect()
+    }
+}
+
+/// The verdict of a run and whether it was flaky, from its attempts. A run with a data table
+/// passes when every row's last attempt passed and is flaky when any row was.
+pub(crate) fn summarize(attempts: &[Attempt]) -> (Verdict, bool) {
+    let mut verdict = None;
+    let mut flaky = false;
+    for group in attempts.chunk_by(|a, b| a.row == b.row) {
+        flaky |= crate::run::is_flaky(group);
+        let last = group.last().map(|a| a.verdict);
+        verdict = match (verdict, last) {
+            (Some(Verdict::Cancelled), _) | (_, Some(Verdict::Cancelled)) => {
+                Some(Verdict::Cancelled)
+            }
+            (Some(Verdict::Failed), _) | (_, Some(Verdict::Failed)) => Some(Verdict::Failed),
+            (_, last) => last,
+        };
+    }
+    (verdict.unwrap_or(Verdict::Failed), flaky)
 }
 
 /// One block as it ran. Image paths are relative to the run folder.
@@ -184,7 +363,7 @@ pub fn describe(f: &Failure) -> String {
             p("environment"),
             p("file")
         ),
-        "run.environments.unreadable" => {
+        "run.environments.unreadable" | "run.project.unreadable" => {
             format!("{} can't be read: {}.", p("file"), p("reason"))
         }
         "run.data.noRow" => format!(
@@ -362,9 +541,20 @@ fn wait_target(target: &str) -> String {
 }
 
 /// JUnit XML for one or more runs, one test case each. Retries use the Surefire elements
-/// `flakyFailure` (failed, then passed) and `rerunFailure` (failed again).
+/// `flakyFailure` (failed, then passed) and `rerunFailure` (failed again). A failure of a test
+/// in quarantine is reported as skipped, with the reason and the failure in its message.
 pub fn junit_xml(reports: &[RunReport]) -> String {
-    let count = |v: Verdict| reports.iter().filter(|r| r.verdict == v).count();
+    let reports: Vec<RunReport> = reports.iter().flat_map(RunReport::split_rows).collect();
+    let count = |v: Verdict| {
+        reports
+            .iter()
+            .filter(|r| r.verdict == v && !r.is_quarantined_failure())
+            .count()
+    };
+    let quarantined = reports
+        .iter()
+        .filter(|r| r.is_quarantined_failure())
+        .count();
     let seconds = |ms: u64| format!("{:.3}", ms as f64 / 1000.0);
     let total: u64 = reports.iter().map(|r| r.duration_ms).sum();
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -372,7 +562,7 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
         "name=\"JEVision\" tests=\"{}\" failures=\"{}\" errors=\"0\" skipped=\"{}\" time=\"{}\"",
         reports.len(),
         count(Verdict::Failed),
-        count(Verdict::Cancelled),
+        count(Verdict::Cancelled) + quarantined,
         seconds(total)
     );
     let _ = writeln!(out, "<testsuites {head}>");
@@ -407,6 +597,20 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             );
         };
         match r.verdict {
+            Verdict::Failed if r.quarantined => {
+                let failed = failures
+                    .last()
+                    .map_or_else(|| "The test failed.".to_owned(), |f| describe(f));
+                let reason = r
+                    .quarantine_reason
+                    .as_deref()
+                    .map_or_else(String::new, |reason| format!(" ({reason})"));
+                let _ = writeln!(
+                    out,
+                    "      <skipped message=\"{}\"/>",
+                    xml(&format!("Quarantined{reason}. {failed}"))
+                );
+            }
             Verdict::Passed => failures
                 .iter()
                 .for_each(|f| element(&mut out, "flakyFailure", f)),
@@ -438,6 +642,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     let (badge, label) = match (report.verdict, report.flaky) {
         (Verdict::Passed, false) => ("pass", "Passed"),
         (Verdict::Passed, true) => ("flaky", "Passed, flaky"),
+        (Verdict::Failed, _) if report.quarantined => ("skip", "Failed, quarantined"),
         (Verdict::Failed, false) => ("fail", "Failed"),
         (Verdict::Failed, true) => ("fail", "Failed, flaky"),
         (Verdict::Cancelled, _) => ("skip", "Cancelled"),
@@ -465,6 +670,49 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
         duration = duration(report.duration_ms),
         attempts = report.attempts.len(),
     );
+    let rows = report.rows();
+    if rows.is_empty() {
+        if let Some(verdict) = RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
+        {
+            let _ = writeln!(o, "<p class=\"note\">{}</p>", xml(&verdict.describe()));
+        }
+    } else {
+        let _ = writeln!(
+            o,
+            "<p class=\"note\">{}.</p>\n<ol class=\"steps\">",
+            xml(&report.rows_summary().unwrap_or_default())
+        );
+        for r in &rows {
+            let (class, status) = match r.verdict {
+                Verdict::Passed if r.flaky => ("pass", "Passed, flaky"),
+                Verdict::Passed => ("pass", "Passed"),
+                Verdict::Failed => ("fail", "Failed"),
+                Verdict::Cancelled => ("skip", "Cancelled"),
+            };
+            let tries = match r.attempts {
+                1 => String::new(),
+                n => format!("<span class=\"type\">{n} attempts</span>"),
+            };
+            let _ = writeln!(
+                o,
+                "<li class=\"{class}\"><div class=\"row\"><span class=\"seq\">{}</span>\
+                 <code>{}</code>{tries}<span class=\"status\">{status}</span></div></li>",
+                r.row.number,
+                xml(&r.row.label)
+            );
+        }
+        o.push_str("</ol>\n");
+    }
+    if report.quarantined {
+        let reason = report
+            .quarantine_reason
+            .as_deref()
+            .map_or_else(String::new, |reason| format!(": {}", xml(reason)));
+        let _ = writeln!(
+            o,
+            "<p class=\"note\">The test is in quarantine{reason}. Its failures don’t fail Run All, the command line or the JUnit report.</p>"
+        );
+    }
     if !report.baselines_created.is_empty() {
         let _ = writeln!(
             o,
@@ -482,7 +730,10 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     for a in &report.attempts {
         let _ = writeln!(
             o,
-            "<section>\n<h2>Attempt {} <small>{}</small></h2>",
+            "<section>\n<h2>{}Attempt {} <small>{}</small></h2>",
+            a.row
+                .as_ref()
+                .map_or_else(String::new, |r| format!("{} · ", xml(&r.title()))),
             a.number,
             duration(a.duration_ms)
         );

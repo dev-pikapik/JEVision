@@ -81,6 +81,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
         }
     }
     out.extend(crate::env::validate_environment_values(flow, dir));
+    out.extend(crate::data::validate_data(flow, dir));
     out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
     out
 }
@@ -166,7 +167,7 @@ fn root(flow: &Flow, out: &mut Vec<Issue>) {
             out.push(Issue::error("flow.tags.duplicate").with("tag", tag));
         }
     }
-    if flow.retries > MAX_RETRIES {
+    if flow.retries.is_some_and(|retries| retries > MAX_RETRIES) {
         out.push(range(None, "retries", 0, MAX_RETRIES));
     }
 }
@@ -422,7 +423,7 @@ fn graph(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
     }
 }
 
-fn reachable(edges: &[Vec<usize>], from: usize) -> Vec<bool> {
+pub(crate) fn reachable(edges: &[Vec<usize>], from: usize) -> Vec<bool> {
     let mut seen = vec![false; edges.len()];
     let mut queue = VecDeque::from([from]);
     seen[from] = true;
@@ -529,7 +530,7 @@ fn is_web_address(s: &str) -> bool {
 }
 
 /// A portable path relative to the test file's folder, written with `/`.
-fn is_relative_path(s: &str) -> bool {
+pub(crate) fn is_relative_path(s: &str) -> bool {
     !s.is_empty()
         && !s.starts_with('/')
         && !s.starts_with('~')

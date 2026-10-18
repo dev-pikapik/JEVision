@@ -247,11 +247,11 @@ struct EditorView: View {
       .pickerStyle(.menu)
     }
     Picker(selection: Binding(get: { document.runChoices.retries }, set: { document.runChoices.retries = $0 })) {
-      Text("As in Test (\(flow.retries))").tag(Int?.none)
+      Text("As in Test (\(project.retries(of: flow)))").tag(Int?.none)
       Divider()
       ForEach(RunChoices.retryChoices, id: \.self) { Text($0, format: .number).tag(Int?.some($0)) }
     } label: {
-      Label(RunChoices.retriesTitle(document.runChoices.retries, test: flow.retries), systemImage: "arrow.clockwise")
+      Label(RunChoices.retriesTitle(document.runChoices.retries, test: project.retries(of: flow)), systemImage: "arrow.clockwise")
     }
     .pickerStyle(.menu)
   }

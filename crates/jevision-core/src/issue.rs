@@ -189,6 +189,17 @@ pub fn describe(issue: &Issue) -> String {
             p("environments")
         ),
         "flow.environments.invalid" => format!("{} can't be read: {}.", p("file"), p("reason")),
+        "flow.data.invalid" => format!(
+            "{} can't be used as a data table: {}.",
+            p("path"),
+            p("reason")
+        ),
+        "flow.data.unknownColumn" => format!(
+            "{} has no column \"{}\"; its columns are: {}.",
+            p("path"),
+            p("column"),
+            p("columns")
+        ),
         _ => {
             let params: Vec<String> = issue
                 .params

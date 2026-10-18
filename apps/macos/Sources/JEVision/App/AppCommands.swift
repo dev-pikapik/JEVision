@@ -59,6 +59,8 @@ struct AppCommands: Commands {
       }
       .keyboardShortcut("r", modifiers: [.command, .control])
       .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.items.isEmpty)
+      Button("Schedules…") { project.schedules.isShowingSheet = true }
+        .disabled(project.status != .ready)
       Divider()
       Button("Record") {
         if let document = project.document { records.record(document) }

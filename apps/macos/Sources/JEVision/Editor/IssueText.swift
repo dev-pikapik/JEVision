@@ -64,6 +64,12 @@ enum IssueText {
       return String(localized: "flow.env.partial", defaultValue: "The value \(p("name")) is missing in these environments: \(p("environments")).")
     case "flow.environments.invalid":
       return String(localized: "flow.environments.invalid", defaultValue: "\(p("file")) can’t be read: \(p("reason")).")
+    case "flow.data.invalid":
+      return String(localized: "flow.data.invalid", defaultValue: "\(p("path")) can’t be used as a data table: \(dataProblem(p("problem"), p)).")
+    case "flow.data.unknownColumn":
+      return String(
+        localized: "flow.data.unknownColumn",
+        defaultValue: "\(p("path")) has no column “\(p("column"))”. Its columns are: \(p("columns")).")
     case "flow.keys.invalid":
       return String(localized: "flow.keys.invalid", defaultValue: "“\(p("value"))” isn’t a key combination. Record the keys again.")
     case "flow.point.invalid":
@@ -80,6 +86,36 @@ enum IssueText {
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
     default:
       return String(localized: "Unknown problem: \(issue.code)")
+    }
+  }
+
+  /// What is wrong with a CSV data table, from the core's `data.*` code and its values.
+  static func dataProblem(_ code: String, _ p: (String) -> String) -> String {
+    switch code {
+    case "data.unreadable":
+      String(localized: "data.unreadable", defaultValue: "the file can’t be read (\(p("reason")))")
+    case "data.unwritable":
+      String(localized: "data.unwritable", defaultValue: "the file can’t be saved (\(p("reason")))")
+    case "data.notText":
+      String(localized: "data.notText", defaultValue: "the file isn’t text in UTF-8")
+    case "data.empty":
+      String(localized: "data.empty", defaultValue: "the file is empty, and its first line must name the columns")
+    case "data.blankColumn":
+      String(localized: "data.blankColumn", defaultValue: "column \(p("column")) of the first line has no name")
+    case "data.duplicateColumn":
+      String(localized: "data.duplicateColumn", defaultValue: "the first line names the column “\(p("name"))” twice")
+    case "data.unclosedQuote":
+      String(localized: "data.unclosedQuote", defaultValue: "the quote opened on line \(p("line")) is never closed")
+    case "data.strayQuote":
+      String(
+        localized: "data.strayQuote",
+        defaultValue: "line \(p("line")) has a quote in the middle of a value; put the whole value in quotes and double the quote inside")
+    case "data.rowLength":
+      String(
+        localized: "data.rowLength",
+        defaultValue: "line \(p("line")) has \(p("found")) values, but the first line names \(p("expected")) columns")
+    default:
+      p("reason")
     }
   }
 

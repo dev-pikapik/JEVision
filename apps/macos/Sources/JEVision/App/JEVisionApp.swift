@@ -10,6 +10,8 @@ struct JEVisionApp: App {
   @State private var indicators: ActivityIndicators
   /// Made at launch so paired iPhones reach the Mac whether or not Settings is open.
   @State private var remote: RemoteAccess
+  /// Tells about failed scheduled runs, of every project with schedules.
+  @State private var scheduleNotifier: ScheduleNotifier
 
   init() {
     _ = AppLanguage.atLaunch
@@ -22,6 +24,9 @@ struct JEVisionApp: App {
     _records = State(initialValue: records)
     _indicators = State(initialValue: ActivityIndicators(runs: runs, records: records))
     _remote = State(initialValue: RemoteAccess(runs: runs, project: project))
+    let scheduleNotifier = ScheduleNotifier()
+    scheduleNotifier.start()
+    _scheduleNotifier = State(initialValue: scheduleNotifier)
   }
 
   var body: some Scene {

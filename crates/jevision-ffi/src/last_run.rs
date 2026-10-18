@@ -31,7 +31,7 @@ pub struct BlockResult {
 /// take, have no result, and neither do blocks the test no longer has.
 #[uniffi::export]
 pub fn block_results(flow: Flow, file: String, report: RunReport) -> Vec<BlockResult> {
-    let Some(attempt) = report.attempts.last() else {
+    let Some(attempt) = crate::run::deciding_attempt(&report) else {
         return Vec::new();
     };
     let blocks: HashMap<&str, &jevision_core::Block> =
@@ -171,8 +171,13 @@ mod tests {
             flaky: false,
             baselines_created: Vec::new(),
             requested_by: None,
+            schedule: None,
             environment: None,
             video: None,
+            file_hash: None,
+            quarantined: false,
+            quarantine_reason: None,
+            rows: Vec::new(),
             attempts: attempts
                 .into_iter()
                 .enumerate()
@@ -182,6 +187,7 @@ mod tests {
                     duration_ms: 0,
                     failure: (verdict == Verdict::Failed).then(|| failure("run.attempt")),
                     steps,
+                    row: None,
                 })
                 .collect(),
         }

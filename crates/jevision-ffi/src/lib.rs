@@ -21,8 +21,10 @@ mod history;
 mod last_run;
 mod map;
 mod mcp;
+mod project;
 mod remote;
 mod run;
+mod schedule;
 mod vision;
 
 pub use env::*;
@@ -31,8 +33,10 @@ pub use history::*;
 pub use last_run::*;
 pub use map::*;
 pub use mcp::*;
+pub use project::*;
 pub use remote::*;
 pub use run::*;
+pub use schedule::*;
 
 /// The text is not a readable test file.
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -252,7 +256,7 @@ pub struct Flow {
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
-    pub retries: u32,
+    pub retries: Option<u32>,
     pub start: String,
     pub blocks: Vec<Block>,
     pub canvas: CanvasContent,

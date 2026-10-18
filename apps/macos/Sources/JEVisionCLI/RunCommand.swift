@@ -16,22 +16,29 @@ struct RunCommand {
   }
 
   func execute() -> ExitStatus {
+    do {
+      return finish(try runTests())
+    } catch {
+      Console.standardError.line(error.message)
+      return .failure
+    }
+  }
+
+  /// Runs the tests one after another; the error is what to tell when they can't start.
+  func runTests() throws(UsageError) -> [TestResult] {
     let plan: (project: String, tests: [String], environment: String?)
     do {
       plan = try Self.plan(request)
     } catch {
-      Console.standardError.line("jevision: \(error.message)")
-      return .failure
+      throw UsageError(message: "jevision: \(error.message)")
     }
     let ai = AISettings.app
     let vision = ai.settings(provider: request.provider, model: request.model)
     if request.model != nil, vision == nil {
-      Console.standardError.line("jevision: --model needs an AI provider: choose one with --provider or in the app (Settings → AI)")
-      return .failure
+      throw UsageError(message: "jevision: --model needs an AI provider: choose one with --provider or in the app (Settings → AI)")
     }
     if let problem = Readiness.problem() {
-      Console.standardError.line(problem)
-      return .failure
+      throw UsageError(message: problem)
     }
     let input = InputWatcher()
     let videos = VideoSettings.app
@@ -46,16 +53,14 @@ struct RunCommand {
     }
     // Esc Esc stops the run right on the watcher's thread.
     guard input.start(onEmergencyStop: { [session] in session.stop() }) else {
-      Console.standardError.line("jevision: macOS didn’t let jevision watch the keyboard, so Esc Esc couldn’t stop a run.")
-      return .failure
+      throw UsageError(message: "jevision: macOS didn’t let jevision watch the keyboard, so Esc Esc couldn’t stop a run.")
     }
     defer { input.stop() }
     let interrupts = Interrupts.install { [session, progress] in
       session.stop()
       progress.line(progress.paint("Press Ctrl-C again to quit at once.", .dim))
     }
-    let results = withExtendedLifetime(interrupts) { session.runAll() }
-    return finish(results)
+    return withExtendedLifetime(interrupts) { session.runAll() }
   }
 
   // MARK: Planning
@@ -148,11 +153,12 @@ struct RunCommand {
 
   /// Saves the JUnit and HTML reports asked for and prints the summary or the JSON result.
   func finish(_ results: [TestResult]) -> ExitStatus {
-    var status = results.map(\.status).max() ?? .ok
+    var status =
+      results.map { request.includeQuarantinedFailures && $0.verdict == "quarantined" ? .problems : $0.status }.max() ?? .ok
     let runs = results.compactMap(\.dir)
     if let junit = request.junit {
       do {
-        try exportJunit(dirs: runs, to: junit)
+        try exportJunit(dirs: runs, to: junit, includeQuarantinedFailures: request.includeQuarantinedFailures)
         progress.line(progress.paint("JUnit report: \(junit)", .dim))
       } catch {
         Console.standardError.line("\(junit): cannot write: \(error)")
@@ -180,6 +186,7 @@ struct RunCommand {
     return .object([
       ("passed", count("passed")),
       ("failed", count("failed")),
+      ("quarantined", count("quarantined")),
       ("cancelled", count("cancelled")),
       ("notRun", count("notRun")),
       ("errors", count("error")),
@@ -211,7 +218,7 @@ struct TestResult {
     case .finished(_, _, let report):
       switch report.verdict {
       case .passed: "passed"
-      case .failed: "failed"
+      case .failed: report.quarantined ? "quarantined" : "failed"
       case .cancelled: "cancelled"
       }
     case .error: "error"
@@ -219,9 +226,10 @@ struct TestResult {
     }
   }
 
+  /// A failure in quarantine doesn't count unless asked: see `RunRequest.includeQuarantinedFailures`.
   var status: ExitStatus {
     switch verdict {
-    case "passed": .ok
+    case "passed", "quarantined": .ok
     case "error": .failure
     default: .problems
     }
@@ -231,11 +239,14 @@ struct TestResult {
     var members: [(String, JSON)] = [("file", .string(file)), ("verdict", .string(verdict))]
     switch outcome {
     case .finished(let dir, let html, let report):
-      let failure = report.attempts.last?.failure
+      let failure = decidingAttempt(report: report)?.failure
       members += [
         ("name", .string(report.test)),
         ("flaky", .bool(report.flaky)),
+        ("quarantined", .bool(report.quarantined)),
+        ("quarantineReason", report.quarantineReason.map { .string($0) } ?? .null),
         ("attempts", .int(Int64(report.attempts.count))),
+        ("rows", .array(report.rows.map(\.json))),
         ("durationMs", .int(Int64(report.durationMs))),
         ("newReferences", .array(report.baselinesCreated.map { .string($0) })),
         ("failure", failure.map { .object([("code", .string($0.code)), ("message", .string(describeFailure(failure: $0)))]) } ?? .null),
@@ -338,8 +349,9 @@ final class TestSession: @unchecked Sendable {
     input?.ignoreInput(for: Self.handsOffTime)
     run.start(
       project: project, test: test, options: RunOptions(
-        startAt: request.startAt, retries: request.retries, environment: request.environment, vision: vision,
-        localOnly: localOnly,
+        startAt: request.startAt, retries: request.retries, environment: request.environment, dataRows: request.rows,
+        vision: vision,
+        localOnly: localOnly, schedule: request.schedule,
         video: request.video ?? .off, keepVideosDays: keepVideosDays),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
@@ -386,10 +398,30 @@ final class TestSession: @unchecked Sendable {
         progress.paint(
           report.flaky ? "Passed on attempt \(attempts) in \(took). It failed before, so it may be flaky." : "Passed in \(took)",
           .green)
+      case .failed where report.quarantined: progress.paint("Failed in \(took), in quarantine", .yellow)
       case .failed: progress.paint("Failed in \(took)", .red)
       case .cancelled: progress.paint("Stopped", .yellow)
       }
     progress.line("  " + line)
+    if !report.rows.isEmpty {
+      let passed = report.rows.count { $0.verdict == .passed }
+      let rows = report.rows.count == 1 ? "1 row" : "\(report.rows.count) rows"
+      progress.line("  \(passed) of \(rows) passed")
+      for row in report.rows where row.verdict != .passed {
+        let color: Console.Style = row.verdict == .cancelled ? .yellow : .red
+        let verdict = row.verdict == .cancelled ? "stopped" : "failed"
+        progress.line("    " + progress.paint("\(row.row.title) \(verdict)", color))
+      }
+    }
+    if report.verdict == .failed, let verdict = retryVerdict(report: report) {
+      progress.line("  " + describeRetryVerdict(verdict: verdict))
+    }
+    if report.quarantined {
+      let reason = report.quarantineReason.map { " (\($0))" } ?? ""
+      progress.line(
+        "  In quarantine\(reason): "
+          + (request.includeQuarantinedFailures ? "its failures count." : "its failures don't fail the run."))
+    }
     if !report.baselinesCreated.isEmpty {
       progress.line("  New reference images: \(report.baselinesCreated.joined(separator: ", ")). Look at them and commit them.")
     }
@@ -404,6 +436,9 @@ final class TestSession: @unchecked Sendable {
     var parts: [String] = []
     if count("passed") > 0 { parts.append(progress.paint("\(count("passed")) passed", .green)) }
     if count("failed") > 0 { parts.append(progress.paint("\(count("failed")) failed", .red)) }
+    if count("quarantined") > 0 {
+      parts.append(progress.paint("\(count("quarantined")) failed in quarantine", request.includeQuarantinedFailures ? .red : .yellow))
+    }
     if count("cancelled") > 0 { parts.append(progress.paint("\(count("cancelled")) stopped", .yellow)) }
     if count("notRun") > 0 { parts.append(progress.paint("\(count("notRun")) not run", .yellow)) }
     if count("error") > 0 { parts.append(progress.paint("\(count("error")) couldn’t be saved", .red)) }
@@ -438,6 +473,10 @@ private final class Progress: RunListener, @unchecked Sendable {
       self.file = file
       self.maxAttempts = maxAttempts
       console.line(console.paint(test, .bold) + console.paint("  \(file)", .dim))
+    case .rowStarted(let row, let rows, let label):
+      closeLine()
+      let title = DataRow(number: row, label: label).title
+      console.line("  " + console.paint("\(title) (\(row) of \(rows))", .bold))
     case .attemptStarted(let attempt):
       failureShown = false
       if attempt > 1 { console.line("  Attempt \(attempt) of \(maxAttempts)") }
@@ -535,5 +574,23 @@ enum Interrupts {
       source.resume()
       return source
     }
+  }
+}
+
+extension DataRow {
+  /// "Row 2: anna", or "Row 2" when the row has no label.
+  var title: String { label.isEmpty ? "Row \(number)" : "Row \(number): \(label)" }
+}
+
+extension RowResult {
+  var json: JSON {
+    .object([
+      ("row", .int(Int64(row.number))),
+      ("label", .string(row.label)),
+      ("verdict", .string(String(describing: verdict))),
+      ("flaky", .bool(flaky)),
+      ("attempts", .int(Int64(attempts))),
+      ("failure", failure.map { .string(describeFailure(failure: $0)) } ?? .null),
+    ])
   }
 }

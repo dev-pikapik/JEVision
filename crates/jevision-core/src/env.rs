@@ -173,7 +173,7 @@ fn used(flow: &Flow) -> BTreeSet<(&str, String, &str)> {
     found
 }
 
-fn is_environment_name(s: &str) -> bool {
+pub(crate) fn is_environment_name(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= MAX_NAME_LEN
         && s.chars()

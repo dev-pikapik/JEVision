@@ -126,6 +126,7 @@ pub(super) fn definitions() -> Vec<Value> {
                 "path": path("Test file or folder, relative to the project folder."),
                 "retries": { "type": "integer", "minimum": 0, "maximum": jevision_core::MAX_RETRIES, "description": "Try a failed test this many more times, instead of the number in the test." },
                 "env": { "type": "string", "description": "Environment from the project's jevision.environments.json, such as staging: its values fill ${env.NAME} in the tests and its secrets are used. Leave out to use the file's \"default\" environment, or none when it names no default." },
+                "rows": { "type": "string", "description": "Rows of a data-driven test's CSV table to run, counted from 1: all (the default), one row such as 2, or a range such as 2-4. Each row runs the whole test once and gets its own verdict." },
             }),
             &["path"],
             json!({ "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": true }),
@@ -440,6 +441,13 @@ impl Server {
                 Some(name.to_owned())
             }
         };
+        let rows = match optional(args, "rows")? {
+            None => None,
+            Some(text) => jevision_core::parse_row_choice(text)?.map(|r| crate::DataRowRange {
+                first: u32::try_from(*r.start()).unwrap_or(u32::MAX),
+                last: u32::try_from(*r.end()).unwrap_or(u32::MAX),
+            }),
+        };
         let tests: Vec<String> = self
             .tests_at(&target)?
             .iter()
@@ -454,6 +462,7 @@ impl Server {
             RunChoices {
                 retries,
                 environment,
+                rows,
             },
             self.host.clone(),
         )?;

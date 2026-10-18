@@ -9,7 +9,6 @@
 //! another thread.
 
 mod control;
-mod data;
 mod env;
 mod image;
 mod report;
@@ -19,16 +18,16 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 pub use control::{PauseReason, RunControl};
-pub use data::DataTable;
 pub use image::{PictureDiff, picture_diff};
+pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{MouseButton, Point};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Provider, Question, TIMEOUT,
     VisionError, VisionJudge,
 };
 pub use report::{
-    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer, describe,
-    describe_vision, html, junit_xml,
+    Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
+    Verdict, VisionAnswer, describe, describe_vision, html, junit_xml,
 };
 pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
 
@@ -166,6 +165,12 @@ pub enum Event {
         file: String,
         dir: PathBuf,
         max_attempts: u32,
+    },
+    /// A row of the test's data table starts, before its first attempt. `row` counts from 1.
+    RowStarted {
+        row: u32,
+        rows: u32,
+        label: String,
     },
     AttemptStarted {
         attempt: u32,

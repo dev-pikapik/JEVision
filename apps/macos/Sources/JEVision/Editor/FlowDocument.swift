@@ -358,7 +358,8 @@ final class FlowDocument {
   }
 
   private func check(_ flow: Flow) -> [Issue] {
-    validateFlow(flow: flow) + environmentIssues(flow: flow, folder: url.deletingLastPathComponent().path(percentEncoded: false))
+    let folder = url.deletingLastPathComponent().path(percentEncoded: false)
+    return validateFlow(flow: flow) + environmentIssues(flow: flow, folder: folder) + dataIssues(flow: flow, folder: folder)
   }
 
   private func save() {

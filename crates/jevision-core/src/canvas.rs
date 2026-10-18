@@ -298,7 +298,7 @@ impl Flow {
             priority: None,
             status: None,
             tags: Vec::new(),
-            retries: 0,
+            retries: None,
             start: String::new(),
             blocks: Vec::new(),
             canvas: Default::default(),

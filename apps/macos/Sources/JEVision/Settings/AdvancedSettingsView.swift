@@ -13,6 +13,7 @@ struct AdvancedSettingsView: View {
           symbol: "slider.horizontal.3", color: .gray, title: Text("Advanced"),
           message: Text("Command line, CI, run videos and other settings most people never change."))
       }
+      RetriesSection()
       CommandLineSection()
       ContinuousIntegrationSection()
       Section {

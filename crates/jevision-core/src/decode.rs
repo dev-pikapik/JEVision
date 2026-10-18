@@ -359,7 +359,7 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     let priority = o.opt_choice("priority", PRIORITIES, out);
     let status = o.opt_choice("status", STATUSES, out);
     let tags = o.strings("tags", out).unwrap_or_default();
-    let retries = o.opt_uint("retries", out).unwrap_or(0);
+    let retries = o.opt_uint("retries", out);
     let start = o.string("start", out);
     let blocks = o.object("blocks", out).map(|b| blocks(b, out));
     let canvas = o

@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use jevision_core::Environments;
+use jevision_core::{DataError, DataTable, Environments};
 
-use crate::{Flow, Issue};
+use crate::{DataRowRange, Flow, Issue};
 
 /// The project's environments file can't be read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -69,21 +69,125 @@ pub fn environment_issues(flow: Flow, folder: String) -> Vec<Issue> {
     jevision_core::validate_environment_values(&flow, Path::new(&folder))
 }
 
-/// A data table of a `useData` block.
+/// A data table of a `useData` block: a CSV file, with how to write it back the same way.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DataRows {
     pub columns: Vec<String>,
+    /// Every row has one value per column.
     pub rows: Vec<Vec<String>>,
+    /// `,`, `;` or a tab.
+    #[uniffi(default = ",")]
+    pub delimiter: String,
+    /// Lines end with CR LF rather than LF.
+    #[uniffi(default = false)]
+    pub crlf: bool,
+    /// The file starts with a UTF-8 byte order mark.
+    #[uniffi(default = false)]
+    pub bom: bool,
 }
 
-/// Reads the CSV file at `path`; `None` when it can't be read.
+impl From<DataTable> for DataRows {
+    fn from(t: DataTable) -> Self {
+        Self {
+            columns: t.columns,
+            rows: t.rows,
+            delimiter: t.delimiter.to_string(),
+            crlf: t.crlf,
+            bom: t.bom,
+        }
+    }
+}
+
+impl From<DataRows> for DataTable {
+    fn from(t: DataRows) -> Self {
+        Self {
+            columns: t.columns,
+            rows: t.rows,
+            delimiter: t.delimiter.chars().next().unwrap_or(','),
+            crlf: t.crlf,
+            bom: t.bom,
+        }
+    }
+}
+
+/// Why a CSV file can't be used as a data table: `code` (such as `data.rowLength`) and the
+/// values its localized text refers to, such as `line`; `message` says it in English.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum DataFileError {
+    #[error("{message}")]
+    Invalid {
+        code: String,
+        params: HashMap<String, String>,
+        message: String,
+    },
+}
+
+impl From<DataError> for DataFileError {
+    fn from(e: DataError) -> Self {
+        Self::Invalid {
+            code: e.code().to_owned(),
+            params: e
+                .params()
+                .into_iter()
+                .map(|(name, value)| (name.to_owned(), value))
+                .collect(),
+            message: e.to_string(),
+        }
+    }
+}
+
+/// Reads the CSV file at `path`.
 #[uniffi::export]
-pub fn read_data_rows(path: String) -> Option<DataRows> {
-    let table = jevision_runner::DataTable::load(Path::new(&path)).ok()?;
-    Some(DataRows {
-        columns: table.columns,
-        rows: table.rows,
-    })
+pub fn read_data_rows(path: String) -> Result<DataRows, DataFileError> {
+    Ok(DataTable::load(Path::new(&path))?.into())
+}
+
+/// Writes `table` to `path` with its delimiter, line endings and byte order mark. A table with
+/// a blank or repeated column name or a row of the wrong length is not written.
+#[uniffi::export]
+pub fn write_data_rows(path: String, table: DataRows) -> Result<(), DataFileError> {
+    Ok(DataTable::from(table).save(Path::new(&path))?)
+}
+
+/// What each row is called in reports: its value in a `name` column, or else in its first;
+/// empty when that is blank.
+#[uniffi::export]
+pub fn data_row_labels(table: DataRows) -> Vec<String> {
+    let table = DataTable::from(table);
+    (0..table.rows.len()).map(|row| table.label(row)).collect()
+}
+
+/// The data file a run of `flow` goes through row by row, relative to the test's folder: that
+/// of the first `useData` block the test comes to, when it has no placeholders.
+#[uniffi::export]
+pub fn test_data_file(flow: Flow) -> Option<String> {
+    jevision_core::primary_data_file(&flow).map(str::to_owned)
+}
+
+/// Problems with the data tables a test saved in `folder` reads: files that aren't valid tables
+/// and `${data.COLUMN}` naming a column its table lacks.
+#[uniffi::export]
+pub fn data_issues(flow: Flow, folder: String) -> Vec<Issue> {
+    jevision_core::validate_data(&flow, Path::new(&folder))
+}
+
+/// Reads a choice of data rows as people write it, rows counted from 1: `all` (`None`), a row
+/// such as `3` or a range such as `2-4`. The range returned counts rows from 0.
+#[uniffi::export]
+pub fn parse_data_rows(text: String) -> Result<Option<DataRowRange>, DataRowsChoiceError> {
+    let range = jevision_core::parse_row_choice(&text)
+        .map_err(|message| DataRowsChoiceError::Invalid { message })?;
+    Ok(range.map(|r| DataRowRange {
+        first: u32::try_from(*r.start()).unwrap_or(u32::MAX),
+        last: u32::try_from(*r.end()).unwrap_or(u32::MAX),
+    }))
+}
+
+/// A choice of data rows that can't be read.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum DataRowsChoiceError {
+    #[error("{message}")]
+    Invalid { message: String },
 }
 
 #[cfg(test)]
@@ -115,13 +219,37 @@ mod tests {
             Err(EnvironmentsError::Unreadable { .. })
         ));
 
-        std::fs::write(dir.join("rows.csv"), "name\nAnn\nBo\n").unwrap();
-        let rows = read_data_rows(dir.join("rows.csv").to_string_lossy().into_owned()).unwrap();
-        assert_eq!(rows.rows, [["Ann"], ["Bo"]]);
+        let file = |name: &str| dir.join(name).to_string_lossy().into_owned();
+        std::fs::write(dir.join("rows.csv"), "name;city\r\nAnn;Rome\r\nBo;\r\n").unwrap();
+        let mut rows = read_data_rows(file("rows.csv")).unwrap();
+        assert_eq!(rows.rows, [["Ann", "Rome"], ["Bo", ""]]);
+        assert_eq!((rows.delimiter.as_str(), rows.crlf), (";", true));
+        assert_eq!(data_row_labels(rows.clone()), ["Ann", "Bo"]);
+        rows.rows[1][1] = "Oslo; Norway".into();
+        write_data_rows(file("rows.csv"), rows).unwrap();
         assert_eq!(
-            read_data_rows(dir.join("none.csv").to_string_lossy().into_owned()),
-            None
+            std::fs::read_to_string(dir.join("rows.csv")).unwrap(),
+            "name;city\r\nAnn;Rome\r\nBo;\"Oslo; Norway\"\r\n"
         );
+        assert!(matches!(
+            read_data_rows(file("none.csv")),
+            Err(DataFileError::Invalid { code, .. }) if code == "data.unreadable"
+        ));
+        std::fs::write(dir.join("bad.csv"), "a,b\n1\n").unwrap();
+        let Err(DataFileError::Invalid { code, params, .. }) = read_data_rows(file("bad.csv"))
+        else {
+            panic!("a short row is an error")
+        };
+        assert_eq!(
+            (code.as_str(), params["line"].as_str()),
+            ("data.rowLength", "2")
+        );
+        assert_eq!(
+            parse_data_rows("2-3".into()),
+            Ok(Some(DataRowRange { first: 1, last: 2 }))
+        );
+        assert_eq!(parse_data_rows("all".into()), Ok(None));
+        assert!(parse_data_rows("0".into()).is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

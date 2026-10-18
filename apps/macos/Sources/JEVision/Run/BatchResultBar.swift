@@ -16,7 +16,7 @@ struct BatchResultBar: View {
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
       Spacer(minLength: 12)
-      if result.passed + result.failed > 0 {
+      if result.passed + result.failed + result.quarantined > 0 {
         Button("Show Runs") { project.sidebar = .runs }
           .buttonStyle(.glass)
       }
@@ -38,12 +38,12 @@ struct BatchResultBar: View {
   private var symbol: String {
     if result.failed > 0 { return "xmark.square.fill" }
     if result.stopped { return "stop.circle.fill" }
-    return result.passed == result.total ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    return result.passed + result.quarantined == result.total ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
   }
 
   private var color: Color {
     if result.failed > 0 { return .red }
     if result.stopped { return .secondary }
-    return result.passed == result.total ? .green : .orange
+    return result.passed + result.quarantined == result.total ? .green : .orange
   }
 }

@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use jevision_core::{MouseButton, Point};
 use jevision_runner::{
-    PauseReason, RunControl, Runner, Screenshot, StepStatus, Verdict, VideoMode, VisionAnswer,
-    VisionJudge,
+    PauseReason, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict, VideoMode,
+    VisionAnswer, VisionJudge,
 };
 
 use crate::vision::VisionSettings;
@@ -127,9 +127,10 @@ pub struct RunOptions {
     /// picks the secrets of that environment.
     #[uniffi(default = None)]
     pub environment: Option<String>,
-    /// Runs only this row, counted from 0, of every `useData` table.
+    /// Rows of the data table to run; `None` runs every row. A test whose first `useData`
+    /// block names a table runs once per row.
     #[uniffi(default = None)]
-    pub data_row: Option<u32>,
+    pub data_rows: Option<DataRowRange>,
     /// The model for checks by meaning; without one they fail with a clear message.
     pub vision: Option<VisionSettings>,
     /// Checks by meaning may only use a model on this Mac.
@@ -137,6 +138,9 @@ pub struct RunOptions {
     /// Name of the paired device that asked for the run, saved in the report.
     #[uniffi(default = None)]
     pub requested_by: Option<String>,
+    /// Name of the schedule that started the run, saved in the report.
+    #[uniffi(default = None)]
+    pub schedule: Option<String>,
     /// Whether to record a video of the app, and which videos to keep.
     pub video: VideoMode,
     /// Videos of the project's runs older than this many days are deleted after the run;
@@ -258,9 +262,12 @@ pub(crate) fn run(
         start_at: options.start_at,
         retries: options.retries,
         environment: options.environment,
-        data_row: options.data_row.map(|row| row as usize),
+        rows: options
+            .data_rows
+            .map(|r| r.first as usize..=r.last as usize),
         local_only: options.local_only,
         requested_by: options.requested_by,
+        schedule: options.schedule,
         video: options.video,
         keep_videos_for: options
             .keep_videos_days
@@ -414,6 +421,12 @@ pub enum RunEvent {
         dir: String,
         max_attempts: u32,
     },
+    /// A row of the test's data table starts, before its first attempt. `row` counts from 1.
+    RowStarted {
+        row: u32,
+        rows: u32,
+        label: String,
+    },
     AttemptStarted {
         attempt: u32,
     },
@@ -464,6 +477,7 @@ impl From<jevision_runner::Event> for RunEvent {
                 dir: path(&dir),
                 max_attempts,
             },
+            E::RowStarted { row, rows, label } => Self::RowStarted { row, rows, label },
             E::AttemptStarted { attempt } => Self::AttemptStarted { attempt },
             E::StepStarted {
                 attempt,
@@ -535,18 +549,78 @@ pub struct RunReport {
     /// this Mac.
     #[uniffi(default = None)]
     pub requested_by: Option<String>,
+    /// Name of the schedule that started the run; `None` for a run someone started.
+    #[uniffi(default = None)]
+    pub schedule: Option<String>,
     /// Environment of the project the run used.
     #[uniffi(default = None)]
     pub environment: Option<String>,
     /// Video of the run, relative to the run folder.
     #[uniffi(default = None)]
     pub video: Option<String>,
+    /// SHA-256 of the test file the run read, in hex.
+    #[uniffi(default = None)]
+    pub file_hash: Option<String>,
+    /// The test was in the project's quarantine: its failure doesn't fail a batch of runs.
+    #[uniffi(default = false)]
+    pub quarantined: bool,
+    #[uniffi(default = None)]
+    pub quarantine_reason: Option<String>,
     pub attempts: Vec<Attempt>,
+    /// One result per row of the test's data table, in the order they ran; empty for a test
+    /// without one.
+    #[uniffi(default = [])]
+    pub rows: Vec<RowResult>,
+}
+
+/// What the retries of a run say about its result.
+#[uniffi::remote(Enum)]
+pub enum RetryVerdict {
+    PassedOnRetry { retry: u32 },
+    FailedDifferently { attempts: u32 },
+    FailedEveryTime { attempts: u32 },
+}
+
+/// What the retries of the run say: flaky or a real failure; `None` for a run tried once or
+/// stopped.
+#[uniffi::export]
+pub fn retry_verdict(report: &RunReport) -> Option<RetryVerdict> {
+    if report.rows.is_empty() {
+        return RetryVerdict::of(report.verdict, report.flaky, report.attempts.len());
+    }
+    // Each data row has retries of its own: the row that decided the run speaks for it.
+    let row = report
+        .rows
+        .iter()
+        .find(|r| r.verdict != Verdict::Passed)
+        .or_else(|| report.rows.iter().find(|r| r.flaky))?;
+    RetryVerdict::of(row.verdict, row.flaky, row.attempts as usize)
+}
+
+/// The attempt that decided the run's verdict: its last one, or with a data table the last
+/// attempt of the first row that didn't pass.
+#[uniffi::export]
+pub fn deciding_attempt(report: &RunReport) -> Option<Attempt> {
+    report
+        .attempts
+        .chunk_by(|a, b| a.row == b.row)
+        .filter_map(<[Attempt]>::last)
+        .find(|a| a.verdict != Verdict::Passed)
+        .or(report.attempts.last())
+        .cloned()
+}
+
+/// English sentence for a retry verdict, for the command line.
+#[uniffi::export]
+pub fn describe_retry_verdict(verdict: RetryVerdict) -> String {
+    verdict.describe()
 }
 
 impl From<jevision_runner::RunReport> for RunReport {
     fn from(r: jevision_runner::RunReport) -> Self {
+        let rows = r.rows().into_iter().map(Into::into).collect();
         Self {
+            rows,
             test: r.test,
             file: r.file,
             app: r.app,
@@ -556,8 +630,12 @@ impl From<jevision_runner::RunReport> for RunReport {
             flaky: r.flaky,
             baselines_created: r.baselines_created,
             requested_by: r.requested_by,
+            schedule: r.schedule,
             environment: r.environment,
             video: r.video,
+            file_hash: r.file_hash,
+            quarantined: r.quarantined,
+            quarantine_reason: r.quarantine_reason,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }
@@ -565,11 +643,63 @@ impl From<jevision_runner::RunReport> for RunReport {
 
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct Attempt {
+    /// Counted anew for each data row.
     pub number: u32,
     pub verdict: Verdict,
     pub duration_ms: u64,
     pub failure: Option<Failure>,
     pub steps: Vec<Step>,
+    /// Row of the test's data table the attempt ran with.
+    #[uniffi(default = None)]
+    pub row: Option<DataRow>,
+}
+
+/// Rows of a data table, counted from 0, `first` to `last` inclusive.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct DataRowRange {
+    pub first: u32,
+    pub last: u32,
+}
+
+/// A row of the test's data table, as a run names it.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DataRow {
+    /// Counted from 1.
+    pub number: u32,
+    /// The row's value in its `name` column, or else in its first; may be empty.
+    pub label: String,
+}
+
+impl From<jevision_runner::DataRow> for DataRow {
+    fn from(r: jevision_runner::DataRow) -> Self {
+        Self {
+            number: r.number,
+            label: r.label,
+        }
+    }
+}
+
+/// How one data row of a run went: the verdict of its last attempt.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct RowResult {
+    pub row: DataRow,
+    pub verdict: Verdict,
+    pub flaky: bool,
+    pub attempts: u32,
+    /// Why the row's last attempt failed.
+    pub failure: Option<Failure>,
+}
+
+impl From<jevision_runner::RowResult> for RowResult {
+    fn from(r: jevision_runner::RowResult) -> Self {
+        Self {
+            row: r.row.into(),
+            verdict: r.verdict,
+            flaky: r.flaky,
+            attempts: u32::try_from(r.attempts).unwrap_or(u32::MAX),
+            failure: r.failure.map(Into::into),
+        }
+    }
 }
 
 impl From<jevision_runner::Attempt> for Attempt {
@@ -580,6 +710,7 @@ impl From<jevision_runner::Attempt> for Attempt {
             duration_ms: a.duration_ms,
             failure: a.failure.map(Into::into),
             steps: a.steps.into_iter().map(Into::into).collect(),
+            row: a.row.map(Into::into),
         }
     }
 }

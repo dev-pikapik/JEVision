@@ -34,7 +34,12 @@ final class ProjectStore {
   /// The New Test sheet is shown.
   var isCreatingTest = false
   /// Saved runs, newest first.
-  private(set) var runs: [SavedRun] = []
+  private(set) var runs: [SavedRun] = [] {
+    didSet { flaky = flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)) }
+  }
+  /// Tests whose recent runs both passed and failed without the test changing, by test file
+  /// relative to the project, with the evidence.
+  private(set) var flaky: [String: FlakyEvidence] = [:]
   /// What the sidebar lists. Runs only while there are some.
   var sidebar = Sidebar.tests
   /// Folder of the run whose report is open.
@@ -45,6 +50,12 @@ final class ProjectStore {
   var historyPath: String?
   let git = ProjectGit()
   let environments = ProjectEnvironments()
+  let schedules = ProjectSchedules()
+  /// Settings shared through the project's settings file: default retries and the tests in
+  /// quarantine.
+  private(set) var settings = ProjectSettings(retries: nil, quarantine: [])
+  /// Why the project's settings file can't be read.
+  private(set) var settingsProblem: String?
 
   @ObservationIgnored private var watcher: FolderWatcher?
   @ObservationIgnored private var scanTask: Task<([ProjectItem], [SavedRun]), any Error>?
@@ -119,7 +130,7 @@ final class ProjectStore {
     } + ProjectScanner.testSuffix
     let empty = Flow(
       name: name.trimmingCharacters(in: .whitespaces), description: nil, app: app, testType: nil, priority: nil,
-      status: nil, tags: [], retries: 0, start: "", blocks: [],
+      status: nil, tags: [], retries: nil, start: "", blocks: [],
       canvas: CanvasContent(positions: [:], sections: [], notes: []))
     let flow = insertBlock(flow: empty, typeName: "openApp", slot: nil)?.flow ?? empty
     try Data(saveFlow(flow: flow).utf8).write(to: folder.appending(path: fileName), options: .withoutOverwriting)
@@ -202,6 +213,70 @@ final class ProjectStore {
     undoManager?.setActionName(action)
   }
 
+  // MARK: Settings
+
+  /// The quarantine entry of a test file, relative to the project.
+  func quarantine(of file: String) -> Quarantined? {
+    settings.quarantine.first { $0.test == file }
+  }
+
+  /// The test file `url` as the quarantine names it: relative to the project, or `nil` outside it.
+  func testID(_ url: URL) -> String? {
+    guard let rootURL, RelativePath.isInside(url, folder: rootURL) else { return nil }
+    return RelativePath.from(rootURL, to: url)
+  }
+
+  /// How many times the test is retried when it fails: its own number, else the project's.
+  func retries(of flow: Flow) -> UInt32 {
+    flow.retries ?? settings.retries ?? 0
+  }
+
+  /// Puts the test in quarantine: it still runs, but its failures don't fail Run All, the command
+  /// line or the JUnit report.
+  func quarantine(_ file: String, reason: String?) throws {
+    try changeSettings { try quarantineTest(project: $0, test: file, reason: reason) }
+  }
+
+  func releaseFromQuarantine(_ file: String) throws {
+    try changeSettings { try JEVisionCore.releaseFromQuarantine(project: $0, test: file) }
+  }
+
+  /// How many times a failed test is retried when its file doesn't say; `nil` retries none.
+  func setDefaultRetries(_ retries: UInt32?) throws {
+    try changeSettings { try JEVisionCore.setDefaultRetries(project: $0, retries: retries) }
+  }
+
+  private func changeSettings(_ change: (String) throws -> ProjectSettings) throws {
+    guard let rootURL else { return }
+    settings = try change(rootURL.path(percentEncoded: false))
+    settingsProblem = nil
+  }
+
+  private func reloadSettings() {
+    guard let rootURL else { return }
+    do {
+      settings = try projectSettings(project: rootURL.path(percentEncoded: false))
+      settingsProblem = nil
+    } catch {
+      settings = ProjectSettings(retries: nil, quarantine: [])
+      settingsProblem = Self.message(error)
+    }
+  }
+
+  /// Why the project's settings couldn't be read or changed, for an alert.
+  static func message(_ error: any Error) -> String {
+    switch error {
+    case ProjectSettingsError.Unreadable(let file, let reason):
+      String(localized: "\(file) can’t be read: \(reason)")
+    case ProjectSettingsError.Unwritable(let file, let reason):
+      String(localized: "\(file) can’t be saved: \(reason)")
+    case ProjectSettingsError.Rejected(let reason):
+      reason
+    default:
+      error.localizedDescription
+    }
+  }
+
   // MARK: History
 
   /// Writes `path` (relative to the project) as `source` was in `commit`. The current file goes
@@ -248,12 +323,15 @@ final class ProjectStore {
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
     git.open(url)
     environments.open(url)
+    schedules.open(url)
     rescan()
   }
 
   private func rescan() {
     guard let url = rootURL else { return }
     environments.reload()
+    schedules.reload()
+    reloadSettings()
     document?.revalidate()
     scanTask?.cancel()
     let task = Task.detached(priority: .userInitiated) {
