@@ -298,7 +298,9 @@ struct ReferenceEditor: View {
     Picker(selection: mode) {
       Text("Exactly").tag(Mode.exact)
       Text("Similar").tag(Mode.similar)
-      Text("By Meaning").tag(Mode.meaning)
+      // Comparing by meaning needs a vision model, which the app can't set up yet: offered only
+      // to show what a file already asks for.
+      if case .meaning = reference.compare { Text("By Meaning").tag(Mode.meaning) }
     } label: {
       Text("Match")
     }

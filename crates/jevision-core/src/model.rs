@@ -294,11 +294,6 @@ impl BlockKind {
         }
         out
     }
-
-    /// Whether the block loops over its `body` edge.
-    pub fn is_loop(&self) -> bool {
-        matches!(self, Self::Repeat { .. } | Self::UseData { .. })
-    }
 }
 
 impl Serialize for Flow {

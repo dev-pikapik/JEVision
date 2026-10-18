@@ -463,10 +463,12 @@ extension Bitmap {
 
 extension Recording {
   /// The blocks for `steps`, their pictures saved as PNG files in the `refs` folder next to the
-  /// test, each under a name no other file there has.
-  public static func blocks(for steps: [RecordedStep], testFolder: URL) throws -> [BlockKind] {
+  /// test, each under a name no other file there has; and those files. When saving fails, none
+  /// of them is left behind.
+  public static func blocks(for steps: [RecordedStep], testFolder: URL) throws -> (blocks: [BlockKind], files: [URL]) {
     let folder = testFolder.appending(path: "refs", directoryHint: .isDirectory)
     var taken = Set<String>()
+    var files: [URL] = []
     func save(_ picture: Picture) throws -> String {
       try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
       var name = picture.name, number = 1
@@ -475,11 +477,18 @@ extension Recording {
         name = "\(picture.name)-\(number)"
       }
       guard let png = picture.bitmap.png else { throw CocoaError(.fileWriteUnknown) }
-      try png.write(to: folder.appending(path: name + ".png"), options: .withoutOverwriting)
+      let file = folder.appending(path: name + ".png")
+      try png.write(to: file, options: .withoutOverwriting)
+      files.append(file)
       taken.insert(name)
       return "refs/\(name).png"
     }
-    return try steps.map { try kind($0, picture: save) }
+    do {
+      return (try steps.map { try kind($0, picture: save) }, files)
+    } catch {
+      for file in files { try? FileManager.default.removeItem(at: file) }
+      throw error
+    }
   }
 
   /// The block `step` becomes, its pictures not saved yet: to show while recording.

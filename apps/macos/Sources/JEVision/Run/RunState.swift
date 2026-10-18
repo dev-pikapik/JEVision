@@ -39,10 +39,6 @@ struct RunState: Equatable {
     if case .paused = phase { true } else { false }
   }
 
-  var isFinished: Bool {
-    if case .finished = phase { true } else { false }
-  }
-
   /// Blocks of this test done so far in this attempt, counting each once.
   var done: Int { marks.count }
 

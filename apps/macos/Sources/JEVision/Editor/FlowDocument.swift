@@ -78,12 +78,32 @@ final class FlowDocument {
   }
 
   /// Adds what was recorded at `slot`, and the app it was recorded in when the test has none,
-  /// as one change.
-  func insertRecorded(_ blocks: [BlockKind], at slot: Slot?, app: String) {
+  /// as one change. Undo also moves `files`, the pictures the recording saved, to the Trash;
+  /// Redo brings them back.
+  func insertRecorded(
+    _ blocks: [BlockKind], files: [URL], at slot: Slot?, app: String, trash: @escaping Baseline.Trash = Baseline.moveToTrash
+  ) {
     guard var flow else { return }
     if flow.app.isEmpty { flow.app = app }
     guard let edited = insertBlocks(flow: flow, blocks: blocks, slot: slot) else { return }
+    undoManager?.beginUndoGrouping()
     apply(edited.flow, select: edited.selection, action: String(localized: "Recording"))
+    trashOnUndo(files, trash: trash)
+    undoManager?.endUndoGrouping()
+  }
+
+  private func trashOnUndo(_ files: [URL], trash: @escaping Baseline.Trash) {
+    undoManager?.registerUndo(withTarget: self) { document in
+      MainActor.assumeIsolated {
+        let trashed = files.map { try? trash($0) }
+        document.undoManager?.registerUndo(withTarget: document) { document in
+          MainActor.assumeIsolated {
+            for case let (file, trashed?) in zip(files, trashed) { try? FileManager.default.moveItem(at: trashed, to: file) }
+            document.trashOnUndo(files, trash: trash)
+          }
+        }
+      }
+    }
   }
 
   func delete(_ id: String) {
