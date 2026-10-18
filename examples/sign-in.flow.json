@@ -49,7 +49,7 @@
           "threshold": 0.95
         }
       },
-      "timeout": "10s",
+      "timeout": "11s",
       "next": "messages"
     },
     "messages": {
