@@ -19,9 +19,11 @@ struct CommandLineSection: View {
         LabeledContent {
           Button(isInstalled ? "Change…" : "Install…") { openWindow(id: SceneID.commandLineTool) }
         } label: {
-          Text("Run tests from Terminal and scripts")
-          isInstalled ? Text("Installed. The same engine as the app, without a window.") : Text("The same engine as the app, without a window.")
+          RowLabel(
+            Text("Run tests from Terminal and scripts"),
+            isInstalled ? Text("Installed. The same engine as the app, without a window.") : Text("The same engine as the app, without a window."))
         }
+        .settingAnchor("commandLine")
         if let root = project.rootURL {
           CommandText("jevision run \(CommandLineTool.quoted(root.path)) --junit junit.xml --html reports")
         }
@@ -67,9 +69,9 @@ struct ContinuousIntegrationSection: View {
             copied = true
           }
         } label: {
-          Text("Run tests on every pull request")
-          Text("GitHub Actions, on a Mac of your own")
+          RowLabel(Text("Run tests on every pull request"), Text("GitHub Actions, on a Mac of your own"))
         }
+        .settingAnchor("continuousIntegration")
         Text(verbatim: workflow)
           .font(.caption.monospaced())
           .textSelection(.enabled)
@@ -107,9 +109,9 @@ struct ResetSettingsSection: View {
       LabeledContent {
         Button("Reset…", role: .destructive) { confirms = true }
       } label: {
-        Text("Reset all settings")
-        Text("Your tests, the open project, secrets and API keys stay.")
+        RowLabel(Text("Reset all settings"), Text("Your tests, the open project, secrets and API keys stay."))
       }
+      .settingAnchor("resetAll")
     }
     .confirmationDialog("Reset all settings?", isPresented: $confirms, titleVisibility: .visible) {
       Button("Reset and Restart", role: .destructive, action: reset)

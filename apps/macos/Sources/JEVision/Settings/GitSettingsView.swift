@@ -13,19 +13,15 @@ struct GitSettingsView: View {
 
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "arrow.triangle.branch", color: .orange, title: Text("Git and GitHub"),
-          message: Text("History, commits, branches and pull requests — no terminal needed."))
-      }
+      SettingsHeader(tab: .git, text: Text("History, commits, branches and pull requests — no terminal needed."))
       if project.rootURL == nil {
         Section {
           LabeledContent {
             Button("Open Project…", action: project.choose)
           } label: {
-            Text("No project is open")
-            Text("Open the folder with your tests to see its changes.")
+            RowLabel(Text("No project is open"), Text("Open the folder with your tests to see its changes."))
           }
+          .settingAnchor("repository")
         }
       } else {
         switch git.state {
@@ -40,9 +36,9 @@ struct GitSettingsView: View {
             LabeledContent {
               Button("Install…", action: installTools)
             } label: {
-              Text("Git isn’t installed")
-              Text("macOS installs it with the Command Line Developer Tools, in a few minutes.")
+              RowLabel(Text("Git isn’t installed"), Text("macOS installs it with the Command Line Developer Tools, in a few minutes."))
             }
+            .settingAnchor("repository")
           }
         case .untracked:
           Section {
@@ -50,9 +46,11 @@ struct GitSettingsView: View {
               Button("Start Tracking Changes", action: git.startTracking)
                 .disabled(git.activity != nil)
             } label: {
-              Text("Changes to “\(project.name)” aren’t tracked")
-              Text("Git keeps every version of your tests, so you can see what changed and go back to any version.")
+              RowLabel(
+                Text("Changes to “\(project.name)” aren’t tracked"),
+                Text("Git keeps every version of your tests, so you can see what changed and go back to any version."))
             }
+            .settingAnchor("repository")
           }
         case .tracked(let status):
           tracked(status)
@@ -93,9 +91,9 @@ struct GitSettingsView: View {
           Text("Only on this Mac")
         }
       } label: {
-        Text("Repository")
-        if let sync = GitText.sync(status) { Text(sync) }
+        RowLabel(Text("Repository"), GitText.sync(status).map { Text($0) })
       }
+      .settingAnchor("repository")
       LabeledContent("Branch") {
         Menu(status.branch ?? String(localized: "No branch")) {
           let local = git.branches.filter { !$0.isRemote }
@@ -119,6 +117,7 @@ struct GitSettingsView: View {
         .fixedSize()
         .disabled(git.activity != nil)
       }
+      .settingAnchor("branch")
       LabeledContent {
         HStack {
           if let activity = git.activity {
@@ -139,8 +138,7 @@ struct GitSettingsView: View {
           }
         }
       } label: {
-        Text("Changes")
-        Text(GitText.summary(status.changes))
+        RowLabel(Text("Changes"), Text(GitText.summary(status.changes)))
       }
     } header: {
       Text("This Project")
@@ -177,14 +175,9 @@ struct GitSettingsView: View {
           }
         }
       } label: {
-        Text("Account")
-        switch git.gitHub {
-        case .checking: EmptyView()
-        case .signedIn(let account):
-          if !account.name.isEmpty { Text(verbatim: account.name) }
-        case .signedOut(let problem): Text(signInHelp(problem))
-        }
+        RowLabel(Text("Account"), accountDetail)
       }
+      .settingAnchor("gitHubAccount")
       if case .tracked(let status) = git.state, status.github != nil {
         LabeledContent {
           HStack {
@@ -194,9 +187,9 @@ struct GitSettingsView: View {
             Button("Show…") { openWindow(id: SceneID.pullRequests) }
           }
         } label: {
-          Text("Pull Requests")
-          Text("Propose your branch’s changes, or see what others propose.")
+          RowLabel(Text("Pull Requests"), Text("Propose your branch’s changes, or see what others propose."))
         }
+        .settingAnchor("pullRequests")
       }
     } header: {
       Text("GitHub")
@@ -205,6 +198,14 @@ struct GitSettingsView: View {
         .font(.callout)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private var accountDetail: Text? {
+    switch git.gitHub {
+    case .checking: nil
+    case .signedIn(let account): account.name.isEmpty ? nil : Text(verbatim: account.name)
+    case .signedOut(let problem): Text(signInHelp(problem))
     }
   }
 
