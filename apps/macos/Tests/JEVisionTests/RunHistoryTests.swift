@@ -103,7 +103,7 @@ struct RunHistoryTests {
     func step(_ seq: UInt32, _ block: String, _ status: StepStatus, failed: Bool) -> Step {
       Step(
         seq: seq, test: "a.flow.json", block: block, blockType: "repeat", status: status, durationMs: 0, before: nil,
-        after: nil, expected: nil, diff: nil, reference: nil, similarity: nil, branch: nil,
+        after: nil, expected: nil, diff: nil, reference: nil, similarity: nil, vision: nil, branch: nil,
         failure: failed ? Failure(code: "run.target.notFound", params: [:]) : nil)
     }
     let report = Self.run(

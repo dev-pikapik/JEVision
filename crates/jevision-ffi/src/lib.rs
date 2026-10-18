@@ -14,6 +14,7 @@ uniffi::setup_scaffolding!();
 
 mod history;
 mod run;
+mod vision;
 
 pub use history::*;
 pub use run::*;
@@ -255,7 +256,7 @@ pub struct Reference {
 pub enum Compare {
     Exact,
     Similar { threshold: f64 },
-    Meaning,
+    Meaning { expect: String },
 }
 
 #[uniffi::remote(Record)]

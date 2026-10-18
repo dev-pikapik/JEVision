@@ -14,7 +14,7 @@ struct RunStateTests {
       attempt: 1,
       step: Step(
         seq: 0, test: test, block: block, blockType: "click", status: status, durationMs: 0, before: nil,
-        after: nil, expected: nil, diff: nil, reference: nil, similarity: nil, branch: nil, failure: nil))
+        after: nil, expected: nil, diff: nil, reference: nil, similarity: nil, vision: nil, branch: nil, failure: nil))
   }
 
   private func run(_ events: [RunEvent]) -> RunState {

@@ -4,8 +4,9 @@
 //!
 //! The crate is platform independent. Everything that touches the operating system — launching
 //! applications, synthetic input, screen capture, finding an image on screen — sits behind
-//! [`Hands`]; secrets come from a [`SecretSource`]; progress goes to an [`EventSink`]; a
-//! [`RunControl`] cancels, pauses and steps a run from another thread.
+//! [`Hands`]; secrets come from a [`SecretSource`]; checks by meaning ask a [`VisionJudge`];
+//! progress goes to an [`EventSink`]; a [`RunControl`] cancels, pauses and steps a run from
+//! another thread.
 
 mod control;
 mod data;
@@ -19,11 +20,15 @@ use std::path::PathBuf;
 pub use control::{PauseReason, RunControl};
 pub use data::DataTable;
 pub use jevision_core::{MouseButton, Point};
-pub use report::{
-    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, describe, html,
-    junit_xml,
+pub use jevision_vision::{
+    Client as VisionClient, Config as VisionConfig, Judgement, Provider, Question, TIMEOUT,
+    VisionError, VisionJudge,
 };
-pub use run::{Run, RunOptions, Runner};
+pub use report::{
+    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer, describe,
+    describe_vision, html, junit_xml,
+};
+pub use run::{Run, RunOptions, Runner, vision_failure};
 
 /// Shown instead of a secret value wherever a secret would otherwise appear.
 pub const SECRET_MASK: &str = "••••";
@@ -168,7 +173,7 @@ pub enum Event {
     },
     StepFinished {
         attempt: u32,
-        step: Step,
+        step: Box<Step>,
     },
     Paused {
         block: String,

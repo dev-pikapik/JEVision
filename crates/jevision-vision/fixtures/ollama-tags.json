@@ -1,0 +1,1 @@
+{"models":[{"name":"llama3.2:3b","model":"llama3.2:3b","modified_at":"2026-09-01T10:00:00Z","size":2019393189,"details":{"family":"llama","parameter_size":"3.2B"}},{"name":"qwen2.5vl:7b","model":"qwen2.5vl:7b","modified_at":"2026-09-02T10:00:00Z","size":5969245856,"details":{"family":"qwen25vl","parameter_size":"8.3B"}}]}

@@ -246,7 +246,11 @@ fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
 }
 
 fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
-    relative_path(block, &format!("{field}.image"), &r.image, out);
+    let image_optional =
+        matches!(&r.compare, Compare::Meaning { expect } if !expect.trim().is_empty());
+    if !(image_optional && r.image.is_empty()) {
+        relative_path(block, &format!("{field}.image"), &r.image, out);
+    }
     if let Compare::Similar { threshold } = r.compare {
         if !(threshold > 0.0 && threshold <= 1.0) {
             out.push(

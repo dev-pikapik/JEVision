@@ -1,0 +1,1 @@
+{"candidates":[{"content":{"parts":[{"text":"{\"passed\": true, \"reason\": \"Корзина показывает 2 товара.\"}"}],"role":"model"},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":1290,"candidatesTokenCount":24,"totalTokenCount":1314},"modelVersion":"gemini-2.5-flash","responseId":"abc"}

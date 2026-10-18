@@ -35,6 +35,9 @@ it and a failure points at the block where it happened.
   export as HTML or JUnit XML.
 - **Reference images.** When the app changed on purpose, accept a run's screenshot as the new
   reference from the report. The old image goes to the Trash, and Undo brings it back.
+- **Checks by meaning.** Where comparing pictures is too strict, describe the screen in words,
+  such as “The cart shows 2 items”, and an AI model of your choice decides. See
+  [AI models](#ai-models).
 - **Command line.** The `jevision` tool inside the app runs, validates and formats tests from
   Terminal, scripts and CI.
 
@@ -138,7 +141,7 @@ values, so every change shows up as a small, readable diff.
 | `type` | actions | Types text, optionally into a field found by its image |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
-| `check` | wait and check | Compares the screen with a reference image, exactly or by similarity |
+| `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning |
 | `if` | logic | Goes to `then` or `else` depending on what is on screen |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
@@ -146,6 +149,36 @@ values, so every change shows up as a small, readable diff.
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
+
+With `"compare": "meaning"`, an AI model looks at the screen and decides whether it shows what
+`expect` says, in plain words: `{ "compare": "meaning", "expect": "The cart shows 2 items" }`.
+The reference image is optional; with one, the model compares the screen with it. `check`,
+`waitFor` and `if` all accept such a reference.
+
+## AI models
+
+Checks by meaning use the model chosen in Settings → AI. Without one, JEVision compares pictures
+only and sends nothing anywhere.
+
+| Provider | Runs | API key |
+|---|---|---|
+| Anthropic | in the cloud | `ANTHROPIC_API_KEY` |
+| OpenAI | in the cloud | `OPENAI_API_KEY` |
+| Google Gemini | in the cloud | `GEMINI_API_KEY` |
+| Ollama | on this Mac | none |
+| LM Studio | on this Mac | none |
+| OpenAI-compatible server | at the address you give | `OPENAI_COMPATIBLE_API_KEY`, if the server asks for one |
+
+- **What is sent.** For each check by meaning: the compared part of the screen, the reference
+  image if there is one, and the expected text. Regions the reference hides or ignores are covered
+  before anything leaves the Mac. Nothing else is sent.
+- **API keys** come from the environment variable in the table or from the Keychain, where
+  Settings → AI saves them. They are never shown, logged or written to reports.
+- **Only models on this Mac.** With this setting on, screenshots never go to a cloud service:
+  a check that would need one stops with a message.
+- **Reports** keep the provider, the model and its explanation for each check by meaning.
+- **Test Connection** in Settings asks the model about a small built-in picture, to check the
+  address, key and model in one go.
 
 ## Command line
 
@@ -159,6 +192,7 @@ is installed and which version.
 jevision run tests/                       # run every *.flow.json in tests/ and save reports
 jevision run tests/sign-in.flow.json --start-at submit
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
+jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
 ```
@@ -178,6 +212,9 @@ files are valid and formatted). **1** means a test failed or was stopped, or a f
 - **Secrets** (`${secret.NAME}`) come from the environment variable `NAME` or from the Keychain,
   where the app saves them. The first time `jevision` reads a Keychain secret, macOS may ask to
   allow it; choose Always Allow for unattended runs. Values are never printed.
+- **AI models** for checks by meaning are the ones chosen in the app's Settings → AI, unless
+  `--provider` and `--model` say otherwise. API keys come from the same environment variables or
+  the Keychain.
 
 Press Esc twice or Ctrl-C to stop a run. The stopped test is reported as cancelled.
 
@@ -251,7 +288,6 @@ history.
 
 ## Roadmap
 
-- Vision-language model providers, for checks that compare screens by meaning
 - Testing remote devices, starting with iPhone
 - Git and GitHub integration in the app
 - An MCP server, so AI assistants can write and run tests

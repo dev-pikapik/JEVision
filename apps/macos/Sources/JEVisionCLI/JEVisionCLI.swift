@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 
 /// `jevision`: runs, checks and formats JEVision tests from the command line.
 @main
@@ -60,6 +61,9 @@ struct RunRequest: Equatable {
   var project: String?
   var retries: UInt32?
   var startAt: String?
+  /// AI provider and model for checks by meaning, instead of the ones chosen in the app.
+  var provider: String?
+  var model: String?
   var junit: String?
   var html: String?
   var json = false
@@ -92,7 +96,7 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json"], values: ["--project", "--retries", "--start-at", "--junit", "--html"])
+        rest, command: name, flags: ["--json"], values: ["--project", "--retries", "--start-at", "--provider", "--model", "--junit", "--html"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
       request.project = options.values["--project"]
@@ -106,6 +110,12 @@ enum Command: Equatable {
       if request.startAt != nil, request.paths.count > 1 || isFolder(request.paths[0]) {
         throw UsageError(message: "--start-at works with one test file only", command: name)
       }
+      request.provider = options.values["--provider"]
+      if let provider = request.provider, AISettings.provider(provider) == nil {
+        let ids = AISettings.providers.map(\.id).joined(separator: ", ")
+        throw UsageError(message: "there is no AI provider “\(provider)”; use one of: \(ids)", command: name)
+      }
+      request.model = options.values["--model"]
       request.junit = options.values["--junit"]
       request.html = options.values["--html"]
       request.json = options.flags.contains("--json")
@@ -200,6 +210,10 @@ enum Help {
         --retries <n>       Run a failed test up to <n> more times (instead of the
                             number in the test)
         --start-at <block>  Start from this block instead of the first one (one test only)
+        --provider <id>     AI provider for checks by meaning instead of the one chosen
+                            in the app (Settings → AI): anthropic, openai, gemini,
+                            ollama, lmstudio or openai-compatible
+        --model <name>      AI model for checks by meaning instead of the chosen one
         --junit <file>      Also save a JUnit XML report of all the tests, for CI
         --html <folder>     Also save the HTML report of every run in this folder
         --json              Print the result as JSON; progress goes to standard error
@@ -209,7 +223,7 @@ enum Help {
       to stop. Running needs a logged-in user with an unlocked screen, and Screen
       Recording and Accessibility allowed for the app jevision runs in (Terminal or
       your CI agent). Secrets (${secret.NAME}) come from environment variables or the
-      Keychain.
+      Keychain. So do API keys of AI providers, such as ANTHROPIC_API_KEY.
 
       Exit status: 0 — all tests passed, 1 — a test failed or was stopped, 2 — wrong
       arguments, a file could not be read or written, or this Mac can't run tests now.

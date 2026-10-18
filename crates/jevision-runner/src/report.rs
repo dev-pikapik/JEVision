@@ -84,12 +84,26 @@ pub struct Step {
     /// Share of compared pixels that matched the reference, 0–1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub similarity: Option<f64>,
+    /// What the vision model said, for a comparison by meaning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vision: Option<VisionAnswer>,
     /// Edge an `if` block followed: `then` or `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
+}
+
+/// A vision model's verdict on a screen, as kept in the report.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VisionAnswer {
+    /// Provider name, such as `Anthropic`.
+    pub provider: String,
+    pub model: String,
+    pub passed: bool,
+    /// The model's explanation, in a sentence.
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -183,7 +197,7 @@ pub fn describe(f: &Failure) -> String {
             p("expected")
         ),
         "run.compare.meaningUnavailable" => format!(
-            "Block {}: comparing by meaning needs a vision model, and none is set up.",
+            "Block {}: comparing by meaning needs an AI model. Choose one in JEVision Settings → AI.",
             p("block")
         ),
         "run.click.noChange" => format!(
@@ -242,10 +256,63 @@ pub fn describe(f: &Failure) -> String {
             p("block")
         ),
         "run.hands.failed" => format!("Block {}: {}.", p("block"), p("reason")),
+        "run.check.meaningMismatch" => format!(
+            "Block {}: the screen does not show what is expected. {}: {}",
+            p("block"),
+            p("provider"),
+            p("reason")
+        ),
+        "run.vision.cloudBlocked" => format!(
+            "Block {}: only local models are allowed, and {} is a cloud service.",
+            p("block"),
+            p("provider")
+        ),
+        code if code.starts_with("run.vision.") => {
+            format!("Block {}: {}", p("block"), describe_vision(f))
+        }
         _ => {
             let params: Vec<String> = f.params.iter().map(|(k, v)| format!("{k}={v}")).collect();
             format!("{} ({})", f.code, params.join(", "))
         }
+    }
+}
+
+/// English sentence for a problem with a vision model, without the block.
+pub fn describe_vision(f: &Failure) -> String {
+    let p = |name| f.param(name);
+    let provider = p("provider");
+    match f.code.as_str() {
+        "run.vision.noModel" => format!("No model is chosen for {provider}."),
+        "run.vision.noKey" => format!("The API key for {provider} is not set."),
+        "run.vision.badAddress" => format!(
+            "{} is not a web address; it should start with http:// or https://.",
+            p("address")
+        ),
+        "run.vision.unreachable" => format!("{provider} cannot be reached at {}.", p("address")),
+        "run.vision.timeout" => {
+            format!("{provider} did not answer within {} s.", p("seconds"))
+        }
+        "run.vision.badKey" => format!("{provider} did not accept the API key."),
+        "run.vision.unknownModel" => format!("{provider} has no model {}.", p("model")),
+        "run.vision.rateLimited" => format!(
+            "{provider} has had too many requests or the quota ran out: {}",
+            p("message")
+        ),
+        "run.vision.serviceError" => format!(
+            "{provider} answered with error {}: {}",
+            p("status"),
+            p("message")
+        ),
+        "run.vision.refused" => {
+            format!("{provider} declined to judge the screen: {}", p("message"))
+        }
+        "run.vision.badAnswer" => {
+            format!(
+                "{provider} gave an answer that cannot be read: {}",
+                p("answer")
+            )
+        }
+        code => code.to_owned(),
     }
 }
 
@@ -398,8 +465,20 @@ pub fn html(report: &RunReport, run_dir: &Path) -> String {
                 "<span class=\"status\">{status}</span><span class=\"time\">{}</span></div>",
                 duration(s.duration_ms)
             );
-            if let Some(f) = &s.failure {
-                let _ = write!(o, "<p class=\"reason\">{}</p>", xml(&describe(f)));
+            match (&s.failure, &s.vision) {
+                (Some(f), _) => {
+                    let _ = write!(o, "<p class=\"reason\">{}</p>", xml(&describe(f)));
+                }
+                (None, Some(v)) => {
+                    let _ = write!(
+                        o,
+                        "<p class=\"judge\">{} · {}: {}</p>",
+                        xml(&v.provider),
+                        xml(&v.model),
+                        xml(&v.reason)
+                    );
+                }
+                (None, None) => {}
             }
             let images: Vec<(&str, &String)> = [
                 ("Before", &s.before),
@@ -449,6 +528,7 @@ h2{font-size:18px;margin:32px 0 12px}h2 small{color:var(--muted);font-weight:400
 .facts dt{color:var(--muted)}.facts dd{margin:0;overflow-wrap:anywhere}\
 .note{background:var(--card);border-left:4px solid var(--new);padding:10px 14px;border-radius:6px}\
 .reason{color:var(--fail);font-weight:600;margin:8px 0 0}\
+.judge{margin:8px 0 0}\
 .steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}\
 .steps li{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--skip);\
 border-radius:8px;padding:10px 14px}\

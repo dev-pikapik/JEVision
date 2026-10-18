@@ -163,6 +163,33 @@ impl Image {
         })
     }
 
+    /// The part inside `area`, at least one pixel.
+    pub fn crop(&self, area: &Rect) -> Image {
+        let (x0, y0, x1, y1) = self.pixels_of(area);
+        let (x0, y0) = (x0.min(self.width - 1), y0.min(self.height - 1));
+        let (x1, y1) = (x1.max(x0 + 1), y1.max(y0 + 1));
+        let mut rgba = Vec::with_capacity(((x1 - x0) * (y1 - y0) * 4) as usize);
+        for y in y0..y1 {
+            rgba.extend_from_slice(&self.rgba[self.at(x0, y)..self.at(x1, y)]);
+        }
+        Image {
+            width: x1 - x0,
+            height: y1 - y0,
+            rgba,
+        }
+    }
+
+    /// A copy no larger than `max` pixels on its longer side.
+    pub fn fit(&self, max: u32) -> Image {
+        let long = self.width.max(self.height);
+        if long <= max {
+            return self.clone();
+        }
+        let scale =
+            |side: u32| ((u64::from(side) * u64::from(max) / u64::from(long)) as u32).max(1);
+        self.resized(scale(self.width), scale(self.height))
+    }
+
     /// Box-filtered copy at another size.
     fn resized(&self, width: u32, height: u32) -> Image {
         let span = |t: u32, target: u32, source: u32| {
@@ -327,5 +354,30 @@ mod tests {
         let corner = &img.rgba[..4];
         assert_eq!(corner, &img.rgba[img.at(1, 1)..img.at(1, 1) + 4]);
         assert_eq!(corner, &[63, 63, 63, 255]);
+    }
+
+    #[test]
+    fn crop_and_fit_keep_the_picture_readable() {
+        let mut img = solid(8, 4, [0, 0, 0]);
+        let p = img.at(6, 1);
+        img.rgba[p..p + 3].copy_from_slice(&[255, 255, 255]);
+        let right = img.crop(&rect(0.5, 0.0, 0.5, 1.0));
+        assert_eq!((right.width, right.height), (4, 4));
+        assert_eq!(
+            &right.rgba[right.at(2, 1)..right.at(2, 1) + 3],
+            &[255, 255, 255]
+        );
+        let sliver = img.crop(&rect(1.0, 1.0, 0.0, 0.0));
+        assert_eq!((sliver.width, sliver.height), (1, 1));
+
+        assert_eq!(img.fit(8).rgba, img.rgba);
+        let small = img.fit(4);
+        assert_eq!((small.width, small.height), (4, 2));
+        assert_eq!(
+            &small.rgba[small.at(3, 0)..small.at(3, 0) + 4],
+            &[63, 63, 63, 255]
+        );
+        let line = solid(1000, 1, [9, 9, 9]).fit(10);
+        assert_eq!((line.width, line.height), (10, 1));
     }
 }

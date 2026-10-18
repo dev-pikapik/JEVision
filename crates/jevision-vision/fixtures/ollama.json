@@ -1,0 +1,1 @@
+{"model":"qwen2.5vl:7b","created_at":"2026-10-18T09:12:31.11Z","message":{"role":"assistant","content":"{\"passed\": false, \"reason\": \"The dialog still shows a spinner.\"}"},"done_reason":"stop","done":true,"total_duration":5191566416,"load_duration":2154458,"prompt_eval_count":812,"eval_count":19}

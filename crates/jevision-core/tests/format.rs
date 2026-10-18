@@ -14,7 +14,7 @@ const ALL_BLOCKS: &str = r#"{
     "menu": { "type": "click", "target": { "image": "refs/menu.png" }, "button": "right", "double": true, "waitForChange": true, "next": "spinner" },
     "spinner": { "type": "waitFor", "until": { "disappears": { "image": "refs/spinner.png", "compare": "exact" } }, "timeout": "120000ms", "next": "settle" },
     "settle": { "type": "waitFor", "until": "screenStable", "next": "branch" },
-    "branch": { "type": "if", "reference": { "image": "refs/dialog.png", "compare": "meaning", "area": { "x": 0, "y": 0, "width": 1, "height": 0.5 } }, "then": "again", "else": "users" },
+    "branch": { "type": "if", "reference": { "expect": "A dialog asks whether to save", "compare": "meaning", "area": { "x": 0, "y": 0, "width": 1, "height": 0.5 } }, "then": "again", "else": "users" },
     "again": { "type": "repeat", "times": 3, "body": "shared", "next": "users" },
     "shared": { "type": "runTest", "test": "../shared/close-dialog.flow.json", "next": "again" },
     "done": { "type": "check", "reference": { "image": "refs/done.png", "threshold": 0.8 } }
@@ -91,6 +91,9 @@ fn canonical_form_fixes_order_and_defaults() {
     assert!(once.contains("\"timeout\": \"2m\""));
     assert!(once.contains("\"timeout\": \"10s\""));
     assert!(once.contains("\"compare\": \"similar\",\n        \"threshold\": 0.8"));
+    assert!(once.contains(
+        "\"reference\": {\n        \"compare\": \"meaning\",\n        \"expect\": \"A dialog asks whether to save\","
+    ));
 }
 
 #[test]
@@ -143,7 +146,8 @@ fn unreadable_files_report_codes_with_params() {
         r#"{"a": {"type": "click", "target": {"image": 5}, "colour": "red", "button": "middle"},
             "b": {"type": "waitFor", "until": {"appears": {}}, "timeout": "soon"},
             "c": {"type": "check", "reference": {"image": "x.png", "compare": "exact", "threshold": 0.5}},
-            "d": {"type": "click", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}}}"#,
+            "d": {"type": "click", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}, "next": "e"},
+            "e": {"type": "check", "reference": {"image": "x.png", "expect": "A cart"}}}"#,
     ));
     let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
         .iter()
@@ -163,6 +167,11 @@ fn unreadable_files_report_codes_with_params() {
                 Some("reference.threshold")
             ),
             ("flow.field.oneOf", Some("d"), Some("target")),
+            (
+                "flow.reference.expectNeedsMeaning",
+                Some("e"),
+                Some("reference.expect")
+            ),
         ]
     );
     assert_eq!(issues[1].param("allowed"), Some("left, right"));

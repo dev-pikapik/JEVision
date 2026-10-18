@@ -13,6 +13,9 @@ if ! xcrun --find xcodebuild >/dev/null 2>&1 || ! xcodebuild -version >/dev/null
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
 
+# Build for the oldest macOS the app runs on, C code in dependencies included.
+export MACOSX_DEPLOYMENT_TARGET=26.0
+
 PROFILE=${PROFILE:-release}
 TARGETS=(aarch64-apple-darwin x86_64-apple-darwin)
 LIB=libjevision_ffi.a

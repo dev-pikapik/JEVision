@@ -583,8 +583,15 @@ fn rects(o: &mut Obj<'_>, key: &'static str, out: &mut Out) -> Vec<Rect> {
 }
 
 fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
-    let image = o.string("image", out);
     let mode = o.opt_choice("compare", COMPARE, out);
+    let expect = o.opt_string("expect", out);
+    // A meaning check that says what to expect needs no reference image.
+    let image = match (mode, &expect) {
+        (Some(CompareMode::Meaning), Some(e)) if !e.trim().is_empty() => {
+            Some(o.opt_string("image", out).unwrap_or_default())
+        }
+        _ => o.string("image", out),
+    };
     let threshold = o
         .map
         .contains_key("threshold")
@@ -597,7 +604,9 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
         (CompareMode::Similar, None) => Some(Compare::default()),
         (CompareMode::Similar, Some(t)) => t.map(|threshold| Compare::Similar { threshold }),
         (CompareMode::Exact, None) => Some(Compare::Exact),
-        (CompareMode::Meaning, None) => Some(Compare::Meaning),
+        (CompareMode::Meaning, None) => Some(Compare::Meaning {
+            expect: expect.clone().unwrap_or_default(),
+        }),
         (_, Some(_)) => {
             out.push(o.issue(
                 "flow.reference.thresholdNeedsSimilar",
@@ -605,6 +614,12 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
             ));
             None
         }
+    };
+    let compare = if expect.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
+        out.push(o.issue("flow.reference.expectNeedsMeaning", &o.path_of("expect")));
+        None
+    } else {
+        compare
     };
     o.finish(out);
     Some(Reference {

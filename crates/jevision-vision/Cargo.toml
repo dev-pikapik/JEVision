@@ -1,0 +1,13 @@
+[package]
+name = "jevision-vision"
+description = "Asks vision models whether a screenshot shows what a JEVision test expects"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+base64 = "0.23"
+serde_json.workspace = true
+ureq = { version = "3.1", default-features = false, features = ["rustls"] }

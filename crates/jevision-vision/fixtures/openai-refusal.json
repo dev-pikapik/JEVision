@@ -1,0 +1,1 @@
+{"id":"chatcmpl-1","object":"chat.completion","created":1741570283,"model":"gpt-5-mini-2025-08-07","choices":[{"index":0,"message":{"role":"assistant","content":null,"refusal":"I'm sorry, I can't assist with that request."},"finish_reason":"stop"}]}

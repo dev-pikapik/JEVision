@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -247,11 +248,13 @@ struct PercentField: View {
   }
 }
 
-/// A reference image and how closely the screen must match it.
+/// A reference image and how closely the screen must match it, or what it must show.
 struct ReferenceEditor: View {
   @Binding var reference: Reference
   let field: String
   let context: FieldContext
+  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @Environment(\.openSettings) private var openSettings
 
   private enum Mode: Hashable { case exact, similar, meaning }
 
@@ -268,9 +271,19 @@ struct ReferenceEditor: View {
         switch $0 {
         case .exact: reference.compare = .exact
         case .similar: reference.compare = .similar(threshold: 0.95)
-        case .meaning: reference.compare = .meaning
+        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "") }
         }
       })
+  }
+
+  private var isMeaning: Bool {
+    if case .meaning = reference.compare { true } else { false }
+  }
+
+  private var expectation: Binding<String> {
+    Binding(
+      get: { if case .meaning(let expect) = reference.compare { expect } else { "" } },
+      set: { reference.compare = .meaning(expect: $0) })
   }
 
   private var threshold: Binding<Double> {
@@ -298,11 +311,32 @@ struct ReferenceEditor: View {
     Picker(selection: mode) {
       Text("Exactly").tag(Mode.exact)
       Text("Similar").tag(Mode.similar)
-      // Comparing by meaning needs a vision model, which the app can't set up yet: offered only
-      // to show what a file already asks for.
-      if case .meaning = reference.compare { Text("By Meaning").tag(Mode.meaning) }
+      if !aiProvider.isEmpty || isMeaning { Text("By Meaning").tag(Mode.meaning) }
     } label: {
       Text("Match")
+    }
+    if isMeaning {
+      TextField(text: expectation, prompt: Text("The cart shows 2 items"), axis: .vertical) { Text("Expected") }
+        .lineLimit(2...5)
+      Text("Describe what the screen should show, in plain words. An AI model looks at the screen and decides. The reference image is optional: with one, the model compares the screen with it.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+      IssueList(issues: context.issues(field + ".expect"))
+    }
+    if aiProvider.isEmpty {
+      HStack(alignment: .firstTextBaseline) {
+        Text(isMeaning ? "Checking by meaning needs an AI model." : "An AI model can also check the screen from a sentence like “The cart shows 2 items”.")
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+        Spacer(minLength: 4)
+        Button("Set Up AI…") {
+          UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+          openSettings()
+        }
+        .buttonStyle(.link)
+      }
+      .font(.callout)
     }
     if case .similar(let t) = reference.compare {
       LabeledContent {
