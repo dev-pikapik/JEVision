@@ -20,6 +20,9 @@ pub enum HandsError {
     NoWindow { app: String },
     #[error("cannot open `{item}`")]
     CannotOpen { item: String },
+    /// The screen is locked: nothing to look at, and keys would go to the lock screen.
+    #[error("the screen is locked")]
+    ScreenLocked,
     #[error("{reason}")]
     Failed { reason: String },
 }
@@ -37,6 +40,7 @@ impl From<HandsError> for jevision_runner::HandsError {
             HandsError::AppNotFound { app } => Self::AppNotFound(app),
             HandsError::NoWindow { app } => Self::NoWindow(app),
             HandsError::CannotOpen { item } => Self::CannotOpen(item),
+            HandsError::ScreenLocked => Self::ScreenLocked,
             HandsError::Failed { reason } => Self::Failed(reason),
         }
     }
@@ -127,7 +131,7 @@ impl TestRun {
     }
 
     /// Runs the test file `test` (relative to `project`, or absolute) on a new thread and
-    /// returns at once. Saves `report.json` and `report.html` in a new folder under
+    /// returns at once. Saves `report.json`, `report.html` and `junit.xml` in a new folder under
     /// `<project>/.jevision/runs`.
     pub fn start(
         &self,
@@ -235,6 +239,11 @@ fn run(
             let html = std::fs::write(&html_path, jevision_runner::html(&run.report, &run.dir))
                 .ok()
                 .map(|()| path(&html_path));
+            // For CI: a missing file only costs the export, not the run.
+            let _ = std::fs::write(
+                run.dir.join("junit.xml"),
+                jevision_runner::junit_xml(std::slice::from_ref(&run.report)),
+            );
             RunOutcome::Finished {
                 dir: path(&run.dir),
                 html,
@@ -740,7 +749,7 @@ mod tests {
     }
 
     #[test]
-    fn runs_in_the_background_and_writes_html() {
+    fn runs_in_the_background_and_writes_reports() {
         let p = Project::new(
             "pass",
             r#""open":{"type":"openApp","next":"pw"},
@@ -758,6 +767,8 @@ mod tests {
         assert!(Path::new(&dir).starts_with(std::fs::canonicalize(&p.0).unwrap()));
         let html = std::fs::read_to_string(html.unwrap()).unwrap();
         assert!(html.contains("Passed") && !html.contains(SECRET));
+        let junit = std::fs::read_to_string(Path::new(&dir).join("junit.xml")).unwrap();
+        assert!(junit.contains("<testcase") && !junit.contains(SECRET));
         assert_eq!(
             *hands.log.lock().unwrap(),
             [

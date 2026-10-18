@@ -68,6 +68,8 @@ enum RunText {
       return String(localized: "run.hands.noWindow", defaultValue: "Block “\(block)”: \(app) has no open window.")
     case "run.hands.cannotOpen":
       return String(localized: "run.hands.cannotOpen", defaultValue: "Block “\(block)”: can’t open \(p("file")).")
+    case "run.hands.screenLocked":
+      return String(localized: "run.hands.screenLocked", defaultValue: "Block “\(block)”: the screen is locked. Unlock the Mac and run the test again.")
     case "run.hands.failed":
       return String(localized: "run.hands.failed", defaultValue: "Block “\(block)”: \(p("reason"))")
     default:

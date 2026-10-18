@@ -14,9 +14,13 @@ final class ProjectStore {
   private(set) var rootURL: URL?
   private(set) var name = ""
   private(set) var items: [ProjectItem] = []
-  /// The item selected in the sidebar.
+  /// The item selected in the sidebar; selected again on the next launch.
   var selection: ProjectItem.ID? {
-    didSet { if selection != oldValue { openSelection() } }
+    didSet {
+      guard selection != oldValue else { return }
+      UserDefaults.standard.set(selection, forKey: Key.selection)
+      openSelection()
+    }
   }
   /// The selected test, open in the editor.
   private(set) var document: FlowDocument?
@@ -30,13 +34,16 @@ final class ProjectStore {
   private enum Key {
     static let bookmark = "projectBookmark"
     static let name = "projectName"
+    static let selection = "projectSelection"
   }
 
   init() {
     guard UserDefaults.standard.data(forKey: Key.bookmark) != nil else { return }
     name = UserDefaults.standard.string(forKey: Key.name) ?? ""
+    let selected = UserDefaults.standard.string(forKey: Key.selection)
     if let url = resolveBookmark() {
       open(url)
+      selection = selected.flatMap { FileManager.default.fileExists(atPath: url.appending(path: $0).path) ? $0 : nil }
     } else {
       status = .unavailable
     }
