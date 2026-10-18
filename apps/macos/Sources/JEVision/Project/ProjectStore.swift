@@ -334,6 +334,7 @@ final class ProjectStore {
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
     showsMap = false
+    showsCommandPalette = false
     items = []
     runs = []
     selectedRun = nil

@@ -134,7 +134,11 @@ enum RunEvent: Hashable, Sendable {
   case attemptStarted(attempt: Int)
   /// `test` is the file the block belongs to; it differs from the run's test inside `runTest`.
   case blockStarted(test: String, block: String, kind: String)
-  case blockFinished(test: String, block: String, status: StepStatus, failure: Failure?)
+  /// `branch` is the way out an `if` took, `branches` how many it had and `branchCondition`
+  /// what the way taken looks for; `nil` for other blocks.
+  case blockFinished(
+    test: String, block: String, status: StepStatus, failure: Failure?, branch: String? = nil, branches: Int? = nil,
+    branchCondition: String? = nil)
   case paused(block: String)
   case resumed
   /// The last event of a run; its report is saved by now.

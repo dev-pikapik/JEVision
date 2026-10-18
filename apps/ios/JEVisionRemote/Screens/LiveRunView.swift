@@ -6,6 +6,7 @@ struct LiveRunView: View {
   let project: String
   let run: String
   @Environment(AppModel.self) private var model
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var progress = RunProgress()
   @State private var flow: TestFlow?
   @State private var lost: RemoteError?
@@ -14,23 +15,30 @@ struct LiveRunView: View {
   @State private var attempt = 0
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
-        banner
-        if let flow {
-          FlowView(flow: flow, marks: progress.marks, current: progress.current, maxHeight: 420)
-            .background(.fill.quinary, in: .rect(cornerRadius: 20))
-        }
-        if !progress.steps.isEmpty {
-          VStack(alignment: .leading, spacing: 10) {
-            Text("Steps").font(.headline)
-            ForEach(progress.steps.reversed()) { step in
-              StepLine(step: step, kind: kind(of: step))
+    ScrollViewReader { proxy in
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          banner
+          if let flow {
+            FlowView(flow: flow, marks: progress.marks, current: progress.current, maxHeight: 420)
+              .background(.fill.quinary, in: .rect(cornerRadius: 20))
+          }
+          if !progress.lines.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Steps").font(.headline)
+              ForEach(progress.lines) { step in
+                StepLine(step: step, kind: kind(of: step)).id(step.id)
+              }
             }
           }
         }
+        .padding()
       }
-      .padding()
+      // The newest step stays in view, scrolling no further than needed to show it.
+      .onChange(of: progress.lines.last) { _, step in
+        guard let step else { return }
+        withAnimation(reduceMotion ? nil : .smooth) { proxy.scrollTo(step.id) }
+      }
     }
     .navigationTitle(flow?.name ?? String(localized: "Run"))
     .navigationBarTitleDisplayMode(.inline)
@@ -182,9 +190,18 @@ private struct StepLine: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
-      VerdictStyle(step.status).image
+      if let status = step.status {
+        VerdictStyle(status).image
+      } else {
+        ProgressView().accessibilityLabel(Text("Running now"))
+      }
       VStack(alignment: .leading, spacing: 2) {
         Text(kind.isEmpty ? step.block : BlockInfo.title(kind))
+        if let took = step.took {
+          Text(took)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
         if let failure = step.failure {
           Text(RunText.failure(failure))
             .font(.subheadline)
