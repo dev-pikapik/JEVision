@@ -8,6 +8,8 @@ struct RunResultBar: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openSettings) private var openSettings
   let result: RunCenter.Result
+  /// Selects the block the run failed at and shows why; `nil` when no block failed.
+  var showFailedBlock: (() -> Void)?
   @State private var gitIgnoreError: String?
 
   var body: some View {
@@ -34,6 +36,10 @@ struct RunResultBar: View {
             openSettings()
           }
           .buttonStyle(.glassProminent)
+        }
+        if let showFailedBlock {
+          Button("Show Failed Block", action: showFailedBlock)
+            .buttonStyle(.glassProminent)
         }
         if let run = result.run {
           Button("Open Report") { project.showRun(run) }

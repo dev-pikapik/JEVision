@@ -95,6 +95,8 @@ Also: the [`jevision` command line](#command-line) for Terminal and CI,
 4. **Run** (⌘R). The app under test comes to the front and JEVision repeats the steps. When the
    run ends, open its report to see each step with screenshots.
 
+⌘K opens the command palette: type a few letters of any command, block or test and press Return.
+
 ## Details
 
 <a id="permissions"></a>

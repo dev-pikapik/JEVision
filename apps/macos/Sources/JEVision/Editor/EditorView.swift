@@ -85,7 +85,7 @@ struct EditorView: View {
               .padding(.bottom, 12)
           }
           if let result = runs.result, result.test == document.url {
-            RunResultBar(result: result)
+            RunResultBar(result: result, showFailedBlock: failedBlock.map { id in { showBlock(id) } })
               .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
           }
           if let error = document.saveError {
@@ -141,21 +141,9 @@ struct EditorView: View {
           LastRunChip(run: lastRun?.own)
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
-        ToolbarItem(placement: .primaryAction) {
-          Menu {
-            Button("Add Note", systemImage: "note.text") { addNote(at: nil) }
-            Button("Add Frame", systemImage: "rectangle.dashed") { addFrame(at: nil) }
-            Divider()
-            Button("Arrange Automatically", systemImage: "rectangle.3.group") { document.arrange() }
-              .disabled(flow.canvas.positions.isEmpty)
-          } label: {
-            Label("Add Block", systemImage: "plus")
-          } primaryAction: {
-            openPalette()
-          }
-          .help(Text("Add a block after the selected one (Space)"))
-        }
-        ToolbarItem(placement: .primaryAction) {
+        // Run and Record come first: in a narrow window the last items move to the overflow menu,
+        // and adding blocks also has Space, ⌘B and ⇧⌘B.
+        ToolbarItemGroup(placement: .primaryAction) {
           Menu {
             Button("Run Step by Step", systemImage: "forward.frame") { run(stepByStep: true) }
             if let selection = document.selection {
@@ -169,14 +157,42 @@ struct EditorView: View {
           }
           .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
           .help(Text("Run the test (⌘R)"))
-        }
-        ToolbarItem(placement: .primaryAction) {
           Button("Record", systemImage: "record.circle") { records.record(document) }
             .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
+        ToolbarItemGroup(placement: .primaryAction) {
+          Menu {
+            Button("Add Note", systemImage: "note.text") { addNote(at: nil) }
+            Button("Add Frame", systemImage: "rectangle.dashed") { addFrame(at: nil) }
+            Divider()
+            Button("Arrange Automatically", systemImage: "rectangle.3.group") { document.arrange() }
+              .disabled(flow.canvas.positions.isEmpty)
+          } label: {
+            Label("Add Block", systemImage: "plus")
+          } primaryAction: {
+            openPalette()
+          }
+          .help(Text("Add a block after the selected one (Space or ⌘B)"))
+          let growsIf = document.selection.flatMap(document.block)?.kind.typeName == "if"
+          Button {
+            document.addCondition()
+            showsInspector = true
+          } label: {
+            Label {
+              growsIf ? Text("Add Condition") : Text("Add If")
+            } icon: {
+              Image(systemName: "arrow.triangle.branch")
+            }
+          }
+          .help(
+            growsIf
+              ? Text("Add one more way out to the selected If (⇧⌘B)")
+              : Text("Add an If after the selected block, so the test can take different paths (⇧⌘B)"))
+        }
       }
       .focusedSceneValue(\.canvasZoom, canvasZoom)
+      .focusedSceneValue(\.blockPalette, BlockPaletteOpener { openPalette() })
   }
 
   private var canvasZoom: CanvasZoom {
@@ -279,9 +295,10 @@ struct EditorView: View {
           canvasFocused = true
         } onAdd: { slot in
           palette = PaletteTarget(slot: slot)
-        } onPalette: { point, at in
+        } onPalette: { slot, point, at in
           palette = PaletteTarget(
-            slot: selectedSlot, point: point, anchor: CGPoint(x: at.x * zoom - scroll.x, y: at.y * zoom - scroll.y))
+            slot: slot ?? document.slotAfterSelection, point: point,
+            anchor: CGPoint(x: at.x * zoom - scroll.x, y: at.y * zoom - scroll.y))
         }
         .scaleEffect(zoom, anchor: .topLeading)
         .frame(
@@ -362,14 +379,24 @@ struct EditorView: View {
   }
 
   private func openPalette() {
-    palette = PaletteTarget(slot: selectedSlot)
+    palette = PaletteTarget(slot: document.slotAfterSelection)
   }
 
-  /// Where a new block goes: after the selected block, or at the end without one.
-  private var selectedSlot: Slot? {
-    document.selection.flatMap { id in
-      document.block(id).map { Slot(from: id, edge: $0.kind.typeName == "if" ? "then" : "next") }
-    }
+  /// The block the last run of this test failed at.
+  private var failedBlock: String? {
+    runs.marks(for: document)?.marks.first { $0.value == .failed }?.key
+  }
+
+  /// Selects block `id`, scrolls it to the middle of the view and shows it in the inspector.
+  private func showBlock(_ id: String) {
+    document.pick([.block(id: id)], prefer: id)
+    showsInspector = true
+    canvasFocused = true
+    guard let rect = document.layout.blocks.first(where: { $0.id == id })?.rect.cgRect else { return }
+    scrollCanvas(
+      to: CGPoint(
+        x: max(0, rect.midX * zoom - viewport.width / 2), y: max(0, rect.midY * zoom - viewport.height / 2)),
+      resized: false)
   }
 
   /// The palette next to where the canvas was right-clicked, inside the editor; otherwise at the top.
@@ -527,6 +554,11 @@ enum Zoom {
 }
 
 /// The zoom of the canvas in view, for the View menu and the zoom bar.
+/// Opens the block palette of the editor in front, for the Add Block command.
+struct BlockPaletteOpener {
+  let open: () -> Void
+}
+
 struct CanvasZoom {
   let value: Double
   let set: (Double) -> Void
@@ -609,4 +641,5 @@ extension FocusedValues {
   @Entry var canvasZoom: CanvasZoom?
   /// The test whose canvas has the keyboard focus.
   @Entry var canvasDocument: FlowDocument?
+  @Entry var blockPalette: BlockPaletteOpener?
 }

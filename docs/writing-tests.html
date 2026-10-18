@@ -107,7 +107,7 @@
 <p>Block ids use letters, digits, <code>-</code> and <code>_</code>, up to 64 characters, and are unique within the test. Unknown fields are an error, so a typo such as <code>"nxet"</code> never goes unnoticed.</p>
 
 <h2 id="blocks">Block types</h2>
-<p>The editor's palette groups blocks by what they do.</p>
+<p>The editor's block palette groups blocks by what they do: actions, waiting, checks, conditions and loops, sub-tests and data.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Block</th><th scope="col">Group</th><th scope="col">What it does</th><th scope="col">Arrows</th></tr></thead>
@@ -117,11 +117,11 @@
     <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture, or a point</td><td><code>next</code></td></tr>
     <tr><td><a href="#type"><code>type</code></a></td><td>Actions</td><td>Types text, optionally into a field</td><td><code>next</code></td></tr>
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
-    <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Wait and check</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
-    <tr><td><a href="#check"><code>check</code></a></td><td>Wait and check</td><td>Fails the test unless the screen matches a reference</td><td><code>next</code></td></tr>
-    <tr><td><a href="#if"><code>if</code></a></td><td>Logic</td><td>Takes one of two ways depending on the screen</td><td><code>then</code>, <code>else</code></td></tr>
-    <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Logic</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
-    <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Logic</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
+    <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
+    <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference</td><td><code>next</code></td></tr>
+    <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of two ways depending on the screen</td><td><code>then</code>, <code>else</code></td></tr>
+    <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Conditions and loops</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
+    <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Sub-tests</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
     <tr><td><a href="#useData"><code>useData</code></a></td><td>Data</td><td>Runs its body once for every row of a CSV table</td><td><code>body</code>, <code>next</code></td></tr>
   </tbody>
 </table>
@@ -347,8 +347,12 @@
 <ul>
   <li>Every change is saved to the test file at once and can be undone with <kbd>⌘</kbd><kbd>Z</kbd>.</li>
   <li>Problems are listed on the block they concern.</li>
-  <li>Right-click a block to duplicate, copy, paste after or delete it. <kbd>⌘</kbd><kbd>L</kbd> links the selected block to another one from the keyboard.</li>
-  <li>Run from any block, or set breakpoints to pause the run there; <strong>Run Step by Step</strong> (<kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd>) pauses after every block.</li>
+  <li>To add a block, press <kbd>Space</kbd> or <kbd>⌘</kbd><kbd>B</kbd>, or click <strong>Add Block</strong> in the toolbar. The palette lists every block with its icon and one line on what it does; type to search, then press <kbd>Return</kbd> to add the block after the selected one, or drag it onto the canvas to place it there. Dropped on a block, it goes right after that block.</li>
+  <li>Right-click the empty canvas to add a block at that spot. Drag a block's link dot onto the empty canvas to choose the next block: it is added there and linked.</li>
+  <li><strong>Add If</strong> in the toolbar (<kbd>⇧</kbd><kbd>⌘</kbd><kbd>B</kbd>) adds an <code>if</code> after the selected block; with an <code>if</code> selected, it adds one more condition to it.</li>
+  <li>Right-click a block to run from it, pause there, add an <code>if</code> after it (or a condition to it), disconnect it from the blocks around it, duplicate, copy, paste after or delete it. <kbd>⌘</kbd><kbd>L</kbd> links the selected block to another one from the keyboard; <kbd>⌥</kbd><kbd>⌘</kbd><kbd>L</kbd> disconnects it.</li>
+  <li>Run from any block (<kbd>⇧</kbd><kbd>⌘</kbd><kbd>Return</kbd> runs from the selected one), or set breakpoints to pause the run there; <strong>Run Step by Step</strong> (<kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd>) pauses after every block. When a run fails, <strong>Show Failed Block</strong> selects the block it stopped at and shows why.</li>
+  <li><kbd>⌘</kbd><kbd>K</kbd> opens the command palette: type a few letters of any command, block or test, then press <kbd>Return</kbd> to run the command, add the block or open the test.</li>
   <li>Move blocks by hand, frame parts of the test in titled sections and add notes. All of this is kept in the test's <code>canvas</code> and never changes how the test runs. Without it, blocks are laid out automatically.</li>
 </ul>
 </main>

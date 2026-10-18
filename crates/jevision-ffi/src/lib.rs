@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use jevision_core::{
     Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
     ElseIf, Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
-    MouseButton, Note, Point, Priority, Rect, Reference, Severity, Slot, Target, TestStatus,
-    TestType, WaitUntil,
+    MouseButton, Note, Point, Priority, Rect, Reference, SearchCandidate, Severity, Slot, Target,
+    TestStatus, TestType, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -185,6 +185,40 @@ pub fn resize_on_canvas(mut flow: Flow, item: CanvasItem, rect: Rect) -> Option<
 pub fn arrange_automatically(mut flow: Flow) -> Flow {
     flow.arrange_automatically();
     flow
+}
+
+/// Where a block added after block `id` goes: `then` of an `if`, `next` of any other block.
+/// `None` for an unknown block.
+#[uniffi::export]
+pub fn slot_after_block(flow: Flow, id: String) -> Option<Slot> {
+    flow.slot_after(&id)
+}
+
+/// Adds one more condition to `selection` when it is an `if`, otherwise a new `if` after it
+/// (after the main chain without a selection), and selects that `if`. `None` for an unknown
+/// block.
+#[uniffi::export]
+pub fn add_condition_at(mut flow: Flow, selection: Option<String>) -> Option<Edited> {
+    let id = flow.add_condition_at(selection.as_deref())?;
+    Some(Edited {
+        flow,
+        selection: Some(id),
+    })
+}
+
+/// Removes every link into and out of block `id`, so it stands alone. `None` when it had none.
+#[uniffi::export]
+pub fn disconnect_block(mut flow: Flow, id: String) -> Option<Flow> {
+    flow.disconnect(&id).then_some(flow)
+}
+
+/// Indices of the candidates that match `query`, best first; all of them for an empty query.
+#[uniffi::export]
+pub fn rank_search(query: String, candidates: Vec<SearchCandidate>) -> Vec<u32> {
+    jevision_core::rank(&query, &candidates)
+        .into_iter()
+        .filter_map(|i| u32::try_from(i).ok())
+        .collect()
 }
 
 /// The `if` block `kind` with one more condition, checked after the others; it leads where
@@ -490,11 +524,19 @@ pub struct BlockSpec {
     pub edges: Vec<String>,
 }
 
+#[uniffi::remote(Record)]
+pub struct SearchCandidate {
+    pub title: String,
+    pub keywords: String,
+}
+
 #[uniffi::remote(Enum)]
 pub enum BlockGroup {
     Actions,
-    WaitAndCheck,
+    Waiting,
+    Checks,
     Logic,
+    SubTests,
     Data,
 }
 

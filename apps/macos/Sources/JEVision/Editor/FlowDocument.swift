@@ -99,6 +99,21 @@ final class FlowDocument {
     apply(edited.flow, select: edited.selection, action: String(localized: "Add Block"))
   }
 
+  /// Where a block added now goes: after the selected block, or at the end without one.
+  var slotAfterSelection: Slot? {
+    guard let flow, let selection else { return nil }
+    return slotAfterBlock(flow: flow, id: selection)
+  }
+
+  /// One more condition on the selected If, otherwise a new If after the selected block.
+  func addCondition() {
+    guard let flow, let edited = addConditionAt(flow: flow, selection: selection) else { return }
+    let grows = selection != nil && selection == edited.selection
+    apply(
+      edited.flow, select: edited.selection,
+      action: grows ? String(localized: "Add Condition") : String(localized: "Add Block"))
+  }
+
   /// Adds what was recorded at `slot`, and the app it was recorded in when the test has none,
   /// as one change. Undo also moves `files`, the pictures the recording saved, to the Trash;
   /// Redo brings them back.
@@ -205,6 +220,17 @@ final class FlowDocument {
   /// link makes no loop outside a Repeat block.
   func canConnect(_ from: String, edge: String, to: String) -> Bool {
     flow.map { connectBlocks(flow: $0, from: from, edge: edge, to: to) != nil } ?? false
+  }
+
+  /// Whether a link leads into or out of block `id`, other than a loop's own body.
+  func hasLinks(_ id: String) -> Bool {
+    layout.edges.contains { ($0.from == id || $0.to == id) && $0.from != $0.to && !($0.from == id && $0.edge == "body") }
+  }
+
+  /// Removes every link into and out of block `id`, so it stands alone.
+  func disconnect(_ id: String) {
+    guard let flow, let edited = disconnectBlock(flow: flow, id: id) else { return }
+    apply(edited, select: id, action: String(localized: "Disconnect"))
   }
 
   /// Deletes links `links` as one step.

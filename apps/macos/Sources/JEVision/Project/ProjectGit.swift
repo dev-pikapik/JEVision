@@ -41,6 +41,8 @@ final class ProjectGit {
   private(set) var gitHub = GitHubSignIn.checking
   /// What went wrong with the last action, for an alert.
   var failure: Failure?
+  /// The New Pull Request sheet is shown over the main window.
+  var isComposingPullRequest = false
 
   @ObservationIgnored private(set) var project: URL?
   @ObservationIgnored private var refreshTask: Task<Void, Never>?
