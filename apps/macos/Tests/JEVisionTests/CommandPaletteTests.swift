@@ -16,7 +16,10 @@ struct CommandPaletteTests {
     state.hasTest = true
     state.canRun = true
     state.hasTests = true
-    state.tests = [("Login/Sign In.flow.json", "Sign In", "Login"), ("Checkout.flow.json", "Checkout", "")]
+    state.tests = [
+      ("Login/Sign In.flow.json", "Sign In", "Login", ""),
+      ("Checkout.flow.json", "Checkout", "", "Pay for the basket 4242 4242"),
+    ]
     return state
   }
 
@@ -90,6 +93,7 @@ struct CommandPaletteTests {
     #expect(first("sign") == .openTest("Login/Sign In.flow.json"))
     #expect(first("login") == .openTest("Login/Sign In.flow.json"), "A test is found by its folder")
     #expect(first("debug") == .runStepByStep, "A command is found by its keywords")
+    #expect(first("basket 4242") == .openTest("Checkout.flow.json"), "A test is found by what it says and does")
     #expect(CommandPalette.search("", in: entries) == entries)
     #expect(CommandPalette.search("zzzz", in: entries).isEmpty)
   }

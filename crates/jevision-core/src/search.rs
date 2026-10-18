@@ -1,4 +1,7 @@
-//! Ranking for the editor's search fields: the block palette and the command palette.
+//! Ranking for the editor's search fields: the block palette, the command palette and the
+//! project's test list.
+
+use crate::{BlockKind, Compare, Flow, Reference, Target, WaitUntil};
 
 /// Something a search can find: what it is called, and other words it answers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +34,63 @@ pub fn rank(query: &str, candidates: &[SearchCandidate]) -> Vec<usize> {
         .collect();
     scored.sort_unstable();
     scored.into_iter().map(|(_, _, i)| i).collect()
+}
+
+/// Words a test is found by besides its file name: its name, description and tags, what its
+/// blocks type, press, open and look for, and the text of its canvas notes and sections.
+pub fn test_keywords(flow: &Flow) -> String {
+    let mut words: Vec<&str> = vec![&flow.name];
+    words.extend(flow.description.as_deref());
+    words.extend(flow.tags.iter().map(String::as_str));
+    fn reference<'a>(r: &'a Reference, words: &mut Vec<&'a str>) {
+        words.push(&r.image);
+        if let Compare::Meaning { expect } = &r.compare {
+            words.push(expect);
+        }
+    }
+    for block in &flow.blocks {
+        match &block.kind {
+            BlockKind::OpenApp { app, .. } => words.extend(app.as_deref()),
+            BlockKind::OpenFile { files, app, .. } => {
+                words.extend(files.iter().map(String::as_str));
+                words.extend(app.as_deref());
+            }
+            BlockKind::Click { target, .. } => {
+                if let Target::Image(image) = target {
+                    words.push(image);
+                }
+            }
+            BlockKind::Type { text, into, .. } => {
+                words.push(text);
+                if let Some(Target::Image(image)) = into {
+                    words.push(image);
+                }
+            }
+            BlockKind::PressKeys { keys, .. } => words.push(keys),
+            BlockKind::WaitFor { until, .. } => match until {
+                WaitUntil::Appears(r) | WaitUntil::Disappears(r) => reference(r, &mut words),
+                WaitUntil::ScreenStable => {}
+            },
+            BlockKind::Check { reference: r, .. } => reference(r, &mut words),
+            BlockKind::If {
+                reference: r,
+                else_if,
+                ..
+            } => {
+                reference(r, &mut words);
+                for branch in else_if {
+                    reference(&branch.reference, &mut words);
+                }
+            }
+            BlockKind::Repeat { .. } => {}
+            BlockKind::UseData { file, .. } => words.push(file),
+            BlockKind::RunTest { test, .. } => words.push(test),
+        }
+    }
+    words.extend(flow.canvas.notes.iter().map(|n| n.text.as_str()));
+    words.extend(flow.canvas.sections.iter().map(|s| s.title.as_str()));
+    words.retain(|w| !w.is_empty());
+    words.join(" ")
 }
 
 /// How well `word` matches, lower is better; `None` when it doesn't.
@@ -148,5 +208,24 @@ mod tests {
         let titles = &[("Ждать", ""), ("Ещё", "")];
         assert_eq!(found("ЖД", titles), ["Ждать"]);
         assert_eq!(found("еще", titles), ["Ещё"]);
+    }
+
+    #[test]
+    fn a_test_is_found_by_its_name_description_and_blocks() {
+        let flow = crate::parse(
+            r#"{"format":1,"name":"Add a line to a note","description":"Keeps the draft",
+            "app":"com.apple.Notes","start":"a","blocks":{
+            "a":{"type":"type","text":"Hello, ${data.name}!","next":"b"},
+            "b":{"type":"check","reference":{"image":"","compare":"meaning","expect":"A saved note"}}}}"#,
+        )
+        .unwrap();
+        let keywords = test_keywords(&flow);
+        for words in ["note 01", "draft", "hello", "saved note"] {
+            let candidate = SearchCandidate {
+                title: "flow-012".to_owned(),
+                keywords: keywords.clone(),
+            };
+            assert_eq!(rank(words, &[candidate]), [0], "{words}");
+        }
     }
 }

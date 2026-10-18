@@ -214,6 +214,21 @@ pub fn disconnect_block(mut flow: Flow, id: String) -> Option<Flow> {
     flow.disconnect(&id).then_some(flow)
 }
 
+/// Words the test in `json` is found by besides its file name: its name, description, block
+/// texts and notes. Empty when it doesn't read as a test.
+#[uniffi::export]
+pub fn test_keywords(json: String) -> String {
+    jevision_core::parse(&json)
+        .map(|flow| jevision_core::test_keywords(&flow))
+        .unwrap_or_default()
+}
+
+/// `text` for display with its `${…}` placeholders kept whole across line breaks.
+#[uniffi::export]
+pub fn unbreakable_placeholders(text: String) -> String {
+    jevision_core::unbreakable_placeholders(&text)
+}
+
 /// Indices of the candidates that match `query`, best first; all of them for an empty query.
 #[uniffi::export]
 pub fn rank_search(query: String, candidates: Vec<SearchCandidate>) -> Vec<u32> {

@@ -274,9 +274,11 @@ extension RunUpdate {
         self = .event(.attemptStarted(attempt: Int(attempt)))
       case .blockStarted(_, _, let test, let block, let kind):
         self = .event(.blockStarted(test: test, block: block, kind: kind))
-      case .blockFinished(_, _, let test, let block, let status, _, let failure):
+      case .blockFinished(_, _, let test, let block, let status, _, let failure, let branch, let branches, let condition):
         self = .event(
-          .blockFinished(test: test, block: block, status: StepStatus(status), failure: failure.map(Failure.init)))
+          .blockFinished(
+            test: test, block: block, status: StepStatus(status), failure: failure.map(Failure.init), branch: branch,
+            branches: branches.map(Int.init), branchCondition: condition))
       case .paused(let block, _):
         self = .event(.paused(block: block))
       case .resumed:

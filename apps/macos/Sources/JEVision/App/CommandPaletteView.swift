@@ -8,8 +8,9 @@ struct CommandPaletteView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
-  @Environment(\.openWindow) private var openWindow
-  @Environment(\.openSettings) private var openSettings
+  /// The window's own actions: the palette's panel is outside the scene that has them.
+  let openWindow: OpenWindowAction
+  let openSettings: OpenSettingsAction
   @State private var query = ""
   @State private var highlighted: PaletteAction?
   @FocusState private var searchFocused: Bool
@@ -161,7 +162,7 @@ struct CommandPaletteView: View {
     let tests = project.items.flatMap(\.tests)
     state.hasTests = !tests.isEmpty
     state.hasLastRun = lastRun != nil
-    state.tests = tests.map { ($0.id, $0.name, $0.parentPath) }
+    state.tests = tests.map { ($0.id, $0.name, $0.parentPath, $0.keywords) }
     state.boards = project.boards.names
     if project.showsBoard, let name = project.boards.current, let board = project.boards.board {
       state.boardInView = name

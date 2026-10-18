@@ -470,6 +470,9 @@ impl RunListener for RunReporter {
                 status: step.status,
                 duration_ms: step.duration_ms,
                 failure: step.failure.map(failure),
+                branch: step.branch,
+                branches: step.branches,
+                branch_condition: step.branch_condition,
             },
             RunEvent::Paused { block, reason, .. } => {
                 self.update(&run, |s| {
