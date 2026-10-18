@@ -36,6 +36,8 @@ final class RunCenter {
     var offersGitIgnore: Bool
     /// The run stopped for something Settings → AI fixes.
     var needsAISetup = false
+    /// The run passed without any block looking at the screen.
+    var nothingChecked = false
   }
 
   /// Tests run as Run All or a folder's Run starts them, each after the tests it depends on.
@@ -52,6 +54,8 @@ final class RunCenter {
     var failed = 0
     /// Tests in quarantine that failed: they don't fail the batch.
     var quarantined = 0
+    /// Tests that passed without checking anything.
+    var unchecked = 0
     /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
     var notRun = 0
     /// Tests that didn't run because a test they depend on didn't pass.
@@ -62,7 +66,7 @@ final class RunCenter {
 
     var total: Int { entries.count }
     /// Tests that ended one way or another.
-    var done: Int { passed + failed + quarantined + notRun + blocked }
+    var done: Int { passed + failed + quarantined + unchecked + notRun + blocked }
 
     /// "Test 2 of 5": the test running now, counted from 1.
     var progress: String {
@@ -78,6 +82,8 @@ final class RunCenter {
     let failed: Int
     /// Tests in quarantine that failed, not counted in `failed`.
     var quarantined = 0
+    /// Tests that passed without checking anything, not counted in `passed`.
+    var unchecked = 0
     /// Tests that didn't run because a test they depend on didn't pass.
     var blocked = 0
     /// Tests the batch added because chosen tests depend on them.
@@ -243,8 +249,8 @@ final class RunCenter {
     self.batch = nil
     let summary = BatchResult(
       title: batch.title, total: batch.total, passed: batch.passed, failed: batch.failed,
-      quarantined: batch.quarantined, blocked: batch.blocked, added: batch.entries.count { $0.added },
-      stopped: batch.done < batch.total)
+      quarantined: batch.quarantined, unchecked: batch.unchecked, blocked: batch.blocked,
+      added: batch.entries.count { $0.added }, stopped: batch.done < batch.total)
     result = nil
     batchResult = summary
     if isOutOfTheWay { showApp() }
@@ -399,6 +405,10 @@ final class RunCenter {
     if var batch {
       let ended: TestOutcome
       switch outcome {
+      // It did all it was asked to without failing, so the tests after it can go on.
+      case .finished(_, _, let report) where report.nothingChecked:
+        batch.unchecked += 1
+        ended = .passed
       case .finished(_, _, let report) where report.verdict == .passed:
         batch.passed += 1
         ended = .passed
@@ -442,7 +452,7 @@ final class RunCenter {
         test: request.document.url, project: request.project, verdict: report.verdict,
         message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),
         permission: failure.flatMap(RunText.permission), offersGitIgnore: offers,
-        needsAISetup: failure.map(RunText.needsAISetup) ?? false)
+        needsAISetup: failure.map(RunText.needsAISetup) ?? false, nothingChecked: report.nothingChecked)
     case .failed(let reason):
       result = Result(
         test: request.document.url, project: request.project, verdict: nil,

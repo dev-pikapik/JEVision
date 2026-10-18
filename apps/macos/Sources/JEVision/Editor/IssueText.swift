@@ -92,6 +92,8 @@ enum IssueText {
       return String(localized: "flow.cycle", defaultValue: "These blocks lead round in a circle: \(p("blocks")). Use Repeat to run steps again.")
     case "flow.block.unreachable":
       return String(localized: "flow.block.unreachable", defaultValue: "Nothing leads to this block, so it never runs.")
+    case "flow.noCheck":
+      return String(localized: "flow.noCheck", defaultValue: "This test never checks the screen, so it can’t catch a wrong result. Add a Check block.")
     case "flow.loop.noReturn":
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
     case "flow.if.sameCondition":

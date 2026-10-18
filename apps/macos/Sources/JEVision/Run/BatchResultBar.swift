@@ -16,7 +16,7 @@ struct BatchResultBar: View {
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
       Spacer(minLength: 12)
-      if result.passed + result.failed + result.quarantined + result.blocked > 0 {
+      if result.passed + result.failed + result.quarantined + result.unchecked + result.blocked > 0 {
         Button("Show Runs") { project.sidebar = .runs }
           .buttonStyle(.glass)
       }
