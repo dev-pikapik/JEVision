@@ -5,6 +5,7 @@ struct MainView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.undoManager) private var undoManager
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
 
   var body: some View {
@@ -39,6 +40,9 @@ struct MainView: View {
       }
     }
     .sheet(isPresented: $project.isCreatingTest) { NewTestSheet() }
+    .sheet(isPresented: Binding(get: { project.historyPath != nil }, set: { if !$0 { project.historyPath = nil } })) {
+      if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
+    }
     .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
     .sheet(item: $records.blocked) { RecordReadinessSheet(request: $0) }
     // The recording typed secrets that have no value yet: ask for each in turn.

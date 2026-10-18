@@ -12,11 +12,13 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod git;
 mod history;
 mod mcp;
 mod run;
 mod vision;
 
+pub use git::*;
 pub use history::*;
 pub use mcp::*;
 pub use run::*;

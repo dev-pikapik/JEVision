@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ has changes that aren’t committed and would be replaced. Commit them first, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В %@ есть незакоммиченные изменения, и они были бы заменены. Сначала закоммитьте их, затем попробуйте снова."
+          }
+        }
+      }
+    },
     "%@ is another program" : {
       "localizations" : {
         "ru" : {
@@ -31,6 +41,16 @@
         }
       }
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
     "%@, %@, took %@" : {
       "localizations" : {
         "ru" : {
@@ -47,6 +67,214 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld commits to pull" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commit to pull"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commits to pull"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммит получить"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммита получить"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммитов получить"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммита получить"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld commits to push" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commit to push"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld commits to push"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммит отправить"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммита отправить"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммитов отправить"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммита отправить"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файлов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld other files" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld other file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld other files"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld другой файл"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld других файла"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld других файлов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld другого файла"
+                }
+              }
+            }
           }
         }
       }
@@ -203,6 +431,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "A branch keeps your changes apart until they’re ready. Your current changes come along." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветка держит изменения отдельно, пока они не готовы. Текущие изменения перейдут в неё."
           }
         }
       }
@@ -457,6 +695,16 @@
         }
       }
     },
+    "Added" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавлен"
+          }
+        }
+      }
+    },
     "Added %lld steps to the test." : {
       "localizations" : {
         "en" : {
@@ -525,6 +773,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "После"
+          }
+        }
+      }
+    },
+    "After over before" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«После» поверх «до»"
           }
         }
       }
@@ -689,6 +947,16 @@
         }
       }
     },
+    "Before on the left, after on the right" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слева — до, справа — после"
+          }
+        }
+      }
+    },
     "Before the test can run" : {
       "localizations" : {
         "ru" : {
@@ -709,12 +977,52 @@
         }
       }
     },
+    "Block type" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тип блока"
+          }
+        }
+      }
+    },
     "Block “%@”: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: %2$@"
+          }
+        }
+      }
+    },
+    "Branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветка"
+          }
+        }
+      }
+    },
+    "Branch %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветка %@"
+          }
+        }
+      }
+    },
+    "Branch “%@” isn’t on the server yet. Push it first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветки «%@» ещё нет на сервере. Сначала отправьте её."
           }
         }
       }
@@ -809,6 +1117,16 @@
         }
       }
     },
+    "Can’t reach the server. Check the internet connection and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся связаться с сервером. Проверьте подключение к интернету и попробуйте снова."
+          }
+        }
+      }
+    },
     "Can’t replace the reference image: %@" : {
       "localizations" : {
         "ru" : {
@@ -829,12 +1147,62 @@
         }
       }
     },
+    "Changed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменён"
+          }
+        }
+      }
+    },
+    "Changed: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено: %@"
+          }
+        }
+      }
+    },
+    "Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменения"
+          }
+        }
+      }
+    },
     "Changes aren’t saved: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменения не сохранены: %@"
+          }
+        }
+      }
+    },
+    "Changes to this project aren’t tracked." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменения этого проекта не отслеживаются."
+          }
+        }
+      }
+    },
+    "Changes to “%@” aren’t tracked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменения «%@» не отслеживаются"
           }
         }
       }
@@ -1059,12 +1427,142 @@
         }
       }
     },
+    "Commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитить"
+          }
+        }
+      }
+    },
+    "Commit %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит %@"
+          }
+        }
+      }
+    },
+    "Commit %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитить %lld из %lld"
+          }
+        }
+      }
+    },
+    "Commit Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит изменений"
+          }
+        }
+      }
+    },
+    "Commit Changes in %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит изменений в «%@»"
+          }
+        }
+      }
+    },
+    "Commit the checked changes (⌘↩)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитить отмеченные изменения (⌘↩)"
+          }
+        }
+      }
+    },
+    "Commit the tests in this folder to keep their versions here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитьте тесты этой папки — здесь появятся их версии."
+          }
+        }
+      }
+    },
+    "Commit this test to keep its first version here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитьте этот тест — здесь появится его первая версия."
+          }
+        }
+      }
+    },
+    "Commit, pull and push in Settings › Git" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит, получение и отправка — в Настройках › Git"
+          }
+        }
+      }
+    },
+    "Commits contain only what you write. JEVision adds nothing to them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В коммите только то, что написали вы. JEVision ничего не добавляет."
+          }
+        }
+      }
+    },
+    "Committing…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит…"
+          }
+        }
+      }
+    },
+    "Commit…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит…"
+          }
+        }
+      }
+    },
     "Compare only part of the image" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сравнивать только часть картинки"
+          }
+        }
+      }
+    },
+    "Conflict" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конфликт"
           }
         }
       }
@@ -1119,6 +1617,36 @@
         }
       }
     },
+    "Couldn’t commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось закоммитить"
+          }
+        }
+      }
+    },
+    "Couldn’t pull" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось получить изменения"
+          }
+        }
+      }
+    },
+    "Couldn’t push" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось отправить"
+          }
+        }
+      }
+    },
     "Couldn’t remove the key" : {
       "localizations" : {
         "ru" : {
@@ -1135,6 +1663,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось перезапустить JEVision"
+          }
+        }
+      }
+    },
+    "Couldn’t restore this version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось вернуть эту версию"
+          }
+        }
+      }
+    },
+    "Couldn’t start tracking changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось начать отслеживать изменения"
+          }
+        }
+      }
+    },
+    "Couldn’t switch branches" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось переключить ветку"
           }
         }
       }
@@ -1219,6 +1777,36 @@
         }
       }
     },
+    "Deleted" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалён"
+          }
+        }
+      }
+    },
+    "Describe what changed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите, что изменилось"
+          }
+        }
+      }
+    },
+    "Describe what changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите, что изменилось."
+          }
+        }
+      }
+    },
     "Describe what the screen should show, in plain words. An AI model looks at the screen and decides. The reference image is optional: with one, the model compares the screen with it." : {
       "localizations" : {
         "ru" : {
@@ -1265,6 +1853,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Различия: изменённое выделено красным"
+          }
+        }
+      }
+    },
+    "Divider" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разделитель"
           }
         }
       }
@@ -1369,12 +1967,52 @@
         }
       }
     },
+    "Email" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email"
+          }
+        }
+      }
+    },
+    "Enter your name and email: they’re saved with each commit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите имя и email: они сохраняются в каждом коммите."
+          }
+        }
+      }
+    },
     "Esc cancels" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esc — отмена"
+          }
+        }
+      }
+    },
+    "Every change in this project is already committed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все изменения проекта уже закоммичены."
+          }
+        }
+      }
+    },
+    "Every committed version of this test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все закоммиченные версии этого теста."
           }
         }
       }
@@ -1455,6 +2093,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поле"
+          }
+        }
+      }
+    },
+    "File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл"
           }
         }
       }
@@ -1579,6 +2227,66 @@
         }
       }
     },
+    "Get the latest commits from the server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получить новые коммиты с сервера"
+          }
+        }
+      }
+    },
+    "Git" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git"
+          }
+        }
+      }
+    },
+    "Git isn’t installed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git не установлен"
+          }
+        }
+      }
+    },
+    "Git isn’t installed on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac не установлен git."
+          }
+        }
+      }
+    },
+    "Git keeps every version of your tests, so you can see what changed and go back to any version." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git хранит каждую версию тестов: видно, что изменилось, и можно вернуться к любой версии."
+          }
+        }
+      }
+    },
+    "Git saves your name and email with each commit. They’re remembered for all your projects." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git сохраняет имя и email в каждом коммите. Они запомнятся для всех ваших проектов."
+          }
+        }
+      }
+    },
     "HTML Report…" : {
       "localizations" : {
         "ru" : {
@@ -1609,6 +2317,46 @@
         }
       }
     },
+    "History" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История"
+          }
+        }
+      }
+    },
+    "History of “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История «%@»"
+          }
+        }
+      }
+    },
+    "History, commits and branches — no terminal needed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История, коммиты и ветки — без терминала."
+          }
+        }
+      }
+    },
+    "History…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История…"
+          }
+        }
+      }
+    },
     "How JEVision looks and which language it speaks." : {
       "localizations" : {
         "ru" : {
@@ -1625,6 +2373,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сколько раз ещё запустить тест, если он провалится."
+          }
+        }
+      }
+    },
+    "How the screen is checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как проверяется экран"
           }
         }
       }
@@ -1705,6 +2463,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В тесте, который запускает этот"
+          }
+        }
+      }
+    },
+    "Include %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить %@"
           }
         }
       }
@@ -1972,6 +2740,16 @@
         }
       }
     },
+    "Looking at the project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смотрим проект"
+          }
+        }
+      }
+    },
     "Looking for apps" : {
       "localizations" : {
         "ru" : {
@@ -2042,6 +2820,16 @@
         }
       }
     },
+    "Message" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение"
+          }
+        }
+      }
+    },
     "Model" : {
       "localizations" : {
         "ru" : {
@@ -2088,6 +2876,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название"
+          }
+        }
+      }
+    },
+    "New Branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая ветка"
+          }
+        }
+      }
+    },
+    "New Branch…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая ветка…"
           }
         }
       }
@@ -2172,12 +2980,52 @@
         }
       }
     },
+    "No blocks or test details changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки и свойства теста не изменились."
+          }
+        }
+      }
+    },
     "No blocks yet" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блоков пока нет"
+          }
+        }
+      }
+    },
+    "No branch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без ветки"
+          }
+        }
+      }
+    },
+    "No branch is selected. Choose a branch first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветка не выбрана. Сначала выберите ветку."
+          }
+        }
+      }
+    },
+    "No changes since the last commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет изменений с последнего коммита"
           }
         }
       }
@@ -2192,12 +3040,32 @@
         }
       }
     },
+    "No history yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Истории пока нет"
+          }
+        }
+      }
+    },
     "No keys recorded" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиши не записаны"
+          }
+        }
+      }
+    },
+    "No project is open" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект не открыт"
           }
         }
       }
@@ -2282,12 +3150,32 @@
         }
       }
     },
+    "Nothing to commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нечего коммитить"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ОК"
+          }
+        }
+      }
+    },
+    "On the Server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На сервере"
           }
         }
       }
@@ -2318,6 +3206,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешены только модели на этом Mac, поэтому проверки по смыслу через %@ остановятся с сообщением."
+          }
+        }
+      }
+    },
+    "Only on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только на этом Mac"
           }
         }
       }
@@ -2458,6 +3356,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть в новом экземпляре приложения"
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to see its changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы увидеть её изменения."
+          }
+        }
+      }
+    },
+    "Opens Git settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает настройки Git"
           }
         }
       }
@@ -2732,12 +3650,72 @@
         }
       }
     },
+    "Priority" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Важность"
+          }
+        }
+      }
+    },
     "Provider" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Провайдер"
+          }
+        }
+      }
+    },
+    "Pull" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получить"
+          }
+        }
+      }
+    },
+    "Pulling…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получение…"
+          }
+        }
+      }
+    },
+    "Push" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить"
+          }
+        }
+      }
+    },
+    "Pushing…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправка…"
+          }
+        }
+      }
+    },
+    "Put the file back as it was after this commit. Edit › Undo takes it back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть файл к виду после этого коммита. Правка › Отменить вернёт как было."
           }
         }
       }
@@ -2892,6 +3870,16 @@
         }
       }
     },
+    "Removed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалён"
+          }
+        }
+      }
+    },
     "Rename" : {
       "localizations" : {
         "ru" : {
@@ -2908,6 +3896,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переименовать тест"
+          }
+        }
+      }
+    },
+    "Renamed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименован"
           }
         }
       }
@@ -2938,6 +3936,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменить эталон этим снимком"
+          }
+        }
+      }
+    },
+    "Repository" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Репозиторий"
           }
         }
       }
@@ -2978,6 +3986,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перезапустить"
+          }
+        }
+      }
+    },
+    "Restore This Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть эту версию"
+          }
+        }
+      }
+    },
+    "Restore Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Возврат версии"
           }
         }
       }
@@ -3222,6 +4250,16 @@
         }
       }
     },
+    "Same by %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Совпадает на %@"
+          }
+        }
+      }
+    },
     "Save" : {
       "localizations" : {
         "ru" : {
@@ -3352,6 +4390,56 @@
         }
       }
     },
+    "See what it changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотрите, что он изменил."
+          }
+        }
+      }
+    },
+    "Select All" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать все"
+          }
+        }
+      }
+    },
+    "Select None" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять все"
+          }
+        }
+      }
+    },
+    "Select a change" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите изменение"
+          }
+        }
+      }
+    },
+    "Select a commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите коммит"
+          }
+        }
+      }
+    },
     "Select a run" : {
       "localizations" : {
         "ru" : {
@@ -3368,6 +4456,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите тест"
+          }
+        }
+      }
+    },
+    "Send your commits to the server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить коммиты на сервер"
           }
         }
       }
@@ -3422,6 +4520,16 @@
         }
       }
     },
+    "Show History…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать историю…"
+          }
+        }
+      }
+    },
     "Show JEVision" : {
       "localizations" : {
         "ru" : {
@@ -3462,6 +4570,16 @@
         }
       }
     },
+    "Show the commits that changed tests in this folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать коммиты, которые меняли тесты этой папки"
+          }
+        }
+      }
+    },
     "Shows the name, app, secrets and retries of the test." : {
       "localizations" : {
         "ru" : {
@@ -3482,12 +4600,32 @@
         }
       }
     },
+    "Side by Side" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рядом"
+          }
+        }
+      }
+    },
     "Sign in with a valid password" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вход с верным паролем"
+          }
+        }
+      }
+    },
+    "Signing in to the server uses your Mac’s git setup: GitHub CLI, passwords in the Keychain or SSH keys." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход на сервер — через настройки git на этом Mac: GitHub CLI, пароли в Связке ключей или SSH-ключи."
           }
         }
       }
@@ -3522,6 +4660,16 @@
         }
       }
     },
+    "Slider" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шторка"
+          }
+        }
+      }
+    },
     "Something went wrong" : {
       "localizations" : {
         "ru" : {
@@ -3538,6 +4686,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пробел"
+          }
+        }
+      }
+    },
+    "Start Tracking Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отслеживать изменения"
+          }
+        }
+      }
+    },
+    "Starting to track changes…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включаем отслеживание…"
           }
         }
       }
@@ -3632,12 +4800,32 @@
         }
       }
     },
+    "Switching branches…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключение ветки…"
+          }
+        }
+      }
+    },
     "System" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Как в системе"
+          }
+        }
+      }
+    },
+    "Tags" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Теги"
           }
         }
       }
@@ -3748,6 +4936,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Текст для ввода"
+          }
+        }
+      }
+    },
+    "That version of the file isn’t there." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой версии файла нет."
           }
         }
       }
@@ -3882,12 +5080,32 @@
         }
       }
     },
+    "The pictures are the same" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинки одинаковые"
+          }
+        }
+      }
+    },
     "The recording couldn’t be added to the test: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось добавить запись в тест: %@"
+          }
+        }
+      }
+    },
+    "The repository wasn’t found on the server, or your account can’t open it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Репозиторий не найден на сервере, или у вашей учётной записи нет к нему доступа."
           }
         }
       }
@@ -3912,6 +5130,16 @@
         }
       }
     },
+    "The same part of %@ changed here and on the server, so the changes can’t be combined automatically. Nothing was changed; your files are as they were." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одна и та же часть %@ изменилась и здесь, и на сервере, поэтому изменения не объединить автоматически. Ничего не изменено: файлы остались как были."
+          }
+        }
+      }
+    },
     "The screen over the reference image" : {
       "localizations" : {
         "ru" : {
@@ -3928,6 +5156,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Экран перестанет меняться"
+          }
+        }
+      }
+    },
+    "The server didn’t accept your sign-in. Sign in with GitHub CLI (gh auth login) or set up an SSH key, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер не принял вход. Войдите через GitHub CLI (gh auth login) или настройте SSH-ключ и попробуйте снова."
+          }
+        }
+      }
+    },
+    "The server has changes you don’t have yet. Pull first, then push again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На сервере есть изменения, которых у вас ещё нет. Сначала получите их, затем отправьте снова."
           }
         }
       }
@@ -4022,12 +5270,32 @@
         }
       }
     },
+    "There are no changes to commit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет изменений для коммита."
+          }
+        }
+      }
+    },
     "There was no reference yet, so this screenshot became it: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Эталона ещё не было, поэтому им стал этот снимок: %@"
+          }
+        }
+      }
+    },
+    "There’s already a branch named “%@”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ветка «%@» уже есть."
           }
         }
       }
@@ -4042,12 +5310,42 @@
         }
       }
     },
+    "There’s nothing to send yet. Commit your changes first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока нечего отправлять. Сначала закоммитьте изменения."
+          }
+        }
+      }
+    },
+    "This Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот проект"
+          }
+        }
+      }
+    },
     "This app isn’t installed on this Mac." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Это приложение не установлено на этом Mac."
+          }
+        }
+      }
+    },
+    "This branch isn’t on the server yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой ветки ещё нет на сервере"
           }
         }
       }
@@ -4062,12 +5360,32 @@
         }
       }
     },
+    "This file has changes from two places that git couldn’t combine." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле изменения из двух мест, которые git не смог объединить."
+          }
+        }
+      }
+    },
     "This file is outside the project, so other people won’t get it with the tests." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл лежит вне проекта, поэтому вместе с тестами он к другим людям не попадёт."
+          }
+        }
+      }
+    },
+    "This project isn’t connected to a server." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект не связан с сервером."
           }
         }
       }
@@ -4102,7 +5420,47 @@
         }
       }
     },
+    "This test is empty." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест пуст."
+          }
+        }
+      }
+    },
+    "This version can’t be shown as a picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эту версию нельзя показать как картинку."
+          }
+        }
+      }
+    },
+    "This version of the test can’t be opened, so it can’t be compared." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эту версию теста не открыть, поэтому её не сравнить."
+          }
+        }
+      }
+    },
     "Time Limit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лимит времени"
+          }
+        }
+      }
+    },
+    "Time limit" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -4198,6 +5556,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Два разрешения: видеть и нажимать"
+          }
+        }
+      }
+    },
+    "Type" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тип"
           }
         }
       }
@@ -4322,6 +5690,16 @@
         }
       }
     },
+    "Up to date with the server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Совпадает с сервером"
+          }
+        }
+      }
+    },
     "Use Data" : {
       "localizations" : {
         "ru" : {
@@ -4358,6 +5736,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значения хранятся в Связке ключей на этом Mac или берутся из одноимённых переменных окружения."
+          }
+        }
+      }
+    },
+    "Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия"
           }
         }
       }
@@ -4432,6 +5820,26 @@
         }
       }
     },
+    "Was %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Был %@"
+          }
+        }
+      }
+    },
+    "Was: %@\nNow: %@\nChanged: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Было: %@\nСтало: %@\nИзменено: %@"
+          }
+        }
+      }
+    },
     "Welcome to JEVision" : {
       "localizations" : {
         "ru" : {
@@ -4468,6 +5876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Действия во время паузы не записываются"
+          }
+        }
+      }
+    },
+    "Where to click" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда нажать"
           }
         }
       }
@@ -4538,6 +5956,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вы остановили тест."
+          }
+        }
+      }
+    },
+    "Your name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваше имя"
           }
         }
       }
@@ -5150,6 +6578,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS требует их от любого приложения, которое управляет экраном. JEVision пользуется ими только во время прогона или записи."
+          }
+        }
+      }
+    },
+    "macOS installs it with the Command Line Developer Tools, in a few minutes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS установит его вместе с инструментами разработчика за несколько минут."
           }
         }
       }
@@ -5820,6 +7258,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "стоп откуда угодно · двиньте мышь — пауза"
+          }
+        }
+      }
+    },
+    "“%@” can’t be a branch name. Use letters, numbers and dashes, without spaces." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не подходит для имени ветки. Используйте буквы, цифры и дефисы, без пробелов."
           }
         }
       }

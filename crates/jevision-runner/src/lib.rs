@@ -19,6 +19,7 @@ use std::path::PathBuf;
 
 pub use control::{PauseReason, RunControl};
 pub use data::DataTable;
+pub use image::{PictureDiff, picture_diff};
 pub use jevision_core::{MouseButton, Point};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Provider, Question, TIMEOUT,

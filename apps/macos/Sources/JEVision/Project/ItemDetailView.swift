@@ -31,6 +31,10 @@ struct ItemDetailView: View {
     }
     .formStyle(.grouped)
     .toolbar {
+      if project.git.status?.hasCommits == true {
+        Button("History", systemImage: "clock.arrow.circlepath") { project.historyPath = item.id }
+          .help(Text("Show the commits that changed tests in this folder"))
+      }
       Button("Show in Finder", systemImage: "folder") { project.reveal(item) }
         .help(Text("Show in Finder"))
     }

@@ -72,7 +72,7 @@ struct FlowCanvas: View {
 }
 
 /// Arrows between blocks: lines with rounded corners and a head at the end, over a dot grid.
-private struct Edges: View {
+struct Edges: View {
   let layout: FlowLayout
 
   var body: some View {
@@ -118,7 +118,7 @@ private struct Edges: View {
   }
 }
 
-private struct BranchLabel: View {
+struct BranchLabel: View {
   let isThen: Bool
 
   var body: some View {

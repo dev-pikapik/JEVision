@@ -380,11 +380,19 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "jevision-core",
+ "jevision-git",
  "jevision-runner",
  "png",
  "serde_json",
  "thiserror",
  "uniffi",
+]
+
+[[package]]
+name = "jevision-git"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]

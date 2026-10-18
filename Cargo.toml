@@ -11,6 +11,7 @@ repository = "https://github.com/dev-pikapik/JEVision"
 
 [workspace.dependencies]
 jevision-core = { path = "crates/jevision-core" }
+jevision-git = { path = "crates/jevision-git" }
 jevision-runner = { path = "crates/jevision-runner" }
 jevision-vision = { path = "crates/jevision-vision" }
 serde = { version = "1.0", features = ["derive"] }
