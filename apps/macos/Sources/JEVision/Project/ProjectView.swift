@@ -108,7 +108,7 @@ struct ProjectView: View {
 
   private var testList: some View {
     @Bindable var project = project
-    let latest = RunHistory.latest(project.runs)
+    let found = isSearching ? ProjectScanner.tests(in: project.items, matching: query) : []
     let selection = Binding<ProjectItem.ID?>(
       get: { project.showsMap ? Self.mapTag : project.selection },
       set: { id in
@@ -121,12 +121,12 @@ struct ProjectView: View {
       })
     return List(selection: selection) {
         if isSearching {
-          ForEach(ProjectScanner.tests(in: project.items, matching: query)) { row($0, showsPath: true, latest: latest) }
+          ForEach(found) { row($0, showsPath: true) }
         } else {
           MapRow(run: canRun ? { runAll(project.items, title: String(localized: "All tests")) } : nil)
             .tag(Self.mapTag)
           Section("Tests") {
-            ForEach(project.items) { tree($0, latest: latest) }
+            ForEach(project.items) { tree($0) }
           }
         }
       }
@@ -139,7 +139,7 @@ struct ProjectView: View {
         }
       }
       .overlay {
-        if isSearching, ProjectScanner.tests(in: project.items, matching: query).isEmpty {
+        if isSearching, found.isEmpty {
           ContentUnavailableView.search(text: query)
         }
       }
@@ -148,22 +148,22 @@ struct ProjectView: View {
       }
   }
 
-  private func tree(_ item: ProjectItem, latest: [String: RunStatus]) -> AnyView {
-    guard let children = item.outlineChildren else { return AnyView(row(item, showsPath: false, latest: latest)) }
+  private func tree(_ item: ProjectItem) -> AnyView {
+    guard let children = item.outlineChildren else { return AnyView(row(item, showsPath: false)) }
     let isExpanded = Binding(
       get: { expanded.contains(item.id) },
       set: { if $0 { expanded.insert(item.id) } else { expanded.remove(item.id) } })
     return AnyView(
       DisclosureGroup(isExpanded: isExpanded) {
-        ForEach(children) { tree($0, latest: latest) }
+        ForEach(children) { tree($0) }
       } label: {
-        row(item, showsPath: false, latest: latest)
+        row(item, showsPath: false)
       })
   }
 
-  private func row(_ item: ProjectItem, showsPath: Bool, latest: [String: RunStatus]) -> some View {
+  private func row(_ item: ProjectItem, showsPath: Bool) -> some View {
     SidebarRow(
-      item: item, showsPath: showsPath, status: latest[item.id], quarantine: project.quarantine(of: item.id),
+      item: item, showsPath: showsPath, status: project.latestRuns[item.id]?.status, quarantine: project.quarantine(of: item.id),
       flaky: project.flaky[item.id], run: canRun ? { run(item) } : nil
     )
       .contextMenu {

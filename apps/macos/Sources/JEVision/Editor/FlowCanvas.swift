@@ -186,7 +186,7 @@ struct FlowCanvas: View {
           issues: document.issues(of: laid.id),
           isSelected: document.picked.contains(item),
           isLinkTarget: (link?.target ?? document.linking?.target) == laid.id,
-          step: (order.firstIndex(of: laid.id) ?? 0) + 1,
+          step: document.step(of: laid.id),
           steps: order.count,
           mark: run.marks[laid.id],
           isCurrent: run.current == laid.id,
@@ -489,9 +489,8 @@ struct FlowCanvas: View {
 
   /// What VoiceOver calls the link `edge`: the blocks it joins, by their step in reading order.
   private func linkLabel(_ edge: LaidEdge) -> Text {
-    let order = document.order
     func name(_ id: String) -> String {
-      let step = (order.firstIndex(of: id) ?? 0) + 1
+      let step = document.step(of: id)
       return String(localized: "step \(step), \(BlockInfo.title(document.block(id)?.kind.typeName ?? ""))")
     }
     let from = name(edge.from), to = name(edge.to)

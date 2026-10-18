@@ -83,12 +83,14 @@ enum RunHistory {
   /// Runs of tests whose name contains `query`, newest first, by day.
   static func days(_ runs: [SavedRun], matching query: String = "", calendar: Calendar = .current) -> [Day] {
     let query = query.trimmingCharacters(in: .whitespaces)
+    // Each time is read once: reading them inside the sort took most of a keystroke.
     let shown = runs
       .filter { query.isEmpty || $0.report.test.localizedStandardContains(query) }
-      .sorted { ($0.startedAt, $0.dir) > ($1.startedAt, $1.dir) }
+      .map { (run: $0, date: $0.startedAt) }
+      .sorted { ($0.date, $0.run.dir) > ($1.date, $1.run.dir) }
     var days: [Day] = []
-    for run in shown {
-      let day = calendar.startOfDay(for: run.startedAt)
+    for (run, date) in shown {
+      let day = calendar.startOfDay(for: date)
       if days.last?.day == day {
         days[days.count - 1].runs.append(run)
       } else {
@@ -96,15 +98,6 @@ enum RunHistory {
       }
     }
     return days
-  }
-
-  /// How the latest run of each test ended, by test file relative to the project.
-  static func latest(_ runs: [SavedRun]) -> [String: RunStatus] {
-    var latest: [String: (date: Date, status: RunStatus)] = [:]
-    for run in runs where (latest[run.report.file]?.date ?? .distantPast) <= run.startedAt {
-      latest[run.report.file] = (run.startedAt, run.status)
-    }
-    return latest.mapValues(\.status)
   }
 
   /// "Today", "Yesterday" or the date, for a section header.

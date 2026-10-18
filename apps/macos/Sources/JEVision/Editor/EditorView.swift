@@ -369,7 +369,7 @@ struct EditorView: View {
   /// Tells VoiceOver which block a link being made from the keyboard leads to.
   private func announce(old: PendingLink?, new: PendingLink?) {
     guard let new, let target = new.target, let block = document.block(target) else { return }
-    let step = (document.order.firstIndex(of: target) ?? 0) + 1
+    let step = document.step(of: target)
     let title = BlockInfo.title(block.kind.typeName)
     let text =
       old?.slot == new.slot
