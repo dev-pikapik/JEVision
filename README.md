@@ -42,18 +42,6 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 <br>Add, connect and edit blocks on a canvas. Every change is saved at once and can be undone, and a problem shows on the block it concerns.
 </td>
 <td width="50%" valign="top">
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/record-dark.png"><img src="docs/media/record-light.png" width="400" alt=""></picture>
-<br><b>Record instead of writing</b>
-<br>Use the app as usual. Each click, text and key press becomes a block, with a picture of what you touched. Passwords go to the Keychain, never into the file.
-</td>
-</tr></tbody>
-<tbody><tr>
-<td width="50%" valign="top">
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/run-dark.png"><img src="docs/media/run-light.png" width="400" alt=""></picture>
-<br><b>Watch it run</b>
-<br>Run a test, step through it with ⌥⌘R or start from any block, with breakpoints. Move the mouse to pause; press Esc twice to stop from any app.
-</td>
-<td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/report-dark.png"><img src="docs/media/report-light.png" width="400" alt=""></picture>
 <br><b>See what broke</b>
 <br>Every run keeps a screenshot of each step. A check shows the screen next to its reference, one over the other, or just the pixels that differ.
