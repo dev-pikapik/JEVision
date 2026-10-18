@@ -31,6 +31,12 @@ pub fn format_version() -> u32 {
     jevision_core::FORMAT_VERSION
 }
 
+/// Version of this build of JEVision, such as `0.1.0`.
+#[uniffi::export]
+pub fn jevision_version() -> String {
+    env!("CARGO_PKG_VERSION").to_owned()
+}
+
 /// Reads a test file's text, upgrading older formats.
 #[uniffi::export]
 pub fn load_flow(json: String) -> Result<Flow, FlowError> {
@@ -344,6 +350,12 @@ mod tests {
         assert_eq!(removed.selection.as_deref(), Some("email"));
         assert_eq!(removed.flow, flow);
         assert!(insert_block(flow, "nope".into(), None).is_none());
+    }
+
+    #[test]
+    fn version_is_the_workspace_version() {
+        let workspace = include_str!("../../../Cargo.toml");
+        assert!(workspace.contains(&format!("\nversion = \"{}\"\n", jevision_version())));
     }
 
     #[test]

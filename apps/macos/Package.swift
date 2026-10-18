@@ -20,6 +20,12 @@ let package = Package(
       name: "JEVisionHands",
       dependencies: [.product(name: "JEVisionCore", package: "JEVisionCore")],
       path: "Sources/JEVisionHands"),
-    .testTarget(name: "JEVisionTests", dependencies: ["JEVision", "JEVisionHands"], path: "Tests/JEVisionTests"),
+    // The `jevision` command-line tool; build.sh puts it in JEVision.app/Contents/Helpers.
+    .executableTarget(
+      name: "JEVisionCLI",
+      dependencies: ["JEVisionHands", .product(name: "JEVisionCore", package: "JEVisionCore")],
+      path: "Sources/JEVisionCLI"),
+    .testTarget(
+      name: "JEVisionTests", dependencies: ["JEVision", "JEVisionHands", "JEVisionCLI"], path: "Tests/JEVisionTests"),
   ]
 )

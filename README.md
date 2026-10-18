@@ -73,14 +73,7 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
   `tags` and `retries`.
 
-The `jevision` command line tool checks and formats test files:
-
-```sh
-jevision validate tests/         # report errors and warnings (--json for machines)
-jevision fmt tests/              # rewrite files in canonical form (--check to only report)
-```
-
-The canonical form has a fixed key order, lists blocks in reading order and leaves out default
+`jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order and leaves out default
 values, so every change shows up as a small, readable diff.
 
 ## Block types
@@ -101,6 +94,108 @@ values, so every change shows up as a small, readable diff.
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
+
+## Command line
+
+The `jevision` command runs and checks tests from Terminal, scripts and CI. It comes inside the
+app: choose **JEVision → Install Command Line Tool…** and click **Install…**. macOS asks for an
+administrator's password and links the tool into `/usr/local/bin`. Without a password, click
+**Install Just for Me** to link it into `~/.local/bin` instead. The window shows whether the tool
+is installed and which version.
+
+```sh
+jevision run tests/                       # run every *.flow.json in tests/ and save reports
+jevision run tests/sign-in.flow.json --start-at submit
+jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
+jevision validate tests/                  # report errors and warnings (--json for machines)
+jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
+```
+
+`jevision help <command>` lists every option. Exit status: **0** means all tests passed (or all
+files are valid and formatted). **1** means a test failed or was stopped, or a file has problems.
+**2** means wrong arguments, a file that can't be read, or a Mac that can't run tests right now.
+
+`jevision run` uses the real mouse, keyboard and screen. These requirements apply wherever it runs:
+
+- **A logged-in user with an unlocked screen.** Tests can't run over SSH, as a system service or
+  while the screen is locked. For unattended runs, keep the user logged in and turn off the
+  automatic lock in System Settings → Lock Screen.
+- **Screen Recording and Accessibility** for the app that starts `jevision`: Terminal, your
+  editor or the CI agent. If one is missing, `jevision` names the program that needs it and the
+  list in System Settings → Privacy & Security where to turn it on.
+- **Secrets** (`${secret.NAME}`) come from the environment variable `NAME` or from the Keychain,
+  where the app saves them. The first time `jevision` reads a Keychain secret, macOS may ask to
+  allow it; choose Always Allow for unattended runs. Values are never printed.
+
+Press Esc twice or Ctrl-C to stop a run. The stopped test is reported as cancelled.
+
+### GitHub Actions
+
+Hosted runners have no logged-in user, so use a
+[self-hosted runner](https://docs.github.com/actions/hosting-your-own-runners) on a Mac.
+Install it as a service with `./svc.sh install` while logged in as the user who runs the tests.
+On macOS this makes a launch agent that runs in that user's session. Then allow Screen Recording
+and Accessibility for the program that the first run names.
+
+```yaml
+jobs:
+  ui-tests:
+    runs-on: [self-hosted, macOS]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run UI tests
+        env:
+          ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
+        run: jevision run tests --junit junit.xml --html reports
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-reports
+          path: |
+            junit.xml
+            reports/
+```
+
+### On a schedule
+
+Use a launch agent, not cron: cron jobs don't run in the user's session, so they can't see the
+screen. Save the plist below as `~/Library/LaunchAgents/com.example.ui-tests.plist`. It runs the
+tests every day at 03:00 and writes the output to a log:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.example.ui-tests</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/jevision</string>
+    <string>run</string>
+    <string>/Users/me/Projects/AcmeMail/tests</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/me/Library/Logs/ui-tests.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/me/Library/Logs/ui-tests.log</string>
+</dict>
+</plist>
+```
+
+```sh
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.ui-tests.plist
+```
+
+Reports are saved in the project's `.jevision/runs` folder, where the app shows them in its run
+history.
 
 ## Roadmap
 

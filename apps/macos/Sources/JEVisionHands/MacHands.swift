@@ -222,7 +222,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     _ = poll(timeout: 5) { CGDisplayIsAsleep(CGMainDisplayID()) == 0 }
   }
 
-  static var screenIsLocked: Bool {
+  public static var screenIsLocked: Bool {
     let session = CGSessionCopyCurrentDictionary() as? [String: Any]
     return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
   }

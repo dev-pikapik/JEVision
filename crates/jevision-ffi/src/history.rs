@@ -61,11 +61,15 @@ pub fn export_html(dir: String, to: String) -> Result<(), ReportError> {
     Ok(())
 }
 
-/// Saves the report of the run in `dir` as JUnit XML, for CI systems.
+/// Saves the reports of the runs in `dirs` as one JUnit XML file, a test case per run, for CI
+/// systems.
 #[uniffi::export]
-pub fn export_junit(dir: String, to: String) -> Result<(), ReportError> {
-    let run = Run::load(Path::new(&dir))?;
-    std::fs::write(to, jevision_runner::junit_xml(&[run.report]))?;
+pub fn export_junit(dirs: Vec<String>, to: String) -> Result<(), ReportError> {
+    let reports = dirs
+        .iter()
+        .map(|dir| Run::load(Path::new(dir)).map(|run| run.report))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    std::fs::write(to, jevision_runner::junit_xml(&reports))?;
     Ok(())
 }
 
@@ -163,9 +167,27 @@ mod tests {
         let html = project.0.join("report.html");
         let junit = project.0.join("junit.xml");
         export_html(listed[0].dir.clone(), html.to_string_lossy().into()).unwrap();
-        export_junit(listed[0].dir.clone(), junit.to_string_lossy().into()).unwrap();
+        export_junit(vec![listed[0].dir.clone()], junit.to_string_lossy().into()).unwrap();
         assert!(std::fs::read_to_string(html).unwrap().contains("login"));
-        assert!(std::fs::read_to_string(junit).unwrap().contains("<failure"));
+        assert!(
+            std::fs::read_to_string(&junit)
+                .unwrap()
+                .contains("<failure")
+        );
+        let all = listed.iter().map(|r| r.dir.clone()).collect();
+        export_junit(all, junit.to_string_lossy().into()).unwrap();
+        let xml = std::fs::read_to_string(&junit).unwrap();
+        assert!(
+            xml.contains(r#"tests="3" failures="1" errors="0" skipped="1""#),
+            "{xml}"
+        );
+        assert!(
+            export_junit(
+                vec![runs.join("20261018-110000-broken").to_string_lossy().into()],
+                junit.to_string_lossy().into()
+            )
+            .is_err()
+        );
         assert!(
             export_html(
                 listed[0].dir.clone(),

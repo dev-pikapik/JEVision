@@ -146,7 +146,7 @@ struct RunReportView: View {
     do {
       switch format {
       case .html: try exportHtml(dir: run.dir, to: url.path)
-      case .junit: try exportJunit(dir: run.dir, to: url.path)
+      case .junit: try exportJunit(dirs: [run.dir], to: url.path)
       }
     } catch {
       failure = String(localized: "Can’t save the report: \(RunHistory.reason(error))")
