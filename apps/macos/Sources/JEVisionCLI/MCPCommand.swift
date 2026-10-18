@@ -25,11 +25,11 @@ struct MCPCommand {
   }
 
   /// The nearest folder at or above the current one that has a `.jevision` folder, as the app
-  /// makes one in the project it opens; otherwise the current folder, unless it is `/`.
+  /// makes one in the project it opens, or the environments file; otherwise the current folder, unless it is `/`.
   static func defaultProject(from current: String = FileManager.default.currentDirectoryPath) -> String? {
     var folder = current
     while folder != "/" {
-      if isFolder((folder as NSString).appendingPathComponent(".jevision")) { return folder }
+      if isProjectFolder(folder) { return folder }
       folder = (folder as NSString).deletingLastPathComponent
     }
     return current == "/" ? nil : current
@@ -82,7 +82,10 @@ final class AssistantBridge: AssistantHost, @unchecked Sendable {
 
   func runOptions() -> RunOptions {
     let ai = AISettings.app
-    return RunOptions(startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly)
+    let videos = VideoSettings.app
+    return RunOptions(
+      startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly, video: videos.mode,
+      keepVideosDays: videos.keepDays)
   }
 
   func capture(app: String) throws -> Screenshot {

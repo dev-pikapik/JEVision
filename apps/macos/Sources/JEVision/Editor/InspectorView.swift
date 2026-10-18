@@ -11,7 +11,8 @@ struct InspectorView: View {
   var body: some View {
     if let block = document.block(id), let flow = document.flow {
       let context = FieldContext(
-        issues: document.issues(of: id), folder: document.url.deletingLastPathComponent(), projectRoot: project.rootURL)
+        issues: document.issues(of: id), folder: document.url.deletingLastPathComponent(), projectRoot: project.rootURL,
+        document: document, block: id)
       let type = block.kind.typeName
       Form {
         Section {
@@ -164,7 +165,8 @@ struct InspectorView: View {
       Section {
         PlaceholderTextField(
           text: bind("text", text) { .type(text: $0, into: into, next: next) },
-          secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder))
+          secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder),
+          environmentValues: project.environments.valueNames)
         IssueList(issues: context.issues("text"))
       }
       Section {

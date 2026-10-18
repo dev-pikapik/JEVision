@@ -69,12 +69,16 @@ final class RunCenter {
 
   // MARK: Starting
 
-  /// What keeps `request` from running now: missing permissions, unset secrets, errors in the test.
-  static func missing(for request: Request) -> (permissions: [Permission], secrets: [String], errors: Int) {
+  /// What keeps `request` from running now: missing permissions, secrets and environment values
+  /// unset in the chosen environment, errors in the test.
+  static func missing(for request: Request) -> (permissions: [Permission], values: MissingValues, errors: Int) {
     let permissions = Permission.allCases.filter { !$0.isGranted }
-    let secrets = request.document.flow.map(requiredSecrets).map { $0.filter { !SecretStore.isSet($0) } } ?? []
+    let environments = ProjectEnvironments.read(request.project)
+    let values = request.document.flow.map {
+      MissingValues(for: $0, in: environments, isSet: { SecretStore.isSet($0, environment: $1) })
+    } ?? MissingValues()
     let errors = request.document.issues.count { $0.severity == .error }
-    return (permissions, secrets, errors)
+    return (permissions, values, errors)
   }
 
   /// Runs the test, or asks for what it needs first.
@@ -82,7 +86,7 @@ final class RunCenter {
     guard !isRunning, document.flow != nil else { return }
     let request = Request(document: document, project: project, from: block, stepByStep: stepByStep)
     let missing = Self.missing(for: request)
-    if !missing.permissions.isEmpty || !missing.secrets.isEmpty || missing.errors > 0 || !start(request) {
+    if !missing.permissions.isEmpty || !missing.values.isEmpty || missing.errors > 0 || !start(request) {
       blocked = request
     }
   }
@@ -96,7 +100,7 @@ final class RunCenter {
       requestedBy: device)
     let missing = Self.missing(for: request)
     guard request.document.flow != nil, missing.errors == 0 else { return .TestUnreadable }
-    guard missing.permissions.isEmpty, missing.secrets.isEmpty, start(request) else { return .HostFailed }
+    guard missing.permissions.isEmpty, missing.values.isEmpty, start(request) else { return .HostFailed }
     return nil
   }
 
@@ -111,6 +115,7 @@ final class RunCenter {
   private func start(_ request: Request) -> Bool {
     let run = TestRun()
     let ai = AISettings(defaults)
+    let videos = VideoSettings(defaults)
     // Esc Esc stops the run right on the watcher's thread, whatever the main thread is doing.
     guard input.start(onEmergencyStop: { run.cancel() }) else { return false }
     input.ignoreInput(for: Self.handsOffTime)
@@ -131,11 +136,16 @@ final class RunCenter {
     let clicking: @Sendable (CGRect?) -> Void = { [weak hud] window in
       DispatchQueue.main.sync { MainActor.assumeIsolated { hud?.clicking(into: window) } }
     }
+    let choices = request.document.runChoices
+    let folder = request.document.url.deletingLastPathComponent()
+    let table = choices.dataRow == nil ? nil : request.document.flow.flatMap { RunChoices.dataTable(of: $0, folder: folder) }
     run.start(
       project: request.project.path, test: request.document.url.path,
       options: RunOptions(
-        startAt: request.from, retries: nil, vision: ai.settings(), localOnly: ai.localOnly,
-        requestedBy: request.requestedBy),
+        startAt: request.from, retries: choices.retries.map(UInt32.init),
+        environment: ProjectEnvironments.read(request.project).selected?.name, dataRow: choices.row(in: table),
+        vision: ai.settings(), localOnly: ai.localOnly,
+        requestedBy: request.requestedBy, video: videos.mode, keepVideosDays: videos.keepDays),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: RunBridge(center: self, remote: remoteListener?(request.project)))
     return true

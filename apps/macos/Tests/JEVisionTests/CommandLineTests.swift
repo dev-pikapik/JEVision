@@ -32,6 +32,26 @@ struct CommandLineArgumentTests {
     #expect(
       run
         == .run(RunRequest(paths: ["t.flow.json"], project: "p", retries: 2, startAt: "b", junit: "j.xml", html: "h", json: true)))
+
+    #expect(try Command.parse(["run", "t.flow.json", "--env", "staging"]) == .run(RunRequest(paths: ["t.flow.json"], environment: "staging")))
+    #expect(try Command.parse(["run", "t.flow.json", "--video", "always"]) == .run(RunRequest(paths: ["t.flow.json"], video: .always)))
+    #expect(try Command.parse(["run", "t.flow.json", "--video=on-failure"]) == .run(RunRequest(paths: ["t.flow.json"], video: .onFailure)))
+    #expect(try Command.parse(["run", "t.flow.json"]) == .run(RunRequest(paths: ["t.flow.json"], video: nil)))
+    #expect(throws: UsageError.self) { try Command.parse(["run", "t.flow.json", "--video", "sometimes"]) }
+  }
+
+  @Test func videoSettings() throws {
+    let defaults = try #require(UserDefaults(suiteName: "jevision-tests-\(UUID().uuidString)"))
+    let settings = VideoSettings(defaults)
+    #expect(settings.mode == .onFailure)
+    #expect(settings.keepDays == 30)
+    defaults.set("always", forKey: VideoSettings.modeKey)
+    defaults.set(0, forKey: VideoSettings.keepDaysKey)
+    #expect(settings.mode == .always)
+    #expect(settings.keepDays == nil)
+    defaults.set("never", forKey: VideoSettings.modeKey)
+    #expect(settings.mode == .onFailure)
+    #expect(VideoMode.all.allSatisfy { VideoMode(name: $0.name) == $0 })
   }
 
   @Test func assistantServer() throws {
@@ -45,6 +65,9 @@ struct CommandLineArgumentTests {
     let inner = root.appending(path: "tests/login")
     try FileManager.default.createDirectory(at: inner, withIntermediateDirectories: true)
     #expect(MCPCommand.defaultProject(from: inner.path) == inner.path)
+    try "{}".write(to: root.appending(path: "tests/jevision.environments.json"), atomically: true, encoding: .utf8)
+    #expect(MCPCommand.defaultProject(from: inner.path) == root.appending(path: "tests").path)
+    try FileManager.default.removeItem(at: root.appending(path: "tests/jevision.environments.json"))
     try FileManager.default.createDirectory(at: root.appending(path: ".jevision"), withIntermediateDirectories: true)
     #expect(MCPCommand.defaultProject(from: inner.path) == root.path)
     #expect(MCPCommand.defaultProject(from: "/") == nil)
@@ -98,7 +121,11 @@ struct CommandLineToolTests {
   @Test func examplesAreValidAndFormatted() throws {
     let validated = try jevision("validate", Self.examples)
     #expect(validated.status == 0)
-    #expect(validated.out.contains("write-a-note.flow.json: ok"))
+    #expect(validated.out.contains("write-a-note.flow.json: 0 errors, 1 warning"))
+    #expect(
+      validated.out.contains(
+        "  warning Block \"check\", field \"reference.image\": refs/note.png doesn't exist yet"),
+      "a missing reference is only a warning: the first run saves it")
     #expect(try jevision("fmt", "--check", Self.examples).status == 0)
   }
 
@@ -114,11 +141,28 @@ struct CommandLineToolTests {
     let failed = try jevision("validate", good, bad)
     #expect(failed.status == 1)
     #expect(failed.out.contains("\(bad): 1 error, 0 warnings"))
-    #expect(failed.out.contains("error   flow.edge.unknownTarget block=a edge=next target=gone"))
+    #expect(failed.out.contains("  error   Block \"a\", edge \"next\": leads to \"gone\", but there is no such block.\n"))
 
     let missing = try jevision("validate", dir.url.appending(path: "none.flow.json").path)
     #expect(missing.status == 2)
     #expect(missing.err.contains("cannot read: No such file or directory"))
+  }
+
+  @Test func validateWarnsAboutMissingFilesNextToTheTest() throws {
+    let dir = try Scratch()
+    let test = try dir.file("click.flow.json", #"""
+      {"format": 1, "name": "t", "app": "com.example.App", "start": "a",
+        "blocks": {"a": {"type": "click", "target": {"image": "button.png"}}}}
+      """#)
+    let missing = try jevision("validate", test)
+    #expect(missing.status == 0, "warnings don't fail validation")
+    #expect(missing.out == """
+      \(test): 0 errors, 1 warning
+        warning Block "a", field "target.image": button.png doesn't exist; the run will stop at this block until it's added.
+
+      """)
+    _ = try dir.file("button.png", "png")
+    #expect(try jevision("validate", test).out == "\(test): ok\n")
   }
 
   @Test func validateJSONIsMachineReadable() throws {
@@ -163,7 +207,7 @@ struct CommandLineToolTests {
     let file = try dir.file("t.flow.json", "{ not json")
     let result = try jevision("fmt", file)
     #expect(result.status == 1)
-    #expect(result.out.contains("flow.json.syntax"))
+    #expect(result.out.contains("error   Test: not valid JSON at line 1, column 3."))
     #expect(try String(contentsOfFile: file, encoding: .utf8) == "{ not json")
   }
 
@@ -289,6 +333,16 @@ struct CommandLineRunTests {
       try RunCommand.plan(RunRequest(paths: [dir.url.path], project: dir.url.appending(path: "login").path))
     }
     #expect(throws: UsageError.self) { try RunCommand.plan(RunRequest(paths: [dir.url.appending(path: ".jevision").path])) }
+
+    let login = dir.url.appending(path: "login").path
+    #expect(throws: UsageError(message: "there is no environment “staging”: the project has no jevision.environments.json in \(dir.url.path)")) {
+      try RunCommand.plan(RunRequest(paths: [login], environment: "staging"))
+    }
+    _ = try dir.file("jevision.environments.json", #"{"format":1,"environments":{"dev":{},"prod":{}}}"#)
+    #expect(try RunCommand.plan(RunRequest(paths: [login], environment: "dev")).project == dir.url.path)
+    #expect(throws: UsageError(message: "there is no environment “staging” in jevision.environments.json; use one of: dev, prod")) {
+      try RunCommand.plan(RunRequest(paths: [login], environment: "staging"))
+    }
   }
 }
 
@@ -337,6 +391,8 @@ private final class WaitingHands: Hands, @unchecked Sendable {
   func typeText(text: String) throws(HandsError) {}
   func pressKeys(keys: String) throws(HandsError) {}
   func userInputDetected() -> Bool { false }
+  func startVideo(app: String, path: String) throws(HandsError) {}
+  func stopVideo() throws(HandsError) {}
 }
 
 private final class Lines: @unchecked Sendable {

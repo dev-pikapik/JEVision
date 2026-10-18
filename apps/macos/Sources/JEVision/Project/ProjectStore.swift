@@ -41,12 +41,13 @@ final class ProjectStore {
   /// The test or folder, relative to the project, whose history is shown.
   var historyPath: String?
   let git = ProjectGit()
+  let environments = ProjectEnvironments()
 
   @ObservationIgnored private var watcher: FolderWatcher?
   @ObservationIgnored private var scanTask: Task<([ProjectItem], [SavedRun]), any Error>?
   @ObservationIgnored private var accessedURL: URL?
 
-  private enum Key {
+  enum Key {
     static let bookmark = "projectBookmark"
     static let name = "projectName"
     static let selection = "projectSelection"
@@ -115,7 +116,8 @@ final class ProjectStore {
     } + ProjectScanner.testSuffix
     let empty = Flow(
       name: name.trimmingCharacters(in: .whitespaces), description: nil, app: app, testType: nil, priority: nil,
-      status: nil, tags: [], retries: 0, start: "", blocks: [])
+      status: nil, tags: [], retries: 0, start: "", blocks: [],
+      canvas: CanvasContent(positions: [:], sections: [], notes: []))
     let flow = insertBlock(flow: empty, typeName: "openApp", slot: nil)?.flow ?? empty
     try Data(saveFlow(flow: flow).utf8).write(to: folder.appending(path: fileName), options: .withoutOverwriting)
     selection = folderID.isEmpty ? fileName : folderID + "/" + fileName
@@ -239,11 +241,14 @@ final class ProjectStore {
     status = .loading
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
     git.open(url)
+    environments.open(url)
     rescan()
   }
 
   private func rescan() {
     guard let url = rootURL else { return }
+    environments.reload()
+    document?.revalidate()
     scanTask?.cancel()
     let task = Task.detached(priority: .userInitiated) {
       let items = try ProjectScanner.scan(url)

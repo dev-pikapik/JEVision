@@ -31,6 +31,30 @@ const STABLE_SIMILARITY: f64 = 0.999;
 /// are scaled down by the providers anyway.
 const VISION_MAX_SIDE: u32 = 1568;
 
+/// Name of the run's video in its folder.
+pub const VIDEO_FILE: &str = "video.mp4";
+
+/// Whether a run records a video of the application under test, and which videos it keeps.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum VideoMode {
+    #[default]
+    Off,
+    /// Records every run and keeps the video only when the run failed.
+    OnFailure,
+    Always,
+}
+
+impl VideoMode {
+    /// Whether a run that ended with `verdict` keeps its video.
+    pub fn keeps(self, verdict: Verdict) -> bool {
+        match self {
+            Self::Off => false,
+            Self::OnFailure => verdict == Verdict::Failed,
+            Self::Always => true,
+        }
+    }
+}
+
 /// How a run starts.
 #[derive(Debug, Clone)]
 pub struct RunOptions {
@@ -38,6 +62,11 @@ pub struct RunOptions {
     pub start_at: Option<String>,
     /// Overrides the test's `retries`.
     pub retries: Option<u32>,
+    /// Environment of the project whose values `${env.NAME}` reads, from
+    /// `jevision.environments.json`.
+    pub environment: Option<String>,
+    /// Runs only this row, counted from 0, of every `useData` table instead of all of them.
+    pub data_row: Option<usize>,
     /// Time between two looks at the screen while waiting.
     pub poll_interval: Duration,
     /// Screenshots must not leave this computer: checks by meaning fail instead of asking a
@@ -45,6 +74,10 @@ pub struct RunOptions {
     pub local_only: bool,
     /// Name of the paired device that asked for the run, saved in the report.
     pub requested_by: Option<String>,
+    pub video: VideoMode,
+    /// Videos of the project's runs older than this are deleted after the run; `None` keeps
+    /// them all.
+    pub keep_videos_for: Option<Duration>,
 }
 
 impl Default for RunOptions {
@@ -52,9 +85,13 @@ impl Default for RunOptions {
         Self {
             start_at: None,
             retries: None,
+            environment: None,
+            data_row: None,
             poll_interval: Duration::from_millis(250),
             local_only: false,
             requested_by: None,
+            video: VideoMode::Off,
+            keep_videos_for: None,
         }
     }
 }
@@ -146,9 +183,14 @@ impl Runner<'_> {
             flaky: false,
             baselines_created: Vec::new(),
             requested_by: options.requested_by.clone(),
+            environment: options.environment.clone(),
+            video: None,
             attempts: Vec::new(),
         };
+        let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
+            let environment = environment?;
+            crate::env::check(&t.flow, environment.as_ref())?;
             fetch_secrets(&t.flow, self.secrets, &mut secrets)?;
             let start = options
                 .start_at
@@ -157,10 +199,10 @@ impl Runner<'_> {
             if !t.flow.blocks.iter().any(|b| b.id == start) {
                 return Err(Failure::new("run.start.unknownBlock").with("block", start));
             }
-            Ok((t, start))
+            Ok((t, start, environment))
         });
         let max_attempts = match &prepared {
-            Ok((t, _)) => 1 + options.retries.unwrap_or(t.flow.retries),
+            Ok((t, ..)) => 1 + options.retries.unwrap_or(t.flow.retries),
             Err(_) => 1,
         };
         self.events.send(&Event::RunStarted {
@@ -184,7 +226,18 @@ impl Runner<'_> {
                     },
                 );
             }
-            Ok((root, start)) => {
+            Ok((root, start, environment)) => {
+                // The video's clock starts just before the recording does; step markers count
+                // from it.
+                let video = if options.video != VideoMode::Off && !report.app.is_empty() {
+                    let start = Instant::now();
+                    self.hands
+                        .start_video(&report.app, &dir.join(VIDEO_FILE))
+                        .ok()
+                        .map(|()| start)
+                } else {
+                    None
+                };
                 let mut launched: Vec<String> = Vec::new();
                 for number in 1..=max_attempts {
                     // Each retry starts from a clean slate: quit what the last attempt opened.
@@ -200,6 +253,7 @@ impl Runner<'_> {
                         dir: &dir,
                         attempt: number,
                         secrets: &mut secrets,
+                        environment: environment.as_ref(),
                         seq: 0,
                         steps: Vec::new(),
                         frames: Vec::new(),
@@ -207,6 +261,7 @@ impl Runner<'_> {
                         apps: Vec::new(),
                         launched: Vec::new(),
                         baselines: Vec::new(),
+                        video,
                     };
                     let (attempt, opened, baselines) = exec.run(&root, &start);
                     launched = opened;
@@ -216,6 +271,9 @@ impl Runner<'_> {
                     if done {
                         break;
                     }
+                }
+                if video.is_some() {
+                    self.finish_video(&mut report, &dir, options.video);
                 }
             }
         }
@@ -230,12 +288,35 @@ impl Runner<'_> {
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
         json.push('\n');
         fs::write(&path, json)?;
+        if let Some(age) = options.keep_videos_for {
+            // Old videos only cost disk space; failing to delete one must not fail this run.
+            let _ = prune_videos(&project, age, SystemTime::now());
+        }
         self.events.send(&Event::RunFinished {
             verdict: report.verdict,
             flaky: report.flaky,
             report: path,
         });
         Ok(Run { dir, report })
+    }
+
+    /// Stops the recording and keeps the video if `mode` wants it for this verdict; otherwise
+    /// deletes it and drops the step markers that pointed into it.
+    fn finish_video(&self, report: &mut RunReport, dir: &Path, mode: VideoMode) {
+        let path = dir.join(VIDEO_FILE);
+        let saved = self.hands.stop_video().is_ok() && path.is_file();
+        let verdict = report
+            .attempts
+            .last()
+            .map_or(Verdict::Failed, |a| a.verdict);
+        if saved && mode.keeps(verdict) {
+            report.video = Some(VIDEO_FILE.to_owned());
+            return;
+        }
+        let _ = fs::remove_file(&path);
+        for step in report.attempts.iter_mut().flat_map(|a| &mut a.steps) {
+            step.video_at_ms = None;
+        }
     }
 
     fn finish_attempt(&self, report: &mut RunReport, attempt: Attempt) {
@@ -246,6 +327,28 @@ impl Runner<'_> {
         });
         report.attempts.push(attempt);
     }
+}
+
+/// Deletes the videos of the project's runs last written more than `age` before `now`; their
+/// reports and screenshots stay. Returns how many were deleted.
+pub fn prune_videos(project: &Path, age: Duration, now: SystemTime) -> io::Result<usize> {
+    let entries = match fs::read_dir(project.join(".jevision").join("runs")) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(e),
+    };
+    let mut deleted = 0;
+    for entry in entries {
+        let video = entry?.path().join(VIDEO_FILE);
+        let Ok(written) = fs::metadata(&video).and_then(|m| m.modified()) else {
+            continue;
+        };
+        if now.duration_since(written).is_ok_and(|old| old > age) {
+            fs::remove_file(&video)?;
+            deleted += 1;
+        }
+    }
+    Ok(deleted)
 }
 
 /// A vision model problem as a localizable failure: the error's code and values, with the
@@ -400,6 +503,7 @@ struct Exec<'r> {
     dir: &'r Path,
     attempt: u32,
     secrets: &'r mut HashMap<String, String>,
+    environment: Option<&'r crate::env::Environment>,
     seq: u32,
     steps: Vec<Step>,
     frames: Vec<Frame>,
@@ -409,6 +513,8 @@ struct Exec<'r> {
     apps: Vec<String>,
     launched: Vec<String>,
     baselines: Vec<String>,
+    /// When the run's video started, if one is being recorded.
+    video: Option<Instant>,
 }
 
 impl Exec<'_> {
@@ -484,6 +590,7 @@ impl Exec<'_> {
             vision: None,
             branch: None,
             failure: None,
+            video_at_ms: self.video.map(|start| millis(start.elapsed())),
         };
         let result = match self.perform(t, &block.kind, &mut step) {
             Ok(next) => Ok(next),
@@ -666,7 +773,20 @@ impl Exec<'_> {
                     )
                 })?;
                 let table = Rc::new(table);
-                for row in 0..table.rows.len() {
+                let rows = match self.options.data_row {
+                    None => 0..table.rows.len(),
+                    Some(row) if row < table.rows.len() => row..row + 1,
+                    Some(row) => {
+                        return Err(fail(
+                            Failure::new("run.data.noRow")
+                                .with("block", id)
+                                .with("file", file)
+                                .with("row", row + 1)
+                                .with("rows", table.rows.len()),
+                        ));
+                    }
+                };
+                for row in rows {
                     self.frames.push(Frame::Data {
                         depth: self.tests.len(),
                         block: id.to_owned(),
@@ -690,6 +810,7 @@ impl Exec<'_> {
                 }
                 let sub = load_test(self.project, &path)
                     .and_then(|sub| {
+                        crate::env::check(&sub.flow, self.environment)?;
                         fetch_secrets(&sub.flow, self.runner.secrets, self.secrets)?;
                         Ok(sub)
                     })
@@ -1104,7 +1225,7 @@ impl Exec<'_> {
         Ok(copy)
     }
 
-    /// Replaces `${secret.NAME}` and `${data.COLUMN}` in text to be typed.
+    /// Replaces `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` in text to be typed.
     fn substitute(&self, id: &str, text: &str) -> Result<String, Stop> {
         let mut out = String::with_capacity(text.len());
         let mut rest = text;
@@ -1116,6 +1237,19 @@ impl Exec<'_> {
                 Some(("secret", name)) => {
                     let value = self.secrets.get(name).ok_or_else(|| {
                         fail(Failure::new("run.secret.missing").with("name", name))
+                    })?;
+                    out.push_str(value);
+                }
+                Some(("env", name)) => {
+                    let environment = self.environment.ok_or_else(|| {
+                        fail(Failure::new("run.env.notChosen").with("name", name))
+                    })?;
+                    let value = environment.values.get(name).ok_or_else(|| {
+                        fail(
+                            Failure::new("run.env.missing")
+                                .with("name", name)
+                                .with("environment", &environment.name),
+                        )
                     })?;
                     out.push_str(value);
                 }
@@ -1148,6 +1282,11 @@ impl Exec<'_> {
             .keys()
             .map(|name| (format!("secret.{name}"), SECRET_MASK.to_owned()))
             .collect();
+        if let Some(environment) = self.environment {
+            for (name, value) in &environment.values {
+                vars.insert(format!("env.{name}"), self.mask(value));
+            }
+        }
         for frame in &self.frames {
             match frame {
                 Frame::Repeat {
@@ -1188,6 +1327,7 @@ impl Exec<'_> {
         self.runner.events.send(&Event::Paused {
             block: block.to_owned(),
             reason,
+            variables: self.variables(),
         });
         control.wait_while_paused()?;
         self.runner.events.send(&Event::Resumed);
@@ -1539,5 +1679,14 @@ mod tests {
         );
         assert_eq!(seconds(10_000), "10");
         assert_eq!(seconds(1500), "1.5");
+    }
+
+    #[test]
+    fn which_videos_are_kept() {
+        let verdicts = [Verdict::Passed, Verdict::Failed, Verdict::Cancelled];
+        let kept = |mode: VideoMode| verdicts.map(|v| mode.keeps(v));
+        assert_eq!(kept(VideoMode::Off), [false, false, false]);
+        assert_eq!(kept(VideoMode::OnFailure), [false, true, false]);
+        assert_eq!(kept(VideoMode::Always), [true, true, true]);
     }
 }

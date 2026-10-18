@@ -36,7 +36,10 @@ struct ProjectView: View {
         }
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        if let status = project.git.status { GitChip(status: status) }
+        VStack(spacing: 0) {
+          EnvironmentChip()
+          if let status = project.git.status { GitChip(status: status) }
+        }
       }
       .searchable(
         text: $query, placement: .sidebar,

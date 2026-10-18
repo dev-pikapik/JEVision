@@ -98,12 +98,8 @@ impl BlockKind {
             .map(|(_, t)| t)
     }
 
-    fn has_edge(&self, name: &str) -> bool {
-        match self {
-            Self::If { .. } => name == THEN || name == ELSE,
-            Self::Repeat { .. } | Self::UseData { .. } => name == BODY || name == NEXT,
-            _ => name == NEXT,
-        }
+    pub(crate) fn has_edge(&self, name: &str) -> bool {
+        self.edge_names().contains(&name)
     }
 
     fn next_mut(&mut self) -> Option<&mut Option<String>> {
@@ -124,7 +120,7 @@ impl BlockKind {
 }
 
 /// Points edge `name` of `block` at `target`. A loop body without a target is left empty.
-fn set_edge(block: &mut Block, name: &str, target: Option<String>) {
+pub(crate) fn set_edge(block: &mut Block, name: &str, target: Option<String>) {
     let own = &block.id;
     match (&mut block.kind, name) {
         (BlockKind::If { then, .. }, THEN) => *then = target,
@@ -163,7 +159,7 @@ impl Flow {
     }
 
     /// `base`, or `base2`, `base3`… — the first one no block uses yet.
-    fn unique_id(&self, base: &str) -> String {
+    pub(crate) fn unique_id(&self, base: &str) -> String {
         let taken: HashSet<&str> = self.blocks.iter().map(|b| b.id.as_str()).collect();
         std::iter::once(base.to_owned())
             .chain((2..).map(|n| format!("{base}{n}")))
@@ -284,6 +280,7 @@ impl Flow {
                 }
             }
         }
+        self.canvas.positions.remove(&id);
         self.blocks.push(Block {
             id: id.clone(),
             kind,
@@ -348,6 +345,10 @@ impl Flow {
         let after = self.reachable();
         self.blocks
             .retain(|b| !before.contains(&b.id) || after.contains(&b.id));
+        let kept: HashSet<&str> = self.blocks.iter().map(|b| b.id.as_str()).collect();
+        self.canvas
+            .positions
+            .retain(|id, _| kept.contains(id.as_str()));
         [outer, predecessor]
             .into_iter()
             .flatten()

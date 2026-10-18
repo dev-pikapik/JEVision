@@ -62,12 +62,16 @@ struct RunRequest: Equatable {
   var paths: [String] = []
   var project: String?
   var retries: UInt32?
+  /// Environment of the project whose values `${env.NAME}` reads.
+  var environment: String?
   var startAt: String?
   /// AI provider and model for checks by meaning, instead of the ones chosen in the app.
   var provider: String?
   var model: String?
   var junit: String?
   var html: String?
+  /// Whether to record a video of the app; `nil` follows the app's setting.
+  var video: VideoMode?
   var json = false
 }
 
@@ -99,7 +103,7 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json"], values: ["--project", "--retries", "--start-at", "--provider", "--model", "--junit", "--html"])
+        rest, command: name, flags: ["--json"], values: ["--project", "--env", "--retries", "--start-at", "--provider", "--model", "--junit", "--html", "--video"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
       request.project = options.values["--project"]
@@ -109,6 +113,7 @@ enum Command: Equatable {
         }
         request.retries = count
       }
+      request.environment = options.values["--env"]
       request.startAt = options.values["--start-at"]
       if request.startAt != nil, request.paths.count > 1 || isFolder(request.paths[0]) {
         throw UsageError(message: "--start-at works with one test file only", command: name)
@@ -121,6 +126,13 @@ enum Command: Equatable {
       request.model = options.values["--model"]
       request.junit = options.values["--junit"]
       request.html = options.values["--html"]
+      if let video = options.values["--video"] {
+        guard let mode = VideoMode(name: video) else {
+          let names = VideoMode.all.map(\.name).joined(separator: ", ")
+          throw UsageError(message: "--video needs one of: \(names), not “\(video)”", command: name)
+        }
+        request.video = mode
+      }
       request.json = options.flags.contains("--json")
       return .run(request)
     case "mcp":
@@ -218,6 +230,10 @@ enum Help {
                             reports are saved in <folder>/.jevision/runs. Default: the
                             nearest folder above the tests that has a .jevision folder,
                             otherwise the current folder if it holds the tests
+        --env <name>        Environment from jevision.environments.json in the project
+                            folder whose values the tests read as ${env.NAME}, such as
+                            staging. Secrets come from the Keychain items of that
+                            environment first
         --retries <n>       Run a failed test up to <n> more times (instead of the
                             number in the test)
         --start-at <block>  Start from this block instead of the first one (one test only)
@@ -227,6 +243,9 @@ enum Help {
         --model <name>      AI model for checks by meaning instead of the chosen one
         --junit <file>      Also save a JUnit XML report of all the tests, for CI
         --html <folder>     Also save the HTML report of every run in this folder
+        --video <when>      Record a video of the app: off, on-failure (keep it only
+                            when the test fails) or always. Default: as chosen in the
+                            app (Settings → Advanced), otherwise on-failure
         --json              Print the result as JSON; progress goes to standard error
         -h, --help          Show this help
 

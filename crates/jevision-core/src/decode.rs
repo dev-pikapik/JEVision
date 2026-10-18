@@ -7,8 +7,8 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Block, BlockKind, Compare, Flow, MouseButton, Point, Priority, Rect, Reference, Target,
-    TestStatus, TestType, WaitUntil, parse_duration,
+    Block, BlockKind, CanvasContent, CanvasSection, Compare, Flow, MouseButton, Note, Point,
+    Priority, Rect, Reference, Target, TestStatus, TestType, WaitUntil, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -362,6 +362,10 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     let retries = o.opt_uint("retries", out).unwrap_or(0);
     let start = o.string("start", out);
     let blocks = o.object("blocks", out).map(|b| blocks(b, out));
+    let canvas = o
+        .opt_object("canvas", out)
+        .map(|c| canvas(c, out))
+        .unwrap_or_default();
     o.finish(out);
     Some(Flow {
         name: name?,
@@ -374,7 +378,59 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
         retries,
         start: start?,
         blocks: blocks?,
+        canvas,
     })
+}
+
+fn canvas(mut o: Obj<'_>, out: &mut Out) -> CanvasContent {
+    let mut canvas = CanvasContent::default();
+    if let Some(positions) = o.opt_object("positions", out) {
+        for (id, value) in positions.map {
+            if let Some(p) = positions.child(id, value, out).and_then(|p| point(p, out)) {
+                canvas.positions.insert(id.clone(), p);
+            }
+        }
+    }
+    if let Some(sections) = o.opt_object("sections", out) {
+        for (id, value) in sections.map {
+            let Some(mut s) = sections.child(id, value, out) else {
+                continue;
+            };
+            let title = s.string("title", out);
+            let rect = s.object("frame", out).and_then(|f| rect(f, out));
+            s.finish(out);
+            if let (Some(title), Some(rect)) = (title, rect) {
+                canvas.sections.push(CanvasSection {
+                    id: id.clone(),
+                    title,
+                    rect,
+                });
+            }
+        }
+    }
+    if let Some(notes) = o.opt_object("notes", out) {
+        for (id, value) in notes.map {
+            let Some(mut n) = notes.child(id, value, out) else {
+                continue;
+            };
+            let text = n.string("text", out);
+            let author = n.opt_string("author", out).unwrap_or_default();
+            let time = n.opt_string("time", out).unwrap_or_default();
+            let rect = n.object("frame", out).and_then(|f| rect(f, out));
+            n.finish(out);
+            if let (Some(text), Some(rect)) = (text, rect) {
+                canvas.notes.push(Note {
+                    id: id.clone(),
+                    text,
+                    author,
+                    time,
+                    rect,
+                });
+            }
+        }
+    }
+    o.finish(out);
+    canvas
 }
 
 fn blocks(o: Obj<'_>, out: &mut Out) -> Vec<Block> {

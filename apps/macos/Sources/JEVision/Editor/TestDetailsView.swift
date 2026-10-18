@@ -47,13 +47,14 @@ struct TestDetailsView: View {
           }
         }
         let secrets = requiredSecrets(flow: flow)
+        let environment = project.environments.current.selected?.name
         Section {
           if secrets.isEmpty {
             Text("This test doesn’t use secrets. Add one in a Type Text block with Insert.")
               .foregroundStyle(.secondary)
           }
           ForEach(secrets, id: \.self) { name in
-            let isSet = secretsVersion >= 0 && SecretStore.isSet(name)
+            let isSet = secretsVersion >= 0 && SecretStore.isSet(name, environment: environment)
             LabeledContent {
               HStack {
                 Label {
@@ -70,7 +71,11 @@ struct TestDetailsView: View {
             }
           }
         } header: {
-          Text("Secrets")
+          if let environment {
+            Text("Secrets in \(environment)")
+          } else {
+            Text("Secrets")
+          }
         } footer: {
           Text("Values are kept in the Keychain on this Mac or read from environment variables of the same name.")
             .foregroundStyle(.secondary)
@@ -94,7 +99,9 @@ struct TestDetailsView: View {
       .frame(width: 400)
       .frame(minHeight: 300, maxHeight: 560)
       .sheet(item: $settingSecret) { secret in
-        SetSecretSheet(name: secret.id) { secretsVersion += 1 }
+        SetSecretSheet(name: secret.id, environment: project.environments.current.selected?.name) {
+          secretsVersion += 1
+        }
       }
     }
   }
@@ -151,5 +158,17 @@ struct SetSecretSheet: View {
     }
     .padding(20)
     .frame(width: 360)
+  }
+}
+
+extension SetSecretSheet {
+  /// Asks for the secret's value in `environment`, or for every environment when there's none.
+  init(name: String, environment: String?, saved: @escaping () -> Void) {
+    self.init(
+      name: name,
+      message: environment.map {
+        Text("The value is kept in the Keychain on this Mac for \($0) runs. JEVision types it during runs and never shows it.")
+      },
+      service: SecretStore.service(for: environment), saved: saved)
   }
 }

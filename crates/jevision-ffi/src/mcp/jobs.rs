@@ -19,13 +19,22 @@ pub(super) struct Jobs {
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
 
+/// How the tests of a job run, as the assistant asked.
+#[derive(Clone, Default)]
+pub(super) struct RunChoices {
+    /// Overrides the tests' `retries`.
+    pub retries: Option<u32>,
+    /// Environment of the project to run in.
+    pub environment: Option<String>,
+}
+
 impl Jobs {
     /// Starts running `tests` (relative to `project`) unless a run is still going.
     pub(super) fn start(
         &self,
         project: &Path,
         tests: Vec<String>,
-        retries: Option<u32>,
+        choices: RunChoices,
         host: Arc<dyn AssistantHost>,
     ) -> Result<Arc<Job>, String> {
         let mut all = lock(&self.all);
@@ -45,7 +54,7 @@ impl Jobs {
         let project = project.to_owned();
         let thread = std::thread::Builder::new()
             .name("jevision-assistant-run".into())
-            .spawn(move || worker.work(&project, retries, &host))
+            .spawn(move || worker.work(&project, &choices, &host))
             .map_err(|e| format!("The run couldn't start: {e}."))?;
         all.push(job.clone());
         lock(&self.threads).push(thread);
@@ -176,7 +185,7 @@ impl Job {
         })
     }
 
-    fn work(&self, project: &Path, retries: Option<u32>, host: &Arc<dyn AssistantHost>) {
+    fn work(&self, project: &Path, choices: &RunChoices, host: &Arc<dyn AssistantHost>) {
         for file in &self.tests {
             let run = Arc::new(TestRun::new());
             let skip = {
@@ -191,7 +200,7 @@ impl Job {
                 json!({ "path": file, "verdict": "notRun" })
             } else {
                 self.changed.notify_all();
-                self.run_one(project, file, &run, retries, host)
+                self.run_one(project, file, &run, choices, host)
             };
             // Stopped with Esc Esc or stop_run: the rest don't run either.
             let cancelled = result["verdict"] == "cancelled";
@@ -210,7 +219,7 @@ impl Job {
         project: &Path,
         file: &str,
         run: &Arc<TestRun>,
-        retries: Option<u32>,
+        choices: &RunChoices,
         host: &Arc<dyn AssistantHost>,
     ) -> Value {
         let hands = match host.start_run(run.clone()) {
@@ -220,7 +229,8 @@ impl Job {
             }
         };
         let mut options = host.run_options();
-        options.retries = retries;
+        options.retries = choices.retries;
+        options.environment = choices.environment.clone();
         let events = |event: &Event| self.progress(event, run, host);
         let outcome = crate::run::run(
             &project.to_string_lossy(),

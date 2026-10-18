@@ -12,6 +12,24 @@ public enum SecretStore {
     isInEnvironment(name) || isInKeychain(name, in: service)
   }
 
+  /// Keychain service of the secrets tests type in `environment`; `nil` for the ones every
+  /// environment shares.
+  public static func service(for environment: String?) -> String {
+    environment.map { "\(tests)/\($0)" } ?? tests
+  }
+
+  /// Whether a run in `environment` has a value for `name`: its own or the shared one.
+  public static func isSet(_ name: String, environment: String?) -> Bool {
+    isSet(name) || environment.map { isInKeychain(name, in: service(for: $0)) } ?? false
+  }
+
+  /// The environment variable `name`, otherwise the Keychain item of `environment`, otherwise
+  /// the shared Keychain item.
+  public static func value(_ name: String, environment: String?) -> String? {
+    if let environment, let value = value(name, in: service(for: environment)) { return value }
+    return value(name)
+  }
+
   public static func isInEnvironment(_ name: String) -> Bool {
     !(ProcessInfo.processInfo.environment[name] ?? "").isEmpty
   }
@@ -64,7 +82,7 @@ public enum SecretStore {
 public final class StoredSecrets: SecretSource {
   public init() {}
 
-  public func secret(name: String) -> String? {
-    SecretStore.value(name)
+  public func secret(name: String, environment: String?) -> String? {
+    SecretStore.value(name, environment: environment)
   }
 }

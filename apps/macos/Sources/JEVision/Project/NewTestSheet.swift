@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Name and app of a new test. The test starts with one block that opens the app.
 struct NewTestSheet: View {
+  /// The sheet leads to a recording: it says so, and `created` starts it once the sheet is gone.
+  var records = false
+  var created: () -> Void = {}
   @Environment(ProjectStore.self) private var project
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
@@ -12,7 +15,7 @@ struct NewTestSheet: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      Text("New Test")
+      (records ? Text("Record a Test") : Text("New Test"))
         .font(.title2.bold())
         .accessibilityAddTraits(.isHeader)
       Form {
@@ -29,10 +32,11 @@ struct NewTestSheet: View {
         Spacer()
         Button("Cancel", role: .cancel) { dismiss() }
           .keyboardShortcut(.cancelAction)
-        Button("Create") {
+        Button(records ? "Record" : "Create") {
           guard let app else { return }
           do {
             try project.createTest(name: name, app: app)
+            created()
             dismiss()
           } catch {
             self.error = error.localizedDescription

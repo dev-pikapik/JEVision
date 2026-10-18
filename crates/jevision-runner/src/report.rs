@@ -35,6 +35,12 @@ pub struct RunReport {
     /// absent for a run started on this computer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_by: Option<String>,
+    /// Environment of the project the run used; absent when it used none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    /// Video of the run, relative to the run folder; absent when none was recorded or kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video: Option<String>,
     pub attempts: Vec<Attempt>,
 }
 
@@ -97,6 +103,9 @@ pub struct Step {
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
+    /// When the block started, in milliseconds from the start of the run's video.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_at_ms: Option<u64>,
 }
 
 /// A vision model's verdict on a screen, as kept in the report.
@@ -151,7 +160,8 @@ pub fn describe(f: &Failure) -> String {
     let p = |name| f.param(name);
     match f.code.as_str() {
         "run.test.unreadable" => {
-            format!("Test file {} cannot be read: {}.", p("test"), p("reason"))
+            let reason = p("reason").trim_end_matches('.');
+            format!("Test file {} cannot be read: {reason}.", p("test"))
         }
         "run.test.invalid" => format!(
             "Test file {} has {} errors; fix them in the editor first.",
@@ -160,6 +170,30 @@ pub fn describe(f: &Failure) -> String {
         ),
         "run.start.unknownBlock" => format!("There is no block {} to start from.", p("block")),
         "run.secret.missing" => format!("Secret {} is not set.", p("name")),
+        "run.env.notChosen" => format!(
+            "The test reads the environment value {}, but no environment was chosen.",
+            p("name")
+        ),
+        "run.env.missing" => format!(
+            "Environment {} has no value {}.",
+            p("environment"),
+            p("name")
+        ),
+        "run.env.unknown" => format!(
+            "There is no environment {} in {}.",
+            p("environment"),
+            p("file")
+        ),
+        "run.environments.unreadable" => {
+            format!("{} can't be read: {}.", p("file"), p("reason"))
+        }
+        "run.data.noRow" => format!(
+            "Block {}: {} has {} rows, so there is no row {}.",
+            p("block"),
+            p("file"),
+            p("rows"),
+            p("row")
+        ),
         "run.path.outsideProject" => format!(
             "Block {}: {} is outside the project folder.",
             p("block"),
@@ -396,8 +430,10 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
 }
 
 /// A self-contained HTML page for the report, with every image of `run_dir` it refers to
-/// embedded. Images that are gone are left out.
-pub fn html(report: &RunReport, run_dir: &Path) -> String {
+/// embedded. Images that are gone are left out. `video` is the address of the run's video as
+/// seen from where the page is saved; videos are too large to embed, so the page links it and
+/// every step with a time seeks it.
+pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     let mut o = String::new();
     let (badge, label) = match (report.verdict, report.flaky) {
         (Verdict::Passed, false) => ("pass", "Passed"),
@@ -412,12 +448,19 @@ pub fn html(report: &RunReport, run_dir: &Path) -> String {
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{title} — {label}</title>\n<style>{CSS}</style>\n</head>\n<body>\n<main>\n\
          <header><h1>{title}</h1><span class=\"badge {badge}\">{label}</span></header>\n\
-         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>\
+         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}\
          <dt>Started</dt><dd>{started}</dd><dt>Duration</dt><dd>{duration}</dd>\
          <dt>Attempts</dt><dd>{attempts}</dd></dl>\n",
         title = xml(&report.test),
         file = xml(&report.file),
         app = xml(&report.app),
+        environment = report
+            .environment
+            .as_deref()
+            .map_or_else(String::new, |e| format!(
+                "<dt>Environment</dt><dd>{}</dd>",
+                xml(e)
+            )),
         started = xml(&report.started_at.replace('T', " ")),
         duration = duration(report.duration_ms),
         attempts = report.attempts.len(),
@@ -427,6 +470,13 @@ pub fn html(report: &RunReport, run_dir: &Path) -> String {
             o,
             "<p class=\"note\">New reference images were saved: {}. Review them before relying on this test.</p>",
             xml(&report.baselines_created.join(", "))
+        );
+    }
+    if let Some(src) = video {
+        let _ = writeln!(
+            o,
+            "<video id=\"video\" controls preload=\"metadata\" src=\"{}\"></video>",
+            xml(src)
         );
     }
     for a in &report.attempts {
@@ -466,9 +516,18 @@ pub fn html(report: &RunReport, run_dir: &Path) -> String {
             }
             let _ = write!(
                 o,
-                "<span class=\"status\">{status}</span><span class=\"time\">{}</span></div>",
+                "<span class=\"status\">{status}</span><span class=\"time\">{}</span>",
                 duration(s.duration_ms)
             );
+            if let (Some(_), Some(ms)) = (video, s.video_at_ms) {
+                let _ = write!(
+                    o,
+                    "<button class=\"seek\" data-t=\"{:.3}\" title=\"Show this step in the video\">▶ {}</button>",
+                    ms as f64 / 1000.0,
+                    clock(ms)
+                );
+            }
+            o.push_str("</div>");
             match (&s.failure, &s.vision) {
                 (Some(f), _) => {
                     let _ = write!(o, "<p class=\"reason\">{}</p>", xml(&describe(f)));
@@ -511,9 +570,18 @@ pub fn html(report: &RunReport, run_dir: &Path) -> String {
         }
         o.push_str("</ol>\n</section>\n");
     }
-    o.push_str("</main>\n</body>\n</html>\n");
+    o.push_str("</main>\n");
+    if video.is_some() {
+        o.push_str(SEEK_SCRIPT);
+    }
+    o.push_str("</body>\n</html>\n");
     o
 }
+
+/// Makes the step buttons seek the video.
+const SEEK_SCRIPT: &str = "<script>document.addEventListener('click',e=>{\
+const b=e.target.closest('[data-t]');if(!b)return;const v=document.getElementById('video');\
+v.currentTime=Number(b.dataset.t);v.play();v.scrollIntoView({behavior:'smooth',block:'nearest'})})</script>\n";
 
 const CSS: &str = "\
 :root{color-scheme:light dark;--bg:#f6f7f9;--card:#fff;--text:#1d1f23;--muted:#6b7079;--line:#e3e5e9;\
@@ -545,7 +613,16 @@ figure{margin:0;width:240px}figure img{width:100%;border:1px solid var(--line);b
 display:block;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px}\
 figure img:focus{position:fixed;inset:0;margin:auto;width:auto;max-width:96vw;max-height:96vh;\
 z-index:1;box-shadow:0 0 0 100vmax rgba(0,0,0,.6);cursor:zoom-out;outline:none}figure img{cursor:zoom-in}\
-figcaption{color:var(--muted);font-size:12px;margin-top:4px}";
+figcaption{color:var(--muted);font-size:12px;margin-top:4px}\
+video{display:block;width:100%;max-height:70vh;margin-top:20px;border-radius:8px;background:#000}\
+.seek{font:inherit;font-size:13px;font-variant-numeric:tabular-nums;color:var(--new);background:none;\
+border:1px solid var(--line);border-radius:999px;padding:0 10px;cursor:pointer}";
+
+/// A time in the video, such as `1:05`.
+fn clock(ms: u64) -> String {
+    let seconds = ms / 1000;
+    format!("{}:{:02}", seconds / 60, seconds % 60)
+}
 
 fn duration(ms: u64) -> String {
     if ms < 1000 {

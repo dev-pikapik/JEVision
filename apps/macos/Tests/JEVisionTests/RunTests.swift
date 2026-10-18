@@ -42,21 +42,32 @@ struct RunStateTests {
   }
 
   @Test func showsWherePausesHappen() {
-    var state = run([started("a"), finished("a", .passed), .paused(block: "b", reason: .breakpoint)])
+    var state = run([started("a"), finished("a", .passed), .paused(block: "b", reason: .breakpoint, variables: [:])])
     #expect(state.phase == .paused(.breakpoint))
     #expect(state.isPaused)
     #expect(state.current == "b")
     state.apply(.resumed)
     #expect(state.phase == .running)
-    state.apply(.paused(block: "b", reason: .userInput))
+    state.apply(.paused(block: "b", reason: .userInput, variables: [:]))
     #expect(state.phase == .paused(.userInput))
+  }
+
+  @Test func keepsTheVariablesOfTheBlockAhead() {
+    var state = run([
+      .stepStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "a", blockType: "type", variables: ["data.email": "a@x.io"])
+    ])
+    #expect(state.variables == ["data.email": "a@x.io"])
+    state.apply(.paused(block: "b", reason: .breakpoint, variables: ["data.email": "b@x.io", "secret.PASSWORD": "••••"]))
+    #expect(state.variables == ["data.email": "b@x.io", "secret.PASSWORD": "••••"])
+    state.apply(.attemptStarted(attempt: 2))
+    #expect(state.variables.isEmpty)
   }
 
   @Test func blocksOfAnotherTestDontMarkThisOne() {
     var state = run([started("login", type: "runTest"), started("open", in: "shared/sign-in.flow.json")])
     #expect(state.current == nil)
     #expect(state.currentType == "click")
-    state.apply(.paused(block: "type", reason: .step))
+    state.apply(.paused(block: "type", reason: .step, variables: [:]))
     #expect(state.current == nil)
     state.apply(finished("open", .passed, in: "shared/sign-in.flow.json"))
     #expect(state.marks.isEmpty)

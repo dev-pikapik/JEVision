@@ -73,7 +73,7 @@ fn params_as_map<S: Serializer>(params: &[IssueParam], s: S) -> Result<S::Ok, S:
 
 /// The text is not a readable test file. Holds every problem found while reading it.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
-#[error("test file cannot be read: {}", .issues.iter().map(|i| i.code.as_str()).collect::<Vec<_>>().join(", "))]
+#[error("{}", .issues.iter().map(describe).collect::<Vec<_>>().join(" "))]
 pub struct ParseError {
     pub issues: Vec<Issue>,
 }
@@ -150,7 +150,7 @@ pub fn describe(issue: &Issue) -> String {
         }
         "flow.path.extension" => format!("must name a {} file.", p("expected")),
         "flow.placeholder.invalid" => format!(
-            "\"{}\" isn't a valid placeholder; use ${{secret.NAME}} or ${{data.COLUMN}}.",
+            "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}} or ${{data.COLUMN}}.",
             p("placeholder")
         ),
         "flow.keys.invalid" => format!(
@@ -170,6 +170,25 @@ pub fn describe(issue: &Issue) -> String {
         ),
         "flow.block.unreachable" => "nothing leads to this block, so it never runs.".to_owned(),
         "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
+        "flow.reference.notSaved" => format!(
+            "{} doesn't exist yet; the first run will save the screen there as the reference.",
+            p("path")
+        ),
+        "flow.file.missing" => format!(
+            "{} doesn't exist; the run will stop at this block until it's added.",
+            p("path")
+        ),
+        "flow.env.unknown" => format!(
+            "no environment has the value {}; add it to {}.",
+            p("name"),
+            crate::ENVIRONMENTS_FILE
+        ),
+        "flow.env.partial" => format!(
+            "the value {} is missing in these environments: {}.",
+            p("name"),
+            p("environments")
+        ),
+        "flow.environments.invalid" => format!("{} can't be read: {}.", p("file"), p("reason")),
         _ => {
             let params: Vec<String> = issue
                 .params

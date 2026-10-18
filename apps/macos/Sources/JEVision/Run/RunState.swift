@@ -27,6 +27,8 @@ struct RunState: Equatable {
   private(set) var flaky = false
   /// The last attempt's reason to fail.
   private(set) var failure: Failure?
+  /// Values the block about to run sees, by name, secrets masked.
+  private(set) var variables: [String: String] = [:]
 
   /// Steps started and not yet finished, innermost last: a loop or a run of another test.
   private var open: [OpenStep] = []
@@ -54,8 +56,10 @@ struct RunState: Equatable {
       open = []
       current = nil
       currentType = nil
+      variables = [:]
       phase = .running
-    case .stepStarted(_, _, let test, let block, let blockType, _):
+    case .stepStarted(_, _, let test, let block, let blockType, let variables):
+      self.variables = variables
       open.append(OpenStep(test: test, block: block, type: blockType))
       current = test == file ? block : nil
       currentType = blockType
@@ -73,7 +77,8 @@ struct RunState: Equatable {
       }
       current = open.last.flatMap { $0.test == file ? $0.block : nil }
       currentType = open.last?.type
-    case .paused(let block, let reason):
+    case .paused(let block, let reason, let variables):
+      self.variables = variables
       // A pause comes before its block starts, so the block belongs to the innermost open step's
       // test; inside a run of another test, which one isn't known here.
       if isInThisTest {

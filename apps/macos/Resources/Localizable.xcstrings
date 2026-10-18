@@ -11,12 +11,32 @@
         }
       }
     },
+    "%@ can’t be read: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать %1$@: %2$@"
+          }
+        }
+      }
+    },
     "%@ has changes that aren’t committed and would be replaced. Commit them first, then try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "В %@ есть незакоммиченные изменения, и они были бы заменены. Сначала закоммитьте их, затем попробуйте снова."
+          }
+        }
+      }
+    },
+    "%@ has no open window. Open it on the screen the test checks, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У %@ нет открытого окна. Откройте его на экране, который проверяет тест, и попробуйте снова."
           }
         }
       }
@@ -47,6 +67,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ — версия %@ из другой копии JEVision"
+          }
+        }
+      }
+    },
+    "%@ isn’t installed on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не установлено на этом Mac."
           }
         }
       }
@@ -188,6 +218,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld коммита отправить"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дня"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дней"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld день"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дня"
                 }
               }
             }
@@ -455,6 +537,16 @@
         }
       }
     },
+    "%lld × %lld px at %lld, %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld × %lld пикс., от %lld, %lld"
+          }
+        }
+      }
+    },
     "1. Open JEVision on your iPhone" : {
       "localizations" : {
         "ru" : {
@@ -495,12 +587,32 @@
         }
       }
     },
-    "A test is a chain of steps JEVision repeats in an app: open it, click, type, check how the screen looks." : {
+    "A run in dark appearance compares with the dark picture when there is one." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тест — цепочка шагов, которые JEVision повторяет в приложении: открыть, кликнуть, ввести текст, проверить, как выглядит экран."
+            "value" : "В тёмном оформлении прогон сравнивает с тёмной картинкой, если она есть."
+          }
+        }
+      }
+    },
+    "A sticky note for whoever reads the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стикер для тех, кто читает тест"
+          }
+        }
+      }
+    },
+    "A video shows only the app under test, with a mark for each step in the report. Videos are saved with the run reports in the project’s .jevision folder; older ones are deleted after the next run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На видео — только тестируемое приложение, а в отчёте на нём отмечен каждый шаг. Видео хранятся вместе с отчётами прогонов в папке .jevision проекта; более старые удаляются после следующего прогона."
           }
         }
       }
@@ -615,6 +727,16 @@
         }
       }
     },
+    "Add Area" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить область"
+          }
+        }
+      }
+    },
     "Add Block" : {
       "localizations" : {
         "ru" : {
@@ -635,6 +757,16 @@
         }
       }
     },
+    "Add Environments…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить окружения…"
+          }
+        }
+      }
+    },
     "Add File…" : {
       "localizations" : {
         "ru" : {
@@ -645,12 +777,42 @@
         }
       }
     },
+    "Add Frame" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить рамку"
+          }
+        }
+      }
+    },
+    "Add Image" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку"
+          }
+        }
+      }
+    },
     "Add JEVision to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with this configuration:" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавьте JEVision в MCP-серверы вашего ассистента — например, Claude, Cursor или Copilot — с такой конфигурацией:"
+          }
+        }
+      }
+    },
+    "Add Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить заметку"
           }
         }
       }
@@ -837,6 +999,16 @@
         }
       }
     },
+    "Advanced" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дополнительно"
+          }
+        }
+      }
+    },
     "After" : {
       "localizations" : {
         "ru" : {
@@ -853,6 +1025,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«После» поверх «до»"
+          }
+        }
+      }
+    },
+    "All Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все строки"
           }
         }
       }
@@ -927,6 +1109,16 @@
         }
       }
     },
+    "Always" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда"
+          }
+        }
+      }
+    },
     "An AI model can also check the screen from a sentence like “The cart shows 2 items”." : {
       "localizations" : {
         "ru" : {
@@ -943,6 +1135,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Модель ИИ может проверить экран по фразе вроде «В корзине 2 товара» — там, где сравнение картинок слишком строгое."
+          }
+        }
+      }
+    },
+    "An AI model decides whether the screen means the same. Hidden areas are covered before it sees the screen." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ-модель решает, показывает ли экран то же по смыслу. Скрытые области закрываются, прежде чем она увидит экран."
           }
         }
       }
@@ -993,6 +1195,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Оформление"
+          }
+        }
+      }
+    },
+    "Areas" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Области"
+          }
+        }
+      }
+    },
+    "Areas are the same for the light and dark pictures. Arrow keys move the selected area, Delete removes it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Области общие для светлой и тёмной картинок. Стрелки двигают выбранную область, Delete удаляет её."
+          }
+        }
+      }
+    },
+    "Arrange Automatically" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расставить автоматически"
+          }
+        }
+      }
+    },
+    "As in Test (%u)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в тесте (%u)"
           }
         }
       }
@@ -1227,6 +1469,16 @@
         }
       }
     },
+    "Can’t open the environments file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся открыть файл окружений"
+          }
+        }
+      }
+    },
     "Can’t open this report" : {
       "localizations" : {
         "ru" : {
@@ -1317,6 +1569,36 @@
         }
       }
     },
+    "Capture the %@ Window" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять окно %@"
+          }
+        }
+      }
+    },
+    "Capture the App Window" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять окно приложения"
+          }
+        }
+      }
+    },
+    "Capture the app window as it should look, or choose a picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимите окно приложения таким, каким оно должно быть, или выберите картинку."
+          }
+        }
+      }
+    },
     "Carries encrypted traffic when the iPhone can’t reach this Mac directly. Without one, only the same Wi-Fi or a VPN works." : {
       "localizations" : {
         "ru" : {
@@ -1397,6 +1679,16 @@
         }
       }
     },
+    "Change…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить…"
+          }
+        }
+      }
+    },
     "Check" : {
       "localizations" : {
         "ru" : {
@@ -1463,6 +1755,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите CSV-файл"
+          }
+        }
+      }
+    },
+    "Choose a File…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать файл…"
           }
         }
       }
@@ -1627,12 +1929,32 @@
         }
       }
     },
+    "Command Line" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Командная строка"
+          }
+        }
+      }
+    },
     "Command Line Tool" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Инструмент командной строки"
+          }
+        }
+      }
+    },
+    "Command line, CI, run videos and other settings most people never change." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Командная строка, CI, видео прогонов и другие настройки, которые почти никто не меняет."
           }
         }
       }
@@ -1757,12 +2079,22 @@
         }
       }
     },
-    "Compare only part of the image" : {
+    "Compare" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сравнивать только часть картинки"
+            "value" : "Сравнить"
+          }
+        }
+      }
+    },
+    "Compare Area" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Область сравнения"
           }
         }
       }
@@ -1827,12 +2159,42 @@
         }
       }
     },
+    "Continuous Integration" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Непрерывная интеграция"
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Copy Workflow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать workflow"
           }
         }
       }
@@ -1863,6 +2225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось создать пул-реквест"
+          }
+        }
+      }
+    },
+    "Couldn’t create the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать тест"
           }
         }
       }
@@ -1943,6 +2315,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось включить: %@"
+          }
+        }
+      }
+    },
+    "Covered before a screenshot goes to an AI model or into a report: names, emails, card numbers." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывается, прежде чем снимок экрана попадёт к ИИ-модели или в отчёт: имена, почта, номера карт."
           }
         }
       }
@@ -2037,6 +2419,26 @@
         }
       }
     },
+    "Data Rows: All %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки данных: все %lld"
+          }
+        }
+      }
+    },
+    "Data Rows: Row %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки данных: строка %lld"
+          }
+        }
+      }
+    },
     "Default App" : {
       "localizations" : {
         "ru" : {
@@ -2047,12 +2449,42 @@
         }
       }
     },
+    "Delete" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        }
+      }
+    },
+    "Delete %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить: %@"
+          }
+        }
+      }
+    },
     "Delete Block" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удаление блока"
+          }
+        }
+      }
+    },
+    "Delete Link" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить связь"
           }
         }
       }
@@ -2207,6 +2639,16 @@
         }
       }
     },
+    "Double-click to write a note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дважды щёлкните, чтобы написать заметку"
+          }
+        }
+      }
+    },
     "Downloading the changes…" : {
       "localizations" : {
         "ru" : {
@@ -2237,6 +2679,16 @@
         }
       }
     },
+    "Drag on the picture to draw an area of the chosen kind. Drag an area to move it, its corners to resize it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проведите по картинке, чтобы нарисовать область выбранного вида. Перетащите область, чтобы сдвинуть её, а за углы — чтобы изменить размер."
+          }
+        }
+      }
+    },
     "Drag over a part of the app’s window to check it." : {
       "localizations" : {
         "ru" : {
@@ -2257,6 +2709,76 @@
         }
       }
     },
+    "Drag to choose the first step inside the loop" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы выбрать первый шаг внутри цикла"
+          }
+        }
+      }
+    },
+    "Drag to choose the next step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы выбрать следующий шаг"
+          }
+        }
+      }
+    },
+    "Drag to link No to a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы связать «Нет» с блоком"
+          }
+        }
+      }
+    },
+    "Drag to link Yes to a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы связать «Да» с блоком"
+          }
+        }
+      }
+    },
+    "Drag to resize" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы изменить размер"
+          }
+        }
+      }
+    },
+    "Draw" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рисовать"
+          }
+        }
+      }
+    },
+    "Duplicate" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дублировать"
+          }
+        }
+      }
+    },
     "Edit Block" : {
       "localizations" : {
         "ru" : {
@@ -2267,12 +2789,52 @@
         }
       }
     },
+    "Edit Environments…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить окружения…"
+          }
+        }
+      }
+    },
+    "Edit Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменение заметки"
+          }
+        }
+      }
+    },
+    "Edit Reference…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Редактировать эталон…"
+          }
+        }
+      }
+    },
     "Edit Test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение теста"
+          }
+        }
+      }
+    },
+    "Edit Text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить текст"
           }
         }
       }
@@ -2307,6 +2869,36 @@
         }
       }
     },
+    "Environment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение"
+          }
+        }
+      }
+    },
+    "Environment Values" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значения окружения"
+          }
+        }
+      }
+    },
+    "Environment: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение: %@"
+          }
+        }
+      }
+    },
     "Esc cancels" : {
       "localizations" : {
         "ru" : {
@@ -2333,6 +2925,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все закоммиченные версии этого теста."
+          }
+        }
+      }
+    },
+    "Every pixel must match exactly. Choose Similar in the inspector to let small differences through." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый пиксель должен совпасть точно. Выберите «Похоже» в инспекторе, чтобы пропускать мелкие отличия."
+          }
+        }
+      }
+    },
+    "Every setting goes back to how it was when JEVision was first installed, and JEVision opens again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки вернутся к тем, что были сразу после установки JEVision, и JEVision откроется заново."
           }
         }
       }
@@ -2477,6 +3089,26 @@
         }
       }
     },
+    "First Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первый тест"
+          }
+        }
+      }
+    },
+    "First you choose a folder for your tests. JEVision saves each test there as a file." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала выберите папку для тестов. JEVision сохранит туда каждый тест отдельным файлом."
+          }
+        }
+      }
+    },
     "Flaky" : {
       "localizations" : {
         "ru" : {
@@ -2507,6 +3139,36 @@
         }
       }
     },
+    "Forever" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда хранить"
+          }
+        }
+      }
+    },
+    "Frame" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамка"
+          }
+        }
+      }
+    },
+    "Frame title" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название рамки"
+          }
+        }
+      }
+    },
     "From Left" : {
       "localizations" : {
         "ru" : {
@@ -2517,12 +3179,32 @@
         }
       }
     },
+    "From Left, px" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слева, пикс."
+          }
+        }
+      }
+    },
     "From Top" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сверху"
+          }
+        }
+      }
+    },
+    "From Top, px" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сверху, пикс."
           }
         }
       }
@@ -2637,12 +3319,32 @@
         }
       }
     },
+    "GitHub Actions, on a Mac of your own" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Actions на вашем собственном Mac"
+          }
+        }
+      }
+    },
     "GitHub CLI isn’t installed. Install it from cli.github.com, then run “gh auth login” in Terminal." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub CLI не установлен. Установите его с cli.github.com, затем выполните «gh auth login» в Терминале."
+          }
+        }
+      }
+    },
+    "Groups blocks into a section with a title" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объединяет блоки в раздел с названием"
           }
         }
       }
@@ -2657,12 +3359,32 @@
         }
       }
     },
-    "Height" : {
+    "Height, px" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высота"
+            "value" : "Высота, пикс."
+          }
+        }
+      }
+    },
+    "Hidden Area %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрытая область %lld"
+          }
+        }
+      }
+    },
+    "Hide" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть"
           }
         }
       }
@@ -2787,6 +3509,26 @@
         }
       }
     },
+    "Ignore" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игнорировать"
+          }
+        }
+      }
+    },
+    "Ignored Area %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игнорируемая область %lld"
+          }
+        }
+      }
+    },
     "Image" : {
       "localizations" : {
         "ru" : {
@@ -2823,6 +3565,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В тесте, который запускает этот"
+          }
+        }
+      }
+    },
+    "In dark appearance the light picture is used. To add a dark one, switch the app to dark appearance and capture its window, or choose a file." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В тёмном оформлении используется светлая картинка. Чтобы добавить тёмную, переключите приложение в тёмное оформление и снимите его окно или выберите файл."
           }
         }
       }
@@ -2893,6 +3645,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Установлен в %@, версия %@"
+          }
+        }
+      }
+    },
+    "Installed. The same engine as the app, without a window." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлена. Тот же движок, что в приложении, только без окна."
           }
         }
       }
@@ -2990,6 +3752,16 @@
         }
       }
     },
+    "JEVision needs the Screen Recording permission to take a picture of the app." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы снять окно приложения, JEVision нужно разрешение «Запись экрана»."
+          }
+        }
+      }
+    },
     "JEVision needs two permissions" : {
       "localizations" : {
         "ru" : {
@@ -3036,6 +3808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JUnit XML…"
+          }
+        }
+      }
+    },
+    "Keep run videos for" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранить видео прогонов"
           }
         }
       }
@@ -3130,12 +3912,32 @@
         }
       }
     },
+    "Left out of the comparison: clocks, counters, avatars." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не участвует в сравнении: часы, счётчики, аватары."
+          }
+        }
+      }
+    },
     "Light" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Светлая"
+          }
+        }
+      }
+    },
+    "Link Blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь блоков"
           }
         }
       }
@@ -3210,6 +4012,16 @@
         }
       }
     },
+    "Make your first test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создайте первый тест"
+          }
+        }
+      }
+    },
     "Match" : {
       "localizations" : {
         "ru" : {
@@ -3270,6 +4082,16 @@
         }
       }
     },
+    "Move" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перемещение"
+          }
+        }
+      }
+    },
     "Move JEVision to the Applications folder and open it from there first: the command must point to where the app stays." : {
       "localizations" : {
         "ru" : {
@@ -3310,6 +4132,16 @@
         }
       }
     },
+    "Never" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда"
+          }
+        }
+      }
+    },
     "New Branch" : {
       "localizations" : {
         "ru" : {
@@ -3326,6 +4158,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новая ветка…"
+          }
+        }
+      }
+    },
+    "New Frame" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая рамка"
           }
         }
       }
@@ -3426,6 +4268,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет"
+          }
+        }
+      }
+    },
+    "No Dark Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет тёмной картинки"
+          }
+        }
+      }
+    },
+    "No Environment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без окружения"
+          }
+        }
+      }
+    },
+    "No Reference Image" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет эталонной картинки"
           }
         }
       }
@@ -3620,6 +4492,16 @@
         }
       }
     },
+    "Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка"
+          }
+        }
+      }
+    },
     "Nothing changes in this project" : {
       "localizations" : {
         "ru" : {
@@ -3730,6 +4612,26 @@
         }
       }
     },
+    "Only this part is compared. Without it, the whole image is." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнивается только эта часть. Без неё — вся картинка."
+          }
+        }
+      }
+    },
+    "Only when a test fails" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только если тест провален"
+          }
+        }
+      }
+    },
     "Open" : {
       "localizations" : {
         "ru" : {
@@ -3820,6 +4722,16 @@
         }
       }
     },
+    "Open System Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
     "Open With" : {
       "localizations" : {
         "ru" : {
@@ -3846,6 +4758,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте проект"
+          }
+        }
+      }
+    },
+    "Open a project to get a workflow for it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте проект, чтобы получить для него workflow."
           }
         }
       }
@@ -3920,6 +4842,16 @@
         }
       }
     },
+    "Opens the reference editor" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает редактор эталона"
+          }
+        }
+      }
+    },
     "Opens this list in System Settings" : {
       "localizations" : {
         "ru" : {
@@ -3946,6 +4878,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Или установите сами"
+          }
+        }
+      }
+    },
+    "Other App…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другое приложение…"
           }
         }
       }
@@ -4070,6 +5012,26 @@
         }
       }
     },
+    "Paste" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить"
+          }
+        }
+      }
+    },
+    "Paste After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить после"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "ru" : {
@@ -4156,6 +5118,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешения"
+          }
+        }
+      }
+    },
+    "Pick an app, press Start Recording and use it as usual. You can fine-tune the steps later." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите приложение, нажмите «Начать запись» и пользуйтесь им как обычно. Шаги можно поправить потом."
           }
         }
       }
@@ -4420,6 +5392,16 @@
         }
       }
     },
+    "Record First Test…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать первый тест…"
+          }
+        }
+      }
+    },
     "Record Keys" : {
       "localizations" : {
         "ru" : {
@@ -4430,12 +5412,42 @@
         }
       }
     },
+    "Record a Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись теста"
+          }
+        }
+      }
+    },
     "Record steps by using the app; they go after the selected block (⇧⌘R)" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Записать шаги, работая в приложении; они встанут после выбранного блока (⇧⌘R)"
+          }
+        }
+      }
+    },
+    "Record video" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записывать видео"
+          }
+        }
+      }
+    },
+    "Record what you do in an app — JEVision turns every step into a block. Or start with an empty test and add the steps yourself." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запишите, что вы делаете в приложении, — JEVision превратит каждый шаг в блок. Или начните с пустого теста и добавьте шаги сами."
           }
         }
       }
@@ -4480,6 +5492,16 @@
         }
       }
     },
+    "Redo" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
     "Reference" : {
       "localizations" : {
         "ru" : {
@@ -4506,6 +5528,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Эталон"
+          }
+        }
+      }
+    },
+    "Reference image, %lld by %lld pixels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эталонная картинка, %lld на %lld пикселей"
           }
         }
       }
@@ -4600,6 +5632,16 @@
         }
       }
     },
+    "Rename Frame" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименование рамки"
+          }
+        }
+      }
+    },
     "Rename Test" : {
       "localizations" : {
         "ru" : {
@@ -4640,6 +5682,16 @@
         }
       }
     },
+    "Replace Image" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить картинку"
+          }
+        }
+      }
+    },
     "Replace the reference image with this screenshot" : {
       "localizations" : {
         "ru" : {
@@ -4656,6 +5708,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Репозиторий"
+          }
+        }
+      }
+    },
+    "Reset all settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить все настройки"
+          }
+        }
+      }
+    },
+    "Reset all settings?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить все настройки?"
+          }
+        }
+      }
+    },
+    "Reset and Restart" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить и перезапустить"
+          }
+        }
+      }
+    },
+    "Reset…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить…"
+          }
+        }
+      }
+    },
+    "Resize" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменение размера"
           }
         }
       }
@@ -4740,6 +5842,26 @@
         }
       }
     },
+    "Retries: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторы: %lld"
+          }
+        }
+      }
+    },
+    "Retries: As in Test (%u)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторы: как в тесте (%u)"
+          }
+        }
+      }
+    },
     "Reviewers see what changed and can merge it into the branch you choose." : {
       "localizations" : {
         "ru" : {
@@ -4786,6 +5908,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Правый клик по %@"
+          }
+        }
+      }
+    },
+    "Row %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %lld"
+          }
+        }
+      }
+    },
+    "Row %lld: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка %1$lld: %2$@"
           }
         }
       }
@@ -4900,6 +6042,26 @@
         }
       }
     },
+    "Run tests from Terminal and scripts" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск тестов из Терминала и скриптов"
+          }
+        }
+      }
+    },
+    "Run tests on every pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты на каждый пул-реквест"
+          }
+        }
+      }
+    },
     "Run the test (⌘R)" : {
       "localizations" : {
         "ru" : {
@@ -4916,6 +6078,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выполните эту команду в Терминале и введите пароль:"
+          }
+        }
+      }
+    },
+    "Run videos" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео прогонов"
           }
         }
       }
@@ -4990,6 +6162,16 @@
         }
       }
     },
+    "Runs every test of the open project and saves the results as JUnit XML and HTML reports." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает все тесты открытого проекта и сохраняет результаты в отчёты JUnit XML и HTML."
+          }
+        }
+      }
+    },
     "Runs the blocks inside it once for each row of a CSV file." : {
       "localizations" : {
         "ru" : {
@@ -5026,6 +6208,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить"
+          }
+        }
+      }
+    },
+    "Save it in the repository as .github/workflows/ui-tests.yml. GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраните его в репозитории как .github/workflows/ui-tests.yml. На Mac-раннерах самого GitHub никто не вошёл в систему, поэтому тесты идут на self-hosted-раннере — вашем Mac, на котором пользователь остаётся в системе. Секреты, которые используют тесты, добавьте в секреты репозитория под теми же именами."
           }
         }
       }
@@ -5146,6 +6338,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Секреты"
+          }
+        }
+      }
+    },
+    "Secrets in %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секреты в %@"
           }
         }
       }
@@ -5280,6 +6482,16 @@
         }
       }
     },
+    "Settings are reset. Quit JEVision and open it again to finish." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки сброшены. Закройте JEVision и откройте снова, чтобы закончить."
+          }
+        }
+      }
+    },
     "Set…" : {
       "localizations" : {
         "ru" : {
@@ -5376,6 +6588,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать коммиты, которые меняли тесты этой папки"
+          }
+        }
+      }
+    },
+    "Shows the moment this step began" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает момент, когда начался этот шаг"
           }
         }
       }
@@ -5510,6 +6732,16 @@
         }
       }
     },
+    "Start Recording" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начать запись"
+          }
+        }
+      }
+    },
     "Start Tracking Changes" : {
       "localizations" : {
         "ru" : {
@@ -5576,6 +6808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Шаг %u, %@: %@"
+          }
+        }
+      }
+    },
+    "Step %u: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %1$u: %2$@"
           }
         }
       }
@@ -5656,6 +6898,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Идёт одним путём, если экран совпадает с эталоном, и другим — если нет."
+          }
+        }
+      }
+    },
+    "Taking a picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимаю окно"
           }
         }
       }
@@ -5770,6 +7022,16 @@
         }
       }
     },
+    "The Picture Wasn’t Changed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка не изменена"
+          }
+        }
+      }
+    },
     "The app under test" : {
       "localizations" : {
         "ru" : {
@@ -5846,6 +7108,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Устройство сразу отключится. Чтобы снова им пользоваться, подключите его по новому коду."
+          }
+        }
+      }
+    },
+    "The environment %@ has no value for these names. Add them to %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В окружении %1$@ нет значений с этими именами. Добавьте их в %2$@."
+          }
+        }
+      }
+    },
+    "The environment runs use: where the test finds values such as the server address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение для запусков: откуда тест берёт значения, например адрес сервера"
           }
         }
       }
@@ -5940,6 +7222,16 @@
         }
       }
     },
+    "The picture couldn’t be taken: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось снять окно: %@"
+          }
+        }
+      }
+    },
     "The pictures are the same" : {
       "localizations" : {
         "ru" : {
@@ -5966,6 +7258,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось добавить запись в тест: %@"
+          }
+        }
+      }
+    },
+    "The reference image is outside the project, so JEVision doesn’t change it. Choose a picture inside the project in the inspector first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эталонная картинка лежит вне проекта, поэтому JEVision её не меняет. Сначала выберите в инспекторе картинку внутри проекта."
           }
         }
       }
@@ -6000,12 +7302,32 @@
         }
       }
     },
+    "The same engine as the app, without a window." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тот же движок, что в приложении, только без окна."
+          }
+        }
+      }
+    },
     "The same part of %@ changed here and on the server, so the changes can’t be combined automatically. Nothing was changed; your files are as they were." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Одна и та же часть %@ изменилась и здесь, и на сервере, поэтому изменения не объединить автоматически. Ничего не изменено: файлы остались как были."
+          }
+        }
+      }
+    },
+    "The screen is locked. Unlock it and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран заблокирован. Разблокируйте его и попробуйте снова."
           }
         }
       }
@@ -6046,6 +7368,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На сервере есть изменения, которых у вас ещё нет. Сначала получите их, затем отправьте снова."
+          }
+        }
+      }
+    },
+    "The share of pixels that must look the same as in the reference. Around %@ lets small differences through, like smoothed text or a blinking cursor; %@ wants every pixel to match." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доля пикселей, которые должны выглядеть как в эталоне. Около %@ пропускает мелкие отличия вроде сглаженного текста или мигающего курсора; %@ требует совпадения каждого пикселя."
           }
         }
       }
@@ -6100,12 +7432,42 @@
         }
       }
     },
+    "The test is saved in the open project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест сохранится в открытом проекте."
+          }
+        }
+      }
+    },
+    "The test reads these values from an environment, and the project has none. Add environments to %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест берёт эти значения из окружения, а в проекте окружений нет. Добавьте их в %@."
+          }
+        }
+      }
+    },
     "The test stopped before its first step." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест остановился до первого шага."
+          }
+        }
+      }
+    },
+    "The test types these values in %@. They’re kept in the Keychain and never shown." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест вводит эти значения в окружении %@. Они хранятся в Связке ключей и никогда не показываются."
           }
         }
       }
@@ -6120,12 +7482,32 @@
         }
       }
     },
+    "The value is kept in the Keychain on this Mac for %@ runs. JEVision types it during runs and never shows it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение хранится в Связке ключей этого Mac для запусков в окружении %@. JEVision вводит его во время запусков и никогда не показывает."
+          }
+        }
+      }
+    },
     "The value is kept in the Keychain on this Mac. JEVision types it during runs and never shows it." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значение хранится в Связке ключей на этом Mac. JEVision вводит его во время прогона и никогда не показывает."
+          }
+        }
+      }
+    },
+    "The whole image is compared" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнивается вся картинка"
           }
         }
       }
@@ -6166,6 +7548,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ветка «%@» уже есть."
+          }
+        }
+      }
+    },
+    "There’s no picture at %@. Capture the app window or choose a file to make one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По пути %@ нет картинки. Снимите окно приложения или выберите файл, чтобы она появилась."
           }
         }
       }
@@ -6256,6 +7648,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этой копии JEVision нет инструмента командной строки."
+          }
+        }
+      }
+    },
+    "This file can’t be read as a PNG picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот файл не читается как PNG-картинка."
           }
         }
       }
@@ -6570,6 +7972,16 @@
         }
       }
     },
+    "Undo" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
     "Undo Last Step" : {
       "localizations" : {
         "ru" : {
@@ -6650,6 +8062,16 @@
         }
       }
     },
+    "Untitled Frame" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рамка без названия"
+          }
+        }
+      }
+    },
     "Untitled Test" : {
       "localizations" : {
         "ru" : {
@@ -6720,12 +8142,32 @@
         }
       }
     },
+    "Variables" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переменные"
+          }
+        }
+      }
+    },
     "Version" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Версия"
+          }
+        }
+      }
+    },
+    "Video" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео"
           }
         }
       }
@@ -6910,12 +8352,12 @@
         }
       }
     },
-    "Width" : {
+    "Width, px" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ширина"
+            "value" : "Ширина, пикс."
           }
         }
       }
@@ -7006,6 +8448,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ваше имя"
+          }
+        }
+      }
+    },
+    "Your tests, the open project, secrets and API keys stay." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты, открытый проект, секреты и API-ключи останутся."
           }
         }
       }
@@ -7214,6 +8666,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leads to “%@”, but there’s no such block."
+          }
+        }
+      }
+    },
+    "flow.env.partial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The value %@ is missing in these environments: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значения %1$@ нет в окружениях: %2$@."
+          }
+        }
+      }
+    },
+    "flow.env.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No environment has the value %@. Add it to %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни в одном окружении нет значения %1$@. Добавьте его в %2$@."
+          }
+        }
+      }
+    },
+    "flow.environments.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать %1$@: %2$@."
           }
         }
       }
@@ -7511,13 +9011,13 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME} или ${data.column}."
+            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME}, ${env.NAME} или ${data.column}."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” isn’t a valid placeholder. Use ${secret.NAME} or ${data.column}."
+            "value" : "“%@” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME} or ${data.column}."
           }
         }
       }
@@ -8340,6 +9840,22 @@
         }
       }
     },
+    "run.data.noRow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the table %@ has %@ rows, so there’s no row %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: в таблице %2$@ строк: %3$@, строки %4$@ нет."
+          }
+        }
+      }
+    },
     "run.data.unknownColumn" : {
       "localizations" : {
         "en" : {
@@ -8368,6 +9884,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: не удаётся прочитать таблицу %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.env.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The environment %@ has no value %@. Add it to %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В окружении %1$@ нет значения %2$@. Добавьте его в %3$@."
+          }
+        }
+      }
+    },
+    "run.env.notChosen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test reads the environment value %@, but no environment is chosen. Add one to %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест берёт значение окружения %1$@, но окружение не выбрано. Добавьте окружение в %2$@."
+          }
+        }
+      }
+    },
+    "run.env.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s no environment %@ in %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В %2$@ нет окружения %1$@."
+          }
+        }
+      }
+    },
+    "run.environments.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать %1$@: %2$@."
           }
         }
       }

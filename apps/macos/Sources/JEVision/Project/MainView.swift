@@ -7,6 +7,9 @@ struct MainView: View {
   @Environment(\.openWindow) private var openWindow
   @Environment(\.undoManager) private var undoManager
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
+  /// The New Test sheet was opened to record: the test it creates is recorded once it closes.
+  @State private var recordsNewTest = false
+  @State private var createdTestToRecord = false
 
   var body: some View {
     @Bindable var project = project
@@ -31,15 +34,22 @@ struct MainView: View {
           .accessibilityLabel(Text("Looking for tests"))
       case .ready where project.items.isEmpty:
         EmptyStateView(
-          symbol: "doc.badge.plus",
+          symbol: "record.circle",
           title: Text("No tests yet"),
-          message: Text("A test is a chain of steps JEVision repeats in an app: open it, click, type, check how the screen looks."),
-          action: Text("New Test…"), perform: { project.isCreatingTest = true })
+          message: Text("Record what you do in an app — JEVision turns every step into a block. Or start with an empty test and add the steps yourself."),
+          action: Text("Record First Test…"),
+          perform: {
+            recordsNewTest = true
+            project.isCreatingTest = true
+          },
+          secondAction: Text("New Test…"), performSecond: { project.isCreatingTest = true })
       case .ready:
         ProjectView()
       }
     }
-    .sheet(isPresented: $project.isCreatingTest) { NewTestSheet() }
+    .sheet(isPresented: $project.isCreatingTest, onDismiss: recordCreatedTest) {
+      NewTestSheet(records: recordsNewTest) { createdTestToRecord = recordsNewTest }
+    }
     .sheet(isPresented: Binding(get: { project.historyPath != nil }, set: { if !$0 { project.historyPath = nil } })) {
       if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
     }
@@ -64,5 +74,11 @@ struct MainView: View {
     .onAppear {
       if !onboardingDone { openWindow(id: SceneID.onboarding) }
     }
+  }
+
+  private func recordCreatedTest() {
+    defer { (recordsNewTest, createdTestToRecord) = (false, false) }
+    guard createdTestToRecord, let document = project.document else { return }
+    records.record(document)
   }
 }

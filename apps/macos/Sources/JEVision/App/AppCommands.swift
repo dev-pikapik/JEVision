@@ -6,6 +6,7 @@ struct AppCommands: Commands {
   let records: RecordCenter
   @Environment(\.openWindow) private var openWindow
   @FocusedValue(\.canvasZoom) private var zoom
+  @FocusedValue(\.canvasDocument) private var canvas
 
   var body: some Commands {
     CommandGroup(after: .appSettings) {
@@ -19,6 +20,11 @@ struct AppCommands: Commands {
         .keyboardShortcut("o")
       Button("Show Project in Finder") { project.revealRoot() }
         .disabled(project.rootURL == nil)
+    }
+    CommandGroup(after: .pasteboard) {
+      Button("Duplicate") { canvas?.duplicate() }
+        .keyboardShortcut("d")
+        .disabled(canvas?.picked.isEmpty ?? true)
     }
     CommandGroup(after: .toolbar) {
       Button("Zoom In") { zoom?.wrappedValue = Zoom.step(zoom?.wrappedValue ?? 1, up: true) }

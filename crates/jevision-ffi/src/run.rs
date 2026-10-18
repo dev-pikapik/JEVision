@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use jevision_core::{MouseButton, Point};
 use jevision_runner::{
-    PauseReason, RunControl, Runner, Screenshot, StepStatus, Verdict, VisionAnswer, VisionJudge,
+    PauseReason, RunControl, Runner, Screenshot, StepStatus, Verdict, VideoMode, VisionAnswer,
+    VisionJudge,
 };
 
 use crate::vision::VisionSettings;
@@ -94,12 +95,18 @@ pub trait Hands: Send + Sync {
     /// Whether a person moved the mouse or typed since the last call; the object's own
     /// synthetic input does not count.
     fn user_input_detected(&self) -> bool;
+    /// Starts recording the app's windows into an `.mp4` at `path`. The video's first moment is
+    /// the moment of this call; the app may not be running yet.
+    fn start_video(&self, app: String, path: String) -> Result<(), HandsError>;
+    /// Stops the recording and finishes the file; a recording without a picture leaves none.
+    fn stop_video(&self) -> Result<(), HandsError>;
 }
 
 /// Values for `${secret.NAME}`. Asked once per secret before the first block runs.
 #[uniffi::export(with_foreign)]
 pub trait SecretSource: Send + Sync {
-    fn secret(&self, name: String) -> Option<String>;
+    /// `environment` is the run's environment: a secret may have a value of its own there.
+    fn secret(&self, name: String, environment: Option<String>) -> Option<String>;
 }
 
 /// Receives a run's progress on the run's thread: every [`RunEvent`], then [`RunOutcome`].
@@ -116,6 +123,13 @@ pub struct RunOptions {
     pub start_at: Option<String>,
     /// Overrides the test's `retries`.
     pub retries: Option<u32>,
+    /// Environment from the project's `jevision.environments.json` for `${env.NAME}`; it also
+    /// picks the secrets of that environment.
+    #[uniffi(default = None)]
+    pub environment: Option<String>,
+    /// Runs only this row, counted from 0, of every `useData` table.
+    #[uniffi(default = None)]
+    pub data_row: Option<u32>,
     /// The model for checks by meaning; without one they fail with a clear message.
     pub vision: Option<VisionSettings>,
     /// Checks by meaning may only use a model on this Mac.
@@ -123,6 +137,12 @@ pub struct RunOptions {
     /// Name of the paired device that asked for the run, saved in the report.
     #[uniffi(default = None)]
     pub requested_by: Option<String>,
+    /// Whether to record a video of the app, and which videos to keep.
+    pub video: VideoMode,
+    /// Videos of the project's runs older than this many days are deleted after the run;
+    /// `None` keeps them all.
+    #[uniffi(default = None)]
+    pub keep_videos_days: Option<u32>,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -225,7 +245,7 @@ pub(crate) fn run(
     control: RunControl,
 ) -> RunOutcome {
     let hands = HandsAdapter(hands);
-    let secrets = SecretAdapter(secrets);
+    let secrets = SecretAdapter(secrets, options.environment.clone());
     let vision = options.vision.and_then(|v| v.client().ok());
     let runner = Runner {
         hands: &hands,
@@ -237,16 +257,25 @@ pub(crate) fn run(
     let options = jevision_runner::RunOptions {
         start_at: options.start_at,
         retries: options.retries,
+        environment: options.environment,
+        data_row: options.data_row.map(|row| row as usize),
         local_only: options.local_only,
         requested_by: options.requested_by,
+        video: options.video,
+        keep_videos_for: options
+            .keep_videos_days
+            .map(|days| std::time::Duration::from_secs(u64::from(days) * 24 * 60 * 60)),
         ..Default::default()
     };
     match runner.run(Path::new(project), Path::new(test), &options) {
         Ok(run) => {
             let html_path = run.dir.join("report.html");
-            let html = std::fs::write(&html_path, jevision_runner::html(&run.report, &run.dir))
-                .ok()
-                .map(|()| path(&html_path));
+            let html = std::fs::write(
+                &html_path,
+                jevision_runner::html(&run.report, &run.dir, run.report.video.as_deref()),
+            )
+            .ok()
+            .map(|()| path(&html_path));
             // For CI: a missing file only costs the export, not the run.
             let _ = std::fs::write(
                 run.dir.join("junit.xml"),
@@ -333,13 +362,21 @@ impl jevision_runner::Hands for HandsAdapter {
     fn user_input_detected(&self) -> bool {
         self.0.user_input_detected()
     }
+
+    fn start_video(&self, app: &str, file: &Path) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.start_video(app.to_owned(), path(file))?)
+    }
+
+    fn stop_video(&self) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.stop_video()?)
+    }
 }
 
-struct SecretAdapter(Arc<dyn SecretSource>);
+struct SecretAdapter(Arc<dyn SecretSource>, Option<String>);
 
 impl jevision_runner::SecretSource for SecretAdapter {
     fn secret(&self, name: &str) -> Option<String> {
-        self.0.secret(name.to_owned())
+        self.0.secret(name.to_owned(), self.1.clone())
     }
 }
 
@@ -393,9 +430,11 @@ pub enum RunEvent {
         attempt: u32,
         step: Step,
     },
+    /// `variables` are the values visible to `block`, secrets masked.
     Paused {
         block: String,
         reason: PauseReason,
+        variables: HashMap<String, String>,
     },
     Resumed,
     AttemptFinished {
@@ -445,7 +484,15 @@ impl From<jevision_runner::Event> for RunEvent {
                 attempt,
                 step: (*step).into(),
             },
-            E::Paused { block, reason } => Self::Paused { block, reason },
+            E::Paused {
+                block,
+                reason,
+                variables,
+            } => Self::Paused {
+                block,
+                reason,
+                variables: variables.into_iter().collect(),
+            },
             E::Resumed => Self::Resumed,
             E::AttemptFinished {
                 attempt,
@@ -488,6 +535,12 @@ pub struct RunReport {
     /// this Mac.
     #[uniffi(default = None)]
     pub requested_by: Option<String>,
+    /// Environment of the project the run used.
+    #[uniffi(default = None)]
+    pub environment: Option<String>,
+    /// Video of the run, relative to the run folder.
+    #[uniffi(default = None)]
+    pub video: Option<String>,
     pub attempts: Vec<Attempt>,
 }
 
@@ -503,6 +556,8 @@ impl From<jevision_runner::RunReport> for RunReport {
             flaky: r.flaky,
             baselines_created: r.baselines_created,
             requested_by: r.requested_by,
+            environment: r.environment,
+            video: r.video,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }
@@ -549,6 +604,9 @@ pub struct Step {
     pub vision: Option<VisionAnswer>,
     pub branch: Option<String>,
     pub failure: Option<Failure>,
+    /// When the block started, in milliseconds from the start of the run's video.
+    #[uniffi(default = None)]
+    pub video_at_ms: Option<u64>,
 }
 
 impl From<jevision_runner::Step> for Step {
@@ -569,6 +627,7 @@ impl From<jevision_runner::Step> for Step {
             vision: s.vision,
             branch: s.branch,
             failure: s.failure.map(Into::into),
+            video_at_ms: s.video_at_ms,
         }
     }
 }
@@ -631,6 +690,14 @@ pub enum StepStatus {
     Failed,
     BaselineCreated,
     Cancelled,
+}
+
+#[uniffi::remote(Enum)]
+pub enum VideoMode {
+    Off,
+    /// Records every run and keeps the video only when the run failed.
+    OnFailure,
+    Always,
 }
 
 #[uniffi::remote(Enum)]
@@ -702,6 +769,18 @@ pub(crate) mod tests {
         fn user_input_detected(&self) -> bool {
             false
         }
+
+        fn start_video(&self, app: String, path: String) -> Result<(), HandsError> {
+            self.note(format!("video {app}"));
+            std::fs::write(path, b"movie").map_err(|e| HandsError::Failed {
+                reason: e.to_string(),
+            })
+        }
+
+        fn stop_video(&self) -> Result<(), HandsError> {
+            self.note("video end".to_owned());
+            Ok(())
+        }
     }
 
     impl Fake {
@@ -713,7 +792,7 @@ pub(crate) mod tests {
     pub(crate) struct Secrets;
 
     impl SecretSource for Secrets {
-        fn secret(&self, name: String) -> Option<String> {
+        fn secret(&self, name: String, _: Option<String>) -> Option<String> {
             (name == "PASSWORD").then(|| SECRET.to_owned())
         }
     }
@@ -855,7 +934,8 @@ pub(crate) mod tests {
             next(),
             RunEvent::Paused {
                 block: "open".into(),
-                reason: PauseReason::Step
+                reason: PauseReason::Step,
+                variables: HashMap::new(),
             }
         );
         assert!(run.is_paused());

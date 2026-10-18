@@ -91,7 +91,7 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 struct RunHUD: View {
   static let width = 336.0
   /// Tall enough for the longest state; the empty part below the HUD lets clicks through.
-  static let height = 340.0
+  static let height = 460.0
   let center: RunCenter
 
   var body: some View {
@@ -153,6 +153,10 @@ struct RunHUD: View {
 
     currentBlock(state, document: document)
 
+    if state.isPaused, !state.variables.isEmpty {
+      variables(state.variables)
+    }
+
     if state.phase == .paused(.userInput) {
       Label("Paused — you moved the mouse. Resume when your hands are off.", systemImage: "hand.raised.fill")
         .font(.callout)
@@ -211,6 +215,37 @@ struct RunHUD: View {
       }
       .accessibilityElement(children: .combine)
     }
+  }
+
+  /// The values the next block sees, while the test waits.
+  private func variables(_ values: [String: String]) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Variables")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+      ScrollView {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 8, verticalSpacing: 3) {
+          ForEach(values.sorted { $0.key < $1.key }, id: \.key) { name, value in
+            GridRow {
+              Text(verbatim: name)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+              Text(verbatim: value.isEmpty ? "\u{201C}\u{201D}" : value)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+          }
+        }
+        .font(.caption.monospaced())
+      }
+      .frame(maxHeight: 84)
+    }
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text("Variables"))
   }
 
   /// What the run is doing, in a few words.

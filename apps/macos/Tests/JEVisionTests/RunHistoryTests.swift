@@ -182,3 +182,11 @@ struct BaselineTests {
     #expect(Baseline.file("../project-other/a.png", in: root) == nil)
   }
 }
+
+struct RunVideoViewTests {
+  @Test func clockShowsMinutesAndSeconds() {
+    #expect(RunVideoView.clock(0) == "0:00")
+    #expect(RunVideoView.clock(61.9) == "1:01")
+    #expect(RunVideoView.clock(.nan) == "0:00")
+  }
+}

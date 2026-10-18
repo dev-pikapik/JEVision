@@ -124,13 +124,46 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
 - **`app`** is the bundle identifier of the application under test.
 - **Paths** (reference images, data files, other tests) are relative to the folder of the test file.
 - **Secrets are never stored in the file.** `${secret.NAME}` refers to a secret by name; its value
-  comes from the environment or the Keychain at run time. `${data.COLUMN}` is a value from the
-  current row of a `useData` table. Both are allowed in the text of a `type` block.
+  comes from the environment or the Keychain at run time. `${env.NAME}` is a value of the chosen
+  environment (see below). `${data.COLUMN}` is a value from the current row of a `useData` table.
+  All three are allowed in the text of a `type` block.
 - **Arrows** are `next`, `then`/`else` and `body`. A loop is only possible through the `body` of
   `repeat` or `useData`; any other cycle is an error.
 - **Optional metadata:** `description`, `testType` (`smoke`, `regression`, `acceptance`),
   `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
   `tags` and `retries`.
+- **`canvas`** (optional) keeps how the test looks in the editor: `positions` of blocks moved by
+  hand, `sections` (titled frames around a part of the test) and `notes` (text with its author,
+  time and frame). It never changes how the test runs; without it the blocks are laid out
+  automatically.
+
+### Environments
+
+One test can run against staging, production or a local server. Values that differ between them,
+such as a server address or a user name, go into `jevision.environments.json` in the project
+folder, next to the tests, and are committed with them:
+
+```json
+{
+  "format": 1,
+  "environments": {
+    "production": { "BASE_URL": "https://example.com" },
+    "staging": { "BASE_URL": "https://staging.example.com", "USER": "qa" }
+  }
+}
+```
+
+- Environment names use letters, digits, `-` and `_`; value names use letters, digits and `_`.
+- A test reads a value as `${env.BASE_URL}`. `jevision validate` and the editor report a name
+  no environment has as an error, and a name only some environments have as a warning.
+- The file is never for secrets. A secret can still differ per environment: the app saves it in
+  the Keychain for the environment chosen when you set it. At run time a secret comes from the
+  environment variable `NAME`, then from the Keychain item of the chosen environment, then from
+  the one shared by all environments.
+- In the app, pick the environment at the foot of the sidebar or in the Run menu, which also
+  picks one data row (or all of them) and the number of retries for the next runs. The choice of
+  environment is kept per project on this Mac. Before a run the app lists the names of missing
+  values and secrets, never the values. The report says which environment the run used.
 
 `jevision fmt` rewrites test files in canonical form (see [Command line](#command-line)). The canonical form has a fixed key order, lists blocks in reading order and leaves out default
 values, so every change shows up as a small, readable diff.
@@ -195,7 +228,9 @@ is installed and which version.
 ```sh
 jevision run tests/                       # run every *.flow.json in tests/ and save reports
 jevision run tests/sign-in.flow.json --start-at submit
+jevision run tests/ --env staging         # read ${env.NAME} from the staging environment
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
+jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
@@ -215,7 +250,8 @@ files are valid and formatted). **1** means a test failed or was stopped, or a f
   list in System Settings → Privacy & Security where to turn it on.
 - **Secrets** (`${secret.NAME}`) come from the environment variable `NAME` or from the Keychain,
   where the app saves them. The first time `jevision` reads a Keychain secret, macOS may ask to
-  allow it; choose Always Allow for unattended runs. Values are never printed.
+  allow it; choose Always Allow for unattended runs. Values are never printed. With `--env`, the
+  Keychain item of that environment comes first (see [Environments](#environments)).
 - **AI models** for checks by meaning are the ones chosen in the app's Settings → AI, unless
   `--provider` and `--model` say otherwise. API keys come from the same environment variables or
   the Keychain.
@@ -318,7 +354,7 @@ Without `--project`, the project is the nearest folder above the current one tha
 | `add_blocks`, `remove_block` | Edit a test the way the editor does |
 | `validate_test` | Checks a test or a folder of tests |
 | `list_block_types` | Describes the file format and every block type, with examples |
-| `run_test`, `get_run`, `stop_run` | Run a test or a folder, wait for the result, stop it |
+| `run_test`, `get_run`, `stop_run` | Run a test or a folder (optionally in an environment, `env`), wait for the result, stop it |
 | `get_report` | A run's verdict, steps, failures, AI model answers and, on request, screenshots |
 | `screenshot` | The front window of an app as it is now |
 

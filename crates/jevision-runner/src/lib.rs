@@ -10,12 +10,13 @@
 
 mod control;
 mod data;
+mod env;
 mod image;
 mod report;
 mod run;
 
 use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub use control::{PauseReason, RunControl};
 pub use data::DataTable;
@@ -29,7 +30,7 @@ pub use report::{
     Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer, describe,
     describe_vision, html, junit_xml,
 };
-pub use run::{Run, RunOptions, Runner, vision_failure};
+pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
 
 /// Shown instead of a secret value wherever a secret would otherwise appear.
 pub const SECRET_MASK: &str = "••••";
@@ -80,6 +81,13 @@ pub trait Hands: Send + Sync {
     /// Whether a person moved the mouse or typed since the last call; synthetic input sent by
     /// this object does not count. A `true` pauses the run.
     fn user_input_detected(&self) -> bool;
+    /// Starts recording a video of the application's windows into the file at `path`. The
+    /// video's first moment is the moment of this call, so times measured from it line up.
+    /// The application may not be running yet: its windows appear once it opens them.
+    fn start_video(&self, app: &str, path: &Path) -> Result<(), HandsError>;
+    /// Stops the recording and finishes the file. A recording that caught no picture leaves
+    /// no file.
+    fn stop_video(&self) -> Result<(), HandsError>;
 }
 
 /// A captured window.
@@ -179,6 +187,8 @@ pub enum Event {
     Paused {
         block: String,
         reason: PauseReason,
+        /// Values visible to `block`, secrets masked: what a person debugging the test looks at.
+        variables: BTreeMap<String, String>,
     },
     Resumed,
     AttemptFinished {

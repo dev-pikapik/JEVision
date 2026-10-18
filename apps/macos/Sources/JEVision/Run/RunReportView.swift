@@ -1,3 +1,4 @@
+import AVKit
 import AppKit
 import JEVisionCore
 import QuickLook
@@ -18,6 +19,7 @@ struct RunReportView: View {
   @State private var expanded: Set<UInt32> = []
   @State private var preview: URL?
   @State private var failure: String?
+  @State private var player: AVPlayer?
 
   var body: some View {
     Group {
@@ -46,6 +48,7 @@ struct RunReportView: View {
     do {
       let loaded = try loadRun(dir: dir)
       run = loaded
+      player = RunVideoView.file(of: loaded).map(AVPlayer.init(url:))
       attempt = max(0, loaded.report.attempts.count - 1)
       // A failure or a new reference is what the report is opened for: show it at once.
       let new = loaded.report.attempts.last?.steps.filter { $0.status == .baselineCreated }.map(\.seq) ?? []
@@ -73,6 +76,9 @@ struct RunReportView: View {
           openFailedBlock: { step in project.showBlock(step.block, in: step.test) },
           runAgain: { runAgain(report) },
           export: { export(run, as: $0) })
+        if let player {
+          RunVideoView(player: player, steps: steps)
+        }
         VStack(alignment: .leading, spacing: 8) {
           HStack {
             Text("Steps")
@@ -100,7 +106,10 @@ struct RunReportView: View {
                 StepRow(
                   step: step, run: run, flow: flows[step.test], isExpanded: expanded.contains(step.seq),
                   toggle: {
-                    if expanded.remove(step.seq) == nil { expanded.insert(step.seq) }
+                    if expanded.remove(step.seq) == nil {
+                      expanded.insert(step.seq)
+                      if let player { RunVideoView.seek(player, to: step) }
+                    }
                   },
                   preview: { preview = $0 },
                   failure: $failure)
@@ -227,7 +236,8 @@ private struct ReportHeader: View {
 
   private func meta(_ report: RunReport) -> String {
     let when = run.startedAt.formatted(date: .abbreviated, time: .shortened)
-    let parts = [report.test, when, RunHistory.duration(report.durationMs)]
+    let environment = report.environment.map { String(localized: "Environment: \($0)") }
+    let parts = [report.test, when, environment ?? "", RunHistory.duration(report.durationMs)]
     return parts.filter { !$0.isEmpty }.joined(separator: " · ")
   }
 }

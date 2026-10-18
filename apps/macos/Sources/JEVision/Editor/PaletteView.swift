@@ -1,16 +1,54 @@
 import JEVisionCore
 import SwiftUI
 
-/// Searchable list of block types. ↑↓ move, Return adds, Escape closes.
+/// What the palette adds.
+enum PaletteChoice: Hashable {
+  case block(String)
+  case note
+  case frame
+
+  var title: String {
+    switch self {
+    case .block(let type): BlockInfo.title(type)
+    case .note: String(localized: "Note")
+    case .frame: String(localized: "Frame")
+    }
+  }
+
+  var explanation: String {
+    switch self {
+    case .block(let type): BlockInfo.explanation(type)
+    case .note: String(localized: "A sticky note for whoever reads the test")
+    case .frame: String(localized: "Groups blocks into a section with a title")
+    }
+  }
+}
+
+/// Searchable list of block types, then a note and a frame. ↑↓ move, Return adds, Escape closes.
 struct PaletteView: View {
-  let pick: (String) -> Void
+  static let size = CGSize(width: 380, height: 420)
+  let pick: (PaletteChoice) -> Void
   let close: () -> Void
   @State private var query = ""
-  @State private var highlighted: String?
+  @State private var highlighted: PaletteChoice?
   @FocusState private var searchFocused: Bool
 
+  private var trimmedQuery: String { query.trimmingCharacters(in: .whitespaces) }
+
+  /// The note and the frame, when they match the search.
+  private var extras: [PaletteChoice] {
+    [PaletteChoice.note, .frame].filter {
+      trimmedQuery.isEmpty || $0.title.localizedStandardContains(trimmedQuery)
+        || $0.explanation.localizedStandardContains(trimmedQuery)
+    }
+  }
+
+  private var choices: [PaletteChoice] {
+    matches.map { .block($0.typeName) } + extras
+  }
+
   private var matches: [BlockSpec] {
-    let q = query.trimmingCharacters(in: .whitespaces)
+    let q = trimmedQuery
     guard !q.isEmpty else { return BlockInfo.catalog }
     return BlockInfo.catalog.filter {
       BlockInfo.title($0.typeName).localizedStandardContains(q)
@@ -44,11 +82,28 @@ struct PaletteView: View {
           ForEach(groups, id: \.0) { group, specs in
             Section(BlockInfo.groupTitle(group)) {
               ForEach(specs, id: \.typeName) { spec in
-                PaletteRow(spec: spec)
-                  .tag(spec.typeName)
-                  .id(spec.typeName)
-                  .contentShape(.rect)
-                  .onTapGesture { pick(spec.typeName) }
+                PaletteRow(
+                  symbol: BlockInfo.symbol(spec.typeName), color: BlockInfo.color(spec.group),
+                  title: Text(BlockInfo.title(spec.typeName)), explanation: Text(BlockInfo.explanation(spec.typeName))
+                )
+                .tag(PaletteChoice.block(spec.typeName))
+                .id(PaletteChoice.block(spec.typeName))
+                .contentShape(.rect)
+                .onTapGesture { pick(.block(spec.typeName)) }
+              }
+            }
+          }
+          if !extras.isEmpty {
+            Section("Canvas") {
+              ForEach(extras, id: \.self) { choice in
+                PaletteRow(
+                  symbol: choice == .note ? "note.text" : "rectangle.dashed", color: choice == .note ? .yellow : .gray,
+                  title: Text(choice.title), explanation: Text(choice.explanation)
+                )
+                .tag(choice)
+                .id(choice)
+                .contentShape(.rect)
+                .onTapGesture { pick(choice) }
               }
             }
           }
@@ -56,18 +111,18 @@ struct PaletteView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .overlay {
-          if matches.isEmpty { ContentUnavailableView.search(text: query) }
+          if choices.isEmpty { ContentUnavailableView.search(text: query) }
         }
         .onChange(of: highlighted) { if let highlighted { proxy.scrollTo(highlighted) } }
       }
     }
-    .frame(width: 380, height: 420)
+    .frame(width: Self.size.width, height: Self.size.height)
     .glassEffect(.regular, in: .rect(cornerRadius: 20))
     .onAppear {
       searchFocused = true
-      highlighted = matches.first?.typeName
+      highlighted = choices.first
     }
-    .onChange(of: query) { highlighted = matches.first?.typeName }
+    .onChange(of: query) { highlighted = choices.first }
     .onKeyPress(.downArrow) { move(1) }
     .onKeyPress(.upArrow) { move(-1) }
     .onKeyPress(.escape) {
@@ -80,7 +135,7 @@ struct PaletteView: View {
   }
 
   private func move(_ step: Int) -> KeyPress.Result {
-    let ids = matches.map(\.typeName)
+    let ids = choices
     guard !ids.isEmpty else { return .handled }
     let index = highlighted.flatMap(ids.firstIndex) ?? (step > 0 ? -1 : ids.count)
     highlighted = ids[min(max(index + step, 0), ids.count - 1)]
@@ -88,19 +143,22 @@ struct PaletteView: View {
   }
 
   private func submit() {
-    if let type = highlighted ?? matches.first?.typeName { pick(type) }
+    if let choice = highlighted ?? choices.first { pick(choice) }
   }
 }
 
 private struct PaletteRow: View {
-  let spec: BlockSpec
+  let symbol: String
+  let color: Color
+  let title: Text
+  let explanation: Text
 
   var body: some View {
     HStack(spacing: 10) {
-      IconTile(symbol: BlockInfo.symbol(spec.typeName), color: BlockInfo.color(spec.group), size: 28)
+      IconTile(symbol: symbol, color: color, size: 28)
       VStack(alignment: .leading, spacing: 1) {
-        Text(BlockInfo.title(spec.typeName))
-        Text(BlockInfo.explanation(spec.typeName))
+        title
+        explanation
           .font(.caption)
           .foregroundStyle(.secondary)
           .lineLimit(2)
