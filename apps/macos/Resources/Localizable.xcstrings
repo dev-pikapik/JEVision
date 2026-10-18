@@ -153,6 +153,16 @@
         }
       }
     },
+    "%@ typical · %@ at most for 95%%" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ обычно · %@ максимум для 95%%"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "ru" : {
@@ -447,6 +457,110 @@
         }
       }
     },
+    "%lld failed" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld failed"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld failed"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld упал"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld упали"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld упали"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld упали"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld failures" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld failure"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld failures"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld падение"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld падения"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld падений"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld падения"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld files" : {
       "localizations" : {
         "en" : {
@@ -495,6 +609,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld of %lld failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Упали: %lld из %lld"
           }
         }
       }
@@ -551,6 +675,58 @@
         }
       }
     },
+    "%lld passed on a retry" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld passed on a retry"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld passed on a retry"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld прошёл с повтора"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld прошли с повтора"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld прошли с повтора"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld прошли с повтора"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld rows" : {
       "localizations" : {
         "en" : {
@@ -596,6 +772,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld строки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld runs" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld run"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld runs"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld запуск"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld запуска"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld запусков"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld запуска"
                 }
               }
             }
@@ -769,6 +997,68 @@
         }
       }
     },
+    "%lld× %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld× %@"
+          }
+        }
+      }
+    },
+    ", and %lld runs passed only on a retry" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", and %lld run passed only on a retry"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", and %lld runs passed only on a retry"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", а %lld запуск прошёл только с повтора"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", а %lld запуска прошли только с повтора"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", а %lld запусков прошли только с повтора"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", а %lld запуска прошли только с повтора"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "1. Open JEVision on your iPhone" : {
       "localizations" : {
         "ru" : {
@@ -805,6 +1095,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ветка держит изменения отдельно, пока они не готовы. Текущие изменения перейдут в неё."
+          }
+        }
+      }
+    },
+    "A new issue" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая задача"
           }
         }
       }
@@ -969,6 +1269,16 @@
         }
       }
     },
+    "Actual" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получено"
+          }
+        }
+      }
+    },
     "Actual Size" : {
       "localizations" : {
         "ru" : {
@@ -1045,6 +1355,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить столбец"
+          }
+        }
+      }
+    },
+    "Add Comment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить комментарий"
           }
         }
       }
@@ -1487,6 +1807,16 @@
         }
       }
     },
+    "All-Time Statistics…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика за всё время…"
+          }
+        }
+      }
+    },
     "Allow" : {
       "localizations" : {
         "ru" : {
@@ -1697,6 +2027,16 @@
         }
       }
     },
+    "Areas the project always hides are painted over. Screenshots are saved in the repository’s “jevision-attachments” branch, so people who can open the repository can see them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Области, которые проект всегда скрывает, закрашены. Снимки сохраняются в ветке «jevision-attachments» репозитория, поэтому их видят все, у кого есть доступ к репозиторию."
+          }
+        }
+      }
+    },
     "Arrange Automatically" : {
       "localizations" : {
         "ru" : {
@@ -1803,6 +2143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Автор"
+          }
+        }
+      }
+    },
+    "Average duration, s" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя длительность, с"
           }
         }
       }
@@ -1999,6 +2349,26 @@
         }
       }
     },
+    "Bug Report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отчёт об ошибке"
+          }
+        }
+      }
+    },
+    "Bug reports go to the project’s GitHub repository. Put the project on GitHub, or copy the text to file it elsewhere." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отчёты об ошибках уходят в репозиторий проекта на GitHub. Выложите проект на GitHub или скопируйте текст, чтобы отправить его в другое место."
+          }
+        }
+      }
+    },
     "Button" : {
       "localizations" : {
         "ru" : {
@@ -2135,6 +2505,16 @@
         }
       }
     },
+    "Can’t reach GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи с GitHub"
+          }
+        }
+      }
+    },
     "Can’t reach the server. Check the internet connection and try again." : {
       "localizations" : {
         "ru" : {
@@ -2221,6 +2601,16 @@
         }
       }
     },
+    "Can’t write the bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось составить отчёт об ошибке"
+          }
+        }
+      }
+    },
     "Capture the %@ Window" : {
       "localizations" : {
         "ru" : {
@@ -2287,6 +2677,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение скрытых областей"
+          }
+        }
+      }
+    },
+    "Change anything you like. Secret values are replaced with •••• before sending." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меняйте что угодно. Перед отправкой значения секретов заменяются на ••••."
           }
         }
       }
@@ -2417,6 +2817,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверять обновления автоматически"
+          }
+        }
+      }
+    },
+    "Checking GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка GitHub"
           }
         }
       }
@@ -3011,6 +3421,26 @@
         }
       }
     },
+    "Connect GitHub to sign in once in your browser, then check again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключите GitHub: один раз войдите в браузере, затем проверьте снова."
+          }
+        }
+      }
+    },
+    "Connect GitHub…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключить GitHub…"
+          }
+        }
+      }
+    },
     "Connect an Assistant" : {
       "localizations" : {
         "ru" : {
@@ -3091,12 +3521,32 @@
         }
       }
     },
+    "Copy Text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать текст"
+          }
+        }
+      }
+    },
     "Copy Workflow" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать workflow"
+          }
+        }
+      }
+    },
+    "Copy the title and description, to file the bug somewhere else" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать заголовок и описание, чтобы сообщить об ошибке в другом месте"
           }
         }
       }
@@ -3187,6 +3637,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось вернуть эту версию"
+          }
+        }
+      }
+    },
+    "Couldn’t send the bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось отправить отчёт об ошибке"
           }
         }
       }
@@ -3581,6 +4041,16 @@
         }
       }
     },
+    "Difference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разница"
+          }
+        }
+      }
+    },
     "Differences" : {
       "localizations" : {
         "ru" : {
@@ -3657,6 +4127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Done. You can close this window and go back to JEVision." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово. Закройте это окно и вернитесь в JEVision."
           }
         }
       }
@@ -3847,6 +4327,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дублировать"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность"
           }
         }
       }
@@ -4221,6 +4711,16 @@
         }
       }
     },
+    "Fail Most Often" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чаще всего падают"
+          }
+        }
+      }
+    },
     "Failed" : {
       "localizations" : {
         "ru" : {
@@ -4327,6 +4827,16 @@
         }
       }
     },
+    "Failing since %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Падает с %@"
+          }
+        }
+      }
+    },
     "Failing since %@." : {
       "localizations" : {
         "en" : {
@@ -4409,12 +4919,32 @@
         }
       }
     },
+    "File an issue on GitHub with the steps, the cause and the screenshots" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать задачу на GitHub с шагами, причиной и снимками экрана"
+          }
+        }
+      }
+    },
     "Files" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "Files the last failure of the open test as an issue on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаёт задачу на GitHub о последнем падении открытого теста."
           }
         }
       }
@@ -4485,6 +5015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Исправьте файл и откройте таблицу снова: %@."
+          }
+        }
+      }
+    },
+    "Flakiness %@: the result changed %lld times in %lld runs without the test changing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нестабильность %@: результат менялся без изменений в тесте, смен — %lld, запусков — %lld"
           }
         }
       }
@@ -4665,16 +5205,6 @@
         }
       }
     },
-    "Get GitHub CLI…" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Установить GitHub CLI…"
-          }
-        }
-      }
-    },
     "Get the latest commits from the server" : {
       "localizations" : {
         "ru" : {
@@ -4771,6 +5301,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub CLI не установлен. Установите его с cli.github.com, затем выполните «gh auth login» в Терминале."
+          }
+        }
+      }
+    },
+    "GitHub isn’t connected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub не подключён"
           }
         }
       }
@@ -5155,16 +5695,6 @@
         }
       }
     },
-    "Install GitHub CLI, then run “gh auth login” in Terminal to sign in." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Установите GitHub CLI, затем войдите командой «gh auth login» в Терминале."
-          }
-        }
-      }
-    },
     "Install Just for Me" : {
       "localizations" : {
         "ru" : {
@@ -5195,6 +5725,16 @@
         }
       }
     },
+    "Installing GitHub CLI…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установка GitHub CLI…"
+          }
+        }
+      }
+    },
     "Install…" : {
       "localizations" : {
         "ru" : {
@@ -5211,6 +5751,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В ветку"
+          }
+        }
+      }
+    },
+    "Issue #%llu “%@”, as a comment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Комментарием к задаче #%llu «%@»"
+          }
+        }
+      }
+    },
+    "It takes two runs of the same version of the test, in the same environment." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужно два запуска одной версии теста в одном окружении."
           }
         }
       }
@@ -5448,6 +6008,16 @@
         }
       }
     },
+    "Last failed %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последнее падение %@"
+          }
+        }
+      }
+    },
     "Last run: %@" : {
       "localizations" : {
         "ru" : {
@@ -5474,6 +6044,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Позже"
+          }
+        }
+      }
+    },
+    "Latest Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последние запуски"
           }
         }
       }
@@ -6194,12 +6774,32 @@
         }
       }
     },
+    "No runs yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запусков пока нет"
+          }
+        }
+      }
+    },
     "No schedules yet" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписаний пока нет"
+          }
+        }
+      }
+    },
+    "No test failed in the last 30 days." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "За последние 30 дней ни один тест не упал."
           }
         }
       }
@@ -6304,6 +6904,16 @@
         }
       }
     },
+    "Not known yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока неизвестно"
+          }
+        }
+      }
+    },
     "Not run yet" : {
       "localizations" : {
         "ru" : {
@@ -6396,6 +7006,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ОК"
+          }
+        }
+      }
+    },
+    "Oldest on the left. Click a run to open its report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старые слева. Нажмите на запуск, чтобы открыть его отчёт."
           }
         }
       }
@@ -6566,6 +7186,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть файл"
+          }
+        }
+      }
+    },
+    "Open Git Settings…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки Git…"
+          }
+        }
+      }
+    },
+    "Open Issue" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать задачу"
           }
         }
       }
@@ -6776,6 +7416,16 @@
         }
       }
     },
+    "Opens Terminal to sign in to GitHub in your browser" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает Терминал, чтобы войти в GitHub через браузер"
+          }
+        }
+      }
+    },
     "Opens a file or a web page" : {
       "localizations" : {
         "ru" : {
@@ -6802,6 +7452,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает редактор эталона"
+          }
+        }
+      }
+    },
+    "Opens the report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает отчёт"
           }
         }
       }
@@ -6952,6 +7612,26 @@
         }
       }
     },
+    "Pass rate, durations and where the open test fails, over all its runs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доля успешных запусков, длительность и места падений открытого теста за все его запуски."
+          }
+        }
+      }
+    },
+    "Pass rate, durations, trend and where it fails, over every run of the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доля успешных запусков, длительность, динамика и места падений за все запуски теста"
+          }
+        }
+      }
+    },
     "Passed" : {
       "localizations" : {
         "ru" : {
@@ -6978,6 +7658,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пройден за %@. Сохранены новые эталоны — проверьте их в отчёте."
+          }
+        }
+      }
+    },
+    "Passed on a retry" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошёл с повтора"
           }
         }
       }
@@ -7164,6 +7854,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Останавливается после каждого блока."
+          }
+        }
+      }
+    },
+    "Period" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Период"
           }
         }
       }
@@ -7360,6 +8060,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Карта проекта"
+          }
+        }
+      }
+    },
+    "Project Statistics" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика проекта"
           }
         }
       }
@@ -8040,6 +8750,16 @@
         }
       }
     },
+    "Report Bug…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщить об ошибке…"
+          }
+        }
+      }
+    },
     "Repository" : {
       "localizations" : {
         "ru" : {
@@ -8156,6 +8876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Возврат версии"
+          }
+        }
+      }
+    },
+    "Result" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результат"
           }
         }
       }
@@ -8574,16 +9304,6 @@
         }
       }
     },
-    "Run “gh auth login” in Terminal to sign in, then check again." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Войдите командой «gh auth login» в Терминале, затем проверьте снова."
-          }
-        }
-      }
-    },
     "Running" : {
       "localizations" : {
         "ru" : {
@@ -8650,6 +9370,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прогоны сохраняются в папке .jevision проекта. Не добавлять их в git?"
+          }
+        }
+      }
+    },
+    "Runs by Day" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуски по дням"
+          }
+        }
+      }
+    },
+    "Runs by Month" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуски по месяцам"
+          }
+        }
+      }
+    },
+    "Runs by Week" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуски по неделям"
           }
         }
       }
@@ -8904,6 +9654,16 @@
         }
       }
     },
+    "Screenshots of the Failed Step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки упавшего шага"
+          }
+        }
+      }
+    },
     "Search" : {
       "localizations" : {
         "ru" : {
@@ -8950,6 +9710,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поиск тестов"
+          }
+        }
+      }
+    },
+    "Seconds" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секунды"
           }
         }
       }
@@ -9064,12 +9834,32 @@
         }
       }
     },
+    "Send to" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда отправить"
+          }
+        }
+      }
+    },
     "Send your commits to the server" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправить коммиты на сервер"
+          }
+        }
+      }
+    },
+    "Sending…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправка…"
           }
         }
       }
@@ -9190,6 +9980,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать"
+          }
+        }
+      }
+    },
+    "Show Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать блок"
           }
         }
       }
@@ -9380,6 +10180,16 @@
         }
       }
     },
+    "Shows the test’s statistics" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает статистику теста"
+          }
+        }
+      }
+    },
     "Show…" : {
       "localizations" : {
         "ru" : {
@@ -9396,6 +10206,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рядом"
+          }
+        }
+      }
+    },
+    "Sign in once in your browser. JEVision checks again when you come back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Один раз войдите в браузере. Когда вернётесь, JEVision проверит снова."
           }
         }
       }
@@ -9436,6 +10256,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сходство"
+          }
+        }
+      }
+    },
+    "Since %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С %@"
           }
         }
       }
@@ -9510,6 +10340,16 @@
         }
       }
     },
+    "Slowest" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Самые медленные"
+          }
+        }
+      }
+    },
     "Smoke" : {
       "localizations" : {
         "ru" : {
@@ -9530,12 +10370,42 @@
         }
       }
     },
+    "Sometimes flaky" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Иногда нестабилен"
+          }
+        }
+      }
+    },
     "Space" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пробел"
+          }
+        }
+      }
+    },
+    "Stability" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стабильность"
+          }
+        }
+      }
+    },
+    "Stable" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стабилен"
           }
         }
       }
@@ -9612,6 +10482,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включаем отслеживание…"
+          }
+        }
+      }
+    },
+    "Statistics" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика"
+          }
+        }
+      }
+    },
+    "Statistics appear once tests have run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика появится, когда тесты запустятся."
+          }
+        }
+      }
+    },
+    "Statistics appear once the test has run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика появится после первого запуска теста."
+          }
+        }
+      }
+    },
+    "Statistics of" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика"
           }
         }
       }
@@ -9866,6 +10776,16 @@
         }
       }
     },
+    "Test Statistics" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статистика теста"
+          }
+        }
+      }
+    },
     "Test any Mac app the way a person would: click, type, look. A test is a flowchart you can read — no code." : {
       "localizations" : {
         "ru" : {
@@ -10106,6 +11026,16 @@
         }
       }
     },
+    "The comment is added" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Комментарий добавлен"
+          }
+        }
+      }
+    },
     "The device disconnects now. To use it again, pair it with a new code." : {
       "localizations" : {
         "ru" : {
@@ -10172,6 +11102,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось подготовить сценарий установки."
+          }
+        }
+      }
+    },
+    "The issue is open" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задача создана"
           }
         }
       }
@@ -10546,6 +11486,16 @@
         }
       }
     },
+    "The tests that fail most often and the slowest ones." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты, которые чаще всего падают, и самые медленные."
+          }
+        }
+      }
+    },
     "The value is kept in the Keychain on this Mac for %@ runs. JEVision types it during runs and never shows it." : {
       "localizations" : {
         "ru" : {
@@ -10802,6 +11752,16 @@
         }
       }
     },
+    "This failure is already reported in an open issue. Adding this run to it keeps the reports in one place." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Об этом падении уже есть открытая задача. Если добавить запуск к ней, отчёты останутся в одном месте."
+          }
+        }
+      }
+    },
     "This file can’t be read as a PNG picture." : {
       "localizations" : {
         "ru" : {
@@ -10888,6 +11848,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот пул-реквест меняет только файлы вне «%@»."
+          }
+        }
+      }
+    },
+    "This run didn’t fail, so there’s no bug to report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот запуск не упал, поэтому сообщать не о чем."
           }
         }
       }
@@ -11622,6 +12592,26 @@
         }
       }
     },
+    "Where It Fails" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где падает"
+          }
+        }
+      }
+    },
+    "Where It Goes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда отправляется"
+          }
+        }
+      }
+    },
     "Where to click" : {
       "localizations" : {
         "ru" : {
@@ -11638,6 +12628,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Кто, что и когда запускал"
+          }
+        }
+      }
+    },
+    "Whole Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь проект"
           }
         }
       }
@@ -11688,6 +12688,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них macOS не даст JEVision видеть другие приложения и нажимать в них."
+          }
+        }
+      }
+    },
+    "Writing the bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Составление отчёта об ошибке"
           }
         }
       }
@@ -12714,6 +13724,16 @@
         }
       }
     },
+    "issue github failure bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "задача github падение ошибка отчёт баг"
+          }
+        }
+      }
+    },
     "just now" : {
       "localizations" : {
         "ru" : {
@@ -12764,6 +13784,68 @@
         }
       }
     },
+    "of %lld runs in the last 30 days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "of %lld run in the last 30 days"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "of %lld runs in the last 30 days"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "из %lld запуска за последние 30 дней"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "из %lld запусков за последние 30 дней"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "из %lld запусков за последние 30 дней"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "из %lld запусков за последние 30 дней"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "on average · 95%% of runs within %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "в среднем · 95%% запусков не дольше %@"
+          }
+        }
+      }
+    },
     "open test" : {
       "localizations" : {
         "ru" : {
@@ -12806,6 +13888,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "параметры опции"
+          }
+        }
+      }
+    },
+    "ran in the last 30 days" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "запускались за последние 30 дней"
           }
         }
       }
@@ -14254,6 +15346,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "старт пуск тест"
+          }
+        }
+      }
+    },
+    "stats history trend flaky duration" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "статистика история динамика нестабильный длительность"
+          }
+        }
+      }
+    },
+    "stats history trend flaky duration slow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "статистика история динамика нестабильный длительность медленный"
           }
         }
       }

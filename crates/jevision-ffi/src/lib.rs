@@ -15,6 +15,7 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod bug;
 mod env;
 mod git;
 mod history;
@@ -25,8 +26,10 @@ mod project;
 mod remote;
 mod run;
 mod schedule;
+mod stats;
 mod vision;
 
+pub use bug::*;
 pub use env::*;
 pub use git::*;
 pub use history::*;
@@ -37,6 +40,7 @@ pub use project::*;
 pub use remote::*;
 pub use run::*;
 pub use schedule::*;
+pub use stats::*;
 
 /// The text is not a readable test file.
 #[derive(Debug, thiserror::Error, uniffi::Error)]

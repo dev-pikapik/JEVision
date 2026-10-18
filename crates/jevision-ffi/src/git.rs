@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use jevision_core::{BlockChange, BlockChangeKind, Flow, FlowDiff};
 use jevision_git::{
     ChangeKind, FileChange, Git, GitBranch, GitCommit, GitError, GitHub, GitHubAccount,
-    GitIdentity, GitStatus, PullRequest, PullRequestChanges, PullRequestDraft, Repo,
+    GitHubIssue, GitIdentity, GitStatus, PullRequest, PullRequestChanges, PullRequestDraft, Repo,
 };
 use jevision_runner::PictureDiff;
 
@@ -21,7 +21,7 @@ fn git() -> Result<Git, GitError> {
     Ok(FOUND.get_or_init(|| git).clone())
 }
 
-fn repo(project: &str) -> Result<Repo, GitError> {
+pub(crate) fn repo(project: &str) -> Result<Repo, GitError> {
     git()?
         .open(Path::new(project))?
         .ok_or(GitError::NotRepository)
@@ -133,7 +133,7 @@ pub fn github_account() -> Result<GitHubAccount, GitError> {
 }
 
 /// The project's repository, once it is known to be on GitHub, and GitHub signed in.
-fn on_github(project: &str) -> Result<(Repo, GitHub), GitError> {
+pub(crate) fn on_github(project: &str) -> Result<(Repo, GitHub), GitError> {
     let repo = repo(project)?;
     repo.github()?;
     Ok((repo, git()?.github()?))
@@ -280,6 +280,13 @@ pub struct GitIdentity {
 pub struct GitHubAccount {
     pub login: String,
     pub name: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct GitHubIssue {
+    pub number: u64,
+    pub title: String,
+    pub url: String,
 }
 
 #[uniffi::remote(Record)]

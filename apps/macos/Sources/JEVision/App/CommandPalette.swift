@@ -6,7 +6,7 @@ enum PaletteAction: Hashable {
   case newTest, openProject, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
   case addBlock(String), addCondition, arrange, disconnect
-  case openReport, projectMap
+  case openReport, reportBug, testStatistics, projectStatistics, projectMap
   case commit, newPullRequest, pullRequests, pull, push
   /// Opens the test with this sidebar id.
   case openTest(String)
@@ -45,6 +45,9 @@ struct PaletteState {
   var selectionHasLinks = false
   var hasTests = false
   var hasLastRun = false
+  /// The newest run of the open test failed.
+  var lastRunFailed = false
+  var hasRuns = false
   var git = Git()
   /// Tests of the project, as `(sidebar id, name, folder)`.
   var tests: [(id: String, name: String, folder: String)] = []
@@ -111,6 +114,15 @@ enum CommandPalette {
       String(localized: "Shows how the last run of the open test went."), symbol: "doc.text.magnifyingglass",
       keywords: String(localized: "result failure screenshot reference"), if: state.hasLastRun)
     add(
+      .reportBug, String(localized: "Report Bug…"),
+      String(localized: "Files the last failure of the open test as an issue on GitHub."), symbol: "ladybug",
+      keywords: String(localized: "issue github failure bug report"), if: state.lastRunFailed)
+    add(
+      .testStatistics, String(localized: "Test Statistics"),
+      String(localized: "Pass rate, durations and where the open test fails, over all its runs."),
+      symbol: "chart.bar.xaxis", keywords: String(localized: "stats history trend flaky duration"),
+      if: state.hasLastRun)
+    add(
       .disconnect, String(localized: "Disconnect Block"),
       String(localized: "Removes the links into and out of the selected block."), symbol: "scissors",
       shortcut: Shortcuts.disconnect, keywords: String(localized: "unlink link arrow"),
@@ -147,6 +159,10 @@ enum CommandPalette {
     add(
       .projectMap, String(localized: "Project Map"), String(localized: "Shows how the tests use each other."),
       symbol: "point.3.connected.trianglepath.dotted", if: state.hasProject && state.hasTests)
+    add(
+      .projectStatistics, String(localized: "Project Statistics"),
+      String(localized: "The tests that fail most often and the slowest ones."), symbol: "chart.bar.doc.horizontal",
+      keywords: String(localized: "stats history trend flaky duration slow"), if: state.hasProject && state.hasRuns)
     add(
       .schedules, String(localized: "Schedules…"), String(localized: "Runs tests by themselves at set times."),
       symbol: "calendar.badge.clock", keywords: String(localized: "timer nightly"), if: state.hasProject)

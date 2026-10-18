@@ -158,7 +158,10 @@ struct CommandPaletteView: View {
     }
     let tests = project.items.flatMap(\.tests)
     state.hasTests = !tests.isEmpty
-    state.hasLastRun = lastRun != nil
+    let last = lastRun
+    state.hasLastRun = last != nil
+    state.lastRunFailed = last?.report.verdict == .failed
+    state.hasRuns = !project.runs.isEmpty
     state.tests = tests.map { ($0.id, $0.name, $0.parentPath) }
     if case .tracked(let status) = project.git.state {
       state.git = PaletteState.Git(
@@ -198,6 +201,14 @@ struct CommandPaletteView: View {
     case .arrange: document?.arrange()
     case .disconnect: if let document, let id = document.selection { document.disconnect(id) }
     case .openReport: if let run = lastRun { project.showRun(run.url) }
+    case .reportBug: if let run = lastRun { project.bugReportRun = run.dir }
+    case .testStatistics:
+      guard let root, let document else { return }
+      project.statisticsTest = RelativePath.from(root, to: document.url)
+      openWindow(id: SceneID.statistics)
+    case .projectStatistics:
+      project.statisticsTest = nil
+      openWindow(id: SceneID.statistics)
     case .projectMap: project.showsMap = true
     case .commit: openWindow(id: SceneID.commit)
     case .newPullRequest: project.git.isComposingPullRequest = true

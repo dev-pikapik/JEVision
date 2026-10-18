@@ -618,7 +618,7 @@ pub fn describe_vision(f: &Failure) -> String {
     }
 }
 
-fn wait_target(target: &str) -> String {
+pub(crate) fn wait_target(target: &str) -> String {
     match target {
         "screenStable" => "the screen settling".to_owned(),
         image => format!("the wait for {image}"),
@@ -985,7 +985,7 @@ fn clock(ms: u64) -> String {
     format!("{}:{:02}", seconds / 60, seconds % 60)
 }
 
-fn duration(ms: u64) -> String {
+pub(crate) fn duration(ms: u64) -> String {
     if ms < 1000 {
         format!("{ms} ms")
     } else {

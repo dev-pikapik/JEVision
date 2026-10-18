@@ -8,6 +8,7 @@
 //! progress goes to an [`EventSink`]; a [`RunControl`] cancels, pauses and steps a run from
 //! another thread.
 
+mod bug;
 mod control;
 mod env;
 mod machine;
@@ -17,6 +18,7 @@ mod run;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
+pub use bug::{BugContext, BugDraft, BugPicture, bug_report, mask_secrets};
 pub use control::{PauseReason, RunControl};
 pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{MouseButton, Point};
