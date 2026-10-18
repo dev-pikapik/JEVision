@@ -562,7 +562,7 @@ fn pointer_blocks_are_validated() {
         };
         assert_eq!(
             codes(&validate(&flow)),
-            vec!["flow.field.empty"; empty],
+            [vec!["flow.field.empty"; empty], vec!["flow.noCheck"]].concat(),
             "{type_name}"
         );
     }
