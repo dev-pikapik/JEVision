@@ -2,20 +2,28 @@ import SwiftUI
 
 struct SettingsView: View {
   @Environment(PermissionsMonitor.self) private var monitor
+  @AppStorage(SettingsTab.key) private var tab = SettingsTab.general
 
   var body: some View {
-    TabView {
-      Tab("General", systemImage: "gearshape") {
+    TabView(selection: $tab) {
+      Tab("General", systemImage: "gearshape", value: .general) {
         GeneralSettingsView()
       }
       // The warning sign stays on the tab until every permission is on.
-      Tab("Permissions", systemImage: monitor.allGranted ? "hand.raised" : "exclamationmark.triangle") {
+      Tab("Permissions", systemImage: monitor.allGranted ? "hand.raised" : "exclamationmark.triangle", value: .permissions) {
         PermissionsSettingsView()
       }
     }
     .frame(width: 600, height: 540)
     .task { await monitor.watch() }
   }
+}
+
+/// The open Settings tab; set it before opening Settings to show a given one.
+enum SettingsTab: String {
+  case general, permissions
+
+  static let key = "settingsTab"
 }
 
 private struct PermissionsSettingsView: View {

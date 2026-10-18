@@ -4,6 +4,7 @@ import SwiftUI
 /// One test: the canvas in the middle, the selected block's inspector on the right.
 struct EditorView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(RunCenter.self) private var runs
   @Environment(\.undoManager) private var undoManager
   let document: FlowDocument
   @State private var zoom = 1.0
@@ -56,15 +57,23 @@ struct EditorView: View {
         }
       }
       .overlay(alignment: .bottom) {
-        if let error = document.saveError {
-          Label("Changes aren’t saved: \(error)", systemImage: "exclamationmark.triangle.fill")
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .glassEffect(.regular.tint(.red.opacity(0.3)))
-            .padding()
+        VStack(spacing: 0) {
+          if let result = runs.result, result.test == document.url {
+            RunResultBar(result: result)
+              .transition(.move(edge: .bottom).combined(with: .opacity))
+          }
+          if let error = document.saveError {
+            Label("Changes aren’t saved: \(error)", systemImage: "exclamationmark.triangle.fill")
+              .padding(.horizontal, 14)
+              .padding(.vertical, 8)
+              .glassEffect(.regular.tint(.red.opacity(0.3)))
+              .padding()
+          }
         }
       }
       .animation(.snappy(duration: 0.2), value: palette)
+      .animation(.snappy, value: runs.result)
+      .onChange(of: document.flow) { runs.clearMarks(of: document) }
       .inspector(isPresented: inspectorShown) {
         Group {
           if let selection = document.selection {
@@ -92,8 +101,27 @@ struct EditorView: View {
           Button("Add Block", systemImage: "plus") { openPalette() }
             .help(Text("Add a block after the selected one (Space)"))
         }
+        ToolbarItem(placement: .primaryAction) {
+          Menu {
+            Button("Run Step by Step", systemImage: "forward.frame") { run(stepByStep: true) }
+            if let selection = document.selection {
+              Button("Run from Selected Block", systemImage: "arrow.down.to.line") { run(from: selection) }
+            }
+          } label: {
+            Label("Run", systemImage: "play.fill")
+          } primaryAction: {
+            run()
+          }
+          .disabled(runs.isRunning || project.rootURL == nil)
+          .help(Text("Run the test (⌘R)"))
+        }
       }
       .focusedSceneValue(\.canvasZoom, $zoom)
+  }
+
+  private func run(from block: String? = nil, stepByStep: Bool = false) {
+    guard let root = project.rootURL else { return }
+    runs.run(document, in: root, from: block, stepByStep: stepByStep)
   }
 
   private var inspectorShown: Binding<Bool> {

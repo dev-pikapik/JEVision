@@ -265,6 +265,16 @@
         }
       }
     },
+    "Add to .gitignore" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить в .gitignore"
+          }
+        }
+      }
+    },
     "All set" : {
       "localizations" : {
         "ru" : {
@@ -341,6 +351,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Назад"
+          }
+        }
+      }
+    },
+    "Before the test can run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед запуском теста"
           }
         }
       }
@@ -585,6 +605,16 @@
         }
       }
     },
+    "Close" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть"
+          }
+        }
+      }
+    },
     "Columns" : {
       "localizations" : {
         "ru" : {
@@ -735,6 +765,16 @@
         }
       }
     },
+    "Don’t Pause Here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не ставить паузу здесь"
+          }
+        }
+      }
+    },
     "Double-click" : {
       "localizations" : {
         "ru" : {
@@ -785,6 +825,16 @@
         }
       }
     },
+    "Failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провален"
+          }
+        }
+      }
+    },
     "Fails the test unless the screen looks as expected." : {
       "localizations" : {
         "ru" : {
@@ -831,6 +881,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Искать"
+          }
+        }
+      }
+    },
+    "Finished" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завершён"
           }
         }
       }
@@ -955,6 +1015,16 @@
         }
       }
     },
+    "In a test this one runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В тесте, который запускает этот"
+          }
+        }
+      }
+    },
     "Insert" : {
       "localizations" : {
         "ru" : {
@@ -1004,6 +1074,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision не собирает статистику использования. Ничего не уходит с Mac, если этого не требует включённая вами функция."
+          }
+        }
+      }
+    },
+    "JEVision needs a few things to drive this Mac for you." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы управлять этим Mac за вас, JEVision кое-что нужно."
           }
         }
       }
@@ -1258,6 +1338,16 @@
         }
       }
     },
+    "Not Now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сейчас"
+          }
+        }
+      }
+    },
     "Not allowed" : {
       "localizations" : {
         "ru" : {
@@ -1328,12 +1418,32 @@
         }
       }
     },
+    "Open Permissions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть разрешения"
+          }
+        }
+      }
+    },
     "Open Project…" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть проект…"
+          }
+        }
+      }
+    },
+    "Open Report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть отчёт"
           }
         }
       }
@@ -1388,12 +1498,122 @@
         }
       }
     },
+    "Passed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден"
+          }
+        }
+      }
+    },
+    "Passed in %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден за %@."
+          }
+        }
+      }
+    },
+    "Passed in %@. New reference images were saved: check them in the report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден за %@. Сохранены новые эталоны — проверьте их в отчёте."
+          }
+        }
+      }
+    },
+    "Passed on try %lld, so the test is flaky: it failed before that." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден с попытки %lld, значит тест нестабильный: до этого он падал."
+          }
+        }
+      }
+    },
     "Passwords and keys go here by name. Set the value in the test details: it stays in the Keychain and never gets into the file." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пароли и ключи вставляются по имени. Значение задаётся в карточке теста: оно хранится в Связке ключей и никогда не попадает в файл."
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Pause Here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза здесь"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Paused at “Pause Here”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза на «Пауза здесь»"
+          }
+        }
+      }
+    },
+    "Paused before the next block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза перед следующим блоком"
+          }
+        }
+      }
+    },
+    "Paused — you moved the mouse" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза — вы двинули мышь"
+          }
+        }
+      }
+    },
+    "Paused — you moved the mouse. Resume when your hands are off." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза — вы двинули мышь. Продолжите, когда уберёте руки."
           }
         }
       }
@@ -1414,6 +1634,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нажать %@"
+          }
+        }
+      }
+    },
+    "Press Escape twice to stop from any app. Moving the mouse pauses the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дважды нажмите Escape, чтобы остановить тест из любого приложения. Движение мыши ставит тест на паузу."
           }
         }
       }
@@ -1588,6 +1818,16 @@
         }
       }
     },
+    "Resume" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        }
+      }
+    },
     "Retries" : {
       "localizations" : {
         "ru" : {
@@ -1618,12 +1858,102 @@
         }
       }
     },
+    "Run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить"
+          }
+        }
+      }
+    },
+    "Run Step by Step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить по шагам"
+          }
+        }
+      }
+    },
     "Run Test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запуск теста"
+          }
+        }
+      }
+    },
+    "Run from Here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск отсюда"
+          }
+        }
+      }
+    },
+    "Run from Selected Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск с выбранного блока"
+          }
+        }
+      }
+    },
+    "Run one block, then pause" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполнить один блок и встать на паузу"
+          }
+        }
+      }
+    },
+    "Run result" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результат прогона"
+          }
+        }
+      }
+    },
+    "Run the test (⌘R)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить тест (⌘R)"
+          }
+        }
+      }
+    },
+    "Running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется"
+          }
+        }
+      }
+    },
+    "Running now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется сейчас"
           }
         }
       }
@@ -1644,6 +1974,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускает другой тест как один шаг."
+          }
+        }
+      }
+    },
+    "Runs are saved in the .jevision folder of the project. Keep them out of git?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогоны сохраняются в папке .jevision проекта. Не добавлять их в git?"
           }
         }
       }
@@ -1788,6 +2128,16 @@
         }
       }
     },
+    "Show JEVision" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать JEVision"
+          }
+        }
+      }
+    },
     "Show Project in Finder" : {
       "localizations" : {
         "ru" : {
@@ -1878,6 +2228,16 @@
         }
       }
     },
+    "Step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг"
+          }
+        }
+      }
+    },
     "Step %lld of %lld" : {
       "localizations" : {
         "ru" : {
@@ -1894,6 +2254,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Шаг %1$lld из %2$lld, %3$@"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стоп"
           }
         }
       }
@@ -1954,6 +2324,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Карточка теста"
+          }
+        }
+      }
+    },
+    "Test run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогон теста"
           }
         }
       }
@@ -2028,12 +2408,52 @@
         }
       }
     },
+    "The run pauses before this block. Click to remove." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогон встанет на паузу перед этим блоком. Нажмите, чтобы убрать."
+          }
+        }
+      }
+    },
+    "The run pauses here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь прогон встанет на паузу"
+          }
+        }
+      }
+    },
     "The screen stops changing" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Экран перестанет меняться"
+          }
+        }
+      }
+    },
+    "The test couldn’t start: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не удалось запустить: %@"
+          }
+        }
+      }
+    },
+    "The test failed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест провален."
           }
         }
       }
@@ -2054,6 +2474,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В тесте пока нет блоков."
+          }
+        }
+      }
+    },
+    "The test has problems. They’re marked on the blocks; fix them and run again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В тесте есть ошибки. Они отмечены на блоках — исправьте их и запустите снова."
+          }
+        }
+      }
+    },
+    "The test types these values. They’re kept in the Keychain and never shown." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест вводит эти значения. Они хранятся в Связке ключей и нигде не показываются."
           }
         }
       }
@@ -2154,6 +2594,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы делать скриншоты тестируемого приложения"
+          }
+        }
+      }
+    },
+    "Try %u of %u" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попытка %1$u из %2$u"
           }
         }
       }
@@ -2414,6 +2864,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Да"
+          }
+        }
+      }
+    },
+    "You stopped the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы остановили тест."
           }
         }
       }
@@ -2964,6 +3424,422 @@
         }
       }
     },
+    "run.check.mismatch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen matches %@ by %@, and at least %@ is needed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран совпадает с %2$@ на %3$@, а нужно не меньше %4$@."
+          }
+        }
+      }
+    },
+    "run.click.noChange" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen didn’t change within %@ s after the click."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не изменился за %2$@ с после клика."
+          }
+        }
+      }
+    },
+    "run.compare.meaningUnavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: comparing by meaning needs a vision model, and none is set up."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: для сравнения по смыслу нужна модель зрения, а она не настроена."
+          }
+        }
+      }
+    },
+    "run.compare.shapeMismatch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window is %@, but the reference %@ is %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно размером %2$@, а эталон %3$@ — %4$@."
+          }
+        }
+      }
+    },
+    "run.data.unknownColumn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: there’s no table column “%@” here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: здесь нет столбца таблицы «%2$@»."
+          }
+        }
+      }
+    },
+    "run.data.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: can’t read the table %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать таблицу %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.file.copyFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: can’t copy %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся скопировать %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.file.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the file %@ doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: файла %2$@ нет."
+          }
+        }
+      }
+    },
+    "run.hands.appNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ isn’t installed on this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: приложение %2$@ не установлено на этом Mac."
+          }
+        }
+      }
+    },
+    "run.hands.cannotOpen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: can’t open %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся открыть %2$@."
+          }
+        }
+      }
+    },
+    "run.hands.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@"
+          }
+        }
+      }
+    },
+    "run.hands.noWindow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ has no open window."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: у приложения %2$@ нет открытого окна."
+          }
+        }
+      }
+    },
+    "run.hands.permissionDenied" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision isn’t allowed to use %@. Turn it on in Settings → Permissions."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У JEVision нет разрешения «%@». Включите его в Настройках → Разрешения."
+          }
+        }
+      }
+    },
+    "run.io.writeFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t save %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сохранить %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.path.outsideProject" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ is outside the project folder."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ лежит вне папки проекта."
+          }
+        }
+      }
+    },
+    "run.reference.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the reference image %@ doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: эталона %2$@ нет."
+          }
+        }
+      }
+    },
+    "run.reference.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: can’t read the image %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать картинку %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.runTest.recursion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the test %@ is already running, and a test can’t run itself."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: тест %2$@ уже выполняется, а тест не может запускать сам себя."
+          }
+        }
+      }
+    },
+    "run.screenshot.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: can’t read the screenshot: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать снимок экрана: %2$@."
+          }
+        }
+      }
+    },
+    "run.secret.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The secret %@ isn’t set. Set it in Test details."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секрет %@ не задан. Задайте его в карточке теста."
+          }
+        }
+      }
+    },
+    "run.start.unknownBlock" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s no block “%@” to start from."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет блока «%@», с которого можно начать."
+          }
+        }
+      }
+    },
+    "run.target.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: картинка %2$@ не найдена на экране."
+          }
+        }
+      }
+    },
+    "run.test.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test has problems to fix first (%@). They’re marked on the blocks."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала исправьте ошибки в тесте (%@). Они отмечены на блоках."
+          }
+        }
+      }
+    },
+    "run.test.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t read the test file %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать файл теста %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.waitFor.timeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: waited %@ s for %@, but it didn’t happen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались."
+          }
+        }
+      }
+    },
+    "run.waitFor.timeout.screenStable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen didn’t settle within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не успокоился за %2$@ с."
+          }
+        }
+      }
+    },
     "seconds" : {
       "localizations" : {
         "ru" : {
@@ -2980,6 +3856,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "секрет %@"
+          }
+        }
+      }
+    },
+    "stop from anywhere · move the mouse to pause" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "стоп откуда угодно · двиньте мышь — пауза"
           }
         }
       }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppCommands: Commands {
   let project: ProjectStore
+  let runs: RunCenter
   @Environment(\.openWindow) private var openWindow
   @FocusedValue(\.canvasZoom) private var zoom
 
@@ -27,9 +28,26 @@ struct AppCommands: Commands {
         .disabled(zoom == nil)
       Divider()
     }
+    CommandMenu("Test") {
+      Button("Run") { run(stepByStep: false) }
+        .keyboardShortcut("r")
+        .disabled(!canRun)
+      Button("Run Step by Step") { run(stepByStep: true) }
+        .keyboardShortcut("r", modifiers: [.command, .option])
+        .disabled(!canRun)
+    }
     // The default Help item searches a help book the app does not have.
     CommandGroup(replacing: .help) {
       Button("Welcome to JEVision") { openWindow(id: SceneID.onboarding) }
     }
+  }
+
+  private var canRun: Bool {
+    !runs.isRunning && project.rootURL != nil && project.document?.flow != nil
+  }
+
+  private func run(stepByStep: Bool) {
+    guard let root = project.rootURL, let document = project.document else { return }
+    runs.run(document, in: root, stepByStep: stepByStep)
   }
 }

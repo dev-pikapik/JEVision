@@ -21,5 +21,6 @@ bindgen = ["uniffi/cli"]
 
 [dependencies]
 jevision-core.workspace = true
+jevision-runner.workspace = true
 thiserror.workspace = true
 uniffi.workspace = true

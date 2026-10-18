@@ -1,0 +1,349 @@
+import AppKit
+import ApplicationServices
+import JEVisionCore
+import ScreenCaptureKit
+import UniformTypeIdentifiers
+
+/// The macOS side of a run: launches apps, looks at their front window, clicks and types.
+/// Called from the run's thread. Screenshots need Screen Recording; clicks and keys need
+/// Accessibility.
+public final class MacHands: Hands, @unchecked Sendable {
+  /// How long an app may take to open a window.
+  static let launchTimeout: TimeInterval = 20
+  /// Pause between typed characters, so apps keep up.
+  static let keyInterval: useconds_t = 8_000
+
+  private let input: InputWatcher
+  private let isCancelled: @Sendable () -> Bool
+
+  /// `input` reports the person's own mouse and keyboard; `isCancelled` tells long actions to
+  /// stop early.
+  public init(input: InputWatcher, isCancelled: @escaping @Sendable () -> Bool) {
+    self.input = input
+    self.isCancelled = isCancelled
+  }
+
+  // MARK: Apps
+
+  public func openApp(app: String) throws(HandsError) {
+    let url = try appURL(app)
+    let running = try launch(url)
+    waitForWindow(running.map { [$0] } ?? runningApps(app))
+  }
+
+  public func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {
+    var groups: [URL: [URL]] = [:]
+    for item in items {
+      let (url, name): (URL?, String) =
+        switch item {
+        case .file(let path): (URL(fileURLWithPath: path), path)
+        case .url(let address): (URL(string: address), address)
+        }
+      guard let url else { throw .CannotOpen(item: name) }
+      let opener: URL
+      if let app {
+        opener = try appURL(app)
+      } else if let found = NSWorkspace.shared.urlForApplication(toOpen: url) {
+        opener = found
+      } else {
+        throw .CannotOpen(item: name)
+      }
+      groups[opener, default: []].append(url)
+    }
+    for (opener, urls) in groups {
+      let config = NSWorkspace.OpenConfiguration()
+      config.activates = true
+      config.createsNewApplicationInstance = newInstance
+      let result = wait { done in
+        NSWorkspace.shared.open(urls, withApplicationAt: opener, configuration: config) { app, error in
+          done((app?.processIdentifier, error?.localizedDescription))
+        }
+      }
+      guard result.1 == nil else { throw .CannotOpen(item: urls[0].isFileURL ? urls[0].path : urls[0].absoluteString) }
+      waitForWindow(result.0.flatMap { NSRunningApplication(processIdentifier: $0) }.map { [$0] } ?? [])
+    }
+  }
+
+  public func activate(app: String) throws(HandsError) {
+    let running = runningApps(app)
+    guard let first = running.first else { return try openApp(app: app) }
+    if running.contains(where: \.isActive) { return }
+    _ = first.activate()
+    if poll(timeout: 1, { first.isActive }) { return }
+    // Without the user's click macOS may refuse; Launch Services can still bring it forward.
+    _ = try launch(try appURL(app))
+  }
+
+  public func quit(app: String) throws(HandsError) {
+    let running = runningApps(app)
+    running.forEach { $0.terminate() }
+    // An app that asks to save changes stays open; the run goes on.
+    _ = poll(timeout: 10) { running.allSatisfy { kill($0.processIdentifier, 0) != 0 } }
+  }
+
+  // MARK: Screen
+
+  public func capture(app: String) throws(HandsError) -> Screenshot {
+    let (image, scale) = try captureWindow(app)
+    guard let png = Self.png(image) else { throw .Failed(reason: "The screenshot can’t be saved as PNG.") }
+    return Screenshot(png: png, scale: scale, dark: Self.systemIsDark)
+  }
+
+  public func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? {
+    guard let source = CGImageSourceCreateWithData(template as CFData, nil),
+      let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+    else { throw .Failed(reason: "The image to look for can’t be read.") }
+    let (shot, scale) = try captureWindow(app)
+    guard let screen = Self.bitmap(shot) else { throw .Failed(reason: "The screenshot can’t be read.") }
+    // The image may come from a display of another density: one taken on a Retina screen is
+    // twice as large in pixels as the same button on a regular one, and the other way round.
+    for factor in [1, scale > 1 ? scale : 0.5] {
+      guard let wanted = Self.bitmap(factor == 1 ? image : Self.resized(image, by: factor) ?? image) else { continue }
+      if let match = TemplateMatcher.find(wanted, in: screen, minSimilarity: minSimilarity, isCancelled: isCancelled) {
+        return Point(
+          x: (Double(match.x) + Double(wanted.width) / 2) / scale,
+          y: (Double(match.y) + Double(wanted.height) / 2) / scale)
+      }
+      if isCancelled() { return nil }
+    }
+    return nil
+  }
+
+  // MARK: Mouse and keyboard
+
+  public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {
+    try requireAccessibility()
+    guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
+    let point = CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y)
+    let (down, up, mouse): (CGEventType, CGEventType, CGMouseButton) =
+      button == .left ? (.leftMouseDown, .leftMouseUp, .left) : (.rightMouseDown, .rightMouseUp, .right)
+    try post(CGEvent(mouseEventSource: SyntheticInput.source, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouse))
+    usleep(50_000)
+    for count in 1...(doubleClick ? 2 : 1) {
+      for type in [down, up] {
+        let event = CGEvent(mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point, mouseButton: mouse)
+        event?.setIntegerValueField(.mouseEventClickState, value: Int64(count))
+        try post(event)
+        usleep(30_000)
+      }
+    }
+  }
+
+  public func typeText(text: String) throws(HandsError) {
+    try requireAccessibility()
+    for character in text {
+      if isCancelled() { return }
+      switch character {
+      case "\n", "\r", "\r\n": try tap(KeyStroke("return")!)
+      case "\t": try tap(KeyStroke("tab")!)
+      default:
+        let units = Array(String(character).utf16)
+        for keyDown in [true, false] {
+          let event = CGEvent(keyboardEventSource: SyntheticInput.source, virtualKey: 0, keyDown: keyDown)
+          event?.flags = []
+          event?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+          try post(event)
+        }
+      }
+      usleep(Self.keyInterval)
+    }
+  }
+
+  public func pressKeys(keys: String) throws(HandsError) {
+    try requireAccessibility()
+    guard let stroke = KeyStroke(keys) else { throw .Failed(reason: "“\(keys)” isn’t a key combination.") }
+    try tap(stroke)
+  }
+
+  public func userInputDetected() -> Bool {
+    input.takeUserInput()
+  }
+
+  /// Presses modifiers, the key, and lets go in reverse order, as a person would.
+  private func tap(_ stroke: KeyStroke) throws(HandsError) {
+    var flags: CGEventFlags = []
+    var held: [(CGKeyCode, CGEventFlags)] = []
+    for code in stroke.modifiers {
+      flags.insert(KeyStroke.flag(of: code))
+      held.append((code, flags))
+      try key(code, down: true, flags: flags)
+    }
+    try key(stroke.key, down: true, flags: flags)
+    try key(stroke.key, down: false, flags: flags)
+    for (code, flagsWhileHeld) in held.reversed() {
+      try key(code, down: false, flags: flagsWhileHeld.subtracting(KeyStroke.flag(of: code)))
+    }
+    usleep(Self.keyInterval)
+  }
+
+  private func key(_ code: CGKeyCode, down: Bool, flags: CGEventFlags) throws(HandsError) {
+    let event = CGEvent(keyboardEventSource: SyntheticInput.source, virtualKey: code, keyDown: down)
+    event?.flags = flags
+    try post(event)
+  }
+
+  private func post(_ event: CGEvent?) throws(HandsError) {
+    guard let event else { throw .Failed(reason: "The system didn’t create an input event.") }
+    event.post(tap: .cghidEventTap)
+  }
+
+  private func requireAccessibility() throws(HandsError) {
+    guard AXIsProcessTrusted() else { throw .PermissionDenied(permission: "accessibility") }
+  }
+
+  // MARK: Helpers
+
+  private func appURL(_ app: String) throws(HandsError) -> URL {
+    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) else { throw .AppNotFound(app: app) }
+    return url
+  }
+
+  private func runningApps(_ app: String) -> [NSRunningApplication] {
+    NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
+  }
+
+  /// Opens or brings forward the app; returns it once it's running.
+  private func launch(_ url: URL) throws(HandsError) -> NSRunningApplication? {
+    let config = NSWorkspace.OpenConfiguration()
+    config.activates = true
+    let result = wait { done in
+      NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
+        done((app?.processIdentifier, error?.localizedDescription))
+      }
+    }
+    if let error = result.1 { throw .Failed(reason: error) }
+    return result.0.flatMap { NSRunningApplication(processIdentifier: $0) }
+  }
+
+  /// Waits until one of the apps shows a window. Some apps open none; the run then goes on
+  /// and the next look at the screen says so.
+  private func waitForWindow(_ apps: [NSRunningApplication]) {
+    guard !apps.isEmpty else { return }
+    _ = poll(timeout: Self.launchTimeout) { frontWindow(of: apps) != nil }
+  }
+
+  /// Checks `condition` every 50 ms until it holds, the time is up or the run is cancelled.
+  private func poll(timeout: TimeInterval, _ condition: () -> Bool) -> Bool {
+    let deadline = Date(timeIntervalSinceNow: timeout)
+    while !condition() {
+      guard Date() < deadline, !isCancelled() else { return false }
+      usleep(50_000)
+    }
+    return true
+  }
+
+  /// Runs `start` and blocks this (non-main) thread until it calls back.
+  private func wait<T: Sendable>(_ start: (@escaping @Sendable (T) -> Void) -> Void) -> T {
+    let box = Box<T>()
+    let done = DispatchSemaphore(value: 0)
+    start { value in
+      box.value = value
+      done.signal()
+    }
+    done.wait()
+    return box.value!
+  }
+
+  /// The front window of any of `apps`: its id and frame in global top-left coordinates.
+  private func frontWindow(of apps: [NSRunningApplication]) -> (id: CGWindowID, bounds: CGRect)? {
+    let pids = Set(apps.map(\.processIdentifier))
+    guard !pids.isEmpty,
+      let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+        as? [[String: Any]]
+    else { return nil }
+    for info in list {
+      guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pids.contains(pid),
+        info[kCGWindowLayer as String] as? Int == 0,
+        let id = info[kCGWindowNumber as String] as? CGWindowID,
+        let dict = info[kCGWindowBounds as String] as? NSDictionary,
+        let bounds = CGRect(dictionaryRepresentation: dict), bounds.width > 1, bounds.height > 1
+      else { continue }
+      return (id, bounds)
+    }
+    return nil
+  }
+
+  private func captureWindow(_ app: String) throws(HandsError) -> (CGImage, Double) {
+    guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
+    guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
+    let id = window.id
+    let result = wait { (done: @escaping @Sendable (Result<Shot, HandsError>) -> Void) in
+      Task {
+        do {
+          let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+          guard let scWindow = content.windows.first(where: { $0.windowID == id }) else {
+            return done(.failure(.NoWindow(app: app)))
+          }
+          let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+          let scale = Double(filter.pointPixelScale)
+          let config = SCStreamConfiguration()
+          config.width = Int((filter.contentRect.width * CGFloat(scale)).rounded())
+          config.height = Int((filter.contentRect.height * CGFloat(scale)).rounded())
+          config.showsCursor = false
+          config.ignoreShadowsSingleWindow = true
+          let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+          done(.success(Shot(image: image, scale: scale)))
+        } catch {
+          // Turning the permission off while JEVision runs shows up here, not in the preflight.
+          done(.failure(CGPreflightScreenCaptureAccess() ? .Failed(reason: error.localizedDescription) : .PermissionDenied(permission: "screenRecording")))
+        }
+      }
+    }
+    let shot = try result.get()
+    return (shot.image, shot.scale)
+  }
+
+  /// Whether macOS draws windows dark. Apps that force their own appearance aren't detected.
+  static var systemIsDark: Bool {
+    let style = CFPreferencesCopyValue(
+      "AppleInterfaceStyle" as CFString, kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+    return (style as? String)?.lowercased() == "dark"
+  }
+
+  static func png(_ image: CGImage) -> Data? {
+    let data = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else { return nil }
+    CGImageDestinationAddImage(destination, image, nil)
+    return CGImageDestinationFinalize(destination) ? data as Data : nil
+  }
+
+  static func resized(_ image: CGImage, by factor: Double) -> CGImage? {
+    let width = max(1, Int((Double(image.width) * factor).rounded()))
+    let height = max(1, Int((Double(image.height) * factor).rounded()))
+    guard let space = image.colorSpace,
+      let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+    else { return nil }
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage()
+  }
+
+  /// The image's own pixel values as RGBA, without colour conversion, so a template matches the
+  /// screenshot it was cut from.
+  static func bitmap(_ image: CGImage) -> Bitmap? {
+    let width = image.width, height = image.height
+    let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+    var pixels = [UInt8](repeating: 0, count: width * height * 4)
+    let drawn = pixels.withUnsafeMutableBytes { buffer in
+      guard
+        let context = CGContext(
+          data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+          space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+      else { return false }
+      context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+      return true
+    }
+    return drawn ? Bitmap(width: width, height: height, pixels: pixels) : nil
+  }
+}
+
+private struct Shot: @unchecked Sendable {
+  let image: CGImage
+  let scale: Double
+}
+
+private final class Box<T>: @unchecked Sendable {
+  var value: T?
+}

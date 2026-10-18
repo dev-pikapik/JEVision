@@ -27,7 +27,9 @@ rm -rf build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/strings
 
 SOURCES=()
-while IFS= read -r -d '' f; do SOURCES+=("$f"); done < <(find Sources -name '*.swift' -print0)
+while IFS= read -r -d '' f; do SOURCES+=("$f"); done < <(find Sources/JEVision -name '*.swift' -print0)
+HANDS=()
+while IFS= read -r -d '' f; do HANDS+=("$f"); done < <(find Sources/JEVisionHands -name '*.swift' -print0)
 
 BINARIES=()
 EMIT=(-Xfrontend -emit-localized-strings -Xfrontend -emit-localized-strings-path -Xfrontend build/strings)
@@ -45,10 +47,18 @@ for ARCH in $ARCHS; do
     "$CORE/Sources/JEVisionCore/JEVisionCore.swift"
   swiftc -O -whole-module-optimization -parse-as-library \
     -swift-version 6 -warnings-as-errors \
+    -module-name JEVisionHands \
+    -target "$ARCH-apple-macos$MIN_OS" \
+    -I "$MODULES" -I "$FFI/Headers" \
+    -emit-module -emit-module-path "$MODULES/JEVisionHands.swiftmodule" \
+    -emit-library -static -o "$MODULES/libJEVisionHands.a" \
+    "${HANDS[@]}"
+  swiftc -O -whole-module-optimization -parse-as-library \
+    -swift-version 6 -warnings-as-errors \
     -module-name JEVision \
     -target "$ARCH-apple-macos$MIN_OS" \
     -I "$MODULES" -I "$FFI/Headers" \
-    -L "$MODULES" -lJEVisionCore -L "$FFI" -ljevision_ffi \
+    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi \
     ${EMIT[@]+"${EMIT[@]}"} \
     "${SOURCES[@]}" \
     -o "build/JEVision-$ARCH"
