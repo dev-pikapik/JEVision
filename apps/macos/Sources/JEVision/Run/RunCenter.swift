@@ -23,7 +23,8 @@ final class RunCenter {
     let project: URL
     let verdict: Verdict?
     let message: String
-    let report: URL?
+    /// The run's folder, for its report.
+    let run: URL?
     /// The permission the run stopped for, if it did.
     let permission: Permission?
     var offersGitIgnore: Bool
@@ -215,16 +216,16 @@ final class RunCenter {
     let declined = defaults.stringArray(forKey: Self.declinedKey) ?? []
     let offers = !declined.contains(request.project.path) && GitIgnore.needsEntry(in: request.project)
     switch outcome {
-    case .finished(_, let html, let report):
+    case .finished(let dir, _, let report):
       let failure = report.attempts.last?.failure
       result = Result(
         test: request.document.url, project: request.project, verdict: report.verdict,
-        message: RunText.outcome(report), report: html.map { URL(filePath: $0) },
+        message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),
         permission: failure.flatMap(RunText.permission), offersGitIgnore: offers)
     case .failed(let reason):
       result = Result(
         test: request.document.url, project: request.project, verdict: nil,
-        message: String(localized: "The test couldn’t start: \(reason)"), report: nil, permission: nil,
+        message: String(localized: "The test couldn’t start: \(reason)"), run: nil, permission: nil,
         offersGitIgnore: false)
     }
     if let result { AccessibilityNotification.Announcement(result.message).post() }

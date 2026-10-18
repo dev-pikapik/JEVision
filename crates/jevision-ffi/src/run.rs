@@ -521,6 +521,8 @@ pub struct Step {
     pub after: Option<String>,
     pub expected: Option<String>,
     pub diff: Option<String>,
+    /// Reference file of a `check`, relative to the project folder.
+    pub reference: Option<String>,
     pub similarity: Option<f64>,
     pub branch: Option<String>,
     pub failure: Option<Failure>,
@@ -539,6 +541,7 @@ impl From<jevision_runner::Step> for Step {
             after: s.after,
             expected: s.expected,
             diff: s.diff,
+            reference: s.reference,
             similarity: s.similarity,
             branch: s.branch,
             failure: s.failure.map(Into::into),

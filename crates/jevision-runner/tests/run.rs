@@ -439,6 +439,8 @@ fn check_creates_baseline_then_passes_then_fails() {
         [("check".to_owned(), StepStatus::BaselineCreated)]
     );
     assert_eq!(first.baselines_created, ["refs/home.png"]);
+    let created = &first.attempts[0].steps[0];
+    assert_eq!(created.reference.as_deref(), Some("refs/home.png"));
     let baseline = std::fs::read(p.0.join("refs/home.png")).unwrap();
     assert_ne!(
         pixel(&baseline, 0, 0),
@@ -466,8 +468,14 @@ fn check_creates_baseline_then_passes_then_fails() {
     assert_eq!(failure.param("threshold"), "90.0%");
     let step = &third.report.attempts[0].steps[0];
     assert!(step.similarity.unwrap() < 0.9);
+    assert_eq!(step.reference.as_deref(), Some("refs/home.png"));
     let diff = std::fs::read(third.dir.join(step.diff.as_ref().unwrap())).unwrap();
     assert_eq!(pixel(&diff, 39, 19), [230, 20, 60], "differences are red");
+
+    let history = Run::list(&p.0).unwrap();
+    assert_eq!(history.len(), 3);
+    assert_eq!(history[0].report, third.report, "newest first");
+    assert_eq!(Run::load(&third.dir).unwrap().report, third.report);
 }
 
 #[test]

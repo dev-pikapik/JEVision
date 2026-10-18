@@ -77,6 +77,10 @@ pub struct Step {
     pub expected: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diff: Option<String>,
+    /// Reference file of a `check`, relative to the project folder: the one compared with, or
+    /// the one this step saved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<String>,
     /// Share of compared pixels that matched the reference, 0–1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub similarity: Option<f64>,

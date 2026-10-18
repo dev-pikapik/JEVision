@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(RunCenter.self) private var runs
   @State private var query = ""
   @State private var renaming: ProjectItem?
   @State private var newName = ""
@@ -14,12 +15,77 @@ struct ProjectView: View {
   var body: some View {
     @Bindable var project = project
     NavigationSplitView {
-      List(selection: $project.selection) {
+      Group {
+        if project.sidebar == .runs {
+          RunsList(query: query)
+        } else {
+          testList
+        }
+      }
+      .safeAreaInset(edge: .top, spacing: 0) {
+        if !project.runs.isEmpty || project.sidebar == .runs {
+          Picker("Show", selection: $project.sidebar) {
+            Text("Tests").tag(ProjectStore.Sidebar.tests)
+            Text("Runs").tag(ProjectStore.Sidebar.runs)
+          }
+          .pickerStyle(.segmented)
+          .labelsHidden()
+          .padding(.horizontal, 10)
+          .padding(.bottom, 6)
+        }
+      }
+      .searchable(
+        text: $query, placement: .sidebar,
+        prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search tests"))
+      .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
+    } detail: {
+      if project.sidebar == .runs {
+        if let dir = project.selectedRun {
+          RunReportView(dir: dir)
+            .id(dir)
+        } else {
+          ContentUnavailableView(
+            "Select a run", systemImage: "clock.arrow.circlepath",
+            description: Text("Its report shows every step, with screenshots."))
+        }
+      } else if let document = project.document {
+        EditorView(document: document)
+          .id(document.url)
+      } else if let id = project.selection, let item = project.items.item(withID: id) {
+        ItemDetailView(item: item)
+      } else {
+        ContentUnavailableView("Select a test", systemImage: "flowchart")
+      }
+    }
+    .onChange(of: runs.result) { _, result in
+      // Run Again from a report: the new run's report takes its place.
+      if project.sidebar == .runs, project.selectedRun != nil, let run = result?.run { project.showRun(run) }
+    }
+    .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+      TextField("Name", text: $newName)
+      Button("Rename") {
+        guard let item = renaming else { return }
+        attempt { try project.rename(item, to: newName) }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
+    .alert(
+      "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
+      presenting: failure
+    ) { _ in
+      Button("OK") {}
+    } message: { Text($0) }
+  }
+
+  private var testList: some View {
+    @Bindable var project = project
+    let latest = RunHistory.latest(project.runs)
+    return List(selection: $project.selection) {
         if isSearching {
-          ForEach(ProjectScanner.tests(in: project.items, matching: query)) { row($0, showsPath: true) }
+          ForEach(ProjectScanner.tests(in: project.items, matching: query)) { row($0, showsPath: true, latest: latest) }
         } else {
           Section("Tests") {
-            ForEach(project.items, content: tree)
+            ForEach(project.items) { tree($0, latest: latest) }
           }
         }
       }
@@ -39,49 +105,23 @@ struct ProjectView: View {
       .onDeleteCommand {
         if let id = project.selection, let item = project.items.item(withID: id), item.kind == .test { trash(item) }
       }
-      .searchable(text: $query, placement: .sidebar, prompt: Text("Search tests"))
-      .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
-    } detail: {
-      if let document = project.document {
-        EditorView(document: document)
-          .id(document.url)
-      } else if let id = project.selection, let item = project.items.item(withID: id) {
-        ItemDetailView(item: item)
-      } else {
-        ContentUnavailableView("Select a test", systemImage: "flowchart")
-      }
-    }
-    .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-      TextField("Name", text: $newName)
-      Button("Rename") {
-        guard let item = renaming else { return }
-        attempt { try project.rename(item, to: newName) }
-      }
-      Button("Cancel", role: .cancel) {}
-    }
-    .alert(
-      "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
-      presenting: failure
-    ) { _ in
-      Button("OK") {}
-    } message: { Text($0) }
   }
 
-  private func tree(_ item: ProjectItem) -> AnyView {
-    guard let children = item.outlineChildren else { return AnyView(row(item, showsPath: false)) }
+  private func tree(_ item: ProjectItem, latest: [String: RunStatus]) -> AnyView {
+    guard let children = item.outlineChildren else { return AnyView(row(item, showsPath: false, latest: latest)) }
     let isExpanded = Binding(
       get: { expanded.contains(item.id) },
       set: { if $0 { expanded.insert(item.id) } else { expanded.remove(item.id) } })
     return AnyView(
       DisclosureGroup(isExpanded: isExpanded) {
-        ForEach(children, content: tree)
+        ForEach(children) { tree($0, latest: latest) }
       } label: {
-        row(item, showsPath: false)
+        row(item, showsPath: false, latest: latest)
       })
   }
 
-  private func row(_ item: ProjectItem, showsPath: Bool) -> some View {
-    SidebarRow(item: item, showsPath: showsPath)
+  private func row(_ item: ProjectItem, showsPath: Bool, latest: [String: RunStatus]) -> some View {
+    SidebarRow(item: item, showsPath: showsPath, status: latest[item.id])
       .contextMenu {
         if item.kind == .test {
           Button("Rename…") {
@@ -107,6 +147,8 @@ struct ProjectView: View {
 private struct SidebarRow: View {
   let item: ProjectItem
   let showsPath: Bool
+  /// How the test's last run ended.
+  let status: RunStatus?
 
   var body: some View {
     switch item.kind {
@@ -116,17 +158,28 @@ private struct SidebarRow: View {
         .accessibilityValue(Text("\(item.testCount) tests"))
     case .test:
       Label {
-        VStack(alignment: .leading, spacing: 1) {
-          Text(item.name)
-          if showsPath, !item.parentPath.isEmpty {
-            Text(item.parentPath)
-              .font(.caption)
-              .foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+          VStack(alignment: .leading, spacing: 1) {
+            Text(item.name)
+            if showsPath, !item.parentPath.isEmpty {
+              Text(item.parentPath)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+          if let status {
+            Spacer(minLength: 0)
+            Image(systemName: status.dot)
+              .font(.system(size: 7))
+              .foregroundStyle(status.color)
+              .help(Text("Last run: \(status.title)"))
+              .accessibilityHidden(true)
           }
         }
       } icon: {
         Image(systemName: "flowchart")
       }
+      .accessibilityValue(status.map { Text("Last run: \($0.title)") } ?? Text(verbatim: ""))
     }
   }
 }

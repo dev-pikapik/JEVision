@@ -10,6 +10,10 @@ final class ProjectStore {
     case closed, loading, ready, unavailable
   }
 
+  enum Sidebar: Hashable {
+    case tests, runs
+  }
+
   private(set) var status: Status = .closed
   private(set) var rootURL: URL?
   private(set) var name = ""
@@ -26,9 +30,17 @@ final class ProjectStore {
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
   var isCreatingTest = false
+  /// Saved runs, newest first.
+  private(set) var runs: [SavedRun] = []
+  /// What the sidebar lists. Runs only while there are some.
+  var sidebar = Sidebar.tests
+  /// Folder of the run whose report is open.
+  var selectedRun: SavedRun.ID?
+  /// Counts reference images replaced or put back, so views that compare with them look again.
+  private(set) var referenceChanges = 0
 
   @ObservationIgnored private var watcher: FolderWatcher?
-  @ObservationIgnored private var scanTask: Task<[ProjectItem], any Error>?
+  @ObservationIgnored private var scanTask: Task<([ProjectItem], [SavedRun]), any Error>?
   @ObservationIgnored private var accessedURL: URL?
 
   private enum Key {
@@ -130,6 +142,56 @@ final class ProjectStore {
     if selection == item.id { selection = nil }
   }
 
+  // MARK: Runs
+
+  /// Opens the report of the run saved in `dir`.
+  func showRun(_ dir: URL) {
+    sidebar = .runs
+    selectedRun = dir.path(percentEncoded: false)
+  }
+
+  /// Whether the test file, relative to the project, is still there.
+  func hasTest(_ file: String) -> Bool {
+    guard let rootURL else { return false }
+    return FileManager.default.fileExists(atPath: rootURL.appending(path: file).path)
+  }
+
+  /// Opens the test in the editor with the block selected.
+  func showBlock(_ block: String, in file: String) {
+    sidebar = .tests
+    selection = file
+    document?.selection = block
+  }
+
+  func moveToTrash(_ run: SavedRun) throws {
+    try FileManager.default.trashItem(at: run.url, resultingItemURL: nil)
+    runs.removeAll { $0.id == run.id }
+    if selectedRun == run.id { selectedRun = nil }
+    if runs.isEmpty { sidebar = .tests }
+  }
+
+  /// Makes a run's screenshot the reference image `reference` (relative to the project). The old
+  /// image goes to the Trash; Undo brings it back.
+  func acceptReference(_ screenshot: URL, as reference: String, undoManager: UndoManager?) throws {
+    guard let rootURL, let file = Baseline.file(reference, in: rootURL) else {
+      throw CocoaError(.fileWriteNoPermission, userInfo: [NSFilePathErrorKey: reference])
+    }
+    let old = try Baseline.accept(screenshot, as: file)
+    referenceChanges += 1
+    let action = String(localized: "Accept as New Reference")
+    undoManager?.registerUndo(withTarget: self) { store in
+      MainActor.assumeIsolated {
+        guard (try? Baseline.restore(old, to: file)) != nil else { return }
+        store.referenceChanges += 1
+        undoManager?.registerUndo(withTarget: store) { store in
+          MainActor.assumeIsolated { try? store.acceptReference(screenshot, as: reference, undoManager: undoManager) }
+        }
+        undoManager?.setActionName(action)
+      }
+    }
+    undoManager?.setActionName(action)
+  }
+
   private func open(_ url: URL) {
     accessedURL?.stopAccessingSecurityScopedResource()
     accessedURL = url.startAccessingSecurityScopedResource() ? url : nil
@@ -137,6 +199,9 @@ final class ProjectStore {
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
     items = []
+    runs = []
+    selectedRun = nil
+    sidebar = .tests
     status = .loading
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
     rescan()
@@ -145,14 +210,25 @@ final class ProjectStore {
   private func rescan() {
     guard let url = rootURL else { return }
     scanTask?.cancel()
-    let task = Task.detached(priority: .userInitiated) { try ProjectScanner.scan(url) }
+    let task = Task.detached(priority: .userInitiated) {
+      let items = try ProjectScanner.scan(url)
+      // Runs are a bonus to the tests: an unreadable history doesn't close the project.
+      return (items, (try? listRuns(project: url.path)) ?? [])
+    }
     scanTask = task
     Task { [weak self] in
       let result = await task.result
       guard let self, scanTask == task, !task.isCancelled else { return }
       switch result {
-      case .success(let found):
+      case .success(let (found, saved)):
         items = found
+        runs = saved
+        if let selectedRun, !saved.contains(where: { $0.id == selectedRun }),
+          !FileManager.default.fileExists(atPath: selectedRun)
+        {
+          self.selectedRun = nil
+        }
+        if saved.isEmpty, selectedRun == nil { sidebar = .tests }
         status = .ready
         if let selection, found.item(withID: selection) == nil,
           !FileManager.default.fileExists(atPath: url.appending(path: selection).path)
@@ -166,6 +242,7 @@ final class ProjectStore {
           open(moved)
         } else {
           items = []
+          runs = []
           status = .unavailable
         }
       }
