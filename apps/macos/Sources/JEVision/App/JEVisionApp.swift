@@ -89,6 +89,7 @@ struct JEVisionApp: App {
         .environment(remote)
         .environment(updates)
     }
+    .windowResizability(.contentMinSize)
   }
 }
 

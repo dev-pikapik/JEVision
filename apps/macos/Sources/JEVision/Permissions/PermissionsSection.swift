@@ -64,5 +64,6 @@ struct PermissionRow: View {
         .fixedSize(horizontal: false, vertical: true)
       }
     }
+    .settingAnchor("permission.\(permission.id)")
   }
 }
