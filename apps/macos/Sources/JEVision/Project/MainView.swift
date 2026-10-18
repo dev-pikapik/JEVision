@@ -57,6 +57,9 @@ struct MainView: View {
     }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
     .sheet(isPresented: $git.isComposingPullRequest) { NewPullRequestView() }
+    .sheet(isPresented: Binding(get: { git.conflicts != nil }, set: { if !$0 { git.conflicts = nil } })) {
+      if let paths = git.conflicts { ConflictsView(paths: paths) }
+    }
     .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
     .sheet(item: $records.blocked) { RecordReadinessSheet(request: $0) }
     // The recording typed secrets that have no value yet: ask for each in turn.

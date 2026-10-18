@@ -43,6 +43,9 @@ final class ProjectGit {
   var failure: Failure?
   /// The New Pull Request sheet is shown over the main window.
   var isComposingPullRequest = false
+  /// Files the last pull couldn't combine on its own, for the user to settle; nothing changed
+  /// on disk until they do.
+  var conflicts: [String]?
 
   @ObservationIgnored private(set) var project: URL?
   @ObservationIgnored private var refreshTask: Task<Void, Never>?
@@ -106,6 +109,12 @@ final class ProjectGit {
     perform(.pulling) { try gitPull(project: $0) }
   }
 
+  /// Brings in the server's commits with the conflicted files as the user settled them and
+  /// commits the merge. Calls `done` once committed.
+  func finishPull(_ files: [SettledFile], done: @escaping () -> Void) {
+    perform(.pulling) { try gitFinishPull(project: $0, files: files) } then: { _ in done() }
+  }
+
   func push() {
     perform(.pushing) { try gitPush(project: $0) }
   }
@@ -160,6 +169,7 @@ final class ProjectGit {
       self.activity = nil
       switch result {
       case .success(let value): then(value)
+      case .failure(GitError.Conflict(let paths)) where activity == .pulling: conflicts = paths
       case .failure(let error): failure = Failure(activity: activity, message: GitText.failure(error))
       }
       refresh()

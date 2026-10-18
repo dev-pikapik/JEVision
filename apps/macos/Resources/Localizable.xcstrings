@@ -395,6 +395,58 @@
         }
       }
     },
+    "%lld conflicts" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conflict"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conflicts"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld конфликт"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld конфликта"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld конфликтов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld конфликта"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld days" : {
       "localizations" : {
         "en" : {
@@ -1959,6 +2011,56 @@
         }
       }
     },
+    "Both" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе"
+          }
+        }
+      }
+    },
+    "Both Versions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе версии"
+          }
+        }
+      }
+    },
+    "Both Where Possible" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе, где можно"
+          }
+        }
+      }
+    },
+    "Both sides added it, each differently." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе стороны добавили его, каждая по-своему."
+          }
+        }
+      }
+    },
+    "Both sides changed this file." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обе стороны изменили этот файл."
+          }
+        }
+      }
+    },
     "Branch" : {
       "localizations" : {
         "ru" : {
@@ -1995,6 +2097,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ветки «%@» ещё нет на сервере. Сначала отправьте её."
+          }
+        }
+      }
+    },
+    "Bring in the server’s changes with your choices and commit the result." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принять изменения с сервера с вашим выбором и закоммитить результат."
           }
         }
       }
@@ -2141,6 +2253,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся связаться с сервером. Проверьте подключение к интернету и попробуйте снова."
+          }
+        }
+      }
+    },
+    "Can’t read the changed files" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать изменённые файлы"
           }
         }
       }
@@ -2297,6 +2419,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменён"
+          }
+        }
+      }
+    },
+    "Changed on both sides, differently." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено с обеих сторон, по-разному."
           }
         }
       }
@@ -2621,6 +2753,16 @@
         }
       }
     },
+    "Choose which version to keep" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, какую версию оставить"
+          }
+        }
+      }
+    },
     "Chooses the folder that holds your tests." : {
       "localizations" : {
         "ru" : {
@@ -2757,6 +2899,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Столбцы"
+          }
+        }
+      }
+    },
+    "Combine Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объединение изменений"
+          }
+        }
+      }
+    },
+    "Combine and Commit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объединить и закоммитить"
+          }
+        }
+      }
+    },
+    "Combining" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объединение"
           }
         }
       }
@@ -3107,6 +3279,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось изменить устройство"
+          }
+        }
+      }
+    },
+    "Couldn’t combine the changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось объединить изменения"
           }
         }
       }
@@ -3871,6 +4053,16 @@
         }
       }
     },
+    "Each side leads it to a different step." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждая сторона ведёт его к другому шагу."
+          }
+        }
+      }
+    },
     "Edit Areas Always Hidden" : {
       "localizations" : {
         "ru" : {
@@ -4465,6 +4657,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Первый тест"
+          }
+        }
+      }
+    },
+    "First step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первый шаг"
           }
         }
       }
@@ -5388,12 +5590,32 @@
         }
       }
     },
+    "Keep" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить"
+          }
+        }
+      }
+    },
     "Keep Editing" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить правку"
+          }
+        }
+      }
+    },
+    "Keep for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить для «%@»"
           }
         }
       }
@@ -5504,6 +5726,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снова аккуратно расставляет блоки."
+          }
+        }
+      }
+    },
+    "Leads nowhere" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никуда не ведёт"
           }
         }
       }
@@ -5724,6 +5956,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщение"
+          }
+        }
+      }
+    },
+    "Mine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Моя"
+          }
+        }
+      }
+    },
+    "Mine: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Моя: %@"
+          }
+        }
+      }
+    },
+    "Mine: Removed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Моя: удалено"
           }
         }
       }
@@ -5974,6 +6236,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Следующие прогоны будут сравнивать с ним. Текущая картинка %@ уйдёт в Корзину, а «Правка › Отменить» вернёт её."
+          }
+        }
+      }
+    },
+    "Next step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий шаг"
           }
         }
       }
@@ -6370,6 +6642,26 @@
         }
       }
     },
+    "Nothing to choose" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбирать нечего"
+          }
+        }
+      }
+    },
+    "Nothing to choose: the changes on both sides fit together and are combined." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбирать нечего: изменения обеих сторон совместимы и объединены."
+          }
+        }
+      }
+    },
     "Nothing to commit" : {
       "localizations" : {
         "ru" : {
@@ -6430,12 +6722,42 @@
         }
       }
     },
+    "On the server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На сервере"
+          }
+        }
+      }
+    },
+    "On this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac"
+          }
+        }
+      }
+    },
     "On. This Mac won’t fall asleep on its own." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включено. Mac не будет засыпать сам."
+          }
+        }
+      }
+    },
+    "One version of this test can’t be opened, so it can’t be combined block by block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одну из версий теста не удаётся открыть, поэтому объединить его по блокам нельзя."
           }
         }
       }
@@ -7584,6 +7906,16 @@
         }
       }
     },
+    "Reading both versions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтение обеих версий"
+          }
+        }
+      }
+    },
     "Ready" : {
       "localizations" : {
         "ru" : {
@@ -7920,6 +8252,16 @@
         }
       }
     },
+    "Removed on the server; you changed it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалено на сервере, а вы его изменили."
+          }
+        }
+      }
+    },
     "Removes the links into and out of the selected block." : {
       "localizations" : {
         "ru" : {
@@ -8156,6 +8498,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Возврат версии"
+          }
+        }
+      }
+    },
+    "Result" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результат"
           }
         }
       }
@@ -9164,6 +9516,16 @@
         }
       }
     },
+    "Settle every conflict in every file the same way." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Решить все конфликты во всех файлах одинаково."
+          }
+        }
+      }
+    },
     "Set…" : {
       "localizations" : {
         "ru" : {
@@ -9696,6 +10058,16 @@
         }
       }
     },
+    "Steps inside" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаги внутри"
+          }
+        }
+      }
+    },
     "Steps of %@" : {
       "localizations" : {
         "ru" : {
@@ -9892,6 +10264,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прогон теста"
+          }
+        }
+      }
+    },
+    "Test: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест: %@"
           }
         }
       }
@@ -10102,6 +10484,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Код одноразовый, истекает через %@."
+          }
+        }
+      }
+    },
+    "The combined test can’t be read." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объединённый тест не читается."
+          }
+        }
+      }
+    },
+    "The combined test has problems. Choose differently to fix them:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В объединённом тесте есть ошибки. Выберите иначе, чтобы их исправить:"
           }
         }
       }
@@ -10576,6 +10978,36 @@
         }
       }
     },
+    "Theirs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С сервера"
+          }
+        }
+      }
+    },
+    "Theirs: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С сервера: %@"
+          }
+        }
+      }
+    },
+    "Theirs: Removed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С сервера: удалено"
+          }
+        }
+      }
+    },
     "Then choose a block with the arrow keys and press Return." : {
       "localizations" : {
         "ru" : {
@@ -10838,6 +11270,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл лежит вне проекта, поэтому вместе с тестами он к другим людям не попадёт."
+          }
+        }
+      }
+    },
+    "This file was removed on the server; you changed it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот файл удалён на сервере, а вы его изменили."
           }
         }
       }
@@ -11352,6 +11794,16 @@
         }
       }
     },
+    "Use for All" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применить ко всем"
+          }
+        }
+      }
+    },
     "Use up to 64 Latin letters, digits, - and _ in the name, without spaces." : {
       "localizations" : {
         "ru" : {
@@ -11632,6 +12084,16 @@
         }
       }
     },
+    "Which version of “%@” to keep" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какую версию «%@» оставить"
+          }
+        }
+      }
+    },
     "Who ran what, and when" : {
       "localizations" : {
         "ru" : {
@@ -11712,6 +12174,36 @@
         }
       }
     },
+    "You and the server changed the same files. Choose what to keep — nothing changes until you combine them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы и сервер изменили одни и те же файлы. Выберите, что оставить, — ничего не изменится, пока вы их не объедините."
+          }
+        }
+      }
+    },
+    "You removed it; on the server it was changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы его удалили, а на сервере изменили."
+          }
+        }
+      }
+    },
+    "You removed this file; on the server it was changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы удалили этот файл, а на сервере его изменили."
+          }
+        }
+      }
+    },
     "You stopped the test." : {
       "localizations" : {
         "ru" : {
@@ -11758,6 +12250,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тесты, открытый проект, секреты и API-ключи останутся."
+          }
+        }
+      }
+    },
+    "Your version with the server’s changes as chosen. Highlighted: what changes in yours." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваша версия с выбранными изменениями с сервера. Выделено то, что меняется в вашей."
           }
         }
       }

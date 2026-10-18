@@ -42,18 +42,18 @@ struct FlowDiffView: View {
   }
 
   /// How each item on the shown version is highlighted, by id.
-  static func marks(_ changes: [BlockChange], on side: Side) -> [String: BlockChangeKind] {
-    var marks: [String: BlockChangeKind] = [:]
+  static func marks(_ changes: [BlockChange], on side: Side) -> [String: DiffMark] {
+    var marks: [String: DiffMark] = [:]
     for change in changes {
       switch (change.kind, side) {
-      case (.changed, _), (.added, .after), (.removed, .before): marks[change.id] = change.kind
+      case (.changed, _), (.added, .after), (.removed, .before): marks[change.id] = DiffMark(change.kind)
       default: break
       }
     }
     return marks
   }
 
-  static func color(_ kind: BlockChangeKind) -> Color {
+  nonisolated static func color(_ kind: BlockChangeKind) -> Color {
     switch kind {
     case .added: .green
     case .removed: .red
@@ -61,7 +61,7 @@ struct FlowDiffView: View {
     }
   }
 
-  static func symbol(_ kind: BlockChangeKind) -> String {
+  nonisolated static func symbol(_ kind: BlockChangeKind) -> String {
     switch kind {
     case .added: "plus.circle.fill"
     case .removed: "minus.circle.fill"
@@ -69,7 +69,7 @@ struct FlowDiffView: View {
     }
   }
 
-  static func title(_ kind: BlockChangeKind) -> String {
+  nonisolated static func title(_ kind: BlockChangeKind) -> String {
     switch kind {
     case .added: String(localized: "Added")
     case .removed: String(localized: "Removed")
@@ -114,11 +114,11 @@ struct FlowDiffView: View {
 }
 
 /// The flowchart with its frames and notes, read-only, scaled down to fit the width.
-private struct DiffCanvas: View {
+struct DiffCanvas: View {
   let flow: Flow
-  let blocks: [String: BlockChangeKind]
-  let notes: [String: BlockChangeKind]
-  let sections: [String: BlockChangeKind]
+  let blocks: [String: DiffMark]
+  let notes: [String: DiffMark]
+  let sections: [String: DiffMark]
   @State private var width = 0.0
 
   var body: some View {
@@ -131,7 +131,7 @@ private struct DiffCanvas: View {
           .modifier(ChangeMark(mark: sections[section.id], radius: 16))
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(Text("Frame"))
-          .accessibilityValue(Text(verbatim: [sections[section.id].map(FlowDiffView.title), section.title]
+          .accessibilityValue(Text(verbatim: [sections[section.id].map(\.title), section.title]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
           .offset(x: section.rect.x, y: section.rect.y)
       }
@@ -156,7 +156,7 @@ private struct DiffCanvas: View {
           .modifier(ChangeMark(mark: notes[note.id], radius: 14))
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(Text("Note"))
-          .accessibilityValue(Text(verbatim: [notes[note.id].map(FlowDiffView.title), note.text, note.author]
+          .accessibilityValue(Text(verbatim: [notes[note.id].map(\.title), note.text, note.author]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
           .offset(x: note.rect.x, y: note.rect.y)
       }
@@ -170,9 +170,27 @@ private struct DiffCanvas: View {
   }
 }
 
+/// How a block, note or frame stands out on a compared flowchart.
+struct DiffMark: Equatable {
+  let color: Color
+  let symbol: String
+  let title: String
+
+  /// Changed on both sides, differently.
+  static var conflict: DiffMark {
+    DiffMark(color: .orange, symbol: "exclamationmark.triangle.fill", title: String(localized: "Conflict"))
+  }
+}
+
+extension DiffMark {
+  init(_ kind: BlockChangeKind) {
+    self.init(color: FlowDiffView.color(kind), symbol: FlowDiffView.symbol(kind), title: FlowDiffView.title(kind))
+  }
+}
+
 /// The outline and corner badge of a changed note or frame; an unchanged one fades.
 private struct ChangeMark: ViewModifier {
-  let mark: BlockChangeKind?
+  let mark: DiffMark?
   let radius: Double
 
   func body(content: Content) -> some View {
@@ -180,15 +198,15 @@ private struct ChangeMark: ViewModifier {
       .allowsHitTesting(false)
       .overlay {
         if let mark {
-          RoundedRectangle(cornerRadius: radius).strokeBorder(FlowDiffView.color(mark), lineWidth: 2.5)
+          RoundedRectangle(cornerRadius: radius).strokeBorder(mark.color, lineWidth: 2.5)
         }
       }
       .overlay(alignment: .topTrailing) {
         if let mark {
-          Image(systemName: FlowDiffView.symbol(mark))
+          Image(systemName: mark.symbol)
             .font(.system(size: 16))
             .symbolRenderingMode(.palette)
-            .foregroundStyle(.white, FlowDiffView.color(mark))
+            .foregroundStyle(.white, mark.color)
             .offset(x: 6, y: -6)
         }
       }
@@ -199,7 +217,7 @@ private struct ChangeMark: ViewModifier {
 private struct DiffBlockNode: View {
   let block: Block
   let appName: (String) -> String
-  let mark: BlockChangeKind?
+  let mark: DiffMark?
 
   private var type: String { block.kind.typeName }
 
@@ -223,25 +241,25 @@ private struct DiffBlockNode: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(.background, in: .rect(cornerRadius: 14))
     .background {
-      if let mark { RoundedRectangle(cornerRadius: 14).fill(FlowDiffView.color(mark).opacity(0.12)) }
+      if let mark { RoundedRectangle(cornerRadius: 14).fill(mark.color.opacity(0.12)) }
     }
     .overlay {
       RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(mark.map(FlowDiffView.color) ?? .primary.opacity(0.1), lineWidth: mark == nil ? 1 : 2.5)
+        .strokeBorder(mark.map(\.color) ?? .primary.opacity(0.1), lineWidth: mark == nil ? 1 : 2.5)
     }
     .overlay(alignment: .topTrailing) {
       if let mark {
-        Image(systemName: FlowDiffView.symbol(mark))
+        Image(systemName: mark.symbol)
           .font(.system(size: 16))
           .symbolRenderingMode(.palette)
-          .foregroundStyle(.white, FlowDiffView.color(mark))
+          .foregroundStyle(.white, mark.color)
           .offset(x: 6, y: -6)
       }
     }
     .opacity(mark == nil ? 0.6 : 1)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(BlockInfo.title(type)))
-    .accessibilityValue(Text([mark.map(FlowDiffView.title), summary].compactMap { $0 }.joined(separator: ". ")))
+    .accessibilityValue(Text([mark.map(\.title), summary].compactMap { $0 }.joined(separator: ". ")))
   }
 }
 

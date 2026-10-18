@@ -86,3 +86,45 @@ struct GitTextTests {
     #expect(GitText.fileName("refs/home.png") == "home.png")
   }
 }
+
+@MainActor
+struct ConflictFileTests {
+  private static func test(_ timeout: String, tags: String = "[]") -> Data {
+    Data(#"""
+      {"format":1,"name":"Wait","app":"com.example.A","tags":\#(tags),"start":"open","blocks":{
+      "open":{"type":"openApp","next":"wait"},
+      "wait":{"type":"waitFor","until":"screenStable","timeout":"\#(timeout)"}}}
+      """#.utf8)
+  }
+
+  @Test func aTestIsSettledBlockByBlock() throws {
+    var file = ConflictFile(
+      path: "auth/Wait.flow.json",
+      versions: ConflictVersions(base: Self.test("5s"), mine: Self.test("7s"), theirs: Self.test("9s", tags: #"["smoke"]"#)))
+    let test = try #require(file.test)
+    #expect(test.conflicts.map(\.id) == ["wait"])
+    #expect(ConflictText.title(test.conflicts[0], test) != "wait", "the block is named by its kind")
+    #expect(ConflictText.value(test.conflicts[0], in: test.mine).contains("7"))
+
+    file.chooseAll(.both)
+    #expect(file.choices == [.mine], "a setting can't keep both")
+    file.choices = [.theirs]
+    let settled = try #require(file.settled)
+    let flow = try loadFlow(json: String(decoding: try #require(settled.contents), as: UTF8.self))
+    #expect(flow.tags == ["smoke"], "what only the server changed comes in by itself")
+    guard case .waitFor(_, let timeoutMs, _) = flow.blocks.first(where: { $0.id == "wait" })?.kind else {
+      Issue.record("the wait block is kept")
+      return
+    }
+    #expect(timeoutMs == 9000)
+  }
+
+  @Test func otherFilesKeepOneSide() {
+    var file = ConflictFile(
+      path: "refs/home.png", versions: ConflictVersions(base: Data([1]), mine: nil, theirs: Data([2])))
+    #expect(file.test == nil)
+    #expect(file.settled?.contents == nil, "mine removed it")
+    file.chooseAll(.theirs)
+    #expect(file.settled?.contents == Data([2]))
+  }
+}
