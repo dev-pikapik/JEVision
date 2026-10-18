@@ -1,5 +1,7 @@
 import CoreGraphics
+import CoreVideo
 import Foundation
+import JEVisionCore
 import Testing
 
 @testable import JEVisionHands
@@ -103,6 +105,51 @@ struct TemplateMatcherTests {
 }
 
 struct RunVideoTests {
+  @Test func paintCoversTheMaskedPixelsOfAFrame() throws {
+    var made: CVPixelBuffer?
+    CVPixelBufferCreate(nil, 8, 4, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &made)
+    let picture = try #require(made)
+    CVPixelBufferLockBaseAddress(picture, [])
+    for (plane, value) in [(0, UInt8(50)), (1, UInt8(200))] {
+      let bytes = CVPixelBufferGetBytesPerRowOfPlane(picture, plane) * CVPixelBufferGetHeightOfPlane(picture, plane)
+      CVPixelBufferGetBaseAddressOfPlane(picture, plane)!.initializeMemory(as: UInt8.self, repeating: value, count: bytes)
+    }
+    CVPixelBufferUnlockBaseAddress(picture, [])
+
+    // A 4×2-point window at (4, 2) on an 8×4-point part of the screen; its left half is hidden.
+    let mask = videoMask(
+      width: 8, height: 4, shown: [Rect(x: 0, y: 0, width: 8, height: 4)],
+      windows: [VideoWindow(bounds: Rect(x: 4, y: 2, width: 4, height: 2), hide: [Rect(x: 0, y: 0, width: 0.5, height: 1)])])
+    #expect(RunVideo.paint(mask, on: picture))
+
+    CVPixelBufferLockBaseAddress(picture, .readOnly)
+    defer { CVPixelBufferUnlockBaseAddress(picture, .readOnly) }
+    let luma = CVPixelBufferGetBaseAddressOfPlane(picture, 0)!.assumingMemoryBound(to: UInt8.self)
+    let chroma = CVPixelBufferGetBaseAddressOfPlane(picture, 1)!.assumingMemoryBound(to: UInt8.self)
+    let lumaRow = CVPixelBufferGetBytesPerRowOfPlane(picture, 0)
+    let chromaRow = CVPixelBufferGetBytesPerRowOfPlane(picture, 1)
+    for y in 0..<4 {
+      for x in 0..<8 {
+        let covered = (4..<6).contains(x) && y >= 2
+        #expect(luma[y * lumaRow + x] == (covered ? mask.luma : 50), "luma (\(x), \(y))")
+      }
+    }
+    for y in 0..<2 {
+      for x in 0..<8 {
+        let covered = (4..<6).contains(x) && y == 1
+        let painted = x.isMultiple(of: 2) ? mask.chromaBlue : mask.chromaRed
+        #expect(chroma[y * chromaRow + x] == (covered ? painted : 200), "chroma (\(x), \(y))")
+      }
+    }
+  }
+
+  @Test func paintLeavesOutPicturesOfAnotherFormat() throws {
+    var made: CVPixelBuffer?
+    CVPixelBufferCreate(nil, 4, 4, kCVPixelFormatType_32BGRA, nil, &made)
+    let mask = VideoMask(areas: [PixelArea(x: 0, y: 0, width: 2, height: 2)], luma: 126, chromaBlue: 128, chromaRed: 128)
+    #expect(!RunVideo.paint(mask, on: try #require(made)))
+  }
+
   @Test func videoSizeFitsAndIsEven() {
     #expect(RunVideo.videoSize(width: 1280, height: 800) == (1280, 800))
     #expect(RunVideo.videoSize(width: 3024, height: 1964) == (1920, 1246))

@@ -133,9 +133,7 @@
   <li><strong>Only models on this Mac</strong> (<code>localOnly</code>). Screenshots never go to a cloud service: checks by meaning work only with models that run on this Mac, a check that would need a cloud model stops with a message, and assistants get no screenshots.</li>
 </ul>
 <p>Before any picture leaves the Mac, JEVision also paints over the areas the check itself hides or ignores and every password field it finds through the Accessibility permission. The report shows the picture exactly as it was sent, marked “masked before sending”.</p>
-<div class="note">
-  <p>Run videos record the window as it is, without these areas painted over. For screens that must never be recorded, turn videos off in <strong>Settings › Advanced</strong>, or run with <code>--video off</code>.</p>
-</div>
+<p>Run videos are painted over the same way, frame by frame: the areas always hidden, in every window of the app, and the password fields in them. A window that moves keeps its areas covered. A password field that has just appeared is found within about half a second.</p>
 </main>
 </div>
 <footer class="site-footer">

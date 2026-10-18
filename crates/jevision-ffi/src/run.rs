@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use jevision_core::{MouseButton, Point, Rect};
 use jevision_runner::{
-    PauseReason, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict, VideoMode,
-    VisionAnswer, VisionJudge,
+    PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
+    VideoMask, VideoMode, VideoWindow, VisionAnswer, VisionJudge,
 };
 
 use crate::vision::VisionSettings;
@@ -96,10 +96,47 @@ pub trait Hands: Send + Sync {
     /// synthetic input does not count.
     fn user_input_detected(&self) -> bool;
     /// Starts recording the app's windows into an `.mp4` at `path`. The video's first moment is
-    /// the moment of this call; the app may not be running yet.
-    fn start_video(&self, app: String, path: String) -> Result<(), HandsError>;
+    /// the moment of this call; the app may not be running yet. Every frame has `hide`
+    /// (fractions of a window) and the password fields painted over in each of the app's
+    /// windows; [`video_mask`] works out where.
+    fn start_video(&self, app: String, path: String, hide: Vec<Rect>) -> Result<(), HandsError>;
     /// Stops the recording and finishes the file; a recording without a picture leaves none.
     fn stop_video(&self) -> Result<(), HandsError>;
+}
+
+#[uniffi::remote(Record)]
+pub struct VideoWindow {
+    pub bounds: Rect,
+    pub hide: Vec<Rect>,
+}
+
+#[uniffi::remote(Record)]
+pub struct PixelArea {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[uniffi::remote(Record)]
+pub struct VideoMask {
+    pub areas: Vec<PixelArea>,
+    pub luma: u8,
+    pub chroma_blue: u8,
+    pub chroma_red: u8,
+}
+
+/// What to paint over a `width`×`height` video frame showing the parts `shown` of the screen
+/// (points, the same as the windows' `bounds`): the windows' `hide` areas in whole, even
+/// pixels, and the colour screenshots are covered with, in the frame's video-range Y′CbCr.
+#[uniffi::export]
+pub fn video_mask(
+    width: u32,
+    height: u32,
+    shown: Vec<Rect>,
+    windows: Vec<VideoWindow>,
+) -> VideoMask {
+    jevision_runner::video_mask(width, height, &shown, &windows)
 }
 
 /// Values for `${secret.NAME}`. Asked once per secret before the first block runs.
@@ -370,8 +407,15 @@ impl jevision_runner::Hands for HandsAdapter {
         self.0.user_input_detected()
     }
 
-    fn start_video(&self, app: &str, file: &Path) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.start_video(app.to_owned(), path(file))?)
+    fn start_video(
+        &self,
+        app: &str,
+        file: &Path,
+        hide: &[Rect],
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self
+            .0
+            .start_video(app.to_owned(), path(file), hide.to_vec())?)
     }
 
     fn stop_video(&self) -> Result<(), jevision_runner::HandsError> {
@@ -919,7 +963,7 @@ pub(crate) mod tests {
             false
         }
 
-        fn start_video(&self, app: String, path: String) -> Result<(), HandsError> {
+        fn start_video(&self, app: String, path: String, _: Vec<Rect>) -> Result<(), HandsError> {
             self.note(format!("video {app}"));
             std::fs::write(path, b"movie").map_err(|e| HandsError::Failed {
                 reason: e.to_string(),

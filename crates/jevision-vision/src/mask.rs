@@ -95,24 +95,14 @@ fn paint(image: &mut Image, areas: &[Rect]) -> bool {
     let (width, height) = (image.width, image.height);
     let mut painted = false;
     for area in areas {
-        let span = |start: f64, length: f64, size: u32| {
-            let size = f64::from(size);
-            let from = (start * size).floor().clamp(0.0, size);
-            let to = ((start + length) * size).ceil().clamp(0.0, size);
-            // NaN fails every comparison and is left out.
-            if from < to {
-                Some((from as usize, to as usize))
-            } else {
-                None
-            }
-        };
         let (Some((x0, x1)), Some((y0, y1))) = (
             span(area.x, area.width, width),
             span(area.y, area.height, height),
         ) else {
             continue;
         };
-        for y in y0..y1 {
+        let (x0, x1) = (x0 as usize, x1 as usize);
+        for y in y0 as usize..y1 as usize {
             let row = y * width as usize;
             for pixel in image.rgba[(row + x0) * 4..(row + x1) * 4].chunks_exact_mut(4) {
                 pixel.copy_from_slice(&MASK_COLOUR);
@@ -121,6 +111,97 @@ fn paint(image: &mut Image, areas: &[Rect]) -> bool {
         painted = true;
     }
     painted
+}
+
+/// The whole pixels from `start` to `start + length` (fractions of `size` pixels), widened
+/// outwards and clipped to `0..size`; `None` when nothing is left.
+fn span(start: f64, length: f64, size: u32) -> Option<(u32, u32)> {
+    let size = f64::from(size);
+    let from = (start * size).floor().clamp(0.0, size);
+    let to = ((start + length) * size).ceil().clamp(0.0, size);
+    // NaN fails every comparison and is left out.
+    (from < to).then_some((from as u32, to as u32))
+}
+
+/// A window of the app in a video frame and the parts of it to cover.
+#[derive(Debug, Clone, PartialEq)]
+pub struct VideoWindow {
+    /// Where the window is, in the same points as the parts of the screen a frame shows.
+    pub bounds: Rect,
+    /// Areas to cover, in fractions of the window from its top-left corner, like the areas a
+    /// screenshot of the window has covered.
+    pub hide: Vec<Rect>,
+}
+
+/// A block of a video frame, in whole pixels from its top-left corner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelArea {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// What to paint over one video frame, and [`MASK_COLOUR`] in the frame's own encoding:
+/// video-range BT.709 Y′CbCr, as H.264 stores it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VideoMask {
+    pub areas: Vec<PixelArea>,
+    pub luma: u8,
+    pub chroma_blue: u8,
+    pub chroma_red: u8,
+}
+
+/// The blocks to paint over a `width`×`height` frame that shows `shown`, a part of the screen in
+/// points, scaled to fill the frame. Give several parts while the frame moves from one to
+/// another: whichever the frame shows, its private areas are covered.
+///
+/// Blocks are widened to even pixels: a frame keeps one colour sample for every 2×2 pixels, so a
+/// block that ended mid-pair would leave a fringe of the covered colour.
+pub fn video_mask(width: u32, height: u32, shown: &[Rect], windows: &[VideoWindow]) -> VideoMask {
+    let mut areas = Vec::new();
+    for view in shown.iter().filter(|v| v.width > 0.0 && v.height > 0.0) {
+        for window in windows {
+            let b = &window.bounds;
+            for hide in &window.hide {
+                let x = (b.x + hide.x * b.width - view.x) / view.width;
+                let y = (b.y + hide.y * b.height - view.y) / view.height;
+                let (Some((x0, x1)), Some((y0, y1))) = (
+                    span(x, hide.width * b.width / view.width, width),
+                    span(y, hide.height * b.height / view.height, height),
+                ) else {
+                    continue;
+                };
+                let even = |from: u32, to: u32, size: u32| (from & !1, (to + (to & 1)).min(size));
+                let ((x0, x1), (y0, y1)) = (even(x0, x1, width), even(y0, y1, height));
+                areas.push(PixelArea {
+                    x: x0,
+                    y: y0,
+                    width: x1 - x0,
+                    height: y1 - y0,
+                });
+            }
+        }
+    }
+    let [luma, chroma_blue, chroma_red] = video_colour(MASK_COLOUR);
+    VideoMask {
+        areas,
+        luma,
+        chroma_blue,
+        chroma_red,
+    }
+}
+
+/// `rgba` as video-range BT.709 Y′CbCr.
+fn video_colour([r, g, b, _]: [u8; 4]) -> [u8; 3] {
+    let (r, g, b) = (f64::from(r), f64::from(g), f64::from(b));
+    let y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let scale = |v: f64, range: f64| v * range / 255.0;
+    [
+        (16.0 + scale(y, 219.0)).round() as u8,
+        (128.0 + scale((b - y) / 1.8556, 224.0)).round() as u8,
+        (128.0 + scale((r - y) / 1.5748, 224.0)).round() as u8,
+    ]
 }
 
 #[cfg(test)]
@@ -270,5 +351,86 @@ mod tests {
                 .all(|p| p == MASK_COLOUR)
         );
         assert!(MaskedImage::from_png(b"not a picture", &[rect(0.0, 0.0, 1.0, 1.0)]).is_err());
+    }
+
+    fn window(bounds: Rect, hide: &[Rect]) -> VideoWindow {
+        VideoWindow {
+            bounds,
+            hide: hide.to_vec(),
+        }
+    }
+
+    fn area(x: u32, y: u32, width: u32, height: u32) -> PixelArea {
+        PixelArea {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    #[test]
+    fn video_mask_follows_the_window_into_the_frame() {
+        // A 200×100 window at (100, 50) on a 400×200 part of the screen, filmed at 800×400.
+        let shown = [rect(0.0, 0.0, 400.0, 200.0)];
+        let windows = [window(
+            rect(100.0, 50.0, 200.0, 100.0),
+            &[rect(0.5, 0.5, 0.25, 0.25)],
+        )];
+        let mask = video_mask(800, 400, &shown, &windows);
+        assert_eq!(mask.areas, [area(400, 200, 100, 50)]);
+        // The frame closed in on the window: the same area, larger.
+        let closer = video_mask(800, 400, &[rect(100.0, 50.0, 200.0, 100.0)], &windows);
+        assert_eq!(closer.areas, [area(400, 200, 200, 100)]);
+    }
+
+    #[test]
+    fn video_mask_widens_to_even_pixels_and_clips() {
+        let shown = [rect(0.0, 0.0, 10.0, 10.0)];
+        let whole = rect(0.0, 0.0, 10.0, 10.0);
+        let mask = video_mask(
+            10,
+            10,
+            &shown,
+            &[window(whole, &[rect(0.15, 0.15, 0.1, 0.1)])],
+        );
+        assert_eq!(mask.areas, [area(0, 0, 4, 4)]);
+        let edge = video_mask(
+            10,
+            10,
+            &shown,
+            &[window(whole, &[rect(0.9, 0.9, 0.5, 0.5)])],
+        );
+        assert_eq!(edge.areas, [area(8, 8, 2, 2)]);
+    }
+
+    #[test]
+    fn video_mask_covers_every_shown_part_and_skips_what_is_off_frame() {
+        let windows = [window(
+            rect(0.0, 0.0, 100.0, 100.0),
+            &[rect(0.0, 0.0, 0.5, 0.5), rect(f64::NAN, 0.0, 0.1, 0.1)],
+        )];
+        let moving = [rect(0.0, 0.0, 100.0, 100.0), rect(50.0, 50.0, 100.0, 100.0)];
+        let mask = video_mask(100, 100, &moving, &windows);
+        assert_eq!(mask.areas, [area(0, 0, 50, 50)]);
+        assert!(
+            video_mask(100, 100, &[rect(0.0, 0.0, 0.0, 100.0)], &windows)
+                .areas
+                .is_empty()
+        );
+        let away = [window(rect(500.0, 0.0, 100.0, 100.0), &windows[0].hide)];
+        assert!(video_mask(100, 100, &moving[..1], &away).areas.is_empty());
+    }
+
+    #[test]
+    fn video_mask_paints_the_mask_colour_in_video_range() {
+        let mask = video_mask(2, 2, &[], &[]);
+        assert_eq!(
+            (mask.luma, mask.chroma_blue, mask.chroma_red),
+            (126, 128, 128)
+        );
+        assert_eq!(video_colour([255, 255, 255, 255]), [235, 128, 128]);
+        assert_eq!(video_colour([0, 0, 0, 255]), [16, 128, 128]);
+        assert_eq!(video_colour([255, 0, 0, 255]), [63, 102, 240]);
     }
 }

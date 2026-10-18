@@ -279,7 +279,7 @@ impl Runner<'_> {
                 let video = if options.video != VideoMode::Off && !report.app.is_empty() {
                     let start = Instant::now();
                     self.hands
-                        .start_video(&report.app, &dir.join(VIDEO_FILE))
+                        .start_video(&report.app, &dir.join(VIDEO_FILE), &hide)
                         .ok()
                         .map(|()| start)
                 } else {
