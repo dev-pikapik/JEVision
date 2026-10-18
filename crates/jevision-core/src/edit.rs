@@ -213,6 +213,16 @@ pub(crate) fn set_edge(block: &mut Block, name: &str, target: Option<String>) {
     }
 }
 
+/// The edge a block added after a block of kind `kind` goes on: `then` of an `if`, `next` of
+/// anything else.
+fn edge_after(kind: &BlockKind) -> &'static str {
+    if matches!(kind, BlockKind::If { .. }) {
+        THEN
+    } else {
+        NEXT
+    }
+}
+
 impl Flow {
     fn position(&self, id: &str) -> Option<usize> {
         self.blocks.iter().position(|b| b.id == id)
@@ -256,11 +266,7 @@ impl Flow {
                 break;
             }
             let block = &self.blocks[i];
-            let edge = if matches!(block.kind, BlockKind::If { .. }) {
-                THEN
-            } else {
-                NEXT
-            };
+            let edge = edge_after(&block.kind);
             slot = Slot {
                 from: block.id.clone(),
                 edge: edge.to_owned(),
@@ -317,6 +323,57 @@ impl Flow {
         }
         *self = edited;
         Some(ids)
+    }
+
+    /// The slot a block added after block `id` goes on: `then` of an `if`, `next` of any other
+    /// block, so after a loop rather than inside it. `None` for an unknown block.
+    pub fn slot_after(&self, id: &str) -> Option<Slot> {
+        let block = &self.blocks[self.position(id)?];
+        Some(Slot {
+            from: block.id.clone(),
+            edge: edge_after(&block.kind).to_owned(),
+        })
+    }
+
+    /// Adds a condition where the user is working: one more condition on `selected` when it is
+    /// an `if`, otherwise a new `if` after it (after the main chain without a selection).
+    /// Returns the block to select, or `None` (and changes nothing) for an unknown block.
+    pub fn add_condition_at(&mut self, selected: Option<&str>) -> Option<String> {
+        let Some(id) = selected else {
+            return self.insert_block("if", None);
+        };
+        let i = self.position(id)?;
+        if self.blocks[i].kind.add_condition() {
+            return Some(id.to_owned());
+        }
+        let slot = self.slot_after(id)?;
+        self.insert_block("if", Some(&slot))
+    }
+
+    /// Removes every link into and out of block `id`, so it stands alone: nothing leads to it
+    /// and it leads nowhere. A loop keeps the steps inside it, and the test still starts where
+    /// it did. `false` when the block had no such link.
+    pub fn disconnect(&mut self, id: &str) -> bool {
+        let links: Vec<(String, String)> = self
+            .blocks
+            .iter()
+            .flat_map(|b| {
+                b.kind
+                    .edges()
+                    .into_iter()
+                    .filter(|(edge, to)| {
+                        let inside = b.id == id && *edge == BODY;
+                        let empty_loop = *edge == BODY && *to == b.id;
+                        (b.id == id || *to == id) && !inside && !empty_loop
+                    })
+                    .map(|(edge, _)| (b.id.clone(), edge.into_owned()))
+            })
+            .collect();
+        let mut changed = false;
+        for (from, edge) in links {
+            changed |= self.connect(&from, &edge, None);
+        }
+        changed
     }
 
     fn insert_kind(
@@ -725,6 +782,65 @@ mod tests {
         ids.sort_unstable();
         assert_eq!(ids, ["end", "yes"]);
         assert_eq!(f.start, "yes");
+    }
+
+    #[test]
+    fn a_block_added_after_goes_on_then_of_an_if_and_after_a_loop() {
+        let f = flow(
+            r#"{"if": {"type": "if", "reference": {"image": "a.png"}, "then": "loop"},
+                "loop": {"type": "repeat", "times": 2, "body": "loop"}}"#,
+            "if",
+        );
+        assert_eq!(f.slot_after("if"), Some(slot("if", THEN)));
+        assert_eq!(f.slot_after("loop"), Some(slot("loop", NEXT)));
+        assert_eq!(f.slot_after("nowhere"), None);
+    }
+
+    #[test]
+    fn adding_a_condition_grows_a_selected_if_or_adds_one_after_the_selection() {
+        let mut f = flow(CHAIN, "a");
+        let id = f.add_condition_at(Some("a")).unwrap();
+        assert_eq!(id, "if");
+        assert_eq!(next_of(&f, "a").as_deref(), Some("if"));
+        let i = f.position("if").unwrap();
+        assert_eq!(f.blocks[i].kind.edge(THEN), Some("b"));
+
+        assert_eq!(f.add_condition_at(Some("if")).as_deref(), Some("if"));
+        let BlockKind::If { else_if, .. } = &f.blocks[f.position("if").unwrap()].kind else {
+            panic!("not an if");
+        };
+        assert_eq!(else_if.len(), 1);
+
+        assert_eq!(f.add_condition_at(None).as_deref(), Some("if2"));
+        assert_eq!(f.add_condition_at(Some("nowhere")), None);
+    }
+
+    #[test]
+    fn disconnecting_leaves_the_block_alone_and_its_loop_whole() {
+        let mut f = flow(
+            r#"{"a": {"type": "pressKeys", "keys": "a", "next": "loop"},
+                "loop": {"type": "repeat", "times": 2, "body": "in", "next": "z"},
+                "in": {"type": "pressKeys", "keys": "i"},
+                "z": {"type": "pressKeys", "keys": "z"}}"#,
+            "a",
+        );
+        assert!(f.disconnect("loop"));
+        assert_eq!(next_of(&f, "a"), None);
+        assert_eq!(next_of(&f, "loop"), None);
+        let i = f.position("loop").unwrap();
+        assert_eq!(f.blocks[i].kind.edge(BODY), Some("in"));
+        assert_eq!(f.start, "a");
+        assert!(!f.disconnect("loop"));
+
+        // The first step inside a loop: the loop is left empty.
+        let mut f = flow(
+            r#"{"loop": {"type": "repeat", "times": 2, "body": "in"},
+                "in": {"type": "pressKeys", "keys": "i"}}"#,
+            "loop",
+        );
+        assert!(f.disconnect("in"));
+        let i = f.position("loop").unwrap();
+        assert_eq!(f.blocks[i].kind.edge(BODY), Some("loop"));
     }
 
     #[test]

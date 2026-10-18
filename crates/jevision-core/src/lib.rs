@@ -15,6 +15,7 @@ mod layout;
 mod model;
 mod project;
 mod schedule;
+mod search;
 mod validate;
 
 pub use canvas::CanvasItem;
@@ -39,6 +40,7 @@ pub use schedule::{
     begin_schedule_check, calendar_intervals, due_schedules, launch_agent_plist, load_schedules,
     parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
 };
+pub use search::{SearchCandidate, rank};
 pub use validate::{
     MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, validate, validate_in,
 };
@@ -65,8 +67,11 @@ pub fn canonicalize(text: &str) -> Result<String, ParseError> {
 #[serde(rename_all = "camelCase")]
 pub enum BlockGroup {
     Actions,
-    WaitAndCheck,
+    Waiting,
+    Checks,
+    /// Conditions and loops.
     Logic,
+    SubTests,
     Data,
 }
 
@@ -87,11 +92,11 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("click", BlockGroup::Actions, &[NEXT]),
     ("type", BlockGroup::Actions, &[NEXT]),
     ("pressKeys", BlockGroup::Actions, &[NEXT]),
-    ("waitFor", BlockGroup::WaitAndCheck, &[NEXT]),
-    ("check", BlockGroup::WaitAndCheck, &[NEXT]),
+    ("waitFor", BlockGroup::Waiting, &[NEXT]),
+    ("check", BlockGroup::Checks, &[NEXT]),
     ("if", BlockGroup::Logic, &[THEN, ELSE]),
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),
-    ("runTest", BlockGroup::Logic, &[NEXT]),
+    ("runTest", BlockGroup::SubTests, &[NEXT]),
     ("useData", BlockGroup::Data, &[BODY, NEXT]),
 ];
 
