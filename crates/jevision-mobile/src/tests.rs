@@ -279,6 +279,9 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
             status: StepStatus::Failed,
             duration_ms: 120,
             failure: Some(failure),
+            branch: None,
+            branches: None,
+            branch_condition: None,
         },
         jevision_remote::RunEvent::Finished {
             verdict: Verdict::Failed,

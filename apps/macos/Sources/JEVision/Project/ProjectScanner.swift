@@ -1,7 +1,8 @@
 import Foundation
+import JEVisionCore
 
-/// Finds test files in a project folder. Only names and folders matter here;
-/// reading what is inside a test is the core's job.
+/// Finds test files in a project folder. What is inside a test is read by the core: here, only
+/// the words a search finds it by.
 enum ProjectScanner {
   static let testSuffix = ".flow.json"
 
@@ -46,21 +47,19 @@ enum ProjectScanner {
       } else if values.isRegularFile == true, isTestFile(name) {
         tests.append(ProjectItem(
           id: id, name: testName(name), url: url, kind: .test, children: [], testCount: 1,
-          modified: values.contentModificationDate))
+          modified: values.contentModificationDate,
+          keywords: (try? String(contentsOf: url, encoding: .utf8)).map { testKeywords(json: $0) } ?? ""))
       }
     }
     let byName: (ProjectItem, ProjectItem) -> Bool = { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     return folders.sorted(by: byName) + tests.sorted(by: byName)
   }
 
-  /// Every test whose name contains `query`, at any depth, in sidebar order.
+  /// Every test that matches `query`, at any depth, best first: by its file name, then by its
+  /// folder, name, description and block texts.
   static func tests(in items: [ProjectItem], matching query: String) -> [ProjectItem] {
-    let query = query.trimmingCharacters(in: .whitespaces)
-    return items.flatMap { item in
-      switch item.kind {
-      case .test: item.name.localizedStandardContains(query) ? [item] : []
-      case .folder: tests(in: item.children, matching: query)
-      }
-    }
+    let tests = items.flatMap(\.tests)
+    let candidates = tests.map { SearchCandidate(title: $0.name, keywords: $0.parentPath + " " + $0.keywords) }
+    return rankSearch(query: query, candidates: candidates).map { tests[Int($0)] }
   }
 }

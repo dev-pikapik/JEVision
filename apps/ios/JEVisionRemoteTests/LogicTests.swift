@@ -260,6 +260,37 @@ struct RunProgressTests {
     #expect(progress.failure == nil)
   }
 
+  @Test func listsStepsInRunOrderWithTheRunningOneLast() {
+    var progress = RunProgress()
+    progress.apply(status(.running, block: "open"))
+    #expect(progress.lines.map(\.block) == ["open"])
+    #expect(progress.lines.last?.status == nil)
+    progress.apply(.event(.blockFinished(test: "main.json", block: "open", status: .passed, failure: nil)))
+    progress.apply(.event(.blockStarted(test: "main.json", block: "ready", kind: "if")))
+    progress.apply(
+      .event(
+        .blockFinished(
+          test: "main.json", block: "ready", status: .passed, failure: nil, branch: "then", branches: 2,
+          branchCondition: "An empty document")))
+    progress.apply(.event(.blockStarted(test: "main.json", block: "rows", kind: "useData")))
+    progress.apply(.event(.blockFinished(test: "main.json", block: "rows", status: .passed, failure: nil)))
+    progress.apply(.event(.blockStarted(test: "main.json", block: "type", kind: "type")))
+    let running = progress.lines.last
+
+    #expect(progress.lines.map(\.block) == ["open", "ready", "rows", "type"], "Oldest first")
+    #expect(progress.lines.map(\.id) == [0, 1, 2, 3])
+    #expect(running?.status == nil, "The running step is last")
+    #expect(progress.lines[1].took != nil)
+    #expect(progress.lines[1].took == RunText.branch("then", branches: 2, condition: "An empty document"))
+    #expect(progress.lines[2].took == nil)
+
+    progress.apply(.event(.blockFinished(test: "main.json", block: "type", status: .passed, failure: nil)))
+    #expect(progress.lines.last?.id == running?.id, "A step keeps its place when it finishes")
+    #expect(progress.lines.last?.status == .passed)
+    progress.apply(.event(.finished(verdict: .passed, flaky: false)))
+    #expect(progress.lines.count == 4)
+  }
+
   @Test func pausesAndResumes() {
     var progress = RunProgress()
     progress.apply(status(.running))
