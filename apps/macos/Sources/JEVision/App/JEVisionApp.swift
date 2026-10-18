@@ -30,6 +30,13 @@ struct JEVisionApp: App {
     .defaultPosition(.center)
     .restorationBehavior(.disabled)
 
+    Window("Command Line Tool", id: SceneID.commandLineTool) {
+      CommandLineToolView()
+    }
+    .windowResizability(.contentSize)
+    .defaultPosition(.center)
+    .restorationBehavior(.disabled)
+
     Settings {
       SettingsView()
         .environment(permissions)
@@ -40,4 +47,5 @@ struct JEVisionApp: App {
 enum SceneID {
   static let main = "main"
   static let onboarding = "onboarding"
+  static let commandLineTool = "commandLineTool"
 }

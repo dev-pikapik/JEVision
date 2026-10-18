@@ -7,6 +7,9 @@ struct AppCommands: Commands {
   @FocusedValue(\.canvasZoom) private var zoom
 
   var body: some Commands {
+    CommandGroup(after: .appSettings) {
+      Button("Install Command Line Tool…") { openWindow(id: SceneID.commandLineTool) }
+    }
     CommandGroup(replacing: .newItem) {
       Button("New Test…") { project.isCreatingTest = true }
         .keyboardShortcut("n")

@@ -11,6 +11,26 @@
         }
       }
     },
+    "%@ is another program" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — другая программа"
+          }
+        }
+      }
+    },
+    "%@ is version %@ from another copy of JEVision" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — версия %@ из другой копии JEVision"
+          }
+        }
+      }
+    },
     "%@, %@, took %@" : {
       "localizations" : {
         "ru" : {
@@ -281,6 +301,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить блок в ветку «Да» после «%@»"
+          }
+        }
+      }
+    },
+    "Add jevision to /usr/local/bin" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить jevision в /usr/local/bin"
+          }
+        }
+      }
+    },
+    "Add jevision to ~/.local/bin" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить jevision в ~/.local/bin"
           }
         }
       }
@@ -705,6 +745,16 @@
         }
       }
     },
+    "Command Line Tool" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инструмент командной строки"
+          }
+        }
+      }
+    },
     "Compare only part of the image" : {
       "localizations" : {
         "ru" : {
@@ -721,6 +771,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить"
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать"
           }
         }
       }
@@ -1165,6 +1225,16 @@
         }
       }
     },
+    "If Terminal then says “command not found”, add that folder to the PATH:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если Терминал ответит «command not found», добавьте эту папку в PATH:"
+          }
+        }
+      }
+    },
     "Image" : {
       "localizations" : {
         "ru" : {
@@ -1221,6 +1291,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значение, которого нет в файле"
+          }
+        }
+      }
+    },
+    "Install Command Line Tool…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить инструмент командной строки…"
+          }
+        }
+      }
+    },
+    "Install Just for Me" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить только для меня"
+          }
+        }
+      }
+    },
+    "Installed in %@, version %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлен в %@, версия %@"
+          }
+        }
+      }
+    },
+    "Install…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить…"
           }
         }
       }
@@ -1284,6 +1394,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision нужны два разрешения"
+          }
+        }
+      }
+    },
+    "JEVision wants to add the jevision command to /usr/local/bin." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision хочет добавить команду jevision в /usr/local/bin."
           }
         }
       }
@@ -1444,6 +1564,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ещё"
+          }
+        }
+      }
+    },
+    "Move JEVision to the Applications folder and open it from there first: the command must point to where the app stays." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала перенесите JEVision в папку «Программы» и откройте оттуда: команда должна указывать туда, где приложение останется."
           }
         }
       }
@@ -1628,6 +1758,16 @@
         }
       }
     },
+    "Not installed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не установлен"
+          }
+        }
+      }
+    },
     "Not installed on this Mac" : {
       "localizations" : {
         "ru" : {
@@ -1738,6 +1878,16 @@
         }
       }
     },
+    "Open a new Terminal window and type “jevision --help” to see what it can do." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте новое окно Терминала и введите «jevision --help», чтобы узнать, что она умеет."
+          }
+        }
+      }
+    },
     "Open a project" : {
       "localizations" : {
         "ru" : {
@@ -1774,6 +1924,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает этот список в Системных настройках"
+          }
+        }
+      }
+    },
+    "Or install it yourself" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или установите сами"
           }
         }
       }
@@ -2058,6 +2218,16 @@
         }
       }
     },
+    "Reinstall…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переустановить…"
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "ru" : {
@@ -2248,6 +2418,16 @@
         }
       }
     },
+    "Run and check tests from Terminal, scripts and CI with the jevision command." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускайте и проверяйте тесты из Терминала, скриптов и CI командой jevision."
+          }
+        }
+      }
+    },
     "Run from Here" : {
       "localizations" : {
         "ru" : {
@@ -2294,6 +2474,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запустить тест (⌘R)"
+          }
+        }
+      }
+    },
+    "Run this command in Terminal and enter your password:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполните эту команду в Терминале и введите пароль:"
           }
         }
       }
@@ -2668,6 +2858,16 @@
         }
       }
     },
+    "Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Состояние"
+          }
+        }
+      }
+    },
     "Step" : {
       "localizations" : {
         "ru" : {
@@ -2878,6 +3078,16 @@
         }
       }
     },
+    "The installer script couldn’t be prepared." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось подготовить сценарий установки."
+          }
+        }
+      }
+    },
     "The new language appears after JEVision opens again." : {
       "localizations" : {
         "ru" : {
@@ -3048,6 +3258,16 @@
         }
       }
     },
+    "This copy of JEVision doesn’t include the command line tool." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой копии JEVision нет инструмента командной строки."
+          }
+        }
+      }
+    },
     "This file is outside the project, so other people won’t get it with the tests." : {
       "localizations" : {
         "ru" : {
@@ -3214,6 +3434,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вводит текст; может сначала кликнуть в поле."
+          }
+        }
+      }
+    },
+    "Unknown error." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестная ошибка."
           }
         }
       }
@@ -3404,6 +3634,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ширина"
+          }
+        }
+      }
+    },
+    "Without an administrator’s password" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без пароля администратора"
           }
         }
       }
@@ -4010,6 +4250,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "в тесте %@"
+          }
+        }
+      }
+    },
+    "macOS asks for an administrator’s password." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS попросит пароль администратора."
           }
         }
       }

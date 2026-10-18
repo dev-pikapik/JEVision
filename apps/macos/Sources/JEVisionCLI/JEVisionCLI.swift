@@ -1,0 +1,273 @@
+import Foundation
+import JEVisionCore
+
+/// `jevision`: runs, checks and formats JEVision tests from the command line.
+@main
+enum JEVisionCLI {
+  static func main() {
+    exit(execute(Array(CommandLine.arguments.dropFirst())).rawValue)
+  }
+
+  static func execute(_ arguments: [String]) -> ExitStatus {
+    let command: Command
+    do {
+      command = try Command.parse(arguments)
+    } catch {
+      Console.standardError.line("jevision: \(error.message)")
+      Console.standardError.line(Help.usage(error.command))
+      let more = error.command.map { "jevision \($0) --help" } ?? "jevision --help"
+      Console.standardError.line("Run “\(more)” for more.")
+      return .failure
+    }
+    switch command {
+    case .help(let topic):
+      Console.standardOutput.write(Help.text(topic))
+      return .ok
+    case .version:
+      Console.standardOutput.line("jevision \(jevisionVersion())")
+      return .ok
+    case .validate(let paths, let json):
+      return validate(paths, json: json)
+    case .fmt(let paths, let check):
+      return format(paths, check: check)
+    case .run(let request):
+      return RunCommand(request: request).execute()
+    }
+  }
+}
+
+/// How a command ended, ordered by severity; the process exit status.
+enum ExitStatus: Int32, Comparable {
+  /// All good.
+  case ok = 0
+  /// Problems found in a test, or a test failed or was stopped.
+  case problems = 1
+  /// Wrong arguments, a file that could not be read or written, or a Mac not ready to run tests.
+  case failure = 2
+
+  static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+}
+
+struct UsageError: Error, Equatable {
+  let message: String
+  /// The command whose usage to show.
+  var command: String?
+}
+
+/// What `jevision run` was asked to do.
+struct RunRequest: Equatable {
+  var paths: [String] = []
+  var project: String?
+  var retries: UInt32?
+  var startAt: String?
+  var junit: String?
+  var html: String?
+  var json = false
+}
+
+enum Command: Equatable {
+  case help(String?)
+  case version
+  case validate(paths: [String], json: Bool)
+  case fmt(paths: [String], check: Bool)
+  case run(RunRequest)
+
+  static func parse(_ arguments: [String]) throws(UsageError) -> Command {
+    guard let name = arguments.first else { return .help(nil) }
+    let rest = Array(arguments.dropFirst())
+    switch name {
+    case "-h", "--help", "help":
+      guard let topic = rest.first else { return .help(nil) }
+      guard Help.commands.contains(topic) else { throw UsageError(message: "there is no command “\(topic)”") }
+      return .help(topic)
+    case "-V", "--version":
+      return .version
+    case "validate":
+      let options = try Options.parse(rest, command: name, flags: ["--json"])
+      if options.wantsHelp { return .help(name) }
+      return .validate(paths: try options.requirePaths(name), json: options.flags.contains("--json"))
+    case "fmt":
+      let options = try Options.parse(rest, command: name, flags: ["--check"])
+      if options.wantsHelp { return .help(name) }
+      return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
+    case "run":
+      let options = try Options.parse(
+        rest, command: name, flags: ["--json"], values: ["--project", "--retries", "--start-at", "--junit", "--html"])
+      if options.wantsHelp { return .help(name) }
+      var request = RunRequest(paths: try options.requirePaths(name))
+      request.project = options.values["--project"]
+      if let retries = options.values["--retries"] {
+        guard let count = UInt32(retries) else {
+          throw UsageError(message: "--retries needs a whole number of times, such as 2, not “\(retries)”", command: name)
+        }
+        request.retries = count
+      }
+      request.startAt = options.values["--start-at"]
+      if request.startAt != nil, request.paths.count > 1 || isFolder(request.paths[0]) {
+        throw UsageError(message: "--start-at works with one test file only", command: name)
+      }
+      request.junit = options.values["--junit"]
+      request.html = options.values["--html"]
+      request.json = options.flags.contains("--json")
+      return .run(request)
+    default:
+      let what = name.hasPrefix("-") ? "option" : "command"
+      throw UsageError(message: "there is no \(what) “\(name)”")
+    }
+  }
+}
+
+/// Options and paths after the command name: `--flag`, `--name value`, `--name=value`;
+/// everything after `--` is a path.
+struct Options {
+  var paths: [String] = []
+  var flags: Set<String> = []
+  var values: [String: String] = [:]
+  var wantsHelp = false
+
+  static func parse(
+    _ arguments: [String], command: String, flags: Set<String>, values: Set<String> = []
+  ) throws(UsageError) -> Options {
+    var options = Options()
+    var rest = arguments[...]
+    var onlyPaths = false
+    while let argument = rest.popFirst() {
+      if onlyPaths || !argument.hasPrefix("-") || argument == "-" {
+        options.paths.append(argument)
+        continue
+      }
+      if argument == "--" {
+        onlyPaths = true
+        continue
+      }
+      if argument == "-h" || argument == "--help" {
+        options.wantsHelp = true
+        continue
+      }
+      let parts = argument.split(separator: "=", maxSplits: 1).map(String.init)
+      let name = parts[0]
+      if flags.contains(name) {
+        guard parts.count == 1 else { throw UsageError(message: "\(name) takes no value", command: command) }
+        options.flags.insert(name)
+        continue
+      }
+      guard values.contains(name) else {
+        throw UsageError(message: "there is no option “\(argument)”", command: command)
+      }
+      guard options.values[name] == nil else { throw UsageError(message: "\(name) is given twice", command: command) }
+      guard let value = parts.count == 2 ? parts[1] : rest.popFirst(), !value.isEmpty else {
+        throw UsageError(message: "\(name) needs a value", command: command)
+      }
+      options.values[name] = value
+    }
+    return options
+  }
+
+  func requirePaths(_ command: String) throws(UsageError) -> [String] {
+    guard !paths.isEmpty else { throw UsageError(message: "name at least one test file or folder", command: command) }
+    return paths
+  }
+}
+
+enum Help {
+  static let commands = ["run", "validate", "fmt"]
+
+  static func usage(_ command: String?) -> String {
+    switch command {
+    case "run": "Usage: jevision run <tests>… [options]"
+    case "validate": "Usage: jevision validate <tests>… [--json]"
+    case "fmt": "Usage: jevision fmt <tests>… [--check]"
+    default: "Usage: jevision <command> [options]"
+    }
+  }
+
+  static func text(_ command: String?) -> String {
+    switch command {
+    case "run":
+      """
+      Runs tests on this Mac, one after another, and saves a report of every run.
+
+      \(usage(command))
+
+      Arguments:
+        <tests>…            Test files (.flow.json) or folders to search for them
+
+      Options:
+        --project <folder>  Project folder. Files the tests use must be inside it, and
+                            reports are saved in <folder>/.jevision/runs. Default: the
+                            nearest folder above the tests that has a .jevision folder,
+                            otherwise the current folder if it holds the tests
+        --retries <n>       Run a failed test up to <n> more times (instead of the
+                            number in the test)
+        --start-at <block>  Start from this block instead of the first one (one test only)
+        --junit <file>      Also save a JUnit XML report of all the tests, for CI
+        --html <folder>     Also save the HTML report of every run in this folder
+        --json              Print the result as JSON; progress goes to standard error
+        -h, --help          Show this help
+
+      While tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C
+      to stop. Running needs a logged-in user with an unlocked screen, and Screen
+      Recording and Accessibility allowed for the app jevision runs in (Terminal or
+      your CI agent). Secrets (${secret.NAME}) come from environment variables or the
+      Keychain.
+
+      Exit status: 0 — all tests passed, 1 — a test failed or was stopped, 2 — wrong
+      arguments, a file could not be read or written, or this Mac can't run tests now.
+
+      """
+    case "validate":
+      """
+      Checks test files for errors and warnings.
+
+      \(usage(command))
+
+      Arguments:
+        <tests>…    Test files (.flow.json) or folders to search for them
+
+      Options:
+        --json      Print the result as JSON
+        -h, --help  Show this help
+
+      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments or a file could
+      not be read.
+
+      """
+    case "fmt":
+      """
+      Rewrites test files in canonical form: fixed key order, blocks in reading order,
+      no default values, so every change shows up as a small, readable diff.
+
+      \(usage(command))
+
+      Arguments:
+        <tests>…    Test files (.flow.json) or folders to search for them
+
+      Options:
+        --check     Only list the files that are not in canonical form; change nothing
+        -h, --help  Show this help
+
+      Exit status: 0 — all good, 1 — a file is not in canonical form or can't be read as
+      a test, 2 — wrong arguments or a file could not be read or written.
+
+      """
+    default:
+      """
+      Runs, checks and formats JEVision tests.
+
+      \(usage(nil))
+
+      Commands:
+        run        Run tests on this Mac
+        validate   Check tests for errors and warnings
+        fmt        Rewrite tests in canonical form
+
+      Options:
+        -h, --help     Show this help
+        -V, --version  Show the version
+
+      Run “jevision <command> --help” for the options of a command.
+
+      """
+    }
+  }
+}

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Builds build/JEVision.app without an Xcode project.
+# Builds build/JEVision.app without an Xcode project, with the jevision command-line tool in
+# Contents/Helpers (not Contents/MacOS: on a case-insensitive disk "jevision" is "JEVision").
 #   ARCHS="arm64"          build for one architecture (default: arm64 x86_64)
 #   SIGN_IDENTITY="Name"   sign with a certificate (default: ad-hoc)
 set -euo pipefail
@@ -24,14 +25,17 @@ if [ ! -f "$STAMP" ] || [ -n "$(find "$ROOT/crates" "$ROOT/Cargo.toml" "$ROOT/Ca
 fi
 
 rm -rf build
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/strings
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources" build/strings
 
 SOURCES=()
 while IFS= read -r -d '' f; do SOURCES+=("$f"); done < <(find Sources/JEVision -name '*.swift' -print0)
 HANDS=()
 while IFS= read -r -d '' f; do HANDS+=("$f"); done < <(find Sources/JEVisionHands -name '*.swift' -print0)
+CLI=()
+while IFS= read -r -d '' f; do CLI+=("$f"); done < <(find Sources/JEVisionCLI -name '*.swift' -print0)
 
 BINARIES=()
+TOOLS=()
 EMIT=(-Xfrontend -emit-localized-strings -Xfrontend -emit-localized-strings-path -Xfrontend build/strings)
 for ARCH in $ARCHS; do
   echo "Building $ARCH"
@@ -64,9 +68,19 @@ for ARCH in $ARCHS; do
     -o "build/JEVision-$ARCH"
   BINARIES+=("build/JEVision-$ARCH")
   EMIT=()
+  swiftc -O -whole-module-optimization -parse-as-library \
+    -swift-version 6 -warnings-as-errors \
+    -module-name JEVisionCLI \
+    -target "$ARCH-apple-macos$MIN_OS" \
+    -I "$MODULES" -I "$FFI/Headers" \
+    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi \
+    "${CLI[@]}" \
+    -o "build/cli-$ARCH"
+  TOOLS+=("build/cli-$ARCH")
 done
 lipo -create "${BINARIES[@]}" -output "$APP/Contents/MacOS/JEVision"
-rm -r "${BINARIES[@]}" build/modules-*
+lipo -create "${TOOLS[@]}" -output "$APP/Contents/Helpers/jevision"
+rm -r "${BINARIES[@]}" "${TOOLS[@]}" build/modules-*
 
 python3 scripts/check-localization.py build/strings
 rm -rf build/strings
@@ -75,6 +89,9 @@ cp Resources/Info.plist "$APP/Contents/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 
+# Nested code first: signing the app seals what is inside it.
+codesign --force --options runtime --identifier io.github.dev-pikapik.jevision.cli \
+  --sign "${SIGN_IDENTITY:--}" "$APP/Contents/Helpers/jevision"
 codesign --force --options runtime --sign "${SIGN_IDENTITY:--}" "$APP"
 codesign --verify --strict "$APP"
 echo "Built $PWD/$APP"

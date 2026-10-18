@@ -35,10 +35,6 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
         run: cargo test --workspace --locked
-      - name: Example tests are canonical
-        run: cargo run -q --locked -p jevision-cli -- fmt --check examples
-      - name: Example tests are valid
-        run: cargo run -q --locked -p jevision-cli -- validate examples
 
   core-swift:
     name: Core for Swift
@@ -71,5 +67,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build core and app, check localization
         run: apps/macos/scripts/build.sh
+      - name: Example tests are canonical
+        run: apps/macos/build/JEVision.app/Contents/Helpers/jevision fmt --check examples
+      - name: Example tests are valid
+        run: apps/macos/build/JEVision.app/Contents/Helpers/jevision validate examples
       - name: Test app
         run: swift test --package-path apps/macos
