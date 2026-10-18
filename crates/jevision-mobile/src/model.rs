@@ -384,6 +384,8 @@ pub struct RunReport {
     /// References saved by this run because they did not exist, relative to the project folder.
     pub baselines_created: Vec<String>,
     pub attempts: Vec<Attempt>,
+    /// Name of the paired device that started the run; `None` when it was started on the Mac.
+    pub requested_by: Option<String>,
 }
 
 impl From<jevision_remote::RunReport> for RunReport {
@@ -398,6 +400,7 @@ impl From<jevision_remote::RunReport> for RunReport {
             flaky: r.flaky,
             baselines_created: r.baselines_created,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
+            requested_by: r.requested_by,
         }
     }
 }

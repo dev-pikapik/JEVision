@@ -1,0 +1,98 @@
+import SwiftUI
+
+/// A rounded colour tile with a white symbol, the same as on the Mac. A solid fill, not glass:
+/// tiles are content.
+struct IconTile: View {
+  let symbol: String
+  let color: Color
+  var size: CGFloat = 28
+
+  var body: some View {
+    Image(systemName: symbol)
+      .font(.system(size: size * 0.48, weight: .semibold))
+      .foregroundStyle(.white)
+      .frame(width: size, height: size)
+      .background(color.gradient, in: .rect(cornerRadius: size * 0.27))
+      .accessibilityHidden(true)
+  }
+}
+
+/// How a block type looks and is named, as in the Mac editor. Keys are the test file's `type`.
+enum BlockInfo {
+  static func symbol(_ kind: String) -> String {
+    switch kind {
+    case "openApp": "macwindow.badge.plus"
+    case "openFile": "doc"
+    case "click": "cursorarrow.click"
+    case "type": "character.cursor.ibeam"
+    case "pressKeys": "command"
+    case "waitFor": "hourglass"
+    case "check": "checkmark.seal"
+    case "if": "arrow.triangle.branch"
+    case "repeat": "repeat"
+    case "useData": "tablecells"
+    case "runTest": "rectangle.stack"
+    default: "square.dashed"
+    }
+  }
+
+  static func title(_ kind: String) -> String {
+    switch kind {
+    case "openApp": String(localized: "Open App")
+    case "openFile": String(localized: "Open File")
+    case "click": String(localized: "Click")
+    case "type": String(localized: "Type Text")
+    case "pressKeys": String(localized: "Press Keys")
+    case "waitFor": String(localized: "Wait For")
+    case "check": String(localized: "Check")
+    case "if": String(localized: "If")
+    case "repeat": String(localized: "Repeat")
+    case "useData": String(localized: "Use Data")
+    case "runTest": String(localized: "Run Test")
+    default: kind
+    }
+  }
+
+  static func color(_ kind: String) -> Color {
+    switch kind {
+    case "openApp", "openFile", "click", "type", "pressKeys": .blue
+    case "waitFor", "check": .orange
+    case "if", "repeat", "runTest": .purple
+    case "useData": .green
+    default: .gray
+    }
+  }
+}
+
+/// A result told by shape as well as colour: circle passed, square failed, triangle flaky.
+struct VerdictStyle {
+  let title: String
+  let symbol: String
+  let color: Color
+
+  init(_ verdict: Verdict, flaky: Bool = false) {
+    switch verdict {
+    case .passed where flaky:
+      (title, symbol, color) = (String(localized: "Flaky"), "exclamationmark.triangle.fill", .orange)
+    case .passed: (title, symbol, color) = (String(localized: "Passed"), "checkmark.circle.fill", .green)
+    case .failed: (title, symbol, color) = (String(localized: "Failed"), "xmark.square.fill", .red)
+    case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    }
+  }
+
+  init(_ status: StepStatus) {
+    switch status {
+    case .passed: (title, symbol, color) = (String(localized: "Passed"), "checkmark.circle.fill", .green)
+    case .failed: (title, symbol, color) = (String(localized: "Failed"), "xmark.square.fill", .red)
+    case .baselineCreated:
+      (title, symbol, color) = (String(localized: "New reference saved"), "plus.circle.fill", .blue)
+    case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    }
+  }
+
+  var image: some View {
+    Image(systemName: symbol)
+      .foregroundStyle(color)
+      .accessibilityLabel(title)
+  }
+}

@@ -1,0 +1,2164 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "A Test Is Already Running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест уже идёт"
+          }
+        }
+      }
+    },
+    "A test needs the Mac’s screen. Unlock the Mac and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесту нужен экран Mac. Разблокируйте Mac и попробуйте снова."
+          }
+        }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О приложении"
+          }
+        }
+      }
+    },
+    "Accessibility" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Универсальный доступ"
+          }
+        }
+      }
+    },
+    "After 1 Minute" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через 1 минуту"
+          }
+        }
+      }
+    },
+    "After 15 Minutes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через 15 минут"
+          }
+        }
+      }
+    },
+    "After 5 Minutes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через 5 минут"
+          }
+        }
+      }
+    },
+    "App Lock" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блокировка"
+          }
+        }
+      }
+    },
+    "Block “%@” failed. The report on the Mac has the details." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@» не прошёл. Подробности — в отчёте на Mac."
+          }
+        }
+      }
+    },
+    "Block “%@”: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@"
+          }
+        }
+      }
+    },
+    "Camera Is Off for JEVision" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера для JEVision выключена"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Can’t Reach the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac недоступен"
+          }
+        }
+      }
+    },
+    "Can’t reach it. It may be asleep or offline." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся связаться. Возможно, он спит или не в сети."
+          }
+        }
+      }
+    },
+    "Check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка"
+          }
+        }
+      }
+    },
+    "Click" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клик"
+          }
+        }
+      }
+    },
+    "Confirm it’s you to pair this iPhone with %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтвердите, что это вы, чтобы связать этот iPhone с %@."
+          }
+        }
+      }
+    },
+    "Connecting…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение…"
+          }
+        }
+      }
+    },
+    "Copy the pairing link from JEVision on the Mac and paste it here instead." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вместо этого скопируйте ссылку для связи в JEVision на Mac и вставьте её сюда."
+          }
+        }
+      }
+    },
+    "Copy the pairing link from JEVision on the Mac, then paste it here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопируйте ссылку для связи в JEVision на Mac и вставьте её сюда."
+          }
+        }
+      }
+    },
+    "Declined on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отклонено на Mac"
+          }
+        }
+      }
+    },
+    "Difference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разница"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Expected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидается"
+          }
+        }
+      }
+    },
+    "Face ID or the passcode didn’t work. Try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Face ID или код-пароль не подошли. Попробуйте снова."
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провален"
+          }
+        }
+      }
+    },
+    "Flaky" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нестабилен"
+          }
+        }
+      }
+    },
+    "Forget" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Забыть"
+          }
+        }
+      }
+    },
+    "Forget “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Забыть «%@»?"
+          }
+        }
+      }
+    },
+    "If" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если"
+          }
+        }
+      }
+    },
+    "Immediately" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сразу"
+          }
+        }
+      }
+    },
+    "JEVision Is Locked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision заблокирован"
+          }
+        }
+      }
+    },
+    "JEVision asks for Face ID or your passcode when you open it, after it has been in the background this long, and at least every 8 hours." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision просит Face ID или код-пароль при открытии, после такого времени в фоне и не реже чем раз в 8 часов."
+          }
+        }
+      }
+    },
+    "JEVision must be open on the Mac, and the Mac awake." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision должен быть открыт на Mac, а Mac — не спать."
+          }
+        }
+      }
+    },
+    "JEVision needs the camera only to read the Mac’s pairing code. You can also paste the link instead." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера нужна JEVision только чтобы прочитать код связи с Mac. Вместо этого можно вставить ссылку."
+          }
+        }
+      }
+    },
+    "Last Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последние запуски"
+          }
+        }
+      }
+    },
+    "Lock After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блокировать"
+          }
+        }
+      }
+    },
+    "Lock Now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокировать сейчас"
+          }
+        }
+      }
+    },
+    "Look at tests, run them and read reports. Pictures come over only when you open them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смотрите тесты, запускайте их и читайте отчёты. Картинки загружаются, только когда вы их открываете."
+          }
+        }
+      }
+    },
+    "Macs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac"
+          }
+        }
+      }
+    },
+    "Name of this iPhone on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя этого iPhone на Mac"
+          }
+        }
+      }
+    },
+    "New reference saved" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранён новый эталон"
+          }
+        }
+      }
+    },
+    "No" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет"
+          }
+        }
+      }
+    },
+    "No Projects Yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проектов пока нет"
+          }
+        }
+      }
+    },
+    "No Runs Yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запусков пока нет"
+          }
+        }
+      }
+    },
+    "No Tests Here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь нет тестов"
+          }
+        }
+      }
+    },
+    "Not Allowed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не разрешено"
+          }
+        }
+      }
+    },
+    "Not run yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не запускался"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ОК"
+          }
+        }
+      }
+    },
+    "On the Mac, open JEVision Settings → iPhone & Remote and scan the code it shows." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На Mac откройте настройки JEVision → «iPhone и удалённо» и отсканируйте показанный код."
+          }
+        }
+      }
+    },
+    "On the Mac, open JEVision Settings → iPhone & Remote." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На Mac откройте настройки JEVision → «iPhone и удалённо»."
+          }
+        }
+      }
+    },
+    "Online" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В сети"
+          }
+        }
+      }
+    },
+    "Open App" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть приложение"
+          }
+        }
+      }
+    },
+    "Open File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть файл"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Настройки"
+          }
+        }
+      }
+    },
+    "Open a project in JEVision on the Mac, and it shows up here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте проект в JEVision на Mac, и он появится здесь."
+          }
+        }
+      }
+    },
+    "Pair" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать"
+          }
+        }
+      }
+    },
+    "Pair a Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать с Mac"
+          }
+        }
+      }
+    },
+    "Pair once with a code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь один раз по коду"
+          }
+        }
+      }
+    },
+    "Pair with “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать с «%@»?"
+          }
+        }
+      }
+    },
+    "Paired Macs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связанные Mac"
+          }
+        }
+      }
+    },
+    "Paired with “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связано с «%@»"
+          }
+        }
+      }
+    },
+    "Pairing codes work for five minutes. Show a new code on the Mac and scan it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код связи действует пять минут. Покажите новый код на Mac и отсканируйте его."
+          }
+        }
+      }
+    },
+    "Passed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден"
+          }
+        }
+      }
+    },
+    "Passed in %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден за %@."
+          }
+        }
+      }
+    },
+    "Passed in %@. New reference images were saved: check them in the report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден за %@. Сохранены новые эталоны — проверьте их в отчёте."
+          }
+        }
+      }
+    },
+    "Passed on try %lld, so the test is flaky: it failed before that." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройден с попытки %lld, значит тест нестабильный: до этого он падал."
+          }
+        }
+      }
+    },
+    "Paused on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза на Mac"
+          }
+        }
+      }
+    },
+    "Press Keys" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши"
+          }
+        }
+      }
+    },
+    "Private end to end" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сквозное шифрование"
+          }
+        }
+      }
+    },
+    "Recent" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недавние"
+          }
+        }
+      }
+    },
+    "Reconnect" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переподключиться"
+          }
+        }
+      }
+    },
+    "Removed on the Mac. Pair again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалён на Mac. Свяжите заново."
+          }
+        }
+      }
+    },
+    "Repeat" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повтор"
+          }
+        }
+      }
+    },
+    "Run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить"
+          }
+        }
+      }
+    },
+    "Run Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск теста"
+          }
+        }
+      }
+    },
+    "Run Your Tests from iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускайте тесты с iPhone"
+          }
+        }
+      }
+    },
+    "Run on %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить на %@"
+          }
+        }
+      }
+    },
+    "Running Now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идут сейчас"
+          }
+        }
+      }
+    },
+    "Running now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется сейчас"
+          }
+        }
+      }
+    },
+    "Running on %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт на %@"
+          }
+        }
+      }
+    },
+    "Running, try %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт, попытка %lld"
+          }
+        }
+      }
+    },
+    "Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогоны"
+          }
+        }
+      }
+    },
+    "Runs of this project’s tests, from the Mac or this iPhone, show up here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь появятся запуски тестов этого проекта — с Mac или с этого iPhone."
+          }
+        }
+      }
+    },
+    "Scan Pairing Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканировать код связи"
+          }
+        }
+      }
+    },
+    "Scan a New Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканировать новый код"
+          }
+        }
+      }
+    },
+    "Screen After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран после"
+          }
+        }
+      }
+    },
+    "Screen Before" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран до"
+          }
+        }
+      }
+    },
+    "Screen Recording" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запись экрана"
+          }
+        }
+      }
+    },
+    "Set a passcode for this iPhone in Settings first. JEVision needs it to keep your Macs safe." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала задайте код-пароль для этого iPhone в Настройках. Он нужен JEVision, чтобы защитить ваши Mac."
+          }
+        }
+      }
+    },
+    "Set a passcode for this iPhone in Settings. JEVision needs it to keep your Macs safe." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задайте код-пароль для этого iPhone в Настройках. Он нужен JEVision, чтобы защитить ваши Mac."
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
+    "Show Report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать отчёт"
+          }
+        }
+      }
+    },
+    "Someone at the Mac said no to this run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кто-то за Mac отклонил этот запуск."
+          }
+        }
+      }
+    },
+    "Something Went Wrong" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что-то пошло не так"
+          }
+        }
+      }
+    },
+    "Source Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исходный код"
+          }
+        }
+      }
+    },
+    "Started from %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустил: %@"
+          }
+        }
+      }
+    },
+    "Step %lld of %lld, %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld of %2$lld, %3$@, %4$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %1$lld из %2$lld, %3$@, %4$@"
+          }
+        }
+      }
+    },
+    "Steps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаги"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стоп"
+          }
+        }
+      }
+    },
+    "Stopped" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановлен"
+          }
+        }
+      }
+    },
+    "Stopping…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановка…"
+          }
+        }
+      }
+    },
+    "Tests you make in JEVision on the Mac show up here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь появятся тесты, которые вы создадите в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "That’s a different code. Point at the one JEVision shows on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это другой код. Наведите камеру на код, который показывает JEVision на Mac."
+          }
+        }
+      }
+    },
+    "The AI model couldn’t judge the screen. The report on the Mac has the details." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ-модель не смогла оценить экран. Подробности — в отчёте на Mac."
+          }
+        }
+      }
+    },
+    "The Mac Is Locked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac заблокирован"
+          }
+        }
+      }
+    },
+    "The Mac may be asleep or offline, or JEVision isn’t open on it. Wake it up and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac, возможно, спит или не в сети, или на нём не открыт JEVision. Разбудите его и попробуйте снова."
+          }
+        }
+      }
+    },
+    "The Mac no longer knows this iPhone. Forget the Mac here and pair again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac больше не знает этот iPhone. Забудьте Mac здесь и свяжите заново."
+          }
+        }
+      }
+    },
+    "The code was already used or the Mac stopped showing it. Show a new code on the Mac and scan it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код уже использован или Mac перестал его показывать. Покажите новый код на Mac и отсканируйте его."
+          }
+        }
+      }
+    },
+    "The connection is encrypted, and the key that proves it’s you never leaves this iPhone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь зашифрована, а ключ, подтверждающий, что это вы, никогда не покидает этот iPhone."
+          }
+        }
+      }
+    },
+    "The run was stopped." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск остановлен."
+          }
+        }
+      }
+    },
+    "The test failed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест провален."
+          }
+        }
+      }
+    },
+    "The test failed. The report on the Mac has the details." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не прошёл. Подробности — в отчёте на Mac."
+          }
+        }
+      }
+    },
+    "The test goes on on the Mac. Reconnect to keep watching." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест продолжается на Mac. Переподключитесь, чтобы следить дальше."
+          }
+        }
+      }
+    },
+    "This Code Doesn’t Work" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот код не подходит"
+          }
+        }
+      }
+    },
+    "This Code Has Expired" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок действия кода истёк"
+          }
+        }
+      }
+    },
+    "This Isn’t a Pairing Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не код связи"
+          }
+        }
+      }
+    },
+    "This iPhone Can’t Scan Codes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone не умеет сканировать коды"
+          }
+        }
+      }
+    },
+    "This iPhone Was Removed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone удалён"
+          }
+        }
+      }
+    },
+    "This iPhone becomes a remote for JEVision on your Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone станет пультом для JEVision на вашем Mac."
+          }
+        }
+      }
+    },
+    "This iPhone can only look at tests. Allow runs for it in JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому iPhone можно только смотреть тесты. Разрешите ему запуски в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "This iPhone can only look at tests. To run them from here, allow it in JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому iPhone можно только смотреть тесты. Чтобы запускать их отсюда, разрешите это в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "This iPhone couldn’t save the list of paired Macs. They’ll be forgotten when JEVision quits." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone не смог сохранить список связанных Mac. Они забудутся, когда JEVision закроется."
+          }
+        }
+      }
+    },
+    "This iPhone will see the tests on this Mac and, if the Mac allows it, run them. Your tests stay on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот iPhone будет видеть тесты на этом Mac и, если Mac разрешит, запускать их. Ваши тесты остаются на Mac."
+          }
+        }
+      }
+    },
+    "To pair, scan the code JEVision shows on the Mac in Settings → iPhone & Remote." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы связать, отсканируйте код, который JEVision показывает на Mac в Настройках → «iPhone и удалённо»."
+          }
+        }
+      }
+    },
+    "To stop a Mac from trusting this iPhone, remove the iPhone in JEVision on that Mac too." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы Mac перестал доверять этому iPhone, удалите iPhone и в JEVision на том Mac."
+          }
+        }
+      }
+    },
+    "To use this Mac again, you’ll need to pair with it again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы снова пользоваться этим Mac, его нужно будет связать заново."
+          }
+        }
+      }
+    },
+    "Try %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попытка %lld"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Try again. If it keeps happening, restart JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попробуйте снова. Если повторяется, перезапустите JEVision на Mac."
+          }
+        }
+      }
+    },
+    "Type Text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ввод текста"
+          }
+        }
+      }
+    },
+    "Unlock" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разблокировать"
+          }
+        }
+      }
+    },
+    "Unlock to reach your Macs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разблокируйте, чтобы подключиться к вашим Mac."
+          }
+        }
+      }
+    },
+    "Unlock with Face ID or your passcode to reach your Macs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разблокируйте с Face ID или код-паролем, чтобы подключиться к вашим Mac."
+          }
+        }
+      }
+    },
+    "Use Data" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данные"
+          }
+        }
+      }
+    },
+    "Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия"
+          }
+        }
+      }
+    },
+    "Wait For" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать"
+          }
+        }
+      }
+    },
+    "Wait until the test running on the Mac finishes, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дождитесь окончания теста на Mac и попробуйте снова."
+          }
+        }
+      }
+    },
+    "Waiting for the Mac…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждём Mac…"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Да"
+          }
+        }
+      }
+    },
+    "You can manage what this iPhone may do in JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что можно этому iPhone, настраивается в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "You stopped the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы остановили тест."
+          }
+        }
+      }
+    },
+    "Your tests stay on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты остаются на Mac"
+          }
+        }
+      }
+    },
+    "Your tests, pictures and secrets stay on your Macs. This iPhone sees only what you open, over an end-to-end encrypted connection, and proves who it is with a key that never leaves it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваши тесты, картинки и секреты остаются на ваших Mac. Этот iPhone видит только то, что вы открываете, по связи со сквозным шифрованием, и подтверждает себя ключом, который никогда его не покидает."
+          }
+        }
+      }
+    },
+    "iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone"
+          }
+        }
+      }
+    },
+    "run.check.meaningMismatch" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the screen doesn’t show what’s expected. %2$@: %3$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: на экране не то, что ожидается. %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "run.check.mismatch" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the screen matches %2$@ by %3$@, and at least %4$@ is needed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран совпадает с %2$@ на %3$@, а нужно не меньше %4$@."
+          }
+        }
+      }
+    },
+    "run.click.noChange" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the screen didn’t change within %2$@ s after the click."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не изменился за %2$@ с после клика."
+          }
+        }
+      }
+    },
+    "run.compare.meaningUnavailable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%@”: comparing by meaning needs an AI model. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: для сравнения по смыслу нужна модель ИИ. Выберите её в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.compare.shapeMismatch" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the window is %2$@, but the reference %3$@ is %4$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно размером %2$@, а эталон %3$@ — %4$@."
+          }
+        }
+      }
+    },
+    "run.data.unknownColumn" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: there’s no table column “%2$@” here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: здесь нет столбца таблицы «%2$@»."
+          }
+        }
+      }
+    },
+    "run.data.unreadable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: can’t read the table %2$@: %3$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать таблицу %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.file.copyFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: can’t copy %2$@: %3$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся скопировать %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.file.missing" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the file %2$@ doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: файла %2$@ нет."
+          }
+        }
+      }
+    },
+    "run.hands.appNotFound" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@ isn’t installed on this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: приложение %2$@ не установлено на этом Mac."
+          }
+        }
+      }
+    },
+    "run.hands.cannotOpen" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: can’t open %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся открыть %2$@."
+          }
+        }
+      }
+    },
+    "run.hands.failed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@"
+          }
+        }
+      }
+    },
+    "run.hands.noWindow" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@ has no open window."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: у приложения %2$@ нет открытого окна."
+          }
+        }
+      }
+    },
+    "run.hands.permissionDenied" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "JEVision isn’t allowed to use %@. Turn it on in Settings → Permissions."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У JEVision нет разрешения «%@». Включите его в Настройках → Разрешения."
+          }
+        }
+      }
+    },
+    "run.hands.screenLocked" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%@”: the screen is locked. Unlock the Mac and run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: экран заблокирован. Разблокируйте Mac и запустите тест снова."
+          }
+        }
+      }
+    },
+    "run.io.writeFailed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can’t save %1$@: %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сохранить %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.path.outsideProject" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@ is outside the project folder."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ лежит вне папки проекта."
+          }
+        }
+      }
+    },
+    "run.reference.missing" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the reference image %2$@ doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: эталона %2$@ нет."
+          }
+        }
+      }
+    },
+    "run.reference.unreadable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: can’t read the image %2$@: %3$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать картинку %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.runTest.recursion" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the test %2$@ is already running, and a test can’t run itself."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: тест %2$@ уже выполняется, а тест не может запускать сам себя."
+          }
+        }
+      }
+    },
+    "run.screenshot.unreadable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: can’t read the screenshot: %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся прочитать снимок экрана: %2$@."
+          }
+        }
+      }
+    },
+    "run.secret.missing" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The secret %@ isn’t set. Set it in Test details."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секрет %@ не задан. Задайте его в карточке теста."
+          }
+        }
+      }
+    },
+    "run.start.unknownBlock" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "There’s no block “%@” to start from."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет блока «%@», с которого можно начать."
+          }
+        }
+      }
+    },
+    "run.target.notFound" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@ wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: картинка %2$@ не найдена на экране."
+          }
+        }
+      }
+    },
+    "run.test.invalid" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The test has problems to fix first (%@). They’re marked on the blocks."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала исправьте ошибки в тесте (%@). Они отмечены на блоках."
+          }
+        }
+      }
+    },
+    "run.test.unreadable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can’t read the test file %1$@: %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать файл теста %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.vision.badAddress" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“%@” isn’t a web address. It should start with http:// or https://."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Он должен начинаться с http:// или https://."
+          }
+        }
+      }
+    },
+    "run.vision.badAnswer" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ gave an answer JEVision can’t read: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ дал ответ, который JEVision не может прочитать: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.badKey" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ didn’t accept the API key. Set it again in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не принял ключ API. Задайте его заново в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.cloudBlocked" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: only models on this Mac are allowed, and %2$@ works in the cloud. Choose a local model or turn off “Only models on this Mac” in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: разрешены только модели на этом Mac, а %2$@ работает в облаке. Выберите локальную модель или выключите «Только модели на этом Mac» в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noKey" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The API key for %@ isn’t set. Set it in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ API для %@ не задан. Задайте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noModel" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No model is chosen for %@. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для %@ не выбрана модель. Выберите её в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.rateLimited" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ has had too many requests, or the account’s limit is reached. Try again later. %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К %1$@ слишком много запросов, или исчерпан лимит аккаунта. Попробуйте позже. %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.refused" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ declined to judge the screen: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ отказался оценивать экран: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.serviceError" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ answered with error %2$@: %3$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ответил ошибкой %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "run.vision.timeout" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ didn’t answer within %2$@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не ответил за %2$@ с."
+          }
+        }
+      }
+    },
+    "run.vision.unknownModel" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ has no model “%2$@”. Choose another one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У %1$@ нет модели «%2$@». Выберите другую в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.unreachable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Can’t reach %1$@ at %2$@. Check that it’s running and the Mac is online."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся связаться с %1$@ по адресу %2$@. Проверьте, что сервер запущен, а Mac подключён к сети."
+          }
+        }
+      }
+    },
+    "run.waitFor.timeout" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: waited %2$@ s for %3$@, but it didn’t happen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались."
+          }
+        }
+      }
+    },
+    "run.waitFor.timeout.screenStable" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the screen didn’t settle within %2$@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не успокоился за %2$@ с."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6F86FF"/>
+      <stop offset="0.55" stop-color="#4A4FE8"/>
+      <stop offset="1" stop-color="#2A228F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="180" r="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glyph" x1="0" y1="300" x2="0" y2="724" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE4FF"/>
+    </linearGradient>
+    <linearGradient id="path" x1="360" y1="0" x2="680" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5EF0C8"/>
+      <stop offset="1" stop-color="#38D3F5"/>
+    </linearGradient>
+    <path id="eye" d="M232,512 C312,372 408,316 512,316 C616,316 712,372 792,512 C712,652 616,708 512,708 C408,708 312,652 232,512Z"/>
+    <path id="check" d="M386,521 L473,609 L645,427"/>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#body)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <g transform="translate(512 512) scale(1.12) translate(-512 -512)">
+  <g transform="translate(0 14)" opacity="0.28" fill="none" stroke="#120C5C" stroke-linecap="round" stroke-linejoin="round">
+    <use href="#eye" stroke-width="56"/>
+    <use href="#check" stroke-width="52"/>
+    <circle cx="386" cy="521" r="44" fill="#120C5C" stroke="none"/>
+    <circle cx="473" cy="609" r="44" fill="#120C5C" stroke="none"/>
+    <circle cx="645" cy="427" r="44" fill="#120C5C" stroke="none"/>
+  </g>
+
+  <use href="#eye" fill="#1A1478" fill-opacity="0.32" stroke="url(#glyph)" stroke-width="56" stroke-linejoin="round"/>
+  <use href="#check" fill="none" stroke="url(#path)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#FFFFFF" stroke="url(#path)" stroke-width="16">
+    <circle cx="386" cy="521" r="42"/>
+    <circle cx="473" cy="609" r="42"/>
+    <circle cx="645" cy="427" r="42"/>
+  </g>
+  </g>
+</svg>
