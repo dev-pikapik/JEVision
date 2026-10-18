@@ -3,6 +3,8 @@ import SwiftUI
 
 /// The test drawn as a flowchart, at the positions the core laid out. Unscaled: the editor zooms it.
 struct FlowCanvas: View {
+  @Environment(RunCenter.self) private var runs
+  @Environment(ProjectStore.self) private var project
   let document: FlowDocument
   let appName: (String) -> String
   let onSelect: (String) -> Void
@@ -11,6 +13,7 @@ struct FlowCanvas: View {
   var body: some View {
     let layout = document.layout
     let order = document.order
+    let run = runs.marks(for: document)
     ZStack(alignment: .topLeading) {
       Edges(layout: layout)
       ForEach(layout.frames, id: \.block) { frame in
@@ -33,8 +36,14 @@ struct FlowCanvas: View {
             issues: document.issues(of: laid.id),
             isSelected: document.selection == laid.id,
             step: (order.firstIndex(of: laid.id) ?? 0) + 1,
-            steps: order.count
-          ) { onSelect(laid.id) }
+            steps: order.count,
+            mark: run.marks[laid.id],
+            isCurrent: run.current == laid.id,
+            hasBreakpoint: runs.hasBreakpoint(laid.id, in: document),
+            select: { onSelect(laid.id) },
+            toggleBreakpoint: { runs.toggleBreakpoint(laid.id, in: document) },
+            runFromHere: runs.isRunning || project.rootURL == nil
+              ? nil : { project.rootURL.map { runs.run(document, in: $0, from: laid.id) } })
           .frame(width: laid.rect.width, height: laid.rect.height)
           .offset(x: laid.rect.x, y: laid.rect.y)
         }
@@ -127,10 +136,32 @@ private struct BlockNode: View {
   let isSelected: Bool
   let step: Int
   let steps: Int
+  let mark: RunState.Mark?
+  let isCurrent: Bool
+  let hasBreakpoint: Bool
   let select: () -> Void
+  let toggleBreakpoint: () -> Void
+  /// `nil` while the test can't be run from here.
+  let runFromHere: (() -> Void)?
 
   private var type: String { block.kind.typeName }
   private var hasError: Bool { issues.contains { $0.severity == .error } }
+
+  private var border: (color: Color, width: Double) {
+    if isCurrent { return (.orange, 2.5) }
+    if isSelected { return (.accentColor, 2.5) }
+    if mark == .failed { return (.red, 2) }
+    return (.primary.opacity(0.1), 1)
+  }
+
+  private var runValue: String? {
+    if isCurrent { return String(localized: "Running now") }
+    switch mark {
+    case .passed: return String(localized: "Passed")
+    case .failed: return String(localized: "Failed")
+    case nil: return nil
+    }
+  }
 
   var body: some View {
     HStack(spacing: 10) {
@@ -157,16 +188,54 @@ private struct BlockNode: View {
     .background(.background, in: .rect(cornerRadius: 14))
     .overlay {
       RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.1), lineWidth: isSelected ? 2.5 : 1)
+        .strokeBorder(border.color, lineWidth: border.width)
     }
-    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+    .overlay(alignment: .topTrailing) { badge }
+    .overlay(alignment: .leading) {
+      if hasBreakpoint {
+        Button(action: toggleBreakpoint) {
+          Image(systemName: "pause.fill")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 18, height: 26)
+            .background(.blue, in: UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 5, bottomTrailingRadius: 9, topTrailingRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .offset(x: -10)
+        .help(Text("The run pauses before this block. Click to remove."))
+        .accessibilityHidden(true)
+      }
+    }
+    .shadow(color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: isCurrent ? 10 : 3, y: 1)
+    .animation(.snappy, value: isCurrent)
     .contentShape(.rect(cornerRadius: 14))
     .onTapGesture(perform: select)
+    .contextMenu {
+      Button("Run from Here", systemImage: "play", action: { runFromHere?() })
+        .disabled(runFromHere == nil)
+      Toggle("Pause Here", systemImage: "pause", isOn: Binding(get: { hasBreakpoint }, set: { _ in toggleBreakpoint() }))
+    }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("Step \(step) of \(steps), \(BlockInfo.title(type))"))
-    .accessibilityValue(Text(([summary] + issues.map(IssueText.line)).joined(separator: ". ")))
+    .accessibilityValue(Text(
+      ([runValue, summary, hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
+        + issues.map(IssueText.line)).joined(separator: ". ")))
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction(.default, select)
+    .accessibilityAction(named: Text("Run from Here")) { runFromHere?() }
+    .accessibilityAction(named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint)
+  }
+
+  @ViewBuilder
+  private var badge: some View {
+    if !isCurrent, let mark {
+      Image(systemName: mark == .passed ? "checkmark.circle.fill" : "xmark.square.fill")
+        .font(.system(size: 16))
+        .symbolRenderingMode(.palette)
+        .foregroundStyle(.white, mark == .passed ? .green : .red)
+        .offset(x: 6, y: -6)
+        .accessibilityHidden(true)
+    }
   }
 }
 

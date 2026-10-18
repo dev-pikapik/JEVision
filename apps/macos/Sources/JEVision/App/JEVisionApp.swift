@@ -4,6 +4,7 @@ import SwiftUI
 struct JEVisionApp: App {
   @State private var project = ProjectStore()
   @State private var permissions = PermissionsMonitor()
+  @State private var runs = RunCenter()
 
   init() {
     _ = AppLanguage.atLaunch
@@ -15,9 +16,10 @@ struct JEVisionApp: App {
       MainView()
         .environment(project)
         .environment(permissions)
+        .environment(runs)
     }
     .defaultSize(width: 960, height: 640)
-    .commands { AppCommands(project: project) }
+    .commands { AppCommands(project: project, runs: runs) }
 
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()

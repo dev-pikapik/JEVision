@@ -13,8 +13,13 @@ let package = Package(
   targets: [
     .executableTarget(
       name: "JEVision",
-      dependencies: [.product(name: "JEVisionCore", package: "JEVisionCore")],
+      dependencies: ["JEVisionHands", .product(name: "JEVisionCore", package: "JEVisionCore")],
       path: "Sources/JEVision"),
-    .testTarget(name: "JEVisionTests", dependencies: ["JEVision"], path: "Tests/JEVisionTests"),
+    // The macOS side of a run, without UI, so a command-line tool can use it too.
+    .target(
+      name: "JEVisionHands",
+      dependencies: [.product(name: "JEVisionCore", package: "JEVisionCore")],
+      path: "Sources/JEVisionHands"),
+    .testTarget(name: "JEVisionTests", dependencies: ["JEVision", "JEVisionHands"], path: "Tests/JEVisionTests"),
   ]
 )

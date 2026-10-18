@@ -29,7 +29,7 @@ esac
 rustup -q target add "${TARGETS[@]}"
 for target in "${TARGETS[@]}"; do
   echo "==> Building core for $target"
-  cargo build --locked -p jevision-ffi --lib "${CARGO_PROFILE[@]}" --target "$target"
+  cargo build --locked -p jevision-ffi --lib ${CARGO_PROFILE[@]+"${CARGO_PROFILE[@]}"} --target "$target"
 done
 
 rm -rf "$OUT"

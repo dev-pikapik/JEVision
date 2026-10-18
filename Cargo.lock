@@ -397,6 +397,7 @@ name = "jevision-ffi"
 version = "0.1.0"
 dependencies = [
  "jevision-core",
+ "jevision-runner",
  "thiserror",
  "uniffi",
 ]

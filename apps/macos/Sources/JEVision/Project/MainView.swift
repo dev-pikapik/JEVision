@@ -2,11 +2,13 @@ import SwiftUI
 
 struct MainView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(RunCenter.self) private var runs
   @Environment(\.openWindow) private var openWindow
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
 
   var body: some View {
     @Bindable var project = project
+    @Bindable var runs = runs
     Group {
       switch project.status {
       case .closed:
@@ -35,6 +37,7 @@ struct MainView: View {
       }
     }
     .sheet(isPresented: $project.isCreatingTest) { NewTestSheet() }
+    .sheet(item: $runs.blocked) { RunReadinessSheet(request: $0) }
     .frame(minWidth: 640, minHeight: 420)
     .navigationTitle(project.rootURL == nil ? "JEVision" : project.name)
     .onAppear {

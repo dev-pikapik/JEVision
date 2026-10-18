@@ -1,4 +1,5 @@
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// The test as a whole: its name, app, data, secrets and retries.
@@ -90,12 +91,12 @@ struct TestDetailsView: View {
   }
 }
 
-private struct SecretName: Identifiable {
+struct SecretName: Identifiable {
   let id: String
 }
 
 /// Asks for a secret's value and puts it into the Keychain. The value is never shown.
-private struct SetSecretSheet: View {
+struct SetSecretSheet: View {
   let name: String
   let saved: () -> Void
   @Environment(\.dismiss) private var dismiss
