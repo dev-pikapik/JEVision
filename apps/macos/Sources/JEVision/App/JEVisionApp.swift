@@ -46,6 +46,13 @@ struct JEVisionApp: App {
     .defaultSize(width: 960, height: 640)
     .restorationBehavior(.disabled)
 
+    Window("Pull Requests", id: SceneID.pullRequests) {
+      PullRequestsView()
+        .environment(project)
+    }
+    .defaultSize(width: 1040, height: 680)
+    .restorationBehavior(.disabled)
+
     Settings {
       SettingsView()
         .environment(project)
@@ -59,4 +66,5 @@ enum SceneID {
   static let onboarding = "onboarding"
   static let commandLineTool = "commandLineTool"
   static let commit = "commit"
+  static let pullRequests = "pullRequests"
 }

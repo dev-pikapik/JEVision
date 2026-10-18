@@ -9,8 +9,13 @@
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+mod github;
 #[cfg(test)]
 mod tests;
+
+pub use github::{
+    API, GitHub, GitHubAccount, GitHubRepo, PullRequest, PullRequestChanges, PullRequestDraft,
+};
 
 /// Why a git operation didn't happen. Nothing on disk changed unless the variant says so.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -41,7 +46,7 @@ pub enum GitError {
     LocalChanges { paths: Vec<String> },
     #[error("git does not know the author's name and email")]
     NoIdentity,
-    #[error("the commit message is empty")]
+    #[error("the message is empty")]
     EmptyMessage,
     #[error("there is nothing to commit")]
     NothingToCommit,
@@ -51,6 +56,20 @@ pub enum GitError {
     BranchExists { name: String },
     #[error("`{path}` is not in that commit")]
     NotInCommit { path: String },
+    #[error("GitHub CLI is not installed")]
+    NoGitHubCli,
+    #[error("GitHub CLI is not signed in to github.com")]
+    GitHubSignedOut,
+    #[error("the repository's server is not GitHub")]
+    NotGitHub,
+    #[error("the GitHub account is not allowed to do that")]
+    NoPermission,
+    #[error("branch `{branch}` has commits that are not on GitHub")]
+    NotPushed { branch: String },
+    #[error("a pull request for this branch is already open")]
+    PullRequestExists,
+    #[error("the branch has no commits that `{base}` doesn't have")]
+    NothingToPropose { base: String },
     #[error("{message}")]
     Failed { message: String },
 }
@@ -90,6 +109,8 @@ pub struct GitStatus {
     pub has_commits: bool,
     /// The repository on the server, such as `github.com/acme/qa`.
     pub remote: Option<String>,
+    /// `owner/name` when that server is GitHub.
+    pub github: Option<String>,
     pub changes: Vec<FileChange>,
 }
 
@@ -262,6 +283,7 @@ impl Repo {
             behind: 0,
             has_commits: false,
             remote: None,
+            github: None,
             changes: Vec::new(),
         };
         let mut fields = out.split('\0');
@@ -300,19 +322,24 @@ impl Repo {
                 status.changes.push(FileChange { path, from, kind });
             }
         }
-        let remotes = self.remotes()?;
-        let remote = status
-            .upstream
-            .as_deref()
-            .and_then(|u| remotes.iter().find(|r| u.starts_with(&format!("{r}/"))))
-            .cloned()
-            .or_else(|| default_remote(remotes));
-        if let Some(remote) = remote {
-            status.remote = self
-                .config(&format!("remote.{remote}.url"))?
-                .map(|u| display_url(&u));
+        if let Some(remote) = self.server(status.upstream.as_deref())? {
+            let url = self.config(&format!("remote.{remote}.url"))?;
+            status.remote = url.as_deref().map(display_url);
+            status.github = url
+                .as_deref()
+                .and_then(GitHubRepo::from_url)
+                .map(|r| r.full_name());
         }
         Ok(status)
+    }
+
+    /// The remote the branch syncs with, else the one it would be pushed to.
+    fn server(&self, upstream: Option<&str>) -> Result<Option<String>, GitError> {
+        let remotes = self.remotes()?;
+        Ok(upstream
+            .and_then(|u| remotes.iter().find(|r| u.starts_with(&format!("{r}/"))))
+            .cloned()
+            .or_else(|| default_remote(remotes)))
     }
 
     /// Commits that changed `path`, a test or a folder relative to the project (empty for the

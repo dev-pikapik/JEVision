@@ -4,8 +4,10 @@ import SwiftUI
 struct GitSettingsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.openURL) private var openURL
   @State private var isNamingBranch = false
   @State private var branchName = ""
+  @State private var isComposing = false
 
   private var git: ProjectGit { project.git }
 
@@ -13,8 +15,8 @@ struct GitSettingsView: View {
     Form {
       Section {
         PageHeader(
-          symbol: "arrow.triangle.branch", color: .orange, title: Text("Git"),
-          message: Text("History, commits and branches — no terminal needed."))
+          symbol: "arrow.triangle.branch", color: .orange, title: Text("Git and GitHub"),
+          message: Text("History, commits, branches and pull requests — no terminal needed."))
       }
       if project.rootURL == nil {
         Section {
@@ -56,9 +58,14 @@ struct GitSettingsView: View {
           tracked(status)
         }
       }
+      gitHubSection
     }
     .formStyle(.grouped)
-    .onAppear { git.refresh() }
+    .onAppear {
+      git.refresh()
+      git.checkGitHub()
+    }
+    .sheet(isPresented: $isComposing) { NewPullRequestView() }
     .alert("New Branch", isPresented: $isNamingBranch) {
       TextField("Name", text: $branchName, prompt: Text(verbatim: "new-login-screen"))
       Button("Create") { git.createBranch(branchName.trimmingCharacters(in: .whitespaces)) { branchName = "" } }
@@ -68,7 +75,7 @@ struct GitSettingsView: View {
     }
     .alert(
       failureTitle, isPresented: Binding(
-        get: { git.failure.map { $0.activity != .committing } ?? false }, set: { if !$0 { git.failure = nil } }),
+        get: { git.failure.map { ![.committing, .proposing].contains($0.activity) } ?? false }, set: { if !$0 { git.failure = nil } }),
       presenting: git.failure
     ) { _ in
       Button("OK") {}
@@ -150,6 +157,65 @@ struct GitSettingsView: View {
     }
   }
 
+  @ViewBuilder
+  private var gitHubSection: some View {
+    Section {
+      LabeledContent {
+        switch git.gitHub {
+        case .checking:
+          ProgressView().controlSize(.small)
+            .accessibilityLabel(Text("Checking the GitHub account"))
+        case .signedIn(let account):
+          Text(verbatim: account.login)
+            .textSelection(.enabled)
+        case .signedOut(let problem):
+          HStack {
+            if problem == .NoGitHubCli {
+              Button("Get GitHub CLI…") { openURL(URL(string: "https://cli.github.com")!) }
+            }
+            Button("Check Again", action: git.checkGitHub)
+          }
+        }
+      } label: {
+        Text("Account")
+        switch git.gitHub {
+        case .checking: EmptyView()
+        case .signedIn(let account):
+          if !account.name.isEmpty { Text(verbatim: account.name) }
+        case .signedOut(let problem): Text(signInHelp(problem))
+        }
+      }
+      if case .tracked(let status) = git.state, status.github != nil {
+        LabeledContent {
+          HStack {
+            Button("New…") { isComposing = true }
+              .help(Text("Propose the changes on your branch"))
+              .disabled(git.activity != nil || !status.hasCommits || status.branch == nil)
+            Button("Show…") { openWindow(id: SceneID.pullRequests) }
+          }
+        } label: {
+          Text("Pull Requests")
+          Text("Propose your branch’s changes, or see what others propose.")
+        }
+      }
+    } header: {
+      Text("GitHub")
+    } footer: {
+      Text("JEVision uses the account GitHub CLI is signed in to. To use another one, run “gh auth login” in Terminal.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private func signInHelp(_ problem: GitError) -> String {
+    switch problem {
+    case .NoGitHubCli: String(localized: "Install GitHub CLI, then run “gh auth login” in Terminal to sign in.")
+    case .GitHubSignedOut: String(localized: "Run “gh auth login” in Terminal to sign in, then check again.")
+    default: GitText.failure(problem)
+    }
+  }
+
   private var failureTitle: Text {
     switch git.failure?.activity {
     case .pulling: Text("Couldn’t pull")
@@ -167,6 +233,7 @@ struct GitSettingsView: View {
     case .pulling: String(localized: "Pulling…")
     case .pushing: String(localized: "Pushing…")
     case .switching: String(localized: "Switching branches…")
+    case .proposing: String(localized: "Creating the pull request…")
     }
   }
 

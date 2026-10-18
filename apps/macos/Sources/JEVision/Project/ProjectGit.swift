@@ -17,7 +17,15 @@ final class ProjectGit {
   }
 
   enum Activity {
-    case starting, committing, pulling, pushing, switching
+    case starting, committing, pulling, pushing, switching, proposing
+  }
+
+  /// Who the app works with GitHub as: GitHub CLI's sign-in.
+  enum GitHubSignIn: Equatable {
+    case checking
+    case signedIn(GitHubAccount)
+    /// Not signed in, or GitHub couldn't be asked, and why.
+    case signedOut(GitError)
   }
 
   /// An action that didn't work, and why, in words for the user.
@@ -30,6 +38,7 @@ final class ProjectGit {
   /// Branches here, then those only on the server.
   private(set) var branches: [GitBranch] = []
   private(set) var activity: Activity?
+  private(set) var gitHub = GitHubSignIn.checking
   /// What went wrong with the last action, for an alert.
   var failure: Failure?
 
@@ -74,7 +83,7 @@ final class ProjectGit {
   func startTracking() {
     perform(.starting) { project in
       _ = try gitStartTracking(project: project)
-    } then: { [weak self] in
+    } then: { [weak self] _ in
       guard let url = self?.project, GitIgnore.needsEntry(in: url) else { return }
       try? GitIgnore.add(to: url)
     }
@@ -86,7 +95,7 @@ final class ProjectGit {
     perform(.committing) { project in
       if let identity { try gitSetIdentity(project: project, identity: identity) }
       _ = try gitCommit(project: project, paths: paths, message: message)
-    } then: {
+    } then: { _ in
       done()
     }
   }
@@ -105,7 +114,29 @@ final class ProjectGit {
 
   /// Makes a branch and switches to it. Calls `done` once made.
   func createBranch(_ name: String, done: @escaping () -> Void) {
-    perform(.switching) { try gitCreateBranch(project: $0, name: name) } then: { done() }
+    perform(.switching) { try gitCreateBranch(project: $0, name: name) } then: { _ in done() }
+  }
+
+  /// Asks GitHub CLI again who is signed in.
+  func checkGitHub() {
+    Task {
+      let result = await Task.detached(priority: .utility) { Result { try githubAccount() } }.value
+      switch result {
+      case .success(let account): gitHub = .signedIn(account)
+      case .failure(let error as GitError): gitHub = .signedOut(error)
+      case .failure(let error): gitHub = .signedOut(.Failed(message: error.localizedDescription))
+      }
+    }
+  }
+
+  /// Opens a pull request from the current branch for `base`, pushing the branch first when
+  /// `push`. Calls `done` with it once open.
+  func createPullRequest(
+    base: String, title: String, description: String, push: Bool, done: @escaping (PullRequest) -> Void
+  ) {
+    perform(.proposing) { project in
+      try githubCreatePullRequest(project: project, base: base, title: title, description: description, push: push)
+    } then: { done($0) }
   }
 
   /// Who commits are signed with; empty fields when git doesn't know.
@@ -115,8 +146,9 @@ final class ProjectGit {
     return await Task.detached { (try? gitIdentity(project: path)) ?? empty }.value
   }
 
-  private func perform(
-    _ activity: Activity, _ work: @escaping @Sendable (String) throws -> Void, then: @escaping () -> Void = {}
+  private func perform<Value: Sendable>(
+    _ activity: Activity, _ work: @escaping @Sendable (String) throws -> Value,
+    then: @escaping (Value) -> Void = { _ in }
   ) {
     guard self.activity == nil, let project else { return }
     self.activity = activity
@@ -125,7 +157,7 @@ final class ProjectGit {
       let result = await Task.detached(priority: .userInitiated) { Result { try work(path) } }.value
       self.activity = nil
       switch result {
-      case .success: then()
+      case .success(let value): then(value)
       case .failure(let error): failure = Failure(activity: activity, message: GitText.failure(error))
       }
       refresh()

@@ -42,6 +42,20 @@ enum GitText {
       return String(localized: "There’s already a branch named “\(name)”.")
     case .NotInCommit:
       return String(localized: "That version of the file isn’t there.")
+    case .NoGitHubCli:
+      return String(localized: "GitHub CLI isn’t installed. Install it from cli.github.com, then run “gh auth login” in Terminal.")
+    case .GitHubSignedOut:
+      return String(localized: "You’re not signed in to GitHub. Run “gh auth login” in Terminal, then try again.")
+    case .NotGitHub:
+      return String(localized: "This project’s server isn’t GitHub.")
+    case .NoPermission:
+      return String(localized: "Your GitHub account isn’t allowed to do this in this repository.")
+    case .NotPushed(let branch):
+      return String(localized: "Branch “\(branch)” has commits that aren’t on GitHub yet. Push it first.")
+    case .PullRequestExists:
+      return String(localized: "This branch already has an open pull request.")
+    case .NothingToPropose(let base):
+      return String(localized: "This branch has no commits that “\(base)” doesn’t have yet.")
     case .Failed(let message):
       return message
     }

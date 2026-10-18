@@ -16,7 +16,7 @@ struct SettingsView: View {
       Tab("Permissions", systemImage: monitor.allGranted ? "hand.raised" : "exclamationmark.triangle", value: .permissions) {
         PermissionsSettingsView()
       }
-      Tab("Git", systemImage: "arrow.triangle.branch", value: .git) {
+      Tab("Git and GitHub", systemImage: "arrow.triangle.branch", value: .git) {
         GitSettingsView()
       }
     }
