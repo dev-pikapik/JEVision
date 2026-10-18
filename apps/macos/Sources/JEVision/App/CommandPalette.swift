@@ -49,8 +49,8 @@ struct PaletteState {
   var lastRunFailed = false
   var hasRuns = false
   var git = Git()
-  /// Tests of the project, as `(sidebar id, name, folder)`.
-  var tests: [(id: String, name: String, folder: String)] = []
+  /// Tests of the project, as `(sidebar id, name, folder, what else finds it)`.
+  var tests: [(id: String, name: String, folder: String, keywords: String)] = []
 
   struct Git {
     var isTracked = false
@@ -192,7 +192,7 @@ enum CommandPalette {
     state.tests.map { test in
       PaletteEntry(
         action: .openTest(test.id), kind: .test, title: test.name, detail: test.folder, symbol: "doc.text",
-        color: .secondary, shortcut: nil, keywords: [test.folder, String(localized: "open test")].joined(separator: " "))
+        color: .secondary, shortcut: nil, keywords: [test.folder, String(localized: "open test"), test.keywords].joined(separator: " "))
     }
   }
 }

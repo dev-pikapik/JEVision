@@ -5,6 +5,7 @@ struct MainView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.openSettings) private var openSettings
   @Environment(\.undoManager) private var undoManager
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
   /// The New Test sheet was opened to record: the test it creates is recorded once it closes.
@@ -76,17 +77,14 @@ struct MainView: View {
     } message: {
       Text(records.failure ?? "")
     }
-    .overlay(alignment: .top) {
-      if project.showsCommandPalette {
-        ZStack(alignment: .top) {
-          Color.clear
-            .contentShape(.rect)
-            .onTapGesture { project.showsCommandPalette = false }
-            .accessibilityHidden(true)
-          CommandPaletteView()
-            .padding(.top, 72)
-            .padding(.bottom, 24)
-        }
+    .background {
+      CommandPalettePresenter(isPresented: project.showsCommandPalette) {
+        project.showsCommandPalette = false
+      } palette: {
+        CommandPaletteView(openWindow: openWindow, openSettings: openSettings)
+          .environment(project)
+          .environment(runs)
+          .environment(records)
       }
     }
     .frame(minWidth: 640, minHeight: 420)

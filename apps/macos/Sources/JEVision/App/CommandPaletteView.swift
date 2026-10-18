@@ -8,8 +8,9 @@ struct CommandPaletteView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
-  @Environment(\.openWindow) private var openWindow
-  @Environment(\.openSettings) private var openSettings
+  /// The window's own actions: the palette's panel is outside the scene that has them.
+  let openWindow: OpenWindowAction
+  let openSettings: OpenSettingsAction
   @State private var query = ""
   @State private var highlighted: PaletteAction?
   @FocusState private var searchFocused: Bool
@@ -162,7 +163,7 @@ struct CommandPaletteView: View {
     state.hasLastRun = last != nil
     state.lastRunFailed = last?.report.verdict == .failed
     state.hasRuns = !project.runs.isEmpty
-    state.tests = tests.map { ($0.id, $0.name, $0.parentPath) }
+    state.tests = tests.map { ($0.id, $0.name, $0.parentPath, $0.keywords) }
     if case .tracked(let status) = project.git.state {
       state.git = PaletteState.Git(
         isTracked: true, hasChanges: !status.changes.isEmpty, hasCommits: status.hasCommits,
