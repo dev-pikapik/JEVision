@@ -1,0 +1,559 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B3F53C8D9F6387BFB4183751 /* JEVisionMobile.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7C4D43798965863B407B74 /* JEVisionMobile.swift */; };
+		526B2400B95C09A98F1C9875 /* JEVisionMobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BE752A243B88A060738119B9 /* JEVisionMobile.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		24653514E5C5218497C8E80B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 36806E739F5AC4507C9C6018 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE7364F501B78E23B359B450;
+			remoteInfo = JEVisionMobile;
+		};
+		2D59C4602A5BFB0A76813F9B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 36806E739F5AC4507C9C6018 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E0DA6B872F0EDEF3EA95180;
+			remoteInfo = JEVisionRemote;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		BAE564DACD6B3A3329CEAB07 /* JEVisionRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JEVisionRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B54F9DA41C3DC75DBD959196 /* JEVisionRemoteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JEVisionRemoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE752A243B88A060738119B9 /* JEVisionMobile.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = JEVisionMobile.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		DF7C4D43798965863B407B74 /* JEVisionMobile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JEVisionMobile.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		242BEB233A9A771510664CAE /* Exceptions for "JEVisionRemote" folder in "JEVisionRemote" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4E0DA6B872F0EDEF3EA95180 /* JEVisionRemote */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		6E2D899B8EF1BDAF0CDC7922 /* JEVisionRemote */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				242BEB233A9A771510664CAE /* Exceptions for "JEVisionRemote" folder in "JEVisionRemote" target */,
+			);
+			path = JEVisionRemote;
+			sourceTree = "<group>";
+		};
+		4269048920172DD3A9C310EC /* JEVisionRemoteTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = JEVisionRemoteTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		ED3639993C349AD681706C38 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				526B2400B95C09A98F1C9875 /* JEVisionMobile.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C736424CBAB0E60256FED2D1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		92BDDDD051D1EB050421F681 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		64FF756282C7D37A1177C58C = {
+			isa = PBXGroup;
+			children = (
+				6E2D899B8EF1BDAF0CDC7922 /* JEVisionRemote */,
+				4269048920172DD3A9C310EC /* JEVisionRemoteTests */,
+				915A6DFB4957B740F787116F /* Generated */,
+				97AEA2362E491E40615CADB9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		97AEA2362E491E40615CADB9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BAE564DACD6B3A3329CEAB07 /* JEVisionRemote.app */,
+				B54F9DA41C3DC75DBD959196 /* JEVisionRemoteTests.xctest */,
+				BE752A243B88A060738119B9 /* JEVisionMobile.framework */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		915A6DFB4957B740F787116F /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				DF7C4D43798965863B407B74 /* JEVisionMobile.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4E0DA6B872F0EDEF3EA95180 /* JEVisionRemote */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E2A3DE9E0B8A4CBC778B4DD9 /* Build configuration list for PBXNativeTarget "JEVisionRemote" */;
+			buildPhases = (
+				AC62997926CDC6A32CC3025E /* Sources */,
+				ED3639993C349AD681706C38 /* Frameworks */,
+				A189D41FD63B376DF550BF42 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BF27EAD5C01658F927A9E694 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				6E2D899B8EF1BDAF0CDC7922 /* JEVisionRemote */,
+			);
+			name = JEVisionRemote;
+			packageProductDependencies = (
+			);
+			productName = JEVisionRemote;
+			productReference = BAE564DACD6B3A3329CEAB07 /* JEVisionRemote.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D1822DC50E214F4016305880 /* JEVisionRemoteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B061982F513AC83EF4970AC /* Build configuration list for PBXNativeTarget "JEVisionRemoteTests" */;
+			buildPhases = (
+				8456A5E659AC2E7BA8B5EE82 /* Sources */,
+				C736424CBAB0E60256FED2D1 /* Frameworks */,
+				A1F3FA21023D228CED91C0EE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				26FBEF790177F1D0CEE4D5D7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4269048920172DD3A9C310EC /* JEVisionRemoteTests */,
+			);
+			name = JEVisionRemoteTests;
+			packageProductDependencies = (
+			);
+			productName = JEVisionRemoteTests;
+			productReference = B54F9DA41C3DC75DBD959196 /* JEVisionRemoteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		CE7364F501B78E23B359B450 /* JEVisionMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0E6C06FA26D0A7E29C5CFDE /* Build configuration list for PBXNativeTarget "JEVisionMobile" */;
+			buildPhases = (
+				EE48262F747CCE49734A2179 /* Build the Rust core */,
+				125C3DBD33AE817105609CE5 /* Sources */,
+				92BDDDD051D1EB050421F681 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = JEVisionMobile;
+			packageProductDependencies = (
+			);
+			productName = JEVisionMobile;
+			productReference = BE752A243B88A060738119B9 /* JEVisionMobile.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		36806E739F5AC4507C9C6018 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					4E0DA6B872F0EDEF3EA95180 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					D1822DC50E214F4016305880 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4E0DA6B872F0EDEF3EA95180;
+					};
+					CE7364F501B78E23B359B450 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 34042AEE1581486DB33CAA37 /* Build configuration list for PBXProject "JEVisionRemote" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				ru,
+				Base,
+			);
+			mainGroup = 64FF756282C7D37A1177C58C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 97AEA2362E491E40615CADB9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4E0DA6B872F0EDEF3EA95180 /* JEVisionRemote */,
+				D1822DC50E214F4016305880 /* JEVisionRemoteTests */,
+				CE7364F501B78E23B359B450 /* JEVisionMobile */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A189D41FD63B376DF550BF42 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1F3FA21023D228CED91C0EE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		EE48262F747CCE49734A2179 /* Build the Rust core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build the Rust core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Generated/JEVisionMobile.swift",
+				"$(JEVISION_MOBILE_FFI)/libjevision_mobile.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "exec \"$SRCROOT/scripts/build-core.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AC62997926CDC6A32CC3025E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8456A5E659AC2E7BA8B5EE82 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		125C3DBD33AE817105609CE5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3F53C8D9F6387BFB4183751 /* JEVisionMobile.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		26FBEF790177F1D0CEE4D5D7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E0DA6B872F0EDEF3EA95180 /* JEVisionRemote */;
+			targetProxy = 2D59C4602A5BFB0A76813F9B /* PBXContainerItemProxy */;
+		};
+		BF27EAD5C01658F927A9E694 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE7364F501B78E23B359B450 /* JEVisionMobile */;
+			targetProxy = 24653514E5C5218497C8E80B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		433C7DA069EFE92FA0265B0D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 5N3968Z6Y9;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)",);
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				JEVISION_MOBILE_FFI = "$(SRCROOT)/Frameworks/JEVisionMobileFFI.xcframework/ios-arm64";
+				"JEVISION_MOBILE_FFI[sdk=iphonesimulator*]" = "$(SRCROOT)/Frameworks/JEVisionMobileFFI.xcframework/ios-arm64-simulator";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(JEVISION_MOBILE_FFI)/Headers";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		E4591A231E46CBE1E081999B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5N3968Z6Y9;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				JEVISION_MOBILE_FFI = "$(SRCROOT)/Frameworks/JEVisionMobileFFI.xcframework/ios-arm64";
+				"JEVISION_MOBILE_FFI[sdk=iphonesimulator*]" = "$(SRCROOT)/Frameworks/JEVisionMobileFFI.xcframework/ios-arm64-simulator";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(JEVISION_MOBILE_FFI)/Headers";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		9BA2202E3388FB452A7E4928 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JEVisionRemote/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JEVision;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "JEVision uses the camera only to read the pairing code your Mac shows.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "JEVision uses Face ID to keep your Macs safe: only you can open the app and run tests from it.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "MIT License";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "JEVision finds your Mac on this Wi-Fi network to connect to it directly.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(JEVISION_MOBILE_FFI)";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = ("$(inherited)", "-ljevision_mobile", "-framework", CoreFoundation, "-framework", Network, "-framework", Security, "-framework", SystemConfiguration,);
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.remote";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8D29B1ED9961B2C3168FB45C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = JEVisionRemote/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = JEVision;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCameraUsageDescription = "JEVision uses the camera only to read the pairing code your Mac shows.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "JEVision uses Face ID to keep your Macs safe: only you can open the app and run tests from it.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "MIT License";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "JEVision finds your Mac on this Wi-Fi network to connect to it directly.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(JEVISION_MOBILE_FFI)";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = ("$(inherited)", "-ljevision_mobile", "-framework", CoreFoundation, "-framework", Network, "-framework", Security, "-framework", SystemConfiguration,);
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.remote";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		1AD425C0524B74FD3CF39D2C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.remote.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JEVisionRemote.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JEVisionRemote";
+			};
+			name = Debug;
+		};
+		67380F3AD410819AEC5F7E28 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.remote.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JEVisionRemote.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/JEVisionRemote";
+			};
+			name = Release;
+		};
+		B918AD4FEFFC75DFD510104A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACH_O_TYPE = staticlib;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.mobile";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		AD58C5394A3F706F42CE37E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACH_O_TYPE = staticlib;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.dev-pikapik.jevision.mobile";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		34042AEE1581486DB33CAA37 /* Build configuration list for PBXProject "JEVisionRemote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				433C7DA069EFE92FA0265B0D /* Debug */,
+				E4591A231E46CBE1E081999B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E2A3DE9E0B8A4CBC778B4DD9 /* Build configuration list for PBXNativeTarget "JEVisionRemote" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9BA2202E3388FB452A7E4928 /* Debug */,
+				8D29B1ED9961B2C3168FB45C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1B061982F513AC83EF4970AC /* Build configuration list for PBXNativeTarget "JEVisionRemoteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1AD425C0524B74FD3CF39D2C /* Debug */,
+				67380F3AD410819AEC5F7E28 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D0E6C06FA26D0A7E29C5CFDE /* Build configuration list for PBXNativeTarget "JEVisionMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B918AD4FEFFC75DFD510104A /* Debug */,
+				AD58C5394A3F706F42CE37E2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 36806E739F5AC4507C9C6018 /* Project object */;
+}
