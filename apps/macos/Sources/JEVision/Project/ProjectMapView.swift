@@ -12,7 +12,6 @@ struct ProjectMapView: View {
 
   var body: some View {
     let groups = ProjectMap.groups(project.items, rootTitle: project.name)
-    let latest = ProjectMap.latestRuns(project.runs)
     let names = Dictionary(groups.flatMap(\.tests).map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
     let usedBy = ProjectMap.usedBy(map)
     ScrollView([.horizontal, .vertical]) {
@@ -28,7 +27,7 @@ struct ProjectMapView: View {
             ForEach(group.tests) { test in
               let info = map[test.id]
               MapCard(
-                test: test, info: info, last: latest[test.id], quarantine: project.quarantine(of: test.id),
+                test: test, info: info, last: project.latestRuns[test.id], quarantine: project.quarantine(of: test.id),
                 flaky: project.flaky[test.id],
                 uses: (info?.uses ?? []).compactMap { names[$0] },
                 usedBy: (usedBy[test.id] ?? []).compactMap { names[$0] }
@@ -126,11 +125,12 @@ enum ProjectMap {
 
   /// The newest run of each test, by file relative to the project.
   static func latestRuns(_ runs: [SavedRun]) -> [String: SavedRun] {
-    var latest: [String: SavedRun] = [:]
-    for run in runs where (latest[run.report.file]?.startedAt ?? .distantPast) <= run.startedAt {
-      latest[run.report.file] = run
+    var latest: [String: (date: Date, run: SavedRun)] = [:]
+    for run in runs {
+      let date = run.startedAt
+      if (latest[run.report.file]?.date ?? .distantPast) <= date { latest[run.report.file] = (date, run) }
     }
-    return latest
+    return latest.mapValues(\.run)
   }
 
   /// The tests that run each test, by file.
