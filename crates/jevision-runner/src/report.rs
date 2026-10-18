@@ -311,7 +311,7 @@ pub struct Step {
     /// Private areas of [`sent`](Self::sent) were covered before sending.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub sent_masked: bool,
-    /// Edge an `if` block followed: `then` or `else`.
+    /// Edge an `if` block followed: `then`, `elseIf1`, `elseIf2`… or `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.

@@ -81,6 +81,16 @@
         }
       }
     },
+    "%@ link from %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связь «%1$@» от %2$@ к %3$@"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "ru" : {
@@ -767,6 +777,16 @@
         }
       }
     },
+    "Add Condition" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить условие"
+          }
+        }
+      }
+    },
     "Add Environments…" : {
       "localizations" : {
         "ru" : {
@@ -877,22 +897,12 @@
         }
       }
     },
-    "Add a block to No after %@" : {
+    "Add a block to %@ after %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавить блок в ветку «Нет» после «%@»"
-          }
-        }
-      }
-    },
-    "Add a block to Yes after %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить блок в ветку «Да» после «%@»"
+            "value" : "Добавить блок в ветку «%1$@» после «%2$@»"
           }
         }
       }
@@ -2139,6 +2149,16 @@
         }
       }
     },
+    "Condition %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условие %lld"
+          }
+        }
+      }
+    },
     "Conflict" : {
       "localizations" : {
         "ru" : {
@@ -2779,22 +2799,12 @@
         }
       }
     },
-    "Drag to link No to a block" : {
+    "Drag to link %@ to a block" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перетащите, чтобы связать «Нет» с блоком"
-          }
-        }
-      }
-    },
-    "Drag to link Yes to a block" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перетащите, чтобы связать «Да» с блоком"
+            "value" : "Перетащите, чтобы связать «%@» с блоком"
           }
         }
       }
@@ -2825,6 +2835,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дублировать"
+          }
+        }
+      }
+    },
+    "Each condition gets its own way out on the canvas." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У каждого условия на холсте свой выход."
           }
         }
       }
@@ -3962,32 +3982,22 @@
         }
       }
     },
+    "Link %@ of %@ to a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Связать «%1$@» блока «%2$@» с блоком"
+          }
+        }
+      }
+    },
     "Link Blocks" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь блоков"
-          }
-        }
-      }
-    },
-    "Link No of %@ to a block" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Связать «Нет» блока «%@» с блоком"
-          }
-        }
-      }
-    },
-    "Link Yes of %@ to a block" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Связать «Да» блока «%@» с блоком"
           }
         }
       }
@@ -4182,12 +4192,32 @@
         }
       }
     },
+    "Move Down" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить ниже"
+          }
+        }
+      }
+    },
     "Move JEVision to the Applications folder and open it from there first: the command must point to where the app stays." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала перенесите JEVision в папку «Программы» и откройте оттуда: команда должна указывать туда, где приложение останется."
+          }
+        }
+      }
+    },
+    "Move Up" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить выше"
           }
         }
       }
@@ -4478,16 +4508,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиши не записаны"
-          }
-        }
-      }
-    },
-    "No link from %@ to %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Связь «Нет» от %@ к %@"
           }
         }
       }
@@ -4988,6 +5008,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Другое приложение…"
+          }
+        }
+      }
+    },
+    "Otherwise" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Иначе"
           }
         }
       }
@@ -5708,6 +5738,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать"
+          }
+        }
+      }
+    },
+    "Remove Condition" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать условие"
           }
         }
       }
@@ -7032,12 +7072,12 @@
         }
       }
     },
-    "Takes one path if the screen matches a reference, another if it doesn’t." : {
+    "Takes a different path depending on which reference the screen matches." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Идёт одним путём, если экран совпадает с эталоном, и другим — если нет."
+            "value" : "Выбирает путь в зависимости от того, с каким эталоном совпадает экран."
           }
         }
       }
@@ -7598,6 +7638,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест остановился до первого шага."
+          }
+        }
+      }
+    },
+    "The test takes the way of the first condition the screen matches, and the Otherwise way when it matches none." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест идёт по ветке первого условия, с которым совпадает экран, а если ни с одним — по ветке «Иначе»."
           }
         }
       }
@@ -8552,16 +8602,6 @@
         }
       }
     },
-    "Yes link from %@ to %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Связь «Да» от %@ к %@"
-          }
-        }
-      }
-    },
     "Yesterday" : {
       "localizations" : {
         "ru" : {
@@ -8702,22 +8742,12 @@
         }
       }
     },
-    "answer: No" : {
+    "answer: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ответ: Нет"
-          }
-        }
-      }
-    },
-    "answer: Yes" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ответ: Да"
+            "value" : "ответ: %@"
           }
         }
       }
@@ -9094,6 +9124,22 @@
         }
       }
     },
+    "flow.if.sameCondition" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущее условие этого блока проверяет то же самое, поэтому это условие никуда не ведёт."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An earlier condition of this block checks the same thing, so this one never leads anywhere."
+          }
+        }
+      }
+    },
     "flow.json.notObject" : {
       "localizations" : {
         "ru" : {
@@ -9348,6 +9394,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS установит его вместе с инструментами разработчика за несколько минут."
+          }
+        }
+      }
+    },
+    "or %lld more" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "или ещё %lld"
           }
         }
       }

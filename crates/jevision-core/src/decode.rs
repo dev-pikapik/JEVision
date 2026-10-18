@@ -7,8 +7,8 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Block, BlockKind, CanvasContent, CanvasSection, Compare, Flow, MouseButton, Note, Point,
-    Priority, Rect, Reference, Target, TestStatus, TestType, WaitUntil, parse_duration,
+    Block, BlockKind, CanvasContent, CanvasSection, Compare, ElseIf, Flow, MouseButton, Note,
+    Point, Priority, Rect, Reference, Target, TestStatus, TestType, WaitUntil, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -544,11 +544,13 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "if" => {
             let reference = o.object("reference", out).and_then(|r| reference(r, out));
             let then = o.opt_string("then", out);
+            let else_if = else_ifs(&mut o, out);
             let otherwise = o.opt_string("else", out);
             all_present(|| {
                 Some(BlockKind::If {
                     reference: reference?,
                     then,
+                    else_if: else_if?,
                     otherwise,
                 })
             })
@@ -651,6 +653,30 @@ fn rects(o: &mut Obj<'_>, key: &'static str, out: &mut Out) -> Vec<Rect> {
                 .and_then(|r| rect(r, out))
         })
         .collect()
+}
+
+/// The `elseIf` cases of an `if`; `None` when one of them is broken.
+fn else_ifs(o: &mut Obj<'_>, out: &mut Out) -> Option<Vec<ElseIf>> {
+    let Some(items) = o.opt_array("elseIf", out) else {
+        return Some(Vec::new());
+    };
+    let cases: Vec<Option<ElseIf>> = items
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let mut case = o.child(&format!("elseIf.{i}"), v, out)?;
+            let reference = case
+                .object("reference", out)
+                .and_then(|r| reference(r, out));
+            let then = case.opt_string("then", out);
+            case.finish(out);
+            Some(ElseIf {
+                reference: reference?,
+                then,
+            })
+        })
+        .collect();
+    cases.into_iter().collect()
 }
 
 fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {

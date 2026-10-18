@@ -10,8 +10,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, Flow, PROJECT_FILE, Point, ProjectSettings, Rect,
-    Reference, Severity, Target, WaitUntil, dark_variant,
+    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, ELSE, Flow, PROJECT_FILE, Point, ProjectSettings,
+    Rect, Reference, Severity, THEN, Target, WaitUntil, dark_variant, else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -904,20 +904,34 @@ impl Exec<'_> {
             BlockKind::If {
                 reference,
                 then,
+                else_if,
                 otherwise,
             } => {
+                // Every condition is checked on the same screenshot; the first that matches wins.
                 let shot = self.capture(id)?;
-                let e = self
-                    .evaluate(t, id, reference, &shot, false, &mut None)?
-                    .map_err(|name| missing_reference(id, &name))?;
-                self.record_comparison(step, &e)?;
-                let (branch, target) = if e.passed {
-                    ("then", then)
-                } else {
-                    ("else", otherwise)
-                };
-                step.branch = Some(branch.to_owned());
-                Ok(target.clone())
+                let cases = std::iter::once((THEN.to_owned(), reference, then)).chain(
+                    else_if
+                        .iter()
+                        .enumerate()
+                        .map(|(n, c)| (else_if_edge(n), &c.reference, &c.then)),
+                );
+                let mut first = None;
+                for (branch, reference, target) in cases {
+                    let e = self
+                        .evaluate(t, id, reference, &shot, false, &mut None)?
+                        .map_err(|name| missing_reference(id, &name))?;
+                    if e.passed {
+                        self.record_comparison(step, &e)?;
+                        step.branch = Some(branch);
+                        return Ok(target.clone());
+                    }
+                    first.get_or_insert(e);
+                }
+                if let Some(e) = &first {
+                    self.record_comparison(step, e)?;
+                }
+                step.branch = Some(ELSE.to_owned());
+                Ok(otherwise.clone())
             }
             BlockKind::Repeat { times, body, next } => {
                 for pass in 1..=*times {

@@ -450,7 +450,7 @@ pub struct Step {
     pub similarity: Option<f64>,
     /// What the vision model said, for a comparison by meaning.
     pub vision: Option<VisionAnswer>,
-    /// Edge an `if` block followed: `then` or `else`.
+    /// Edge an `if` block followed: `then`, `elseIf1`, `elseIf2`… or `else`.
     pub branch: Option<String>,
     pub failure: Option<Failure>,
 }

@@ -46,7 +46,7 @@ enum BlockInfo {
     case "pressKeys": String(localized: "Presses one key combination.")
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
     case "check": String(localized: "Fails the test unless the screen looks as expected.")
-    case "if": String(localized: "Takes one path if the screen matches a reference, another if it doesn’t.")
+    case "if": String(localized: "Takes a different path depending on which reference the screen matches.")
     case "repeat": String(localized: "Runs the blocks inside it several times.")
     case "useData": String(localized: "Runs the blocks inside it once for each row of a CSV file.")
     case "runTest": String(localized: "Runs another test as a single step.")
@@ -81,6 +81,17 @@ enum BlockInfo {
 }
 
 extension BlockKind {
+  /// What the editor calls way out `edge` of this block: Yes and No for an `if` with one
+  /// condition, Condition 1, 2… and Otherwise once it has several; `nil` for the
+  /// edges of other blocks.
+  func branchName(_ edge: String) -> String? {
+    guard case .if(_, _, let elseIf, _) = self else { return nil }
+    if edge == "then" { return elseIf.isEmpty ? String(localized: "Yes") : String(localized: "Condition \(1)") }
+    if edge == "else" { return elseIf.isEmpty ? String(localized: "No") : String(localized: "Otherwise") }
+    guard let n = elseIfIndex(edge: edge).map(Int.init), n < elseIf.count else { return nil }
+    return String(localized: "Condition \(n + 2)")
+  }
+
   /// The `type` value of the block in the file.
   var typeName: String {
     switch self {

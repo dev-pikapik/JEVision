@@ -45,11 +45,16 @@ enum BlockSummary {
       return reference.image.isEmpty
         ? String(localized: "Choose how the screen should look")
         : String(localized: "Screen matches \(imageName(reference.image))")
-    case .if(let reference, _, _):
-      if let expect = expectation(reference) { return String(localized: "If the screen shows \(quoted(expect, limit: 40))") }
-      return reference.image.isEmpty
-        ? String(localized: "Choose what to look for")
-        : String(localized: "If \(imageName(reference.image)) is on screen")
+    case .if(let reference, _, let elseIf, _):
+      let first =
+        if let expect = expectation(reference) {
+          String(localized: "If the screen shows \(quoted(expect, limit: 40))")
+        } else if reference.image.isEmpty {
+          String(localized: "Choose what to look for")
+        } else {
+          String(localized: "If \(imageName(reference.image)) is on screen")
+        }
+      return elseIf.isEmpty ? first : first + " · " + String(localized: "or \(elseIf.count) more")
     case .repeat(let times, _, _):
       return String(localized: "\(Int(times)) times")
     case .useData(let file, _, _):

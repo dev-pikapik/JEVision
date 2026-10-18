@@ -129,7 +129,7 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   comes from the environment or the Keychain at run time. `${env.NAME}` is a value of the chosen
   environment (see below). `${data.COLUMN}` is a value from the current row of a `useData` table.
   All three are allowed in the text of a `type` block.
-- **Arrows** are `next`, `then`/`else` and `body`. A loop is only possible through the `body` of
+- **Arrows** are `next`, `then`/`elseIf1`…/`else` and `body`. A loop is only possible through the `body` of
   `repeat` or `useData`; any other cycle is an error.
 - **Optional metadata:** `description`, `testType` (`smoke`, `regression`, `acceptance`),
   `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
@@ -266,7 +266,7 @@ readable diff.
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
 | `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning |
-| `if` | logic | Goes to `then` or `else` depending on what is on screen |
+| `if` | logic | Goes to `then`, to the first matching `elseIf` condition, or to `else`, depending on what is on screen |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
 | `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |

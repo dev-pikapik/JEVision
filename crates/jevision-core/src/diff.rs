@@ -168,6 +168,11 @@ fn settings(block: &Block) -> serde_json::Map<String, Value> {
     for edge in [NEXT, THEN, ELSE, BODY] {
         map.remove(edge);
     }
+    if let Some(Value::Array(cases)) = map.get_mut("elseIf") {
+        for case in cases.iter_mut().filter_map(Value::as_object_mut) {
+            case.remove(THEN);
+        }
+    }
     map
 }
 
@@ -238,6 +243,27 @@ mod tests {
             ]
         );
         assert!(diff.test_fields.is_empty());
+    }
+
+    #[test]
+    fn only_the_conditions_of_else_if_cases_count_as_a_change() {
+        let branch = |then: &str, image: &str| {
+            flow(&format!(
+                r#""open":{{"type":"if","reference":{{"image":"a.png"}},
+                "elseIf":[{{"reference":{{"image":"{image}"}},"then":"{then}"}}]}},
+                "x":{{"type":"pressKeys","keys":"x"}},"y":{{"type":"pressKeys","keys":"y"}}"#
+            ))
+        };
+        let before = branch("x", "b.png");
+        assert!(
+            diff(Some(&before), Some(&branch("y", "b.png")))
+                .blocks
+                .is_empty()
+        );
+        assert_eq!(
+            diff(Some(&before), Some(&branch("x", "c.png"))).blocks,
+            [change("open", BlockChangeKind::Changed, &["elseIf"])]
+        );
     }
 
     #[test]

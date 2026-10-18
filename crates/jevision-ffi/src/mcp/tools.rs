@@ -71,7 +71,7 @@ pub(super) fn definitions() -> Vec<Value> {
         tool(
             "add_blocks",
             "Add blocks",
-            "Adds blocks to a test as one chain: each leads to the next, and the last to whatever came after the place they go. Give each block as in a test file, without an id or edges (next, then, else, body); ids are made from the block types and returned. Without after, the blocks go at the end of the main chain. The test is saved; the answer lists the problems left in it.",
+            "Adds blocks to a test as one chain: each leads to the next, and the last to whatever came after the place they go. Give each block as in a test file, without an id or edges (next, then, else, body, and then inside elseIf); ids are made from the block types and returned. Without after, the blocks go at the end of the main chain. The test is saved; the answer lists the problems left in it.",
             json!({
                 "path": test_path,
                 "blocks": {
@@ -84,8 +84,8 @@ pub(super) fn definitions() -> Vec<Value> {
                 "atStart": { "type": "boolean", "description": "true to add them at the very beginning of the test, before its first block." },
                 "edge": {
                     "type": "string",
-                    "enum": ["next", "then", "else", "body"],
-                    "description": "Which way out of the after block they go on: then or else for an if block, body to put them inside a repeat or useData block. Default: next.",
+                    "pattern": "^(next|then|else|body|elseIf[1-9][0-9]*)$",
+                    "description": "Which way out of the after block they go on: then, elseIf1, elseIf2… or else for an if block, body to put them inside a repeat or useData block. Default: next.",
                 },
             }),
             &["path", "blocks"],
@@ -94,7 +94,7 @@ pub(super) fn definitions() -> Vec<Value> {
         tool(
             "remove_block",
             "Remove a block",
-            "Removes a block from a test and joins its neighbours: whatever led to it then leads to what came after it. Removing a repeat or useData block keeps the blocks inside it; removing an if block keeps its then branch. The test is saved.",
+            "Removes a block from a test and joins its neighbours: whatever led to it then leads to what came after it. Removing a repeat or useData block keeps the blocks inside it; removing an if block keeps its first branch that leads anywhere. The test is saved.",
             json!({
                 "path": test_path,
                 "block": { "type": "string", "description": "Id of the block to remove." },
@@ -803,10 +803,7 @@ fn place(
         .find(|b| b.id == after)
         .ok_or_else(|| no_block(flow, after))?;
     let edge = edge.unwrap_or(NEXT);
-    let spec = jevision_core::catalog()
-        .into_iter()
-        .find(|s| s.type_name == block.kind.type_name());
-    let edges = spec.map(|s| s.edges).unwrap_or_default();
+    let edges = block.kind.edge_names();
     if !edges.iter().any(|e| e == edge) {
         return Err(format!(
             "A {} block has no \"{edge}\" way out; it has: {}.",
@@ -835,6 +832,11 @@ pub(super) fn without_edges(block: &Value) -> Value {
     if let Some(map) = block.as_object_mut() {
         for edge in ["id", "next", "then", "else", "body"] {
             map.remove(edge);
+        }
+        if let Some(Value::Array(cases)) = map.get_mut("elseIf") {
+            for case in cases.iter_mut().filter_map(Value::as_object_mut) {
+                case.remove("then");
+            }
         }
         if matches!(
             map.get("type").and_then(Value::as_str),

@@ -169,6 +169,10 @@ pub fn describe(issue: &Issue) -> String {
             p("blocks")
         ),
         "flow.block.unreachable" => "nothing leads to this block, so it never runs.".to_owned(),
+        "flow.if.sameCondition" => {
+            "an earlier condition of this block checks the same thing, so this one never leads anywhere."
+                .to_owned()
+        }
         "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
         "flow.reference.notSaved" => format!(
             "{} doesn't exist yet; the first run will save the screen there as the reference.",

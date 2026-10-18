@@ -3,6 +3,7 @@
 //! Field order in this module is the key order of the canonical file, so reordering fields
 //! changes every saved test.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use serde::ser::{SerializeMap, Serializer};
@@ -168,11 +169,14 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Goes to `then` if the screen matches the reference, otherwise to `else`.
+    /// Goes to `then` if the screen matches the reference, else to the first of `else_if` whose
+    /// reference matches, otherwise to `else`.
     If {
         reference: Reference,
         #[serde(skip_serializing_if = "Option::is_none")]
         then: Option<String>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        else_if: Vec<ElseIf>,
         #[serde(rename = "else", skip_serializing_if = "Option::is_none")]
         otherwise: Option<String>,
     },
@@ -198,6 +202,14 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+}
+
+/// One more exit of an `if`: taken when the earlier references did not match and this one does.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ElseIf {
+    pub reference: Reference,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub then: Option<String>,
 }
 
 /// Where on screen an action happens.
@@ -299,6 +311,8 @@ pub const NEXT: &str = "next";
 pub const THEN: &str = "then";
 pub const ELSE: &str = "else";
 pub const BODY: &str = "body";
+/// Prefix of the names of the extra exits of an `if`, see [`else_if_edge`].
+pub const ELSE_IF: &str = "elseIf";
 
 impl BlockKind {
     /// The `type` value of this block in the file.
@@ -318,28 +332,43 @@ impl BlockKind {
         }
     }
 
-    /// Names of the outgoing edges a block of this type can have, in drawing order.
-    pub fn edge_names(&self) -> &'static [&'static str] {
+    /// Names of the outgoing edges this block can have, in drawing order.
+    pub fn edge_names(&self) -> Vec<Cow<'static, str>> {
         match self {
-            Self::If { .. } => &[THEN, ELSE],
-            Self::Repeat { .. } | Self::UseData { .. } => &[BODY, NEXT],
-            _ => &[NEXT],
+            Self::If { else_if, .. } => std::iter::once(Cow::Borrowed(THEN))
+                .chain((0..else_if.len()).map(|n| Cow::Owned(else_if_edge(n))))
+                .chain([Cow::Borrowed(ELSE)])
+                .collect(),
+            Self::Repeat { .. } | Self::UseData { .. } => {
+                vec![Cow::Borrowed(BODY), Cow::Borrowed(NEXT)]
+            }
+            _ => vec![Cow::Borrowed(NEXT)],
         }
     }
 
-    /// Outgoing edges as `(edge name, target block id)`.
-    pub fn edges(&self) -> Vec<(&'static str, &str)> {
+    /// Outgoing edges as `(edge name, target block id)`, in drawing order.
+    pub fn edges(&self) -> Vec<(Cow<'static, str>, &str)> {
         let mut out = Vec::new();
         match self {
             Self::If {
-                then, otherwise, ..
+                then,
+                else_if,
+                otherwise,
+                ..
             } => {
-                out.extend(then.as_deref().map(|t| (THEN, t)));
-                out.extend(otherwise.as_deref().map(|t| (ELSE, t)));
+                out.extend(then.as_deref().map(|t| (Cow::Borrowed(THEN), t)));
+                for (n, case) in else_if.iter().enumerate() {
+                    out.extend(
+                        case.then
+                            .as_deref()
+                            .map(|t| (Cow::Owned(else_if_edge(n)), t)),
+                    );
+                }
+                out.extend(otherwise.as_deref().map(|t| (Cow::Borrowed(ELSE), t)));
             }
             Self::Repeat { body, next, .. } | Self::UseData { body, next, .. } => {
-                out.push((BODY, body.as_str()));
-                out.extend(next.as_deref().map(|t| (NEXT, t)));
+                out.push((Cow::Borrowed(BODY), body.as_str()));
+                out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
             }
             Self::OpenApp { next, .. }
             | Self::OpenFile { next, .. }
@@ -348,10 +377,26 @@ impl BlockKind {
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }
             | Self::Check { next, .. }
-            | Self::RunTest { next, .. } => out.extend(next.as_deref().map(|t| (NEXT, t))),
+            | Self::RunTest { next, .. } => {
+                out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
+            }
         }
         out
     }
+}
+
+/// Name of the exit of an `if` taken when its `else_if[n]` matches: `elseIf1` for the first.
+pub fn else_if_edge(n: usize) -> String {
+    format!("{ELSE_IF}{}", n + 1)
+}
+
+/// Position in `else_if` of the case behind the exit called `name`, as in [`else_if_edge`].
+pub fn else_if_index(name: &str) -> Option<usize> {
+    let digits = name.strip_prefix(ELSE_IF)?;
+    if digits.starts_with('0') || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse::<usize>().ok()?.checked_sub(1)
 }
 
 impl Serialize for Flow {
