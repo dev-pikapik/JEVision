@@ -1,0 +1,8 @@
+[bindings.swift]
+module_name = "JEVisionMobile"
+ffi_module_name = "JEVisionMobileFFI"
+ffi_module_filename = "JEVisionMobileFFI"
+
+# Swift reserves `Protocol` as a type member name; the code stays `protocol` in `key()`.
+[bindings.swift.rename]
+"RemoteError.Protocol" = "UnexpectedMessage"

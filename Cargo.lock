@@ -1661,10 +1661,13 @@ dependencies = [
  "base64 0.23.1",
  "jevision-core",
  "jevision-git",
+ "jevision-remote",
  "jevision-runner",
+ "p256",
  "png",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
  "uniffi",
 ]
 
@@ -1675,6 +1678,18 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "ureq",
+]
+
+[[package]]
+name = "jevision-mobile"
+version = "0.1.0"
+dependencies = [
+ "jevision-remote",
+ "jevision-runner",
+ "p256",
+ "serde_json",
+ "tokio",
+ "uniffi",
 ]
 
 [[package]]
