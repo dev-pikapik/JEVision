@@ -1,0 +1,22 @@
+[package]
+name = "jevision-notify"
+description = "Tells Slack, Telegram or email how JEVision test runs went"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+jevision-runner.workspace = true
+lettre = { version = "0.11", default-features = false, features = ["builder", "ring", "rustls", "rustls-platform-verifier", "smtp-transport"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ureq = { version = "3.1", default-features = false, features = ["rustls"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3.7"
+
+[dev-dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

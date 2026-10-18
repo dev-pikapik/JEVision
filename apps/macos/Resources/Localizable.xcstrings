@@ -107,6 +107,16 @@
         }
       }
     },
+    "%@ is off in this project’s notification settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ выключен в настройках уведомлений этого проекта."
+          }
+        }
+      }
+    },
     "%@ is version %@ from another copy of JEVision" : {
       "localizations" : {
         "ru" : {
@@ -809,6 +819,16 @@
         }
       }
     },
+    "A message to Slack, Telegram or email when a test fails, or after every run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение в Slack, Telegram или на почту, когда тест падает, или после каждого прогона."
+          }
+        }
+      }
+    },
     "A run in dark appearance compares with the dark picture when there is one." : {
       "localizations" : {
         "ru" : {
@@ -825,6 +845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стикер для тех, кто читает тест"
+          }
+        }
+      }
+    },
+    "A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест на карантине сообщает о падении, только если выбрано «После каждого прогона». Остановленный прогон ничего не отправляет."
           }
         }
       }
@@ -1441,6 +1471,16 @@
         }
       }
     },
+    "After every run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После каждого прогона"
+          }
+        }
+      }
+    },
     "After over before" : {
       "localizations" : {
         "ru" : {
@@ -1959,6 +1999,16 @@
         }
       }
     },
+    "Bot token" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Токен бота"
+          }
+        }
+      }
+    },
     "Branch" : {
       "localizations" : {
         "ru" : {
@@ -2081,6 +2131,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать"
+          }
+        }
+      }
+    },
+    "Can’t change the notifications" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось изменить уведомления"
           }
         }
       }
@@ -2367,6 +2427,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменить…"
+          }
+        }
+      }
+    },
+    "Chat ID" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID чата"
           }
         }
       }
@@ -3981,6 +4051,16 @@
         }
       }
     },
+    "Encryption" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шифрование"
+          }
+        }
+      }
+    },
     "End-to-end encrypted. No ports are opened on this Mac. Keys and secrets are never sent to the phone." : {
       "localizations" : {
         "ru" : {
@@ -4545,6 +4625,16 @@
         }
       }
     },
+    "For Gmail and iCloud Mail, make an app password in your account’s security settings and use it here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для Gmail и почты iCloud создайте пароль приложения в настройках безопасности аккаунта и укажите его здесь."
+          }
+        }
+      }
+    },
     "For each check by meaning, JEVision sends %@ the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture." : {
       "localizations" : {
         "ru" : {
@@ -4591,6 +4681,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название рамки"
+          }
+        }
+      }
+    },
+    "From" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От кого"
           }
         }
       }
@@ -5025,6 +5125,26 @@
         }
       }
     },
+    "In %@ in the project folder, so everyone who runs the tests gets the messages." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле %@ в папке проекта — сообщения будут приходить у всех, кто запускает тесты."
+          }
+        }
+      }
+    },
+    "In Slack, create an app at api.slack.com/apps, turn on Incoming Webhooks, add a webhook for the channel and copy its URL, which starts with https://hooks.slack.com/." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В Slack создайте приложение на api.slack.com/apps, включите Incoming Webhooks, добавьте вебхук для канала и скопируйте его адрес — он начинается с https://hooks.slack.com/."
+          }
+        }
+      }
+    },
     "In System Settings, open **Privacy & Security** › **%@** and turn on **JEVision**." : {
       "localizations" : {
         "ru" : {
@@ -5255,6 +5375,16 @@
         }
       }
     },
+    "It’s kept in the Keychain on this Mac for this project and sent only to %@. JEVision never shows it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранится в Связке ключей этого Mac для этого проекта и отправляется только в %@. JEVision никогда его не показывает."
+          }
+        }
+      }
+    },
     "JEVision" : {
       "shouldTranslate" : false
     },
@@ -5418,6 +5548,16 @@
         }
       }
     },
+    "Kept in the Keychain on this Mac, not in the project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранится в Связке ключей этого Mac, а не в проекте"
+          }
+        }
+      }
+    },
     "Keys" : {
       "localizations" : {
         "ru" : {
@@ -5504,6 +5644,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снова аккуратно расставляет блоки."
+          }
+        }
+      }
+    },
+    "Leave it empty if the server takes mail without signing in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставьте пустым, если сервер принимает почту без входа."
           }
         }
       }
@@ -5654,6 +5804,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac"
+          }
+        }
+      }
+    },
+    "Mail Password" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль почты"
+          }
+        }
+      }
+    },
+    "Mail server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Почтовый сервер"
+          }
+        }
+      }
+    },
+    "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use the chat’s ID, such as -1001234567890, or @name for a public channel." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и укажите ID чата, например -1001234567890, или @имя для публичного канала."
           }
         }
       }
@@ -6138,6 +6318,26 @@
         }
       }
     },
+    "No message to %@: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение в %1$@ не отправлено: %2$@"
+          }
+        }
+      }
+    },
+    "No messages about the run were sent: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщения о прогоне не отправлены: %@"
+          }
+        }
+      }
+    },
     "No open pull requests" : {
       "localizations" : {
         "ru" : {
@@ -6330,6 +6530,16 @@
         }
       }
     },
+    "Not saved yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не сохранено"
+          }
+        }
+      }
+    },
     "Not set" : {
       "localizations" : {
         "ru" : {
@@ -6390,6 +6600,26 @@
         }
       }
     },
+    "Notification Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки уведомлений"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уведомления"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "ru" : {
@@ -6436,6 +6666,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включено. Mac не будет засыпать сам."
+          }
+        }
+      }
+    },
+    "Only for scheduled runs and CI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только для прогонов по расписанию и в CI"
           }
         }
       }
@@ -6726,6 +6966,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте папку с тестами, чтобы увидеть её пул-реквесты."
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to send messages about its runs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы отправлять сообщения о её прогонах."
           }
         }
       }
@@ -7058,6 +7308,16 @@
         }
       }
     },
+    "Password" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль"
+          }
+        }
+      }
+    },
     "Passwords and keys go here by name. Set the value in the test details: it stays in the Keychain and never gets into the file." : {
       "localizations" : {
         "ru" : {
@@ -7228,12 +7488,42 @@
         }
       }
     },
+    "Port" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Порт"
+          }
+        }
+      }
+    },
     "Position" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Положение"
+          }
+        }
+      }
+    },
+    "Post to Slack" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Писать в Slack"
+          }
+        }
+      }
+    },
+    "Post to Telegram" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Писать в Telegram"
           }
         }
       }
@@ -7890,6 +8180,16 @@
         }
       }
     },
+    "Remove %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить: %@"
+          }
+        }
+      }
+    },
     "Remove Condition" : {
       "localizations" : {
         "ru" : {
@@ -8226,6 +8526,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Return добавляет после выбранного блока. Перетащите блок на холст, чтобы поставить его в нужное место."
+          }
+        }
+      }
+    },
+    "Revert" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить изменения"
           }
         }
       }
@@ -8724,6 +9034,16 @@
         }
       }
     },
+    "Runs you start yourself in JEVision send nothing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогоны, которые вы запускаете сами в JEVision, ничего не отправляют."
+          }
+        }
+      }
+    },
     "Same by %@" : {
       "localizations" : {
         "ru" : {
@@ -8774,12 +9094,32 @@
         }
       }
     },
+    "Saved" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранено"
+          }
+        }
+      }
+    },
     "Saves a version of the changed tests in Git." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохраняет версию изменённых тестов в Git."
+          }
+        }
+      }
+    },
+    "Saves the settings and sends a short message" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняет настройки и отправляет короткое сообщение"
           }
         }
       }
@@ -9064,12 +9404,62 @@
         }
       }
     },
+    "Send Test Message" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить пробное сообщение"
+          }
+        }
+      }
+    },
+    "Send Test Message to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить пробное сообщение в %@"
+          }
+        }
+      }
+    },
+    "Send a message" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлять сообщение"
+          }
+        }
+      }
+    },
+    "Send email" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлять письма"
+          }
+        }
+      }
+    },
     "Send your commits to the server" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправить коммиты на сервер"
+          }
+        }
+      }
+    },
+    "Sending…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправка…"
           }
         }
       }
@@ -9104,6 +9494,16 @@
         }
       }
     },
+    "Sent. Check %@ for it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлено. Проверьте %@."
+          }
+        }
+      }
+    },
     "Set" : {
       "localizations" : {
         "ru" : {
@@ -9130,6 +9530,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Настроить ИИ…"
+          }
+        }
+      }
+    },
+    "Set the Slack webhook first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала задайте вебхук Slack."
+          }
+        }
+      }
+    },
+    "Set the Telegram bot token first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала задайте токен бота Telegram."
+          }
+        }
+      }
+    },
+    "Set the mail password first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала задайте пароль почты."
           }
         }
       }
@@ -9500,6 +9930,26 @@
         }
       }
     },
+    "Slack Webhook" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вебхук Slack"
+          }
+        }
+      }
+    },
+    "Slack webhook" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вебхук Slack"
+          }
+        }
+      }
+    },
     "Slider" : {
       "localizations" : {
         "ru" : {
@@ -9766,6 +10216,16 @@
         }
       }
     },
+    "TLS usually goes with port 465, STARTTLS with 587. Mail is never sent unencrypted." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TLS обычно работает на порту 465, STARTTLS — на 587. Без шифрования почта не отправляется."
+          }
+        }
+      }
+    },
     "Table" : {
       "localizations" : {
         "ru" : {
@@ -9832,6 +10292,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Цель"
+          }
+        }
+      }
+    },
+    "Telegram Bot Token" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Токен бота Telegram"
+          }
+        }
+      }
+    },
+    "Telegram bot token" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "токен бота Telegram"
           }
         }
       }
@@ -10566,6 +11046,16 @@
         }
       }
     },
+    "The webhook, bot token and password stay in the Keychain on this Mac. On CI, set them in the environment variables JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD. To run tests without messages, add --no-notify to jevision run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вебхук, токен бота и пароль остаются в Связке ключей этого Mac. В CI задайте их в переменных окружения JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и JEVISION_SMTP_PASSWORD. Чтобы запустить тесты без сообщений, добавьте --no-notify к jevision run."
+          }
+        }
+      }
+    },
     "The whole image is compared" : {
       "localizations" : {
         "ru" : {
@@ -10992,6 +11482,16 @@
         }
       }
     },
+    "To" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кому"
+          }
+        }
+      }
+    },
     "To click, type and press keys for you" : {
       "localizations" : {
         "ru" : {
@@ -11168,6 +11668,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ввод текста"
+          }
+        }
+      }
+    },
+    "Type at least one address to send the mail to." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите хотя бы один адрес получателя."
+          }
+        }
+      }
+    },
+    "Type the ID of the Telegram chat to post to." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите ID чата Telegram, куда писать."
+          }
+        }
+      }
+    },
+    "Type the address of the mail server, such as smtp.gmail.com." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите адрес почтового сервера, например smtp.gmail.com."
           }
         }
       }
@@ -11358,6 +11888,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В названии можно использовать до 64 латинских букв, цифр, - и _, без пробелов."
+          }
+        }
+      }
+    },
+    "User name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя пользователя"
           }
         }
       }
@@ -11562,6 +12102,16 @@
         }
       }
     },
+    "Webhook" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вебхук"
+          }
+        }
+      }
+    },
     "Weekday Mornings" : {
       "localizations" : {
         "ru" : {
@@ -11618,6 +12168,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Действия во время паузы не записываются"
+          }
+        }
+      }
+    },
+    "When a test fails" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда тест падает"
+          }
+        }
+      }
+    },
+    "When a test fails or passes again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда тест падает или снова проходит"
           }
         }
       }
@@ -12760,6 +13330,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS установит его вместе с инструментами разработчика за несколько минут."
+          }
+        }
+      }
+    },
+    "mail password" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пароль почты"
           }
         }
       }
@@ -14384,6 +14964,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» подключён."
+          }
+        }
+      }
+    },
+    "“%@” isn’t a port. Mail servers usually use 465 or 587." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не номер порта. Почтовые серверы обычно используют 465 или 587."
+          }
+        }
+      }
+    },
+    "“%@” isn’t an email address to send from." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не адрес отправителя."
+          }
+        }
+      }
+    },
+    "“%@” isn’t an email address to send to." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не адрес получателя."
           }
         }
       }

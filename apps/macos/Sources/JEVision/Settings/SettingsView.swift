@@ -22,6 +22,9 @@ struct SettingsView: View {
       Tab("Git and GitHub", systemImage: "arrow.triangle.branch", value: .git) {
         GitSettingsView()
       }
+      Tab("Notifications", systemImage: "bell", value: .notifications) {
+        NotificationSettingsView()
+      }
       Tab("Advanced", systemImage: "slider.horizontal.3", value: .advanced) {
         AdvancedSettingsView()
       }
@@ -33,7 +36,7 @@ struct SettingsView: View {
 
 /// The open Settings tab; set it before opening Settings to show a given one.
 enum SettingsTab: String {
-  case general, ai, permissions, remote, git, advanced
+  case general, ai, permissions, remote, git, notifications, advanced
 
   static let key = "settingsTab"
 }

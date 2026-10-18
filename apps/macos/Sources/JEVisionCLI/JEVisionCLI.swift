@@ -80,6 +80,8 @@ struct RunRequest: Equatable {
   var schedule: String?
   /// Failures of tests in quarantine count toward the exit status and the JUnit report.
   var includeQuarantinedFailures = false
+  /// Send the messages jevision.notifications.json asks for after each test.
+  var notify = true
   var json = false
 }
 
@@ -112,7 +114,7 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json", "--include-quarantined-failures"],
+        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify"],
         values: ["--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
@@ -156,6 +158,7 @@ enum Command: Equatable {
         request.video = mode
       }
       request.includeQuarantinedFailures = options.flags.contains("--include-quarantined-failures")
+      request.notify = !options.flags.contains("--no-notify")
       request.json = options.flags.contains("--json")
       return .run(request)
     case "mcp":
@@ -292,6 +295,12 @@ enum Help {
                             jevision.project.json) like any other failure. Without it
                             they still run, but don't change the exit status and are
                             skipped in the JUnit report
+        --no-notify         Don't send the messages about runs that
+                            jevision.notifications.json in the project folder asks for
+                            (Slack, Telegram, email). The webhook, bot token and mail
+                            password come from the Keychain, or on CI from
+                            JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and
+                            JEVISION_SMTP_PASSWORD
         --json              Print the result as JSON; progress goes to standard error
         -h, --help          Show this help
 

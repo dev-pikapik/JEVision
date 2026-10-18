@@ -21,6 +21,7 @@ mod history;
 mod last_run;
 mod map;
 mod mcp;
+mod notify;
 mod project;
 mod remote;
 mod run;
