@@ -102,7 +102,7 @@ struct RunHUD: View {
     }
     .padding(16)
     .frame(width: Self.width - 16, alignment: .leading)
-    .glassEffect(.regular, in: .rect(cornerRadius: 22))
+    .adaptiveGlass(in: .rect(cornerRadius: 22))
     .padding(8)
     .frame(width: Self.width, height: Self.height, alignment: .top)
     .accessibilityElement(children: .contain)
@@ -172,7 +172,7 @@ struct RunHUD: View {
         .font(.callout)
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular.tint(.orange.opacity(0.35)), in: .rect(cornerRadius: 12))
+        .adaptiveGlass(tint: .orange.opacity(0.35), in: .rect(cornerRadius: 12))
     }
 
     HStack(spacing: 8) {

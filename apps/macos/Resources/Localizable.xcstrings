@@ -3159,16 +3159,6 @@
         }
       }
     },
-    "For each check by meaning, JEVision sends %@ the compared part of the screen, the reference image if there is one, and the expected text. Areas a test hides are covered first. Test Connection sends a small built-in picture." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "При каждой проверке по смыслу JEVision отправляет в %@ сравниваемую часть экрана, эталон, если он есть, и ожидаемый текст. Скрытые тестом области заранее закрашиваются. «Проверить подключение» отправляет маленькую встроенную картинку."
-          }
-        }
-      }
-    },
     "For each row of %@" : {
       "localizations" : {
         "ru" : {
@@ -12968,6 +12958,122 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Failed Steps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проваленные шаги"
+          }
+        }
+      }
+    },
+    "Areas always hidden" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда скрытые области"
+          }
+        }
+      }
+    },
+    "Before a screenshot goes to an AI model, JEVision paints over password fields, the areas each check hides, and the areas listed under “hide” in %@ in the project folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прежде чем снимок экрана уйдёт к модели ИИ, JEVision закрашивает поля паролей, области, которые скрывает каждая проверка, и области из списка «hide» в %@ в папке проекта."
+          }
+        }
+      }
+    },
+    "For each check by meaning, JEVision sends %@ the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При каждой проверке по смыслу JEVision отправляет в %@ сравниваемую часть экрана, эталон, если он есть, и ожидаемый текст. Поля паролей и области, которые скрывает тест или проект, заранее закрашиваются. «Проверить подключение» отправляет маленькую встроенную картинку."
+          }
+        }
+      }
+    },
+    "Its screenshots never go to a cloud service or to AI assistants, whatever each person’s settings say." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его снимки экрана не уходят ни в облачные сервисы, ни ИИ-ассистентам, что бы ни было в настройках у каждого."
+          }
+        }
+      }
+    },
+    "Only models on this Mac for this project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только модели на этом Mac для этого проекта"
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to keep its screenshots on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы её снимки экрана оставались на этом Mac."
+          }
+        }
+      }
+    },
+    "Sent to the AI model" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлено модели ИИ"
+          }
+        }
+      }
+    },
+    "Sent to the AI model, masked before sending" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлено модели ИИ, закрашено перед отправкой"
+          }
+        }
+      }
+    },
+    "This project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот проект"
+          }
+        }
+      }
+    },
+    "run.vision.cloudBlocked.project" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: this project allows only models on this Mac, and %@ works in the cloud. Choose a local model, or turn off “Only models on this Mac for this project” in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: этот проект разрешает только модели на этом Mac, а %2$@ работает в облаке. Выберите локальную модель или выключите «Только модели на этом Mac для этого проекта» в Настройках → ИИ."
           }
         }
       }

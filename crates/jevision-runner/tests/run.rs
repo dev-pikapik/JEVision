@@ -24,6 +24,8 @@ struct Fake {
 struct State {
     screen: Vec<u8>,
     dark: bool,
+    /// Password fields the window reports.
+    secure: Vec<jevision_core::Rect>,
     after_click: Option<Vec<u8>>,
     after_quit: Option<Vec<u8>>,
     /// Shown from the second look at the screen on.
@@ -96,6 +98,7 @@ impl Hands for Fake {
             png,
             scale: 2.0,
             dark: s.dark,
+            secure: s.secure.clone(),
         })
     }
     fn locate(&self, _: &str, template: &[u8], _: f64) -> Result<Option<Point>, HandsError> {
@@ -1239,8 +1242,8 @@ impl VisionJudge for Judge {
     fn judge(&self, q: &Question<'_>) -> Result<Judgement, VisionError> {
         self.asked.lock().unwrap().push(Asked {
             expect: q.expect.to_owned(),
-            screenshot: q.screenshot.to_vec(),
-            reference: q.reference.map(<[u8]>::to_vec),
+            screenshot: q.screenshot.png().to_vec(),
+            reference: q.reference.map(|r| r.png().to_vec()),
         });
         self.answer.clone()
     }
@@ -1321,7 +1324,7 @@ fn checks_by_meaning_show_the_model_only_the_compared_part_with_private_parts_co
     // The checkerboard under the hidden part became one flat colour; the ignored stripe too.
     for y in 0..10 {
         for x in 0..10 {
-            assert_eq!(pixel(shot, x, y), [127, 127, 127], "({x}, {y})");
+            assert_eq!(pixel(shot, x, y), [128, 128, 128], "({x}, {y})");
         }
     }
     assert_eq!(pixel(shot, 14, 19), pixel(shot, 15, 19));
@@ -1383,6 +1386,90 @@ fn local_only_keeps_screenshots_away_from_cloud_models() {
 
     let report = run_judged(&p, &hands, None, false).report;
     assert_eq!(failure_code(&report), "run.compare.meaningUnavailable");
+}
+
+#[test]
+fn project_areas_and_password_fields_are_covered_wherever_a_screenshot_goes() {
+    let p = Project::new();
+    // The project hides a stripe on the left of every window.
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"hide":[{"x":0,"y":0,"width":0.25,"height":1}]}"#,
+    )
+    .test(
+        r#""click":{"type":"click","target":{"point":{"x":0.5,"y":0.5}},"next":"check"},
+           "check":{"type":"check","reference":{"compare":"meaning","expect":"Signed in"}}"#,
+        "click",
+        0,
+    );
+    // A password field in the bottom-right corner.
+    let field = jevision_core::Rect {
+        x: 0.75,
+        y: 0.5,
+        width: 0.25,
+        height: 0.5,
+    };
+    let hands = Fake::new(png(40, 20, |x, y| [x as u8 * 5, y as u8 * 10, 99]))
+        .with(|s| s.secure = vec![field]);
+    let judge = Judge::says(true);
+    let run = run_judged(&p, &hands, Some(&judge), false);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+
+    let covered = |x: u32, y: u32| x < 10 || (x >= 30 && y >= 10);
+    let check_covered = |picture: &[u8], what: &str| {
+        for y in 0..20 {
+            for x in 0..40 {
+                let expected = if covered(x, y) {
+                    [128, 128, 128]
+                } else {
+                    [x as u8 * 5, y as u8 * 10, 99]
+                };
+                assert_eq!(pixel(picture, x, y), expected, "{what} ({x}, {y})");
+            }
+        }
+    };
+    check_covered(&judge.asked.lock().unwrap()[0].screenshot, "sent");
+    let steps = &run.report.attempts[0].steps;
+    let saved = [
+        steps[0].before.as_ref().unwrap(),
+        steps[0].after.as_ref().unwrap(),
+        steps[1].after.as_ref().unwrap(),
+        steps[1].sent.as_ref().unwrap(),
+    ];
+    for path in saved {
+        check_covered(&std::fs::read(run.dir.join(path)).unwrap(), path);
+    }
+    assert!(steps[1].sent_masked);
+    let page = html(&run.report, &run.dir, None);
+    assert!(page.contains("Sent to the AI model, masked before sending"));
+}
+
+#[test]
+fn a_local_only_project_keeps_screenshots_away_from_cloud_models() {
+    let p = Project::new();
+    p.write("jevision.project.json", r#"{"format":1,"localOnly":true}"#)
+        .test(
+            r#""check":{"type":"check","reference":{"compare":"meaning","expect":"Signed in"}}"#,
+            "check",
+            0,
+        );
+    let hands = Fake::new(solid([9, 9, 9]));
+    let cloud = Judge::says(true);
+    let report = run_judged(&p, &hands, Some(&cloud), false).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.cloudBlocked");
+    assert_eq!(failure.param("setting"), "project");
+    assert!(cloud.asked.lock().unwrap().is_empty());
+    assert!(report.attempts[0].steps[0].sent.is_none());
+
+    let local = Judge {
+        local: true,
+        ..Judge::says(true)
+    };
+    let report = run_judged(&p, &hands, Some(&local), false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    // Nothing was covered, and the report says so.
+    assert!(!report.attempts[0].steps[0].sent_masked);
 }
 
 #[test]

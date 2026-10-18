@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File formats — JEVision</title>
+<meta name="description" content="The files JEVision reads and writes: tests, environments, project settings, schedules and data tables.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html" aria-current="page">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>File formats</h1>
+<p class="lead">Everything JEVision keeps is plain text or ordinary images in your project folder, so you can read it, review it in git and edit it by hand.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#overview">Files in a project</a></li>
+    <li><a href="#test">Test files</a></li>
+    <li><a href="#canvas">The canvas</a></li>
+    <li><a href="#references">Reference images</a></li>
+    <li><a href="#environments">Environments</a></li>
+    <li><a href="#project">Project settings</a></li>
+    <li><a href="#schedule">Schedules</a></li>
+    <li><a href="#csv">Data tables</a></li>
+    <li><a href="#report">Run reports</a></li>
+    <li><a href="#schedule-history">Schedule history</a></li>
+    <li><a href="#versions">Format versions</a></li>
+  </ul>
+</nav>
+
+<h2 id="overview">Files in a project</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">File</th><th scope="col">What it holds</th><th scope="col">In git</th></tr></thead>
+  <tbody>
+    <tr><td><code>*.flow.json</code></td><td>One test each</td><td>Yes</td></tr>
+    <tr><td>Images, such as <code>refs/inbox.png</code></td><td>Reference images and the pictures of click targets</td><td>Yes</td></tr>
+    <tr><td><code>*.csv</code></td><td>Tables for <a href="data-driven.html">data-driven tests</a></td><td>Yes</td></tr>
+    <tr><td><code>jevision.environments.json</code></td><td><a href="environments.html">Environments</a></td><td>Yes</td></tr>
+    <tr><td><code>jevision.project.json</code></td><td>Retries and quarantine for the whole project</td><td>Yes</td></tr>
+    <tr><td><code>jevision.schedule.json</code></td><td><a href="schedules.html">Schedules</a></td><td>Yes</td></tr>
+    <tr><td><code>.jevision/runs/</code></td><td>Reports, screenshots and videos of runs</td><td>No</td></tr>
+    <tr><td><code>.jevision/schedule-history.json</code></td><td>What came of scheduled runs on this Mac</td><td>No</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Secrets are in none of these files. They live in the Keychain or in environment variables. See <a href="environments.html#secrets">Secrets</a>.</p>
+
+<h2 id="test">Test files</h2>
+<p>A test is a JSON file whose name ends in <code>.flow.json</code>. It is UTF-8 text with the test's fields at the top and its blocks in <code>blocks</code>:</p>
+<pre><code>{
+  "format": 1,
+  "name": "Save a note",
+  "app": "com.apple.TextEdit",
+  "start": "open",
+  "blocks": {
+    "open": { "type": "openApp", "next": "new" },
+    "new": { "type": "pressKeys", "keys": "cmd+n", "next": "hello" },
+    "hello": { "type": "type", "text": "Hello", "next": "saved" },
+    "saved": {
+      "type": "check",
+      "reference": { "image": "refs/hello.png", "compare": "similar", "threshold": 0.95 }
+    }
+  },
+  "canvas": {
+    "positions": { "open": { "x": 0, "y": 0 }, "new": { "x": 0, "y": 120 } }
+  }
+}</code></pre>
+<p>Every field and block type is described in <a href="writing-tests.html#test-fields">Writing tests</a>. A field JEVision doesn't know is an error rather than being ignored, so a typo never goes unnoticed. JEVision saves tests in <a href="writing-tests.html#canonical">canonical form</a>; <a href="cli.html#fmt"><code>jevision fmt</code></a> does the same for files edited by hand.</p>
+
+<h2 id="canvas">The canvas</h2>
+<p>The optional <code>canvas</code> field keeps how the test looks in the editor. It never changes what a run does.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>positions</code></td><td>Where each block sits: block id → <code>{ "x": …, "y": … }</code>, the top-left corner of the block in canvas points from the top-left corner of the canvas. Without <code>positions</code>, the editor lays out every block itself.</td></tr>
+    <tr><td><code>sections</code></td><td>Titled frames that group blocks: section id → <code>{ "title": "…", "frame": { "x": …, "y": …, "width": …, "height": … } }</code>.</td></tr>
+    <tr><td><code>notes</code></td><td>Sticky notes: note id → <code>{ "text": "…", "author": "…", "time": "…", "frame": { … } }</code>. <code>author</code> and <code>time</code> (an RFC 3339 date and time, such as <code>2026-10-18T09:30:00Z</code>) are optional.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Whole numbers are written without a decimal point, so moving a block by a whole point changes one short line in the diff.</p>
+
+<h2 id="references">Reference images</h2>
+<p>References and click targets are PNG images of part of the app's window, saved by the app next to the tests, usually in a <code>refs</code> folder. A reference for dark appearance has the same name with <code>.dark</code> before <code>.png</code>, such as <code>refs/inbox.dark.png</code>. See <a href="checks.html#dark">Dark appearance</a>. Paths in tests are relative to the test file and use <code>/</code>.</p>
+
+<h2 id="environments">Environments</h2>
+<p><code>jevision.environments.json</code>, in the project folder:</p>
+<pre><code>{
+  "format": 1,
+  "default": "staging",
+  "environments": {
+    "staging": { "BASE_URL": "https://staging.example.com" }
+  }
+}</code></pre>
+<p>See <a href="environments.html#file">The environments file</a> for the rules.</p>
+
+<h2 id="project">Project settings</h2>
+<p><code>jevision.project.json</code>, in the project folder, optional:</p>
+<pre><code>{
+  "format": 1,
+  "retries": 2,
+  "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42" } ]
+}</code></pre>
+<p>See <a href="retries.html#project-file">Project settings file</a>.</p>
+
+<h2 id="schedule">Schedules</h2>
+<p><code>jevision.schedule.json</code>, in the project folder:</p>
+<pre><code>{
+  "format": 1,
+  "schedules": [
+    { "name": "Nightly", "tests": "all", "repeat": "daily", "at": "03:00" }
+  ]
+}</code></pre>
+<p>See <a href="schedules.html#file">The schedule file</a> for every field.</p>
+
+<h2 id="csv">Data tables</h2>
+<p>CSV files as spreadsheet apps export them: a header line with the column names, then one line per row. See <a href="data-driven.html#csv">CSV rules</a>.</p>
+
+<h2 id="report">Run reports</h2>
+<p>Every run saves <code>report.json</code> in its folder under <code>.jevision/runs</code>, next to its screenshots. Paths inside it are relative to that folder unless noted. The main fields:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>format</code></td><td><code>1</code></td></tr>
+    <tr><td><code>test</code>, <code>file</code>, <code>app</code></td><td>The test's name, its file (relative to the project folder) and the bundle id of the app under test</td></tr>
+    <tr><td><code>startedAt</code>, <code>durationMs</code></td><td>When the run started (UTC, RFC 3339) and how long it took, in milliseconds</td></tr>
+    <tr><td><code>verdict</code></td><td><code>passed</code>, <code>failed</code> or <code>cancelled</code>: the result of the last attempt</td></tr>
+    <tr><td><code>flaky</code></td><td><code>true</code> when the attempts disagreed: a failure followed by a pass, or failures that differed</td></tr>
+    <tr><td><code>baselinesCreated</code></td><td>References this run saved because they didn't exist yet, relative to the project folder</td></tr>
+    <tr><td><code>requestedBy</code></td><td>The paired device that started the run from afar, such as an <a href="iphone.html">iPhone</a>; absent for a run started on the Mac</td></tr>
+    <tr><td><code>schedule</code></td><td>The <a href="schedules.html">schedule</a> that started the run; absent for a run someone started</td></tr>
+    <tr><td><code>environment</code></td><td>The environment the run used; absent when it used none</td></tr>
+    <tr><td><code>video</code></td><td>The run's video; absent when none was kept</td></tr>
+    <tr><td><code>fileHash</code></td><td>A fingerprint (SHA-256) of the test file, which tells runs of the same test apart from runs after it changed</td></tr>
+    <tr><td><code>quarantined</code>, <code>quarantineReason</code></td><td>Whether the test was in <a href="retries.html#quarantine">quarantine</a>, and why</td></tr>
+    <tr><td><code>attempts</code></td><td>Every attempt: <code>number</code>, <code>verdict</code>, <code>durationMs</code>, <code>failure</code>, the data <code>row</code> for a data-driven test, and its <code>steps</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p>Each step has <code>seq</code>, <code>test</code>, <code>block</code>, <code>type</code>, <code>status</code> (<code>passed</code>, <code>failed</code>, <code>baselineCreated</code> or <code>cancelled</code>) and <code>durationMs</code>. Depending on the block it also has screenshots <code>before</code> and <code>after</code>, the <code>reference</code> compared with, the <code>expected</code> copy of it, a <code>diff</code> picture, the <code>similarity</code> from 0 to 1, the AI model's answer in <code>vision</code>, the <code>branch</code> an <code>if</code> block took, a <code>failure</code>, and <code>videoAtMs</code>, when the step starts in the video. A <code>failure</code> has a <code>code</code> and <code>params</code>; the app and the command line turn them into a sentence.</p>
+
+<h2 id="schedule-history">Schedule history</h2>
+<p><code>.jevision/schedule-history.json</code> keeps the newest 200 scheduled runs on this Mac, oldest first. <code>checkedAt</code> is the minute the schedules were last checked, counted in local time from the start of 1970:</p>
+<pre><code>{
+  "checkedAt": 29483460,
+  "runs": [
+    { "schedule": "Nightly", "startedAtMs": 1792292400000, "durationMs": 81000,
+      "outcome": { "result": "finished", "passed": 11, "failed": 1 } },
+    { "schedule": "Smoke", "startedAtMs": 1792314300000, "durationMs": 0,
+      "outcome": { "result": "skipped", "reason": "screenLocked" } }
+  ]
+}</code></pre>
+<p><code>result</code> is <code>finished</code> (with the numbers of tests that passed and failed), <code>skipped</code> (with <code>reason</code> <code>screenLocked</code>, <code>noUser</code> or <code>notAllowed</code>) or <code>error</code> (with a <code>message</code>). If the file can't be read, it starts over: it is only a record and never stops schedules.</p>
+
+<h2 id="versions">Format versions</h2>
+<p>Every JSON file JEVision writes starts with <code>"format": 1</code>. When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

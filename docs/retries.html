@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retries, flaky tests and quarantine — JEVision</title>
+<meta name="description" content="Retry failed tests, find flaky ones and keep known failures from blocking anyone.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html" aria-current="page">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Retries, flaky tests and quarantine</h1>
+<p class="lead">UI tests sometimes fail for reasons that have nothing to do with the app: a slow network, a notification over the window. JEVision helps you tell such failures from real ones.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#project-file">Project settings file</a></li>
+    <li><a href="#retries">Retries</a></li>
+    <li><a href="#verdict">What the retries tell you</a></li>
+    <li><a href="#flaky">Flaky tests from history</a></li>
+    <li><a href="#quarantine">Quarantine</a></li>
+  </ul>
+</nav>
+
+<h2 id="project-file">Project settings file</h2>
+<p>Settings shared by every test of a project go into <code>jevision.project.json</code> in the project folder and are committed with the tests. The file is optional. The app writes it from <strong>Settings › Advanced</strong> and from the sidebar, so you rarely edit it by hand.</p>
+<pre><code>{
+  "format": 1,
+  "retries": 2,
+  "quarantine": [
+    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
+  ]
+}</code></pre>
+<ul>
+  <li><code>format</code> is <code>1</code>.</li>
+  <li><code>retries</code> (optional) is the project's default number of retries, 0 to 10.</li>
+  <li><code>quarantine</code> (optional) lists tests in <a href="#quarantine">quarantine</a>: <code>test</code> is a path relative to the project folder, <code>reason</code> is optional.</li>
+</ul>
+
+<h2 id="retries">Retries</h2>
+<p>A failed test can run again a few times before it counts as failed. The number of retries comes from the first of these that is set:</p>
+<ol>
+  <li><code>--retries</code> of <code>jevision run</code>, the <code>retries</code> of an assistant's <code>run_test</code>, or the number chosen in the app's Run menu;</li>
+  <li>the test's own <code>retries</code>;</li>
+  <li>the project's <code>retries</code> in <code>jevision.project.json</code>.</li>
+</ol>
+<p>Otherwise a test isn't retried. At most 10 retries. In a <a href="data-driven.html">data-driven test</a>, each row has its own retries.</p>
+
+<h2 id="verdict">What the retries tell you</h2>
+<p>A run that needed more than one attempt ends with one sentence about how they went. The report, the app and <code>jevision run</code> all show it:</p>
+<ul>
+  <li><strong>“Passed on retry 1 after failing — the test is flaky.”</strong> The app works, but the test doesn't always see it.</li>
+  <li><strong>“Failed 3 times, each time differently — the test may be flaky.”</strong> Compare what each attempt saw in the report.</li>
+  <li><strong>“Failed 3 times in a row — a real failure, not flakiness.”</strong> Every attempt failed the same way: look for a bug.</li>
+</ul>
+
+<h2 id="flaky">Flaky tests from history</h2>
+<p>JEVision also looks back over past runs. When the same test file, unchanged since (the same content), both passed and failed in the same environment over the last 30 days, the app marks it flaky in the sidebar, the project map and the run history, with the dates and counts as evidence. Changing the test starts its record afresh, because a changed test may behave differently.</p>
+
+<h2 id="quarantine">Quarantine</h2>
+<p>Quarantine is for tests whose failures shouldn't block anyone while they are being fixed, for example while a test server is down.</p>
+<ul>
+  <li>Tests in quarantine <strong>still run</strong>, and their reports show the failure.</li>
+  <li>Their failure <strong>doesn't fail</strong> Run All or the exit status of <code>jevision run</code>.</li>
+  <li>The JUnit report lists such a failure as <strong>skipped</strong>, with the reason and the failure.</li>
+  <li>The sidebar, the project map and the reports mark these tests.</li>
+</ul>
+<p>To put a test in quarantine or release it, use its menu in the sidebar, the test's details, or <strong>Settings › Advanced</strong>.</p>
+<p>To count their failures like any other, for example in a nightly build, add <code>--include-quarantined-failures</code>:</p>
+<pre><code>jevision run tests/ --include-quarantined-failures</code></pre>
+<div class="note">
+  <p>Quarantine is meant to be short. Give a <code>reason</code> that says what must happen to release the test, such as an issue number.</p>
+</div>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

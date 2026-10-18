@@ -71,7 +71,7 @@ struct RunResultBar: View {
     .padding(.horizontal, 16)
     .padding(.vertical, 12)
     .frame(maxWidth: 720)
-    .glassEffect(.regular.tint(color.opacity(0.15)), in: .rect(cornerRadius: 18))
+    .adaptiveGlass(tint: color.opacity(0.15), in: .rect(cornerRadius: 18))
     .padding()
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Run result"))

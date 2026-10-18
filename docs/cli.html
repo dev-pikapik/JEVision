@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command line — JEVision</title>
+<meta name="description" content="Every command and option of the jevision command-line tool.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html" aria-current="page">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Command line</h1>
+<p class="lead">The <code>jevision</code> command runs, checks and formats tests from Terminal or a CI system. It also serves tests to AI assistants and starts scheduled runs.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#overview">Commands</a></li>
+    <li><a href="#run"><code>jevision run</code></a></li>
+    <li><a href="#run-json">The result of <code>run --json</code></a></li>
+    <li><a href="#validate"><code>jevision validate</code></a></li>
+    <li><a href="#fmt"><code>jevision fmt</code></a></li>
+    <li><a href="#mcp"><code>jevision mcp</code></a></li>
+    <li><a href="#schedule"><code>jevision schedule run</code></a></li>
+    <li><a href="#ready">What a Mac needs to run tests</a></li>
+    <li><a href="#ci">Running in CI</a></li>
+  </ul>
+</nav>
+
+<h2 id="install">Install</h2>
+<p>The command comes inside the app. Choose <strong>JEVision → Install Command Line Tool…</strong>. See <a href="getting-started.html#cli">Getting started</a>. Check that it works:</p>
+<pre><code>jevision --version
+jevision --help</code></pre>
+
+<h2 id="overview">Commands</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><a href="#run"><code>jevision run</code></a></td><td>Run tests on this Mac</td></tr>
+    <tr><td><a href="#validate"><code>jevision validate</code></a></td><td>Check tests for errors and warnings</td></tr>
+    <tr><td><a href="#fmt"><code>jevision fmt</code></a></td><td>Rewrite tests in canonical form</td></tr>
+    <tr><td><a href="#mcp"><code>jevision mcp</code></a></td><td>Let AI assistants read, edit and run tests</td></tr>
+    <tr><td><a href="#schedule"><code>jevision schedule run</code></a></td><td>Run the schedules of a project that are due now</td></tr>
+    <tr><td><code>jevision --help</code>, <code>-h</code>, <code>help</code></td><td>Show help; <code>jevision help run</code> or <code>jevision run --help</code> for one command</td></tr>
+    <tr><td><code>jevision --version</code>, <code>-V</code></td><td>Show the version</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Wherever a command takes <code><var>tests</var>…</code>, give test files (<code>.flow.json</code>) or folders. Folders are searched for <code>.flow.json</code> files, including folders inside them, in order of their paths. Files and folders whose names start with a dot are skipped.</p>
+<p>Every command ends with an <strong>exit status</strong>, a number a script or CI system reads to know how it went: <code>0</code> means all good, <code>1</code> means a test failed or a problem was found, and <code>2</code> means the command itself couldn't do its work.</p>
+
+<h2 id="run"><code>jevision run</code></h2>
+<p>Runs tests on this Mac, one after another, and saves a report of every run.</p>
+<pre><code>jevision run <var>tests</var>… [options]</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder. Files the tests use must be inside it, and reports are saved in <code><var>folder</var>/.jevision/runs</code>. Default: the nearest folder above the tests that has a <code>.jevision</code> folder, otherwise the current folder if it holds the tests.</td></tr>
+    <tr><td><code>--env <var>name</var></code></td><td>The <a href="environments.html">environment</a> whose values the tests read as <code>${env.NAME}</code>, such as <code>staging</code>. Secrets come from the Keychain items of that environment first. Default: the <code>default</code> environment of <code>jevision.environments.json</code>, if any.</td></tr>
+    <tr><td><code>--retries <var>n</var></code></td><td>Run a failed test up to <var>n</var> more times, 0 to 10, instead of the number in the test or the project. See <a href="retries.html#retries">Retries</a>.</td></tr>
+    <tr><td><code>--row <var>n</var></code></td><td>Run a <a href="data-driven.html">data-driven test</a> with row <var>n</var> of its table only, counting from 1. The header line isn't a row.</td></tr>
+    <tr><td><code>--rows <var>which</var></code></td><td>Rows of a data-driven test to run: <code>all</code> (the default), one row such as <code>3</code>, or a range such as <code>2-4</code>. Each row runs the whole test and has its own retries.</td></tr>
+    <tr><td><code>--start-at <var>block</var></code></td><td>Start from this block instead of the first one. Works with one test only.</td></tr>
+    <tr><td><code>--provider <var>id</var></code></td><td>AI provider for <a href="checks.html#meaning">checks by meaning</a>, instead of the one chosen in the app (Settings → AI): <code>anthropic</code>, <code>openai</code>, <code>gemini</code>, <code>ollama</code>, <code>lmstudio</code> or <code>openai-compatible</code>.</td></tr>
+    <tr><td><code>--model <var>name</var></code></td><td>AI model for checks by meaning, instead of the chosen one.</td></tr>
+    <tr><td><code>--junit <var>file</var></code></td><td>Also save a <a href="reports.html#junit">JUnit XML report</a> of all the tests, for CI.</td></tr>
+    <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
+    <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
+    <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report.</td></tr>
+    <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>While tests run, JEVision uses the mouse and keyboard. Press <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> to stop; the stopped test is reported as cancelled. Secrets come from environment variables or the Keychain (see <a href="environments.html#secret-order">Secrets</a>), and so do API keys of AI providers, such as <code>ANTHROPIC_API_KEY</code>.</p>
+<pre><code>jevision run tests/
+jevision run tests/sign-in.flow.json --env staging --retries 2
+jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
+<div class="table-wrap">
+<table>
+  <caption>Exit status of <code>jevision run</code></caption>
+  <thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>0</code></td><td>All tests passed. Tests in quarantine may have failed.</td></tr>
+    <tr><td><code>1</code></td><td>A test failed or was stopped.</td></tr>
+    <tr><td><code>2</code></td><td>Wrong arguments, a file could not be read or written, or this Mac can't run tests now (see <a href="#ready">below</a>).</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="run-json">The result of <code>run --json</code></h2>
+<p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>
+<pre><code>{
+  "passed": 1,
+  "failed": 1,
+  "quarantined": 0,
+  "cancelled": 0,
+  "notRun": 0,
+  "errors": 0,
+  "tests": [
+    {
+      "file": "sign-in.flow.json",
+      "verdict": "failed",
+      "name": "Sign in",
+      "flaky": false,
+      "quarantined": false,
+      "quarantineReason": null,
+      "attempts": 3,
+      "rows": [],
+      "durationMs": 18234,
+      "newReferences": [],
+      "failure": { "code": "…", "message": "…" },
+      "report": "…/.jevision/runs/20261018-031500-sign-in/report.json",
+      "html": null,
+      "video": null
+    }
+  ]
+}</code></pre>
+<ul>
+  <li><code>verdict</code> is <code>passed</code>, <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>file</code> is relative to the project folder. <code>newReferences</code> lists the reference images this run saved for the first time.</li>
+  <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>.</li>
+</ul>
+
+<h2 id="validate"><code>jevision validate</code></h2>
+<p>Checks test files for errors and warnings, as the editor does. See <a href="writing-tests.html#problems">Problems the editor reports</a>.</p>
+<pre><code>jevision validate <var>tests</var>… [--json]</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--json</code></td><td>Print the result as JSON: a list with one entry per file, with <code>file</code>, <code>valid</code> and <code>issues</code>. Each issue has a <code>code</code> such as <code>flow.edge.unknownTarget</code>, a <code>severity</code> (<code>error</code> or <code>warning</code>) and <code>params</code> with the details.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments or a file could not be read.</p>
+
+<h2 id="fmt"><code>jevision fmt</code></h2>
+<p>Rewrites test files in <a href="writing-tests.html#canonical">canonical form</a>, so every change shows up as a small, readable diff.</p>
+<pre><code>jevision fmt <var>tests</var>… [--check]</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--check</code></td><td>Only list the files that are not in canonical form, and change nothing. Useful in CI.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments or a file could not be read or written.</p>
+
+<h2 id="mcp"><code>jevision mcp</code></h2>
+<p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
+<pre><code>jevision mcp [--project <var>folder</var>]</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder whose tests the assistant may see. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="schedule"><code>jevision schedule run</code></h2>
+<p>Runs the <a href="schedules.html">schedules</a> of a project that are due now. The app sets up macOS to start this command at the right times, so you don't need to run it yourself.</p>
+<pre><code>jevision schedule run <var>project</var></code></pre>
+<p>A schedule is due once for its latest time since the last check, even when the Mac slept through it, unless that time is more than 12 hours ago. When the screen is locked, nobody is logged in, or macOS hasn't allowed <code>jevision</code> to record the screen and control the computer, the run is skipped and nothing is clicked or typed.</p>
+<p>Exit status: <code>0</code>, nothing was due or all tests passed; <code>1</code>, a test failed or a run was skipped; <code>2</code>, the project or its schedule file couldn't be read, or a run couldn't start.</p>
+
+<h2 id="ready">What a Mac needs to run tests</h2>
+<p>Before running anything, <code>jevision run</code> checks that the Mac can run tests, and if not, says what to do and exits with status <code>2</code>. A Mac can run tests when:</p>
+<ul>
+  <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal or from a CI agent started in that session, not over SSH and not as a system service;</li>
+  <li><strong>the screen is unlocked</strong>;</li>
+  <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong>. The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>.</li>
+</ul>
+
+<h2 id="ci">Running in CI</h2>
+<p>Tests need a real screen with a logged-in user, so cloud-hosted CI runners can't run them. Use a Mac of your own as a runner. For GitHub Actions, set up a <a href="https://docs.github.com/actions/hosting-your-own-runners">self-hosted runner</a> and install it as a service with <code>./svc.sh install</code> while logged in as the user who runs the tests. On macOS this makes a launch agent that runs in that user's session. Then allow Screen Recording and Accessibility for the program the first run names.</p>
+<pre><code>jobs:
+  ui-tests:
+    runs-on: [self-hosted, macOS]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check test files
+        run: jevision validate tests &amp;&amp; jevision fmt --check tests
+      - name: Run UI tests
+        env:
+          ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
+        run: jevision run tests --junit junit.xml --html reports
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-test-reports
+          path: |
+            junit.xml
+            reports/</code></pre>
+<p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

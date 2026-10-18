@@ -253,6 +253,66 @@ enum Accessibility {
     return nil
   }
 
+  /// Password fields in the window at `bounds` (global points, top-left origin) of one of
+  /// `pids`, in fractions of the window. Empty without the Accessibility permission. A window
+  /// too large to search within a quarter of a second gives the fields found by then.
+  static func secureFields(pids: Set<pid_t>, window bounds: CGRect) -> [Rect] {
+    guard AXIsProcessTrusted(), bounds.width > 0, bounds.height > 0 else { return [] }
+    let deadline = Date.now.addingTimeInterval(0.25)
+    for pid in pids {
+      let app = AXUIElementCreateApplication(pid)
+      AXUIElementSetMessagingTimeout(app, timeout)
+      var windows: CFTypeRef?
+      guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
+        let window = (windows as? [AXUIElement])?.first(where: {
+          frame(of: $0).map { abs($0.minX - bounds.minX) < 2 && abs($0.minY - bounds.minY) < 2 } == true
+        })
+      else { continue }
+      var fields: [Rect] = []
+      var queue = [window]
+      var next = 0
+      while next < queue.count, next < 5000, Date.now < deadline {
+        let element = queue[next]
+        next += 1
+        // One round trip to the app for both attributes.
+        var values: CFArray?
+        guard
+          AXUIElementCopyMultipleAttributeValues(
+            element, [kAXSubroleAttribute, kAXChildrenAttribute] as CFArray, AXCopyMultipleAttributeOptions(), &values)
+            == .success,
+          let values = values as? [AnyObject], values.count == 2
+        else { continue }
+        if values[0] as? String == kAXSecureTextFieldSubrole {
+          if let f = frame(of: element) {
+            fields.append(
+              Rect(
+                x: (f.minX - bounds.minX) / bounds.width, y: (f.minY - bounds.minY) / bounds.height,
+                width: f.width / bounds.width, height: f.height / bounds.height))
+          }
+          continue
+        }
+        queue += values[1] as? [AXUIElement] ?? []
+      }
+      return fields
+    }
+    return []
+  }
+
+  private static func frame(of element: AXUIElement) -> CGRect? {
+    func value<T: BitwiseCopyable>(_ attribute: String, _ type: AXValueType, _ empty: T) -> T? {
+      var raw: CFTypeRef?
+      guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success, let raw,
+        CFGetTypeID(raw) == AXValueGetTypeID()
+      else { return nil }
+      var out = empty
+      return AXValueGetValue(raw as! AXValue, type, &out) ? out : nil
+    }
+    guard let origin = value(kAXPositionAttribute, .cgPoint, CGPoint.zero),
+      let size = value(kAXSizeAttribute, .cgSize, CGSize.zero)
+    else { return nil }
+    return CGRect(origin: origin, size: size)
+  }
+
   static func focusedElement(pid: pid_t) -> ElementInfo? {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, timeout)
@@ -271,14 +331,6 @@ enum Accessibility {
       else { return nil }
       return text
     }
-    func value<T: BitwiseCopyable>(_ attribute: String, _ type: AXValueType, _ empty: T) -> T? {
-      var raw: CFTypeRef?
-      guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success, let raw,
-        CFGetTypeID(raw) == AXValueGetTypeID()
-      else { return nil }
-      var out = empty
-      return AXValueGetValue(raw as! AXValue, type, &out) ? out : nil
-    }
     let role = string(kAXRoleAttribute)
     var titleElement: CFTypeRef?
     let titled =
@@ -288,10 +340,6 @@ enum Accessibility {
       string(kAXTitleAttribute) ?? string(kAXDescriptionAttribute) ?? string(kAXPlaceholderValueAttribute)
       ?? (titled ? string(kAXValueAttribute, of: titleElement as! AXUIElement) : nil)
       ?? (role == "AXStaticText" ? string(kAXValueAttribute) : nil)
-    var frame: CGRect?
-    if let origin = value(kAXPositionAttribute, .cgPoint, CGPoint.zero), let size = value(kAXSizeAttribute, .cgSize, CGSize.zero) {
-      frame = CGRect(origin: origin, size: size)
-    }
-    return ElementInfo(role: role, subrole: string(kAXSubroleAttribute), label: label, frame: frame)
+    return ElementInfo(role: role, subrole: string(kAXSubroleAttribute), label: label, frame: frame(of: element))
   }
 }

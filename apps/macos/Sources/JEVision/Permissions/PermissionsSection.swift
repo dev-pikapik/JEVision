@@ -4,6 +4,7 @@ import SwiftUI
 /// The two permission rows with a hint for the first missing one. Lives inside a grouped `Form`.
 struct PermissionsSection: View {
   @Environment(PermissionsMonitor.self) private var monitor
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
     Section {
@@ -19,7 +20,7 @@ struct PermissionsSection: View {
           .fixedSize(horizontal: false, vertical: true)
       }
     }
-    .animation(.snappy, value: monitor.granted)
+    .animation(reduceMotion ? nil : .snappy, value: monitor.granted)
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       monitor.refresh()
     }

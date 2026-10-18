@@ -5,6 +5,7 @@ struct ProjectView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var query = ""
   @State private var renaming: ProjectItem?
   @State private var newName = ""
@@ -53,10 +54,10 @@ struct ProjectView: View {
         .overlay(alignment: .bottom) {
           if let result = runs.batchResult {
             BatchResultBar(result: result)
-              .transition(.move(edge: .bottom).combined(with: .opacity))
+              .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
           }
         }
-        .animation(.snappy, value: runs.batchResult)
+        .animation(reduceMotion ? nil : .snappy, value: runs.batchResult)
     }
     .onChange(of: runs.result) { _, result in
       // Run Again from a report: the new run's report takes its place.

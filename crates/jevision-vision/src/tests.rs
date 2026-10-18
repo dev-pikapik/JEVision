@@ -1,6 +1,6 @@
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::thread;
 
 use super::*;
@@ -8,6 +8,10 @@ use super::*;
 const KEY: &str = "sk-test-0123456789abcdef";
 const SHOT: &[u8] = b"\x89PNG screenshot";
 const REFERENCE: &[u8] = b"\x89PNG reference";
+static SHOT_PICTURE: LazyLock<MaskedImage> =
+    LazyLock::new(|| MaskedImage::from_png(SHOT, &[]).unwrap());
+static REFERENCE_PICTURE: LazyLock<MaskedImage> =
+    LazyLock::new(|| MaskedImage::from_png(REFERENCE, &[]).unwrap());
 
 fn config(provider: Provider, address: &str) -> Config {
     Config {
@@ -25,8 +29,8 @@ fn fixture(name: &str) -> String {
 fn question() -> Question<'static> {
     Question {
         expect: "The cart shows 2 items",
-        screenshot: SHOT,
-        reference: Some(REFERENCE),
+        screenshot: &SHOT_PICTURE,
+        reference: Some(&REFERENCE_PICTURE),
     }
 }
 
@@ -105,7 +109,7 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
 
     let only_shot = Question {
         expect: "",
-        screenshot: SHOT,
+        screenshot: &SHOT_PICTURE,
         reference: None,
     };
     let (_, body) = request(&config(Provider::Ollama, ""), &only_shot);

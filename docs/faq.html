@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ and troubleshooting — JEVision</title>
+<meta name="description" content="Answers to common questions and fixes for common problems, such as permissions.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html" aria-current="page">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>FAQ and troubleshooting</h1>
+<p class="lead">Answers to common questions, and what to do when something doesn't work.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#permissions">Permissions</a></li>
+    <li><a href="#cant-run">“jevision can't run tests”</a></li>
+    <li><a href="#paused">The run paused or stopped</a></li>
+    <li><a href="#not-found">A picture wasn't found</a></li>
+    <li><a href="#check-fails">A check fails though the screen looks right</a></li>
+    <li><a href="#dark">Tests fail in dark mode</a></li>
+    <li><a href="#keychain">macOS asks about the Keychain</a></li>
+    <li><a href="#newer">“format 2 is from a newer JEVision”</a></li>
+    <li><a href="#gitignore">What to commit</a></li>
+    <li><a href="#other-apps">Questions about testing</a></li>
+  </ul>
+</nav>
+
+<h2 id="permissions">Permissions</h2>
+<p>JEVision tests apps the way a person uses them: it looks at the screen and uses the mouse and keyboard. macOS allows that only with two permissions, which you give once in <strong>System Settings → Privacy &amp; Security</strong>:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">List in System Settings</th><th scope="col">Why JEVision needs it</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Screen &amp; System Audio Recording</strong> (called Screen Recording in older macOS)</td><td>To see the app under test: to find what to click, wait for screens and compare them with references.</td></tr>
+    <tr><td><strong>Accessibility</strong> (called <strong>Device Control and Data Access</strong> from macOS 27)</td><td>To click, type and press keys, and to read the names of buttons while recording.</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>Which app gets them.</strong> macOS gives permissions to apps, not commands:</p>
+<ul>
+  <li>For the JEVision app, turn on <strong>JEVision</strong>. The app shows each permission as Allowed or Not allowed, and its <strong>Allow</strong> button opens the right list in System Settings. It notices the change within seconds, without a restart.</li>
+  <li>For <code>jevision</code> on the command line, turn on the app it runs in: <strong>Terminal</strong>, iTerm, your editor, or your CI agent. <code>jevision run</code> names that app when a permission is missing.</li>
+</ul>
+<p><strong>It is turned on, but still doesn't work.</strong></p>
+<ul>
+  <li>Quit and reopen the app the permission is for. macOS often offers to do this; accept it.</li>
+  <li>If the app isn't in the list, click <strong>+</strong> under the list and choose it.</li>
+  <li>After you rebuild JEVision from source, macOS may treat it as a new app. Turn the switch off and on again, or remove the entry with <strong>−</strong> and add it again.</li>
+</ul>
+
+<h2 id="cant-run">“jevision can't run tests”</h2>
+<p><code>jevision run</code> checks the Mac before it starts, and says what is in the way:</p>
+<dl>
+  <dt>“there is no logged-in user with a screen”</dt>
+  <dd>Tests need a screen, so they run only in the session of a user logged in at the Mac: from Terminal, or from a CI agent started in that session. They can't run over SSH or as a system service.</dd>
+  <dt>“the screen of this Mac is locked”</dt>
+  <dd>Unlock it and run again. For runs nobody watches, turn off the automatic lock in <strong>System Settings → Lock Screen</strong>. JEVision never types into a locked screen, where a password field would get the input.</dd>
+  <dt>“macOS hasn't allowed … to record the screen and control the computer”</dt>
+  <dd>See <a href="#permissions">Permissions</a>; the message lists the steps.</dd>
+</dl>
+
+<h2 id="paused">The run paused or stopped</h2>
+<ul>
+  <li><strong>The run paused when I moved the mouse.</strong> That's on purpose: when you touch the mouse or keyboard, JEVision steps aside so you and the test don't fight over the pointer. The run panel says “Paused — you moved the mouse.” Click <strong>Resume</strong> when your hands are off.</li>
+  <li><strong>How do I stop a run?</strong> Press <kbd>Esc</kbd> twice, from any app. On the command line, <kbd>Ctrl</kbd>-<kbd>C</kbd> works too. The test is reported as cancelled.</li>
+  <li><strong>Can I use the Mac during a run?</strong> Not really: the test needs the mouse, the keyboard and the app's window in front. Run tests on a separate Mac or a separate user account, or at times you don't need it, such as with <a href="schedules.html">schedules</a>.</li>
+</ul>
+
+<h2 id="not-found">A picture wasn't found</h2>
+<p>A click target or a <code>waitFor</code> looks for a picture in the app's window. When it isn't found:</p>
+<ul>
+  <li><strong>The app was slower than usual.</strong> Put a <a href="writing-tests.html#waitFor"><code>waitFor</code></a> before the step, or give it a longer <code>timeout</code>.</li>
+  <li><strong>The app looks different now:</strong> another size, theme, language or version. Open the report, compare what the step was looking for with the screenshot, and take a new picture of the target.</li>
+  <li><strong>Something covered the window</strong>, such as a notification or another window. Turn on Do Not Disturb (a Focus) while tests run.</li>
+</ul>
+
+<h2 id="check-fails">A check fails though the screen looks right</h2>
+<p>Open the report and look at the differences in red. Usually it's one of these:</p>
+<ul>
+  <li><strong>Parts that change on their own:</strong> a clock, a date, a counter, an animation, a blinking cursor. Add them to the reference's <code>ignore</code> areas, or check a smaller <code>area</code>. See <a href="checks.html#areas">Areas</a>.</li>
+  <li><strong>A real change you wanted.</strong> Accept the new screen as the reference. See <a href="checks.html#accept">Accepting changes</a>.</li>
+  <li><strong>Slightly different drawing</strong> on another Mac or display. Lower the <code>threshold</code> a little, or check by <a href="checks.html#meaning">meaning</a> instead.</li>
+</ul>
+<p>When a test sometimes passes and sometimes fails, see <a href="retries.html">Retries, flaky tests and quarantine</a>.</p>
+
+<h2 id="dark">Tests fail in dark mode</h2>
+<p>A screen in dark appearance doesn't look like a reference taken in light appearance. JEVision keeps a second reference for dark appearance, such as <code>refs/inbox.dark.png</code>, and makes it the first time a check runs in dark mode. See <a href="checks.html#dark">Dark appearance</a>.</p>
+
+<h2 id="keychain">macOS asks about the Keychain</h2>
+<p>The first time <code>jevision</code> reads a <a href="environments.html#secrets">secret</a> from the Keychain, macOS asks whether to allow it. Choose <strong>Always Allow</strong>, especially for <a href="schedules.html">schedules</a> and CI, where nobody is there to answer. In CI, you can pass secrets as environment variables instead. See <a href="environments.html#secret-order">Where a secret's value comes from</a>.</p>
+
+<h2 id="newer">“format 2 is from a newer JEVision”</h2>
+<p>The file was saved by a newer version of JEVision. Update JEVision on this Mac. JEVision won't open such a file, so it can't damage it. See <a href="file-formats.html#versions">Format versions</a>.</p>
+
+<h2 id="gitignore">What to commit</h2>
+<p>Commit the tests, their images and CSV files, and the <code>jevision.*.json</code> files. Leave out the <code>.jevision</code> folder: it holds run results and history for one Mac. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>. See <a href="file-formats.html#overview">Files in a project</a>.</p>
+
+<h2 id="other-apps">Questions about testing</h2>
+<dl>
+  <dt>Which apps can I test?</dt>
+  <dd>Any app on your Mac with a window: your own, someone else's, native or built with web technology. JEVision doesn't need the app's code or any changes to it.</dd>
+  <dt>Do I need to know how to code?</dt>
+  <dd>No. Record a test by using the app, and edit it on the canvas. The JSON file is there for those who want it.</dd>
+  <dt>Do tests send my screen anywhere?</dt>
+  <dd>Only checks by <a href="checks.html#meaning">meaning</a> send a screenshot to the AI model you choose, and you can choose a model that runs on your Mac. Every other check compares pictures on your Mac.</dd>
+  <dt>Does it test iPhone apps or websites?</dt>
+  <dd>JEVision tests Mac apps. A website can be tested in a Mac browser like any other app. The <a href="iphone.html">iPhone app</a> is a remote for running tests on your Mac, not a way to test iPhone apps.</dd>
+</dl>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

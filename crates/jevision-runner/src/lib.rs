@@ -10,7 +10,6 @@
 
 mod control;
 mod env;
-mod image;
 mod report;
 mod run;
 
@@ -18,12 +17,12 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 pub use control::{PauseReason, RunControl};
-pub use image::{PictureDiff, picture_diff};
 pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{MouseButton, Point};
+pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
-    Client as VisionClient, Config as VisionConfig, Judgement, Provider, Question, TIMEOUT,
-    VisionError, VisionJudge,
+    Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, Provider, Question,
+    TIMEOUT, VisionError, VisionJudge,
 };
 pub use report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
@@ -98,6 +97,9 @@ pub struct Screenshot {
     pub scale: f64,
     /// The window was drawn in dark appearance.
     pub dark: bool,
+    /// Password fields in the window, in fractions of it from its top-left corner. They are
+    /// covered before the screenshot is saved or sent anywhere.
+    pub secure: Vec<jevision_core::Rect>,
 }
 
 /// Something [`Hands::open`] opens.

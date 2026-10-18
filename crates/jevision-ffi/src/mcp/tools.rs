@@ -8,10 +8,10 @@ use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use jevision_core::{
-    Flow, Issue, NEXT, START, Severity, Slot, describe, parse, parse_block, to_canonical_json,
-    validate_in,
+    Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, describe, parse,
+    parse_block, to_canonical_json, validate_in,
 };
-use jevision_runner::{Run, StepStatus};
+use jevision_runner::{MaskedImage, Run, StepStatus};
 use serde_json::{Map, Value, json};
 
 use super::jobs::RunChoices;
@@ -528,6 +528,13 @@ impl Server {
         if images == "none" {
             return Ok(content);
         }
+        let hide = match self.shareable_areas() {
+            Ok(hide) => hide,
+            Err(why) => {
+                content.push(text(why));
+                return Ok(content);
+            }
+        };
         let dir = run
             .dir
             .canonicalize()
@@ -545,7 +552,12 @@ impl Server {
                     ("difference", &step.diff),
                 ];
                 for (label, picture) in pictures {
-                    let Some(png) = picture.as_ref().and_then(|p| read_inside(&dir, p)) else {
+                    // Saved pictures are masked already; areas the project hides since are too.
+                    let Some(picture) = picture
+                        .as_ref()
+                        .and_then(|p| read_inside(&dir, p))
+                        .and_then(|png| MaskedImage::from_png(&png, &hide).ok())
+                    else {
                         continue;
                     };
                     if shown == MAX_IMAGES {
@@ -556,7 +568,7 @@ impl Server {
                         "Attempt {}, step {} \"{}\" ({}): {label}",
                         attempt.number, step.seq, step.block, step.block_type
                     )));
-                    content.push(image(&png));
+                    content.push(image(&picture));
                     shown += 1;
                 }
             }
@@ -584,14 +596,30 @@ impl Server {
                 );
             }
         };
+        let hide = self.shareable_areas()?;
         let shot = self
             .host
             .capture(app.clone())
             .map_err(|e| hands_message(&e))?;
-        Ok(vec![
-            text(format!("The front window of {app}.")),
-            image(&shot.png),
-        ])
+        let areas: Vec<_> = hide.iter().chain(&shot.secure).copied().collect();
+        let picture = MaskedImage::from_png(&shot.png, &areas)
+            .map_err(|reason| format!("The screenshot can't be read: {reason}."))?;
+        let mut said = format!("The front window of {app}.");
+        if picture.is_masked() {
+            said.push_str(" Grey boxes cover private parts of it on purpose.");
+        }
+        Ok(vec![text(said), image(&picture)])
+    }
+
+    /// Areas the project hides in every screenshot; `Err` says why no picture may leave this
+    /// Mac at all: an assistant may pass it on to a cloud service.
+    fn shareable_areas(&self) -> Result<Vec<Rect>, String> {
+        let settings = ProjectSettings::load(&self.project)
+            .map_err(|reason| format!("{PROJECT_FILE} can't be read: {reason}"))?;
+        if settings.local_only || self.host.run_options().local_only {
+            return Err("Screenshots stay on this Mac: \"Only models on this Mac\" is turned on for this project or in JEVision → Settings → AI, and an assistant may pass pictures on to a cloud service. Work from the report's text instead.".to_owned());
+        }
+        Ok(settings.hide)
     }
 
     // MARK: Files
@@ -908,6 +936,6 @@ fn pretty(value: &Value) -> Value {
     text(serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string()))
 }
 
-fn image(png: &[u8]) -> Value {
-    json!({ "type": "image", "data": STANDARD.encode(png), "mimeType": "image/png" })
+fn image(picture: &MaskedImage) -> Value {
+    json!({ "type": "image", "data": STANDARD.encode(picture.png()), "mimeType": "image/png" })
 }

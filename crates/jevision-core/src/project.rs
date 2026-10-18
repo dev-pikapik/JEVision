@@ -1,14 +1,17 @@
 //! Settings a project shares with everyone who runs its tests, kept in `jevision.project.json`
 //! in the project folder and committed with the tests: how many times a failed test is retried
 //! when its file doesn't say, and the tests in quarantine. A quarantined test still runs, but
-//! its failure doesn't fail Run All, the command line or the JUnit report.
+//! its failure doesn't fail Run All, the command line or the JUnit report. The file also says
+//! how private the project's screens are: areas covered in every screenshot before it is saved
+//! or sent anywhere, and whether screenshots may go to AI models outside this computer.
 
 use std::path::{Component, Path};
 use std::{fs, io};
 
 use serde::{Deserialize, Serialize};
 
-use crate::validate::MAX_RETRIES;
+use crate::Rect;
+use crate::validate::{MAX_RETRIES, rect_fits};
 
 /// Name of the project settings file in the project folder.
 pub const PROJECT_FILE: &str = "jevision.project.json";
@@ -17,12 +20,18 @@ pub const PROJECT_FORMAT: u32 = 1;
 const TEST_SUFFIX: &str = ".flow.json";
 
 /// The settings of a project.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ProjectSettings {
     /// How many times a failed test is retried when its file doesn't say; `None` retries none.
     pub retries: Option<u32>,
     /// Tests in quarantine, sorted by file.
     pub quarantine: Vec<Quarantined>,
+    /// Screenshots go only to AI models running on this computer; checks that would need a
+    /// cloud service fail instead.
+    pub local_only: bool,
+    /// Areas of the window, in fractions from its top-left corner, covered in every screenshot
+    /// before it is saved or sent to an AI model.
+    pub hide: Vec<Rect>,
 }
 
 /// A test in quarantine.
@@ -44,6 +53,14 @@ struct File {
     retries: Option<u32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     quarantine: Vec<Quarantined>,
+    #[serde(
+        default,
+        rename = "localOnly",
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    local_only: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    hide: Vec<Rect>,
 }
 
 impl ProjectSettings {
@@ -87,9 +104,19 @@ impl ProjectSettings {
                 twice[0].test
             ));
         }
+        if let Some(i) = file.hide.iter().position(|r| !rect_fits(r)) {
+            return Err(format!(
+                "area {} in \"hide\" doesn't fit the window; x, y, width and height are \
+                 fractions from 0 to 1 of the window, and the area must have a size and end \
+                 inside it",
+                i + 1
+            ));
+        }
         Ok(Self {
             retries: file.retries,
             quarantine,
+            local_only: file.local_only,
+            hide: file.hide,
         })
     }
 
@@ -110,6 +137,8 @@ impl ProjectSettings {
             format: PROJECT_FORMAT,
             retries: self.retries,
             quarantine: self.quarantine.clone(),
+            local_only: self.local_only,
+            hide: self.hide.clone(),
         };
         let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
         text.push('\n');
@@ -203,6 +232,16 @@ mod tests {
             (r#"{"format":0}"#, "\"format\" must be 1"),
             (r#"{"format":1,"retries":11}"#, "from 0 to 10"),
             (r#"{"format":1,"other":1}"#, "unknown field"),
+            (r#"{"format":1,"localOnly":"yes"}"#, "expected a boolean"),
+            (
+                r#"{"format":1,"hide":[{"x":0.5,"y":0,"width":0.6,"height":0.1}]}"#,
+                "area 1 in \"hide\"",
+            ),
+            (
+                r#"{"format":1,"hide":[{"x":0,"y":0,"width":0,"height":0.1}]}"#,
+                "area 1 in \"hide\"",
+            ),
+            (r#"{"format":1,"hide":[{"x":0,"y":0}]}"#, "missing field"),
             (
                 r#"{"format":1,"quarantine":[{"test":"../x.flow.json"}]}"#,
                 "isn't a test file",
@@ -227,6 +266,26 @@ mod tests {
             let error = ProjectSettings::parse(text).unwrap_err();
             assert!(error.contains(says), "{text}: {error}");
         }
+    }
+
+    #[test]
+    fn keeps_privacy_settings() {
+        let text = r#"{"format":1,"localOnly":true,
+            "hide":[{"x":0,"y":0,"width":0.2,"height":1}]}"#;
+        let settings = ProjectSettings::parse(text).unwrap();
+        assert!(settings.local_only);
+        assert_eq!(
+            settings.hide,
+            [Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 0.2,
+                height: 1.0
+            }]
+        );
+        let written = settings.to_json();
+        assert!(written.contains("\"localOnly\": true"), "{written}");
+        assert_eq!(ProjectSettings::parse(&written).unwrap(), settings);
     }
 
     #[test]

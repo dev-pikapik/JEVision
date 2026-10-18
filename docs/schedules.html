@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedules — JEVision</title>
+<meta name="description" content="Run tests on their own every day, on chosen days or every few hours.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html" aria-current="page">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Schedules</h1>
+<p class="lead">Run tests on their own: every night, on weekdays, or every few hours, with the results waiting for you in the morning.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#make">Make a schedule</a></li>
+    <li><a href="#file">The schedule file</a></li>
+    <li><a href="#how">How schedules run</a></li>
+    <li><a href="#unattended">Preparing a Mac for runs nobody watches</a></li>
+    <li><a href="#results">Results</a></li>
+  </ul>
+</nav>
+
+<h2 id="make">Make a schedule</h2>
+<p>Choose <strong>Test → Schedules…</strong>, or click the schedule line at the foot of the sidebar. A schedule says:</p>
+<ul>
+  <li><strong>which tests</strong> run: all tests, the tests in one folder, or tests you choose;</li>
+  <li><strong>when</strong>: every day, on chosen days of the week, or every 1, 2, 3, 4, 6, 8 or 12 hours from a start time;</li>
+  <li><strong>with which environment</strong> and whether to <strong>record video</strong> (never, only when a test fails, or always).</li>
+</ul>
+<p>The sheet shows each schedule in words, its next run and how its last run went.</p>
+
+<h2 id="file">The schedule file</h2>
+<p>Schedules are saved in <code>jevision.schedule.json</code> in the project folder and committed with the tests, so the whole team sees the same schedules:</p>
+<pre><code>{
+  "format": 1,
+  "schedules": [
+    { "name": "Nightly", "tests": "all", "repeat": "daily", "at": "03:00" },
+    { "name": "Smoke", "tests": { "files": ["sign-in.flow.json", "mail/send.flow.json"] },
+      "repeat": { "days": ["mon", "tue", "wed", "thu", "fri"] }, "at": "09:05",
+      "environment": "staging", "video": "on-failure" },
+    { "name": "Checkout", "tests": { "folder": "checkout" }, "repeat": { "everyHours": 6 },
+      "at": "01:30" }
+  ]
+}</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>Yes</td><td>Unique within the file, regardless of case.</td></tr>
+    <tr><td><code>tests</code></td><td>Yes</td><td><code>"all"</code>, <code>{ "folder": "path" }</code> or <code>{ "files": ["path", …] }</code>. Paths are relative to the project folder and never lead outside it.</td></tr>
+    <tr><td><code>repeat</code></td><td>Yes</td><td><code>"daily"</code>; <code>{ "days": [...] }</code> with any of <code>sun</code>, <code>mon</code>, <code>tue</code>, <code>wed</code>, <code>thu</code>, <code>fri</code>, <code>sat</code>; or <code>{ "everyHours": N }</code> with N one of 1, 2, 3, 4, 6, 8, 12.</td></tr>
+    <tr><td><code>at</code></td><td>Yes</td><td>Local time as <code>HH:MM</code>. For <code>everyHours</code> it is the first run of the day, and the others follow every N hours.</td></tr>
+    <tr><td><code>environment</code></td><td>No</td><td>An environment from <a href="environments.html#file"><code>jevision.environments.json</code></a>. Default: the project's default environment.</td></tr>
+    <tr><td><code>video</code></td><td>No</td><td><code>off</code>, <code>on-failure</code> or <code>always</code>. Default: the app's setting.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="how">How schedules run</h2>
+<p>A schedule file in git does nothing by itself on a Mac: schedules run on a Mac only after you save them or click <strong>Turn On</strong> in the sheet there. The app then installs a launch agent for the project, a small file macOS uses to start programs at set times:</p>
+<pre><code>~/Library/LaunchAgents/io.github.dev-pikapik.jevision.schedule.&lt;id&gt;.plist</code></pre>
+<p>The app keeps it in step with the schedule file. Deleting every schedule removes the launch agent.</p>
+<p>At the schedules' times, the agent starts <code>jevision schedule run <var>project</var></code>. This command:</p>
+<ul>
+  <li>runs every schedule that is due now;</li>
+  <li>catches up once on a run missed while the Mac was asleep or off, unless it is more than 12 hours late; then it waits for its next time;</li>
+  <li>saves reports like any other run; the app's run history marks them “Schedule”.</li>
+</ul>
+<p>You don't need to run <code>jevision schedule run</code> yourself. See <a href="cli.html#schedule">Command line</a> for its exit status.</p>
+
+<h2 id="unattended">Preparing a Mac for runs nobody watches</h2>
+<p>Tests use the real screen, mouse and keyboard, so a scheduled run needs:</p>
+<ul>
+  <li><strong>A logged-in user.</strong> Nobody logged in means no screen to test on.</li>
+  <li><strong>An unlocked screen.</strong> A run due while the screen is locked is skipped and recorded as “skipped: screen locked”. JEVision never types into a locked screen. Turn off the automatic lock in <strong>System Settings → Lock Screen</strong>.</li>
+  <li><strong>Screen Recording and Accessibility</strong> allowed for <code>jevision</code>. Without them the run is skipped and nothing is clicked or typed. See <a href="faq.html#permissions">Permissions</a>.</li>
+  <li><strong>Secrets</strong> the tests need, saved in the Keychain, with <strong>Always Allow</strong> chosen the first time macOS asks. See <a href="environments.html#secret-order">Secrets</a>.</li>
+</ul>
+
+<h2 id="results">Results</h2>
+<ul>
+  <li>The app posts a notification when a scheduled run fails, is skipped or can't start.</li>
+  <li>What came of each scheduled run is kept in <code>.jevision/schedule-history.json</code>, newest 200 runs. This file is local to the Mac and not committed.</li>
+  <li>The reports of the tests are in the run history with the other runs. See <a href="reports.html">Run video and reports</a>.</li>
+</ul>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

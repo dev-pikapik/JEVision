@@ -5,8 +5,8 @@
 
 use std::collections::HashMap;
 
-use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::FORMAT_VERSION;
 
@@ -218,7 +218,7 @@ pub struct Point {
 }
 
 /// A rectangle in fractions (0–1) of the image or window, from the top-left corner.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Rect {
     pub x: f64,
     pub y: f64,

@@ -136,6 +136,8 @@ private struct AppList: View {
         if let noneTitle, query.isEmpty {
           noneTitle.tag(String?.none)
             .onTapGesture { choose(nil) }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { choose(nil) }
         }
         ForEach(matches) { app in
           Label {
@@ -146,6 +148,8 @@ private struct AppList: View {
           .tag(Optional(app.bundleID))
           .contentShape(.rect)
           .onTapGesture { choose(app.bundleID) }
+          .accessibilityAddTraits(.isButton)
+          .accessibilityAction { choose(app.bundleID) }
         }
       }
       .overlay {

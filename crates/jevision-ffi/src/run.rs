@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{MouseButton, Point};
+use jevision_core::{MouseButton, Point, Rect};
 use jevision_runner::{
     PauseReason, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict, VideoMode,
     VisionAnswer, VisionJudge,
@@ -738,6 +738,12 @@ pub struct Step {
     /// When the block started, in milliseconds from the start of the run's video.
     #[uniffi(default = None)]
     pub video_at_ms: Option<u64>,
+    /// The screenshot exactly as a vision model got it.
+    #[uniffi(default = None)]
+    pub sent: Option<String>,
+    /// Private areas of `sent` were covered before sending.
+    #[uniffi(default = false)]
+    pub sent_masked: bool,
 }
 
 impl From<jevision_runner::Step> for Step {
@@ -759,6 +765,8 @@ impl From<jevision_runner::Step> for Step {
             branch: s.branch,
             failure: s.failure.map(Into::into),
             video_at_ms: s.video_at_ms,
+            sent: s.sent,
+            sent_masked: s.sent_masked,
         }
     }
 }
@@ -796,6 +804,8 @@ pub struct Screenshot {
     pub scale: f64,
     /// The window was drawn in dark appearance.
     pub dark: bool,
+    /// Password fields in the window, in fractions of it from its top-left corner.
+    pub secure: Vec<Rect>,
 }
 
 #[uniffi::remote(Record)]

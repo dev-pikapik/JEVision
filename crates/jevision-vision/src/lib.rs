@@ -4,7 +4,13 @@
 //! Ollama, LM Studio or any server with an OpenAI-compatible API. Answers are requested in a
 //! fixed JSON shape (`passed`, `reason`) wherever the provider can enforce one, and read
 //! leniently where it cannot. The API key is sent only in a request header; error messages and
-//! answers have it masked.
+//! answers have it masked. Pictures go out only as [`MaskedImage`]s, private areas painted
+//! over first.
+
+pub mod image;
+mod mask;
+
+pub use mask::{MASK_COLOUR, MaskedImage};
 
 use std::fmt;
 use std::net::IpAddr;
@@ -187,8 +193,8 @@ impl Config {
 pub struct Question<'a> {
     /// What the screen should show, in plain words; empty to only compare with `reference`.
     pub expect: &'a str,
-    pub screenshot: &'a [u8],
-    pub reference: Option<&'a [u8]>,
+    pub screenshot: &'a MaskedImage,
+    pub reference: Option<&'a MaskedImage>,
 }
 
 /// A model's verdict.
@@ -304,9 +310,11 @@ impl Client {
 
     /// Asks about a small built-in picture, to check address, key and model in one go.
     pub fn test(&self) -> Result<Judgement, VisionError> {
+        let picture = MaskedImage::from_png(TEST_PICTURE, &[])
+            .expect("a picture with nothing to cover passes unchanged");
         self.judge(&Question {
             expect: TEST_EXPECTATION,
-            screenshot: TEST_PICTURE,
+            screenshot: &picture,
             reference: None,
         })
     }
@@ -551,8 +559,8 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
     let b64 = |png: &[u8]| base64::engine::general_purpose::STANDARD.encode(png);
     let model = c.model.trim();
     let base = c.address();
-    let pictures: Vec<(&str, String)> = std::iter::once(("Screenshot:", b64(q.screenshot)))
-        .chain(q.reference.map(|r| ("Reference picture:", b64(r))))
+    let pictures: Vec<(&str, String)> = std::iter::once(("Screenshot:", b64(q.screenshot.png())))
+        .chain(q.reference.map(|r| ("Reference picture:", b64(r.png()))))
         .collect();
     let expected = expectation(q);
     match c.provider {

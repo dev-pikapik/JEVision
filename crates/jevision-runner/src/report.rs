@@ -276,6 +276,12 @@ pub struct Step {
     /// What the vision model said, for a comparison by meaning.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vision: Option<VisionAnswer>,
+    /// The screenshot exactly as a vision model got it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sent: Option<String>,
+    /// Private areas of [`sent`](Self::sent) were covered before sending.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sent_masked: bool,
     /// Edge an `if` block followed: `then` or `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
@@ -794,11 +800,17 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 }
                 (None, None) => {}
             }
+            let sent = if s.sent_masked {
+                "Sent to the AI model, masked before sending"
+            } else {
+                "Sent to the AI model"
+            };
             let images: Vec<(&str, &String)> = [
                 ("Before", &s.before),
                 ("After", &s.after),
                 ("Expected", &s.expected),
                 ("Differences", &s.diff),
+                (sent, &s.sent),
             ]
             .into_iter()
             .filter_map(|(name, path)| Some((name, path.as_ref()?)))

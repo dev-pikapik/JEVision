@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Environments and secrets — JEVision</title>
+<meta name="description" content="Run one test against staging, production or a local server, and keep passwords out of test files.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html" aria-current="page">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Environments and secrets</h1>
+<p class="lead">Run the same test against staging, production or a local server, and keep passwords and keys out of test files.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#environments">Environments</a></li>
+    <li><a href="#file">The environments file</a></li>
+    <li><a href="#use">Using values in a test</a></li>
+    <li><a href="#choose">Choosing an environment</a></li>
+    <li><a href="#secrets">Secrets</a></li>
+    <li><a href="#secret-order">Where a secret's value comes from</a></li>
+  </ul>
+</nav>
+
+<h2 id="environments">Environments</h2>
+<p>An environment is a named set of values that differ between the places you test: a server address, a user name, a language. Your tests read the values by name, so one test runs anywhere: pick <code>staging</code> today and <code>production</code> tomorrow without changing the test.</p>
+
+<h2 id="file">The environments file</h2>
+<p>Environments live in <code>jevision.environments.json</code> in the project folder, next to the tests, and are committed with them:</p>
+<pre><code>{
+  "format": 1,
+  "default": "staging",
+  "environments": {
+    "production": { "BASE_URL": "https://example.com" },
+    "staging": { "BASE_URL": "https://staging.example.com", "USER": "qa" }
+  }
+}</code></pre>
+<ul>
+  <li><code>format</code> is <code>1</code>.</li>
+  <li><code>environments</code> maps each environment's name to its values. Environment names use letters, digits, <code>-</code> and <code>_</code>. Value names start with a letter or <code>_</code> and use letters, digits and <code>_</code>. Values are text.</li>
+  <li><code>default</code> is optional and must name one of the environments. It is used when you don't choose one.</li>
+</ul>
+<p>JEVision finds the file in the nearest folder at or above the tests that has the file or a <code>.jevision</code> folder.</p>
+<div class="warning">
+  <p><strong>Never put secrets in this file.</strong> It is committed with your tests and everyone with the repository can read it. Use <a href="#secrets">secrets</a> for passwords, tokens and keys.</p>
+</div>
+
+<h2 id="use">Using values in a test</h2>
+<p>Write <code>${env.NAME}</code> where the value should go:</p>
+<pre><code>{ "type": "openFile", "files": ["${env.BASE_URL}/sign-in"], "next": "email" }
+{ "type": "type", "text": "${env.USER}", "into": { "image": "refs/user-field.png" }, "next": "password" }</code></pre>
+<p>Placeholders work in the text of a <code>type</code> block and in the paths and addresses of files a block opens or reads. See <a href="writing-tests.html#placeholders">Placeholders</a>.</p>
+<p>The editor and <code>jevision validate</code> report a name that no environment has as an error, and a name that only some environments have as a warning, listing the environments that lack it.</p>
+
+<h2 id="choose">Choosing an environment</h2>
+<ul>
+  <li><strong>In the app:</strong> pick the environment at the foot of the sidebar or in the Run menu. The choice is kept per project on this Mac. The app starts with the file's <code>default</code> until you choose another one.</li>
+  <li><strong>On the command line:</strong> <code>jevision run tests/ --env staging</code>. Without <code>--env</code>, the file's <code>default</code> is used.</li>
+  <li><strong>For an AI assistant:</strong> the <code>env</code> argument of <a href="mcp.html#run_test"><code>run_test</code></a>.</li>
+  <li><strong>For a schedule:</strong> its <code>environment</code>. See <a href="schedules.html">Schedules</a>.</li>
+</ul>
+<p>Before a run, the app lists the names of values and secrets that are missing, never the values. The report says which environment the run used.</p>
+
+<h2 id="secrets">Secrets</h2>
+<p>A secret is a value that must never be written in a file: a password, a token, a key. A test refers to it by name, as <code>${secret.NAME}</code>:</p>
+<pre><code>{ "type": "type", "text": "${secret.ACME_PASSWORD}", "into": { "image": "refs/password-field.png" } }</code></pre>
+<ul>
+  <li>When you record and type into a password field, JEVision turns what you typed into a secret, saves it in the Keychain and writes only its name in the test.</li>
+  <li>Secret values are never shown, printed or written to reports, where they are masked. AI assistants see only <code>${secret.NAME}</code>.</li>
+  <li>A secret can differ per environment: the app saves it in the Keychain for the environment chosen when you set it.</li>
+</ul>
+
+<h2 id="secret-order">Where a secret's value comes from</h2>
+<p>At run time, JEVision looks for the value of <code>${secret.NAME}</code> in this order and takes the first it finds:</p>
+<ol>
+  <li>the environment variable <code>NAME</code>, which is how CI systems pass secrets;</li>
+  <li>the Keychain item of the chosen environment;</li>
+  <li>the Keychain item shared by all environments.</li>
+</ol>
+<p>The first time <code>jevision</code> reads a Keychain item, macOS may ask whether to allow it. For runs nobody watches, such as <a href="schedules.html">schedules</a> and CI, choose <strong>Always Allow</strong>.</p>
+<pre><code># In CI, pass the secret as an environment variable:
+ACME_PASSWORD="$ACME_PASSWORD" jevision run tests/ --env staging</code></pre>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>
