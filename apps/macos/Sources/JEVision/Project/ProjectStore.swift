@@ -33,6 +33,8 @@ final class ProjectStore {
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
   var isCreatingTest = false
+  /// The command palette (⌘K) is shown.
+  var showsCommandPalette = false
   /// Saved runs, newest first.
   private(set) var runs: [SavedRun] = [] {
     didSet { flaky = flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)) }

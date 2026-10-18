@@ -627,6 +627,106 @@
         }
       }
     },
+    "Add a Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок"
+          }
+        }
+      }
+    },
+    "Add a block after the selected one (Space or ⌘B)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок после выбранного (Пробел или ⌘B)"
+          }
+        }
+      }
+    },
+    "Add an If after the selected block, so the test can take different paths (⇧⌘B)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить «Если» после выбранного блока, чтобы тест мог пойти разными путями (⇧⌘B)"
+          }
+        }
+      }
+    },
+    "add block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "добавить блок"
+          }
+        }
+      }
+    },
+    "Add Block…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок…"
+          }
+        }
+      }
+    },
+    "Add If" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить «Если»"
+          }
+        }
+      }
+    },
+    "Add If After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить «Если» после"
+          }
+        }
+      }
+    },
+    "Add one more way out to the selected If (⇧⌘B)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ещё один выход выбранному «Если» (⇧⌘B)"
+          }
+        }
+      }
+    },
+    "Adds an If after the selected block, so the test can take different paths." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавляет «Если» после выбранного блока, чтобы тест мог пойти разными путями."
+          }
+        }
+      }
+    },
+    "Adds one more way out to the selected If." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавляет ещё один выход выбранному «Если»."
+          }
+        }
+      }
+    },
     "AI" : {
       "localizations" : {
         "ru" : {
@@ -863,16 +963,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить блок после «%@»"
-          }
-        }
-      }
-    },
-    "Add a block after the selected one (Space)" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить блок после выбранного (Пробел)"
           }
         }
       }
@@ -1369,6 +1459,16 @@
         }
       }
     },
+    "Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок"
+          }
+        }
+      }
+    },
     "Block type" : {
       "localizations" : {
         "ru" : {
@@ -1759,6 +1859,16 @@
         }
       }
     },
+    "Checks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверки"
+          }
+        }
+      }
+    },
     "Checks by meaning" : {
       "localizations" : {
         "ru" : {
@@ -1889,6 +1999,16 @@
         }
       }
     },
+    "Chooses the folder that holds your tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбирает папку с вашими тестами."
+          }
+        }
+      }
+    },
     "Choose…" : {
       "localizations" : {
         "ru" : {
@@ -1939,6 +2059,16 @@
         }
       }
     },
+    "Clicks a button or a point" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажимает кнопку или точку"
+          }
+        }
+      }
+    },
     "Clicks an element found by how it looks, or a fixed point in the window." : {
       "localizations" : {
         "ru" : {
@@ -1979,6 +2109,16 @@
         }
       }
     },
+    "Command" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команда"
+          }
+        }
+      }
+    },
     "Command Line" : {
       "localizations" : {
         "ru" : {
@@ -2005,6 +2145,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Командная строка, CI, видео прогонов и другие настройки, которые почти никто не меняет."
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Палитра команд"
+          }
+        }
+      }
+    },
+    "Command Palette…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Палитра команд…"
+          }
+        }
+      }
+    },
+    "Commands" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команды"
           }
         }
       }
@@ -2055,6 +2225,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Коммит изменений в «%@»"
+          }
+        }
+      }
+    },
+    "Commit Changes…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит изменений…"
           }
         }
       }
@@ -2155,6 +2335,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Условие %lld"
+          }
+        }
+      }
+    },
+    "Conditions and Loops" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия и циклы"
           }
         }
       }
@@ -2409,6 +2599,16 @@
         }
       }
     },
+    "Creates an empty test or one to record." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаёт пустой тест или тест для записи."
+          }
+        }
+      }
+    },
     "Creating the pull request…" : {
       "localizations" : {
         "ru" : {
@@ -2495,6 +2695,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Строки данных: строка %lld"
+          }
+        }
+      }
+    },
+    "debug" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "отладка"
           }
         }
       }
@@ -2635,6 +2845,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Различия: изменённое выделено красным"
+          }
+        }
+      }
+    },
+    "Disconnect" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отсоединить"
+          }
+        }
+      }
+    },
+    "Disconnect Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отсоединить блок"
           }
         }
       }
@@ -3069,6 +3299,16 @@
         }
       }
     },
+    "Fails unless the screen matches" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Падает, если экран не совпал"
+          }
+        }
+      }
+    },
     "Field" : {
       "localizations" : {
         "ru" : {
@@ -3309,12 +3549,42 @@
         }
       }
     },
+    "Gets the latest commits from the server." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получает свежие коммиты с сервера."
+          }
+        }
+      }
+    },
     "Git and GitHub" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Git и GitHub"
+          }
+        }
+      }
+    },
+    "git github review" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git github ревью"
+          }
+        }
+      }
+    },
+    "git github review propose" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git github ревью предложить"
           }
         }
       }
@@ -3349,12 +3619,42 @@
         }
       }
     },
+    "git save version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git сохранить версия"
+          }
+        }
+      }
+    },
     "Git saves your name and email with each commit. They’re remembered for all your projects." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Git сохраняет имя и email в каждом коммите. Они запомнятся для всех ваших проектов."
+          }
+        }
+      }
+    },
+    "git update download" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git обновить скачать"
+          }
+        }
+      }
+    },
+    "git upload send" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git загрузить отправить"
           }
         }
       }
@@ -3525,6 +3825,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Если на экране %@"
+          }
+        }
+      }
+    },
+    "if condition branch scenario path" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "если условие ветка сценарий путь"
           }
         }
       }
@@ -3942,12 +4252,42 @@
         }
       }
     },
+    "Launches an app" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает приложение"
+          }
+        }
+      }
+    },
     "Launches an app and brings it to the front." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускает приложение и выводит его на передний план."
+          }
+        }
+      }
+    },
+    "layout tidy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "раскладка порядок"
+          }
+        }
+      }
+    },
+    "Lays the blocks out neatly again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снова аккуратно расставляет блоки."
           }
         }
       }
@@ -4038,16 +4378,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь к шагу %lld, %@. Выберите другой блок стрелками, затем нажмите Return, чтобы связать, или Escape, чтобы отменить."
-          }
-        }
-      }
-    },
-    "Logic" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Логика"
           }
         }
       }
@@ -4812,6 +5142,16 @@
         }
       }
     },
+    "Open Last Report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть последний отчёт"
+          }
+        }
+      }
+    },
     "Open Permissions" : {
       "localizations" : {
         "ru" : {
@@ -4848,6 +5188,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "open test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "открыть тест"
           }
         }
       }
@@ -4938,6 +5288,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте папку с тестами, чтобы увидеть её пул-реквесты."
+          }
+        }
+      }
+    },
+    "Opens a file or a web page" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает файл или веб-страницу"
           }
         }
       }
@@ -5222,6 +5582,16 @@
         }
       }
     },
+    "Pauses after every block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Останавливается после каждого блока."
+          }
+        }
+      }
+    },
     "Permission" : {
       "localizations" : {
         "ru" : {
@@ -5242,6 +5612,16 @@
         }
       }
     },
+    "Permissions, AI, Git, iPhone and more." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения, ИИ, Git, iPhone и другое."
+          }
+        }
+      }
+    },
     "Pick an app, press Start Recording and use it as usual. You can fine-tune the steps later." : {
       "localizations" : {
         "ru" : {
@@ -5258,6 +5638,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Положение"
+          }
+        }
+      }
+    },
+    "preferences options" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "параметры опции"
           }
         }
       }
@@ -5322,6 +5712,16 @@
         }
       }
     },
+    "Presses a key combination" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажимает сочетание клавиш"
+          }
+        }
+      }
+    },
     "Presses one key combination." : {
       "localizations" : {
         "ru" : {
@@ -5368,6 +5768,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Предложите изменения из своей ветки или посмотрите, что предлагают другие."
+          }
+        }
+      }
+    },
+    "Proposes your branch’s changes on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предлагает изменения вашей ветки на GitHub."
           }
         }
       }
@@ -5622,6 +6032,16 @@
         }
       }
     },
+    "Records steps by using the app." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записывает шаги, пока вы работаете в приложении."
+          }
+        }
+      }
+    },
     "Redo" : {
       "localizations" : {
         "ru" : {
@@ -5762,6 +6182,16 @@
         }
       }
     },
+    "Removes the links into and out of the selected block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убирает связи, ведущие в выбранный блок и из него."
+          }
+        }
+      }
+    },
     "Rename" : {
       "localizations" : {
         "ru" : {
@@ -5818,6 +6248,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Повтор"
+          }
+        }
+      }
+    },
+    "Repeats the steps for each table row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторяет шаги для каждой строки таблицы"
+          }
+        }
+      }
+    },
+    "Repeats the steps inside" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторяет шаги внутри"
           }
         }
       }
@@ -5962,6 +6412,16 @@
         }
       }
     },
+    "result failure screenshot reference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "результат ошибка снимок эталон"
+          }
+        }
+      }
+    },
     "Resume" : {
       "localizations" : {
         "ru" : {
@@ -5998,6 +6458,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Повторы: как в тесте (%u)"
+          }
+        }
+      }
+    },
+    "Return adds after the selected block. Drag a block onto the canvas to place it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Return добавляет после выбранного блока. Перетащите блок на холст, чтобы поставить его в нужное место."
           }
         }
       }
@@ -6292,6 +6762,16 @@
         }
       }
     },
+    "Runs another test as one step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает другой тест как один шаг"
+          }
+        }
+      }
+    },
     "Runs are saved in the .jevision folder of the project. Keep them out of git?" : {
       "localizations" : {
         "ru" : {
@@ -6308,6 +6788,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускает все тесты открытого проекта и сохраняет результаты в отчёты JUnit XML и HTML."
+          }
+        }
+      }
+    },
+    "Runs every test of the project in turn." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает все тесты проекта по очереди."
+          }
+        }
+      }
+    },
+    "Runs tests by themselves at set times." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает тесты сам в заданное время."
           }
         }
       }
@@ -6332,6 +6832,26 @@
         }
       }
     },
+    "Runs the open test from the start." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает открытый тест с начала."
+          }
+        }
+      }
+    },
+    "Runs the test starting at the selected block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает тест начиная с выбранного блока."
+          }
+        }
+      }
+    },
     "Same by %@" : {
       "localizations" : {
         "ru" : {
@@ -6352,6 +6872,16 @@
         }
       }
     },
+    "Save a version of the changed tests (⌥⌘C)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить версию изменённых тестов (⌥⌘C)"
+          }
+        }
+      }
+    },
     "Save it in the repository as .github/workflows/ui-tests.yml. GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names." : {
       "localizations" : {
         "ru" : {
@@ -6368,6 +6898,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить отчёт одним HTML-файлом со снимками или в формате JUnit XML для CI"
+          }
+        }
+      }
+    },
+    "Saves a version of the changed tests in Git." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняет версию изменённых тестов в Git."
           }
         }
       }
@@ -6442,6 +6982,16 @@
         }
       }
     },
+    "Search" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск"
+          }
+        }
+      }
+    },
     "Search apps" : {
       "localizations" : {
         "ru" : {
@@ -6458,6 +7008,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поиск блоков"
+          }
+        }
+      }
+    },
+    "Search commands, blocks and tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск команд, блоков и тестов"
           }
         }
       }
@@ -6592,6 +7152,16 @@
         }
       }
     },
+    "Sends your commits to the server." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляет ваши коммиты на сервер."
+          }
+        }
+      }
+    },
     "Set" : {
       "localizations" : {
         "ru" : {
@@ -6642,6 +7212,16 @@
         }
       }
     },
+    "Settings…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки…"
+          }
+        }
+      }
+    },
     "Set…" : {
       "localizations" : {
         "ru" : {
@@ -6652,12 +7232,32 @@
         }
       }
     },
+    "Shortcut %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сочетание клавиш %@"
+          }
+        }
+      }
+    },
     "Show" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать"
+          }
+        }
+      }
+    },
+    "Show Failed Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать упавший блок"
           }
         }
       }
@@ -6752,6 +7352,26 @@
         }
       }
     },
+    "Shows how the last run of the open test went." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает, как прошёл последний запуск открытого теста."
+          }
+        }
+      }
+    },
+    "Shows how the tests use each other." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает, как тесты используют друг друга."
+          }
+        }
+      }
+    },
     "Shows the moment this step began" : {
       "localizations" : {
         "ru" : {
@@ -6768,6 +7388,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показывает название, приложение, секреты и повторы теста."
+          }
+        }
+      }
+    },
+    "Shows the pull requests on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает пул-реквесты на GitHub."
           }
         }
       }
@@ -6898,6 +7528,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стандартный"
+          }
+        }
+      }
+    },
+    "start play test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "старт пуск тест"
           }
         }
       }
@@ -7042,6 +7682,16 @@
         }
       }
     },
+    "Sub-Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтесты"
+          }
+        }
+      }
+    },
     "Switching branches…" : {
       "localizations" : {
         "ru" : {
@@ -7078,6 +7728,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выбирает путь в зависимости от того, с каким эталоном совпадает экран."
+          }
+        }
+      }
+    },
+    "Takes a path by what’s on screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбирает путь по тому, что на экране"
           }
         }
       }
@@ -8002,6 +8662,16 @@
         }
       }
     },
+    "timer nightly" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "таймер ночной"
+          }
+        }
+      }
+    },
     "Times" : {
       "localizations" : {
         "ru" : {
@@ -8162,6 +8832,16 @@
         }
       }
     },
+    "Types text into a field" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вводит текст в поле"
+          }
+        }
+      }
+    },
     "Types text, optionally clicking into a field first." : {
       "localizations" : {
         "ru" : {
@@ -8218,6 +8898,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Неизвестная проблема: %@"
+          }
+        }
+      }
+    },
+    "unlink link arrow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "отвязать связь стрелка"
           }
         }
       }
@@ -8402,16 +9092,6 @@
         }
       }
     },
-    "Wait and Check" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ожидание и проверки"
-          }
-        }
-      }
-    },
     "Wait for the new screen" : {
       "localizations" : {
         "ru" : {
@@ -8432,12 +9112,32 @@
         }
       }
     },
+    "Waiting" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидание"
+          }
+        }
+      }
+    },
     "Waiting for the answer…" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждём ответа…"
+          }
+        }
+      }
+    },
+    "Waits for the screen to change" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт, пока экран изменится"
           }
         }
       }

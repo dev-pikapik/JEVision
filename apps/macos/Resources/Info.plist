@@ -41,6 +41,19 @@
   <string>MIT License</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>io.github.dev-pikapik.jevision.block</string>
+      <key>UTTypeDescription</key>
+      <string>JEVision block</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+      </array>
+    </dict>
+  </array>
   <key>SUFeedURL</key>
   <string>https://dev-pikapik.github.io/JEVision/appcast.xml</string>
 </dict>
