@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use jevision_core::{DataError, DataTable, Environments};
+use jevision_core::{AddEnvironmentError, DataError, DataTable, Environments};
 
 use crate::{DataRowRange, Flow, Issue};
 
@@ -48,6 +48,75 @@ fn load(project: &str) -> Result<Environments, EnvironmentsError> {
         file: jevision_core::ENVIRONMENTS_FILE.to_owned(),
         reason,
     })
+}
+
+/// Why an environment can't be added to a project.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum NewEnvironmentError {
+    #[error("\"{name}\" isn't a valid environment name; use letters, digits, - and _")]
+    InvalidName { name: String },
+    #[error("there's an environment \"{name}\" already")]
+    Taken { name: String },
+    #[error(
+        "\"{name}\" isn't a valid value name; use letters, digits and _, not starting with a digit"
+    )]
+    InvalidValueName { name: String },
+    #[error("{file} can't be read: {reason}")]
+    Unreadable { file: String, reason: String },
+    #[error("{file} can't be saved: {reason}")]
+    Unwritable { file: String, reason: String },
+}
+
+fn new_environment_error(name: &str, error: AddEnvironmentError) -> NewEnvironmentError {
+    let file = jevision_core::ENVIRONMENTS_FILE.to_owned();
+    match error {
+        AddEnvironmentError::InvalidName => NewEnvironmentError::InvalidName {
+            name: name.to_owned(),
+        },
+        AddEnvironmentError::Taken => NewEnvironmentError::Taken {
+            name: name.to_owned(),
+        },
+        AddEnvironmentError::InvalidValueName(name) => {
+            NewEnvironmentError::InvalidValueName { name }
+        }
+        AddEnvironmentError::Unreadable(reason) => NewEnvironmentError::Unreadable { file, reason },
+        AddEnvironmentError::Unwritable(reason) => NewEnvironmentError::Unwritable { file, reason },
+    }
+}
+
+/// What keeps an environment `name` with values named `value_names` from being added to the
+/// project folder `project`; `None` when nothing does.
+#[uniffi::export]
+pub fn new_environment_problem(
+    project: String,
+    name: String,
+    value_names: Vec<String>,
+) -> Option<NewEnvironmentError> {
+    let current = match Environments::load(Path::new(&project)) {
+        Ok(current) => current,
+        Err(reason) => {
+            return Some(new_environment_error(
+                &name,
+                AddEnvironmentError::Unreadable(reason),
+            ));
+        }
+    };
+    current
+        .check_new(&name, value_names.iter().map(String::as_str))
+        .err()
+        .map(|error| new_environment_error(&name, error))
+}
+
+/// Adds the environment `name` with `values` to the environments file of the project folder
+/// `project`, writing the file when there is none.
+#[uniffi::export]
+pub fn add_environment(
+    project: String,
+    name: String,
+    values: HashMap<String, String>,
+) -> Result<(), NewEnvironmentError> {
+    Environments::add(Path::new(&project), &name, values.into_iter().collect())
+        .map_err(|error| new_environment_error(&name, error))
 }
 
 /// Name of the environments file in a project folder.

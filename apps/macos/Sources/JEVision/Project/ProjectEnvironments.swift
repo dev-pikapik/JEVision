@@ -46,14 +46,23 @@ final class ProjectEnvironments {
     reload()
   }
 
-  /// Opens the environments file, first writing an example one if the project has none.
-  func edit() throws {
+  /// Opens the environments file in the app that edits JSON.
+  func edit() {
     guard let file else { return }
-    if !FileManager.default.fileExists(atPath: file.path) {
-      try Self.example.write(to: file, atomically: true, encoding: .utf8)
-      reload()
-    }
     NSWorkspace.shared.open(file)
+  }
+
+  /// What keeps an environment `name` with values named `valueNames` from joining the project's.
+  func problem(adding name: String, valueNames: [String]) -> NewEnvironmentError? {
+    guard let project else { return nil }
+    return newEnvironmentProblem(project: project.path(percentEncoded: false), name: name, valueNames: valueNames)
+  }
+
+  /// Adds the environment `name` with `values` to the project's environments file.
+  func add(_ name: String, values: [String: String]) throws {
+    guard let project else { return }
+    try addEnvironment(project: project.path(percentEncoded: false), name: name, values: values)
+    reload()
   }
 
   /// Names of every value the environments have, for inserting into a test.
@@ -81,21 +90,6 @@ final class ProjectEnvironments {
       return Snapshot(problem: error.localizedDescription)
     }
   }
-
-  static let example = """
-    {
-      "format": 1,
-      "environments": {
-        "production": {
-          "BASE_URL": "https://example.com"
-        },
-        "staging": {
-          "BASE_URL": "https://staging.example.com"
-        }
-      }
-    }
-
-    """
 }
 
 /// What keeps a run in the chosen environment from finding a value the test reads. Values are

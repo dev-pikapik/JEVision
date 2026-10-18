@@ -33,7 +33,6 @@ final class RecordCenter {
   @ObservationIgnored private(set) var app = ""
   @ObservationIgnored private var panel: GlassPanel?
   @ObservationIgnored private var areaPicker: AreaPicker?
-  @ObservationIgnored private var hiddenWindows: [NSWindow] = []
   @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
   var isRecording: Bool { recording != nil }
@@ -95,10 +94,8 @@ final class RecordCenter {
       configuration.activates = true
       NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
-    for window in NSApp.windows where window.isVisible && !(window is NSPanel) {
-      window.orderOut(nil)
-      hiddenWindows.append(window)
-    }
+    // Hidden rather than windowless, as for a run: see `RunCenter.getOutOfTheWay`.
+    NSApp.hide(nil)
     let panel = GlassPanel(RecordHUD(center: self), width: RecordHUD.width)
     self.panel = panel
     panel.show()
@@ -152,8 +149,7 @@ final class RecordCenter {
     notice = nil
     panel?.close()
     panel = nil
-    for window in hiddenWindows { window.orderFront(nil) }
-    hiddenWindows = []
+    NSApp.unhideWithoutActivation()
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.activates = true
     NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)

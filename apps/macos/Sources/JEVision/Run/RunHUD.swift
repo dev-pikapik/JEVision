@@ -23,6 +23,8 @@ final class GlassPanel {
     panel.backgroundColor = .clear
     panel.hasShadow = false
     panel.hidesOnDeactivate = false
+    // Stays while JEVision hides for a run or a recording.
+    panel.canHide = false
     panel.isReleasedWhenClosed = false
     panel.contentView = view
   }

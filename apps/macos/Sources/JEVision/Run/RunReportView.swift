@@ -216,14 +216,14 @@ private struct ReportHeader: View {
       Image(systemName: status.symbol)
         .font(.system(size: 34))
         .foregroundStyle(status.color)
-        .accessibilityHidden(true)
+        .accessibilityLabel(Text(status.title))
       VStack(alignment: .leading, spacing: 6) {
-        Text(headline)
+        // Selectable text is read by its value, so a label of its own would be read as well.
+        Text(RunText.heading(headline))
           .font(.title2.weight(.semibold))
           .textSelection(.enabled)
           .fixedSize(horizontal: false, vertical: true)
           .accessibilityAddTraits(.isHeader)
-          .accessibilityLabel(Text("\(status.title): \(headline)"))
         Text(meta(report))
           .foregroundStyle(.secondary)
         if report.verdict == .failed, let verdict {

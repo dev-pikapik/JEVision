@@ -138,6 +138,11 @@ enum RunText {
       : String(localized: "\(result.title) finished. \(summary)")
   }
 
+  /// `sentence` as a heading: headings don't end with a period, as the other ones in reports.
+  static func heading(_ sentence: String) -> String {
+    sentence.hasSuffix(".") && !sentence.hasSuffix("..") ? String(sentence.dropLast()) : sentence
+  }
+
   static func outcome(_ report: RunReport) -> String {
     switch report.verdict {
     case .cancelled:

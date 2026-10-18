@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::{fs, io};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::issue::Issue;
 use crate::model::Flow;
@@ -31,11 +31,11 @@ pub struct Environments {
     pub default: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct File {
     format: u32,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     default: Option<String>,
     environments: BTreeMap<String, EnvironmentValues>,
 }
@@ -104,6 +104,66 @@ impl Environments {
     pub fn get(&self, name: &str) -> Option<&EnvironmentValues> {
         self.all.get(name)
     }
+
+    /// Why an environment `name` with values named `values` can't join these; `Ok` when it can.
+    pub fn check_new<'a>(
+        &self,
+        name: &str,
+        values: impl IntoIterator<Item = &'a str>,
+    ) -> Result<(), AddEnvironmentError> {
+        if !is_environment_name(name) {
+            return Err(AddEnvironmentError::InvalidName);
+        }
+        if self
+            .all
+            .keys()
+            .any(|taken| taken.eq_ignore_ascii_case(name))
+        {
+            return Err(AddEnvironmentError::Taken);
+        }
+        match values.into_iter().find(|value| !is_identifier(value)) {
+            Some(bad) => Err(AddEnvironmentError::InvalidValueName(bad.to_owned())),
+            None => Ok(()),
+        }
+    }
+
+    /// Adds the environment `name` with `values` to the environments file of the project
+    /// folder `project`, writing the file when there is none. The file is read again first, so
+    /// changes made to it meanwhile stay.
+    pub fn add(
+        project: &Path,
+        name: &str,
+        values: EnvironmentValues,
+    ) -> Result<(), AddEnvironmentError> {
+        let path = project.join(ENVIRONMENTS_FILE);
+        let current = Self::load(project).map_err(AddEnvironmentError::Unreadable)?;
+        current.check_new(name, values.keys().map(String::as_str))?;
+        let mut file = File {
+            format: ENVIRONMENTS_FORMAT,
+            default: current.default,
+            environments: current.all,
+        };
+        file.environments.insert(name.to_owned(), values);
+        let mut text = serde_json::to_string_pretty(&file)
+            .map_err(|e| AddEnvironmentError::Unwritable(e.to_string()))?;
+        text.push('\n');
+        fs::write(path, text).map_err(|e| AddEnvironmentError::Unwritable(e.to_string()))
+    }
+}
+
+/// Why an environment can't be added.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AddEnvironmentError {
+    /// Empty, too long, or with characters other than letters, digits, `-` and `_`.
+    InvalidName,
+    /// The project has an environment of that name, in any case, already.
+    Taken,
+    /// A value name that isn't letters, digits and `_`, not starting with a digit.
+    InvalidValueName(String),
+    /// The environments file is there but can't be read.
+    Unreadable(String),
+    /// The environments file can't be saved.
+    Unwritable(String),
 }
 
 /// Names of the environment values the test reads through `${env.NAME}`, sorted, without
@@ -289,6 +349,59 @@ mod tests {
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].code, "flow.environments.invalid");
         for dir in [dir, bare, broken] {
+            fs::remove_dir_all(dir).unwrap();
+        }
+    }
+
+    #[test]
+    fn environments_are_added_to_the_file_or_refused() {
+        let dir = project(None);
+        let values = |pairs: &[(&str, &str)]| -> EnvironmentValues {
+            pairs
+                .iter()
+                .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+                .collect()
+        };
+        Environments::add(&dir, "staging", values(&[("HOST", "s.example.com")])).unwrap();
+        Environments::add(&dir, "dev", EnvironmentValues::new()).unwrap();
+        let text = fs::read_to_string(dir.join(ENVIRONMENTS_FILE)).unwrap();
+        assert!(text.starts_with("{\n  \"format\": 1,\n"), "{text}");
+        assert!(text.ends_with("}\n"));
+        let envs = Environments::load(&dir).unwrap();
+        assert_eq!(envs.all.keys().collect::<Vec<_>>(), ["dev", "staging"]);
+        assert_eq!(envs.get("staging").unwrap()["HOST"], "s.example.com");
+
+        let refused = |name: &str, value: &str| {
+            Environments::add(&dir, name, values(&[(value, "v")])).unwrap_err()
+        };
+        assert_eq!(refused("Staging", "X"), AddEnvironmentError::Taken);
+        assert_eq!(refused("st age", "X"), AddEnvironmentError::InvalidName);
+        assert_eq!(refused("", "X"), AddEnvironmentError::InvalidName);
+        assert_eq!(
+            refused("prod", "1X"),
+            AddEnvironmentError::InvalidValueName("1X".to_owned())
+        );
+        assert_eq!(Environments::load(&dir).unwrap().all.len(), 2);
+
+        // A default the file names is kept; a broken file isn't overwritten.
+        let named = project(Some(
+            r#"{"format":1,"default":"dev","environments":{"dev":{}}}"#,
+        ));
+        Environments::add(&named, "prod", EnvironmentValues::new()).unwrap();
+        assert_eq!(
+            Environments::load(&named).unwrap().default.as_deref(),
+            Some("dev")
+        );
+        let broken = project(Some("{"));
+        assert!(matches!(
+            Environments::add(&broken, "prod", EnvironmentValues::new()),
+            Err(AddEnvironmentError::Unreadable(_))
+        ));
+        assert_eq!(
+            fs::read_to_string(broken.join(ENVIRONMENTS_FILE)).unwrap(),
+            "{"
+        );
+        for dir in [dir, named, broken] {
             fs::remove_dir_all(dir).unwrap();
         }
     }

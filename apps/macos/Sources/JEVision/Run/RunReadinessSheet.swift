@@ -8,7 +8,8 @@ struct RunReadinessSheet: View {
   @Environment(ProjectStore.self) private var project
   let request: RunCenter.Request
   @State private var settingSecret: SecretName?
-  /// Bumped after a secret is saved, to check again.
+  @State private var addingEnvironment = false
+  /// Bumped after a secret or an environment is saved, to check again.
   @State private var secretsVersion = 0
 
   var body: some View {
@@ -18,8 +19,15 @@ struct RunReadinessSheet: View {
     let ready = missing.permissions.isEmpty && values.isEmpty && missing.errors == 0
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 4) {
-        Text("Before the test can run")
-          .font(.title3.weight(.semibold))
+        Group {
+          // Every test a batch has yet to run waits for this one.
+          if let batch = runs.batch, !batch.queue.isEmpty {
+            Text("Before \(batch.queue.count + 1) tests can run")
+          } else {
+            Text("Before the test can run")
+          }
+        }
+        .font(.title3.weight(.semibold))
         Text("JEVision needs a few things to drive this Mac for you.")
           .foregroundStyle(.secondary)
       }
@@ -38,7 +46,7 @@ struct RunReadinessSheet: View {
             } icon: {
               Image(systemName: "exclamationmark.octagon.fill").foregroundStyle(.red)
             }
-            Button("Edit Environments…", action: editEnvironments)
+            Button("Edit Environments…") { project.environments.edit() }
           }
         } else if !values.values.isEmpty {
           Section {
@@ -49,7 +57,11 @@ struct RunReadinessSheet: View {
                 Image(systemName: "server.rack").foregroundStyle(.orange)
               }
             }
-            Button("Edit Environments…", action: editEnvironments)
+            if values.environment == nil {
+              Button("Add Environment…") { addingEnvironment = true }
+            } else {
+              Button("Edit Environments…") { project.environments.edit() }
+            }
           } header: {
             Text("Environment Values")
           } footer: {
@@ -57,7 +69,7 @@ struct RunReadinessSheet: View {
               if let environment = values.environment {
                 Text("The environment \(environment) has no value for these names. Add them to \(environmentsFileName()).")
               } else {
-                Text("The test reads these values from an environment, and the project has none. Add environments to \(environmentsFileName()).")
+                Text("The test reads these values from an environment, and the project has none yet.")
               }
             }
             .foregroundStyle(.secondary)
@@ -118,9 +130,8 @@ struct RunReadinessSheet: View {
     .sheet(item: $settingSecret) { secret in
       SetSecretSheet(name: secret.id, environment: missing.values.environment) { secretsVersion += 1 }
     }
-  }
-
-  private func editEnvironments() {
-    try? project.environments.edit()
+    .sheet(isPresented: $addingEnvironment, onDismiss: { secretsVersion += 1 }) {
+      AddEnvironmentSheet(valueNames: values.values)
+    }
   }
 }

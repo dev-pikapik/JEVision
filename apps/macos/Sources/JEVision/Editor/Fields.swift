@@ -48,6 +48,8 @@ struct FilePathField: View {
   @Binding var path: String
   let types: [UTType]
   let context: FieldContext
+  /// Whether a dark-mode variant of the file, such as `inbox.dark.png`, counts as the file.
+  var appearanceVariants = false
 
   private var url: URL { RelativePath.resolve(path, in: context.folder) }
   private var isWebAddress: Bool { path.hasPrefix("http://") || path.hasPrefix("https://") }
@@ -66,7 +68,7 @@ struct FilePathField: View {
       label
     }
     if !path.isEmpty, !isWebAddress, path.first != "/" {
-      if !FileManager.default.fileExists(atPath: url.path) {
+      if AppearanceImage.url(path, in: context.folder, dark: false, variants: appearanceVariants) == nil {
         Warning(text: Text("There’s no such file next to the test."))
       } else if let root = context.projectRoot, !RelativePath.isInside(url, folder: root) {
         Warning(text: Text("This file is outside the project, so other people won’t get it with the tests."))
@@ -95,13 +97,30 @@ private struct Warning: View {
   }
 }
 
+/// The file of an image for the light or dark appearance, as runs choose it: the dark variant
+/// in dark mode if there is one, else the image itself.
+enum AppearanceImage {
+  /// The file for `dark` mode, or `nil` if neither is there. With `variants`, the other
+  /// appearance's file stands in when this one's is missing, as for a reference saved only in
+  /// one appearance.
+  static func url(_ path: String, in folder: URL, dark: Bool, variants: Bool = false) -> URL? {
+    guard !path.isEmpty else { return nil }
+    let (light, darkFile) = (path, referenceDarkVariant(image: path))
+    let order = dark ? [darkFile, light] : variants ? [light, darkFile] : [light]
+    return order.map { RelativePath.resolve($0, in: folder) }.first { FileManager.default.fileExists(atPath: $0.path) }
+  }
+}
+
 /// A picture of the chosen image, so it's clear what the block looks for.
 struct ImagePreview: View {
   let path: String
   let context: FieldContext
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    if !path.isEmpty, let image = NSImage(contentsOf: RelativePath.resolve(path, in: context.folder)) {
+    if let url = AppearanceImage.url(path, in: context.folder, dark: colorScheme == .dark),
+      let image = NSImage(contentsOf: url)
+    {
       Image(nsImage: image)
         .resizable()
         .scaledToFit()
@@ -270,6 +289,7 @@ struct ReferenceEditor: View {
   @State private var isEditing = false
   @State private var picture: ReferencePicture?
   @Environment(ProjectStore.self) private var project
+  @Environment(\.colorScheme) private var colorScheme
 
   private enum Mode: Hashable { case exact, similar, meaning }
 
@@ -308,18 +328,20 @@ struct ReferenceEditor: View {
   }
 
   var body: some View {
-    FilePathField(label: Text("Reference Image"), path: $reference.image, types: [.png], context: context)
+    FilePathField(
+      label: Text("Reference Image"), path: $reference.image, types: [.png], context: context, appearanceVariants: true)
     IssueList(issues: context.issues(field + ".image"))
     ReferenceThumbnail(picture: picture, reference: reference) { isEditing = true }
     LabeledContent {
-      Button("Edit Reference…") { isEditing = true }
+      // Without an image the editor captures or chooses one first.
+      Button(reference.image.isEmpty ? "Add Reference…" : "Edit Reference…") { isEditing = true }
         .sheet(isPresented: $isEditing) { ReferenceAreaEditor(reference: $reference, field: field, context: context) }
     } label: {
-      AreaLegend(reference: reference)
+      if !reference.image.isEmpty { AreaLegend(reference: reference) }
     }
-    .task(id: "\(reference.image)#\(context.folder.path)#\(project.referenceChanges)") {
-      picture = reference.image.isEmpty
-        ? nil : ReferencePicture(url: RelativePath.resolve(reference.image, in: context.folder))
+    .task(id: "\(reference.image)#\(context.folder.path)#\(project.referenceChanges)#\(colorScheme)") {
+      picture = AppearanceImage.url(reference.image, in: context.folder, dark: colorScheme == .dark, variants: true)
+        .flatMap(ReferencePicture.init(url:))
     }
     IssueList(issues: context.issues(field + ".area") + context.issues(field + ".ignore") + context.issues(field + ".hide"))
     Picker(selection: mode) {

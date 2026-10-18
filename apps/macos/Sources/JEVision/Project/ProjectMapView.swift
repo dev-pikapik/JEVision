@@ -24,6 +24,7 @@ struct ProjectMapView: View {
               .foregroundStyle(.secondary)
               .lineLimit(1)
               .accessibilityAddTraits(.isHeader)
+              .anchorPreference(key: CardBounds.self, value: .bounds) { [ProjectMap.labelKey(group.id): $0] }
             ForEach(group.tests) { test in
               let info = map[test.id]
               MapCard(
@@ -106,7 +107,12 @@ enum ProjectMap {
   struct Link: Equatable {
     let from: CGRect
     let to: CGRect
+    /// Where the arrow runs, around the cards and folder titles between the two.
+    let points: [CGPoint]
   }
+
+  /// The key of a folder title among the cards' frames: arrows go around it too.
+  static func labelKey(_ folder: String) -> String { "folder:" + folder }
 
   /// A frame per folder that holds tests itself, in sidebar order: the project's own tests first.
   static func groups(_ items: [ProjectItem], rootTitle: String) -> [Group] {
@@ -136,15 +142,23 @@ enum ProjectMap {
     return usedBy
   }
 
-  /// An arrow from each test to each test it runs, between the cards' frames.
+  /// An arrow from each test to each test it runs, between the cards' frames. `bounds` also
+  /// holds the frames of the folder titles.
   static func links(_ map: [String: MapTest], bounds: [String: CGRect]) -> [Link] {
-    map.keys.sorted().flatMap { file -> [Link] in
+    let keys = bounds.keys.sorted()
+    return map.keys.sorted().flatMap { file -> [Link] in
       guard let from = bounds[file], let test = map[file] else { return [] }
       return test.uses.compactMap { used in
         guard used != file, let to = bounds[used] else { return nil }
-        return Link(from: from, to: to)
+        let others = keys.filter { $0 != file && $0 != used }.compactMap { bounds[$0].map(rect) }
+        let points = mapLinkRoute(from: rect(from), to: rect(to), others: others).map { CGPoint(x: $0.x, y: $0.y) }
+        return Link(from: from, to: to, points: points)
       }
     }
+  }
+
+  private static func rect(_ r: CGRect) -> Rect {
+    Rect(x: r.minX, y: r.minY, width: r.width, height: r.height)
   }
 }
 
@@ -164,36 +178,29 @@ private struct DashedLine: Shape {
   }
 }
 
-/// Dashed arrows from a card to the cards of the tests it runs: side to side between frames,
-/// around the right side within one.
+/// Dashed arrows from a card to the cards of the tests it runs, in straight runs with rounded
+/// turns that go around the other cards.
 private struct UsesArrows: View {
   let links: [ProjectMap.Link]
 
   var body: some View {
     Canvas { context, _ in
       for link in links {
-        let (a, b) = (link.from, link.to)
-        let start: CGPoint
-        let end: CGPoint
-        let out: CGFloat
-        let into: CGFloat
-        if b.minX >= a.maxX {
-          (start, end) = (CGPoint(x: a.maxX, y: a.midY), CGPoint(x: b.minX, y: b.midY))
-          (out, into) = (max(30, (end.x - start.x) / 2), max(30, (end.x - start.x) / 2))
-        } else if b.maxX <= a.minX {
-          (start, end) = (CGPoint(x: a.minX, y: a.midY), CGPoint(x: b.maxX, y: b.midY))
-          (out, into) = (-max(30, (start.x - end.x) / 2), -max(30, (start.x - end.x) / 2))
-        } else {
-          (start, end) = (CGPoint(x: a.maxX, y: a.midY), CGPoint(x: b.maxX, y: b.midY))
-          (out, into) = (36, -36)
+        let points = link.points
+        guard points.count > 1, let end = points.last else { continue }
+        var line = Path()
+        line.move(to: points[0])
+        for i in 1..<points.count - 1 {
+          let (before, corner, after) = (points[i - 1], points[i], points[i + 1])
+          // Short runs get a tighter turn, so two turns never overlap.
+          let room = min(hypot(corner.x - before.x, corner.y - before.y), hypot(after.x - corner.x, after.y - corner.y))
+          line.addArc(tangent1End: corner, tangent2End: after, radius: min(8, room / 2))
         }
-        let control2 = CGPoint(x: end.x - into, y: end.y)
-        var curve = Path()
-        curve.move(to: start)
-        curve.addCurve(to: end, control1: CGPoint(x: start.x + out, y: start.y), control2: control2)
-        context.stroke(curve, with: .color(.secondary), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-        // The head points the way the curve arrives.
-        let angle = atan2(end.y - control2.y, end.x - control2.x)
+        line.addLine(to: end)
+        context.stroke(line, with: .color(.secondary), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        // The head points the way the last run arrives.
+        let last = points[points.count - 2]
+        let angle = atan2(end.y - last.y, end.x - last.x)
         var head = Path()
         head.move(to: end)
         head.addLine(to: CGPoint(x: end.x - 8 * cos(angle - 0.45), y: end.y - 8 * sin(angle - 0.45)))

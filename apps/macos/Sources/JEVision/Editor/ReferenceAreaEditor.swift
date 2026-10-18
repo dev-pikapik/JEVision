@@ -210,8 +210,13 @@ struct ReferenceAreaEditor: View {
     _reference = reference
     self.field = field
     self.context = context
+    // Opens on the picture for the app's appearance, or on the one there is.
     let image = reference.wrappedValue.image
-    _picture = State(initialValue: image.isEmpty ? nil : ReferencePicture(url: RelativePath.resolve(image, in: context.folder)))
+    let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    let url = AppearanceImage.url(image, in: context.folder, dark: dark, variants: true)
+    let isDark = url != nil && url == RelativePath.resolve(referenceDarkVariant(image: image), in: context.folder)
+    _appearance = State(initialValue: isDark ? .dark : .light)
+    _picture = State(initialValue: url.flatMap(ReferencePicture.init(url:)))
   }
 
   var body: some View {

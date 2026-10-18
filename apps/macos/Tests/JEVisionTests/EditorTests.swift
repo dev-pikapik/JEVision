@@ -76,6 +76,27 @@ struct RelativePathTests {
     #expect(!RelativePath.isInside(URL(filePath: "/pp/users.csv"), folder: URL(filePath: "/p")))
   }
 
+  @Test func picksTheImageForTheAppearanceAsRunsDo() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try FileManager.default.createDirectory(at: folder.appending(path: "refs"), withIntermediateDirectories: true)
+    let dark = folder.appending(path: "refs/x.dark.png")
+    try Data().write(to: dark)
+
+    // Only the dark picture: a reference has it, a picture runs need in light mode doesn't.
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: true) == dark)
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: false) == nil)
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: false, variants: true) == dark)
+
+    let light = folder.appending(path: "refs/x.png")
+    try Data().write(to: light)
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: true) == dark)
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: false, variants: true) == light)
+    try FileManager.default.removeItem(at: dark)
+    #expect(AppearanceImage.url("refs/x.png", in: folder, dark: true) == light)
+    #expect(AppearanceImage.url("", in: folder, dark: true) == nil)
+  }
+
   @Test func namesNewTestFiles() {
     #expect(RelativePath.testFileName(" Sign in: valid / invalid ") == "Sign in- valid - invalid.flow.json")
     #expect(RelativePath.testFileName("  ") == "Untitled.flow.json")

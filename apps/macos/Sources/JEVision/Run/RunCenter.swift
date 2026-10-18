@@ -91,8 +91,8 @@ final class RunCenter {
   @ObservationIgnored private var run: TestRun?
   @ObservationIgnored private let input = InputWatcher()
   @ObservationIgnored private var hud: GlassPanel?
-  /// Windows put away for the run.
-  @ObservationIgnored private var hiddenWindows: [NSWindow] = []
+  /// Whether JEVision is hidden for the run.
+  @ObservationIgnored private var isOutOfTheWay = false
 
   @ObservationIgnored private let defaults: UserDefaults
   /// Also hears every run of the project at the URL, for remote access.
@@ -189,7 +189,7 @@ final class RunCenter {
       stopped: batch.passed + batch.failed + batch.quarantined + batch.notRun < batch.total)
     result = nil
     batchResult = summary
-    if !hiddenWindows.isEmpty { showApp() }
+    if isOutOfTheWay { showApp() }
     AccessibilityNotification.Announcement(RunText.batchOutcome(summary)).post()
   }
 
@@ -260,8 +260,8 @@ final class RunCenter {
 
   /// Brings the window back during a run, to look at the canvas.
   func showApp() {
-    for window in hiddenWindows { window.orderFront(nil) }
-    hiddenWindows = []
+    isOutOfTheWay = false
+    NSApp.unhideWithoutActivation()
     activate()
   }
 
@@ -376,12 +376,12 @@ final class RunCenter {
 
   // MARK: Windows
 
+  /// Hides JEVision, as Hide in the app menu does, rather than putting its windows away: an app
+  /// left without windows looks finished to window managers that quit such apps, and one did so
+  /// mid-run. The run's panels can't be hidden, so they stay.
   private func getOutOfTheWay() {
-    for window in NSApp.windows where window.isVisible && !(window is NSPanel) {
-      window.orderOut(nil)
-      hiddenWindows.append(window)
-    }
-    NSApp.deactivate()
+    isOutOfTheWay = true
+    NSApp.hide(nil)
     hud?.show()
   }
 
