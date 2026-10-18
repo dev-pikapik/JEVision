@@ -5,7 +5,9 @@ struct JEVisionApp: App {
   @State private var project: ProjectStore
   @State private var permissions = PermissionsMonitor()
   @State private var runs: RunCenter
-  @State private var records = RecordCenter()
+  @State private var records: RecordCenter
+  /// The edge glow and the menu bar item while a test runs or records.
+  @State private var indicators: ActivityIndicators
   /// Made at launch so paired iPhones reach the Mac whether or not Settings is open.
   @State private var remote: RemoteAccess
 
@@ -14,8 +16,11 @@ struct JEVisionApp: App {
     Appearance.saved.apply()
     let project = ProjectStore()
     let runs = RunCenter()
+    let records = RecordCenter()
     _project = State(initialValue: project)
     _runs = State(initialValue: runs)
+    _records = State(initialValue: records)
+    _indicators = State(initialValue: ActivityIndicators(runs: runs, records: records))
     _remote = State(initialValue: RemoteAccess(runs: runs, project: project))
   }
 

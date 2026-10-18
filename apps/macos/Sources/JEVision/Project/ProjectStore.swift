@@ -23,9 +23,12 @@ final class ProjectStore {
     didSet {
       guard selection != oldValue else { return }
       UserDefaults.standard.set(selection, forKey: Key.selection)
+      if selection != nil { showsMap = false }
       openSelection()
     }
   }
+  /// The project map fills the center instead of a test.
+  var showsMap = false
   /// The selected test, open in the editor.
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
@@ -161,11 +164,13 @@ final class ProjectStore {
     return FileManager.default.fileExists(atPath: rootURL.appending(path: file).path)
   }
 
-  /// Opens the test in the editor with the block selected.
-  func showBlock(_ block: String, in file: String) {
+  /// Opens the test in the editor with the block selected; with `run`, the blocks show how they
+  /// did in that run.
+  func showBlock(_ block: String, in file: String, from run: SavedRun.ID? = nil) {
     sidebar = .tests
     selection = file
     document?.selection = block
+    if let run { document?.reportRun = run }
   }
 
   func moveToTrash(_ run: SavedRun) throws {
@@ -234,6 +239,7 @@ final class ProjectStore {
     rootURL = url
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
+    showsMap = false
     items = []
     runs = []
     selectedRun = nil

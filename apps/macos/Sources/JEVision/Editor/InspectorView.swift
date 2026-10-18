@@ -5,8 +5,11 @@ import UniformTypeIdentifiers
 /// Settings of the selected block, a control for each.
 struct InspectorView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(RunCenter.self) private var runs
   let document: FlowDocument
   let id: String
+  /// How the block failed in the last run, when it did.
+  var failure: BlockFailure?
 
   var body: some View {
     if let block = document.block(id), let flow = document.flow {
@@ -15,6 +18,9 @@ struct InspectorView: View {
         document: document, block: id)
       let type = block.kind.typeName
       Form {
+        if let failure {
+          failureBanner(failure)
+        }
         Section {
           HStack(alignment: .top, spacing: 12) {
             IconTile(symbol: BlockInfo.symbol(type), color: BlockInfo.color(ofType: type), size: 36)
@@ -33,6 +39,44 @@ struct InspectorView: View {
       }
       .formStyle(.grouped)
     }
+  }
+
+  private func failureBanner(_ failure: BlockFailure) -> some View {
+    let reason = failure.failure.map(RunText.failure) ?? String(localized: "The block failed.")
+    return Section {
+      VStack(alignment: .leading, spacing: 10) {
+        Label {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Failed in the last run")
+              .font(.headline)
+            Text(reason)
+              .textSelection(.enabled)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+        } icon: {
+          Image(systemName: "xmark.square.fill")
+            .foregroundStyle(.red)
+        }
+        .accessibilityElement(children: .combine)
+        HStack(spacing: 8) {
+          Button("Open Report") { project.showRun(failure.run.url) }
+            .buttonStyle(.glass)
+          Button("Run Again", systemImage: "arrow.clockwise") { runAgain(failure.run.report) }
+            .buttonStyle(.glass)
+            .disabled(runs.isRunning || project.rootURL == nil || !project.hasTest(failure.run.report.file))
+        }
+      }
+      .padding(.vertical, 4)
+    }
+    .listRowBackground(Color.red.opacity(0.12))
+  }
+
+  /// Runs the run's test again: this one, or the test that ran it.
+  private func runAgain(_ report: RunReport) {
+    guard let root = project.rootURL else { return }
+    project.selection = report.file
+    guard let document = project.document else { return }
+    runs.run(document, in: root)
   }
 
   private func field(of issue: Issue) -> String {

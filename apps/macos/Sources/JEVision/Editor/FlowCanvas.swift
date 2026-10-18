@@ -15,6 +15,8 @@ struct FlowCanvas: View {
   let appName: (String) -> String
   /// The smallest size to fill: the visible part of the editor at the current zoom.
   let minSize: CGSize
+  /// How each block did in the last saved run; a run started since replaces them.
+  let outcomes: [String: BlockOutcome]
   /// Selects these items; the inspector shows the block, when there is one.
   let onPick: (Set<CanvasItem>, String?) -> Void
   let onAdd: (Slot) -> Void
@@ -148,7 +150,7 @@ struct FlowCanvas: View {
 
   private func blocks(_ layout: FlowLayout) -> some View {
     let order = document.order
-    let run = runs.marks(for: document)
+    let run = runs.marks(for: document) ?? (outcomes, nil)
     return ForEach(layout.blocks, id: \.id) { laid in
       if let block = document.block(laid.id) {
         let item = CanvasItem.block(id: laid.id)
@@ -637,6 +639,7 @@ private struct BlockNode: View {
     switch mark {
     case .passed: return String(localized: "Passed")
     case .failed: return String(localized: "Failed")
+    case .skipped: return String(localized: "Skipped")
     case nil: return nil
     }
   }
@@ -711,10 +714,16 @@ private struct BlockNode: View {
   @ViewBuilder
   private var badge: some View {
     if !isCurrent, let mark {
-      Image(systemName: mark == .passed ? "checkmark.circle.fill" : "xmark.square.fill")
+      let look: (symbol: String, color: Color) =
+        switch mark {
+        case .passed: ("checkmark.circle.fill", .green)
+        case .failed: ("xmark.square.fill", .red)
+        case .skipped: ("minus.circle.fill", .gray)
+        }
+      Image(systemName: look.symbol)
         .font(.system(size: 16))
         .symbolRenderingMode(.palette)
-        .foregroundStyle(.white, mark == .passed ? .green : .red)
+        .foregroundStyle(.white, look.color)
         .offset(x: 6, y: -6)
         .accessibilityHidden(true)
     }

@@ -112,7 +112,7 @@ struct RunHUD: View {
   @ViewBuilder
   private func content(_ state: RunState) -> some View {
     let document = center.running?.document
-    let total = max(document?.order.count ?? 0, 1)
+    let (step, total) = Self.step(of: state, in: document)
     HStack(spacing: 8) {
       Image(systemName: state.isPaused ? "pause.circle.fill" : "play.circle.fill")
         .font(.title2)
@@ -139,7 +139,7 @@ struct RunHUD: View {
       ProgressView(value: Double(min(state.done, total)), total: Double(total))
         .accessibilityHidden(true)
       HStack {
-        Text("Step \(min(state.done + 1, total)) of \(total)")
+        Text("Step \(step) of \(total)")
         Spacer()
         if state.maxAttempts > 1 {
           Text("Try \(state.attempt) of \(state.maxAttempts)")
@@ -246,6 +246,12 @@ struct RunHUD: View {
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Variables"))
+  }
+
+  /// The block that runs now and how many the test has, counted as "Step N of M" shows them.
+  static func step(of state: RunState, in document: FlowDocument?) -> (current: Int, total: Int) {
+    let total = max(document?.order.count ?? 0, 1)
+    return (min(state.done + 1, total), total)
   }
 
   /// What the run is doing, in a few words.

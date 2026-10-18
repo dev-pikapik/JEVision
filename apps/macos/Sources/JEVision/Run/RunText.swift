@@ -116,6 +116,17 @@ enum RunText {
   }
 
   /// How the run ended, in one sentence.
+  /// How the tests of a batch did, in a sentence.
+  static func batchOutcome(_ result: RunCenter.BatchResult) -> String {
+    var counts = [String(localized: "Passed: \(result.passed)"), String(localized: "Failed: \(result.failed)")]
+    let notRun = result.total - result.passed - result.failed
+    if notRun > 0 { counts.append(String(localized: "Not run: \(notRun)")) }
+    let summary = counts.joined(separator: " · ")
+    return result.stopped
+      ? String(localized: "\(result.title) stopped. \(summary)")
+      : String(localized: "\(result.title) finished. \(summary)")
+  }
+
   static func outcome(_ report: RunReport) -> String {
     switch report.verdict {
     case .cancelled:

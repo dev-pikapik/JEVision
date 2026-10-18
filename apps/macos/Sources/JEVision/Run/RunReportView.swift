@@ -73,7 +73,7 @@ struct RunReportView: View {
       VStack(alignment: .leading, spacing: 16) {
         ReportHeader(
           run: run, hasTest: project.hasTest, isRunning: runs.isRunning,
-          openFailedBlock: { step in project.showBlock(step.block, in: step.test) },
+          openFailedBlock: { step in project.showBlock(step.block, in: step.test, from: run.id) },
           runAgain: { runAgain(report) },
           export: { export(run, as: $0) })
         if let player {
