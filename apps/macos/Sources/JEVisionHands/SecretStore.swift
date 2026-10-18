@@ -5,17 +5,25 @@ import Security
 /// Secret values live in the environment or in the Keychain, never in a test file.
 /// Only a run reads a value back, to type it; nothing shows one.
 public enum SecretStore {
-  static let service = "JEVision"
+  /// Keychain service of the secrets tests type.
+  public static let tests = "JEVision"
 
-  public static func isSet(_ name: String) -> Bool {
-    if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { return true }
-    return SecItemCopyMatching(query(name) as CFDictionary, nil) == errSecSuccess
+  public static func isSet(_ name: String, in service: String = tests) -> Bool {
+    isInEnvironment(name) || isInKeychain(name, in: service)
+  }
+
+  public static func isInEnvironment(_ name: String) -> Bool {
+    !(ProcessInfo.processInfo.environment[name] ?? "").isEmpty
+  }
+
+  public static func isInKeychain(_ name: String, in service: String = tests) -> Bool {
+    SecItemCopyMatching(query(name, service) as CFDictionary, nil) == errSecSuccess
   }
 
   /// The environment variable `name`, otherwise the Keychain item.
-  public static func value(_ name: String) -> String? {
+  public static func value(_ name: String, in service: String = tests) -> String? {
     if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { return value }
-    var item = query(name)
+    var item = query(name, service)
     item[kSecReturnData] = true
     item[kSecMatchLimit] = kSecMatchLimitOne
     var data: CFTypeRef?
@@ -23,22 +31,31 @@ public enum SecretStore {
     return String(data: data, encoding: .utf8)
   }
 
-  public static func save(_ value: String, for name: String) throws {
+  public static func save(_ value: String, for name: String, in service: String = tests) throws {
     let data = Data(value.utf8)
-    var status = SecItemUpdate(query(name) as CFDictionary, [kSecValueData: data] as CFDictionary)
+    var status = SecItemUpdate(query(name, service) as CFDictionary, [kSecValueData: data] as CFDictionary)
     if status == errSecItemNotFound {
-      var item = query(name)
+      var item = query(name, service)
       item[kSecValueData] = data
-      item[kSecAttrLabel] = "JEVision: \(name)"
+      item[kSecAttrLabel] = "\(service): \(name)"
       status = SecItemAdd(item as CFDictionary, nil)
     }
+    try check(status)
+  }
+
+  public static func remove(_ name: String, in service: String = tests) throws {
+    let status = SecItemDelete(query(name, service) as CFDictionary)
+    try check(status == errSecItemNotFound ? errSecSuccess : status)
+  }
+
+  private static func check(_ status: OSStatus) throws {
     guard status == errSecSuccess else {
       let message = SecCopyErrorMessageString(status, nil) as String? ?? "\(status)"
       throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey: message])
     }
   }
 
-  private static func query(_ name: String) -> [CFString: Any] {
+  private static func query(_ name: String, _ service: String) -> [CFString: Any] {
     [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: name]
   }
 }

@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 jevision-core.workspace = true
+jevision-vision.workspace = true
 csv = "1.3"
 png = "0.18"
 serde.workspace = true

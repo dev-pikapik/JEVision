@@ -217,6 +217,36 @@
         }
       }
     },
+    "AI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ"
+          }
+        }
+      }
+    },
+    "API Key" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ API"
+          }
+        }
+      }
+    },
+    "API Key for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ API для %@"
+          }
+        }
+      }
+    },
     "Accept as New Reference" : {
       "localizations" : {
         "ru" : {
@@ -459,6 +489,16 @@
         }
       }
     },
+    "Address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес"
+          }
+        }
+      }
+    },
     "After" : {
       "localizations" : {
         "ru" : {
@@ -495,6 +535,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "An AI model can also check the screen from a sentence like “The cart shows 2 items”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ может проверять экран и по фразе вроде «В корзине 2 товара»."
+          }
+        }
+      }
+    },
+    "An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ может проверить экран по фразе вроде «В корзине 2 товара» — там, где сравнение картинок слишком строгое."
           }
         }
       }
@@ -539,6 +599,16 @@
         }
       }
     },
+    "Asks the model about a small picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спрашивает модель о маленькой картинке"
+          }
+        }
+      }
+    },
     "Back" : {
       "localizations" : {
         "ru" : {
@@ -575,6 +645,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перед записью"
+          }
+        }
+      }
+    },
+    "Block “%@”: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@"
           }
         }
       }
@@ -705,6 +785,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверка"
+          }
+        }
+      }
+    },
+    "Checking by meaning needs an AI model." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для проверки по смыслу нужна модель ИИ."
+          }
+        }
+      }
+    },
+    "Checks by meaning" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверки по смыслу"
           }
         }
       }
@@ -909,6 +1009,26 @@
         }
       }
     },
+    "Connection failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться не удалось"
+          }
+        }
+      }
+    },
+    "Connection works" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение работает"
+          }
+        }
+      }
+    },
     "Continue" : {
       "localizations" : {
         "ru" : {
@@ -925,6 +1045,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Couldn’t remove the key" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось удалить ключ"
           }
         }
       }
@@ -1015,6 +1145,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удаление блока"
+          }
+        }
+      }
+    },
+    "Describe what the screen should show, in plain words. An AI model looks at the screen and decides. The reference image is optional: with one, the model compares the screen with it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите обычными словами, что должно быть на экране. Модель ИИ посмотрит на экран и решит. Эталон не обязателен: если он есть, модель сравнит экран с ним."
           }
         }
       }
@@ -1179,6 +1319,16 @@
         }
       }
     },
+    "Expected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидается"
+          }
+        }
+      }
+    },
     "Export" : {
       "localizations" : {
         "ru" : {
@@ -1299,6 +1449,16 @@
         }
       }
     },
+    "For each check by meaning, JEVision sends %@ the compared part of the screen, the reference image if there is one, and the expected text. Areas a test hides are covered first. Test Connection sends a small built-in picture." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При каждой проверке по смыслу JEVision отправляет в %@ сравниваемую часть экрана, эталон, если он есть, и ожидаемый текст. Скрытые тестом области заранее закрашиваются. «Проверить подключение» отправляет маленькую встроенную картинку."
+          }
+        }
+      }
+    },
     "For each row of %@" : {
       "localizations" : {
         "ru" : {
@@ -1325,6 +1485,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сверху"
+          }
+        }
+      }
+    },
+    "From the environment variable %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из переменной окружения %@"
           }
         }
       }
@@ -1415,6 +1585,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Если Терминал ответит «command not found», добавьте эту папку в PATH:"
+          }
+        }
+      }
+    },
+    "If the screen shows %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если на экране %@"
           }
         }
       }
@@ -1515,6 +1695,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Установить…"
+          }
+        }
+      }
+    },
+    "It works. The model answered: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает. Ответ модели: %@"
           }
         }
       }
@@ -1722,6 +1912,16 @@
         }
       }
     },
+    "Looking for models…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищем модели…"
+          }
+        }
+      }
+    },
     "Looking for tests" : {
       "localizations" : {
         "ru" : {
@@ -1768,6 +1968,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Совпадает на %@, нужно %@"
+          }
+        }
+      }
+    },
+    "Model" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель"
           }
         }
       }
@@ -2012,6 +2222,36 @@
         }
       }
     },
+    "Only if the server asks for one" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только если его требует сервер"
+          }
+        }
+      }
+    },
+    "Only models on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только модели на этом Mac"
+          }
+        }
+      }
+    },
+    "Only models on this Mac are allowed, so checks by meaning with %@ stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешены только модели на этом Mac, поэтому проверки по смыслу через %@ остановятся с сообщением."
+          }
+        }
+      }
+    },
     "Open" : {
       "localizations" : {
         "ru" : {
@@ -2028,6 +2268,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть %@"
+          }
+        }
+      }
+    },
+    "Open AI Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки ИИ"
           }
         }
       }
@@ -2148,6 +2398,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает этот список в Системных настройках"
+          }
+        }
+      }
+    },
+    "Optional. An AI model can check a screen from a sentence like “The cart shows 2 items”. Choose one now, or later in Settings → AI." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По желанию. Модель ИИ может проверить экран по фразе вроде «В корзине 2 товара». Выберите её сейчас или позже в Настройках → ИИ."
           }
         }
       }
@@ -2392,6 +2652,16 @@
         }
       }
     },
+    "Provider" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер"
+          }
+        }
+      }
+    },
     "Quick Look" : {
       "localizations" : {
         "ru" : {
@@ -2508,6 +2778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Эталон"
+          }
+        }
+      }
+    },
+    "Refresh" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить"
           }
         }
       }
@@ -2932,6 +3212,26 @@
         }
       }
     },
+    "Screen shows %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На экране %@"
+          }
+        }
+      }
+    },
+    "Screenshots never go to a cloud service. Checks that would need one stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
+          }
+        }
+      }
+    },
     "Search apps" : {
       "localizations" : {
         "ru" : {
@@ -3008,6 +3308,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задать %@"
+          }
+        }
+      }
+    },
+    "Set Up AI…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить ИИ…"
           }
         }
       }
@@ -3282,6 +3592,16 @@
         }
       }
     },
+    "Test Connection" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить подключение"
+          }
+        }
+      }
+    },
     "Test any Mac app the way a person would: click, type, look. A test is a flowchart you can read — no code." : {
       "localizations" : {
         "ru" : {
@@ -3372,6 +3692,16 @@
         }
       }
     },
+    "The cart shows 2 items" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В корзине 2 товара"
+          }
+        }
+      }
+    },
     "The folder was moved, deleted or is on a disk that isn’t connected. Choose it again to keep working." : {
       "localizations" : {
         "ru" : {
@@ -3398,6 +3728,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось подготовить сценарий установки."
+          }
+        }
+      }
+    },
+    "The key is kept in the Keychain on this Mac and sent only to %@. JEVision never shows it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ хранится в Связке ключей на этом Mac и отправляется только в %@. JEVision никогда его не показывает."
+          }
+        }
+      }
+    },
+    "The model answered, but described the picture wrong" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ответила, но описала картинку неверно"
+          }
+        }
+      }
+    },
+    "The model answered, but described the picture wrong: %@ Try a model that understands pictures better." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ответила, но описала картинку неверно: %@ Попробуйте модель, которая лучше понимает картинки."
+          }
+        }
+      }
+    },
+    "The model runs on this Mac: screenshots and expected texts stay here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель работает на этом Mac: снимки экрана и ожидаемые тексты остаются здесь."
           }
         }
       }
@@ -3608,6 +3978,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Теперь этот снимок — эталон."
+          }
+        }
+      }
+    },
+    "This server has no models that understand pictures. Download one, then refresh." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом сервере нет моделей, которые понимают картинки. Загрузите такую и нажмите «Обновить»."
           }
         }
       }
@@ -3932,6 +4312,16 @@
         }
       }
     },
+    "Waiting for the answer…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждём ответа…"
+          }
+        }
+      }
+    },
     "Waits until something appears or disappears, or until the screen stops changing." : {
       "localizations" : {
         "ru" : {
@@ -3988,6 +4378,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ширина"
+          }
+        }
+      }
+    },
+    "Without a provider, checks compare pictures only. JEVision sends nothing anywhere." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без провайдера проверки сравнивают только картинки. JEVision ничего никуда не отправляет."
           }
         }
       }
@@ -4560,6 +4960,22 @@
         }
       }
     },
+    "flow.reference.expectNeedsMeaning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An expected text works only with “By Meaning” comparison."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидаемый текст работает только со сравнением «По смыслу»."
+          }
+        }
+      }
+    },
     "flow.reference.thresholdNeedsSimilar" : {
       "localizations" : {
         "ru" : {
@@ -4638,6 +5054,22 @@
         }
       }
     },
+    "run.check.meaningMismatch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen doesn’t show what’s expected. %@: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: на экране не то, что ожидается. %2$@: %3$@"
+          }
+        }
+      }
+    },
     "run.check.mismatch" : {
       "localizations" : {
         "en" : {
@@ -4675,13 +5107,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Block “%@”: comparing by meaning needs a vision model, and none is set up."
+            "value" : "Block “%@”: comparing by meaning needs an AI model. Choose one in Settings → AI."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Блок «%1$@»: для сравнения по смыслу нужна модель зрения, а она не настроена."
+            "value" : "Блок «%1$@»: для сравнения по смыслу нужна модель ИИ. Выберите её в Настройках → ИИ."
           }
         }
       }
@@ -5034,6 +5466,198 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать файл теста %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.vision.badAddress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a web address. It should start with http:// or https://."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Он должен начинаться с http:// или https://."
+          }
+        }
+      }
+    },
+    "run.vision.badAnswer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ gave an answer JEVision can’t read: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ дал ответ, который JEVision не может прочитать: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.badKey" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ didn’t accept the API key. Set it again in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не принял ключ API. Задайте его заново в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.cloudBlocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: only models on this Mac are allowed, and %@ works in the cloud. Choose a local model or turn off “Only models on this Mac” in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: разрешены только модели на этом Mac, а %2$@ работает в облаке. Выберите локальную модель или выключите «Только модели на этом Mac» в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noKey" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The API key for %@ isn’t set. Set it in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ API для %@ не задан. Задайте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noModel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No model is chosen for %@. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для %@ не выбрана модель. Выберите её в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.rateLimited" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has had too many requests, or the account’s limit is reached. Try again later. %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К %1$@ слишком много запросов, или исчерпан лимит аккаунта. Попробуйте позже. %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.refused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ declined to judge the screen: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ отказался оценивать экран: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.serviceError" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ answered with error %@: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ответил ошибкой %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "run.vision.timeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ didn’t answer within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не ответил за %2$@ с."
+          }
+        }
+      }
+    },
+    "run.vision.unknownModel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has no model “%@”. Choose another one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У %1$@ нет модели «%2$@». Выберите другую в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.unreachable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t reach %@ at %@. Check that it’s running and the Mac is online."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся связаться с %1$@ по адресу %2$@. Проверьте, что сервер запущен, а Mac подключён к сети."
           }
         }
       }

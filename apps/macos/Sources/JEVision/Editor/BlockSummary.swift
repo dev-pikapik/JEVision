@@ -41,10 +41,12 @@ enum BlockSummary {
         return String(localized: "Until the screen stops changing · \(limit)")
       }
     case .check(let reference, _):
+      if let expect = expectation(reference) { return String(localized: "Screen shows \(quoted(expect, limit: 40))") }
       return reference.image.isEmpty
         ? String(localized: "Choose how the screen should look")
         : String(localized: "Screen matches \(imageName(reference.image))")
     case .if(let reference, _, _):
+      if let expect = expectation(reference) { return String(localized: "If the screen shows \(quoted(expect, limit: 40))") }
       return reference.image.isEmpty
         ? String(localized: "Choose what to look for")
         : String(localized: "If \(imageName(reference.image)) is on screen")
@@ -92,7 +94,15 @@ enum BlockSummary {
   }
 
   private static func referenceName(_ reference: Reference) -> String {
-    reference.image.isEmpty ? String(localized: "an image") : imageName(reference.image)
+    if let expect = expectation(reference) { return quoted(expect, limit: 40) }
+    return reference.image.isEmpty ? String(localized: "an image") : imageName(reference.image)
+  }
+
+  /// What a comparison by meaning expects, when it says.
+  private static func expectation(_ reference: Reference) -> String? {
+    guard case .meaning(let expect) = reference.compare else { return nil }
+    let text = expect.trimmingCharacters(in: .whitespacesAndNewlines)
+    return text.isEmpty ? nil : text
   }
 
   static func percent(_ fraction: Double) -> String {

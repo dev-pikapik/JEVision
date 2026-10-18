@@ -30,6 +30,8 @@ enum IssueText {
       return String(localized: "flow.field.oneOf", defaultValue: "Use exactly one of: \(p("options")).")
     case "flow.field.unknown":
       return String(localized: "flow.field.unknown", defaultValue: "“\(p("field"))” isn’t a known setting.")
+    case "flow.reference.expectNeedsMeaning":
+      return String(localized: "flow.reference.expectNeedsMeaning", defaultValue: "An expected text works only with “By Meaning” comparison.")
     case "flow.reference.thresholdNeedsSimilar":
       return String(localized: "flow.reference.thresholdNeedsSimilar", defaultValue: "A similarity threshold works only with “Similar” comparison.")
     case "flow.field.empty":

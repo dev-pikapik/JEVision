@@ -28,6 +28,13 @@ struct RunResultBar: View {
           }
           .buttonStyle(.glassProminent)
         }
+        if result.needsAISetup {
+          Button("Open AI Settings") {
+            UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            openSettings()
+          }
+          .buttonStyle(.glassProminent)
+        }
         if let run = result.run {
           Button("Open Report") { project.showRun(run) }
             .buttonStyle(.glass)

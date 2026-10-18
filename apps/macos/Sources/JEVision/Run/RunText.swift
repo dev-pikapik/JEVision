@@ -38,7 +38,17 @@ enum RunText {
     case "run.compare.meaningUnavailable":
       return String(
         localized: "run.compare.meaningUnavailable",
-        defaultValue: "Block “\(block)”: comparing by meaning needs a vision model, and none is set up.")
+        defaultValue: "Block “\(block)”: comparing by meaning needs an AI model. Choose one in Settings → AI.")
+    case "run.check.meaningMismatch":
+      return String(
+        localized: "run.check.meaningMismatch",
+        defaultValue: "Block “\(block)”: the screen doesn’t show what’s expected. \(p("provider")): \(p("reason"))")
+    case "run.vision.cloudBlocked":
+      return String(
+        localized: "run.vision.cloudBlocked",
+        defaultValue: "Block “\(block)”: only models on this Mac are allowed, and \(p("provider")) works in the cloud. Choose a local model or turn off “Only models on this Mac” in Settings → AI.")
+    case let code where code.hasPrefix("run.vision."):
+      return String(localized: "Block “\(block)”: \(VisionText.failure(failure))")
     case "run.click.noChange":
       return String(localized: "run.click.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after the click.")
     case "run.waitFor.timeout" where p("target") == "screenStable":
@@ -77,6 +87,14 @@ enum RunText {
     }
   }
 
+  /// The run stopped because the AI model isn't set up right: Settings → AI can fix it.
+  static func needsAISetup(_ failure: Failure) -> Bool {
+    [
+      "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noModel", "run.vision.noKey",
+      "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
+    ].contains(failure.code)
+  }
+
   /// The permission a failure asks for, if it is about one.
   static func permission(of failure: Failure) -> Permission? {
     guard failure.code == "run.hands.permissionDenied" else { return nil }
@@ -104,6 +122,53 @@ enum RunText {
         return String(localized: "Passed in \(time). New reference images were saved: check them in the report.")
       }
       return String(localized: "Passed in \(time).")
+    }
+  }
+}
+
+/// Problems with an AI model in words: `run.vision.*` codes, without the block they happened in.
+@MainActor
+enum VisionText {
+  static func failure(_ failure: Failure) -> String {
+    let p = { (name: String) in failure.params[name] ?? "" }
+    let provider = p("provider")
+    switch failure.code {
+    case "run.vision.noModel":
+      return String(localized: "run.vision.noModel", defaultValue: "No model is chosen for \(provider). Choose one in Settings → AI.")
+    case "run.vision.noKey":
+      return String(localized: "run.vision.noKey", defaultValue: "The API key for \(provider) isn’t set. Set it in Settings → AI.")
+    case "run.vision.badAddress":
+      return String(
+        localized: "run.vision.badAddress", defaultValue: "“\(p("address"))” isn’t a web address. It should start with http:// or https://.")
+    case "run.vision.unreachable":
+      return String(
+        localized: "run.vision.unreachable",
+        defaultValue: "Can’t reach \(provider) at \(p("address")). Check that it’s running and the Mac is online.")
+    case "run.vision.timeout":
+      return String(localized: "run.vision.timeout", defaultValue: "\(provider) didn’t answer within \(p("seconds")) s.")
+    case "run.vision.badKey":
+      return String(localized: "run.vision.badKey", defaultValue: "\(provider) didn’t accept the API key. Set it again in Settings → AI.")
+    case "run.vision.unknownModel":
+      return String(localized: "run.vision.unknownModel", defaultValue: "\(provider) has no model “\(p("model"))”. Choose another one in Settings → AI.")
+    case "run.vision.rateLimited":
+      return String(
+        localized: "run.vision.rateLimited",
+        defaultValue: "\(provider) has had too many requests, or the account’s limit is reached. Try again later. \(p("message"))")
+    case "run.vision.serviceError":
+      return String(localized: "run.vision.serviceError", defaultValue: "\(provider) answered with error \(p("status")): \(p("message"))")
+    case "run.vision.refused":
+      return String(localized: "run.vision.refused", defaultValue: "\(provider) declined to judge the screen: \(p("message"))")
+    case "run.vision.badAnswer":
+      return String(localized: "run.vision.badAnswer", defaultValue: "\(provider) gave an answer JEVision can’t read: \(p("answer"))")
+    default:
+      return describeFailure(failure: failure)
+    }
+  }
+
+  static func error(_ error: Error) -> String {
+    switch error {
+    case VisionCallError.Failed(let problem, _): failure(problem)
+    default: error.localizedDescription
     }
   }
 }

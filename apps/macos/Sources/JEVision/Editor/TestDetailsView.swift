@@ -98,6 +98,9 @@ struct SecretName: Identifiable {
 /// Asks for a secret's value and puts it into the Keychain. The value is never shown.
 struct SetSecretSheet: View {
   let name: String
+  var title: Text?
+  var message: Text?
+  var service = SecretStore.tests
   let saved: () -> Void
   @Environment(\.dismiss) private var dismiss
   @State private var value = ""
@@ -105,9 +108,9 @@ struct SetSecretSheet: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Set \(name)")
+      (title ?? Text("Set \(name)"))
         .font(.headline)
-      Text("The value is kept in the Keychain on this Mac. JEVision types it during runs and never shows it.")
+      (message ?? Text("The value is kept in the Keychain on this Mac. JEVision types it during runs and never shows it."))
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       SecureField(text: $value, prompt: Text("Value")) { Text("Value") }
@@ -120,7 +123,7 @@ struct SetSecretSheet: View {
           .keyboardShortcut(.cancelAction)
         Button("Save") {
           do {
-            try SecretStore.save(value, for: name)
+            try SecretStore.save(value, for: name, in: service)
             value = ""
             saved()
             dismiss()

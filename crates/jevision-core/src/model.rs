@@ -223,14 +223,15 @@ pub struct Reference {
     pub hide: Vec<Rect>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Compare {
     /// Pixel by pixel.
     Exact,
     /// At least `threshold` (0–1] similar.
     Similar { threshold: f64 },
-    /// Same meaning, judged by a vision-language model.
-    Meaning,
+    /// Same meaning, judged by a vision model: the screen shows what `expect` says, or means
+    /// the same as the reference image when `expect` is empty.
+    Meaning { expect: String },
 }
 
 impl Compare {
@@ -379,10 +380,17 @@ impl Flow {
 impl Serialize for Reference {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         let mut map = s.serialize_map(None)?;
-        map.serialize_entry("image", &self.image)?;
-        match self.compare {
+        if !self.image.is_empty() || !matches!(self.compare, Compare::Meaning { .. }) {
+            map.serialize_entry("image", &self.image)?;
+        }
+        match &self.compare {
             Compare::Exact => map.serialize_entry("compare", "exact")?,
-            Compare::Meaning => map.serialize_entry("compare", "meaning")?,
+            Compare::Meaning { expect } => {
+                map.serialize_entry("compare", "meaning")?;
+                if !expect.is_empty() {
+                    map.serialize_entry("expect", expect)?;
+                }
+            }
             Compare::Similar { threshold } => {
                 map.serialize_entry("compare", "similar")?;
                 map.serialize_entry("threshold", &threshold)?;

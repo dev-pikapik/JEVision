@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import Testing
 
 @testable import JEVision
@@ -33,6 +34,13 @@ struct CommandLineArgumentTests {
         == .run(RunRequest(paths: ["t.flow.json"], project: "p", retries: 2, startAt: "b", junit: "j.xml", html: "h", json: true)))
   }
 
+  @Test func aiProviderAndModel() throws {
+    let run = try Command.parse(["run", "t.flow.json", "--provider", "ollama", "--model", "qwen2.5vl:7b"])
+    #expect(run == .run(RunRequest(paths: ["t.flow.json"], provider: "ollama", model: "qwen2.5vl:7b")))
+    let help = Help.text("run")
+    for provider in AISettings.providers { #expect(help.contains(provider.id)) }
+  }
+
   @Test(arguments: [
     (["validate"], "name at least one test file or folder"),
     (["validate", "--check", "a"], "there is no option “--check”"),
@@ -43,6 +51,10 @@ struct CommandLineArgumentTests {
     (["run", "a", "--retries"], "--retries needs a value"),
     (["run", "a", "--junit", "x", "--junit", "y"], "--junit is given twice"),
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
+    (
+      ["run", "a", "--provider", "skynet"],
+      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, ollama, lmstudio, openai-compatible"
+    ),
   ])
   func usageErrors(arguments: [String], message: String) {
     #expect(throws: UsageError.self) { try Command.parse(arguments) }

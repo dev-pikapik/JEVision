@@ -6,7 +6,11 @@ use std::path::Path;
 use std::sync::Arc;
 
 use jevision_core::{MouseButton, Point};
-use jevision_runner::{PauseReason, RunControl, Runner, Screenshot, StepStatus, Verdict};
+use jevision_runner::{
+    PauseReason, RunControl, Runner, Screenshot, StepStatus, Verdict, VisionAnswer, VisionJudge,
+};
+
+use crate::vision::VisionSettings;
 
 /// Why the operating system layer could not do something.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -112,6 +116,10 @@ pub struct RunOptions {
     pub start_at: Option<String>,
     /// Overrides the test's `retries`.
     pub retries: Option<u32>,
+    /// The model for checks by meaning; without one they fail with a clear message.
+    pub vision: Option<VisionSettings>,
+    /// Checks by meaning may only use a model on this Mac.
+    pub local_only: bool,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -222,15 +230,18 @@ fn run(
     let hands = HandsAdapter(hands);
     let secrets = SecretAdapter(secrets);
     let events = |e: &jevision_runner::Event| listener.event(e.clone().into());
+    let vision = options.vision.and_then(|v| v.client().ok());
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
         events: &events,
         control,
+        vision: vision.as_ref().map(|c| c as &dyn VisionJudge),
     };
     let options = jevision_runner::RunOptions {
         start_at: options.start_at,
         retries: options.retries,
+        local_only: options.local_only,
         ..Default::default()
     };
     match runner.run(Path::new(project), Path::new(test), &options) {
@@ -354,6 +365,10 @@ pub enum RunOutcome {
 
 /// Progress of a run, in the order things happen. Secret values are masked.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "UniFFI passes enum fields by value; a box would not cross the boundary"
+)]
 pub enum RunEvent {
     RunStarted {
         test: String,
@@ -427,7 +442,7 @@ impl From<jevision_runner::Event> for RunEvent {
             },
             E::StepFinished { attempt, step } => Self::StepFinished {
                 attempt,
-                step: step.into(),
+                step: (*step).into(),
             },
             E::Paused { block, reason } => Self::Paused { block, reason },
             E::Resumed => Self::Resumed,
@@ -524,6 +539,8 @@ pub struct Step {
     /// Reference file of a `check`, relative to the project folder.
     pub reference: Option<String>,
     pub similarity: Option<f64>,
+    /// What the vision model said, for a comparison by meaning.
+    pub vision: Option<VisionAnswer>,
     pub branch: Option<String>,
     pub failure: Option<Failure>,
 }
@@ -543,6 +560,7 @@ impl From<jevision_runner::Step> for Step {
             diff: s.diff,
             reference: s.reference,
             similarity: s.similarity,
+            vision: s.vision,
             branch: s.branch,
             failure: s.failure.map(Into::into),
         }
@@ -582,6 +600,16 @@ pub struct Screenshot {
     pub scale: f64,
     /// The window was drawn in dark appearance.
     pub dark: bool,
+}
+
+#[uniffi::remote(Record)]
+pub struct VisionAnswer {
+    /// Provider name, such as `Anthropic`.
+    pub provider: String,
+    pub model: String,
+    pub passed: bool,
+    /// The model's explanation, in a sentence.
+    pub reason: String,
 }
 
 #[uniffi::remote(Enum)]

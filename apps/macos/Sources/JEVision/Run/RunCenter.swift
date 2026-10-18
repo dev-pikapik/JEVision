@@ -28,6 +28,8 @@ final class RunCenter {
     /// The permission the run stopped for, if it did.
     let permission: Permission?
     var offersGitIgnore: Bool
+    /// The run stopped for something Settings → AI fixes.
+    var needsAISetup = false
   }
 
   /// The run that waits for a permission, a secret or a fix; shown as a sheet.
@@ -92,6 +94,7 @@ final class RunCenter {
 
   private func start(_ request: Request) {
     let run = TestRun()
+    let ai = AISettings(defaults)
     // Esc Esc stops the run right on the watcher's thread, whatever the main thread is doing.
     guard input.start(onEmergencyStop: { run.cancel() }) else {
       blocked = request
@@ -114,7 +117,7 @@ final class RunCenter {
     }
     run.start(
       project: request.project.path, test: request.document.url.path,
-      options: RunOptions(startAt: request.from, retries: nil),
+      options: RunOptions(startAt: request.from, retries: nil, vision: ai.settings(), localOnly: ai.localOnly),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: RunBridge(center: self))
   }
@@ -221,7 +224,8 @@ final class RunCenter {
       result = Result(
         test: request.document.url, project: request.project, verdict: report.verdict,
         message: RunText.outcome(report), run: URL(filePath: dir, directoryHint: .isDirectory),
-        permission: failure.flatMap(RunText.permission), offersGitIgnore: offers)
+        permission: failure.flatMap(RunText.permission), offersGitIgnore: offers,
+        needsAISetup: failure.map(RunText.needsAISetup) ?? false)
     case .failed(let reason):
       result = Result(
         test: request.document.url, project: request.project, verdict: nil,

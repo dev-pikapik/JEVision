@@ -9,6 +9,9 @@ struct SettingsView: View {
       Tab("General", systemImage: "gearshape", value: .general) {
         GeneralSettingsView()
       }
+      Tab("AI", systemImage: "sparkles", value: .ai) {
+        AISettingsView()
+      }
       // The warning sign stays on the tab until every permission is on.
       Tab("Permissions", systemImage: monitor.allGranted ? "hand.raised" : "exclamationmark.triangle", value: .permissions) {
         PermissionsSettingsView()
@@ -21,7 +24,7 @@ struct SettingsView: View {
 
 /// The open Settings tab; set it before opening Settings to show a given one.
 enum SettingsTab: String {
-  case general, permissions
+  case general, ai, permissions
 
   static let key = "settingsTab"
 }

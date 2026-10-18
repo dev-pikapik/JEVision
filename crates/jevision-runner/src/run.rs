@@ -15,11 +15,11 @@ use crate::control::{Cancelled, PauseReason};
 use crate::data::DataTable;
 use crate::image::{Comparison, Image};
 use crate::report::{
-    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, percent,
+    Attempt, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer, percent,
 };
 use crate::{
-    Event, EventSink, Hands, HandsError, Openable, RunControl, SECRET_MASK, Screenshot,
-    SecretSource,
+    Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
+    SecretSource, VisionError, VisionJudge,
 };
 
 /// How far a pixel channel may be off and still count as the same colour when comparing by
@@ -27,6 +27,9 @@ use crate::{
 const SIMILAR_TOLERANCE: u8 = 16;
 /// The screen counts as settled when two looks in a row are at least this alike.
 const STABLE_SIMILARITY: f64 = 0.999;
+/// Longest side, in pixels, of a picture sent to a vision model; larger ones cost more and
+/// are scaled down by the providers anyway.
+const VISION_MAX_SIDE: u32 = 1568;
 
 /// How a run starts.
 #[derive(Debug, Clone)]
@@ -37,6 +40,9 @@ pub struct RunOptions {
     pub retries: Option<u32>,
     /// Time between two looks at the screen while waiting.
     pub poll_interval: Duration,
+    /// Screenshots must not leave this computer: checks by meaning fail instead of asking a
+    /// cloud provider.
+    pub local_only: bool,
 }
 
 impl Default for RunOptions {
@@ -45,6 +51,7 @@ impl Default for RunOptions {
             start_at: None,
             retries: None,
             poll_interval: Duration::from_millis(250),
+            local_only: false,
         }
     }
 }
@@ -56,6 +63,8 @@ pub struct Runner<'a> {
     pub secrets: &'a dyn SecretSource,
     pub events: &'a dyn EventSink,
     pub control: RunControl,
+    /// Judges checks by meaning; without one they fail with `run.compare.meaningUnavailable`.
+    pub vision: Option<&'a dyn VisionJudge>,
 }
 
 /// A finished run: its folder and the report saved there as `report.json`.
@@ -235,6 +244,17 @@ impl Runner<'_> {
     }
 }
 
+/// A vision model problem as a localizable failure: the error's code and values, with the
+/// provider and model named.
+pub fn vision_failure(judge: &dyn VisionJudge, e: &VisionError) -> Failure {
+    let failure = Failure::new(e.code())
+        .with("provider", judge.provider())
+        .with("model", judge.model());
+    e.params()
+        .into_iter()
+        .fold(failure, |f, (name, value)| f.with(name, value))
+}
+
 /// Attempts disagree: some passed and some failed, or they failed in different ways.
 fn is_flaky(attempts: &[Attempt]) -> bool {
     let finished = attempts.iter().filter(|a| a.verdict != Verdict::Cancelled);
@@ -354,12 +374,18 @@ struct Loaded {
     image: Image,
 }
 
-/// One screenshot compared with its reference.
+/// One screenshot compared with its reference, pixel by pixel or by a vision model.
 struct Evaluation {
-    reference: Loaded,
+    /// `None` when a vision model judged by the expectation alone.
+    reference: Option<Loaded>,
     actual: Image,
-    comparison: Comparison,
+    judged: Judged,
     passed: bool,
+}
+
+enum Judged {
+    Pixels(Comparison),
+    Model(VisionAnswer),
 }
 
 /// One attempt of a run.
@@ -451,6 +477,7 @@ impl Exec<'_> {
             diff: None,
             reference: None,
             similarity: None,
+            vision: None,
             branch: None,
             failure: None,
         };
@@ -478,7 +505,7 @@ impl Exec<'_> {
         step.duration_ms = millis(clock.elapsed());
         self.runner.events.send(&Event::StepFinished {
             attempt: self.attempt,
-            step: step.clone(),
+            step: Box::new(step.clone()),
         });
         self.steps.push(step);
         result
@@ -579,21 +606,13 @@ impl Exec<'_> {
                 let shot = self.capture(id)?;
                 match self.evaluate(t, id, reference, &shot, true, &mut None)? {
                     Ok(e) => {
-                        let path = self.resolve(t, id, &e.reference.name)?;
-                        step.reference = Some(relative(self.project, &path));
+                        if let Some(loaded) = &e.reference {
+                            let path = self.resolve(t, id, &loaded.name)?;
+                            step.reference = Some(relative(self.project, &path));
+                        }
                         self.record_comparison(step, reference, &e)?;
                         if !e.passed {
-                            let threshold = match reference.compare {
-                                Compare::Similar { threshold } => threshold,
-                                _ => 1.0,
-                            };
-                            return Err(fail(
-                                Failure::new("run.check.mismatch")
-                                    .with("block", id)
-                                    .with("image", &e.reference.name)
-                                    .with("similarity", percent(e.comparison.similarity))
-                                    .with("threshold", percent(threshold)),
-                            ));
+                            return Err(fail(mismatch(id, reference, &e)));
                         }
                     }
                     Err(name) => self.create_baseline(t, id, reference, &name, &shot, step)?,
@@ -701,7 +720,10 @@ impl Exec<'_> {
                     let passed = match self.evaluate(t, id, r, &shot, false, &mut cache) {
                         Ok(e) => {
                             let e = e.map_err(|name| missing_reference(id, &name))?;
-                            cache = Some(e.reference);
+                            cache = e.reference;
+                            if let Judged::Model(answer) = e.judged {
+                                step.vision = Some(answer);
+                            }
                             e.passed
                         }
                         // A window of another size, such as the one before a dialog opens, is
@@ -716,7 +738,11 @@ impl Exec<'_> {
                     last = Some(shot);
                     Ok((passed == want).then_some(()))
                 })?;
-                (reached, r.image.as_str(), Some(r))
+                let target = match &r.compare {
+                    Compare::Meaning { expect } if r.image.is_empty() => expect.as_str(),
+                    _ => r.image.as_str(),
+                };
+                (reached, target, Some(r))
             }
             WaitUntil::ScreenStable => {
                 let mut previous: Option<Image> = None;
@@ -810,35 +836,14 @@ impl Exec<'_> {
         strict: bool,
         cache: &mut Option<Loaded>,
     ) -> Result<Result<Evaluation, String>, Stop> {
-        let (tolerance, threshold) = match r.compare {
+        let (tolerance, threshold) = match &r.compare {
             Compare::Exact => (0, None),
-            Compare::Similar { threshold } => (SIMILAR_TOLERANCE, Some(threshold)),
-            Compare::Meaning => {
-                return Err(fail(
-                    Failure::new("run.compare.meaningUnavailable").with("block", id),
-                ));
-            }
+            Compare::Similar { threshold } => (SIMILAR_TOLERANCE, Some(*threshold)),
+            Compare::Meaning { .. } => return self.judge(t, id, r, shot, strict, cache),
         };
-        let mut name = if shot.dark {
-            dark_variant(&r.image)
-        } else {
-            r.image.clone()
-        };
-        if !strict && name != r.image && !self.resolve(t, id, &name)?.exists() {
-            name = r.image.clone();
-        }
-        let reference = match cache.take().filter(|c| c.name == name) {
-            Some(loaded) => loaded,
-            None => {
-                let bytes = match fs::read(self.resolve(t, id, &name)?) {
-                    Ok(bytes) => bytes,
-                    Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Err(name)),
-                    Err(e) => return Err(fail(unreadable_reference(id, &name, e.to_string()))),
-                };
-                let image = Image::decode(&bytes)
-                    .map_err(|reason| fail(unreadable_reference(id, &name, reason)))?;
-                Loaded { name, image }
-            }
+        let reference = match self.load_reference(t, id, r, shot, strict, cache)? {
+            Ok(loaded) => loaded,
+            Err(name) => return Ok(Err(name)),
         };
         let actual = decode_screenshot(id, shot)?;
         let skip: Vec<_> = r.ignore.iter().chain(&r.hide).copied().collect();
@@ -858,11 +863,104 @@ impl Exec<'_> {
             Some(threshold) => comparison.similarity >= threshold,
         };
         Ok(Ok(Evaluation {
-            reference,
+            reference: Some(reference),
             actual,
-            comparison,
+            judged: Judged::Pixels(comparison),
             passed,
         }))
+    }
+
+    /// Asks the vision model whether the screen shows what `expect` says, or means the same
+    /// as the reference when `expect` is empty. With an expectation the reference is optional.
+    fn judge(
+        &self,
+        t: &TestFile,
+        id: &str,
+        r: &Reference,
+        shot: &Screenshot,
+        strict: bool,
+        cache: &mut Option<Loaded>,
+    ) -> Result<Result<Evaluation, String>, Stop> {
+        let judge = self.runner.vision.ok_or_else(|| {
+            fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
+        })?;
+        let expect = match &r.compare {
+            Compare::Meaning { expect } => expect.trim(),
+            _ => "",
+        };
+        if self.options.local_only && !judge.is_local() {
+            return Err(fail(
+                Failure::new("run.vision.cloudBlocked")
+                    .with("block", id)
+                    .with("provider", judge.provider()),
+            ));
+        }
+        let reference = if expect.is_empty() {
+            match self.load_reference(t, id, r, shot, strict, cache)? {
+                Ok(loaded) => Some(loaded),
+                Err(name) => return Ok(Err(name)),
+            }
+        } else if r.image.is_empty() {
+            None
+        } else {
+            self.load_reference(t, id, r, shot, strict, cache)?.ok()
+        };
+        let actual = decode_screenshot(id, shot)?;
+        let screenshot = for_model(id, &actual, r)?;
+        let reference_png = match &reference {
+            Some(loaded) => Some(for_model(id, &loaded.image, r)?),
+            None => None,
+        };
+        let question = Question {
+            expect,
+            screenshot: &screenshot,
+            reference: reference_png.as_deref(),
+        };
+        let judgement = judge
+            .judge(&question)
+            .map_err(|e| fail(vision_failure(judge, &e).with("block", id)))?;
+        Ok(Ok(Evaluation {
+            reference,
+            actual,
+            passed: judgement.passed,
+            judged: Judged::Model(VisionAnswer {
+                provider: judge.provider().to_owned(),
+                model: judge.model().to_owned(),
+                passed: judgement.passed,
+                reason: judgement.reason,
+            }),
+        }))
+    }
+
+    /// The reference to compare with; the inner `Err` holds its name when it does not exist.
+    fn load_reference(
+        &self,
+        t: &TestFile,
+        id: &str,
+        r: &Reference,
+        shot: &Screenshot,
+        strict: bool,
+        cache: &mut Option<Loaded>,
+    ) -> Result<Result<Loaded, String>, Stop> {
+        let mut name = if shot.dark {
+            dark_variant(&r.image)
+        } else {
+            r.image.clone()
+        };
+        if !strict && name != r.image && !self.resolve(t, id, &name)?.exists() {
+            name = r.image.clone();
+        }
+        if let Some(loaded) = cache.take().filter(|c| c.name == name) {
+            return Ok(Ok(loaded));
+        }
+        let bytes = match fs::read(self.resolve(t, id, &name)?) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Err(name)),
+            Err(e) => return Err(fail(unreadable_reference(id, &name, e.to_string()))),
+        };
+        let image = Image::decode(&bytes)
+            .map_err(|reason| fail(unreadable_reference(id, &name, reason)))?;
+        Ok(Ok(Loaded { name, image }))
     }
 
     /// Saves the screenshot, the reference and the diff picture, private areas covered.
@@ -872,21 +970,24 @@ impl Exec<'_> {
         r: &Reference,
         e: &Evaluation,
     ) -> Result<(), Stop> {
-        let mut images = [
-            e.actual.clone(),
-            e.reference.image.clone(),
-            e.comparison.diff.clone(),
-        ];
-        for (image, kind) in images.iter_mut().zip(["after", "expected", "diff"]) {
+        let mut images = vec![("after", e.actual.clone())];
+        images.extend(e.reference.as_ref().map(|l| ("expected", l.image.clone())));
+        match &e.judged {
+            Judged::Pixels(c) => {
+                images.push(("diff", c.diff.clone()));
+                step.similarity = Some(c.similarity);
+            }
+            Judged::Model(answer) => step.vision = Some(answer.clone()),
+        }
+        for (kind, mut image) in images {
             image.cover(&r.hide);
-            let path = Some(self.record_image(step, kind, image)?);
+            let path = Some(self.record_image(step, kind, &image)?);
             match kind {
                 "after" => step.after = path,
                 "expected" => step.expected = path,
                 _ => step.diff = path,
             }
         }
-        step.similarity = Some(e.comparison.similarity);
         Ok(())
     }
 
@@ -1215,6 +1316,48 @@ fn write_failed(path: &Path, e: impl ToString) -> Stop {
             .with("path", path.display())
             .with("reason", e.to_string()),
     )
+}
+
+/// Why a `check` failed: too few matching pixels, or a vision model said no.
+fn mismatch(id: &str, r: &Reference, e: &Evaluation) -> Failure {
+    match &e.judged {
+        Judged::Model(answer) => Failure::new("run.check.meaningMismatch")
+            .with("block", id)
+            .with("provider", &answer.provider)
+            .with("reason", &answer.reason),
+        Judged::Pixels(comparison) => {
+            let threshold = match r.compare {
+                Compare::Similar { threshold } => threshold,
+                _ => 1.0,
+            };
+            Failure::new("run.check.mismatch")
+                .with("block", id)
+                .with(
+                    "image",
+                    e.reference.as_ref().map_or("", |l| l.name.as_str()),
+                )
+                .with("similarity", percent(comparison.similarity))
+                .with("threshold", percent(threshold))
+        }
+    }
+}
+
+/// What a vision model gets to see: the compared area only, with the parts left out of the
+/// comparison and the hidden ones covered, scaled down to a sensible size.
+fn for_model(id: &str, image: &Image, r: &Reference) -> Result<Vec<u8>, Stop> {
+    let mut image = image.clone();
+    image.cover(&r.ignore);
+    image.cover(&r.hide);
+    if let Some(area) = &r.area {
+        image = image.crop(area);
+    }
+    image.fit(VISION_MAX_SIDE).encode().map_err(|reason| {
+        fail(
+            Failure::new("run.screenshot.unreadable")
+                .with("block", id)
+                .with("reason", reason),
+        )
+    })
 }
 
 fn decode_screenshot(id: &str, shot: &Screenshot) -> Result<Image, Stop> {

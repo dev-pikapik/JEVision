@@ -266,7 +266,7 @@ private struct StepRow: View {
   @State private var confirmsAccept = false
 
   private var images: StepImages { StepImages(step: step, in: run.url) }
-  private var canExpand: Bool { !images.all.isEmpty || step.failure != nil }
+  private var canExpand: Bool { !images.all.isEmpty || step.failure != nil || step.vision != nil }
 
   private var title: String { BlockInfo.title(step.blockType) }
 
@@ -362,6 +362,17 @@ private struct StepRow: View {
   @ViewBuilder private var detail: some View {
     let images = images
     VStack(alignment: .leading, spacing: 10) {
+      // A failed check by meaning already gives the model's reason.
+      if let answer = step.vision, step.failure?.code != "run.check.meaningMismatch" {
+        Label {
+          Text(verbatim: "\(answer.provider) · \(answer.model): \(answer.reason)")
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+          Image(systemName: "sparkles")
+        }
+        .foregroundStyle(.secondary)
+      }
       if step.status == .baselineCreated, let after = images.after {
         Label(
           "There was no reference yet, so this screenshot became it: \(step.reference ?? "")",

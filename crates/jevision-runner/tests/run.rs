@@ -5,8 +5,9 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use jevision_runner::{
-    Event, Hands, HandsError, MouseButton, Openable, PauseReason, Point, Run, RunControl,
-    RunOptions, RunReport, Runner, Screenshot, StepStatus, Verdict, html, junit_xml,
+    Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point, Question, Run,
+    RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus, Verdict, VisionAnswer,
+    VisionError, VisionJudge, html, junit_xml,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -224,6 +225,7 @@ fn run_with(
         secrets: &secrets,
         events: &sink,
         control,
+        vision: None,
     };
     let run = runner
         .run(&project.0, Path::new("t.flow.json"), options)
@@ -645,6 +647,7 @@ fn breakpoints_step_mode_and_user_input_pause() {
         secrets: &secrets,
         events: &sink,
         control: control.clone(),
+        vision: None,
     };
 
     let pauses = std::thread::scope(|s| {
@@ -878,4 +881,236 @@ fn open_file_opens_a_fresh_copy() {
     );
     let report = run_with(&p, &hands, RunControl::new(), &options()).0.report;
     assert_eq!(failure_code(&report), "run.path.outsideProject");
+}
+
+/// A vision model that gives a fixed answer and keeps what it was shown.
+struct Judge {
+    local: bool,
+    answer: Result<Judgement, VisionError>,
+    asked: Mutex<Vec<Asked>>,
+}
+
+struct Asked {
+    expect: String,
+    screenshot: Vec<u8>,
+    reference: Option<Vec<u8>>,
+}
+
+impl Judge {
+    fn new(local: bool, answer: Result<Judgement, VisionError>) -> Self {
+        Self {
+            local,
+            answer,
+            asked: Mutex::new(Vec::new()),
+        }
+    }
+
+    fn says(passed: bool) -> Self {
+        Self::new(
+            false,
+            Ok(Judgement {
+                passed,
+                reason: if passed {
+                    "Two items in the cart."
+                } else {
+                    "The cart is empty."
+                }
+                .into(),
+            }),
+        )
+    }
+}
+
+impl VisionJudge for Judge {
+    fn provider(&self) -> &str {
+        "Test Vision"
+    }
+    fn model(&self) -> &str {
+        "seer-1"
+    }
+    fn is_local(&self) -> bool {
+        self.local
+    }
+    fn judge(&self, q: &Question<'_>) -> Result<Judgement, VisionError> {
+        self.asked.lock().unwrap().push(Asked {
+            expect: q.expect.to_owned(),
+            screenshot: q.screenshot.to_vec(),
+            reference: q.reference.map(<[u8]>::to_vec),
+        });
+        self.answer.clone()
+    }
+}
+
+fn run_judged(project: &Project, hands: &Fake, judge: Option<&Judge>, local_only: bool) -> Run {
+    let secrets = secrets();
+    let runner = Runner {
+        hands,
+        secrets: &secrets,
+        events: &|_: &Event| {},
+        control: RunControl::new(),
+        vision: judge.map(|j| j as &dyn VisionJudge),
+    };
+    let options = RunOptions {
+        local_only,
+        ..options()
+    };
+    runner
+        .run(&project.0, Path::new("t.flow.json"), &options)
+        .unwrap()
+}
+
+fn size(png_bytes: &[u8]) -> (u32, u32) {
+    let info = png::Decoder::new(std::io::Cursor::new(png_bytes))
+        .read_info()
+        .unwrap()
+        .info()
+        .clone();
+    (info.width, info.height)
+}
+
+#[test]
+fn checks_by_meaning_show_the_model_only_the_compared_part_with_private_parts_covered() {
+    let p = Project::new();
+    // Left half of the window compared; its top-left quarter hidden, a stripe ignored.
+    p.write("refs/cart.png", solid([0, 0, 200])).test(
+        r#""check":{"type":"check","reference":{"image":"refs/cart.png","compare":"meaning",
+           "expect":"The cart shows 2 items","area":{"x":0,"y":0,"width":0.5,"height":1},
+           "hide":[{"x":0,"y":0,"width":0.25,"height":0.5}],
+           "ignore":[{"x":0,"y":0.9,"width":0.5,"height":0.1}]}}"#,
+        "check",
+        0,
+    );
+    let screen = png(40, 20, |x, y| match (x, y) {
+        (0..10, 0..10) if (x + y) % 2 == 0 => [255, 255, 255],
+        (0..10, 0..10) => [0, 0, 0],
+        (_, 18..) if x % 2 == 0 => [255, 0, 0],
+        (_, 18..) => [0, 0, 255],
+        _ => [0, 200, 0],
+    });
+    let hands = Fake::new(screen);
+    let judge = Judge::says(true);
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let step = &report.attempts[0].steps[0];
+    assert_eq!(
+        step.vision,
+        Some(VisionAnswer {
+            provider: "Test Vision".into(),
+            model: "seer-1".into(),
+            passed: true,
+            reason: "Two items in the cart.".into(),
+        })
+    );
+    assert_eq!(step.similarity, None);
+    assert!(step.diff.is_none() && step.expected.is_some());
+
+    let asked = judge.asked.lock().unwrap();
+    let Asked {
+        expect,
+        screenshot: shot,
+        reference,
+    } = &asked[0];
+    assert_eq!(expect, "The cart shows 2 items");
+    assert_eq!(size(shot), (20, 20));
+    assert_eq!(size(reference.as_ref().unwrap()), (20, 20));
+    // The checkerboard under the hidden part became one flat colour; the ignored stripe too.
+    for y in 0..10 {
+        for x in 0..10 {
+            assert_eq!(pixel(shot, x, y), [127, 127, 127], "({x}, {y})");
+        }
+    }
+    assert_eq!(pixel(shot, 14, 19), pixel(shot, 15, 19));
+    assert_eq!(pixel(shot, 15, 5), [0, 200, 0]);
+
+    // The model says no: the check fails with its reason.
+    let judge = Judge::says(false);
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.check.meaningMismatch");
+    assert_eq!(failure.param("reason"), "The cart is empty.");
+    assert_eq!(failure.param("provider"), "Test Vision");
+}
+
+#[test]
+fn an_expectation_needs_no_reference_and_if_follows_the_verdict() {
+    let p = Project::new();
+    p.test(
+        r#""if":{"type":"if","reference":{"compare":"meaning","expect":"A dialog is open"},
+           "then":"yes","else":"no"},
+           "yes":{"type":"pressKeys","keys":"return"},
+           "no":{"type":"pressKeys","keys":"escape"}"#,
+        "if",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    let judge = Judge::says(false);
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(report.attempts[0].steps[0].branch.as_deref(), Some("else"));
+    assert!(judge.asked.lock().unwrap()[0].reference.is_none());
+    assert!(report.attempts[0].steps[0].expected.is_none());
+}
+
+#[test]
+fn local_only_keeps_screenshots_away_from_cloud_models() {
+    let p = Project::new();
+    p.test(
+        r#""check":{"type":"check","reference":{"compare":"meaning","expect":"Signed in"}}"#,
+        "check",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+
+    let cloud = Judge::says(true);
+    let report = run_judged(&p, &hands, Some(&cloud), true).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.cloudBlocked");
+    assert_eq!(failure.param("provider"), "Test Vision");
+    assert!(cloud.asked.lock().unwrap().is_empty());
+
+    let local = Judge {
+        local: true,
+        ..Judge::says(true)
+    };
+    let report = run_judged(&p, &hands, Some(&local), true).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(local.asked.lock().unwrap().len(), 1);
+
+    let report = run_judged(&p, &hands, None, false).report;
+    assert_eq!(failure_code(&report), "run.compare.meaningUnavailable");
+}
+
+#[test]
+fn vision_problems_are_localizable_failures() {
+    let p = Project::new();
+    p.test(
+        r#""wait":{"type":"waitFor","until":{"appears":{"compare":"meaning","expect":"Done"}},
+           "timeout":"1s"}"#,
+        "wait",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    let slow = Judge::new(false, Err(VisionError::Timeout { seconds: 120 }));
+    let failure = run_judged(&p, &hands, Some(&slow), false).report.attempts[0]
+        .failure
+        .clone()
+        .unwrap();
+    assert_eq!(failure.code, "run.vision.timeout");
+    assert_eq!(
+        failure.params.keys().collect::<Vec<_>>(),
+        ["block", "model", "provider", "seconds"]
+    );
+    assert_eq!(failure.param("seconds"), "120");
+    assert_eq!(
+        jevision_runner::describe(&failure),
+        "Block wait: Test Vision did not answer within 120 s."
+    );
+
+    // A model that keeps saying no: the wait times out on the expectation, the last answer kept.
+    let report = run_judged(&p, &hands, Some(&Judge::says(false)), false).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.waitFor.timeout");
+    assert_eq!(failure.param("target"), "Done");
+    let step = &report.attempts[0].steps[0];
+    assert_eq!(step.vision.as_ref().unwrap().reason, "The cart is empty.");
 }

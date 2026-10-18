@@ -23,13 +23,20 @@ struct RunCommand {
       Console.standardError.line("jevision: \(error.message)")
       return .failure
     }
+    let ai = AISettings.app
+    let vision = ai.settings(provider: request.provider, model: request.model)
+    if request.model != nil, vision == nil {
+      Console.standardError.line("jevision: --model needs an AI provider: choose one with --provider or in the app (Settings → AI)")
+      return .failure
+    }
     if let problem = Readiness.problem() {
       Console.standardError.line(problem)
       return .failure
     }
     let input = InputWatcher()
     let session = TestSession(
-      project: plan.project, tests: plan.tests, request: request, progress: progress, input: input
+      project: plan.project, tests: plan.tests, request: request, progress: progress, input: input,
+      vision: vision, localOnly: ai.localOnly
     ) { run in
       MacHands(input: input, isCancelled: { run.isCancelled() })
     }
@@ -218,6 +225,8 @@ final class TestSession: @unchecked Sendable {
   private let request: RunRequest
   private let progress: Console
   private let makeHands: (TestRun) -> any Hands
+  private let vision: VisionSettings?
+  private let localOnly: Bool
   /// The person's mouse and keyboard, watched while a test runs.
   private let input: InputWatcher?
   private let lock = NSLock()
@@ -226,8 +235,10 @@ final class TestSession: @unchecked Sendable {
 
   init(
     project: String, tests: [String], request: RunRequest, progress: Console, input: InputWatcher?,
-    makeHands: @escaping (TestRun) -> any Hands
+    vision: VisionSettings? = nil, localOnly: Bool = false, makeHands: @escaping (TestRun) -> any Hands
   ) {
+    self.vision = vision
+    self.localOnly = localOnly
     self.project = project
     self.tests = tests
     self.request = request
@@ -286,7 +297,7 @@ final class TestSession: @unchecked Sendable {
     progress.line()
     input?.ignoreInput(for: Self.handsOffTime)
     run.start(
-      project: project, test: test, options: RunOptions(startAt: request.startAt, retries: request.retries),
+      project: project, test: test, options: RunOptions(startAt: request.startAt, retries: request.retries, vision: vision, localOnly: localOnly),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
     switch listener.outcome {
