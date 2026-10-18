@@ -573,6 +573,21 @@ async fn streams_run_events_to_watchers() {
             status: StepStatus::Passed,
             duration_ms: 120,
             failure: None,
+            branch: None,
+            branches: None,
+            branch_condition: None,
+        },
+        RunEvent::BlockFinished {
+            attempt: 1,
+            seq: 2,
+            test: "smoke.flow.json".into(),
+            block: "inbox".into(),
+            status: StepStatus::Passed,
+            duration_ms: 80,
+            failure: None,
+            branch: Some("elseIf1".into()),
+            branches: Some(3),
+            branch_condition: Some("Inbox is empty".into()),
         },
         RunEvent::Finished {
             verdict: Verdict::Passed,
@@ -591,6 +606,37 @@ async fn streams_run_events_to_watchers() {
     assert_eq!(status.state, RunState::Running);
     client.stop_run("Demo".into(), run.clone()).await.unwrap();
     assert_eq!(*setup.fake.stopped.lock().unwrap(), vec![run]);
+}
+
+#[test]
+fn a_finished_step_carries_the_way_an_if_took() {
+    let finished =
+        |branch: Option<&str>, branches, condition: Option<&str>| RunEvent::BlockFinished {
+            attempt: 1,
+            seq: 2,
+            test: "inbox.flow.json".into(),
+            block: "first-screen".into(),
+            status: StepStatus::Passed,
+            duration_ms: 80,
+            failure: None,
+            branch: branch.map(Into::into),
+            branches,
+            branch_condition: condition.map(Into::into),
+        };
+    let event = finished(Some("elseIf1"), Some(3), Some("Inbox is empty"));
+    let json = serde_json::to_value(&event).unwrap();
+    assert_eq!(json["branch"], "elseIf1");
+    assert_eq!(json["branches"], 3);
+    assert_eq!(json["branchCondition"], "Inbox is empty");
+    assert_eq!(serde_json::from_value::<RunEvent>(json).unwrap(), event);
+
+    // Other blocks send nothing new, and an event from an older Mac reads as no branch.
+    let plain = serde_json::to_value(finished(None, None, None)).unwrap();
+    assert!(plain.get("branch").is_none() && plain.get("branchCondition").is_none());
+    assert_eq!(
+        serde_json::from_value::<RunEvent>(plain).unwrap(),
+        finished(None, None, None)
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

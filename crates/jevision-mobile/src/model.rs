@@ -300,6 +300,12 @@ pub enum RunEvent {
         status: StepStatus,
         duration_ms: u64,
         failure: Option<Failure>,
+        /// The way out an `if` took: `then`, `elseIf1`, `elseIf2`… or `else`.
+        branch: Option<String>,
+        /// How many ways out the `if` had.
+        branches: Option<u32>,
+        /// What the condition of the way taken looks for. Absent for `else`.
+        branch_condition: Option<String>,
     },
     Paused {
         block: String,
@@ -344,6 +350,9 @@ impl From<jevision_remote::RunEvent> for RunEvent {
                 status,
                 duration_ms,
                 failure,
+                branch,
+                branches,
+                branch_condition,
             } => Self::BlockFinished {
                 attempt,
                 seq,
@@ -352,6 +361,9 @@ impl From<jevision_remote::RunEvent> for RunEvent {
                 status,
                 duration_ms,
                 failure: failure.map(Into::into),
+                branch,
+                branches,
+                branch_condition,
             },
             E::Paused { block, reason } => Self::Paused { block, reason },
             E::Resumed => Self::Resumed,

@@ -142,7 +142,7 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
         .map(|block| BlockSummary {
             id: block.id.clone(),
             kind: block.kind.type_name().to_owned(),
-            title: title(&block.kind),
+            title: jevision_core::unbreakable_placeholders(&title(&block.kind)),
             area: layout
                 .blocks
                 .iter()

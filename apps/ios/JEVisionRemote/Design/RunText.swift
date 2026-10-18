@@ -102,9 +102,14 @@ enum RunText {
   /// Which way an `if` step went, named as the Mac's canvas names the ways out:
   /// Took “Condition 2: Inbox is empty”, Took “Otherwise”. `nil` for other blocks.
   static func branch(_ step: RunReport.Step) -> String? {
-    guard let branch = step.branch else { return nil }
+    step.branch.flatMap { branch($0, branches: step.branches, condition: step.branchCondition) }
+  }
+
+  /// `branch` is the way out taken, `branches` how many the `if` had and `condition` what the
+  /// way taken looks for.
+  static func branch(_ branch: String, branches: Int?, condition: String?) -> String? {
     let index = branch.hasPrefix("elseIf") ? Int(branch.dropFirst(6)).flatMap { $0 > 0 ? $0 - 1 : nil } : nil
-    let plain = step.branches.map { $0 <= 2 } ?? (index == nil)
+    let plain = branches.map { $0 <= 2 } ?? (index == nil)
     let name: String
     switch branch {
     case "then": name = plain ? String(localized: "Yes") : String(localized: "Condition \(1)")
@@ -113,7 +118,7 @@ enum RunText {
       guard let index else { return nil }
       name = String(localized: "Condition \(index + 2)")
     }
-    guard let condition = step.branchCondition else { return String(localized: "Took “\(name)”") }
+    guard let condition else { return String(localized: "Took “\(name)”") }
     return String(localized: "Took “\(name): \(condition)”")
   }
 

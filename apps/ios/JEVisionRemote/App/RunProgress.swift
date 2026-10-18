@@ -3,12 +3,15 @@ import Foundation
 /// A run as followed live: what is running, what passed and failed, how it ended.
 struct RunProgress: Equatable {
   struct Step: Hashable, Identifiable {
-    let id: Int
+    var id: Int
     let test: String
     let block: String
     let kind: String
-    let status: StepStatus
+    /// `nil` while the block runs.
+    let status: StepStatus?
     let failure: Failure?
+    /// Which way an `if` went: Took “Yes”, Took “Condition 2: Inbox is empty”.
+    var took: String? = nil
   }
 
   /// The run's test file; blocks of tests it calls belong to other files.
@@ -20,6 +23,8 @@ struct RunProgress: Equatable {
   private(set) var marks: [String: StepStatus] = [:]
   /// Finished steps of the current attempt, in order.
   private(set) var steps: [Step] = []
+  /// The block running now, of the run's test or of a test it calls.
+  private var running: Step?
   private(set) var verdict: Verdict?
   private(set) var flaky = false
   /// Why the current attempt failed: its first failure.
@@ -27,6 +32,14 @@ struct RunProgress: Equatable {
   private var kinds: [String: String] = [:]
 
   var isFinished: Bool { state == .finished }
+
+  /// The steps of the current attempt in run order, oldest first: the finished ones, then the
+  /// one running now. The running one keeps its id when it finishes.
+  var lines: [Step] {
+    guard var running else { return steps }
+    running.id = steps.count
+    return steps + [running]
+  }
 
   mutating func apply(_ update: RunUpdate) {
     switch update {
@@ -36,6 +49,11 @@ struct RunProgress: Equatable {
       if status.attempt != attempt { startAttempt(status.attempt) }
       verdict = status.verdict
       current = status.state == .finished ? nil : status.block
+      if let current, running?.block != current {
+        running = Step(id: 0, test: status.test, block: current, kind: "", status: nil, failure: nil)
+      } else if status.state == .finished {
+        running = nil
+      }
     case .event(let event):
       apply(event)
     }
@@ -47,12 +65,14 @@ struct RunProgress: Equatable {
       startAttempt(number)
     case .blockStarted(let file, let block, let kind):
       kinds[file + "\n" + block] = kind
+      running = Step(id: 0, test: file, block: block, kind: kind, status: nil, failure: nil)
       if isOwn(file) { current = block }
-    case .blockFinished(let file, let block, let status, let failure):
+    case .blockFinished(let file, let block, let status, let failure, let branch, let branches, let condition):
       steps.append(
         Step(
           id: steps.count, test: file, block: block, kind: kinds[file + "\n" + block] ?? "", status: status,
-          failure: failure))
+          failure: failure, took: branch.flatMap { RunText.branch($0, branches: branches, condition: condition) }))
+      if running?.test == file, running?.block == block { running = nil }
       if isOwn(file) {
         marks[block] = status
         if current == block { current = nil }
@@ -61,6 +81,7 @@ struct RunProgress: Equatable {
     case .paused(let block):
       state = .paused
       if current == nil { current = block }
+      if running == nil { running = Step(id: 0, test: test ?? "", block: block, kind: "", status: nil, failure: nil) }
     case .resumed:
       state = .running
     case .finished(let verdict, let flaky):
@@ -68,6 +89,7 @@ struct RunProgress: Equatable {
       self.verdict = verdict
       self.flaky = flaky
       current = nil
+      running = nil
     }
   }
 
@@ -78,6 +100,7 @@ struct RunProgress: Equatable {
   private mutating func startAttempt(_ number: Int) {
     attempt = number
     current = nil
+    running = nil
     marks = [:]
     steps = []
     failure = nil
