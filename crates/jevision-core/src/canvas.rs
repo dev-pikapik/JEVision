@@ -656,7 +656,7 @@ mod tests {
         };
         assert_eq!(next(&f, "b").as_deref(), Some("a2"));
         assert_eq!(next(&f, "a2").as_deref(), Some("c"));
-        assert_eq!(crate::validate(&f), vec![]);
+        assert!(crate::validate(&f).iter().all(|i| i.code == "flow.noCheck"));
 
         assert_eq!(f.paste_items("not a test", None), None);
     }

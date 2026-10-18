@@ -332,6 +332,19 @@ impl BlockKind {
         }
     }
 
+    /// The block looks at the screen and fails the run when it isn't as expected: a check, or a
+    /// wait for something to appear or disappear.
+    pub fn checks_screen(&self) -> bool {
+        matches!(
+            self,
+            Self::Check { .. }
+                | Self::WaitFor {
+                    until: WaitUntil::Appears(_) | WaitUntil::Disappears(_),
+                    ..
+                }
+        )
+    }
+
     /// Names of the outgoing edges this block can have, in drawing order.
     pub fn edge_names(&self) -> Vec<Cow<'static, str>> {
         match self {
