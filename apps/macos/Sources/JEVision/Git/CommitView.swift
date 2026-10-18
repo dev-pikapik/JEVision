@@ -6,6 +6,7 @@ import SwiftUI
 struct CommitView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.dismissWindow) private var dismissWindow
+  @Environment(\.openWindow) private var openWindow
   /// Changes left out of the commit; everything else goes in, new changes too.
   @State private var excluded: Set<String> = []
   @State private var focused: String?
@@ -14,6 +15,8 @@ struct CommitView: View {
   @State private var email = ""
   /// Git doesn't know who commits yet: ask once, it remembers.
   @State private var asksIdentity = false
+  /// The commit just made: the window then offers what comes next.
+  @State private var committed = false
 
   private var changes: [FileChange] { project.git.status?.changes ?? [] }
   private var included: [FileChange] { changes.filter { !excluded.contains($0.path) } }
@@ -27,7 +30,9 @@ struct CommitView: View {
 
   var body: some View {
     Group {
-      if changes.isEmpty {
+      if committed {
+        nextSteps
+      } else if changes.isEmpty {
         ContentUnavailableView(
           "Nothing to commit", systemImage: "checkmark.circle",
           description: Text("Every change in this project is already committed."))
@@ -165,7 +170,54 @@ struct CommitView: View {
     project.git.commit(paths, message: message, as: identity) {
       message = ""
       asksIdentity = false
-      dismissWindow(id: SceneID.commit)
+      committed = true
     }
+  }
+
+  /// After a commit: send it to the server or propose it, without hunting through Settings.
+  private var nextSteps: some View {
+    let status = project.git.status
+    return ContentUnavailableView {
+      Label("Committed", systemImage: "checkmark.circle")
+    } description: {
+      if let status, let sync = GitText.sync(status) {
+        Text(sync)
+      } else {
+        Text("The commit is saved on this Mac.")
+      }
+    } actions: {
+      HStack {
+        if !changes.isEmpty {
+          Button("Commit More") { committed = false }
+        }
+        if status?.remote != nil {
+          Button("Push", action: project.git.push)
+            .help(Text("Send your commits to the server"))
+            .disabled(project.git.activity != nil)
+        }
+        if status?.github != nil {
+          Button("Create Pull Request…") {
+            project.git.isComposingPullRequest = true
+            openWindow(id: SceneID.main)
+            dismissWindow(id: SceneID.commit)
+          }
+          .disabled(project.git.activity != nil)
+        }
+        Button("Done") { dismissWindow(id: SceneID.commit) }
+          .buttonStyle(.borderedProminent)
+          .keyboardShortcut(.defaultAction)
+      }
+      if project.git.activity == .pushing {
+        ProgressView().controlSize(.small)
+          .accessibilityLabel(Text("Pushing…"))
+      }
+    }
+    .alert(
+      "Couldn’t push", isPresented: Binding(
+        get: { project.git.failure?.activity == .pushing }, set: { if !$0 { project.git.failure = nil } }),
+      presenting: project.git.failure
+    ) { _ in
+      Button("OK") {}
+    } message: { Text($0.message) }
   }
 }

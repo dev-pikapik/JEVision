@@ -14,21 +14,24 @@ struct OnboardingView: View {
   @Environment(PermissionsMonitor.self) private var monitor
   @Environment(ProjectStore.self) private var project
   @Environment(RecordCenter.self) private var records
+  @Environment(RunCenter.self) private var runs
   @Environment(\.openWindow) private var openWindow
   @Environment(\.dismissWindow) private var dismissWindow
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var step = Step.welcome
   @State private var app: String?
   @State private var failure: String?
+  /// The person asked for the demo test and is giving the permissions it needs first.
+  @State private var wantsDemo = false
 
   var body: some View {
     VStack(spacing: 0) {
       Group {
         switch step {
-        case .welcome: WelcomeStep()
+        case .welcome: WelcomeStep(runDemo: runDemo)
         case .permissions: PermissionsStep()
         case .ai: AIStep()
-        case .firstTest: FirstTestStep(app: $app, needsFolder: project.rootURL == nil, record: recordFirstTest)
+        case .firstTest: FirstTestStep(app: $app, needsFolder: project.rootURL == nil, record: recordFirstTest, runDemo: runDemo)
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -57,14 +60,17 @@ struct OnboardingView: View {
         }
       }
       .buttonStyle(.glass)
-      .frame(width: 140, alignment: .leading)
+      .frame(width: 200, alignment: .leading)
       Spacer()
       dots
       Spacer()
       HStack {
         switch step {
         case .welcome:
-          Button("Continue") { go(to: .permissions) }
+          Button("Set Up Step by Step") { go(to: .permissions) }
+            .buttonStyle(.glass)
+        case .permissions where monitor.allGranted && wantsDemo:
+          Button("Run the Demo Test", systemImage: "play.fill", action: runDemo)
             .buttonStyle(.glassProminent)
         case .permissions where monitor.allGranted:
           Button("Continue") { go(to: .ai) }
@@ -84,8 +90,8 @@ struct OnboardingView: View {
             .keyboardShortcut(.cancelAction)
         }
       }
-      .keyboardShortcut(.defaultAction)
-      .frame(width: 140, alignment: .trailing)
+      .keyboardShortcut(step == .welcome ? nil : .defaultAction)
+      .frame(width: 200, alignment: .trailing)
     }
     .controlSize(.large)
     .padding(.horizontal, 20)
@@ -113,12 +119,31 @@ struct OnboardingView: View {
     dismissWindow(id: SceneID.onboarding)
   }
 
-  /// Creates a test for the chosen app, in a folder chosen first if no project is open, and records into it.
+  /// Puts the demo test in the project and runs it, after the permissions it needs.
+  private func runDemo() {
+    guard monitor.allGranted else {
+      wantsDemo = true
+      go(to: .permissions)
+      return
+    }
+    do {
+      try project.openDemo()
+    } catch {
+      failure = error.localizedDescription
+      return
+    }
+    guard let document = project.document, let root = project.rootURL else { return }
+    finish()
+    openWindow(id: SceneID.main)
+    // After the main window is up, so the run puts it out of TextEdit's way.
+    Task { runs.run(document, in: root) }
+  }
+
+  /// Creates a test for the chosen app, in the default folder if no project is open, and records into it.
   private func recordFirstTest() {
     guard let app else { return }
-    if project.rootURL == nil { project.choose() }
-    guard project.rootURL != nil else { return }
     do {
+      if project.rootURL == nil { try project.openDefaultFolder() }
       try project.createTest(name: String(localized: "First Test"), app: app)
     } catch {
       failure = error.localizedDescription

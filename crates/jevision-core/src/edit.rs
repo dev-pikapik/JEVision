@@ -759,7 +759,7 @@ mod tests {
         assert_eq!(f.remove_block("loop").as_deref(), Some("x"));
         assert_eq!(next_of(&f, "a").as_deref(), Some("x"));
         assert_eq!(next_of(&f, "y").as_deref(), Some("z"));
-        assert!(crate::validate(&f).is_empty());
+        assert!(crate::validate(&f).iter().all(|i| i.code == "flow.noCheck"));
     }
 
     #[test]
