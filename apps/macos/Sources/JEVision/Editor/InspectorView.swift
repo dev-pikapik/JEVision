@@ -84,11 +84,14 @@ struct InspectorView: View {
   }
 
   /// Settings the inspector shows next to their own control; problems with anything else go to the top.
-  private static func fields(of kind: BlockKind) -> Set<String> {
+  static func fields(of kind: BlockKind) -> Set<String> {
     switch kind {
     case .openApp: ["app"]
     case .openFile: ["files", "app"]
     case .click: ["target"]
+    case .hover: ["target"]
+    case .drag: ["from", "to"]
+    case .scroll: ["direction", "amount", "unit", "at"]
     case .type: ["text", "into"]
     case .pressKeys: ["keys"]
     case .waitFor: ["until", "timeout"]
@@ -205,6 +208,123 @@ struct InspectorView: View {
         DisclosureGroup {
           Toggle(isOn: bind("waitForChange", waitForChange) {
             .click(target: target, button: button, double: double, waitForChange: $0, next: next)
+          }) {
+            Text("Wait until the screen changes")
+          }
+        } label: {
+          Text("More")
+        }
+      }
+
+    case .hover(let target, let waitForChange, let next):
+      Section {
+        TargetEditor(
+          target: bind("target", target) { .hover(target: $0, waitForChange: waitForChange, next: next) },
+          field: "target", context: context)
+      }
+      Section {
+        DisclosureGroup {
+          Toggle(isOn: bind("waitForChange", waitForChange) { .hover(target: target, waitForChange: $0, next: next) }) {
+            Text("Wait until the screen changes")
+          }
+        } label: {
+          Text("More")
+        }
+      }
+
+    case .drag(let from, let to, let waitForChange, let next):
+      Section {
+        TargetEditor(
+          target: bind("from", from) { .drag(from: $0, to: to, waitForChange: waitForChange, next: next) },
+          field: "from", context: context)
+      } header: {
+        Text("Drag From")
+      }
+      Section {
+        TargetEditor(
+          target: bind("to", to) { .drag(from: from, to: $0, waitForChange: waitForChange, next: next) },
+          field: "to", context: context)
+      } header: {
+        Text("Drop On")
+      }
+      Section {
+        DisclosureGroup {
+          Toggle(isOn: bind("waitForChange", waitForChange) {
+            .drag(from: from, to: to, waitForChange: $0, next: next)
+          }) {
+            Text("Wait until the screen changes")
+          }
+        } label: {
+          Text("More")
+        }
+      }
+
+    case .scroll(let direction, let amount, let unit, let at, let waitForChange, let next):
+      Section {
+        Picker(selection: bind("direction", direction) {
+          .scroll(direction: $0, amount: amount, unit: unit, at: at, waitForChange: waitForChange, next: next)
+        }) {
+          Text(String(localized: "scroll.down", defaultValue: "Down")).tag(ScrollDirection.down)
+          Text(String(localized: "scroll.up", defaultValue: "Up")).tag(ScrollDirection.up)
+          Text(String(localized: "scroll.left", defaultValue: "Left")).tag(ScrollDirection.left)
+          Text(String(localized: "scroll.right", defaultValue: "Right")).tag(ScrollDirection.right)
+        } label: {
+          Text("Direction")
+        }
+        LabeledContent("Amount") {
+          HStack {
+            TextField(
+              value: bind("amount", Int(amount)) {
+                .scroll(
+                  direction: direction, amount: UInt32(clamping: max($0, 1)), unit: unit, at: at,
+                  waitForChange: waitForChange, next: next)
+              }, format: .number
+            ) { Text("Amount") }
+            .labelsHidden()
+            .multilineTextAlignment(.trailing)
+            .frame(width: 64)
+            Stepper(
+              value: bind("amount", Int(amount)) {
+                .scroll(
+                  direction: direction, amount: UInt32(clamping: $0), unit: unit, at: at,
+                  waitForChange: waitForChange, next: next)
+              }, in: 1...10_000
+            ) { Text("Amount") }
+            .labelsHidden()
+          }
+        }
+        Picker(selection: bind("unit", unit) {
+          .scroll(direction: direction, amount: amount, unit: $0, at: at, waitForChange: waitForChange, next: next)
+        }) {
+          Text("Lines").tag(ScrollUnit.lines)
+          Text("Pixels").tag(ScrollUnit.pixels)
+        } label: {
+          Text("Unit")
+        }
+        IssueList(issues: context.issues("amount"))
+      }
+      Section {
+        Toggle(isOn: bind("at", at != nil) {
+          .scroll(
+            direction: direction, amount: amount, unit: unit, at: $0 ? .image("") : nil, waitForChange: waitForChange,
+            next: next)
+        }) {
+          Text("Over an element")
+        }
+        if let at {
+          TargetEditor(
+            target: bind("at", at) {
+              .scroll(direction: direction, amount: amount, unit: unit, at: $0, waitForChange: waitForChange, next: next)
+            },
+            field: "at", context: context)
+        }
+      } footer: {
+        if at == nil { Text("Without an element, the wheel turns over the middle of the window.") }
+      }
+      Section {
+        DisclosureGroup {
+          Toggle(isOn: bind("waitForChange", waitForChange) {
+            .scroll(direction: direction, amount: amount, unit: unit, at: at, waitForChange: $0, next: next)
           }) {
             Text("Wait until the screen changes")
           }

@@ -495,6 +495,11 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("seconds")
         ),
+        "run.action.noChange" => format!(
+            "Block {}: the screen did not change within {} s after this step.",
+            p("block"),
+            p("seconds")
+        ),
         "run.waitFor.timeout" => format!(
             "Block {}: {} did not happen within {} s.",
             p("block"),

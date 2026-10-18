@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use jevision_core::{FORMAT_VERSION, MouseButton, Point, Rect};
+use jevision_core::{FORMAT_VERSION, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use serde_json::{Value, json};
 
 use super::{AssistantHost, AssistantPermissions, Server};
@@ -70,6 +70,22 @@ impl Hands for FakeHands {
         Ok(None)
     }
     fn click(&self, _: String, _: Point, _: MouseButton, _: bool) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn drag(&self, _: String, _: Vec<Point>) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn scroll(
+        &self,
+        _: String,
+        _: Point,
+        _: ScrollDirection,
+        _: u32,
+        _: ScrollUnit,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn type_text(&self, text: String) -> Result<(), HandsError> {
