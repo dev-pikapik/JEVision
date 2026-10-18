@@ -8,9 +8,9 @@ use std::collections::HashMap;
 
 use jevision_core::{
     Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
-    Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton,
-    Note, Point, Priority, Rect, Reference, Severity, Slot, Target, TestStatus, TestType,
-    WaitUntil,
+    ElseIf, Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
+    MouseButton, Note, Point, Priority, Rect, Reference, Severity, Slot, Target, TestStatus,
+    TestType, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -187,6 +187,36 @@ pub fn arrange_automatically(mut flow: Flow) -> Flow {
     flow
 }
 
+/// The `if` block `kind` with one more condition, checked after the others; it leads where
+/// `else` does until linked elsewhere.
+#[uniffi::export]
+pub fn add_if_condition(mut kind: BlockKind) -> BlockKind {
+    kind.add_condition();
+    kind
+}
+
+/// The `if` block `kind` without its condition `index` (0 is `reference`); the only condition
+/// stays.
+#[uniffi::export]
+pub fn remove_if_condition(mut kind: BlockKind, index: u32) -> BlockKind {
+    kind.remove_condition(index as usize);
+    kind
+}
+
+/// The `if` block `kind` with its condition `from` moved to place `to`, way out included.
+#[uniffi::export]
+pub fn move_if_condition(mut kind: BlockKind, from: u32, to: u32) -> BlockKind {
+    kind.move_condition(from as usize, to as usize);
+    kind
+}
+
+/// Position in `elseIf` of the condition behind way out `edge` of an `if`: 0 for `elseIf1`,
+/// `None` for any other edge.
+#[uniffi::export]
+pub fn else_if_index(edge: String) -> Option<u32> {
+    jevision_core::else_if_index(&edge).and_then(|n| u32::try_from(n).ok())
+}
+
 /// Points edge `edge` of block `from` at `to`, or disconnects it. `None` when the edge can't
 /// go there: an unknown edge or block, or a cycle other than through a loop's body.
 #[uniffi::export]
@@ -360,6 +390,7 @@ pub enum BlockKind {
     If {
         reference: Reference,
         then: Option<String>,
+        else_if: Vec<ElseIf>,
         otherwise: Option<String>,
     },
     Repeat {
@@ -376,6 +407,12 @@ pub enum BlockKind {
         test: String,
         next: Option<String>,
     },
+}
+
+#[uniffi::remote(Record)]
+pub struct ElseIf {
+    pub reference: Reference,
+    pub then: Option<String>,
 }
 
 #[uniffi::remote(Enum)]

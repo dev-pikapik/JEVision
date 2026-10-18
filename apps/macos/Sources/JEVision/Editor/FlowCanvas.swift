@@ -143,10 +143,12 @@ struct FlowCanvas: View {
           .allowsHitTesting(false)
           .accessibilityHidden(true)
       }
-      ForEach(layout.edges.filter { $0.edge == "then" || $0.edge == "else" }, id: \.self) { edge in
-        let at = BranchLabel.position(of: edge)
-        BranchLabel(isThen: edge.edge == "then")
-          .offset(x: at.x, y: at.y)
+      ForEach(layout.edges, id: \.self) { edge in
+        if let name = document.block(edge.from)?.kind.branchName(edge.edge) {
+          let at = BranchLabel.position(of: edge)
+          BranchLabel(name: name)
+            .offset(x: at.x, y: at.y)
+        }
       }
     }
   }
@@ -433,19 +435,18 @@ struct FlowCanvas: View {
   private func slotLabel(_ slot: Slot) -> Text {
     guard let block = document.block(slot.from) else { return Text("Add a block at the start") }
     let title = BlockInfo.title(block.kind.typeName)
+    if let branch = block.kind.branchName(slot.edge) { return Text("Add a block to \(branch) after \(title)") }
     switch slot.edge {
-    case "then": return Text("Add a block to Yes after \(title)")
-    case "else": return Text("Add a block to No after \(title)")
     case "body": return Text("Add a block inside \(title)")
     default: return Text("Add a block after \(title)")
     }
   }
 
   private func portAccessibilityLabel(_ slot: Slot) -> Text {
-    let title = BlockInfo.title(document.block(slot.from)?.kind.typeName ?? "")
+    let kind = document.block(slot.from)?.kind
+    let title = BlockInfo.title(kind?.typeName ?? "")
+    if let branch = kind?.branchName(slot.edge) { return Text("Link \(branch) of \(title) to a block") }
     switch slot.edge {
-    case "then": return Text("Link Yes of \(title) to a block")
-    case "else": return Text("Link No of \(title) to a block")
     case "body": return Text("Choose the first step inside \(title)")
     default: return Text("Choose the step after \(title)")
     }
@@ -459,21 +460,21 @@ struct FlowCanvas: View {
       return String(localized: "step \(step), \(BlockInfo.title(document.block(id)?.kind.typeName ?? ""))")
     }
     let from = name(edge.from), to = name(edge.to)
+    if let branch = document.block(edge.from)?.kind.branchName(edge.edge) {
+      return Text("\(branch) link from \(from) to \(to)")
+    }
     switch edge.edge {
-    case "then": return Text("Yes link from \(from) to \(to)")
-    case "else": return Text("No link from \(from) to \(to)")
     case "body": return Text("Link from \(from) to the first step inside it, \(to)")
     default: return Text("Link from \(from) to \(to)")
     }
   }
 
   private func portLabel(_ slot: Slot) -> Text {
-    switch slot.edge {
-    case "then": Text("Drag to link Yes to a block")
-    case "else": Text("Drag to link No to a block")
-    case "body": Text("Drag to choose the first step inside the loop")
-    default: Text("Drag to choose the next step")
+    if let branch = document.block(slot.from)?.kind.branchName(slot.edge) {
+      return Text("Drag to link \(branch) to a block")
     }
+    return slot.edge == "body"
+      ? Text("Drag to choose the first step inside the loop") : Text("Drag to choose the next step")
   }
 }
 
@@ -618,7 +619,7 @@ private struct EdgeHit: View {
 }
 
 struct BranchLabel: View {
-  let isThen: Bool
+  let name: String
 
   /// The top-left corner of the label: beside the arrow, just below where it leaves the block.
   static func position(of edge: LaidEdge) -> CGPoint {
@@ -627,7 +628,7 @@ struct BranchLabel: View {
   }
 
   var body: some View {
-    Text(isThen ? "Yes" : "No")
+    Text(verbatim: name)
       .font(.caption2.weight(.semibold))
       .foregroundStyle(.secondary)
       .allowsHitTesting(false)

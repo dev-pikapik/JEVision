@@ -136,10 +136,12 @@ private struct DiffCanvas: View {
           .offset(x: section.rect.x, y: section.rect.y)
       }
       Edges(layout: layout)
-      ForEach(layout.edges.filter { $0.edge == "then" || $0.edge == "else" }, id: \.self) { edge in
-        let at = BranchLabel.position(of: edge)
-        BranchLabel(isThen: edge.edge == "then")
-          .offset(x: at.x, y: at.y)
+      ForEach(layout.edges, id: \.self) { edge in
+        if let name = flow.blocks.first(where: { $0.id == edge.from })?.kind.branchName(edge.edge) {
+          let at = BranchLabel.position(of: edge)
+          BranchLabel(name: name)
+            .offset(x: at.x, y: at.y)
+        }
       }
       ForEach(layout.blocks, id: \.id) { laid in
         if let block = flow.blocks.first(where: { $0.id == laid.id }) {

@@ -6,10 +6,11 @@
 //! they were put and the connectors are routed between them. Coordinates are canvas points from
 //! the top-left corner, not fractions of a window.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use crate::edit::{START, Slot};
-use crate::model::{BODY, BlockKind, ELSE, Flow, NEXT, Point, Rect, THEN};
+use crate::model::{BODY, BlockKind, Flow, NEXT, Point, Rect};
 
 pub const BLOCK_WIDTH: f64 = 208.0;
 pub const BLOCK_HEIGHT: f64 = 64.0;
@@ -72,10 +73,10 @@ pub struct LaidSlot {
 
 enum Item {
     Block(usize),
+    /// An `if` with a column per exit, left to right: `then`, each `elseIf`, `else`.
     Branch {
         at: usize,
-        then: Vec<Item>,
-        otherwise: Vec<Item>,
+        lanes: Vec<(Cow<'static, str>, Vec<Item>)>,
     },
     Loop {
         at: usize,
@@ -94,7 +95,7 @@ impl Item {
 /// An edge whose source is placed but whose target is not connected yet.
 struct Exit {
     from: usize,
-    edge: &'static str,
+    edge: Cow<'static, str>,
     target: String,
     points: Vec<Point>,
 }
@@ -126,15 +127,15 @@ pub fn layout(flow: &Flow) -> FlowLayout {
     out
 }
 
-/// Exit point of each edge a block can have, along its bottom: one in the middle, two at a
-/// quarter from either side.
-pub(crate) fn port_xs(kind: &BlockKind, rect: &Rect) -> Vec<(&'static str, f64)> {
+/// Exit point of each edge a block can have, spread evenly along its bottom: one in the
+/// middle, two at a quarter from either side.
+pub(crate) fn port_xs(kind: &BlockKind, rect: &Rect) -> Vec<(Cow<'static, str>, f64)> {
     let names = kind.edge_names();
     let step = rect.width / (2.0 * names.len() as f64);
     names
-        .iter()
+        .into_iter()
         .enumerate()
-        .map(|(n, name)| (*name, rect.x + step * (2 * n + 1) as f64))
+        .map(|(n, name)| (name, rect.x + step * (2 * n + 1) as f64))
         .collect()
 }
 
@@ -217,18 +218,23 @@ impl<'a> Builder<'a> {
             }
             self.placed[i] = true;
             match self.kind(i) {
-                BlockKind::If {
-                    then, otherwise, ..
-                } => {
-                    let merge = self.merge(then.as_deref(), otherwise.as_deref(), stops);
+                kind @ BlockKind::If { .. } => {
+                    let exits: Vec<(Cow<'static, str>, Option<&'a str>)> = kind
+                        .edge_names()
+                        .into_iter()
+                        .map(|name| {
+                            let target = kind.edge(&name);
+                            (name, target)
+                        })
+                        .collect();
+                    let targets: Vec<Option<&'a str>> = exits.iter().map(|(_, t)| *t).collect();
+                    let merge = self.merge(&targets, stops);
                     let inner: Vec<&str> = stops.iter().copied().chain(merge).collect();
-                    let then = self.column(then.as_deref(), &inner);
-                    let otherwise = self.column(otherwise.as_deref(), &inner);
-                    items.push(Item::Branch {
-                        at: i,
-                        then,
-                        otherwise,
-                    });
+                    let lanes = exits
+                        .into_iter()
+                        .map(|(name, target)| (name, self.column(target, &inner)))
+                        .collect();
+                    items.push(Item::Branch { at: i, lanes });
                     cur = merge;
                 }
                 BlockKind::Repeat { body, next, .. } | BlockKind::UseData { body, next, .. } => {
@@ -246,12 +252,16 @@ impl<'a> Builder<'a> {
         items
     }
 
-    /// The first block both branches lead to, where they join again.
-    fn merge(&self, a: Option<&'a str>, b: Option<&'a str>, stops: &[&'a str]) -> Option<&'a str> {
-        let from_b: HashSet<&str> = self.reach_in_order(b, stops).into_iter().collect();
-        self.reach_in_order(a, stops)
+    /// The first block every branch leads to, where they join again.
+    fn merge(&self, branches: &[Option<&'a str>], stops: &[&'a str]) -> Option<&'a str> {
+        let (first, rest) = branches.split_first()?;
+        let rest: Vec<HashSet<&str>> = rest
+            .iter()
+            .map(|b| self.reach_in_order(*b, stops).into_iter().collect())
+            .collect();
+        self.reach_in_order(*first, stops)
             .into_iter()
-            .find(|id| from_b.contains(id))
+            .find(|id| rest.iter().all(|r| r.contains(id)))
     }
 
     /// Blocks reachable from `from` without passing a stop or entering a loop body, each before
@@ -290,13 +300,12 @@ impl<'a> Builder<'a> {
     fn size(&self, item: &Item) -> (f64, f64) {
         match item {
             Item::Block(_) => (BLOCK_WIDTH, BLOCK_HEIGHT),
-            Item::Branch {
-                then, otherwise, ..
-            } => {
-                let (_, th) = self.column_size(then);
-                let (_, eh) = self.column_size(otherwise);
-                let width = self.lane_width(then) + COLUMN_GAP + self.lane_width(otherwise);
-                (width.max(BLOCK_WIDTH), BLOCK_HEIGHT + GAP + th.max(eh))
+            Item::Branch { lanes, .. } => {
+                let height = lanes
+                    .iter()
+                    .map(|(_, items)| self.column_size(items).1)
+                    .fold(0.0, f64::max);
+                (self.lanes_width(lanes), BLOCK_HEIGHT + GAP + height)
             }
             Item::Loop { body, .. } => {
                 let (bw, bh) = self.column_size(body);
@@ -304,6 +313,13 @@ impl<'a> Builder<'a> {
                 (bw + 2.0 * PAD, PAD + BLOCK_HEIGHT + GAP + inner)
             }
         }
+    }
+
+    /// Width of an `if` with its branches side by side, at least the width of the block.
+    fn lanes_width(&self, lanes: &[(Cow<'static, str>, Vec<Item>)]) -> f64 {
+        let content: f64 = lanes.iter().map(|(_, items)| self.lane_width(items)).sum();
+        let gaps = COLUMN_GAP * lanes.len().saturating_sub(1) as f64;
+        (content + gaps).max(BLOCK_WIDTH)
     }
 
     /// Width of a branch's column: an empty one is just the arrow past it.
@@ -347,28 +363,22 @@ impl<'a> Builder<'a> {
                 self.block(*i, cx, top);
                 self.exit_down(*i, NEXT, cx, top + BLOCK_HEIGHT)
             }
-            Item::Branch {
-                at,
-                then,
-                otherwise,
-            } => {
-                let (width, _) = self.size(item);
-                let tw = self.lane_width(then);
-                let ew = self.lane_width(otherwise);
-                let left = cx - width / 2.0;
+            Item::Branch { at, lanes } => {
+                let width = self.lanes_width(lanes);
+                let widths: Vec<f64> = lanes.iter().map(|(_, l)| self.lane_width(l)).collect();
+                // Room the block's width leaves over goes evenly between the branches.
+                let spare = width - widths.iter().sum::<f64>();
+                let gap = spare / lanes.len().saturating_sub(1).max(1) as f64;
+                let mut left = cx - width / 2.0;
                 self.block(*at, cx, top);
                 let bottom = top + BLOCK_HEIGHT;
                 let lanes_top = bottom + GAP;
                 let mut exits = Vec::new();
                 let rect = self.rects[*at].expect("the block was just placed");
                 let ports = port_xs(self.kind(*at), &rect);
-                for ((edge, items, lane), (_, port)) in [
-                    (THEN, then, left + tw / 2.0),
-                    (ELSE, otherwise, left + width - ew / 2.0),
-                ]
-                .into_iter()
-                .zip(ports)
-                {
+                for (((edge, items), w), (_, port)) in lanes.iter().zip(widths).zip(ports) {
+                    let lane = left + w / 2.0;
+                    left += w + gap;
                     self.port(*at, edge, pt(port, bottom));
                     let lead = vec![
                         pt(port, bottom),
@@ -384,7 +394,7 @@ impl<'a> Builder<'a> {
                     } else if let Some(target) = self.kind(*at).edge(edge) {
                         exits.push(Exit {
                             from: *at,
-                            edge,
+                            edge: edge.clone(),
                             target: target.to_owned(),
                             points: lead,
                         });
@@ -430,12 +440,12 @@ impl<'a> Builder<'a> {
                             pt(lane, middle),
                             pt(cx - BLOCK_WIDTH / 2.0, middle),
                         ]);
-                        self.edge(exit.from, exit.edge, own, points);
+                        self.edge(exit.from, &exit.edge, own, points);
                     }
                 } else if let Some(target) = self.kind(*at).edge(BODY).filter(|t| *t != own) {
                     self.jumps.push(Exit {
                         from: *at,
-                        edge: BODY,
+                        edge: Cow::Borrowed(BODY),
                         target: target.to_owned(),
                         points: vec![pt(cx, node_bottom)],
                     });
@@ -467,7 +477,7 @@ impl<'a> Builder<'a> {
             .edge(edge)
             .map(|target| Exit {
                 from: i,
-                edge,
+                edge: Cow::Borrowed(edge),
                 target: target.to_owned(),
                 points: vec![pt(cx, bottom)],
             })
@@ -485,7 +495,7 @@ impl<'a> Builder<'a> {
         points.push(to);
         let target = self.index[exit.target.as_str()];
         let to = self.id(target);
-        self.edge(exit.from, exit.edge, to, points);
+        self.edge(exit.from, &exit.edge, to, points);
     }
 
     /// Routes edges to blocks placed elsewhere along lanes right of everything else, into the
@@ -517,7 +527,7 @@ impl<'a> Builder<'a> {
                 pt(target.x + target.width, middle),
             ]);
             lane += LANE;
-            self.edge(exit.from, exit.edge, &exit.target, points);
+            self.edge(exit.from, &exit.edge, &exit.target, points);
         }
     }
 
@@ -665,22 +675,22 @@ fn free_layout(flow: &Flow, auto: &FlowLayout) -> FlowLayout {
         }
         for (edge, x) in port_xs(kind, &rect) {
             let from = pt(x, rect.y + rect.height);
-            out.ports.push(slot(id.to_owned(), edge, from));
-            let target = kind.edge(edge).filter(|t| *t != id || edge != BODY);
+            out.ports.push(slot(id.to_owned(), &edge, from));
+            let target = kind.edge(&edge).filter(|t| *t != id || edge != BODY);
             match target.and_then(|t| Some((t, rects.get(t)?))) {
                 Some((to, target)) => {
                     let points = route(from, &rect, target);
-                    out.slots.push(slot(id.to_owned(), edge, middle(&points)));
+                    out.slots.push(slot(id.to_owned(), &edge, middle(&points)));
                     out.edges.push(LaidEdge {
                         from: id.to_owned(),
-                        edge: edge.to_owned(),
+                        edge: edge.to_string(),
                         to: to.to_owned(),
                         points,
                     });
                 }
                 None => out
                     .slots
-                    .push(slot(id.to_owned(), edge, pt(from.x, from.y + GAP / 2.0))),
+                    .push(slot(id.to_owned(), &edge, pt(from.x, from.y + GAP / 2.0))),
             }
         }
     }
@@ -813,6 +823,7 @@ fn middle(points: &[Point]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::{ELSE, THEN};
     use crate::parse;
 
     fn flow(blocks: &str, start: &str) -> Flow {
@@ -882,6 +893,42 @@ mod tests {
         assert_eq!(edge(&l, "more", NEXT).points.last(), Some(&top));
         assert_eq!(edge(&l, "no", NEXT).points.last(), Some(&top));
         assert_eq!(edge(&l, "if", ELSE).to, "no");
+    }
+
+    #[test]
+    fn every_exit_of_an_if_gets_its_own_lane_and_port() {
+        let f = flow(
+            r#"{"if": {"type": "if", "reference": {"image": "a.png"}, "then": "one",
+                       "elseIf": [{"reference": {"image": "b.png"}, "then": "two"}], "else": "three"},
+                "one": {"type": "pressKeys", "keys": "a", "next": "end"},
+                "two": {"type": "pressKeys", "keys": "b", "next": "end"},
+                "three": {"type": "pressKeys", "keys": "c", "next": "end"},
+                "end": {"type": "pressKeys", "keys": "e"}}"#,
+            "if",
+        );
+        let l = layout(&f);
+        let xs: Vec<f64> = ["one", "two", "three"]
+            .iter()
+            .map(|id| rect(&l, id).x)
+            .collect();
+        assert!(xs[0] < xs[1] && xs[1] < xs[2]);
+        assert_eq!(rect(&l, "one").y, rect(&l, "three").y);
+        assert_eq!(
+            rect(&l, "if").x,
+            xs[1],
+            "the block sits over its middle lane"
+        );
+        assert_eq!(rect(&l, "end").x, rect(&l, "if").x);
+        assert_eq!(edge(&l, "if", THEN).to, "one");
+        assert_eq!(edge(&l, "if", "elseIf1").to, "two");
+        assert_eq!(edge(&l, "if", ELSE).to, "three");
+        let ports: Vec<&str> = l
+            .ports
+            .iter()
+            .filter(|p| p.slot.from == "if")
+            .map(|p| p.slot.edge.as_str())
+            .collect();
+        assert_eq!(ports, [THEN, "elseIf1", ELSE]);
     }
 
     #[test]

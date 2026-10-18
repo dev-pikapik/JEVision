@@ -109,7 +109,18 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
             until: Disappears(r),
             ..
         } => vec![("until.disappears.image".to_owned(), &r.image)],
-        BlockKind::If { reference: r, .. } => vec![("reference.image".to_owned(), &r.image)],
+        BlockKind::If {
+            reference: r,
+            else_if,
+            ..
+        } => std::iter::once(("reference.image".to_owned(), &r.image))
+            .chain(
+                else_if
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| (format!("elseIf.{i}.reference.image"), &c.reference.image)),
+            )
+            .collect(),
         BlockKind::UseData { file, .. } => vec![("file".to_owned(), file)],
         BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test)],
         _ => Vec::new(),
@@ -234,8 +245,28 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 );
             }
         }
-        BlockKind::Check { reference: r, .. } | BlockKind::If { reference: r, .. } => {
+        BlockKind::Check { reference: r, .. } => reference(id, "reference", r, out),
+        BlockKind::If {
+            reference: r,
+            else_if,
+            ..
+        } => {
             reference(id, "reference", r, out);
+            for (i, case) in else_if.iter().enumerate() {
+                let field = format!("elseIf.{i}.reference");
+                reference(id, &field, &case.reference, out);
+                let earlier = std::iter::once(r).chain(else_if[..i].iter().map(|c| &c.reference));
+                // A case not filled in yet is reported as empty, not as a repeat.
+                let filled = !case.reference.image.is_empty()
+                    || matches!(&case.reference.compare, Compare::Meaning { expect } if !expect.trim().is_empty());
+                if filled && earlier.into_iter().any(|e| *e == case.reference) {
+                    out.push(
+                        Issue::warning("flow.if.sameCondition")
+                            .with("block", id)
+                            .with("field", field),
+                    );
+                }
+            }
         }
         BlockKind::Repeat { times, body, .. } => {
             if !(1..=MAX_REPEAT).contains(times) {

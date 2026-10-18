@@ -92,11 +92,19 @@ struct InspectorView: View {
     case .type: ["text", "into"]
     case .pressKeys: ["keys"]
     case .waitFor: ["until", "timeout"]
-    case .check, .if: ["reference"]
+    case .check: ["reference"]
+    case .if: ["reference", "elseIf"]
     case .repeat: ["times"]
     case .useData: ["file"]
     case .runTest: ["test"]
     }
+  }
+
+  /// Adds, removes or reorders conditions of the `if` block as one Undo step each.
+  private func editConditions(_ change: (BlockKind) -> BlockKind) {
+    document.endUndoStep()
+    document.update(id, field: "elseIf") { $0 = change($0) }
+    document.endUndoStep()
   }
 
   /// A binding that rebuilds the block from one changed value.
@@ -245,13 +253,59 @@ struct InspectorView: View {
           field: "reference", context: context)
       }
 
-    case .if(let reference, let then, let otherwise):
+    case .if(let reference, let then, let elseIf, let otherwise):
+      let conditions = [reference] + elseIf.map(\.reference)
+      ForEach(conditions.indices, id: \.self) { index in
+        let field = index == 0 ? "reference" : "elseIf.\(index - 1).reference"
+        Section {
+          ReferenceEditor(
+            reference: bind(field, conditions[index]) { new in
+              guard index > 0 else { return .if(reference: new, then: then, elseIf: elseIf, otherwise: otherwise) }
+              var cases = elseIf
+              cases[index - 1].reference = new
+              return .if(reference: reference, then: then, elseIf: cases, otherwise: otherwise)
+            },
+            field: field, context: context)
+          IssueList(issues: context.issues(field).filter { $0.param("field") == field })
+          if conditions.count > 1 {
+            HStack {
+              Button("Move Up", systemImage: "arrow.up") {
+                editConditions { moveIfCondition(kind: $0, from: UInt32(index), to: UInt32(index - 1)) }
+              }
+                .disabled(index == 0)
+              Button("Move Down", systemImage: "arrow.down") {
+                editConditions { moveIfCondition(kind: $0, from: UInt32(index), to: UInt32(index + 1)) }
+              }
+                .disabled(index == conditions.count - 1)
+              Spacer()
+              Button("Remove Condition", systemImage: "minus.circle") {
+                editConditions { removeIfCondition(kind: $0, index: UInt32(index)) }
+              }
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+          }
+        } header: {
+          if conditions.count > 1 { Text("Condition \(index + 1)") }
+        } footer: {
+          if index == conditions.count - 1 {
+            Group {
+              if conditions.count > 1 {
+                Text("The test takes the way of the first condition the screen matches, and the Otherwise way when it matches none.")
+              } else {
+                Text("The test goes the Yes way when the screen matches the image, and the No way when it doesn’t.")
+              }
+            }
+            .foregroundStyle(.secondary)
+          }
+        }
+      }
       Section {
-        ReferenceEditor(
-          reference: bind("reference", reference) { .if(reference: $0, then: then, otherwise: otherwise) },
-          field: "reference", context: context)
+        Button("Add Condition", systemImage: "plus") {
+          editConditions { addIfCondition(kind: $0) }
+        }
       } footer: {
-        Text("The test goes the Yes way when the screen matches the image, and the No way when it doesn’t.")
+        Text("Each condition gets its own way out on the canvas.")
           .foregroundStyle(.secondary)
       }
 

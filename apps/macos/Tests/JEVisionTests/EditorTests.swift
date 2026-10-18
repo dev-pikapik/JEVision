@@ -27,6 +27,20 @@ struct BlockSummaryTests {
     #expect(summary(.runTest(test: "shared/sign-in.flow.json", next: nil)) == "Runs “sign-in”")
   }
 
+  @Test func namesEveryWayOutOfAnIf() {
+    let plain = BlockKind.if(reference: Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: []), then: nil, elseIf: [], otherwise: nil)
+    #expect(summary(plain) == "If “a” is on screen")
+    #expect(plain.branchName("then") == "Yes")
+    #expect(plain.branchName("else") == "No")
+    #expect(plain.branchName("elseIf1") == nil)
+    let three = addIfCondition(kind: addIfCondition(kind: plain))
+    #expect(summary(three) == "If “a” is on screen · or 2 more")
+    #expect(["then", "elseIf1", "elseIf2", "else"].map { three.branchName($0) } == ["Condition 1", "Condition 2", "Condition 3", "Otherwise"])
+    #expect(three.branchName("elseIf3") == nil)
+    #expect(three.branchName("next") == nil)
+    #expect(BlockKind.check(reference: Reference(image: "", compare: .exact, area: nil, ignore: [], hide: []), next: nil).branchName("then") == nil)
+  }
+
   @Test func shortensLongText() {
     #expect(BlockSummary.quoted("short") == "“short”")
     #expect(BlockSummary.quoted("- milk\n\tok\r\n") == "“- milk⏎⇥ok⏎”")

@@ -1131,6 +1131,43 @@ fn repeat_and_if_follow_the_screen() {
 }
 
 #[test]
+fn if_takes_the_first_matching_case_or_else() {
+    let p = Project::new();
+    p.write("refs/green.png", solid([0, 200, 0]))
+        .write("refs/red.png", solid([200, 0, 0]))
+        .write("refs/blue.png", solid([0, 0, 200]))
+        .test(
+            r#""if":{"type":"if","reference":{"image":"refs/green.png"},"then":"g",
+                     "elseIf":[{"reference":{"image":"refs/red.png"},"then":"r"},
+                               {"reference":{"image":"refs/blue.png"},"then":"b"}],
+                     "else":"other"},
+               "g":{"type":"pressKeys","keys":"g"},
+               "r":{"type":"pressKeys","keys":"r"},
+               "b":{"type":"pressKeys","keys":"b"},
+               "other":{"type":"pressKeys","keys":"o"}"#,
+            "if",
+            0,
+        );
+    for (screen, keys, branch) in [
+        ([0, 200, 0], "keys g", "then"),
+        ([200, 0, 0], "keys r", "elseIf1"),
+        ([0, 0, 200], "keys b", "elseIf2"),
+        ([90, 90, 90], "keys o", "else"),
+    ] {
+        let hands = Fake::new(solid(screen));
+        let report = run(&p, &hands).report;
+        assert_eq!(report.verdict, Verdict::Passed, "{branch}");
+        assert_eq!(hands.log(), [keys]);
+        let step = &report.attempts[0].steps[0];
+        assert_eq!(step.branch.as_deref(), Some(branch));
+        assert!(
+            step.similarity.is_some(),
+            "{branch}: the comparison is in the report"
+        );
+    }
+}
+
+#[test]
 fn open_file_opens_a_fresh_copy() {
     let p = Project::new();
     p.write("docs/note.txt", "original").test(

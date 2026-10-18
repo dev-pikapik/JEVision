@@ -189,6 +189,146 @@ fn broken_edges_are_errors() {
     assert_eq!(codes(&start), ["flow.start.unknownBlock"]);
 }
 
+const THREE_WAYS: &str = r#"{
+  "format": 1,
+  "name": "t",
+  "app": "com.example.App",
+  "start": "a",
+  "blocks": {
+    "a": {
+      "type": "if",
+      "reference": {
+        "image": "refs/one.png",
+        "compare": "similar",
+        "threshold": 0.95
+      },
+      "then": "one",
+      "elseIf": [
+        {
+          "reference": {
+            "compare": "meaning",
+            "expect": "An update dialog is open"
+          },
+          "then": "two"
+        },
+        {
+          "reference": {
+            "image": "refs/three.png",
+            "compare": "exact"
+          }
+        }
+      ],
+      "else": "one"
+    },
+    "one": {
+      "type": "pressKeys",
+      "keys": "a"
+    },
+    "two": {
+      "type": "pressKeys",
+      "keys": "b"
+    }
+  }
+}
+"#;
+
+#[test]
+fn else_if_cases_round_trip_and_plain_ifs_stay_unchanged() {
+    let flow = parse(THREE_WAYS).unwrap();
+    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(to_canonical_json(&flow), THREE_WAYS);
+    let edges: Vec<(String, &str)> = flow.blocks[0]
+        .kind
+        .edges()
+        .into_iter()
+        .map(|(n, t)| (n.into_owned(), t))
+        .collect();
+    assert_eq!(
+        edges,
+        [
+            ("then".to_owned(), "one"),
+            ("elseIf1".to_owned(), "two"),
+            ("else".to_owned(), "one")
+        ]
+    );
+    assert_eq!(
+        flow.blocks[0].kind.edge_names(),
+        ["then", "elseIf1", "elseIf2", "else"]
+    );
+
+    // A file without cases is written back byte for byte, with no trace of the new key.
+    let plain = minimal(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}, "then": "b", "else": "b"},
+            "b": {"type": "pressKeys", "keys": "b"}}"#,
+    );
+    let once = canonicalize(&plain).unwrap();
+    assert!(!once.contains("elseIf"));
+    assert!(once.contains("\"then\": \"b\",\n      \"else\": \"b\"\n"));
+    assert_eq!(canonicalize(&once).unwrap(), once);
+}
+
+#[test]
+fn else_if_edge_names_map_to_cases() {
+    assert_eq!(else_if_edge(0), "elseIf1");
+    assert_eq!(else_if_index("elseIf1"), Some(0));
+    assert_eq!(else_if_index("elseIf12"), Some(11));
+    for wrong in [
+        "elseIf", "elseIf0", "elseIf01", "elseIf-1", "elseIfx", "then",
+    ] {
+        assert_eq!(else_if_index(wrong), None, "{wrong}");
+    }
+}
+
+#[test]
+fn malformed_else_if_cases_are_reported() {
+    let issues = parse_err(&minimal(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}, "elseIf": [{"then": "a", "extra": 1}, 3]}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.missing", Some("elseIf.0.reference")),
+            ("flow.field.unknown", Some("elseIf.0.extra")),
+            ("flow.field.type", Some("elseIf.1")),
+        ]
+    );
+    let not_a_list = parse_err(&minimal(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}, "elseIf": {}}}"#,
+    ));
+    assert_eq!(codes(&not_a_list), ["flow.field.type"]);
+}
+
+#[test]
+fn else_if_cases_are_validated() {
+    let issues = issues_of(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}, "then": "b",
+                  "elseIf": [{"reference": {"image": "/abs.png"}, "then": "nowhere"},
+                             {"reference": {"image": "x.png"}, "then": "b"},
+                             {"reference": {"image": ""}, "then": "b"},
+                             {"reference": {"image": ""}, "then": "b"}]},
+            "b": {"type": "pressKeys", "keys": "b"}}"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field"), i.param("edge")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.edge.unknownTarget", None, Some("elseIf1")),
+            ("flow.path.invalid", Some("elseIf.0.reference.image"), None),
+            ("flow.if.sameCondition", Some("elseIf.1.reference"), None),
+            ("flow.field.empty", Some("elseIf.2.reference.image"), None),
+            ("flow.field.empty", Some("elseIf.3.reference.image"), None),
+        ]
+    );
+    assert_eq!(issues[2].severity, Severity::Warning);
+}
+
 #[test]
 fn cycles_are_allowed_only_through_a_loop_body() {
     let plain = issues_of(
@@ -316,7 +456,8 @@ fn catalog_matches_the_file_format() {
             .unwrap();
         for (edge, _) in b.kind.edges() {
             assert!(
-                spec.edges.iter().any(|e| e == edge),
+                spec.edges.iter().any(|e| *e == edge)
+                    || (spec.type_name == "if" && else_if_index(&edge).is_some()),
                 "{} has no {edge}",
                 spec.type_name
             );

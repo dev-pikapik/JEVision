@@ -58,9 +58,12 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }),
         ),
         "if" => (
-            "Goes to then if the screen matches the reference, otherwise to else.",
-            json!({ "reference": "what to look for: a reference (see shapes)" }),
-            json!({ "type": "if", "reference": { "image": "refs/welcome-dialog.png" } }),
+            "Goes to then if the screen matches the reference; otherwise to the then of the first elseIf whose reference matches; otherwise to else. All conditions are checked on the same screenshot.",
+            json!({
+                "reference": "what to look for: a reference (see shapes)",
+                "elseIf": "optional list of more conditions, checked in order when the ones before don't match: [{ \"reference\": reference, \"then\": block id }]. Their ways out are called elseIf1, elseIf2…",
+            }),
+            json!({ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "elseIf": [{ "reference": { "image": "refs/update-dialog.png" } }] }),
         ),
         "repeat" => (
             "Runs the blocks on its body a number of times, then goes to next. The last block of the body leads back to the repeat block.",
@@ -111,7 +114,7 @@ pub(super) fn guide() -> Value {
             "tags": "optional list of words for finding tests",
             "retries": format!("optional, how many times a failed run is tried again, 0 to {MAX_RETRIES}"),
         },
-        "edges": "Blocks lead to each other by id: next for the block after; then and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
+        "edges": "Blocks lead to each other by id: next for the block after; then, elseIf1, elseIf2… and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
         "blocks": blocks,
         "shapes": {
             "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner",

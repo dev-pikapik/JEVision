@@ -5,8 +5,8 @@ use std::collections::HashSet;
 
 use crate::decode::DEFAULT_WAIT_TIMEOUT_MS;
 use crate::model::{
-    BODY, Block, BlockKind, Compare, ELSE, Flow, MouseButton, NEXT, Reference, THEN, Target,
-    WaitUntil,
+    BODY, Block, BlockKind, Compare, ELSE, ElseIf, Flow, MouseButton, NEXT, Reference, THEN,
+    Target, WaitUntil, else_if_index,
 };
 
 /// Name of the slot before the first block, used with an empty [`Slot::from`].
@@ -24,13 +24,7 @@ impl BlockKind {
     /// A block of type `type_name` with default parameters and no outgoing edges, or `None` for
     /// an unknown type. A loop starts empty: its body points at the loop itself (`id`).
     pub fn new(type_name: &str, id: &str) -> Option<Self> {
-        let reference = || Reference {
-            image: String::new(),
-            compare: Compare::default(),
-            area: None,
-            ignore: Vec::new(),
-            hide: Vec::new(),
-        };
+        let reference = empty_reference;
         Some(match type_name {
             "openApp" => Self::OpenApp {
                 app: None,
@@ -70,6 +64,7 @@ impl BlockKind {
             "if" => Self::If {
                 reference: reference(),
                 then: None,
+                else_if: Vec::new(),
                 otherwise: None,
             },
             "repeat" => Self::Repeat {
@@ -98,8 +93,74 @@ impl BlockKind {
             .map(|(_, t)| t)
     }
 
+    /// Adds a condition to an `if`, checked after all the others. Until it is linked elsewhere,
+    /// its way out leads where `else` does. `false` for other blocks.
+    pub fn add_condition(&mut self) -> bool {
+        let Self::If {
+            else_if, otherwise, ..
+        } = self
+        else {
+            return false;
+        };
+        else_if.push(ElseIf {
+            reference: empty_reference(),
+            then: otherwise.clone(),
+        });
+        true
+    }
+
+    /// Removes condition `n` of an `if`, with its way out; 0 is the first, `reference`. The only
+    /// condition stays. `false` when nothing changed.
+    pub fn remove_condition(&mut self, n: usize) -> bool {
+        self.edit_conditions(|all| {
+            if all.len() < 2 || n >= all.len() {
+                return false;
+            }
+            all.remove(n);
+            true
+        })
+    }
+
+    /// Moves condition `from` of an `if` to place `to`, with its way out, so it is checked
+    /// earlier or later. `false` when nothing changed.
+    pub fn move_condition(&mut self, from: usize, to: usize) -> bool {
+        self.edit_conditions(|all| {
+            if from == to || from >= all.len() || to >= all.len() {
+                return false;
+            }
+            let moved = all.remove(from);
+            all.insert(to, moved);
+            true
+        })
+    }
+
+    /// Runs `edit` on the conditions of an `if` in the order they are checked.
+    fn edit_conditions(&mut self, edit: impl FnOnce(&mut Vec<ElseIf>) -> bool) -> bool {
+        let Self::If {
+            reference,
+            then,
+            else_if,
+            ..
+        } = self
+        else {
+            return false;
+        };
+        let mut all = vec![ElseIf {
+            reference: reference.clone(),
+            then: then.clone(),
+        }];
+        all.append(else_if);
+        let changed = edit(&mut all);
+        let mut all = all.into_iter();
+        let first = all.next().expect("an if keeps one condition");
+        *reference = first.reference;
+        *then = first.then;
+        *else_if = all.collect();
+        changed
+    }
+
     pub(crate) fn has_edge(&self, name: &str) -> bool {
-        self.edge_names().contains(&name)
+        self.edge_names().iter().any(|n| n == name)
     }
 
     fn next_mut(&mut self) -> Option<&mut Option<String>> {
@@ -119,12 +180,27 @@ impl BlockKind {
     }
 }
 
+fn empty_reference() -> Reference {
+    Reference {
+        image: String::new(),
+        compare: Compare::default(),
+        area: None,
+        ignore: Vec::new(),
+        hide: Vec::new(),
+    }
+}
+
 /// Points edge `name` of `block` at `target`. A loop body without a target is left empty.
 pub(crate) fn set_edge(block: &mut Block, name: &str, target: Option<String>) {
     let own = &block.id;
     match (&mut block.kind, name) {
         (BlockKind::If { then, .. }, THEN) => *then = target,
         (BlockKind::If { otherwise, .. }, ELSE) => *otherwise = target,
+        (BlockKind::If { else_if, .. }, name) if else_if_index(name).is_some() => {
+            if let Some(case) = else_if_index(name).and_then(|n| else_if.get_mut(n)) {
+                case.then = target;
+            }
+        }
         (BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. }, BODY) => {
             *body = target.unwrap_or_else(|| own.clone());
         }
@@ -199,7 +275,7 @@ impl Flow {
 
     /// Adds a block of type `type_name` on `slot`, between the slot's block and whatever came
     /// next; without a slot, after the last step of the main chain. A new `if` continues with
-    /// that same block on both branches. Returns the new block's id, or `None` (and changes
+    /// that same block on all branches. Returns the new block's id, or `None` (and changes
     /// nothing) for an unknown type or slot.
     pub fn insert_block(&mut self, type_name: &str, slot: Option<&Slot>) -> Option<String> {
         let id = self.unique_id(type_name);
@@ -209,7 +285,7 @@ impl Flow {
 
     /// Adds `kinds` in order as one chain on `slot` (after the main chain without one): each
     /// block leads to the following one and the last to whatever came after the slot; a last
-    /// `if` goes there on both branches. A loop with an empty `body` starts empty. Ids come
+    /// `if` goes there on all branches. A loop with an empty `body` starts empty. Ids come
     /// from the block types. Returns the new ids, or `None` (and changes nothing) when there is
     /// nothing to add, a block before the last has no `next` edge to chain on, or the slot is
     /// unknown.
@@ -269,9 +345,15 @@ impl Flow {
         };
         match &mut kind {
             BlockKind::If {
-                then, otherwise, ..
+                then,
+                else_if,
+                otherwise,
+                ..
             } => {
                 then.clone_from(&after);
+                for case in else_if {
+                    case.then.clone_from(&after);
+                }
                 *otherwise = after;
             }
             other => {
@@ -289,8 +371,8 @@ impl Flow {
     }
 
     /// Removes block `id` and joins its neighbours: whatever led to it now leads to what came
-    /// after it. A loop leaves its body in its place; an `if` keeps its `then` branch, and the
-    /// blocks that only its `else` branch reached go too. Returns the block to select next, or
+    /// after it. A loop leaves its body in its place; an `if` keeps its first branch that leads
+    /// anywhere, and the blocks that only its other branches reached go too. Returns the block to select next, or
     /// `None` when nothing is left to select or there is no such block.
     pub fn remove_block(&mut self, id: &str) -> Option<String> {
         let i = self.position(id)?;
@@ -299,8 +381,16 @@ impl Flow {
         // `outer` replaces the block for edges from outside, `inner` for a loop body's way back.
         let (outer, inner) = match &removed.kind {
             BlockKind::If {
-                then, otherwise, ..
-            } => (then.clone().or_else(|| otherwise.clone()), None),
+                then,
+                else_if,
+                otherwise,
+                ..
+            } => (
+                then.clone()
+                    .or_else(|| else_if.iter().find_map(|c| c.then.clone()))
+                    .or_else(|| otherwise.clone()),
+                None,
+            ),
             BlockKind::Repeat { body, next, .. } | BlockKind::UseData { body, next, .. }
                 if body != id =>
             {
@@ -319,12 +409,12 @@ impl Flow {
 
         let mut predecessor = None;
         for block in &mut self.blocks {
-            let names: Vec<&'static str> = block
+            let names: Vec<String> = block
                 .kind
                 .edges()
                 .into_iter()
                 .filter(|(_, t)| *t == id)
-                .map(|(name, _)| name)
+                .map(|(name, _)| name.into_owned())
                 .collect();
             for name in names {
                 let target = if inside.contains(&block.id) {
@@ -334,7 +424,7 @@ impl Flow {
                 };
                 // Only a loop's body may lead back to the block itself.
                 let target = target.filter(|t| *t != block.id || name == BODY);
-                set_edge(block, name, target);
+                set_edge(block, &name, target);
                 predecessor.get_or_insert_with(|| block.id.clone());
             }
         }
@@ -411,6 +501,78 @@ mod tests {
     }
 
     #[test]
+    fn a_new_if_continues_on_every_branch_and_removing_it_keeps_the_first_that_leads_on() {
+        let mut f = flow(CHAIN, "a");
+        let mut branch = BlockKind::new("if", "if").unwrap();
+        assert!(branch.add_condition());
+        let ids = f
+            .insert_blocks(vec![branch], Some(&slot("a", NEXT)))
+            .unwrap();
+        let kind = &f.blocks[f.position(&ids[0]).unwrap()].kind;
+        for edge in [THEN, "elseIf1", ELSE] {
+            assert_eq!(kind.edge(edge), Some("b"), "{edge}");
+        }
+
+        let mut f = flow(
+            r#"{"a": {"type": "if", "reference": {"image": "a.png"},
+                      "elseIf": [{"reference": {"image": "b.png"}, "then": "two"}], "else": "three"},
+                "two": {"type": "pressKeys", "keys": "b"},
+                "three": {"type": "pressKeys", "keys": "c"}}"#,
+            "a",
+        );
+        assert!(
+            f.insert_block("click", Some(&slot("a", "elseIf1")))
+                .is_some()
+        );
+        assert_eq!(f.blocks[0].kind.edge("elseIf1"), Some("click"));
+        assert_eq!(f.remove_block("a").as_deref(), Some("click"));
+        assert_eq!(f.start, "click");
+        assert!(
+            f.position("three").is_none(),
+            "only the else branch reached it"
+        );
+    }
+
+    #[test]
+    fn conditions_are_added_removed_and_reordered_with_their_ways_out() {
+        let f = flow(
+            r#"{"a": {"type": "if", "reference": {"image": "1.png"}, "then": "x", "else": "z"},
+                "x": {"type": "pressKeys", "keys": "x"},
+                "z": {"type": "pressKeys", "keys": "z"}}"#,
+            "a",
+        );
+        let mut kind = f.blocks[0].kind.clone();
+        let images = |k: &BlockKind| match k {
+            BlockKind::If {
+                reference, else_if, ..
+            } => std::iter::once(reference)
+                .chain(else_if.iter().map(|c| &c.reference))
+                .map(|r| r.image.clone())
+                .collect::<Vec<_>>(),
+            _ => unreachable!(),
+        };
+        assert!(kind.add_condition());
+        assert_eq!(
+            kind.edge("elseIf1"),
+            Some("z"),
+            "a new condition leads where else does"
+        );
+        assert!(kind.move_condition(1, 0));
+        assert_eq!(images(&kind), ["", "1.png"]);
+        assert_eq!(
+            (kind.edge(THEN), kind.edge("elseIf1")),
+            (Some("z"), Some("x"))
+        );
+        assert!(!kind.move_condition(0, 2));
+        assert!(kind.remove_condition(0));
+        assert_eq!(images(&kind), ["1.png"]);
+        assert_eq!(kind.edge(THEN), Some("x"));
+        assert!(!kind.remove_condition(0), "the only condition stays");
+        let mut keys = BlockKind::new("pressKeys", "k").unwrap();
+        assert!(!keys.add_condition());
+    }
+
+    #[test]
     fn inserts_a_chain_as_one_edit() {
         let mut f = flow(CHAIN, "a");
         let keys = |k: &str| BlockKind::PressKeys {
@@ -449,9 +611,25 @@ mod tests {
             .insert_blocks(vec![loop_, branch], Some(&slot("a", NEXT)))
             .unwrap();
         assert_eq!(ids, ["repeat", "if"]);
-        let edges = |id: &str| f.blocks.iter().find(|b| b.id == id).unwrap().kind.edges();
-        assert_eq!(edges("repeat"), [(BODY, "repeat"), (NEXT, "if")]);
-        assert_eq!(edges("if"), [(THEN, "pressKeys"), (ELSE, "pressKeys")]);
+        let edges = |id: &str| {
+            let kind = &f.blocks.iter().find(|b| b.id == id).unwrap().kind;
+            let edges: Vec<(String, String)> = kind
+                .edges()
+                .into_iter()
+                .map(|(n, t)| (n.into_owned(), t.to_owned()))
+                .collect();
+            edges
+        };
+        let want = |e: &[(&str, &str)]| -> Vec<(String, String)> {
+            e.iter()
+                .map(|(n, t)| ((*n).to_owned(), (*t).to_owned()))
+                .collect()
+        };
+        assert_eq!(edges("repeat"), want(&[(BODY, "repeat"), (NEXT, "if")]));
+        assert_eq!(
+            edges("if"),
+            want(&[(THEN, "pressKeys"), (ELSE, "pressKeys")])
+        );
     }
 
     #[test]

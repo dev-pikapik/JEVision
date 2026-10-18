@@ -329,7 +329,7 @@ impl Flow {
         for b in &mut part.blocks {
             for (name, target) in b.kind.clone().edges() {
                 if !ids.contains(target) {
-                    set_edge(b, name, None);
+                    set_edge(b, &name, None);
                 }
             }
         }
@@ -376,7 +376,7 @@ impl Flow {
         }
         for b in &mut self.blocks[first..] {
             for (name, target) in b.kind.clone().edges() {
-                set_edge(b, name, ids.get(target).cloned());
+                set_edge(b, &name, ids.get(target).cloned());
             }
         }
 

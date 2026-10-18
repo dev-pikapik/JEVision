@@ -222,6 +222,7 @@
 
 <h3 id="if">if: choose a way</h3>
 <p>Looks at the screen once. If it matches the reference, the test goes on at <code>then</code>; otherwise at <code>else</code>. A missing <code>then</code> or <code>else</code> ends the test on that way. Use it for screens that show up only sometimes, such as a “What's new” window.</p>
+<p>For more than two ways, add conditions in <code>elseIf</code> (<b>Add Condition</b> in the inspector). They are checked in order on the same screenshot: the first one the screen matches wins, and <code>else</code> is taken when none does. On the canvas the ways out read <b>Condition 1</b>, <b>Condition 2</b>… and <b>Otherwise</b>; in a link or a <a href="mcp.html">tool call</a> they are called <code>then</code>, <code>elseIf1</code>, <code>elseIf2</code>… and <code>else</code>. The run report records which one the test took.</p>
 <p>Unlike <code>check</code>, an <code>if</code> block never saves a missing reference picture: a missing picture stops the run with an error.</p>
 <div class="table-wrap">
 <table>
@@ -229,11 +230,19 @@
   <tbody>
     <tr><td><code>reference</code></td><td>Yes</td><td>What to look for: a <a href="checks.html#reference">reference</a>.</td></tr>
     <tr><td><code>then</code></td><td>No</td><td>Id of the block to go to when the screen matches.</td></tr>
-    <tr><td><code>else</code></td><td>No</td><td>Id of the block to go to when it doesn't.</td></tr>
+    <tr><td><code>elseIf</code></td><td>No</td><td>More conditions, checked in order when the screen doesn't match <code>reference</code>: a list of <code>{ "reference": …, "then": "…" }</code>, where <code>then</code> is optional. A condition that repeats an earlier one is reported, because it can never be chosen.</td></tr>
+    <tr><td><code>else</code></td><td>No</td><td>Id of the block to go to when no condition matches.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "then": "close-welcome", "else": "compose" }</code></pre>
+<pre><code>{ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "then": "close-welcome", "else": "compose" }
+{
+  "type": "if",
+  "reference": { "image": "refs/sign-in.png" },
+  "then": "sign-in",
+  "elseIf": [{ "reference": { "image": "refs/update.png" }, "then": "skip-update" }],
+  "else": "compose"
+}</code></pre>
 
 <h3 id="repeat">repeat: run blocks several times</h3>
 <p>Runs the chain of blocks that starts at <code>body</code> a number of times, then goes to <code>next</code>. The last block of the body leads back to the <code>repeat</code> block.</p>

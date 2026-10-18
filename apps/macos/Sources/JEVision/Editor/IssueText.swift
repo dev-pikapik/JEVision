@@ -84,6 +84,8 @@ enum IssueText {
       return String(localized: "flow.block.unreachable", defaultValue: "Nothing leads to this block, so it never runs.")
     case "flow.loop.noReturn":
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
+    case "flow.if.sameCondition":
+      return String(localized: "flow.if.sameCondition", defaultValue: "An earlier condition of this block checks the same thing, so this one never leads anywhere.")
     default:
       return String(localized: "Unknown problem: \(issue.code)")
     }

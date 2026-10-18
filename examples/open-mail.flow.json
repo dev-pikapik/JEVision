@@ -1,0 +1,82 @@
+{
+  "format": 1,
+  "name": "Open the mailbox from any first screen",
+  "description": "Opens the app and gets to the inbox whether it asks to sign in, offers an update or opens straight on the inbox.",
+  "app": "com.example.AcmeMail",
+  "testType": "smoke",
+  "priority": "high",
+  "status": "ready",
+  "tags": [
+    "sign-in"
+  ],
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "openApp",
+      "next": "first-screen"
+    },
+    "first-screen": {
+      "type": "if",
+      "reference": {
+        "image": "refs/sign-in-window.png",
+        "compare": "similar",
+        "threshold": 0.95
+      },
+      "then": "email",
+      "elseIf": [
+        {
+          "reference": {
+            "image": "refs/update-dialog.png",
+            "compare": "similar",
+            "threshold": 0.95
+          },
+          "then": "later"
+        }
+      ],
+      "else": "inbox"
+    },
+    "email": {
+      "type": "type",
+      "text": "demo@example.com",
+      "into": {
+        "image": "refs/email-field.png"
+      },
+      "next": "password"
+    },
+    "password": {
+      "type": "type",
+      "text": "${secret.ACME_PASSWORD}",
+      "into": {
+        "image": "refs/password-field.png"
+      },
+      "next": "submit"
+    },
+    "submit": {
+      "type": "click",
+      "target": {
+        "image": "refs/sign-in-button.png"
+      },
+      "button": "left",
+      "next": "inbox"
+    },
+    "inbox": {
+      "type": "waitFor",
+      "until": {
+        "appears": {
+          "image": "refs/inbox.png",
+          "compare": "similar",
+          "threshold": 0.95
+        }
+      },
+      "timeout": "10s"
+    },
+    "later": {
+      "type": "click",
+      "target": {
+        "image": "refs/later-button.png"
+      },
+      "button": "left",
+      "next": "inbox"
+    }
+  }
+}
