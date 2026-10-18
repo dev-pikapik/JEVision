@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import IOKit.pwr_mgt
 import JEVisionCore
 import ScreenCaptureKit
 import UniformTypeIdentifiers
@@ -15,12 +16,28 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   private let input: InputWatcher
   private let isCancelled: @Sendable () -> Bool
+  private let clicking: @Sendable (CGRect?) -> Void
+  /// Keeps the display on while a run has hands: a sleeping display gives no picture to look at.
+  private var displayOn: IOPMAssertionID = 0
 
   /// `input` reports the person's own mouse and keyboard; `isCancelled` tells long actions to
-  /// stop early.
-  public init(input: InputWatcher, isCancelled: @escaping @Sendable () -> Bool) {
+  /// stop early. `clicking` hears the frame of the window about to be clicked (global, top-left
+  /// origin) before the click is posted and `nil` after it, so floating panels can step aside
+  /// and let the click through; it is called on the run's thread and must return only once done.
+  public init(
+    input: InputWatcher, isCancelled: @escaping @Sendable () -> Bool,
+    clicking: @escaping @Sendable (CGRect?) -> Void = { _ in }
+  ) {
     self.input = input
     self.isCancelled = isCancelled
+    self.clicking = clicking
+    IOPMAssertionCreateWithName(
+      kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
+      "JEVision is running a test" as CFString, &displayOn)
+  }
+
+  deinit {
+    IOPMAssertionRelease(displayOn)
   }
 
   // MARK: Apps
@@ -112,9 +129,11 @@ public final class MacHands: Hands, @unchecked Sendable {
   // MARK: Mouse and keyboard
 
   public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {
-    try requireAccessibility()
+    try requireInput()
     guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
     let point = CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y)
+    clicking(window.bounds)
+    defer { clicking(nil) }
     let (down, up, mouse): (CGEventType, CGEventType, CGMouseButton) =
       button == .left ? (.leftMouseDown, .leftMouseUp, .left) : (.rightMouseDown, .rightMouseUp, .right)
     try post(CGEvent(mouseEventSource: SyntheticInput.source, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouse))
@@ -130,7 +149,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func typeText(text: String) throws(HandsError) {
-    try requireAccessibility()
+    try requireInput()
     for character in text {
       if isCancelled() { return }
       switch character {
@@ -150,7 +169,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func pressKeys(keys: String) throws(HandsError) {
-    try requireAccessibility()
+    try requireInput()
     guard let stroke = KeyStroke(keys) else { throw .Failed(reason: "“\(keys)” isn’t a key combination.") }
     try tap(stroke)
   }
@@ -187,8 +206,25 @@ public final class MacHands: Hands, @unchecked Sendable {
     event.post(tap: .cghidEventTap)
   }
 
-  private func requireAccessibility() throws(HandsError) {
-    guard AXIsProcessTrusted() else { throw .PermissionDenied(permission: "accessibility") }
+  private func requireInput() throws(HandsError) {
+    wakeDisplay()
+    // Keys and clicks on a locked screen go to the lock screen, typed text into its password field.
+    if Self.screenIsLocked { throw .ScreenLocked }
+  }
+
+  /// A sleeping display has no picture: window capture fails and clicks would only wake it.
+  private func wakeDisplay() {
+    guard CGDisplayIsAsleep(CGMainDisplayID()) != 0 else { return }
+    var wake: IOPMAssertionID = 0
+    if IOPMAssertionDeclareUserActivity("JEVision is running a test" as CFString, kIOPMUserActiveLocal, &wake) == kIOReturnSuccess {
+      IOPMAssertionRelease(wake)
+    }
+    _ = poll(timeout: 5) { CGDisplayIsAsleep(CGMainDisplayID()) == 0 }
+  }
+
+  static var screenIsLocked: Bool {
+    let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+    return session?["CGSSessionScreenIsLocked"] as? Bool ?? false
   }
 
   // MARK: Helpers
@@ -265,6 +301,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   private func captureWindow(_ app: String) throws(HandsError) -> (CGImage, Double) {
     guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
+    wakeDisplay()
     guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
     let id = window.id
     let result = wait { (done: @escaping @Sendable (Result<Shot, HandsError>) -> Void) in

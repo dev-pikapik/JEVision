@@ -2,8 +2,9 @@ import AppKit
 import JEVisionCore
 import SwiftUI
 
-/// The floating glass panel at the top right that shows a run while the window is away. It
-/// stays above every app and never takes the focus from the app under test.
+/// The floating glass panel that shows a run while the window is away. It stays above every app,
+/// never takes the focus from the app under test and keeps to a corner of the screen its window
+/// doesn't cover.
 @MainActor
 final class RunPanel {
   static let width = 336.0
@@ -29,9 +30,42 @@ final class RunPanel {
   func show() {
     guard !panel.isVisible else { return }
     if let screen = NSScreen.main?.visibleFrame {
-      panel.setFrameTopLeftPoint(NSPoint(x: screen.maxX - Self.width - 12, y: screen.maxY - 12))
+      panel.setFrame(Self.corners(of: screen)[0], display: false)
     }
     panel.orderFrontRegardless()
+  }
+
+  /// The test is about to click into `window` (global, top-left origin), or has clicked when
+  /// `nil`: the panel moves off the window and lets the click through.
+  func clicking(into window: CGRect?) {
+    guard let window else {
+      panel.ignoresMouseEvents = false
+      return
+    }
+    panel.ignoresMouseEvents = true
+    guard let primary = NSScreen.screens.first?.frame else { return }
+    // Cocoa counts from the bottom of the primary screen.
+    let frame = NSRect(x: window.minX, y: primary.maxY - window.maxY, width: window.width, height: window.height)
+    guard panel.frame.intersects(frame) else { return }
+    let screen = NSScreen.screens.first { $0.frame.contains(NSPoint(x: frame.midX, y: frame.midY)) } ?? NSScreen.main
+    guard let visible = screen?.visibleFrame else { return }
+    let overlap = { (corner: NSRect) -> CGFloat in
+      let common = corner.intersection(frame)
+      return common.isNull ? 0 : common.width * common.height
+    }
+    if let best = Self.corners(of: visible).min(by: { overlap($0) < overlap($1) }) {
+      panel.setFrame(best, display: true)
+    }
+  }
+
+  /// Places for the panel, top right first.
+  private static func corners(of screen: NSRect) -> [NSRect] {
+    let inset = 12.0
+    let left = screen.minX + inset, right = screen.maxX - width - inset
+    let top = screen.maxY - height - inset, bottom = screen.minY + inset
+    return [(right, top), (left, top), (right, bottom), (left, bottom)].map {
+      NSRect(x: $0.0, y: $0.1, width: width, height: height)
+    }
   }
 
   func close() {

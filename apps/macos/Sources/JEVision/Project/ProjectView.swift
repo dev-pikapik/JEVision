@@ -6,6 +6,8 @@ struct ProjectView: View {
   @State private var renaming: ProjectItem?
   @State private var newName = ""
   @State private var failure: String?
+  /// Open folders; the folders around the selected test open by themselves.
+  @State private var expanded: Set<ProjectItem.ID> = []
 
   private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -17,8 +19,16 @@ struct ProjectView: View {
           ForEach(ProjectScanner.tests(in: project.items, matching: query)) { row($0, showsPath: true) }
         } else {
           Section("Tests") {
-            OutlineGroup(project.items, children: \.outlineChildren) { row($0, showsPath: false) }
+            ForEach(project.items, content: tree)
           }
+        }
+      }
+      .onChange(of: project.selection, initial: true) {
+        guard let id = project.selection else { return }
+        var folder = ""
+        for part in id.split(separator: "/").dropLast() {
+          folder = folder.isEmpty ? String(part) : folder + "/" + part
+          expanded.insert(folder)
         }
       }
       .overlay {
@@ -55,6 +65,19 @@ struct ProjectView: View {
     ) { _ in
       Button("OK") {}
     } message: { Text($0) }
+  }
+
+  private func tree(_ item: ProjectItem) -> AnyView {
+    guard let children = item.outlineChildren else { return AnyView(row(item, showsPath: false)) }
+    let isExpanded = Binding(
+      get: { expanded.contains(item.id) },
+      set: { if $0 { expanded.insert(item.id) } else { expanded.remove(item.id) } })
+    return AnyView(
+      DisclosureGroup(isExpanded: isExpanded) {
+        ForEach(children, content: tree)
+      } label: {
+        row(item, showsPath: false)
+      })
   }
 
   private func row(_ item: ProjectItem, showsPath: Bool) -> some View {

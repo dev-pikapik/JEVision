@@ -233,6 +233,10 @@ pub fn describe(f: &Failure) -> String {
             p("app")
         ),
         "run.hands.cannotOpen" => format!("Block {}: {} cannot be opened.", p("block"), p("file")),
+        "run.hands.screenLocked" => format!(
+            "Block {}: the screen is locked. Unlock it and run the test again.",
+            p("block")
+        ),
         "run.hands.failed" => format!("Block {}: {}.", p("block"), p("reason")),
         _ => {
             let params: Vec<String> = f.params.iter().map(|(k, v)| format!("{k}={v}")).collect();

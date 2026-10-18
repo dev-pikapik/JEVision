@@ -1120,6 +1120,7 @@ fn hands_failure(id: &str, e: HandsError) -> Failure {
         HandsError::AppNotFound(app) => Failure::new("run.hands.appNotFound").with("app", app),
         HandsError::NoWindow(app) => Failure::new("run.hands.noWindow").with("app", app),
         HandsError::CannotOpen(file) => Failure::new("run.hands.cannotOpen").with("file", file),
+        HandsError::ScreenLocked => Failure::new("run.hands.screenLocked"),
         HandsError::Failed(reason) => Failure::new("run.hands.failed").with("reason", reason),
     };
     f.with("block", id)

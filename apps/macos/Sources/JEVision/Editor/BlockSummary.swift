@@ -67,8 +67,10 @@ enum BlockSummary {
     return quoted(base.replacing(/[-_]+/, with: " ").trimmingCharacters(in: .whitespaces))
   }
 
+  /// On one line: Return and Tab show as the symbols on their keys.
   static func quoted(_ text: String, limit: Int = 24) -> String {
-    let short = text.count > limit ? text.prefix(limit - 1) + "…" : text
+    let line = String(text.map { $0.isNewline ? "⏎" : $0 == "\t" ? "⇥" : $0 })
+    let short = line.count > limit ? line.prefix(limit - 1) + "…" : line
     return "“\(short)”"
   }
 

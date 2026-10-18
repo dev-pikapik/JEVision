@@ -129,3 +129,31 @@ struct GitIgnoreTests {
     #expect(!GitIgnore.needsEntry(in: project))
   }
 }
+
+@MainActor
+struct BreakpointTests {
+  @Test func surviveARestartAndForgetDeletedBlocks() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let url = folder.appending(path: "t.flow.json")
+    try """
+      {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "pressKeys", "keys": "a", "next": "b"},
+        "b": {"type": "pressKeys", "keys": "b"}}}
+      """.write(to: url, atomically: true, encoding: .utf8)
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let document = FlowDocument(url: url)
+
+    RunCenter(defaults: defaults).toggleBreakpoint("b", in: document)
+    let reopened = RunCenter(defaults: defaults)
+    #expect(reopened.hasBreakpoint("b", in: document))
+    #expect(!reopened.hasBreakpoint("a", in: document))
+
+    document.delete("b")
+    reopened.toggleBreakpoint("a", in: document)
+    #expect(RunCenter(defaults: defaults).breakpoints == [url: ["a"]])
+  }
+}

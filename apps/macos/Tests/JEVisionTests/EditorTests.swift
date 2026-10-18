@@ -29,6 +29,7 @@ struct BlockSummaryTests {
 
   @Test func shortensLongText() {
     #expect(BlockSummary.quoted("short") == "“short”")
+    #expect(BlockSummary.quoted("- milk\n\tok\r\n") == "“- milk⏎⇥ok⏎”")
     #expect(BlockSummary.quoted(String(repeating: "a", count: 30)) == "“" + String(repeating: "a", count: 23) + "…”")
     #expect(BlockSummary.secretName("${secret.X_1}") == "X_1")
     #expect(BlockSummary.secretName("pass ${secret.X}") == nil)

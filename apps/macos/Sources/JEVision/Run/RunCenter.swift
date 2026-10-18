@@ -38,8 +38,8 @@ final class RunCenter {
   /// The test `state` belongs to.
   private(set) var stateURL: URL?
   private(set) var result: Result?
-  /// Blocks to pause before, by test file. Kept while the app is open.
-  private(set) var breakpoints: [URL: Set<String>] = [:]
+  /// Blocks to pause before, by test file. Not part of the test: kept in this Mac's settings.
+  private(set) var breakpoints: [URL: Set<String>]
 
   @ObservationIgnored private var run: TestRun?
   @ObservationIgnored private let input = InputWatcher()
@@ -47,7 +47,16 @@ final class RunCenter {
   /// Windows put away for the run.
   @ObservationIgnored private var hiddenWindows: [NSWindow] = []
 
+  @ObservationIgnored private let defaults: UserDefaults
+
   private static let declinedKey = "gitIgnoreDeclined"
+  private static let breakpointsKey = "breakpoints"
+
+  init(defaults: UserDefaults = .standard) {
+    self.defaults = defaults
+    let saved = defaults.dictionary(forKey: Self.breakpointsKey) as? [String: [String]] ?? [:]
+    breakpoints = Dictionary(uniqueKeysWithValues: saved.map { (URL(filePath: $0.key), Set($0.value)) })
+  }
 
   var isRunning: Bool { running != nil }
 
@@ -95,12 +104,17 @@ final class RunCenter {
     stateURL = request.document.url
     run.setStepMode(on: request.stepByStep)
     run.setBreakpoints(blocks: Array(breakpoints[request.document.url] ?? []))
-    hud = RunPanel(center: self)
+    let hud = RunPanel(center: self)
+    self.hud = hud
     getOutOfTheWay()
+    // The run's thread waits until the panel has stepped aside, so the click can't land on it.
+    let clicking: @Sendable (CGRect?) -> Void = { [weak hud] window in
+      DispatchQueue.main.sync { MainActor.assumeIsolated { hud?.clicking(into: window) } }
+    }
     run.start(
       project: request.project.path, test: request.document.url.path,
       options: RunOptions(startAt: request.from, retries: nil),
-      hands: MacHands(input: input, isCancelled: { run.isCancelled() }),
+      hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: RunBridge(center: self))
   }
 
@@ -139,10 +153,13 @@ final class RunCenter {
   }
 
   func toggleBreakpoint(_ block: String, in document: FlowDocument) {
-    var set = breakpoints[document.url] ?? []
+    // Blocks deleted or renamed since don't stay behind.
+    var set = (breakpoints[document.url] ?? []).filter { document.block($0) != nil }
     if set.remove(block) == nil { set.insert(block) }
-    breakpoints[document.url] = set
+    breakpoints[document.url] = set.isEmpty ? nil : set
     if running?.document.url == document.url { run?.setBreakpoints(blocks: Array(set)) }
+    let saved = Dictionary(uniqueKeysWithValues: breakpoints.map { ($0.key.path, $0.value.sorted()) })
+    defaults.set(saved, forKey: Self.breakpointsKey)
   }
 
   // MARK: Results
@@ -170,8 +187,8 @@ final class RunCenter {
 
   func declineGitIgnore() {
     guard let project = result?.project else { return }
-    let declined = UserDefaults.standard.stringArray(forKey: Self.declinedKey) ?? []
-    UserDefaults.standard.set(declined + [project.path], forKey: Self.declinedKey)
+    let declined = defaults.stringArray(forKey: Self.declinedKey) ?? []
+    defaults.set(declined + [project.path], forKey: Self.declinedKey)
     result?.offersGitIgnore = false
   }
 
@@ -195,7 +212,7 @@ final class RunCenter {
     hud?.close()
     hud = nil
     showApp()
-    let declined = UserDefaults.standard.stringArray(forKey: Self.declinedKey) ?? []
+    let declined = defaults.stringArray(forKey: Self.declinedKey) ?? []
     let offers = !declined.contains(request.project.path) && GitIgnore.needsEntry(in: request.project)
     switch outcome {
     case .finished(_, let html, let report):

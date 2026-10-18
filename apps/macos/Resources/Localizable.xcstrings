@@ -3632,6 +3632,22 @@
         }
       }
     },
+    "run.hands.screenLocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen is locked. Unlock the Mac and run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: экран заблокирован. Разблокируйте Mac и запустите тест снова."
+          }
+        }
+      }
+    },
     "run.io.writeFailed" : {
       "localizations" : {
         "en" : {

@@ -107,6 +107,9 @@ pub enum HandsError {
     NoWindow(String),
     #[error("cannot open `{0}`")]
     CannotOpen(String),
+    /// The screen is locked: there is nothing to look at, and keys would go to the lock screen.
+    #[error("the screen is locked")]
+    ScreenLocked,
     #[error("{0}")]
     Failed(String),
 }

@@ -47,7 +47,13 @@ def extract(out_dir, env):
          '-target', TARGET, '-I', FFI_HEADERS, '-emit-module', '-emit-module-path',
          os.path.join(modules, 'JEVisionCore.swiftmodule'), core],
         check=True, env=env)
-    sources = sorted(glob.glob(os.path.join(ROOT, 'Sources', '**', '*.swift'), recursive=True))
+    hands = sorted(glob.glob(os.path.join(ROOT, 'Sources', 'JEVisionHands', '**', '*.swift'), recursive=True))
+    subprocess.run(
+        ['xcrun', 'swiftc', '-parse-as-library', '-swift-version', '6', '-module-name', 'JEVisionHands',
+         '-target', TARGET, '-I', modules, '-I', FFI_HEADERS, '-emit-module', '-emit-module-path',
+         os.path.join(modules, 'JEVisionHands.swiftmodule'), *hands],
+        check=True, env=env)
+    sources = sorted(glob.glob(os.path.join(ROOT, 'Sources', 'JEVision', '**', '*.swift'), recursive=True))
     subprocess.run(
         ['xcrun', 'swiftc', '-wmo', '-c', '-parse-as-library', '-swift-version', '6',
          '-module-name', 'JEVision', '-target', TARGET, '-I', modules, '-I', FFI_HEADERS,
