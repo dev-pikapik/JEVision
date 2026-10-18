@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use jevision_core::{BlockKind, Compare};
 use jevision_remote::{
     Device, Failure, Host, HostConfig, HostDelegate, Network, Permission, Project, Relay,
     RemoteError, RunEvent, RunState, RunStatus, StepStatus, Verdict,
@@ -26,7 +27,9 @@ use serde_json::json;
 const SIGN_IN: &str = include_str!("../../../examples/sign-in.flow.json");
 const PEOPLE: &str = r#"{"format":1,"name":"Greet every person","app":"com.apple.TextEdit",
   "description":"Types a greeting for each person in people.csv.","start":"open","blocks":{
-    "open":{"type":"openApp","next":"rows"},
+    "open":{"type":"openApp","next":"ready"},
+    "ready":{"type":"if","reference":{"image":"","compare":"meaning","expect":"An empty document"},
+      "then":"rows"},
     "rows":{"type":"useData","file":"people.csv","body":"type"},
     "type":{"type":"type","text":"Hello, ${data.name}!","next":"rows"}}}"#;
 const PEOPLE_CSV: &str =
@@ -265,6 +268,23 @@ impl Player {
                     StepStatus::Passed
                 };
                 let ms = step.as_millis() as u64;
+                // Every `if` takes its first way, Yes or Condition 1.
+                let branch =
+                    flow.blocks
+                        .iter()
+                        .find(|b| &b.id == block)
+                        .and_then(|b| match &b.kind {
+                            BlockKind::If {
+                                reference, else_if, ..
+                            } => Some((
+                                else_if.len() as u32 + 2,
+                                match &reference.compare {
+                                    Compare::Meaning { expect, .. } => expect.clone(),
+                                    _ => reference.image.clone(),
+                                },
+                            )),
+                            _ => None,
+                        });
                 self.publish(
                     root,
                     run,
@@ -276,11 +296,16 @@ impl Player {
                         status,
                         duration_ms: ms,
                         failure: failure.clone(),
+                        branch: branch.as_ref().map(|_| "then".to_owned()),
+                        branches: branch.as_ref().map(|b| b.0),
+                        branch_condition: branch.as_ref().map(|b| b.1.clone()),
                     },
                 );
                 steps.push(json!({
                     "seq": seq, "test": test, "block": block, "type": kind,
                     "status": status, "durationMs": ms, "failure": failure,
+                    "branch": branch.as_ref().map(|_| "then"), "branches": branch.as_ref().map(|b| b.0),
+                    "branchCondition": branch.as_ref().map(|b| &b.1),
                 }));
                 if failure.is_some() {
                     outcome = (Verdict::Failed, failure);

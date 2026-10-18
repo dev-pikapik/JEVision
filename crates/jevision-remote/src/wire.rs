@@ -352,6 +352,16 @@ pub enum RunEvent {
         status: StepStatus,
         duration_ms: u64,
         failure: Option<Failure>,
+        /// The way out an `if` took: `then`, `elseIf1`, `elseIf2`… or `else`. Absent for other
+        /// blocks and from Macs that don't send it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        branch: Option<String>,
+        /// How many ways out the `if` had.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        branches: Option<u32>,
+        /// What the condition of the way taken looks for. Absent for `else`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        branch_condition: Option<String>,
     },
     Paused {
         block: String,
