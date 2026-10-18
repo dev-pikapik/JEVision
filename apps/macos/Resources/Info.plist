@@ -35,6 +35,12 @@
   <string>26.0</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_irohv1._udp</string>
+  </array>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>JEVision finds your iPhone on the same Wi-Fi, so it can run tests on this Mac.</string>
   <key>NSHumanReadableCopyright</key>
   <string>MIT License</string>
   <key>NSPrincipalClass</key>

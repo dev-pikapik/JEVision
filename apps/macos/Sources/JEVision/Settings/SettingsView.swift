@@ -16,6 +16,9 @@ struct SettingsView: View {
       Tab("Permissions", systemImage: monitor.allGranted ? "hand.raised" : "exclamationmark.triangle", value: .permissions) {
         PermissionsSettingsView()
       }
+      Tab("iPhone & Remote", systemImage: "iphone", value: .remote) {
+        RemoteSettingsView()
+      }
       Tab("Git and GitHub", systemImage: "arrow.triangle.branch", value: .git) {
         GitSettingsView()
       }
@@ -27,7 +30,7 @@ struct SettingsView: View {
 
 /// The open Settings tab; set it before opening Settings to show a given one.
 enum SettingsTab: String {
-  case general, ai, permissions, git
+  case general, ai, permissions, remote, git
 
   static let key = "settingsTab"
 }

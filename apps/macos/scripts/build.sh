@@ -62,7 +62,7 @@ for ARCH in $ARCHS; do
     -module-name JEVision \
     -target "$ARCH-apple-macos$MIN_OS" \
     -I "$MODULES" -I "$FFI/Headers" \
-    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi \
+    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi -framework SystemConfiguration \
     ${EMIT[@]+"${EMIT[@]}"} \
     "${SOURCES[@]}" \
     -o "build/JEVision-$ARCH"
@@ -73,7 +73,7 @@ for ARCH in $ARCHS; do
     -module-name JEVisionCLI \
     -target "$ARCH-apple-macos$MIN_OS" \
     -I "$MODULES" -I "$FFI/Headers" \
-    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi \
+    -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi -framework SystemConfiguration \
     "${CLI[@]}" \
     -o "build/cli-$ARCH"
   TOOLS+=("build/cli-$ARCH")
@@ -88,6 +88,7 @@ rm -rf build/strings
 cp Resources/Info.plist "$APP/Contents/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
+xcrun xcstringstool compile Resources/InfoPlist.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 
 # Nested code first: signing the app seals what is inside it.
 codesign --force --options runtime --identifier io.github.dev-pikapik.jevision.cli \

@@ -21,6 +21,16 @@
         }
       }
     },
+    "%@ in “%@”. The test will use the mouse and keyboard of this Mac until it ends." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ в «%2$@». Пока тест идёт, он управляет мышью и клавиатурой этого Mac."
+          }
+        }
+      }
+    },
     "%@ is another program" : {
       "localizations" : {
         "ru" : {
@@ -57,6 +67,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@, %@, длительность %@"
+          }
+        }
+      }
+    },
+    "%@, started from %@, %@, took %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, запущен с %2$@, %3$@, длительность %4$@"
           }
         }
       }
@@ -435,6 +455,36 @@
         }
       }
     },
+    "1. Open JEVision on your iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. Откройте JEVision на iPhone"
+          }
+        }
+      }
+    },
+    "2. Tap **Pair a Mac**" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. Нажмите **Подключить Mac**"
+          }
+        }
+      }
+    },
+    "3. Point the camera at this code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3. Наведите камеру на этот код"
+          }
+        }
+      }
+    },
     "A branch keeps your changes apart until they’re ready. Your current changes come along." : {
       "localizations" : {
         "ru" : {
@@ -541,6 +591,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Действия"
+          }
+        }
+      }
+    },
+    "Activity log" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Журнал"
           }
         }
       }
@@ -837,6 +897,26 @@
         }
       }
     },
+    "Allow remote access" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить удалённый доступ"
+          }
+        }
+      }
+    },
+    "Allow “%@” to run a test?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить «%@» запустить тест?"
+          }
+        }
+      }
+    },
     "Allowed" : {
       "localizations" : {
         "ru" : {
@@ -923,6 +1003,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спросить GitHub ещё раз"
+          }
+        }
+      }
+    },
+    "Ask on this Mac before a remote run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спрашивать на Mac перед удалённым запуском"
           }
         }
       }
@@ -1107,6 +1197,16 @@
         }
       }
     },
+    "Can run tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Может запускать"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "ru" : {
@@ -1213,6 +1313,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось начать пул-реквест"
+          }
+        }
+      }
+    },
+    "Carries encrypted traffic when the iPhone can’t reach this Mac directly. Without one, only the same Wi-Fi or a VPN works." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Передаёт зашифрованные данные, когда iPhone не может связаться с Mac напрямую. Без него работает только та же сеть Wi-Fi или VPN."
           }
         }
       }
@@ -1677,6 +1787,16 @@
         }
       }
     },
+    "Connected now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключён сейчас"
+          }
+        }
+      }
+    },
     "Connection failed" : {
       "localizations" : {
         "ru" : {
@@ -1713,6 +1833,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Couldn’t change the device" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось изменить устройство"
           }
         }
       }
@@ -1803,6 +1933,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось переключить ветку"
+          }
+        }
+      }
+    },
+    "Couldn’t turn on: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось включить: %@"
           }
         }
       }
@@ -2017,6 +2157,16 @@
         }
       }
     },
+    "Don’t Allow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не разрешать"
+          }
+        }
+      }
+    },
     "Don’t Pause Here" : {
       "localizations" : {
         "ru" : {
@@ -2133,6 +2283,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Email"
+          }
+        }
+      }
+    },
+    "End-to-end encrypted. No ports are opened on this Mac. Keys and secrets are never sent to the phone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сквозное шифрование. На Mac не открывается ни одного порта. Ключи и секреты на телефон не передаются."
           }
         }
       }
@@ -2880,6 +3040,16 @@
         }
       }
     },
+    "Keep this Mac awake while remote access is on" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не давать Mac засыпать при удалённом доступе"
+          }
+        }
+      }
+    },
     "Keys" : {
       "localizations" : {
         "ru" : {
@@ -2896,6 +3066,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Язык"
+          }
+        }
+      }
+    },
+    "Last connected %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последнее подключение %@"
           }
         }
       }
@@ -3010,6 +3190,16 @@
         }
       }
     },
+    "Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac"
+          }
+        }
+      }
+    },
     "Make this screenshot the reference?" : {
       "localizations" : {
         "ru" : {
@@ -3096,6 +3286,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переместить в Корзину"
+          }
+        }
+      }
+    },
+    "My own" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свой"
           }
         }
       }
@@ -3280,6 +3480,16 @@
         }
       }
     },
+    "No devices yet. Scan the code with your iPhone to pair it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройств пока нет. Отсканируйте код iPhone, чтобы подключить его."
+          }
+        }
+      }
+    },
     "No file chosen" : {
       "localizations" : {
         "ru" : {
@@ -3430,6 +3640,16 @@
         }
       }
     },
+    "Nothing yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока пусто"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "ru" : {
@@ -3440,12 +3660,32 @@
         }
       }
     },
+    "On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включено"
+          }
+        }
+      }
+    },
     "On the Server" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "На сервере"
+          }
+        }
+      }
+    },
+    "On. This Mac won’t fall asleep on its own." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включено. Mac не будет засыпать сам."
           }
         }
       }
@@ -3720,6 +3960,56 @@
         }
       }
     },
+    "Paired %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключён %@"
+          }
+        }
+      }
+    },
+    "Paired devices" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключённые устройства"
+          }
+        }
+      }
+    },
+    "Paired iPhones can’t reach this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключённые iPhone не могут связаться с этим Mac."
+          }
+        }
+      }
+    },
+    "Pairing code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код для подключения"
+          }
+        }
+      }
+    },
+    "Pairings, connections and remote runs appear here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь появятся подключения устройств и удалённые запуски."
+          }
+        }
+      }
+    },
     "Passed" : {
       "localizations" : {
         "ru" : {
@@ -3846,6 +4136,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пауза — вы двинули мышь. Продолжите, когда уберёте руки."
+          }
+        }
+      }
+    },
+    "Permission" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Права"
           }
         }
       }
@@ -4230,6 +4530,46 @@
         }
       }
     },
+    "Relay" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ретранслятор"
+          }
+        }
+      }
+    },
+    "Relay address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес ретранслятора"
+          }
+        }
+      }
+    },
+    "Remote access is off until it can turn on." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалённый доступ выключен, пока его не удастся включить."
+          }
+        }
+      }
+    },
+    "Remote access is on: paired iPhones can run tests on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалённый доступ включён: подключённые iPhone могут запускать тесты на этом Mac."
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "ru" : {
@@ -4410,6 +4750,26 @@
         }
       }
     },
+    "Revoke" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отозвать"
+          }
+        }
+      }
+    },
+    "Revoke access for “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отозвать доступ у «%@»?"
+          }
+        }
+      }
+    },
     "Right" : {
       "localizations" : {
         "ru" : {
@@ -4526,6 +4886,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Результат прогона"
+          }
+        }
+      }
+    },
+    "Run tests and read reports from your iPhone. Tests and screenshots stay on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускайте тесты и смотрите отчёты с iPhone. Тесты и скриншоты остаются на этом Mac."
           }
         }
       }
@@ -4960,6 +5330,26 @@
         }
       }
     },
+    "Show a Code for Another Device" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать код для другого устройства"
+          }
+        }
+      }
+    },
+    "Show a New Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать новый код"
+          }
+        }
+      }
+    },
     "Show in Finder" : {
       "localizations" : {
         "ru" : {
@@ -5106,6 +5496,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пробел"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стандартный"
           }
         }
       }
@@ -5420,6 +5820,36 @@
         }
       }
     },
+    "The code has expired." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок действия кода истёк."
+          }
+        }
+      }
+    },
+    "The code works once and expires in %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код одноразовый, истекает через %@."
+          }
+        }
+      }
+    },
+    "The device disconnects now. To use it again, pair it with a new code." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство сразу отключится. Чтобы снова им пользоваться, подключите его по новому коду."
+          }
+        }
+      }
+    },
     "The folder was moved, deleted or is on a disk that isn’t connected. Choose it again to keep working." : {
       "localizations" : {
         "ru" : {
@@ -5496,6 +5926,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новый язык появится, когда JEVision откроется снова."
+          }
+        }
+      }
+    },
+    "The next device can" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующее устройство"
           }
         }
       }
@@ -6060,6 +6500,16 @@
         }
       }
     },
+    "Turning on…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включение…"
+          }
+        }
+      }
+    },
     "Two permissions to see and click" : {
       "localizations" : {
         "ru" : {
@@ -6126,6 +6576,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отменить шаг"
+          }
+        }
+      }
+    },
+    "Unknown device" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестное устройство"
           }
         }
       }
@@ -6210,6 +6670,16 @@
         }
       }
     },
+    "Use" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применить"
+          }
+        }
+      }
+    },
     "Use Data" : {
       "localizations" : {
         "ru" : {
@@ -6256,6 +6726,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Версия"
+          }
+        }
+      }
+    },
+    "View only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только смотреть"
           }
         }
       }
@@ -6406,6 +6886,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Куда нажать"
+          }
+        }
+      }
+    },
+    "Who ran what, and when" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кто, что и когда запускал"
           }
         }
       }
@@ -7112,6 +7602,16 @@
         }
       }
     },
+    "iPhone & Remote" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone и удалённо"
+          }
+        }
+      }
+    },
     "in %@" : {
       "localizations" : {
         "ru" : {
@@ -7148,6 +7648,614 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS установит его вместе с инструментами разработчика за несколько минут."
+          }
+        }
+      }
+    },
+    "remote.activity.denied" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request refused"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрос отклонён"
+          }
+        }
+      }
+    },
+    "remote.activity.paired" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paired"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключено"
+          }
+        }
+      }
+    },
+    "remote.activity.pairingFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pairing failed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось подключить"
+          }
+        }
+      }
+    },
+    "remote.activity.permissionChanged" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission changed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Права изменены"
+          }
+        }
+      }
+    },
+    "remote.activity.reportRead" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opened a report"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыт отчёт"
+          }
+        }
+      }
+    },
+    "remote.activity.revoked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access revoked"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ отозван"
+          }
+        }
+      }
+    },
+    "remote.activity.runStarted" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Started a run"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запущен тест"
+          }
+        }
+      }
+    },
+    "remote.activity.runStopped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped a run"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановлен тест"
+          }
+        }
+      }
+    },
+    "remote.activity.signInFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection refused"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение отклонено"
+          }
+        }
+      }
+    },
+    "remote.activity.signedIn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение"
+          }
+        }
+      }
+    },
+    "remote.error.badSignature" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device couldn’t prove who it is."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство не смогло подтвердить, кто оно."
+          }
+        }
+      }
+    },
+    "remote.error.declinedOnMac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The run wasn’t allowed on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск не разрешили на Mac."
+          }
+        }
+      }
+    },
+    "remote.error.hostFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Mac couldn’t do it. See the run on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac не смог это сделать. Подробности — в прогоне на Mac."
+          }
+        }
+      }
+    },
+    "remote.error.hostNotRunning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote access is off."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалённый доступ выключен."
+          }
+        }
+      }
+    },
+    "remote.error.hostOffline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Mac can’t be reached."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac недоступен."
+          }
+        }
+      }
+    },
+    "remote.error.invalidRelayUrl" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The relay address isn’t valid. Use an https:// address."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неверный адрес ретранслятора. Нужен адрес https://."
+          }
+        }
+      }
+    },
+    "remote.error.invalidSecretKey" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Mac’s key in the Keychain is damaged."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ Mac в Связке ключей повреждён."
+          }
+        }
+      }
+    },
+    "remote.error.macLocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Mac’s screen is locked."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран Mac заблокирован."
+          }
+        }
+      }
+    },
+    "remote.error.network" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The network connection failed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбой сетевого соединения."
+          }
+        }
+      }
+    },
+    "remote.error.notAllowed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device may only view, not run tests."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройству можно только смотреть, но не запускать тесты."
+          }
+        }
+      }
+    },
+    "remote.error.notPaired" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device isn’t paired with this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство не подключено к этому Mac."
+          }
+        }
+      }
+    },
+    "remote.error.offerMalformed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn’t a JEVision pairing code."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не код подключения JEVision."
+          }
+        }
+      }
+    },
+    "remote.error.pairingCodeExpired" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pairing code has expired."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок действия кода подключения истёк."
+          }
+        }
+      }
+    },
+    "remote.error.pairingCodeInvalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pairing code isn’t valid."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неверный код подключения."
+          }
+        }
+      }
+    },
+    "remote.error.pairingCodeUsed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The pairing code was already used."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот код подключения уже использован."
+          }
+        }
+      }
+    },
+    "remote.error.pairingLocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many wrong pairing codes. Pairing is paused for a while."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слишком много неверных кодов. Подключение временно приостановлено."
+          }
+        }
+      }
+    },
+    "remote.error.pathOutsideProject" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file is outside the project folder."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл находится вне папки проекта."
+          }
+        }
+      }
+    },
+    "remote.error.pictureNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The picture doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изображение не найдено."
+          }
+        }
+      }
+    },
+    "remote.error.projectNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The project isn’t open on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект не открыт на Mac."
+          }
+        }
+      }
+    },
+    "remote.error.protocol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device speaks another version of JEVision. Update both apps."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На устройстве другая версия JEVision. Обновите оба приложения."
+          }
+        }
+      }
+    },
+    "remote.error.revoked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access for the device was revoked."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ для устройства отозван."
+          }
+        }
+      }
+    },
+    "remote.error.runInProgress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another test is running on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На Mac уже идёт другой тест."
+          }
+        }
+      }
+    },
+    "remote.error.runNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The run doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогон не найден."
+          }
+        }
+      }
+    },
+    "remote.error.signerFailed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device couldn’t sign in with its key."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство не смогло войти со своим ключом."
+          }
+        }
+      }
+    },
+    "remote.error.storage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The list of paired devices can’t be saved."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сохранить список подключённых устройств."
+          }
+        }
+      }
+    },
+    "remote.error.testNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не найден."
+          }
+        }
+      }
+    },
+    "remote.error.testUnreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test can’t be read or has problems to fix first."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не читается или в нём есть ошибки, которые нужно исправить."
+          }
+        }
+      }
+    },
+    "remote.error.tooLarge" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file is too large to send."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл слишком большой для отправки."
           }
         }
       }
@@ -7828,6 +8936,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» не подходит для имени ветки. Используйте буквы, цифры и дефисы, без пробелов."
+          }
+        }
+      }
+    },
+    "“%@” is paired." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» подключён."
           }
         }
       }

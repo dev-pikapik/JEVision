@@ -11,7 +11,10 @@ let package = Package(
   ],
   targets: [
     .binaryTarget(name: "JEVisionCoreFFI", path: "JEVisionCoreFFI.xcframework"),
-    .target(name: "JEVisionCore", dependencies: ["JEVisionCoreFFI"]),
+    .target(
+      name: "JEVisionCore", dependencies: ["JEVisionCoreFFI"],
+      // Remote access watches the network through it.
+      linkerSettings: [.linkedFramework("SystemConfiguration")]),
     .testTarget(name: "JEVisionCoreTests", dependencies: ["JEVisionCore"]),
   ]
 )

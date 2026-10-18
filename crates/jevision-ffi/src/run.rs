@@ -120,6 +120,9 @@ pub struct RunOptions {
     pub vision: Option<VisionSettings>,
     /// Checks by meaning may only use a model on this Mac.
     pub local_only: bool,
+    /// Name of the paired device that asked for the run, saved in the report.
+    #[uniffi(default = None)]
+    pub requested_by: Option<String>,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -235,6 +238,7 @@ pub(crate) fn run(
         start_at: options.start_at,
         retries: options.retries,
         local_only: options.local_only,
+        requested_by: options.requested_by,
         ..Default::default()
     };
     match runner.run(Path::new(project), Path::new(test), &options) {
@@ -345,6 +349,10 @@ fn path(p: &Path) -> String {
 
 /// How a run ended.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "made once per run and lowered to the app at once; UniFFI enums can't hold a Box"
+)]
 pub enum RunOutcome {
     /// The run folder, its `report.html` (absent if it could not be written) and the report.
     Finished {
@@ -476,6 +484,10 @@ pub struct RunReport {
     pub verdict: Verdict,
     pub flaky: bool,
     pub baselines_created: Vec<String>,
+    /// Name of the paired device that started the run from afar; `None` for a run started on
+    /// this Mac.
+    #[uniffi(default = None)]
+    pub requested_by: Option<String>,
     pub attempts: Vec<Attempt>,
 }
 
@@ -490,6 +502,7 @@ impl From<jevision_runner::RunReport> for RunReport {
             verdict: r.verdict,
             flaky: r.flaky,
             baselines_created: r.baselines_created,
+            requested_by: r.requested_by,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }
@@ -629,7 +642,7 @@ pub enum PauseReason {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::path::PathBuf;
     use std::sync::Mutex;
@@ -639,7 +652,7 @@ mod tests {
     const SECRET: &str = "s3cr3t-pa55";
 
     #[derive(Default)]
-    struct Fake {
+    pub(crate) struct Fake {
         log: Mutex<Vec<String>>,
     }
 
@@ -697,7 +710,7 @@ mod tests {
         }
     }
 
-    struct Secrets;
+    pub(crate) struct Secrets;
 
     impl SecretSource for Secrets {
         fn secret(&self, name: String) -> Option<String> {

@@ -2,14 +2,21 @@ import SwiftUI
 
 @main
 struct JEVisionApp: App {
-  @State private var project = ProjectStore()
+  @State private var project: ProjectStore
   @State private var permissions = PermissionsMonitor()
-  @State private var runs = RunCenter()
+  @State private var runs: RunCenter
   @State private var records = RecordCenter()
+  /// Made at launch so paired iPhones reach the Mac whether or not Settings is open.
+  @State private var remote: RemoteAccess
 
   init() {
     _ = AppLanguage.atLaunch
     Appearance.saved.apply()
+    let project = ProjectStore()
+    let runs = RunCenter()
+    _project = State(initialValue: project)
+    _runs = State(initialValue: runs)
+    _remote = State(initialValue: RemoteAccess(runs: runs, project: project))
   }
 
   var body: some Scene {
@@ -57,6 +64,7 @@ struct JEVisionApp: App {
       SettingsView()
         .environment(project)
         .environment(permissions)
+        .environment(remote)
     }
   }
 }
