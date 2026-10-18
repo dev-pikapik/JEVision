@@ -166,7 +166,10 @@ private struct Grey {
     var values = [UInt8](repeating: 0, count: b.width * b.height)
     b.pixels.withUnsafeBufferPointer { p in
       for i in 0..<values.count {
-        values[i] = UInt8((77 * Int(p[i * 4]) + 150 * Int(p[i * 4 + 1]) + 29 * Int(p[i * 4 + 2])) >> 8)
+        let r: Int = 77 * Int(p[i * 4])
+        let g: Int = 150 * Int(p[i * 4 + 1])
+        let b: Int = 29 * Int(p[i * 4 + 2])
+        values[i] = UInt8((r + g + b) >> 8)
       }
     }
     self.init(width: b.width, height: b.height, values: values)
@@ -180,7 +183,9 @@ private struct Grey {
       for y in 0..<h {
         for x in 0..<w {
           let i = 2 * y * width + 2 * x
-          out[y * w + x] = UInt8((Int(v[i]) + Int(v[i + 1]) + Int(v[i + width]) + Int(v[i + width + 1])) / 4)
+          let top: Int = Int(v[i]) + Int(v[i + 1])
+          let bottom: Int = Int(v[i + width]) + Int(v[i + width + 1])
+          out[y * w + x] = UInt8((top + bottom) / 4)
         }
       }
     }
