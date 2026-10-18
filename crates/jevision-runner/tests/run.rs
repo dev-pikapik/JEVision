@@ -36,6 +36,8 @@ struct State {
     /// Recording a video fails, as without the Screen Recording permission.
     no_video: bool,
     video: Option<PathBuf>,
+    /// Areas the video was asked to cover in every window.
+    video_hide: Vec<jevision_core::Rect>,
     log: Vec<String>,
     typed: Vec<String>,
 }
@@ -134,13 +136,19 @@ impl Hands for Fake {
     fn user_input_detected(&self) -> bool {
         std::mem::take(&mut self.state.lock().unwrap().user_input)
     }
-    fn start_video(&self, app: &str, path: &Path) -> Result<(), HandsError> {
+    fn start_video(
+        &self,
+        app: &str,
+        path: &Path,
+        hide: &[jevision_core::Rect],
+    ) -> Result<(), HandsError> {
         let mut s = self.state.lock().unwrap();
         if s.no_video {
             return Err(HandsError::PermissionDenied("screenRecording".to_owned()));
         }
         s.log.push(format!("video {app}"));
         s.video = Some(path.to_path_buf());
+        s.video_hide = hide.to_vec();
         Ok(())
     }
     fn stop_video(&self) -> Result<(), HandsError> {
@@ -1673,6 +1681,32 @@ fn video_has_step_markers_and_is_kept_as_asked() {
     assert_eq!(run.report.verdict, Verdict::Passed);
     assert_eq!(run.report.video, None);
     assert_eq!(markers(&run.report), [None, None]);
+}
+
+#[test]
+fn the_video_covers_what_the_project_hides() {
+    let p = Project::new();
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"hide":[{"x":0,"y":0,"width":0.25,"height":1}]}"#,
+    )
+    .test(r#""a":{"type":"pressKeys","keys":"a"}"#, "a", 0);
+    let hands = Fake::new(solid([0, 0, 0]));
+    run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::Always),
+    );
+    assert_eq!(
+        hands.state.lock().unwrap().video_hide,
+        [jevision_core::Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 0.25,
+            height: 1.0,
+        }]
+    );
 }
 
 #[test]

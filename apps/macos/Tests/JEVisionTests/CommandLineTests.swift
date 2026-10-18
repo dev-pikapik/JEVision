@@ -459,7 +459,7 @@ private final class WaitingHands: Hands, @unchecked Sendable {
   func typeText(text: String) throws(HandsError) {}
   func pressKeys(keys: String) throws(HandsError) {}
   func userInputDetected() -> Bool { false }
-  func startVideo(app: String, path: String) throws(HandsError) {}
+  func startVideo(app: String, path: String, hide: [Rect]) throws(HandsError) {}
   func stopVideo() throws(HandsError) {}
 }
 

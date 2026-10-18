@@ -10,7 +10,7 @@
 pub mod image;
 mod mask;
 
-pub use mask::{MASK_COLOUR, MaskedImage};
+pub use mask::{MASK_COLOUR, MaskedImage, PixelArea, VideoMask, VideoWindow, video_mask};
 
 use std::fmt;
 use std::net::IpAddr;

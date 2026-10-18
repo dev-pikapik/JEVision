@@ -22,8 +22,8 @@ pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{MouseButton, Point};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
-    Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, Provider, Question,
-    TIMEOUT, VisionError, VisionJudge,
+    Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, PixelArea, Provider,
+    Question, TIMEOUT, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
 };
 pub use report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
@@ -83,7 +83,14 @@ pub trait Hands: Send + Sync {
     /// Starts recording a video of the application's windows into the file at `path`. The
     /// video's first moment is the moment of this call, so times measured from it line up.
     /// The application may not be running yet: its windows appear once it opens them.
-    fn start_video(&self, app: &str, path: &Path) -> Result<(), HandsError>;
+    /// Every frame has `hide` (fractions of a window, from its top-left corner) and the password
+    /// fields painted over in each of the application's windows, as screenshots do.
+    fn start_video(
+        &self,
+        app: &str,
+        path: &Path,
+        hide: &[jevision_core::Rect],
+    ) -> Result<(), HandsError>;
     /// Stops the recording and finishes the file. A recording that caught no picture leaves
     /// no file.
     fn stop_video(&self) -> Result<(), HandsError>;

@@ -234,10 +234,10 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   // MARK: Video
 
-  public func startVideo(app: String, path: String) throws(HandsError) {
+  public func startVideo(app: String, path: String, hide: [Rect]) throws(HandsError) {
     guard CGPreflightScreenCaptureAccess() else { throw .PermissionDenied(permission: "screenRecording") }
     wakeDisplay()
-    let video = RunVideo(app: app, url: URL(filePath: path))
+    let video = RunVideo(app: app, url: URL(filePath: path), hide: hide)
     try video.start()
     self.video = video
   }

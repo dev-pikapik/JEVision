@@ -6,7 +6,8 @@ import ScreenCaptureKit
 /// Records the windows of the app under test into an H.264 `.mp4` while a test runs. Only that
 /// app's windows are in the picture — not other apps, notifications or JEVision's own panel. The
 /// picture closes in on the app's windows, so their text stays readable on a large display, and
-/// follows the app when its windows move or it quits and opens again during the test.
+/// follows the app when its windows move or it quits and opens again during the test. Like every
+/// screenshot, each frame has the project's hidden areas and the password fields painted over.
 final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
   /// Enough for following clicks and typing; keeps files small.
   private static let frameRate: Int32 = 15
@@ -19,6 +20,10 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
   private let app: String
   private let url: URL
+  /// Areas covered in every window, in fractions of it from its top-left corner.
+  private let hide: [Rect]
+  /// Searches the app's windows for password fields; a search can take a quarter of a second.
+  private let searching = DispatchQueue(label: "io.github.dev-pikapik.jevision.video.fields")
   /// Every property below is used on this queue only.
   private let queue = DispatchQueue(label: "io.github.dev-pikapik.jevision.video")
   private var stream: SCStream?
@@ -26,6 +31,11 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   private var size = (width: 0, height: 0)
   /// The part of the display the picture shows, in the display's points.
   private var area = CGRect.null
+  /// Where the picture is moving to while the stream takes its new place.
+  private var nextArea: CGRect?
+  /// Password fields of each window, in fractions of it, from the latest search.
+  private var secure: [CGWindowID: [Rect]] = [:]
+  private var isSearching = false
   private var writer: AVAssetWriter?
   private var input: AVAssetWriterInput?
   private var hasPicture = false
@@ -34,9 +44,10 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   private var following: DispatchSourceTimer?
   private var isUpdating = false
 
-  init(app: String, url: URL) {
+  init(app: String, url: URL, hide: [Rect]) {
     self.app = app
     self.url = url
+    self.hide = hide
   }
 
   /// Starts recording; the video's first moment is the moment of this call. Blocks the calling
@@ -116,7 +127,9 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
     let stream = SCStream(filter: filter, configuration: Self.configuration(size: size, area: area), delegate: self)
     try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: queue)
+    let secure = Self.secureFields(of: app)
     queue.sync {
+      self.secure = secure
       self.writer = writer
       self.input = input
       self.stream = stream
@@ -131,9 +144,24 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
     guard type == .screen, sampleBuffer.isValid, Self.isComplete(sampleBuffer),
-      let input, input.isReadyForMoreMediaData
+      let input, input.isReadyForMoreMediaData, cover(sampleBuffer)
     else { return }
     if input.append(sampleBuffer) { hasPicture = true }
+  }
+
+  /// Paints over the hidden areas and password fields of every window of the app, where the
+  /// windows are now. A picture that can't be painted is left out rather than kept as it is.
+  private func cover(_ sample: CMSampleBuffer) -> Bool {
+    guard !hide.isEmpty || secure.values.contains(where: { !$0.isEmpty }) else { return true }
+    guard let display, let picture = sample.imageBuffer else { return false }
+    let origin = display.frame.origin
+    let windows = MacHands.windows(of: MacHands.runningApps(app)).map {
+      VideoWindow(bounds: Rect($0.bounds.offsetBy(dx: -origin.x, dy: -origin.y)), hide: hide + (secure[$0.id] ?? []))
+    }
+    let mask = videoMask(
+      width: UInt32(CVPixelBufferGetWidth(picture)), height: UInt32(CVPixelBufferGetHeight(picture)),
+      shown: [area, nextArea].compactMap { $0.map(Rect.init) }, windows: windows)
+    return mask.areas.isEmpty || Self.paint(mask, on: picture)
   }
 
   func stream(_ stream: SCStream, didStopWithError error: any Error) {
@@ -171,7 +199,10 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   private func startFollowing() {
     let timer = DispatchSource.makeTimerSource(queue: queue)
     timer.schedule(deadline: .now() + Self.followInterval, repeating: Self.followInterval)
-    timer.setEventHandler { [weak self] in self?.follow() }
+    timer.setEventHandler { [weak self] in
+      self?.searchFields()
+      self?.follow()
+    }
     timer.resume()
     following = timer
   }
@@ -190,6 +221,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     let app = self.app
     let config = moves ? Self.configuration(size: size, area: area) : nil
     let rejoins = running != shown
+    if moves { nextArea = area }
     Task {
       var follows = false
       if rejoins,
@@ -210,13 +242,70 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
       let isShown = follows, isMoved = moved
       self.queue.async {
         self.isUpdating = false
+        self.nextArea = nil
         if isShown { self.shown = running }
         if isMoved { self.area = area }
       }
     }
   }
 
+  /// Looks for password fields in the app's windows again, off the recording queue.
+  private func searchFields() {
+    guard !isSearching else { return }
+    isSearching = true
+    let app = self.app
+    searching.async {
+      let found = Self.secureFields(of: app)
+      self.queue.async {
+        self.secure = found
+        self.isSearching = false
+      }
+    }
+  }
+
   // MARK: Helpers
+
+  /// Password fields of each of the app's windows, in fractions of the window.
+  private static func secureFields(of app: String) -> [CGWindowID: [Rect]] {
+    let apps = MacHands.runningApps(app)
+    let pids = Set(apps.map(\.processIdentifier))
+    var fields: [CGWindowID: [Rect]] = [:]
+    for window in MacHands.windows(of: apps) {
+      fields[window.id] = Accessibility.secureFields(pids: pids, window: window.bounds)
+    }
+    return fields
+  }
+
+  /// Paints `mask` over a picture in the stream's two-plane 4:2:0 format: brightness for every
+  /// pixel, then one colour pair for every 2×2 pixels. False when the picture has another format.
+  static func paint(_ mask: VideoMask, on picture: CVPixelBuffer) -> Bool {
+    guard CVPixelBufferLockBaseAddress(picture, []) == kCVReturnSuccess else { return false }
+    defer { CVPixelBufferUnlockBaseAddress(picture, []) }
+    guard CVPixelBufferGetPlaneCount(picture) == 2,
+      let luma = CVPixelBufferGetBaseAddressOfPlane(picture, 0)?.assumingMemoryBound(to: UInt8.self),
+      let chroma = CVPixelBufferGetBaseAddressOfPlane(picture, 1)?.assumingMemoryBound(to: UInt8.self)
+    else { return false }
+    let lumaRow = CVPixelBufferGetBytesPerRowOfPlane(picture, 0)
+    let chromaRow = CVPixelBufferGetBytesPerRowOfPlane(picture, 1)
+    let (width, height) = (CVPixelBufferGetWidth(picture), CVPixelBufferGetHeight(picture))
+    for area in mask.areas {
+      let x = Int(area.x), y = Int(area.y)
+      let right = min(x + Int(area.width), width), bottom = min(y + Int(area.height), height)
+      guard x < right, y < bottom else { continue }
+      for row in y..<bottom {
+        (luma + row * lumaRow + x).update(repeating: mask.luma, count: right - x)
+      }
+      // The areas start on even pixels, so a colour pair at byte `x` belongs to pixels x and x+1.
+      for row in y / 2..<(bottom + 1) / 2 {
+        let line = chroma + row * chromaRow
+        for column in stride(from: x & ~1, to: right, by: 2) {
+          line[column] = mask.chromaBlue
+          line[column + 1] = mask.chromaRed
+        }
+      }
+    }
+    return true
+  }
 
   private static func configuration(size: (width: Int, height: Int), area: CGRect) -> SCStreamConfiguration {
     let config = SCStreamConfiguration()
@@ -281,5 +370,11 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
       let raw = attachments.first?[.status] as? Int
     else { return false }
     return SCFrameStatus(rawValue: raw) == .complete
+  }
+}
+
+extension Rect {
+  init(_ rect: CGRect) {
+    self.init(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height)
   }
 }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use jevision_core::{FORMAT_VERSION, MouseButton, Point};
+use jevision_core::{FORMAT_VERSION, MouseButton, Point, Rect};
 use serde_json::{Value, json};
 
 use super::{AssistantHost, AssistantPermissions, Server};
@@ -83,7 +83,7 @@ impl Hands for FakeHands {
         false
     }
 
-    fn start_video(&self, _: String, _: String) -> Result<(), HandsError> {
+    fn start_video(&self, _: String, _: String, _: Vec<Rect>) -> Result<(), HandsError> {
         Ok(())
     }
 
