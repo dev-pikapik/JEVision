@@ -1052,18 +1052,22 @@ pub(crate) mod tests {
     }
 
     enum Message {
-        Event(RunEvent),
-        Finished(RunOutcome),
+        Event(Box<RunEvent>),
+        Finished(Box<RunOutcome>),
     }
 
     struct Listener(Mutex<Sender<Message>>);
 
     impl RunListener for Listener {
         fn event(&self, event: RunEvent) {
-            let _ = self.0.lock().unwrap().send(Message::Event(event));
+            let _ = self.0.lock().unwrap().send(Message::Event(Box::new(event)));
         }
         fn finished(&self, outcome: RunOutcome) {
-            let _ = self.0.lock().unwrap().send(Message::Finished(outcome));
+            let _ = self
+                .0
+                .lock()
+                .unwrap()
+                .send(Message::Finished(Box::new(outcome)));
         }
     }
 
@@ -1111,8 +1115,8 @@ pub(crate) mod tests {
         let deadline = Instant::now() + limit;
         loop {
             match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                Ok(Message::Event(e)) => events.push(e),
-                Ok(Message::Finished(outcome)) => return (events, outcome),
+                Ok(Message::Event(e)) => events.push(*e),
+                Ok(Message::Finished(outcome)) => return (events, *outcome),
                 Err(e) => panic!("run did not finish: {e}"),
             }
         }
@@ -1176,11 +1180,11 @@ pub(crate) mod tests {
         run.set_step_mode(true);
         let rx = p.start(&run, Arc::new(Fake::default()));
         match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Message::Event(RunEvent::RunStarted { .. })) => {}
+            Ok(Message::Event(e)) if matches!(*e, RunEvent::RunStarted { .. }) => {}
             _ => panic!("expected RunStarted"),
         }
         let next = || match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Message::Event(e)) => e,
+            Ok(Message::Event(e)) => *e,
             _ => panic!("expected an event"),
         };
         assert_eq!(next(), RunEvent::AttemptStarted { attempt: 1 });
