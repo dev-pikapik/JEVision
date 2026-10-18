@@ -37,7 +37,7 @@ struct ProjectMapTests {
     ])
   }
 
-  @Test func linksATestToTheTestsItRuns() {
+  @Test func linksATestToTheTestsItRuns() throws {
     let map = [
       "a.flow.json": mapTest("a.flow.json", uses: ["shared/login.flow.json", "a.flow.json", "gone.flow.json"]),
       "b.flow.json": mapTest("b.flow.json", uses: ["shared/login.flow.json"]),
@@ -49,7 +49,18 @@ struct ProjectMapTests {
     let links = ProjectMap.links(
       map, bounds: ["a.flow.json": a, "shared/login.flow.json": login])
     // Itself, a missing test and a test not on screen draw nothing.
-    #expect(links == [ProjectMap.Link(from: a, to: login)])
+    #expect(links == [ProjectMap.Link(from: a, to: login, points: [CGPoint(x: 10, y: 5), CGPoint(x: 50, y: 5)])])
+
+    // A card between the two is passed around, not through.
+    let between = CGRect(x: 25, y: 0, width: 10, height: 10)
+    let around = ProjectMap.links(
+      map, bounds: ["a.flow.json": a, "shared/login.flow.json": login, "b.flow.json": between])
+    let route = try #require(around.first { $0.from == a }).points
+    #expect(route.first == CGPoint(x: 10, y: 5) && route.last == CGPoint(x: 50, y: 5))
+    #expect(zip(route, route.dropFirst()).allSatisfy { p, q in
+      max(p.x, q.x) <= between.minX || min(p.x, q.x) >= between.maxX
+        || max(p.y, q.y) <= between.minY || min(p.y, q.y) >= between.maxY
+    })
   }
 
   @MainActor @Test func runAllCountsTestsThatCannotStart() {
@@ -63,5 +74,11 @@ struct ProjectMapTests {
     #expect(RunText.batchOutcome(result) == "Smoke finished. Passed: 0 · Failed: 0 · Not run: 2")
     center.dismissBatchResult()
     #expect(center.batchResult == nil)
+  }
+
+  @MainActor @Test func reportHeadingsEndWithoutAPeriod() {
+    #expect(RunText.heading("Passed in 2.5 sec.") == "Passed in 2.5 sec")
+    #expect(RunText.heading("Smoke finished. Passed: 1 · Failed: 0") == "Smoke finished. Passed: 1 · Failed: 0")
+    #expect(RunText.heading("Waiting for “Save”...") == "Waiting for “Save”...")
   }
 }

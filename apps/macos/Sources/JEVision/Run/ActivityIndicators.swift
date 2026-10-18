@@ -111,6 +111,7 @@ final class ActivityIndicators: NSObject, NSMenuDelegate {
     panel.backgroundColor = .clear
     panel.hasShadow = false
     panel.hidesOnDeactivate = false
+    panel.canHide = false
     panel.isReleasedWhenClosed = false
     panel.isExcludedFromWindowsMenu = true
     // Never in the run video, the screenshots a test compares, or a shared screen.

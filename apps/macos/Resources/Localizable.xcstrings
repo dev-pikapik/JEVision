@@ -617,12 +617,72 @@
         }
       }
     },
+    "A test reads a value as ${env.NAME}. The file %@ in the project folder keeps them and goes to git with the tests, so passwords don’t belong here: set those as secrets." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест берёт значение как ${env.NAME}. Значения хранятся в файле %@ в папке проекта и попадают в git вместе с тестами, поэтому паролям здесь не место: задайте их как секреты."
+          }
+        }
+      }
+    },
     "A video shows only the app under test, with a mark for each step in the report. Videos are saved with the run reports in the project’s .jevision folder; older ones are deleted after the next run." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "На видео — только тестируемое приложение, а в отчёте на нём отмечен каждый шаг. Видео хранятся вместе с отчётами прогонов в папке .jevision проекта; более старые удаляются после следующего прогона."
+          }
+        }
+      }
+    },
+    "Add" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить"
+          }
+        }
+      }
+    },
+    "Add Environment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новое окружение"
+          }
+        }
+      }
+    },
+    "Add Environment…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить окружение…"
+          }
+        }
+      }
+    },
+    "Add Reference…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить эталон…"
+          }
+        }
+      }
+    },
+    "Add Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить значение"
           }
         }
       }
@@ -643,6 +703,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ИИ-ассистенты на этом Mac всегда могут находить, читать, изменять и проверять тесты проекта и читать его отчёты. Значения секретов и API-ключи им никогда не выдаются, а файлы за пределами проекта для них закрыты."
+          }
+        }
+      }
+    },
+    "An environment is a set of values tests read, such as the address of a test server. Each environment gets its own values; you pick the one runs use at the foot of the sidebar." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение — это набор значений, которые читают тесты, например адрес тестового сервера. У каждого окружения свои значения; то, с которым идут прогоны, выбирается внизу боковой панели."
           }
         }
       }
@@ -783,16 +853,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить условие"
-          }
-        }
-      }
-    },
-    "Add Environments…" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить окружения…"
           }
         }
       }
@@ -1339,6 +1399,58 @@
         }
       }
     },
+    "Before %lld tests can run" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Before %lld test can run"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Before %lld tests can run"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перед запуском %lld теста"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перед запуском %lld тестов"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перед запуском %lld тестов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перед запуском %lld теста"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Before on the left, after on the right" : {
       "localizations" : {
         "ru" : {
@@ -1495,16 +1607,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Холст"
-          }
-        }
-      }
-    },
-    "Can’t open the environments file" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удаётся открыть файл окружений"
           }
         }
       }
@@ -3015,6 +3117,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все настройки вернутся к тем, что были сразу после установки JEVision, и JEVision откроется заново."
+          }
+        }
+      }
+    },
+    "Every value needs a name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У каждого значения должно быть имя."
           }
         }
       }
@@ -5752,6 +5864,16 @@
         }
       }
     },
+    "Remove this value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать это значение"
+          }
+        }
+      }
+    },
     "Removed" : {
       "localizations" : {
         "ru" : {
@@ -7622,12 +7744,12 @@
         }
       }
     },
-    "The test reads these values from an environment, and the project has none. Add environments to %@." : {
+    "The test reads these values from an environment, and the project has none yet." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тест берёт эти значения из окружения, а в проекте окружений нет. Добавьте их в %@."
+            "value" : "Тест берёт эти значения из окружения, а в проекте окружений пока нет."
           }
         }
       }
@@ -7732,6 +7854,16 @@
         }
       }
     },
+    "There are two values named %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Два значения называются %@."
+          }
+        }
+      }
+    },
     "There was no reference yet, so this screenshot became it: %@" : {
       "localizations" : {
         "ru" : {
@@ -7748,6 +7880,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ветка «%@» уже есть."
+          }
+        }
+      }
+    },
+    "There’s an environment %@ already." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение %@ уже есть."
           }
         }
       }
@@ -8322,12 +8464,42 @@
         }
       }
     },
+    "Use up to 64 Latin letters, digits, - and _ in the name, without spaces." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В названии можно использовать до 64 латинских букв, цифр, - и _, без пробелов."
+          }
+        }
+      }
+    },
     "Value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значение"
+          }
+        }
+      }
+    },
+    "Value Name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя значения"
+          }
+        }
+      }
+    },
+    "Values" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значения"
           }
         }
       }
@@ -8468,6 +8640,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Было: %@\nСтало: %@\nИзменено: %@"
+          }
+        }
+      }
+    },
+    "Weekday Mornings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По утрам в будни"
           }
         }
       }
@@ -10786,6 +10968,16 @@
         }
       }
     },
+    "“%@” can’t be a value name: use Latin letters, digits and _, not starting with a digit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не подходит как имя значения: используйте латинские буквы, цифры и _, и не начинайте с цифры."
+          }
+        }
+      }
+    },
     "“%@” is paired." : {
       "localizations" : {
         "ru" : {
@@ -12064,16 +12256,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Следующий запуск: %@"
-          }
-        }
-      }
-    },
-    "Nightly" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ночной прогон"
           }
         }
       }

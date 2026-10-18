@@ -104,9 +104,10 @@ struct SchedulesSheet: View {
     }
   }
 
-  /// “Nightly”, then “Nightly 2” and so on, whichever is free.
+  /// “Weekday Mornings”, as a new schedule runs at 9:00 AM on weekdays: a screen locked at night
+  /// would skip a nightly run. Then “Weekday Mornings 2” and so on, whichever is free.
   private var newName: String {
-    Self.freeName(String(localized: "Nightly"), taken: schedules.all.map(\.name))
+    Self.freeName(String(localized: "Weekday Mornings"), taken: schedules.all.map(\.name))
   }
 
   /// `base`, or else `base 2`, `base 3` and so on: the first that isn't in `taken`, ignoring case.

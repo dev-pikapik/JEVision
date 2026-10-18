@@ -16,17 +16,12 @@ struct FirstTestStep: View {
         symbol: "record.circle", color: .red, title: Text("Make your first test"),
         message: Text("Pick an app, press Start Recording and use it as usual. You can fine-tune the steps later."),
         tileSize: 64)
-      ScrollView {
-        LazyVGrid(columns: columns, spacing: 12) {
-          ForEach(tiles, id: \.self) { bundleID in
-            AppTile(bundleID: bundleID, isRunning: running.contains(bundleID), isSelected: app == bundleID) {
-              app = bundleID
-            }
-          }
-        }
-        .padding(.vertical, 12)
+      // Scrolls only when the tiles don't fit, so there's no scroller beside a grid that fits.
+      ViewThatFits(in: .vertical) {
+        grid
+        ScrollView { grid }
       }
-      .scrollBounceBehavior(.basedOnSize)
+      .frame(maxHeight: .infinity, alignment: .top)
       AppPicker(bundleID: $app, noneTitle: Text("Other App…"))
         .padding(.bottom, 16)
       Button(action: record) {
@@ -58,6 +53,17 @@ struct FirstTestStep: View {
     .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in
       running = Self.runningApps()
     }
+  }
+
+  private var grid: some View {
+    LazyVGrid(columns: columns, spacing: 12) {
+      ForEach(tiles, id: \.self) { bundleID in
+        AppTile(bundleID: bundleID, isRunning: running.contains(bundleID), isSelected: app == bundleID) {
+          app = bundleID
+        }
+      }
+    }
+    .padding(.vertical, 12)
   }
 
   /// Running apps, plus the one chosen from the list if it isn't running.

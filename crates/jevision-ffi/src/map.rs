@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use jevision_core::{BlockKind, Severity};
+use jevision_core::{BlockKind, Point, Rect, Severity};
 
 /// One test on the project map.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -30,6 +30,13 @@ pub fn project_map(project: String, tests: Vec<String>) -> Vec<MapTest> {
         .into_iter()
         .map(|file| map_test(project, file))
         .collect()
+}
+
+/// The arrow from the card `from` to the card `to` of the map (y grows downwards), in straight
+/// runs that go around the cards `others` instead of through them.
+#[uniffi::export]
+pub fn map_link_route(from: Rect, to: Rect, others: Vec<Rect>) -> Vec<Point> {
+    jevision_core::route_around(&from, &to, &others)
 }
 
 fn map_test(project: &Path, file: String) -> MapTest {

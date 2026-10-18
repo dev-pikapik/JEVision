@@ -14,6 +14,7 @@ mod issue;
 mod layout;
 mod model;
 mod project;
+mod route;
 mod schedule;
 mod validate;
 
@@ -23,8 +24,8 @@ pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{START, Slot};
 pub use env::{
-    ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments, required_env_values,
-    validate_environment_values,
+    AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
+    required_env_values, validate_environment_values,
 };
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
@@ -32,6 +33,7 @@ pub use layout::{
 };
 pub use model::*;
 pub use project::{PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
     SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES, Schedule, ScheduleHistory,

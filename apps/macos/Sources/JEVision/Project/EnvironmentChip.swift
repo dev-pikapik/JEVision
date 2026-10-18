@@ -3,7 +3,7 @@ import SwiftUI
 /// The environment runs use, at the foot of the sidebar, with a menu to pick another one.
 struct EnvironmentChip: View {
   @Environment(ProjectStore.self) private var project
-  @State private var failure: String?
+  @State private var adding = false
 
   var body: some View {
     let environments = project.environments.current
@@ -21,8 +21,10 @@ struct EnvironmentChip: View {
       if let problem = environments.problem {
         Text(problem)
       }
-      Button(environments.all.isEmpty && environments.problem == nil ? "Add Environments…" : "Edit Environments…") {
-        do { try project.environments.edit() } catch { failure = error.localizedDescription }
+      Button("Add Environment…") { adding = true }
+        .disabled(environments.problem != nil)
+      if !environments.all.isEmpty || environments.problem != nil {
+        Button("Edit Environments…") { project.environments.edit() }
       }
     } label: {
       HStack(spacing: 6) {
@@ -46,12 +48,6 @@ struct EnvironmentChip: View {
     .help(Text("The environment runs use: where the test finds values such as the server address"))
     .accessibilityLabel(Text("Environment"))
     .accessibilityValue(Text(verbatim: name ?? String(localized: "No Environment")))
-    .alert(
-      "Can’t open the environments file", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })
-    ) {
-      Button("OK") {}
-    } message: {
-      Text(failure ?? "")
-    }
+    .sheet(isPresented: $adding) { AddEnvironmentSheet() }
   }
 }

@@ -76,6 +76,28 @@ struct RunChoicesTests {
     #expect(environments.current.problem?.contains("jevision.environments.json") == true)
   }
 
+  @Test func anEnvironmentIsAddedUnderTheNameGiven() throws {
+    let project = try Self.folder()
+    defer { try? FileManager.default.removeItem(at: project) }
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let environments = ProjectEnvironments(defaults: defaults)
+    environments.open(project)
+
+    #expect(environments.problem(adding: "staging", valueNames: ["HOST"]) == nil)
+    try environments.add("staging", values: ["HOST": "https://s.example.com"])
+    #expect(environments.current.all == [ProjectEnvironment(name: "staging", values: ["HOST": "https://s.example.com"])])
+    #expect(environments.current.selected?.name == "staging")
+
+    #expect(environments.problem(adding: "Staging", valueNames: []) == .Taken(name: "Staging"))
+    #expect(environments.problem(adding: "my env", valueNames: []) == .InvalidName(name: "my env"))
+    #expect(environments.problem(adding: "production", valueNames: ["1HOST"]) == .InvalidValueName(name: "1HOST"))
+    #expect(throws: NewEnvironmentError.self) { try environments.add("staging", values: [:]) }
+    #expect(AddEnvironmentSheet.repeated(["HOST", "USER", "HOST"]) == "HOST")
+    #expect(AddEnvironmentSheet.repeated(["HOST", "USER"]) == nil)
+  }
+
   @Test func missingValuesNameWhatTheChosenEnvironmentLacks() throws {
     let flow = try Self.flow("${env.HOST}${env.USER}${secret.PASS}${secret.TOKEN}")
     let staging = ProjectEnvironment(name: "staging", values: ["HOST": "s"])

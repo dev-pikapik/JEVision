@@ -150,6 +150,8 @@ final class AreaPicker {
       panel.backgroundColor = .clear
       panel.hasShadow = false
       panel.hidesOnDeactivate = false
+      // Shown while JEVision hides for the recording.
+      panel.canHide = false
       panel.isReleasedWhenClosed = false
       panel.onCancel = { [weak self] in self?.finish(nil) }
       panel.contentView = NSHostingView(

@@ -104,7 +104,7 @@ struct ScheduleEditor: View {
         .font(.title2.bold())
         .accessibilityAddTraits(.isHeader)
       Form {
-        TextField(text: $draft.name, prompt: Text("Nightly")) { Text("Name") }
+        TextField(text: $draft.name, prompt: Text("Weekday Mornings")) { Text("Name") }
         Section {
           Picker("Tests", selection: $draft.tests) {
             Text("All tests").tag(ScheduleDraft.Tests.all)
