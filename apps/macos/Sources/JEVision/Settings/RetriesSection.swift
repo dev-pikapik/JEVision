@@ -13,9 +13,9 @@ struct RetriesSection: View {
         LabeledContent {
           Button("Open Project…", action: project.choose)
         } label: {
-          Text("No project is open")
-          Text("Open the folder with your tests to set its retries and quarantine.")
+          RowLabel(Text("No project is open"), Text("Open the folder with your tests to set its retries and quarantine."))
         }
+        .settingAnchor("retries")
       } else if let problem = project.settingsProblem {
         Label(problem, systemImage: "exclamationmark.triangle.fill")
           .foregroundStyle(.red)
@@ -27,6 +27,7 @@ struct RetriesSection: View {
           Text("Retries")
           Text("How many more times to run a failed test whose file doesn’t say. A test that fails, then passes, is marked flaky.")
         }
+        .settingAnchor("retries")
         if project.settings.quarantine.isEmpty {
           LabeledContent("In quarantine") { Text("No tests") }
         } else {
@@ -35,8 +36,7 @@ struct RetriesSection: View {
               Button("Release") { release(entry.test) }
                 .help(Text("Release from Quarantine"))
             } label: {
-              Label { Text(name(entry.test)) } icon: { QuarantineMark(entry: entry) }
-              Text(entry.reason ?? entry.test)
+              Label { RowLabel(Text(name(entry.test)), Text(entry.reason ?? entry.test)) } icon: { QuarantineMark(entry: entry) }
             }
           }
         }

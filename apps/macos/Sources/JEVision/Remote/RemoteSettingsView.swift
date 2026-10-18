@@ -11,35 +11,38 @@ struct RemoteSettingsView: View {
   var body: some View {
     @Bindable var remote = remote
     Form {
-      Section {
-        PageHeader(
-          symbol: "iphone", color: .green, title: Text("iPhone & Remote"),
-          message: Text("Run tests and read reports from your iPhone. Tests and screenshots stay on this Mac."))
-      }
+      SettingsHeader(tab: .remote, text: Text("Run tests and read reports from your iPhone. Tests and screenshots stay on this Mac."))
       Section {
         Toggle(isOn: $remote.isEnabled) {
-          Text("Allow remote access")
-          status
+          RowLabel(Text("Allow remote access"), status)
         }
+        .settingAnchor("remoteAccess")
         if remote.isEnabled { pairing }
       }
       if remote.isEnabled { devices }
       Section {
         Toggle("Ask on this Mac before a remote run", isOn: $remote.confirmsRuns)
+          .settingAnchor("confirmRuns")
         Toggle("Keep this Mac awake while remote access is on", isOn: $remote.keepsAwake)
+          .settingAnchor("keepAwake")
         relayPicker
         LabeledContent {
           Button("Show…") { showsActivity = true }
         } label: {
-          Text("Activity log")
-          Text("Who ran what, and when")
+          RowLabel(Text("Activity log"), Text("Who ran what, and when"))
         }
+        .settingAnchor("activityLog")
       } footer: {
         Text("End-to-end encrypted. No ports are opened on this Mac. Keys and secrets are never sent to the phone.")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
+      RestoreDefaultsSection(
+        message: Text("Remote access turns off, remote runs start without asking, this Mac stays awake while remote access is on, and the standard relay is used. Paired devices stay paired."),
+        isDefault: !remote.isEnabled && !remote.confirmsRuns && remote.keepsAwake && remote.relayChoice == .standard
+          && remote.customRelay.isEmpty,
+        reset: restoreDefaults)
     }
     .formStyle(.grouped)
     .onAppear {
@@ -78,22 +81,27 @@ struct RemoteSettingsView: View {
     .sheet(isPresented: $showsActivity) { RemoteActivityView() }
   }
 
-  @ViewBuilder private var status: some View {
+  private var status: Text {
     switch remote.phase {
     case .off:
       Text("Paired iPhones can’t reach this Mac.")
     case .starting:
       Text("Turning on…")
     case .on:
-      if remote.keepsMacAwakeNow {
-        Text("On. This Mac won’t fall asleep on its own.")
-      } else {
-        Text("On")
-      }
+      remote.keepsMacAwakeNow ? Text("On. This Mac won’t fall asleep on its own.") : Text("On")
     case .failed(let reason):
       Text("Couldn’t turn on: \(reason)")
         .foregroundStyle(.red)
     }
+  }
+
+  private func restoreDefaults() {
+    remote.isEnabled = false
+    remote.confirmsRuns = false
+    remote.keepsAwake = true
+    relay = .standard
+    customRelay = ""
+    remote.setRelay(.standard, customURL: "")
   }
 
   @ViewBuilder private var pairing: some View {
@@ -190,8 +198,7 @@ struct RemoteSettingsView: View {
           }
         } label: {
           Label {
-            Text(device.name)
-            online ? Text("Connected now") : lastSeen(device)
+            RowLabel(Text(device.name), online ? Text("Connected now") : lastSeen(device))
           } icon: {
             Image(systemName: "iphone")
               .foregroundStyle(online ? .green : .secondary)
@@ -217,6 +224,7 @@ struct RemoteSettingsView: View {
       Text("Relay")
       Text("Carries encrypted traffic when the iPhone can’t reach this Mac directly. Without one, only the same Wi-Fi or a VPN works.")
     }
+    .settingAnchor("relay")
     .onChange(of: relay) {
       if relay != .custom { remote.setRelay(relay, customURL: customRelay) }
     }
