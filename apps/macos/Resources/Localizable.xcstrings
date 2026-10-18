@@ -11462,6 +11462,16 @@
         }
       }
     },
+    "Turn off for a text-only model. Checks that send screenshots then stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключите для модели, которая читает только текст. Проверки, которые отправляют снимки экрана, тогда остановятся с сообщением."
+          }
+        }
+      }
+    },
     "Turn On" : {
       "localizations" : {
         "ru" : {
@@ -11548,6 +11558,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вводит текст; может сначала кликнуть в поле."
+          }
+        }
+      }
+    },
+    "Understands pictures" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понимает картинки"
           }
         }
       }
@@ -14466,6 +14486,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Для %@ не выбрана модель. Выберите её в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noPictures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI model for %@ doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ для %@ не понимает картинки, поэтому не может проверить этот экран. Включите «Понимает картинки» в Настройках → ИИ или выберите другого провайдера."
           }
         }
       }
