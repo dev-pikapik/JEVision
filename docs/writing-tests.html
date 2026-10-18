@@ -119,7 +119,7 @@
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
     <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
     <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference</td><td><code>next</code></td></tr>
-    <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of two ways depending on the screen</td><td><code>then</code>, <code>else</code></td></tr>
+    <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of several ways depending on the screen</td><td><code>then</code>, <code>elseIf1</code>…, <code>else</code></td></tr>
     <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Conditions and loops</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
     <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Sub-tests</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
     <tr><td><a href="#useData"><code>useData</code></a></td><td>Data</td><td>Runs its body once for every row of a CSV table</td><td><code>body</code>, <code>next</code></td></tr>
@@ -224,6 +224,7 @@
 <h3 id="if">if: choose a way</h3>
 <p>Looks at the screen once. If it matches the reference, the test goes on at <code>then</code>; otherwise at <code>else</code>. A missing <code>then</code> or <code>else</code> ends the test on that way. Use it for screens that show up only sometimes, such as a “What's new” window.</p>
 <p>For more than two ways, add conditions in <code>elseIf</code> (<b>Add Condition</b> in the inspector). They are checked in order on the same screenshot: the first one the screen matches wins, and <code>else</code> is taken when none does. On the canvas the ways out read <b>Condition 1</b>, <b>Condition 2</b>… and <b>Otherwise</b>; in a link or a <a href="mcp.html">tool call</a> they are called <code>then</code>, <code>elseIf1</code>, <code>elseIf2</code>… and <code>else</code>. The run report records which one the test took.</p>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/branches-dark.png"><img src="media/branches-light.png" alt="An if block on the canvas with three ways out: Condition 1, Condition 2 and Otherwise." width="1360" height="850" loading="lazy"></picture></figure>
 <p>Unlike <code>check</code>, an <code>if</code> block never saves a missing reference picture: a missing picture stops the run with an error.</p>
 <div class="table-wrap">
 <table>

@@ -38,8 +38,20 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 <tbody><tr>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/editor-dark.png"><img src="docs/media/editor-light.png" width="400" alt=""></picture>
-<br><b>Tests are flowcharts</b>
-<br>Add, connect and edit blocks on a canvas. Every change is saved at once and can be undone, and a problem shows on the block it concerns.
+<br><b>Built from simple blocks</b>
+<br>Press Space for the block library: every block with its icon and one line on what it does. Right-click the canvas to put a block right there.
+</td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/branches-dark.png"><img src="docs/media/branches-light.png" width="400" alt=""></picture>
+<br><b>Several ways out</b>
+<br>An If checks several conditions in order. The first one the screen matches wins, and Otherwise takes the rest.
+</td>
+</tr></tbody>
+<tbody><tr>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/command-palette-dark.png"><img src="docs/media/command-palette-light.png" width="400" alt=""></picture>
+<br><b>Everything one ⌘K away</b>
+<br>Type a few letters of any command, block or test and press Return.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/report-dark.png"><img src="docs/media/report-light.png" width="400" alt=""></picture>
@@ -63,7 +75,7 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/git-dark.png"><img src="docs/media/git-light.png" width="400" alt=""></picture>
 <br><b>Git without a terminal</b>
-<br>Commit, pull, push and open pull requests. A changed test shows as one flowchart with its added, removed and changed blocks.
+<br>Commit with ⌥⌘C and open a pull request with ⌥⌘P. A changed test shows as one flowchart with its added, removed and changed blocks.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/schedule-dark.png"><img src="docs/media/schedule-light.png" width="400" alt=""></picture>
@@ -77,13 +89,17 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 <br><b>Project map</b>
 <br>Every test of the project on one page, with its last result, flaky tests and tests in quarantine.
 </td>
+<td width="50%" valign="top">
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/iphone-dark.png"><img src="docs/media/iphone-light.png" width="400" alt=""></picture>
+<br><b>iPhone remote</b>
+<br>Pair an iPhone, start a test or one row of its data, and follow the run block by block. Tests and pictures stay on the Mac.
+</td>
 </tr></tbody>
 </table>
 
 Also: the [`jevision` command line](#command-line) for Terminal and CI,
 [AI assistants over MCP](#assistants-mcp), [data-driven tests](#data-driven-tests) from CSV files,
-[environments](#environments), runs [in a virtual machine](#in-a-virtual-machine) and an
-[iPhone remote](#iphone-remote).
+[environments](#environments) and runs [in a virtual machine](#in-a-virtual-machine).
 
 ## First steps
 
@@ -586,7 +602,7 @@ Safety:
 
 JEVision Remote turns an iPhone into a remote for JEVision on your Mac. With it you can browse
 the projects and tests of each paired Mac, see a test drawn as its flow with its last results,
-run a test and follow it block by block or stop it, read reports with a short reason for each
+run a test, or one row of its data table, and follow it block by block or stop it, read reports with a short reason for each
 failure, and look through a project's run history.
 
 - **Pairing.** On the Mac, open Settings → iPhone & Remote, turn on **Allow remote access** and

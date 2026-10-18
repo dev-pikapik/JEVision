@@ -5,14 +5,15 @@
 It is written in Rust (the core: file format, validation, runner, reports, MCP server) and SwiftUI (the Mac app), runs on macOS 26 or later on Apple silicon and Intel, and is available in English and Russian. Tests, screenshots and reports stay on the Mac; a screenshot leaves it only for a check by meaning with a cloud AI model, after masking.
 
 ## What it does
-- Flowchart editor: add, connect and edit blocks on a canvas; every change is saved and can be undone; problems are shown on the block they concern.
+- Flowchart editor: add, connect and edit blocks on a canvas; every change is saved and can be undone; problems are shown on the block they concern. Space opens the block library, right-clicking the canvas places a block there, and ⌘K opens a command palette that finds any command, block or test.
+- Branching: an `if` block can have several conditions (`then`, `elseIf1`, `elseIf2`… and `else`); the first condition the screen matches wins.
 - Recording: clicks, typing and key presses in the app under test become blocks with a picture of the target; passwords become secrets kept in the Keychain.
 - Running: run a test, step through it (⌥⌘R) or start from any block, with breakpoints; moving the mouse pauses, Esc twice stops. Optional video of every run.
 - Reports and history: a screenshot of every step; checks show the screen, the reference image and their differences; export as HTML or JUnit XML; flaky tests are detected from history.
 - Checks by meaning: describe the screen in words and an AI model decides (Anthropic, OpenAI, Gemini, Ollama, LM Studio or any OpenAI-compatible server).
 - Environments (`jevision.environments.json`), data-driven tests from CSV (`useData`), retries and quarantine (`jevision.project.json`), schedules (`jevision.schedule.json`).
 - Git and GitHub inside the app: commit, pull, push, branches, a visual diff of tests and pictures, pull requests.
-- iPhone remote: browse tests, start runs and read reports from a paired iPhone.
+- iPhone remote: browse tests, start a run (or one row of its data table), follow it and read reports from a paired iPhone.
 
 ## Block types
 `openApp`, `openFile`, `click`, `type`, `pressKeys`, `waitFor`, `check`, `if`, `repeat`, `runTest`, `useData`. Secrets are referenced as `${secret.NAME}`, environment values as `${env.NAME}`, data columns as `${data.COLUMN}`.
