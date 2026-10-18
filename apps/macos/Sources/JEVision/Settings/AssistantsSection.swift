@@ -12,13 +12,15 @@ struct AssistantsSection: View {
   var body: some View {
     Section {
       Toggle(isOn: $mayRun) {
-        Text("Allow assistants to run tests")
-        Text("Tests open apps, click and type on this Mac. Press Esc twice to stop one.")
+        RowLabel(Text("Allow assistants to run tests"), Text("Tests open apps, click and type on this Mac. Press Esc twice to stop one."))
       }
+      .settingAnchor("assistantsRun")
       Toggle(isOn: $mayCapture) {
-        Text("Allow assistants to take screenshots")
-        Text("An assistant sees the front window of an app, which may show private information.")
+        RowLabel(
+          Text("Allow assistants to take screenshots"),
+          Text("An assistant sees the front window of an app, which may show private information."))
       }
+      .settingAnchor("assistantsCapture")
     } header: {
       Text("Assistants")
     } footer: {
@@ -32,9 +34,11 @@ struct AssistantsSection: View {
         Text(reason)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+          .settingAnchor("connectAssistant")
       } else {
         Text("Add JEVision to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with this configuration:")
           .fixedSize(horizontal: false, vertical: true)
+          .settingAnchor("connectAssistant")
         CommandText(configuration)
       }
     } header: {
