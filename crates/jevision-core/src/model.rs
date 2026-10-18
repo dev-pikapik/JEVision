@@ -169,10 +169,11 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Goes to `then` if the screen matches the reference, else to the first of `else_if` whose
-    /// reference matches, otherwise to `else`.
+    /// Goes to `then` if the condition holds, else to the first of `else_if` whose condition
+    /// holds, otherwise to `else`.
     If {
-        reference: Reference,
+        #[serde(flatten)]
+        condition: Condition,
         #[serde(skip_serializing_if = "Option::is_none")]
         then: Option<String>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -202,12 +203,240 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+    /// Runs a script. Inputs reach it as environment variables; it writes its outputs as
+    /// `name=value` lines to the file named by `$JEV_OUTPUT`, and they become `${var.NAME}`.
+    /// A script that exits with a code other than 0 fails the block.
+    Script {
+        language: ScriptLanguage,
+        code: String,
+        /// Values may contain placeholders.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        inputs: Vec<NamedValue>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        outputs: Vec<ScriptOutput>,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Runs a command line with `zsh -c`; fails unless it exits with `exit_code`.
+    Command {
+        /// May contain placeholders.
+        command: String,
+        /// Folder the command runs in, relative to the folder of the test; `None` runs it there.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        folder: Option<String>,
+        #[serde(skip_serializing_if = "is_zero")]
+        exit_code: i32,
+        /// Run variable that gets what the command printed, without the last line break.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        save_output: Option<String>,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Sends an HTTP request; fails unless the answer has the expected status.
+    Http {
+        method: HttpMethod,
+        /// May contain placeholders, as may header values and the body.
+        url: String,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        headers: Vec<NamedValue>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        body: String,
+        #[serde(skip_serializing_if = "ExpectStatus::is_success")]
+        expect_status: ExpectStatus,
+        /// Parts of the answer kept as run variables.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        save: Vec<SavedValue>,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Waits until a file reaches a state; fails after `timeout`.
+    CheckFile {
+        /// Relative to the folder of the test, absolute, or from the home folder (`~/`); may
+        /// contain placeholders.
+        path: String,
+        until: FileState,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Runs an SQL query on an SQLite database file. With `expect`, runs it again until the
+    /// answer is as expected, and fails after `timeout`.
+    Database {
+        /// A path as in [`BlockKind::CheckFile`].
+        file: String,
+        /// May contain placeholders.
+        query: String,
+        /// Run variable that gets the first value of the first row.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        save_as: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        expect: Option<DatabaseExpect>,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
 }
 
-/// One more exit of an `if`: taken when the earlier references did not match and this one does.
+/// What an `if` way out checks.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Condition {
+    /// The screen matches the reference.
+    #[serde(rename = "reference")]
+    Screen(Reference),
+    /// A value, usually a run variable, compares with another.
+    Value(ValueCheck),
+}
+
+impl Condition {
+    /// The reference a screen condition compares with.
+    pub fn reference(&self) -> Option<&Reference> {
+        match self {
+            Self::Screen(r) => Some(r),
+            Self::Value(_) => None,
+        }
+    }
+}
+
+/// `of` `is` `to`: `${var.status}` equals `200`. Both sides may contain placeholders.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ValueCheck {
+    pub of: String,
+    pub is: ValueTest,
+    pub to: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ValueTest {
+    Equals,
+    NotEquals,
+    Contains,
+    /// Both sides read as numbers.
+    GreaterThan,
+    LessThan,
+}
+
+/// A name with a text, such as a script input or an HTTP header.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct NamedValue {
+    pub name: String,
+    pub value: String,
+}
+
+/// A value a script reports, kept as the run variable `name`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ScriptOutput {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub kind: OutputKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OutputKind {
+    Text,
+    Number,
+    /// Kept as `true` or `false`.
+    Boolean,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScriptLanguage {
+    Sh,
+    Zsh,
+    Python3,
+    Node,
+    AppleScript,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Head,
+}
+
+/// Status an HTTP answer must have for the block to pass.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExpectStatus {
+    /// Any of 200–299.
+    Success,
+    Any,
+    Exactly(u16),
+}
+
+impl ExpectStatus {
+    pub fn is_success(&self) -> bool {
+        *self == Self::Success
+    }
+
+    pub fn allows(&self, status: u16) -> bool {
+        match self {
+            Self::Success => (200..300).contains(&status),
+            Self::Any => true,
+            Self::Exactly(code) => *code == status,
+        }
+    }
+}
+
+impl Serialize for ExpectStatus {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Success => s.serialize_str("success"),
+            Self::Any => s.serialize_str("any"),
+            Self::Exactly(code) => s.serialize_u16(*code),
+        }
+    }
+}
+
+/// A part of an HTTP answer kept as the run variable `name`. `from` is `status`, `body`, a
+/// field of a JSON body such as `body.items[0].id`, or a header such as `header.Location`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SavedValue {
+    pub name: String,
+    pub from: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FileState {
+    Exists,
+    Missing,
+    /// Changed since the run started, or created during it.
+    Changed,
+    /// Exists and contains the text, which may contain placeholders.
+    Contains(String),
+}
+
+/// What a database query must answer.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DatabaseExpect {
+    /// The first value of the first row, as text; may contain placeholders.
+    Value(String),
+    /// How many rows the query returns.
+    Rows(u32),
+}
+
+/// One more exit of an `if`: taken when the earlier conditions did not hold and this one does.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ElseIf {
-    pub reference: Reference,
+    #[serde(flatten)]
+    pub condition: Condition,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub then: Option<String>,
 }
@@ -329,6 +558,11 @@ impl BlockKind {
             Self::Repeat { .. } => "repeat",
             Self::UseData { .. } => "useData",
             Self::RunTest { .. } => "runTest",
+            Self::Script { .. } => "script",
+            Self::Command { .. } => "command",
+            Self::Http { .. } => "http",
+            Self::CheckFile { .. } => "checkFile",
+            Self::Database { .. } => "database",
         }
     }
 
@@ -377,7 +611,12 @@ impl BlockKind {
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }
             | Self::Check { next, .. }
-            | Self::RunTest { next, .. } => {
+            | Self::RunTest { next, .. }
+            | Self::Script { next, .. }
+            | Self::Command { next, .. }
+            | Self::Http { next, .. }
+            | Self::CheckFile { next, .. }
+            | Self::Database { next, .. } => {
                 out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
             }
         }
@@ -637,8 +876,47 @@ impl Serialize for Reference {
     }
 }
 
+/// One step of a path into JSON: a field of an object or a position in an array.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JsonStep<'a> {
+    Field(&'a str),
+    Index(usize),
+}
+
+/// Splits a path such as `items[0].id` or `[2].name` into steps; `None` when it is malformed.
+pub fn json_path(path: &str) -> Option<Vec<JsonStep<'_>>> {
+    let mut steps = Vec::new();
+    for (n, part) in path.split('.').enumerate() {
+        let (name, mut rest) = part.split_at(part.find('[').unwrap_or(part.len()));
+        if name.is_empty() && (n > 0 || rest.is_empty()) {
+            return None;
+        }
+        if !name.is_empty() {
+            if name.contains(']') {
+                return None;
+            }
+            steps.push(JsonStep::Field(name));
+        }
+        while !rest.is_empty() {
+            let inner = rest.strip_prefix('[')?;
+            let end = inner.find(']')?;
+            let digits = &inner[..end];
+            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            steps.push(JsonStep::Index(digits.parse().ok()?));
+            rest = &inner[end + 1..];
+        }
+    }
+    Some(steps)
+}
+
 fn is_false(b: &bool) -> bool {
     !b
+}
+
+fn is_zero(n: &i32) -> bool {
+    *n == 0
 }
 
 fn duration<S: Serializer>(ms: &u64, s: S) -> Result<S::Ok, S::Error> {

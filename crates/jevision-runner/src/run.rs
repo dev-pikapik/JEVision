@@ -6,12 +6,14 @@ use std::fmt::Write as _;
 use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Compare, DEFAULT_WAIT_TIMEOUT_MS, ELSE, Flow, PROJECT_FILE, Point, ProjectSettings,
-    Rect, Reference, Severity, THEN, Target, WaitUntil, dark_variant, else_if_edge,
+    BlockKind, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ExpectStatus,
+    FileState, Flow, PROJECT_FILE, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target,
+    WaitUntil, dark_variant, else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -19,6 +21,7 @@ use crate::report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
     percent, summarize,
 };
+use crate::system::{self, ProcessError};
 use crate::{
     Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
     SecretSource, VisionError, VisionJudge,
@@ -333,6 +336,8 @@ impl Runner<'_> {
                             local_only,
                             hide: &hide,
                             display_scale: &display_scale,
+                            vars: BTreeMap::new(),
+                            started: SystemTime::now(),
                         };
                         let (mut attempt, opened, baselines) = exec.run(&root, &start);
                         attempt.row = data_row.clone();
@@ -682,6 +687,10 @@ struct Exec<'r> {
     hide: &'r [Rect],
     /// Scale of the first screenshot of the run, for its report.
     display_scale: &'r Cell<Option<f64>>,
+    /// Values blocks saved for `${var.NAME}`, shared by sub-tests.
+    vars: BTreeMap<String, String>,
+    /// When the attempt started, for files that should change during it.
+    started: SystemTime,
 }
 
 impl Exec<'_> {
@@ -763,6 +772,7 @@ impl Exec<'_> {
             video_at_ms: self.video.map(|start| millis(start.elapsed())),
             sent: None,
             sent_masked: false,
+            outputs: BTreeMap::new(),
         };
         let result = match self.perform(t, &block.kind, &mut step) {
             Ok(next) => Ok(next),
@@ -904,32 +914,60 @@ impl Exec<'_> {
                 Ok(next.clone())
             }
             BlockKind::If {
-                reference,
+                condition,
                 then,
                 else_if,
                 otherwise,
             } => {
-                // Every condition is checked on the same screenshot; the first that matches wins.
-                let shot = self.capture(id)?;
-                let cases = std::iter::once((THEN.to_owned(), reference, then)).chain(
+                // Screen conditions are checked on one screenshot, taken only if there is one;
+                // the first condition that holds wins.
+                let mut shot = None;
+                let cases = std::iter::once((THEN.to_owned(), condition, then)).chain(
                     else_if
                         .iter()
                         .enumerate()
-                        .map(|(n, c)| (else_if_edge(n), &c.reference, &c.then)),
+                        .map(|(n, c)| (else_if_edge(n), &c.condition, &c.then)),
                 );
                 step.branches = u32::try_from(else_if.len() + 2).ok();
                 let mut first = None;
-                for (branch, reference, target) in cases {
-                    let e = self
-                        .evaluate(t, id, reference, &shot, false, &mut None)?
-                        .map_err(|name| missing_reference(id, &name))?;
-                    if e.passed {
-                        self.record_comparison(step, &e)?;
+                for (branch, condition, target) in cases {
+                    let (passed, name) = match condition {
+                        Condition::Screen(reference) => {
+                            let shot = match &mut shot {
+                                Some(shot) => &*shot,
+                                slot => slot.insert(self.capture(id)?),
+                            };
+                            let e = self
+                                .evaluate(t, id, reference, shot, false, &mut None)?
+                                .map_err(|name| missing_reference(id, &name))?;
+                            let passed = e.passed;
+                            if passed {
+                                self.record_comparison(step, &e)?;
+                            } else {
+                                first.get_or_insert(e);
+                            }
+                            (passed, condition_name(reference))
+                        }
+                        Condition::Value(check) => {
+                            let of = self.substitute(id, &check.of)?;
+                            let to = self.substitute(id, &check.to)?;
+                            let passed = system::compare(&of, check.is, &to).map_err(|value| {
+                                fail(
+                                    Failure::new("run.value.notNumber")
+                                        .with("block", id)
+                                        .with("value", value),
+                                )
+                            })?;
+                            let name =
+                                format!("{} {} {}", check.of, system::sign(check.is), check.to);
+                            (passed, name)
+                        }
+                    };
+                    if passed {
                         step.branch = Some(branch);
-                        step.branch_condition = Some(condition_name(reference));
+                        step.branch_condition = Some(self.mask(&name));
                         return Ok(target.clone());
                     }
-                    first.get_or_insert(e);
                 }
                 if let Some(e) = &first {
                     self.record_comparison(step, e)?;
@@ -968,6 +1006,279 @@ impl Exec<'_> {
                     let result = self.run_chain(t, body);
                     self.frames.pop();
                     result?;
+                }
+                Ok(next.clone())
+            }
+            BlockKind::Script {
+                language,
+                code,
+                inputs,
+                outputs,
+                timeout_ms,
+                next,
+            } => {
+                let mut values = Vec::with_capacity(inputs.len());
+                for input in inputs {
+                    values.push((&input.name, self.substitute(id, &input.value)?));
+                }
+                static SCRIPTS: AtomicU64 = AtomicU64::new(0);
+                let work = std::env::temp_dir().join(format!(
+                    "jevision-script-{}-{}",
+                    std::process::id(),
+                    SCRIPTS.fetch_add(1, Ordering::Relaxed)
+                ));
+                let script = work.join("script");
+                let output = work.join("output");
+                fs::create_dir_all(&work)
+                    .and_then(|()| fs::write(&script, code))
+                    .and_then(|()| fs::write(&output, ""))
+                    .map_err(|e| write_failed(&script, e))?;
+                let program = system::interpreter(*language);
+                let mut command = std::process::Command::new(program);
+                command
+                    .arg(&script)
+                    .current_dir(&t.dir)
+                    .envs(values)
+                    .env("JEV_OUTPUT", &output)
+                    .env("JEV_PROJECT", self.project);
+                let result = system::run_process(
+                    command,
+                    Duration::from_millis(*timeout_ms),
+                    &self.runner.control,
+                );
+                let written = fs::read_to_string(&output).unwrap_or_default();
+                let _ = fs::remove_dir_all(&work);
+                let done = finished(id, program, *timeout_ms, result)?;
+                if done.code != Some(0) {
+                    return Err(fail(
+                        Failure::new("run.script.failed")
+                            .with("block", id)
+                            .with("code", exit_code(&done))
+                            .with("reason", said(&done)),
+                    ));
+                }
+                let written = system::parse_outputs(&written);
+                for out in outputs {
+                    let Some(value) = written.get(&out.name) else {
+                        return Err(fail(
+                            Failure::new("run.script.missingOutput")
+                                .with("block", id)
+                                .with("name", &out.name),
+                        ));
+                    };
+                    let value = system::typed(out.kind, value).ok_or_else(|| {
+                        fail(
+                            Failure::new("run.script.badOutput")
+                                .with("block", id)
+                                .with("name", &out.name)
+                                .with("type", system::kind_name(out.kind))
+                                .with("value", system::excerpt(value)),
+                        )
+                    })?;
+                    self.save(step, &out.name, value);
+                }
+                Ok(next.clone())
+            }
+            BlockKind::Command {
+                command,
+                folder,
+                exit_code: expected,
+                save_output,
+                timeout_ms,
+                next,
+            } => {
+                let line = self.substitute(id, command)?;
+                let folder = match folder {
+                    Some(folder) => {
+                        let path = self.resolve_filled(t, id, folder)?;
+                        if !path.is_dir() {
+                            return Err(fail(
+                                Failure::new("run.file.missing")
+                                    .with("block", id)
+                                    .with("file", folder),
+                            ));
+                        }
+                        path
+                    }
+                    None => t.dir.clone(),
+                };
+                let mut shell = std::process::Command::new("/bin/zsh");
+                shell
+                    .arg("-c")
+                    .arg(&line)
+                    .current_dir(&folder)
+                    .env("JEV_PROJECT", self.project);
+                let result = system::run_process(
+                    shell,
+                    Duration::from_millis(*timeout_ms),
+                    &self.runner.control,
+                );
+                let done = finished(id, "zsh", *timeout_ms, result)?;
+                if done.code != Some(*expected) {
+                    return Err(fail(
+                        Failure::new("run.command.exitCode")
+                            .with("block", id)
+                            .with("expected", expected)
+                            .with("actual", exit_code(&done))
+                            .with("reason", said(&done)),
+                    ));
+                }
+                if let Some(name) = save_output {
+                    let text = done.stdout.trim_end_matches(['\n', '\r']).to_owned();
+                    self.save(step, name, text);
+                }
+                Ok(next.clone())
+            }
+            BlockKind::Http {
+                method,
+                url,
+                headers,
+                body,
+                expect_status,
+                save,
+                timeout_ms,
+                next,
+            } => {
+                let address = self.substitute(id, url)?;
+                let mut sent = Vec::with_capacity(headers.len());
+                for header in headers {
+                    sent.push((header.name.clone(), self.substitute(id, &header.value)?));
+                }
+                let body = self.substitute(id, body)?;
+                let timeout = Duration::from_millis(*timeout_ms);
+                let answer =
+                    system::http(*method, &address, &sent, &body, timeout).map_err(|reason| {
+                        fail(
+                            Failure::new("run.http.failed")
+                                .with("block", id)
+                                .with("url", &address)
+                                .with("reason", reason),
+                        )
+                    })?;
+                if !expect_status.allows(answer.status) {
+                    let expected = match expect_status {
+                        ExpectStatus::Exactly(code) => code.to_string(),
+                        _ => "200–299".to_owned(),
+                    };
+                    return Err(fail(
+                        Failure::new("run.http.status")
+                            .with("block", id)
+                            .with("url", &address)
+                            .with("status", answer.status)
+                            .with("expected", expected)
+                            .with("body", system::excerpt(&answer.body)),
+                    ));
+                }
+                for saved in save {
+                    let value = system::answer_part(&answer, &saved.from).ok_or_else(|| {
+                        fail(
+                            Failure::new("run.http.noValue")
+                                .with("block", id)
+                                .with("from", &saved.from),
+                        )
+                    })?;
+                    self.save(step, &saved.name, value);
+                }
+                Ok(next.clone())
+            }
+            BlockKind::CheckFile {
+                path,
+                until,
+                timeout_ms,
+                next,
+            } => {
+                let full = self.outside_path(t, id, path)?;
+                let until = match until {
+                    FileState::Contains(text) => FileState::Contains(self.substitute(id, text)?),
+                    other => other.clone(),
+                };
+                let since = self.started;
+                let found = self.poll(id, Duration::from_millis(*timeout_ms), || {
+                    Ok(system::file_holds(&full, &until, since).then_some(()))
+                })?;
+                if found.is_none() {
+                    let (state, text) = match &until {
+                        FileState::Exists => ("exists", ""),
+                        FileState::Missing => ("missing", ""),
+                        FileState::Changed => ("changed", ""),
+                        FileState::Contains(text) => ("contains", text.as_str()),
+                    };
+                    return Err(fail(
+                        Failure::new("run.file.timeout")
+                            .with("block", id)
+                            .with("path", full.display())
+                            .with("state", state)
+                            .with("text", text)
+                            .with("seconds", seconds(*timeout_ms)),
+                    ));
+                }
+                Ok(next.clone())
+            }
+            BlockKind::Database {
+                file,
+                query,
+                save_as,
+                expect,
+                timeout_ms,
+                next,
+            } => {
+                let full = self.outside_path(t, id, file)?;
+                if !full.is_file() {
+                    return Err(fail(
+                        Failure::new("run.file.missing")
+                            .with("block", id)
+                            .with("file", full.display()),
+                    ));
+                }
+                let sql = self.substitute(id, query)?;
+                let expect = match expect {
+                    Some(DatabaseExpect::Value(v)) => {
+                        Some(DatabaseExpect::Value(self.substitute(id, v)?))
+                    }
+                    other => other.clone(),
+                };
+                let mut last = None;
+                let rows = self.poll(id, Duration::from_millis(*timeout_ms), || {
+                    let rows = system::query(&full, &sql).map_err(|reason| {
+                        fail(
+                            Failure::new("run.database.failed")
+                                .with("block", id)
+                                .with("reason", reason),
+                        )
+                    })?;
+                    let holds = match &expect {
+                        None => true,
+                        Some(DatabaseExpect::Value(v)) => system::same(&rows.first, v),
+                        Some(DatabaseExpect::Rows(n)) => rows.count == *n,
+                    };
+                    if holds {
+                        return Ok(Some(rows));
+                    }
+                    last = Some(rows);
+                    Ok(None)
+                })?;
+                let Some(rows) = rows else {
+                    let last = last.unwrap_or(system::Rows {
+                        first: String::new(),
+                        count: 0,
+                    });
+                    let failure = match &expect {
+                        None => unreachable!("a query without an expectation passes at once"),
+                        Some(DatabaseExpect::Rows(n)) => Failure::new("run.database.rows")
+                            .with("expected", n)
+                            .with("actual", last.count),
+                        Some(DatabaseExpect::Value(v)) => Failure::new("run.database.value")
+                            .with("expected", v)
+                            .with("actual", system::excerpt(&last.first)),
+                    };
+                    return Err(fail(
+                        failure
+                            .with("block", id)
+                            .with("seconds", seconds(*timeout_ms)),
+                    ));
+                };
+                if let Some(name) = save_as {
+                    self.save(step, name, rows.first);
                 }
                 Ok(next.clone())
             }
@@ -1438,6 +1749,16 @@ impl Exec<'_> {
                     })?;
                     out.push_str(value);
                 }
+                Some(("var", name)) => {
+                    let value = self.vars.get(name).ok_or_else(|| {
+                        fail(
+                            Failure::new("run.var.missing")
+                                .with("block", id)
+                                .with("name", name),
+                        )
+                    })?;
+                    out.push_str(value);
+                }
                 Some(("data", column)) => {
                     let value = self
                         .frames
@@ -1484,6 +1805,9 @@ impl Exec<'_> {
             for (column, value) in table.columns.iter().zip(&table.rows[*row]) {
                 vars.insert(format!("data.{column}"), self.mask(value));
             }
+        }
+        for (name, value) in &self.vars {
+            vars.insert(format!("var.{name}"), self.mask(value));
         }
         for frame in &self.frames {
             match frame {
@@ -1660,6 +1984,22 @@ impl Exec<'_> {
         }
     }
 
+    /// A file another app keeps: an absolute path, one in the home folder (`~/…`) or one
+    /// relative to the test.
+    fn outside_path(&self, t: &TestFile, id: &str, path: &str) -> Result<PathBuf, Stop> {
+        let filled = self.substitute(id, path)?;
+        Ok(match filled.strip_prefix("~/") {
+            Some(rest) => PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(rest),
+            None => normalize(&t.dir.join(&filled)),
+        })
+    }
+
+    /// Keeps `value` for `${var.NAME}` and shows it in the step, secrets masked.
+    fn save(&mut self, step: &mut Step, name: &str, value: String) {
+        step.outputs.insert(name.to_owned(), self.mask(&value));
+        self.vars.insert(name.to_owned(), value);
+    }
+
     fn app(&self) -> String {
         self.apps.last().cloned().unwrap_or_default()
     }
@@ -1684,6 +2024,49 @@ impl Exec<'_> {
             *value = self.mask(value);
         }
     }
+}
+
+/// A program that ran to its end, or why it did not.
+fn finished(
+    id: &str,
+    program: &str,
+    timeout_ms: u64,
+    result: Result<system::Finished, ProcessError>,
+) -> Result<system::Finished, Stop> {
+    result.map_err(|e| match e {
+        ProcessError::NotFound => fail(
+            Failure::new("run.process.notFound")
+                .with("block", id)
+                .with("program", program),
+        ),
+        ProcessError::CannotStart(reason) => fail(
+            Failure::new("run.process.cannotStart")
+                .with("block", id)
+                .with("program", program)
+                .with("reason", reason),
+        ),
+        ProcessError::TimedOut => fail(
+            Failure::new("run.process.timeout")
+                .with("block", id)
+                .with("seconds", seconds(timeout_ms)),
+        ),
+        ProcessError::Cancelled => Stop::Cancelled,
+    })
+}
+
+/// Why a program failed, in its own words: what it wrote to stderr, or else to stdout.
+fn said(done: &system::Finished) -> String {
+    let stderr = system::excerpt(&done.stderr);
+    if stderr.is_empty() {
+        system::excerpt(&done.stdout)
+    } else {
+        stderr
+    }
+}
+
+fn exit_code(done: &system::Finished) -> String {
+    done.code
+        .map_or_else(|| "signal".to_owned(), |c| c.to_string())
 }
 
 fn hands_failure(id: &str, e: HandsError) -> Failure {

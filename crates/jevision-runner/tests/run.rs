@@ -1831,3 +1831,212 @@ fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
          Block \"a\", field \"colour\": not a known field."
     );
 }
+
+fn last_steps(report: &RunReport) -> &[jevision_runner::Step] {
+    &report.attempts.last().unwrap().steps
+}
+
+#[test]
+fn scripts_and_commands_hand_values_to_later_blocks() {
+    let p = Project::new();
+    p.test(
+        r#""calc":{"type":"script","language":"sh","code":"echo \"count=$((2 + 1))\" >> \"$JEV_OUTPUT\"\nprintf 'who=%s\\nnote<<END\\nl1\\nl2\\nEND\\n' \"$WHO\" >> \"$JEV_OUTPUT\"","inputs":[{"name":"WHO","value":"${secret.ACME_PASSWORD}"}],"outputs":[{"name":"count","type":"number"},{"name":"who","type":"text"},{"name":"note","type":"text"}],"next":"echo"},
+        "echo":{"type":"command","command":"echo ${var.count}; echo oops >&2; exit 3","exitCode":3,"saveOutput":"out","next":"branch"},
+        "branch":{"type":"if","value":{"of":"${var.out}","is":"greaterThan","to":"2"},"then":"yes","else":"no"},
+        "yes":{"type":"type","text":"${var.out} ${var.note}"},
+        "no":{"type":"type","text":"no"}"#,
+        "calc",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, events) = run_with(&p, &hands, RunControl::new(), &options());
+    assert_eq!(run.report.verdict, Verdict::Passed, "{:?}", run.report);
+    assert_eq!(hands.typed(), ["3 l1\nl2"]);
+    let steps = last_steps(&run.report);
+    assert_eq!(steps[0].outputs["count"], "3");
+    assert_eq!(steps[0].outputs["who"], "••••");
+    assert_eq!(steps[1].outputs["out"], "3");
+    assert_eq!(
+        steps[2].branch_text().as_deref(),
+        Some("Took “Yes: ${var.out} > 2”")
+    );
+    let all = outputs(&run, &events);
+    assert!(!all.contains(SECRET));
+    assert!(html(&run.report, &run.dir, None).contains("count = 3"));
+    assert!(junit_xml(std::slice::from_ref(&run.report)).contains("calc: count = 3"));
+}
+
+#[test]
+fn scripts_and_commands_fail_with_their_reason() {
+    let cases = [
+        (
+            r#""a":{"type":"command","command":"echo broken >&2; exit 2"}"#,
+            "run.command.exitCode",
+            ("reason", "broken"),
+        ),
+        (
+            r#""a":{"type":"script","language":"zsh","code":"exit 0","outputs":[{"name":"x","type":"text"}]}"#,
+            "run.script.missingOutput",
+            ("name", "x"),
+        ),
+        (
+            r#""a":{"type":"script","language":"sh","code":"echo x=many >> $JEV_OUTPUT","outputs":[{"name":"x","type":"number"}]}"#,
+            "run.script.badOutput",
+            ("value", "many"),
+        ),
+        (
+            r#""a":{"type":"script","language":"sh","code":"echo nope >&2; exit 4"}"#,
+            "run.script.failed",
+            ("code", "4"),
+        ),
+        (
+            r#""a":{"type":"command","command":"sleep 5","timeout":"200ms"}"#,
+            "run.process.timeout",
+            ("seconds", "0.2"),
+        ),
+        (
+            r#""a":{"type":"type","text":"${var.never}"}"#,
+            "run.var.missing",
+            ("name", "never"),
+        ),
+        (
+            r#""a":{"type":"if","value":{"of":"1","is":"lessThan","to":"${secret.ACME_PASSWORD}"},"then":"b"},"b":{"type":"pressKeys","keys":"cmd+s"}"#,
+            "run.value.notNumber",
+            ("value", "••••"),
+        ),
+    ];
+    for (blocks, code, (param, value)) in cases {
+        let p = Project::new();
+        p.test(blocks, "a", 0);
+        let clock = Instant::now();
+        let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+        let failure = report.attempts[0].failure.as_ref().unwrap();
+        assert_eq!(failure.code, code, "{blocks} {failure:?}");
+        assert_eq!(failure.param(param), value, "{blocks}");
+        assert!(!describe(failure).is_empty());
+        assert!(clock.elapsed() < Duration::from_secs(3), "{blocks}");
+    }
+}
+
+/// Answers one request on 127.0.0.1 and hands back what was sent.
+fn mock_http(answer: &'static str) -> (String, mpsc::Receiver<String>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = format!("http://{}", listener.local_addr().unwrap());
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut request = Vec::new();
+        let mut chunk = [0; 4096];
+        loop {
+            let n = stream.read(&mut chunk).unwrap();
+            request.extend_from_slice(&chunk[..n]);
+            let text = String::from_utf8_lossy(&request).into_owned();
+            if let Some((head, body)) = text.split_once("\r\n\r\n") {
+                let length = head
+                    .lines()
+                    .find_map(|l| {
+                        l.to_ascii_lowercase()
+                            .strip_prefix("content-length: ")
+                            .map(str::to_owned)
+                    })
+                    .and_then(|v| v.trim().parse::<usize>().ok())
+                    .unwrap_or(0);
+                if body.len() >= length || n == 0 {
+                    tx.send(text).unwrap();
+                    break;
+                }
+            }
+        }
+        stream.write_all(answer.as_bytes()).unwrap();
+    });
+    (address, rx)
+}
+
+#[test]
+fn http_requests_send_and_save_parts_of_the_answer() {
+    let body = r#"{"items":[{"id":42}]}"#;
+    let answer: &'static str = Box::leak(
+        format!(
+            "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nX-Request-Id: r-7\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .into_boxed_str(),
+    );
+    let (address, sent) = mock_http(answer);
+    let p = Project::new();
+    p.test(
+        &format!(
+            r#""ask":{{"type":"http","method":"POST","url":"{address}/items","headers":[{{"name":"Authorization","value":"Bearer ${{secret.ACME_PASSWORD}}"}}],"body":"{{\"n\": 1}}","expectStatus":201,"save":[{{"name":"id","from":"body.items[0].id"}},{{"name":"rid","from":"header.x-request-id"}},{{"name":"code","from":"status"}}],"next":"show"}},
+            "show":{{"type":"type","text":"${{var.id}} ${{var.rid}} ${{var.code}}"}}"#
+        ),
+        "ask",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    assert_eq!(hands.typed(), ["42 r-7 201"]);
+    let request = sent.recv().unwrap();
+    assert!(request.starts_with("POST /items HTTP/1.1"), "{request}");
+    assert!(
+        request.contains(&format!("authorization: Bearer {SECRET}"))
+            || request.contains(&format!("Authorization: Bearer {SECRET}")),
+        "{request}"
+    );
+    assert!(
+        request
+            .to_ascii_lowercase()
+            .contains("content-type: application/json")
+    );
+    assert!(request.ends_with(r#"{"n": 1}"#));
+
+    let (address, _sent) =
+        mock_http("HTTP/1.1 404 Not Found\r\nContent-Length: 4\r\nConnection: close\r\n\r\ngone");
+    p.test(
+        &format!(r#""ask":{{"type":"http","url":"{address}/x"}}"#),
+        "ask",
+        0,
+    );
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.http.status");
+    assert_eq!(failure.param("status"), "404");
+    assert_eq!(failure.param("body"), "gone");
+}
+
+#[test]
+fn files_and_databases_are_waited_for_and_read() {
+    let p = Project::new();
+    p.write("app.sqlite", "");
+    p.test(
+        r#""late":{"type":"command","command":"(sleep 0.2; echo done > out.txt) &","next":"appear"},
+        "appear":{"type":"checkFile","path":"out.txt","until":{"contains":"done"},"timeout":"5s","next":"changed"},
+        "changed":{"type":"checkFile","path":"out.txt","until":"changed","next":"gone"},
+        "gone":{"type":"checkFile","path":"nope.txt","until":"missing","next":"make"},
+        "make":{"type":"database","file":"app.sqlite","query":"create table items(name text)","next":"fill"},
+        "fill":{"type":"database","file":"app.sqlite","query":"insert into items values ('b'), ('a')","next":"read"},
+        "read":{"type":"database","file":"app.sqlite","query":"select name from items order by name","saveAs":"first","expect":{"rows":2},"next":"wrong"},
+        "wrong":{"type":"database","file":"app.sqlite","query":"select count(*) from items","expect":{"value":"3"},"timeout":"50ms"}"#,
+        "late",
+        0,
+    );
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.database.value", "{report:?}");
+    assert_eq!(failure.param("actual"), "2");
+    let steps = last_steps(&report);
+    assert_eq!(steps.len(), 8);
+    assert_eq!(steps[6].outputs["first"], "a");
+
+    p.test(
+        r#""wait":{"type":"checkFile","path":"~/jevision-surely-not-here.txt","until":"exists","timeout":"50ms"}"#,
+        "wait",
+        0,
+    );
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.file.timeout");
+    assert_eq!(failure.param("state"), "exists");
+    assert!(!failure.param("path").starts_with('~'));
+}

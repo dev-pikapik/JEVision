@@ -8,9 +8,11 @@ use std::collections::HashMap;
 
 use jevision_core::{
     Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
-    ElseIf, Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
-    MouseButton, Note, Point, Priority, Rect, Reference, SearchCandidate, Severity, Slot, Target,
-    TestStatus, TestType, WaitUntil,
+    Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod,
+    Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton, NamedValue, Note,
+    OutputKind, Point, Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput,
+    SearchCandidate, Severity, Slot, Target, TestStatus, TestType, ValueCheck, ValueTest,
+    WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -86,6 +88,12 @@ pub fn describe_issue(issue: Issue) -> String {
 #[uniffi::export]
 pub fn save_flow(flow: Flow) -> String {
     jevision_core::to_canonical_json(&flow)
+}
+
+/// Names the test's blocks save for `${var.NAME}`, for suggestions in the editor.
+#[uniffi::export]
+pub fn saved_variables(flow: Flow) -> Vec<String> {
+    jevision_core::saved_variables(&flow)
 }
 
 /// Names of the secrets the test reads, so the app can show which ones are set.
@@ -422,7 +430,7 @@ pub enum BlockKind {
         next: Option<String>,
     },
     If {
-        reference: Reference,
+        condition: Condition,
         then: Option<String>,
         else_if: Vec<ElseIf>,
         otherwise: Option<String>,
@@ -441,12 +449,139 @@ pub enum BlockKind {
         test: String,
         next: Option<String>,
     },
+    Script {
+        language: ScriptLanguage,
+        code: String,
+        inputs: Vec<NamedValue>,
+        outputs: Vec<ScriptOutput>,
+        timeout_ms: u64,
+        next: Option<String>,
+    },
+    Command {
+        command: String,
+        folder: Option<String>,
+        exit_code: i32,
+        save_output: Option<String>,
+        timeout_ms: u64,
+        next: Option<String>,
+    },
+    Http {
+        method: HttpMethod,
+        url: String,
+        headers: Vec<NamedValue>,
+        body: String,
+        expect_status: ExpectStatus,
+        save: Vec<SavedValue>,
+        timeout_ms: u64,
+        next: Option<String>,
+    },
+    CheckFile {
+        path: String,
+        until: FileState,
+        timeout_ms: u64,
+        next: Option<String>,
+    },
+    Database {
+        file: String,
+        query: String,
+        save_as: Option<String>,
+        expect: Option<DatabaseExpect>,
+        timeout_ms: u64,
+        next: Option<String>,
+    },
 }
 
 #[uniffi::remote(Record)]
 pub struct ElseIf {
-    pub reference: Reference,
+    pub condition: Condition,
     pub then: Option<String>,
+}
+
+#[uniffi::remote(Enum)]
+pub enum Condition {
+    Screen(Reference),
+    Value(ValueCheck),
+}
+
+#[uniffi::remote(Record)]
+pub struct ValueCheck {
+    pub of: String,
+    pub is: ValueTest,
+    pub to: String,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ValueTest {
+    Equals,
+    NotEquals,
+    Contains,
+    GreaterThan,
+    LessThan,
+}
+
+#[uniffi::remote(Record)]
+pub struct NamedValue {
+    pub name: String,
+    pub value: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct ScriptOutput {
+    pub name: String,
+    pub kind: OutputKind,
+}
+
+#[uniffi::remote(Enum)]
+pub enum OutputKind {
+    Text,
+    Number,
+    Boolean,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ScriptLanguage {
+    Sh,
+    Zsh,
+    Python3,
+    Node,
+    AppleScript,
+}
+
+#[uniffi::remote(Enum)]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+    Delete,
+    Head,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ExpectStatus {
+    Success,
+    Any,
+    Exactly(u16),
+}
+
+#[uniffi::remote(Record)]
+pub struct SavedValue {
+    pub name: String,
+    pub from: String,
+}
+
+#[uniffi::remote(Enum)]
+pub enum FileState {
+    Exists,
+    Missing,
+    Changed,
+    Contains(String),
+}
+
+#[uniffi::remote(Enum)]
+pub enum DatabaseExpect {
+    Value(String),
+    Rows(u32),
 }
 
 #[uniffi::remote(Enum)]

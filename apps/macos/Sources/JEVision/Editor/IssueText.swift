@@ -57,7 +57,7 @@ enum IssueText {
     case "flow.path.extension":
       return String(localized: "flow.path.extension", defaultValue: "Choose a \(p("expected")) file.")
     case "flow.placeholder.invalid":
-      return String(localized: "flow.placeholder.invalid", defaultValue: "“\(p("placeholder"))” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME} or ${data.column}.")
+      return String(localized: "flow.placeholder.invalid", defaultValue: "“\(p("placeholder"))” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME}, ${data.column} or ${var.NAME}.")
     case "flow.env.unknown":
       return String(localized: "flow.env.unknown", defaultValue: "No environment has the value \(p("name")). Add it to \(environmentsFileName()).")
     case "flow.env.partial":
@@ -86,6 +86,20 @@ enum IssueText {
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
     case "flow.if.sameCondition":
       return String(localized: "flow.if.sameCondition", defaultValue: "An earlier condition of this block checks the same thing, so this one never leads anywhere.")
+    case "flow.var.unknown":
+      return String(localized: "flow.var.unknown", defaultValue: "No block before this one saves a value named \(p("name")).")
+    case "flow.name.invalid":
+      return String(localized: "flow.name.invalid", defaultValue: "“\(p("value"))” can’t be a name: start with a letter or _, then use only letters, digits and _.")
+    case "flow.name.duplicate":
+      return String(localized: "flow.name.duplicate", defaultValue: "The name “\(p("value"))” is used twice in this block.")
+    case "flow.http.url":
+      return String(localized: "flow.http.url", defaultValue: "“\(p("value"))” isn’t a web address. Start it with http:// or https://.")
+    case "flow.http.header":
+      return String(localized: "flow.http.header", defaultValue: "“\(p("value"))” can’t be a header name: use letters, digits and -, with no spaces.")
+    case "flow.http.saveFrom":
+      return String(localized: "flow.http.saveFrom", defaultValue: "“\(p("value"))” isn’t a part of the answer. Use status, body, body.field or header.Name.")
+    case "flow.value.notNumber":
+      return String(localized: "flow.value.notNumber", defaultValue: "“\(p("value"))” isn’t a number, and greater or less than compares numbers.")
     default:
       return String(localized: "Unknown problem: \(issue.code)")
     }
@@ -137,6 +151,24 @@ enum IssueText {
     case "file": String(localized: "Data File")
     case "test": String(localized: "Test")
     case "retries": String(localized: "Retries")
+    case "value": String(localized: "Value")
+    case "language": String(localized: "Language")
+    case "code": String(localized: "Code")
+    case "inputs": String(localized: "Inputs")
+    case "outputs": String(localized: "Outputs")
+    case "command": String(localized: "Command")
+    case "folder": String(localized: "Folder")
+    case "exitCode": String(localized: "Expected Exit Code")
+    case "saveOutput": String(localized: "Save Output As")
+    case "url": String(localized: "Address")
+    case "headers": String(localized: "Headers")
+    case "body": String(localized: "Body")
+    case "expectStatus": String(localized: "Expected Status")
+    case "save": String(localized: "Save From the Answer")
+    case "path": String(localized: "File")
+    case "query": String(localized: "Query")
+    case "saveAs": String(localized: "Save First Value As")
+    case "expect": String(localized: "Expect")
     default: nil
     }
   }

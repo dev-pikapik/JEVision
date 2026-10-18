@@ -48,6 +48,17 @@ private let smokeTest = """
 
 @Test func catalogListsEveryBlockType() {
   let names = blockCatalog().map(\.typeName)
-  #expect(names.count == 11)
-  #expect(names.contains("repeat") && names.contains("useData"))
+  #expect(names.count == 16)
+  #expect(names.contains("repeat") && names.contains("useData") && names.contains("script"))
+}
+
+@Test func scriptsHandValuesToLaterBlocks() throws {
+  var flow = try loadFlow(json: smokeTest)
+  let index = try #require(flow.blocks.firstIndex { $0.id == "new" })
+  flow.blocks[index].kind = .script(
+    language: .python3, code: "print(1)", inputs: [NamedValue(name: "NAME", value: "Ann")],
+    outputs: [ScriptOutput(name: "total", kind: .number)], timeoutMs: 30_000, next: nil)
+  #expect(validateFlow(flow: flow).isEmpty)
+  #expect(savedVariables(flow: flow) == ["total"])
+  #expect(try loadFlow(json: saveFlow(flow: flow)) == flow)
 }

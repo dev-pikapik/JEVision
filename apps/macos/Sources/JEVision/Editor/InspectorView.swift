@@ -93,10 +93,15 @@ struct InspectorView: View {
     case .pressKeys: ["keys"]
     case .waitFor: ["until", "timeout"]
     case .check: ["reference"]
-    case .if: ["reference", "elseIf"]
+    case .if: ["reference", "value", "elseIf"]
     case .repeat: ["times"]
     case .useData: ["file"]
     case .runTest: ["test"]
+    case .script: ["language", "code", "inputs", "outputs", "timeout"]
+    case .command: ["command", "folder", "exitCode", "saveOutput", "timeout"]
+    case .http: ["method", "url", "headers", "body", "expectStatus", "save", "timeout"]
+    case .checkFile: ["path", "until", "timeout"]
+    case .database: ["file", "query", "saveAs", "expect", "timeout"]
     }
   }
 
@@ -108,13 +113,16 @@ struct InspectorView: View {
   }
 
   /// A binding that rebuilds the block from one changed value.
-  private func bind<T>(_ field: String, _ value: T, _ make: @escaping (T) -> BlockKind) -> Binding<T> {
+  func bind<T>(_ field: String, _ value: T, _ make: @escaping (T) -> BlockKind) -> Binding<T> {
     let document = document, id = id
     return Binding(get: { value }, set: { new in document.update(id, field: field) { $0 = make(new) } })
   }
 
   @ViewBuilder
   private func fields(_ kind: BlockKind, flow: Flow, context: FieldContext) -> some View {
+    let values = InsertableValues(
+      secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder),
+      environment: project.environments.valueNames, variables: savedVariables(flow: flow))
     switch kind {
     case .openApp(let app, let next):
       Section {
@@ -217,8 +225,7 @@ struct InspectorView: View {
       Section {
         PlaceholderTextField(
           text: bind("text", text) { .type(text: $0, into: into, next: next) },
-          secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder),
-          environmentValues: project.environments.valueNames)
+          values: values)
         IssueList(issues: context.issues("text"))
       }
       Section {
@@ -253,20 +260,19 @@ struct InspectorView: View {
           field: "reference", context: context)
       }
 
-    case .if(let reference, let then, let elseIf, let otherwise):
-      let conditions = [reference] + elseIf.map(\.reference)
+    case .if(let condition, let then, let elseIf, let otherwise):
+      let conditions = [condition] + elseIf.map(\.condition)
       ForEach(conditions.indices, id: \.self) { index in
-        let field = index == 0 ? "reference" : "elseIf.\(index - 1).reference"
+        let at = index == 0 ? "" : "elseIf.\(index - 1)."
         Section {
-          ReferenceEditor(
-            reference: bind(field, conditions[index]) { new in
-              guard index > 0 else { return .if(reference: new, then: then, elseIf: elseIf, otherwise: otherwise) }
+          ConditionEditor(
+            condition: bind(at + (conditions[index].isScreen ? "reference" : "value"), conditions[index]) { new in
+              guard index > 0 else { return .if(condition: new, then: then, elseIf: elseIf, otherwise: otherwise) }
               var cases = elseIf
-              cases[index - 1].reference = new
-              return .if(reference: reference, then: then, elseIf: cases, otherwise: otherwise)
+              cases[index - 1].condition = new
+              return .if(condition: condition, then: then, elseIf: cases, otherwise: otherwise)
             },
-            field: field, context: context)
-          IssueList(issues: context.issues(field).filter { $0.param("field") == field })
+            at: at, context: context, values: values)
           if conditions.count > 1 {
             HStack {
               Button("Move Up", systemImage: "arrow.up") {
@@ -291,9 +297,9 @@ struct InspectorView: View {
           if index == conditions.count - 1 {
             Group {
               if conditions.count > 1 {
-                Text("The test takes the way of the first condition the screen matches, and the Otherwise way when it matches none.")
+                Text("The test takes the way of the first condition that holds, and the Otherwise way when none does.")
               } else {
-                Text("The test goes the Yes way when the screen matches the image, and the No way when it doesn’t.")
+                Text("The test goes the Yes way when the condition holds, and the No way when it doesn’t.")
               }
             }
             .foregroundStyle(.secondary)
@@ -362,6 +368,29 @@ struct InspectorView: View {
         }
         IssueList(issues: context.issues("test"))
       }
+
+    case .script(let language, let code, let inputs, let outputs, let timeoutMs, let next):
+      scriptFields(
+        language: language, code: code, inputs: inputs, outputs: outputs, timeoutMs: timeoutMs, next: next,
+        context: context, values: values)
+
+    case .command(let command, let folder, let exitCode, let saveOutput, let timeoutMs, let next):
+      commandFields(
+        command: command, folder: folder, exitCode: exitCode, saveOutput: saveOutput, timeoutMs: timeoutMs,
+        next: next, context: context, values: values)
+
+    case .http(let method, let url, let headers, let body, let expectStatus, let save, let timeoutMs, let next):
+      httpFields(
+        method: method, url: url, headers: headers, body: body, expectStatus: expectStatus, save: save,
+        timeoutMs: timeoutMs, next: next, context: context, values: values)
+
+    case .checkFile(let path, let until, let timeoutMs, let next):
+      checkFileFields(path: path, until: until, timeoutMs: timeoutMs, next: next, context: context, values: values)
+
+    case .database(let file, let query, let saveAs, let expect, let timeoutMs, let next):
+      databaseFields(
+        file: file, query: query, saveAs: saveAs, expect: expect, timeoutMs: timeoutMs, next: next,
+        context: context, values: values)
     }
   }
 }

@@ -6,7 +6,8 @@ use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
-    BODY, Block, BlockKind, Compare, Flow, Point, Rect, Reference, Target, format_duration,
+    BODY, Block, BlockKind, Compare, Condition, DatabaseExpect, ExpectStatus, FileState, Flow,
+    NamedValue, Point, Rect, Reference, Target, ValueTest, format_duration,
 };
 
 pub const MAX_RETRIES: u32 = 10;
@@ -34,7 +35,33 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
         block(b, &seen, &mut out);
     }
     graph(flow, &blocks, &mut out);
+    unknown_variables(flow, &blocks, &mut out);
     out
+}
+
+/// Warns about `${var.NAME}` that no block of the test saves. A test it runs may save it, so
+/// this is not an error.
+fn unknown_variables(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
+    let saved: HashSet<&str> = flow
+        .blocks
+        .iter()
+        .flat_map(|b| saved_names(&b.kind).into_iter().map(|(_, n)| n))
+        .collect();
+    for b in blocks {
+        let mut reported = HashSet::new();
+        for (field, value) in placeholder_fields(&b.kind) {
+            for (ns, name) in placeholders(value).into_iter().flatten() {
+                if ns == "var" && !saved.contains(name) && reported.insert(name) {
+                    out.push(
+                        Issue::warning("flow.var.unknown")
+                            .with("block", &b.id)
+                            .with("field", &field)
+                            .with("name", name),
+                    );
+                }
+            }
+        }
+    }
 }
 
 /// [`validate`], plus warnings about files the test reads that are not in `dir`, the folder of
@@ -110,16 +137,15 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
             ..
         } => vec![("until.disappears.image".to_owned(), &r.image)],
         BlockKind::If {
-            reference: r,
-            else_if,
-            ..
-        } => std::iter::once(("reference.image".to_owned(), &r.image))
+            condition, else_if, ..
+        } => std::iter::once(("reference.image".to_owned(), condition))
             .chain(
                 else_if
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| (format!("elseIf.{i}.reference.image"), &c.reference.image)),
+                    .map(|(i, c)| (format!("elseIf.{i}.reference.image"), &c.condition)),
             )
+            .filter_map(|(field, c)| Some((field, &c.reference()?.image)))
             .collect(),
         BlockKind::UseData { file, .. } => vec![("file".to_owned(), file)],
         BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test)],
@@ -143,8 +169,9 @@ pub fn required_secrets(flow: &Flow) -> Vec<String> {
     names.into_iter().collect()
 }
 
-/// Fields of a block that may contain `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}`
-/// placeholders: text to type and the paths and addresses of files the block reads.
+/// Fields of a block that may contain `${secret.NAME}`, `${env.NAME}`, `${data.COLUMN}` and
+/// `${var.NAME}` placeholders: text to type, the paths and addresses of files the block reads,
+/// and what the blocks that work without the screen send and compare.
 pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
     match kind {
         BlockKind::Type { text, .. } => vec![("text".to_owned(), text.as_str())],
@@ -155,6 +182,102 @@ pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
             .collect(),
         BlockKind::UseData { file, .. } => vec![("file".to_owned(), file.as_str())],
         BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test.as_str())],
+        BlockKind::If {
+            condition, else_if, ..
+        } => {
+            let all = std::iter::once((String::new(), condition)).chain(
+                else_if
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| (format!("elseIf.{i}."), &c.condition)),
+            );
+            all.filter_map(|(at, c)| match c {
+                Condition::Value(v) => Some([
+                    (format!("{at}value.of"), v.of.as_str()),
+                    (format!("{at}value.to"), v.to.as_str()),
+                ]),
+                Condition::Screen(_) => None,
+            })
+            .flatten()
+            .collect()
+        }
+        BlockKind::Script { inputs, .. } => values("inputs", inputs),
+        BlockKind::Command {
+            command, folder, ..
+        } => std::iter::once(("command".to_owned(), command.as_str()))
+            .chain(folder.as_deref().map(|f| ("folder".to_owned(), f)))
+            .collect(),
+        BlockKind::Http {
+            url, headers, body, ..
+        } => std::iter::once(("url".to_owned(), url.as_str()))
+            .chain(values("headers", headers))
+            .chain(std::iter::once(("body".to_owned(), body.as_str())))
+            .collect(),
+        BlockKind::CheckFile { path, until, .. } => {
+            let mut found = vec![("path".to_owned(), path.as_str())];
+            if let FileState::Contains(text) = until {
+                found.push(("until.contains".to_owned(), text.as_str()));
+            }
+            found
+        }
+        BlockKind::Database {
+            file,
+            query,
+            expect,
+            ..
+        } => {
+            let mut found = vec![
+                ("file".to_owned(), file.as_str()),
+                ("query".to_owned(), query.as_str()),
+            ];
+            if let Some(DatabaseExpect::Value(v)) = expect {
+                found.push(("expect.value".to_owned(), v.as_str()));
+            }
+            found
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn values<'a>(key: &str, list: &'a [NamedValue]) -> Vec<(String, &'a str)> {
+    list.iter()
+        .enumerate()
+        .map(|(i, v)| (format!("{key}.{i}.value"), v.value.as_str()))
+        .collect()
+}
+
+/// Names of the run variables the blocks of `flow` save, sorted, without repeats.
+pub fn saved_variables(flow: &Flow) -> Vec<String> {
+    let names: BTreeSet<&str> = flow
+        .blocks
+        .iter()
+        .flat_map(|b| saved_names(&b.kind).into_iter().map(|(_, n)| n))
+        .filter(|n| is_identifier(n))
+        .collect();
+    names.into_iter().map(str::to_owned).collect()
+}
+
+/// `(field, name)` of every run variable a block saves.
+fn saved_names(kind: &BlockKind) -> Vec<(String, &str)> {
+    match kind {
+        BlockKind::Script { outputs, .. } => outputs
+            .iter()
+            .enumerate()
+            .map(|(i, o)| (format!("outputs.{i}.name"), o.name.as_str()))
+            .collect(),
+        BlockKind::Command { save_output, .. } => save_output
+            .iter()
+            .map(|n| ("saveOutput".to_owned(), n.as_str()))
+            .collect(),
+        BlockKind::Http { save, .. } => save
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (format!("save.{i}.name"), s.name.as_str()))
+            .collect(),
+        BlockKind::Database { save_as, .. } => save_as
+            .iter()
+            .map(|n| ("saveAs".to_owned(), n.as_str()))
+            .collect(),
         _ => Vec::new(),
     }
 }
@@ -247,23 +370,33 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
         }
         BlockKind::Check { reference: r, .. } => reference(id, "reference", r, out),
         BlockKind::If {
-            reference: r,
+            condition: first,
             else_if,
             ..
         } => {
-            reference(id, "reference", r, out);
+            condition(id, "", first, out);
             for (i, case) in else_if.iter().enumerate() {
-                let field = format!("elseIf.{i}.reference");
-                reference(id, &field, &case.reference, out);
-                let earlier = std::iter::once(r).chain(else_if[..i].iter().map(|c| &c.reference));
+                let at = format!("elseIf.{i}.");
+                condition(id, &at, &case.condition, out);
+                let earlier =
+                    std::iter::once(first).chain(else_if[..i].iter().map(|c| &c.condition));
                 // A case not filled in yet is reported as empty, not as a repeat.
-                let filled = !case.reference.image.is_empty()
-                    || matches!(&case.reference.compare, Compare::Meaning { expect } if !expect.trim().is_empty());
-                if filled && earlier.into_iter().any(|e| *e == case.reference) {
+                let filled = match &case.condition {
+                    Condition::Screen(r) => {
+                        !r.image.is_empty()
+                            || matches!(&r.compare, Compare::Meaning { expect } if !expect.trim().is_empty())
+                    }
+                    Condition::Value(v) => !v.of.is_empty(),
+                };
+                if filled && earlier.into_iter().any(|e| *e == case.condition) {
+                    let field = match case.condition {
+                        Condition::Screen(_) => "reference",
+                        Condition::Value(_) => "value",
+                    };
                     out.push(
                         Issue::warning("flow.if.sameCondition")
                             .with("block", id)
-                            .with("field", field),
+                            .with("field", format!("{at}{field}")),
                     );
                 }
             }
@@ -279,10 +412,188 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             loop_body(id, body, out);
         }
         BlockKind::RunTest { test, .. } => path_with_extension(id, "test", test, ".flow.json", out),
+        BlockKind::Script {
+            code,
+            inputs,
+            timeout_ms,
+            ..
+        } => {
+            if code.trim().is_empty() {
+                out.push(err("flow.field.empty", "code"));
+            }
+            names(id, "inputs", inputs.iter().map(|i| i.name.as_str()), out);
+            timeout(id, *timeout_ms, out);
+        }
+        BlockKind::Command {
+            command,
+            folder,
+            exit_code,
+            timeout_ms,
+            ..
+        } => {
+            if command.trim().is_empty() {
+                out.push(err("flow.field.empty", "command"));
+            }
+            if let Some(folder) = folder.as_deref().filter(|f| placeholders(f).is_empty()) {
+                relative_path(id, "folder", folder, out);
+            }
+            if !(0..=255).contains(exit_code) {
+                out.push(range(Some(id), "exitCode", 0, 255));
+            }
+            timeout(id, *timeout_ms, out);
+        }
+        BlockKind::Http {
+            url,
+            headers,
+            expect_status,
+            save,
+            timeout_ms,
+            ..
+        } => {
+            if url.trim().is_empty() {
+                out.push(err("flow.field.empty", "url"));
+            } else if !url.starts_with("${") && !is_web_address(url) {
+                out.push(err("flow.http.url", "url").with("value", url));
+            }
+            for (i, h) in headers.iter().enumerate() {
+                let field = format!("headers.{i}.name");
+                if h.name.is_empty() {
+                    out.push(err("flow.field.empty", &field));
+                } else if !is_header_name(&h.name) {
+                    out.push(err("flow.http.header", &field).with("value", &h.name));
+                }
+            }
+            if let ExpectStatus::Exactly(code) = expect_status {
+                if !(100..=599).contains(code) {
+                    out.push(range(Some(id), "expectStatus", 100, 599));
+                }
+            }
+            for (i, s) in save.iter().enumerate() {
+                if !is_answer_part(&s.from) {
+                    out.push(
+                        err("flow.http.saveFrom", &format!("save.{i}.from")).with("value", &s.from),
+                    );
+                }
+            }
+            timeout(id, *timeout_ms, out);
+        }
+        BlockKind::CheckFile {
+            path,
+            until,
+            timeout_ms,
+            ..
+        } => {
+            if path.trim().is_empty() {
+                out.push(err("flow.field.empty", "path"));
+            }
+            if matches!(until, FileState::Contains(text) if text.is_empty()) {
+                out.push(err("flow.field.empty", "until.contains"));
+            }
+            timeout(id, *timeout_ms, out);
+        }
+        BlockKind::Database {
+            file,
+            query,
+            timeout_ms,
+            ..
+        } => {
+            if file.trim().is_empty() {
+                out.push(err("flow.field.empty", "file"));
+            }
+            if query.trim().is_empty() {
+                out.push(err("flow.field.empty", "query"));
+            }
+            timeout(id, *timeout_ms, out);
+        }
+    }
+    let saved = saved_names(&b.kind);
+    for (i, (field, name)) in saved.iter().enumerate() {
+        if !is_identifier(name) {
+            out.push(err("flow.name.invalid", field).with("value", *name));
+        } else if saved[..i].iter().any(|(_, n)| n == name) {
+            out.push(err("flow.name.duplicate", field).with("value", *name));
+        }
     }
     for (field, value) in placeholder_fields(&b.kind) {
+        // A shell has `${NAME}` of its own; only placeholders JEVision knows are checked there.
+        if matches!(&b.kind, BlockKind::Command { .. }) {
+            continue;
+        }
         for bad in placeholders(value).into_iter().filter_map(Result::err) {
             out.push(err("flow.placeholder.invalid", &field).with("placeholder", bad));
+        }
+    }
+}
+
+fn condition(block: &str, at: &str, c: &Condition, out: &mut Vec<Issue>) {
+    let r = match c {
+        Condition::Screen(r) => r,
+        Condition::Value(v) => {
+            let err = |code: &str, field: &str| {
+                Issue::error(code)
+                    .with("block", block)
+                    .with("field", format!("{at}value.{field}"))
+            };
+            if v.of.trim().is_empty() {
+                out.push(err("flow.field.empty", "of"));
+            }
+            let numeric = matches!(v.is, ValueTest::GreaterThan | ValueTest::LessThan);
+            if numeric && placeholders(&v.to).is_empty() && v.to.trim().parse::<f64>().is_err() {
+                out.push(err("flow.value.notNumber", "to").with("value", &v.to));
+            }
+            return;
+        }
+    };
+    reference(block, &format!("{at}reference"), r, out);
+}
+
+/// Input names: environment variable names, each once.
+fn names<'a>(block: &str, key: &str, names: impl Iterator<Item = &'a str>, out: &mut Vec<Issue>) {
+    let mut seen = HashSet::new();
+    for (i, name) in names.enumerate() {
+        let issue = |code: &str| {
+            Issue::error(code)
+                .with("block", block)
+                .with("field", format!("{key}.{i}.name"))
+                .with("value", name)
+        };
+        if !is_identifier(name) {
+            out.push(issue("flow.name.invalid"));
+        } else if !seen.insert(name) {
+            out.push(issue("flow.name.duplicate"));
+        }
+    }
+}
+
+fn timeout(block: &str, ms: u64, out: &mut Vec<Issue>) {
+    if !(1..=MAX_TIMEOUT_MS).contains(&ms) {
+        out.push(
+            Issue::error("flow.field.range")
+                .with("block", block)
+                .with("field", "timeout")
+                .with("min", format_duration(1))
+                .with("max", format_duration(MAX_TIMEOUT_MS)),
+        );
+    }
+}
+
+/// An HTTP header name: letters, digits and `!#$%&'*+-.^_`|~`.
+fn is_header_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || "!#$%&'*+-.^_`|~".contains(c))
+}
+
+/// `status`, `body`, `body.` and a path such as `items[0].id`, or `header.` and a header name.
+pub(crate) fn is_answer_part(s: &str) -> bool {
+    match s {
+        "status" | "body" => true,
+        _ => {
+            if let Some(name) = s.strip_prefix("header.") {
+                return is_header_name(name);
+            }
+            s.strip_prefix("body.")
+                .is_some_and(|path| crate::model::json_path(path).is_some())
         }
     }
 }
@@ -521,9 +832,9 @@ pub(crate) fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
             break;
         };
         let whole = &rest[..=end];
-        let parsed = whole[2..end]
-            .split_once('.')
-            .filter(|(ns, name)| matches!(*ns, "secret" | "env" | "data") && is_identifier(name));
+        let parsed = whole[2..end].split_once('.').filter(|(ns, name)| {
+            matches!(*ns, "secret" | "env" | "data" | "var") && is_identifier(name)
+        });
         found.push(parsed.ok_or(whole));
         rest = &rest[end + 1..];
     }

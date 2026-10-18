@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "name": "Count lines, then add one",
+  "description": "A script counts the lines of note.txt. When the note has text, the test opens a copy in TextEdit, adds a line and quits TextEdit; an empty note ends the test.",
+  "app": "com.apple.TextEdit",
+  "testType": "smoke",
+  "priority": "low",
+  "status": "ready",
+  "tags": [
+    "example"
+  ],
+  "start": "count",
+  "blocks": {
+    "count": {
+      "type": "script",
+      "language": "python3",
+      "code": "import os\n\nwith open(os.environ[\"NOTE\"]) as note:\n    lines = sum(1 for line in note if line.strip())\n\nwith open(os.environ[\"JEV_OUTPUT\"], \"a\") as out:\n    print(f\"lines={lines}\", file=out)\n",
+      "inputs": [
+        {
+          "name": "NOTE",
+          "value": "note.txt"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "lines",
+          "type": "number"
+        }
+      ],
+      "timeout": "10s",
+      "next": "hasText"
+    },
+    "hasText": {
+      "type": "if",
+      "value": {
+        "of": "${var.lines}",
+        "is": "greaterThan",
+        "to": "0"
+      },
+      "then": "open"
+    },
+    "open": {
+      "type": "openFile",
+      "files": [
+        "note.txt"
+      ],
+      "app": "com.apple.TextEdit",
+      "next": "end"
+    },
+    "end": {
+      "type": "pressKeys",
+      "keys": "cmd+down",
+      "next": "type"
+    },
+    "type": {
+      "type": "type",
+      "text": "- line ${var.lines}\n",
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

@@ -45,15 +45,24 @@ enum BlockSummary {
       return reference.image.isEmpty
         ? String(localized: "Choose how the screen should look")
         : String(localized: "Screen matches \(imageName(reference.image))")
-    case .if(let reference, _, let elseIf, _):
-      let first =
-        if let expect = expectation(reference) {
-          String(localized: "If the screen shows \(quoted(expect, limit: 40))")
-        } else if reference.image.isEmpty {
-          String(localized: "Choose what to look for")
-        } else {
-          String(localized: "If \(imageName(reference.image)) is on screen")
-        }
+    case .if(let condition, _, let elseIf, _):
+      let first: String
+      switch condition {
+      case .screen(let reference):
+        first =
+          if let expect = expectation(reference) {
+            String(localized: "If the screen shows \(quoted(expect, limit: 40))")
+          } else if reference.image.isEmpty {
+            String(localized: "Choose what to look for")
+          } else {
+            String(localized: "If \(imageName(reference.image)) is on screen")
+          }
+      case .value(let check):
+        first =
+          check.of.isEmpty
+          ? String(localized: "Choose a value to check")
+          : String(localized: "If \(valueCheck(check))")
+      }
       return elseIf.isEmpty ? first : first + " · " + String(localized: "or \(elseIf.count) more")
     case .repeat(let times, _, _):
       return String(localized: "\(Int(times)) times")
@@ -65,7 +74,47 @@ enum BlockSummary {
       return test.isEmpty
         ? String(localized: "Choose a test")
         : String(localized: "Runs \(quoted(ProjectScanner.testName((test as NSString).lastPathComponent)))")
+    case .script(let language, let code, _, let outputs, _, _):
+      let line = code.split(whereSeparator: \.isNewline).first { !$0.allSatisfy(\.isWhitespace) }
+      guard let line else { return String(localized: "No code yet") }
+      let text = BlockInfo.languageName(language) + ": " + quoted(line.trimmingCharacters(in: .whitespaces), limit: 32)
+      return outputs.isEmpty ? text : text + " → " + outputs.map(\.name).joined(separator: ", ")
+    case .command(let command, _, _, let saveOutput, _, _):
+      guard !command.isEmpty else { return String(localized: "No command yet") }
+      let text = quoted(command, limit: 32)
+      return saveOutput.map { text + " → " + $0 } ?? text
+    case .http(let method, let url, _, _, _, let save, _, _):
+      guard !url.isEmpty else { return String(localized: "No address yet") }
+      let text = BlockInfo.methodName(method) + " " + url
+      return save.isEmpty ? text : text + " → " + save.map(\.name).joined(separator: ", ")
+    case .checkFile(let path, let until, let timeoutMs, _):
+      guard !path.isEmpty else { return String(localized: "Choose a file") }
+      let name = quoted((path as NSString).lastPathComponent)
+      let limit = duration(timeoutMs)
+      switch until {
+      case .exists: return String(localized: "Until \(name) appears · \(limit)")
+      case .missing: return String(localized: "Until \(name) disappears · \(limit)")
+      case .changed: return String(localized: "Until \(name) changes · \(limit)")
+      case .contains(let text): return String(localized: "Until \(name) contains \(quoted(text)) · \(limit)")
+      }
+    case .database(let file, let query, let saveAs, _, _, _):
+      guard !file.isEmpty else { return String(localized: "Choose a database") }
+      let text = quoted((file as NSString).lastPathComponent) + ": " + quoted(query, limit: 32)
+      return saveAs.map { text + " → " + $0 } ?? text
     }
+  }
+
+  /// `${var.total} > 3`, with the symbols of the comparison so it reads the same in every language.
+  static func valueCheck(_ check: ValueCheck) -> String {
+    let sign =
+      switch check.is {
+      case .equals: "="
+      case .notEquals: "≠"
+      case .contains: "∋"
+      case .greaterThan: ">"
+      case .lessThan: "<"
+      }
+    return "\(check.of) \(sign) \(quoted(check.to))"
   }
 
   /// `refs/sign-in-button.png` → “sign in button”.

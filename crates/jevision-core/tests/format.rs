@@ -291,7 +291,7 @@ fn malformed_else_if_cases_are_reported() {
     assert_eq!(
         found,
         [
-            ("flow.field.missing", Some("elseIf.0.reference")),
+            ("flow.field.oneOf", Some("elseIf.0")),
             ("flow.field.unknown", Some("elseIf.0.extra")),
             ("flow.field.type", Some("elseIf.1")),
         ]
@@ -436,7 +436,7 @@ fn secrets_are_listed_by_name() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 11);
+    assert_eq!(specs.len(), 16);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -686,4 +686,106 @@ fn a_malformed_canvas_is_reported() {
     let issues = parse_err(&CANVAS.replace(r#""canvas": {"#, r#""canvas": { "zoom": 2,"#));
     assert_eq!(codes(&issues), ["flow.field.unknown"]);
     assert_eq!(issues[0].param("field"), Some("canvas.zoom"));
+}
+
+/// The blocks that work without the screen, plus an `if` that branches on a saved value.
+const SYSTEM_BLOCKS: &str = r#"{
+  "format": 1, "name": "System", "app": "com.apple.TextEdit", "start": "ask",
+  "blocks": {
+    "ask": { "type": "http", "method": "POST", "url": "http://127.0.0.1:8080/items", "headers": [{ "name": "Authorization", "value": "Bearer ${secret.TOKEN}" }], "body": "{}", "expectStatus": 201, "save": [{ "name": "id", "from": "body.items[0].id" }], "next": "count" },
+    "count": { "type": "database", "file": "~/Library/app.sqlite", "query": "select count(*) from items", "saveAs": "rows", "expect": { "rows": 1 }, "next": "list" },
+    "list": { "type": "command", "command": "ls ${var.id}", "folder": "fixtures", "exitCode": 1, "saveOutput": "listing", "timeout": "5s", "next": "calc" },
+    "calc": { "type": "script", "language": "python3", "code": "print(1)", "inputs": [{ "name": "ID", "value": "${var.id}" }], "outputs": [{ "name": "total", "type": "number" }], "next": "wait" },
+    "wait": { "type": "checkFile", "path": "out/${var.id}.txt", "until": { "contains": "done" }, "next": "branch" },
+    "branch": { "type": "if", "value": { "of": "${var.total}", "is": "greaterThan", "to": "3" }, "then": "seen", "elseIf": [{ "reference": { "image": "refs/a.png" }, "then": "seen" }] },
+    "seen": { "type": "check", "reference": { "image": "refs/a.png" } }
+  }
+}"#;
+
+#[test]
+fn system_blocks_round_trip_in_canonical_form() {
+    let flow = parse(SYSTEM_BLOCKS).unwrap();
+    let all = validate(&flow);
+    let issues: Vec<&str> = all
+        .iter()
+        .filter(|i| i.code != "flow.file.missing")
+        .map(|i| i.code.as_str())
+        .collect();
+    assert_eq!(issues, Vec::<&str>::new());
+    let once = to_canonical_json(&flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert!(once.contains("\"expectStatus\": 201"));
+    assert!(once.contains("\"until\": {\n        \"contains\": \"done\"\n      }"));
+    assert!(once.contains("\"is\": \"greaterThan\""));
+    assert_eq!(saved_variables(&flow), ["id", "listing", "rows", "total"]);
+    assert_eq!(required_secrets(&flow), ["TOKEN"]);
+
+    let defaults = canonicalize(&minimal(
+        r#"{"a": {"type": "http", "url": "https://x.test", "expectStatus": "success"}, "b": {"type": "command", "command": "true", "exitCode": 0}}"#,
+    ))
+    .unwrap();
+    assert!(!defaults.contains("expectStatus") && !defaults.contains("exitCode"));
+    assert!(defaults.contains("\"method\": \"GET\"") && defaults.contains("\"timeout\": \"30s\""));
+}
+
+#[test]
+fn system_blocks_are_validated() {
+    let issues = issues_of(
+        r#"{
+        "a": {"type": "script", "language": "sh", "code": " ", "inputs": [{"name": "1x", "value": ""}, {"name": "A", "value": ""}, {"name": "A", "value": ""}], "outputs": [{"name": "out", "type": "text"}], "next": "b"},
+        "b": {"type": "http", "url": "ftp://x", "headers": [{"name": "bad name", "value": "1"}], "expectStatus": 99, "save": [{"name": "out", "from": "body.["}], "next": "c"},
+        "c": {"type": "command", "command": "", "exitCode": 300, "next": "d"},
+        "d": {"type": "checkFile", "path": "", "until": {"contains": ""}, "next": "e"},
+        "e": {"type": "database", "file": "", "query": "", "next": "f"},
+        "f": {"type": "if", "value": {"of": "", "is": "lessThan", "to": "many"}, "then": "g"},
+        "g": {"type": "type", "text": "${var.nobody}"}
+    }"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    for expected in [
+        ("flow.field.empty", Some("a"), Some("code")),
+        ("flow.name.invalid", Some("a"), Some("inputs.0.name")),
+        ("flow.name.duplicate", Some("a"), Some("inputs.2.name")),
+        ("flow.http.url", Some("b"), Some("url")),
+        ("flow.http.header", Some("b"), Some("headers.0.name")),
+        ("flow.field.range", Some("b"), Some("expectStatus")),
+        ("flow.http.saveFrom", Some("b"), Some("save.0.from")),
+        ("flow.field.empty", Some("c"), Some("command")),
+        ("flow.field.range", Some("c"), Some("exitCode")),
+        ("flow.field.empty", Some("d"), Some("path")),
+        ("flow.field.empty", Some("d"), Some("until.contains")),
+        ("flow.field.empty", Some("e"), Some("file")),
+        ("flow.field.empty", Some("e"), Some("query")),
+        ("flow.field.empty", Some("f"), Some("value.of")),
+        ("flow.value.notNumber", Some("f"), Some("value.to")),
+        ("flow.var.unknown", Some("g"), Some("text")),
+    ] {
+        assert!(
+            found.contains(&expected),
+            "{expected:?} missing in {found:?}"
+        );
+    }
+}
+
+#[test]
+fn json_paths_name_fields_and_items() {
+    assert_eq!(
+        json_path("items[0].id"),
+        Some(vec![
+            JsonStep::Field("items"),
+            JsonStep::Index(0),
+            JsonStep::Field("id")
+        ])
+    );
+    assert_eq!(
+        json_path("[2].name"),
+        Some(vec![JsonStep::Index(2), JsonStep::Field("name")])
+    );
+    for wrong in ["", "a..b", "a[", "a[x]", "a]", "a.[0]"] {
+        assert_eq!(json_path(wrong), None, "{wrong}");
+    }
 }

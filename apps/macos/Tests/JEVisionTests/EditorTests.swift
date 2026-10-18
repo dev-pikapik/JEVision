@@ -28,7 +28,7 @@ struct BlockSummaryTests {
   }
 
   @Test func namesEveryWayOutOfAnIf() {
-    let plain = BlockKind.if(reference: Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: []), then: nil, elseIf: [], otherwise: nil)
+    let plain = BlockKind.if(condition: .screen(Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: [])), then: nil, elseIf: [], otherwise: nil)
     #expect(summary(plain) == "If “a” is on screen")
     #expect(plain.branchName("then") == "Yes")
     #expect(plain.branchName("else") == "No")
@@ -39,6 +39,34 @@ struct BlockSummaryTests {
     #expect(three.branchName("elseIf3") == nil)
     #expect(three.branchName("next") == nil)
     #expect(BlockKind.check(reference: Reference(image: "", compare: .exact, area: nil, ignore: [], hide: []), next: nil).branchName("then") == nil)
+  }
+
+  @Test func describesBlocksThatDontLookAtTheScreen() {
+    #expect(
+      summary(.script(language: .python3, code: "\n  print(1)\nprint(2)", inputs: [], outputs: [ScriptOutput(name: "total", kind: .number)], timeoutMs: 1000, next: nil))
+        == "Python 3: “print(1)” → total")
+    #expect(summary(.script(language: .sh, code: " \n", inputs: [], outputs: [], timeoutMs: 1000, next: nil)) == "No code yet")
+    #expect(
+      summary(.command(command: "ls", folder: nil, exitCode: 0, saveOutput: "listing", timeoutMs: 1000, next: nil))
+        == "“ls” → listing")
+    #expect(
+      summary(.http(method: .post, url: "https://example.com/items", headers: [], body: "", expectStatus: .success,
+        save: [SavedValue(name: "id", from: "body.id")], timeoutMs: 1000, next: nil))
+        == "POST https://example.com/items → id")
+    #expect(
+      summary(.checkFile(path: "~/Downloads/report.pdf", until: .contains("ok"), timeoutMs: 5000, next: nil))
+        == "Until “report.pdf” contains “ok” · " + BlockSummary.duration(5000))
+    #expect(
+      summary(.database(file: "app.sqlite", query: "select count(*) from notes", saveAs: "rows", expect: nil, timeoutMs: 1000, next: nil))
+        == "“app.sqlite”: “select count(*) from notes” → rows")
+    let value = BlockKind.if(
+      condition: .value(ValueCheck(of: "${var.total}", is: .greaterThan, to: "3")), then: nil, elseIf: [], otherwise: nil)
+    #expect(summary(value) == "If ${var.total} > “3”")
+    for kind in BlockInfo.catalog.map(\.typeName) {
+      #expect(BlockInfo.symbol(kind) != "square.dashed", "\(kind) has no symbol")
+      #expect(BlockInfo.title(kind) != kind || kind == "if", "\(kind) has no title")
+      #expect(!BlockInfo.tagline(kind).isEmpty, "\(kind) has no tagline")
+    }
   }
 
   @Test func shortensLongText() {

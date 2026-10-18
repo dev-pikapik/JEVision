@@ -13,6 +13,7 @@ mod env;
 mod machine;
 mod report;
 mod run;
+mod system;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};

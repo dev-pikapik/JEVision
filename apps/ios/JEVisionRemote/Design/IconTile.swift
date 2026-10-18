@@ -32,6 +32,11 @@ enum BlockInfo {
     case "repeat": "repeat"
     case "useData": "tablecells"
     case "runTest": "rectangle.stack"
+    case "http": "network"
+    case "database": "cylinder"
+    case "checkFile": "doc.badge.clock"
+    case "command": "terminal"
+    case "script": "curlybraces"
     default: "square.dashed"
     }
   }
@@ -49,6 +54,11 @@ enum BlockInfo {
     case "repeat": String(localized: "Repeat")
     case "useData": String(localized: "Use Data")
     case "runTest": String(localized: "Run Test")
+    case "http": String(localized: "HTTP Request")
+    case "database": String(localized: "Database")
+    case "checkFile": String(localized: "Wait For File")
+    case "command": String(localized: "Run Command")
+    case "script": String(localized: "Script")
     default: kind
     }
   }
@@ -58,7 +68,7 @@ enum BlockInfo {
     case "openApp", "openFile", "click", "type", "pressKeys": .blue
     case "waitFor", "check": .orange
     case "if", "repeat", "runTest": .purple
-    case "useData": .green
+    case "useData", "http", "database", "checkFile", "command", "script": .green
     default: .gray
     }
   }

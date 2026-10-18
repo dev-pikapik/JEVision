@@ -803,6 +803,9 @@ pub struct Step {
     /// of the reference image. Absent for `else`.
     #[uniffi(default = None)]
     pub branch_condition: Option<String>,
+    /// Values the block saved for the blocks after it, by name. Secrets are masked.
+    #[uniffi(default = [])]
+    pub outputs: Vec<jevision_core::NamedValue>,
 }
 
 impl From<jevision_runner::Step> for Step {
@@ -828,6 +831,11 @@ impl From<jevision_runner::Step> for Step {
             sent_masked: s.sent_masked,
             branches: s.branches,
             branch_condition: s.branch_condition,
+            outputs: s
+                .outputs
+                .into_iter()
+                .map(|(name, value)| jevision_core::NamedValue { name, value })
+                .collect(),
         }
     }
 }
