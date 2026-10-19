@@ -244,6 +244,9 @@ fn type_title(block_type: &str) -> String {
         "openApp" => "Open App".to_owned(),
         "openFile" => "Open File".to_owned(),
         "click" => "Click".to_owned(),
+        "hover" => "Hover".to_owned(),
+        "drag" => "Drag".to_owned(),
+        "scroll" => "Scroll".to_owned(),
         "type" => "Type".to_owned(),
         "pressKeys" => "Press Keys".to_owned(),
         "waitFor" => "Wait For".to_owned(),
@@ -286,6 +289,32 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
                 _ => "Click",
             };
             format!("{verb} {}", target(t))
+        }
+        BlockKind::Hover { target: t, .. } => format!("Hover over {}", target(t)),
+        BlockKind::Drag { from, to, .. } => {
+            format!("Drag from {} to {}", target(from), target(to))
+        }
+        BlockKind::Scroll {
+            direction,
+            amount,
+            unit,
+            at,
+            ..
+        } => {
+            let direction = match direction {
+                jevision_core::ScrollDirection::Up => "up",
+                jevision_core::ScrollDirection::Down => "down",
+                jevision_core::ScrollDirection::Left => "left",
+                jevision_core::ScrollDirection::Right => "right",
+            };
+            let unit = match (unit, amount) {
+                (jevision_core::ScrollUnit::Lines, 1) => "line",
+                (jevision_core::ScrollUnit::Lines, _) => "lines",
+                (jevision_core::ScrollUnit::Pixels, 1) => "point",
+                (jevision_core::ScrollUnit::Pixels, _) => "points",
+            };
+            let place = at.as_ref().map_or_else(|| "the window".to_owned(), target);
+            format!("Scroll {direction} {amount} {unit} over {place}")
         }
         BlockKind::Type { text, into, .. } => match into {
             Some(t) => format!("Type “{text}” into {}", target(t)),
