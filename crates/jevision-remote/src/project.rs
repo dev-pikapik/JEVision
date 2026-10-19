@@ -225,6 +225,7 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::Click { target, .. } => match target {
             Target::Image(image) => image.clone(),
             Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
+            Target::Description(text) => format!("“{text}”"),
         },
         BlockKind::Type { text, .. } => text.clone(),
         BlockKind::PressKeys { keys, .. } => keys.clone(),

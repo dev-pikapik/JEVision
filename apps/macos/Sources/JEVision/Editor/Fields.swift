@@ -380,16 +380,37 @@ struct ReferenceEditor: View {
   }
 }
 
-/// Where to click: an element found by its picture, or a fixed point in the window.
+/// Where to click: an element found by its picture or by AI from a description, or a fixed
+/// point in the window.
 struct TargetEditor: View {
   @Binding var target: Target
   let field: String
   let context: FieldContext
 
-  private var byLook: Binding<Bool> {
+  private enum Way { case look, description, position }
+
+  private var way: Binding<Way> {
     Binding(
-      get: { if case .image = target { true } else { false } },
-      set: { target = $0 ? .image("") : .point(Point(x: 0.5, y: 0.5)) })
+      get: {
+        switch target {
+        case .image: .look
+        case .description: .description
+        case .point: .position
+        }
+      },
+      set: {
+        switch $0 {
+        case .look: target = .image("")
+        case .description: target = .description("")
+        case .position: target = .point(Point(x: 0.5, y: 0.5))
+        }
+      })
+  }
+
+  private var description: Binding<String> {
+    Binding(
+      get: { if case .description(let text) = target { text } else { "" } },
+      set: { target = .description($0) })
   }
 
   private var image: Binding<String> {
@@ -410,17 +431,24 @@ struct TargetEditor: View {
   }
 
   var body: some View {
-    Picker(selection: byLook) {
-      Text("By Look").tag(true)
-      Text("By Position").tag(false)
+    Picker(selection: way) {
+      Text("By Look").tag(Way.look)
+      Text("By Description").tag(Way.description)
+      Text("By Position").tag(Way.position)
     } label: {
       Text("Find")
     }
     .pickerStyle(.segmented)
-    if byLook.wrappedValue {
+    switch way.wrappedValue {
+    case .look:
       FilePathField(label: Text("Image"), path: image, types: [.png], context: context)
       ImagePreview(path: image.wrappedValue, context: context)
-    } else {
+    case .description:
+      TextField(text: description, prompt: Text("The blue Save button"), axis: .vertical) { Text("Element") }
+      Text("JEV finds it on the screen. Set up JEV in Settings → AI.")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    case .position:
       PercentField(label: Text("From Left"), value: coordinate(\.x))
       PercentField(label: Text("From Top"), value: coordinate(\.y))
     }

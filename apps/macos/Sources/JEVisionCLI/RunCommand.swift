@@ -47,7 +47,8 @@ struct RunCommand {
     request.video = request.video ?? videos.mode
     let session = TestSession(
       project: plan.project, tests: plan.tests, request: request, progress: progress, input: input,
-      vision: vision, localOnly: ai.localOnly, keepVideosDays: videos.keepDays
+      vision: vision, providers: ai.namedProviders,
+      localOnly: ai.localOnly, keepVideosDays: videos.keepDays
     ) { run in
       MacHands(input: input, isCancelled: { run.isCancelled() })
     }
@@ -275,6 +276,7 @@ final class TestSession: @unchecked Sendable {
   private let progress: Console
   private let makeHands: (TestRun) -> any Hands
   private let vision: VisionSettings?
+  private let providers: ProviderSettings?
   private let localOnly: Bool
   private let keepVideosDays: UInt32?
   /// The person's mouse and keyboard, watched while a test runs.
@@ -285,10 +287,11 @@ final class TestSession: @unchecked Sendable {
 
   init(
     project: String, tests: [String], request: RunRequest, progress: Console, input: InputWatcher?,
-    vision: VisionSettings? = nil, localOnly: Bool = false, keepVideosDays: UInt32? = nil,
-    makeHands: @escaping (TestRun) -> any Hands
+    vision: VisionSettings? = nil, providers: ProviderSettings? = nil,
+    localOnly: Bool = false, keepVideosDays: UInt32? = nil, makeHands: @escaping (TestRun) -> any Hands
   ) {
     self.vision = vision
+    self.providers = providers
     self.localOnly = localOnly
     self.keepVideosDays = keepVideosDays
     self.project = project
@@ -355,7 +358,7 @@ final class TestSession: @unchecked Sendable {
       project: project, test: test, options: RunOptions(
         startAt: request.startAt, retries: request.retries, environment: request.environment, dataRows: request.rows,
         vision: vision,
-        localOnly: localOnly, schedule: request.schedule,
+        localOnly: localOnly, schedule: request.schedule, providers: providers,
         video: request.video ?? .off, keepVideosDays: keepVideosDays),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()

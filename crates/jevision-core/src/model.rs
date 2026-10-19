@@ -220,6 +220,8 @@ pub enum Target {
     Image(String),
     /// A fixed point, in fractions of the window size.
     Point(Point),
+    /// Found by AI: the element described in words, like "the blue Save button".
+    Description(String),
 }
 
 /// A point in fractions (0–1) of the window, from the top-left corner.

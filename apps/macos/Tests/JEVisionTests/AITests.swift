@@ -51,7 +51,7 @@ struct VisionTextTests {
   private let codes = [
     "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
     "run.vision.badKey", "run.vision.unknownModel", "run.vision.rateLimited", "run.vision.serviceError",
-    "run.vision.refused", "run.vision.badAnswer",
+    "run.vision.refused", "run.vision.badAnswer", "run.vision.cannotLocate", "run.vision.modelCannotLocate",
   ]
 
   @Test func everyProblemHasItsOwnWords() {

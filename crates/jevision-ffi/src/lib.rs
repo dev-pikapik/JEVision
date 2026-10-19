@@ -468,6 +468,7 @@ pub struct ElseIf {
 pub enum Target {
     Image(String),
     Point(Point),
+    Description(String),
 }
 
 #[uniffi::remote(Record)]

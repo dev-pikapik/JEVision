@@ -473,6 +473,15 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("image")
         ),
+        "run.target.descriptionNotFound" => format!(
+            "Block {}: “{}” was not found on screen.",
+            p("block"),
+            p("description")
+        ),
+        "run.target.noLocator" => format!(
+            "Block {}: finding an element by its description needs JEV (TypeSafe AI). Set it up in JEVision Settings → AI.",
+            p("block")
+        ),
         "run.reference.missing" => format!(
             "Block {}: reference image {} does not exist.",
             p("block"),
@@ -627,6 +636,13 @@ pub fn describe_vision(f: &Failure) -> String {
                 p("answer")
             )
         }
+        "run.vision.cannotLocate" => {
+            format!("{provider} can't find elements by description; only JEV (TypeSafe AI) can.")
+        }
+        "run.vision.modelCannotLocate" => format!(
+            "The JEV model {} can't find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI.",
+            p("model")
+        ),
         code => code.to_owned(),
     }
 }

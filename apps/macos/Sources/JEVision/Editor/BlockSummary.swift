@@ -33,6 +33,9 @@ enum BlockSummary {
       if let into, case .image(let path) = into, !path.isEmpty {
         return String(localized: "Type \(what) into \(imageName(path))")
       }
+      if let into, case .description(let text) = into, !text.isEmpty {
+        return String(localized: "Type \(what) into \(quoted(text, limit: 40))")
+      }
       return String(localized: "Type \(what)")
     case .pressKeys(let keys, _):
       return keys.isEmpty ? String(localized: "No keys recorded") : String(localized: "Press \(KeyCombo.display(keys))")
@@ -111,6 +114,8 @@ enum BlockSummary {
     switch target {
     case .image(let path): imageName(path)
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
+    case .description(let text):
+      text.isEmpty ? String(localized: "an element described in words") : quoted(text, limit: 40)
     }
   }
 

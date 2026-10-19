@@ -22,8 +22,8 @@ pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{MouseButton, Point};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
-    Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, PixelArea, Provider,
-    Question, TIMEOUT, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
+    Client as VisionClient, Config as VisionConfig, Judgement, Located, MaskedImage, PixelArea,
+    Provider, Question, TIMEOUT, VideoMask, VideoWindow, VisionError, VisionJudge, video_mask,
 };
 pub use report::{
     Attempt, DataRow, Failure, NOTHING_CHECKED, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,

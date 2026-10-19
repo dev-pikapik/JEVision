@@ -5,10 +5,10 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    DataRow, Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point,
-    Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, Screenshot, StepStatus,
-    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe, html,
-    junit_xml, prune_videos,
+    DataRow, Event, Hands, HandsError, Judgement, Located, MaskedImage, MouseButton, Openable,
+    PauseReason, Point, Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner,
+    Screenshot, StepStatus, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge,
+    describe, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -260,6 +260,7 @@ fn run_with(
         events: &sink,
         control,
         vision: None,
+        locator: None,
     };
     let run = runner
         .run(&project.0, Path::new("t.flow.json"), options)
@@ -899,6 +900,7 @@ fn breakpoints_step_mode_and_user_input_pause() {
         events: &sink,
         control: control.clone(),
         vision: None,
+        locator: None,
     };
 
     let pauses = std::thread::scope(|s| {
@@ -1368,6 +1370,7 @@ fn run_judged(project: &Project, hands: &Fake, judge: Option<&Judge>, local_only
         events: &|_: &Event| {},
         control: RunControl::new(),
         vision: judge.map(|j| j as &dyn VisionJudge),
+        locator: None,
     };
     let options = RunOptions {
         local_only,
@@ -1676,6 +1679,7 @@ fn a_pause_shows_the_variables_of_the_block_ahead() {
         events: &sink,
         control: control.clone(),
         vision: None,
+        locator: None,
     };
     let seen = std::thread::scope(|s| {
         let handle = s.spawn(|| {
@@ -1871,4 +1875,147 @@ fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
         "Test file t.flow.json cannot be read: Field \"app\": required, but missing. \
          Block \"a\", field \"colour\": not a known field."
     );
+}
+
+/// Finds every described element in one place, or nowhere, and keeps what it was asked.
+struct Locator {
+    found: Option<jevision_core::Rect>,
+    asked: Mutex<Vec<(String, Vec<u8>)>>,
+}
+
+impl Locator {
+    fn new(found: Option<jevision_core::Rect>) -> Self {
+        Self {
+            found,
+            asked: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+impl VisionJudge for Locator {
+    fn provider(&self) -> &str {
+        "Test Finder"
+    }
+    fn model(&self) -> &str {
+        "finder-1"
+    }
+    fn is_local(&self) -> bool {
+        false
+    }
+    fn judge(&self, _: &Question<'_>) -> Result<Judgement, VisionError> {
+        unreachable!("a locator only finds")
+    }
+    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Option<Located>, VisionError> {
+        self.asked
+            .lock()
+            .unwrap()
+            .push((what.to_owned(), screenshot.png().to_vec()));
+        Ok(self.found.map(|area| Located {
+            area,
+            confidence: 0.9,
+        }))
+    }
+}
+
+fn run_located(project: &Project, hands: &Fake, locator: Option<&dyn VisionJudge>) -> Run {
+    let secrets = secrets();
+    let runner = Runner {
+        hands,
+        secrets: &secrets,
+        events: &|_: &Event| {},
+        control: RunControl::new(),
+        vision: None,
+        locator,
+    };
+    runner
+        .run(&project.0, Path::new("t.flow.json"), &options())
+        .unwrap()
+}
+
+const DESCRIBED: &str = r#""save":{"type":"click","target":{"description":"the blue Save button"},"next":"name"},
+    "name":{"type":"type","text":"Ann","into":{"description":"the name field"}}"#;
+
+#[test]
+fn a_described_element_is_clicked_in_the_middle_of_where_the_model_found_it() {
+    let p = Project::new();
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"hide":[{"x":0,"y":0,"width":0.25,"height":1}]}"#,
+    )
+    .test(DESCRIBED, "save", 0);
+    let hands = Fake::new(png(40, 20, |_, _| [0, 200, 0]));
+    let locator = Locator::new(Some(jevision_core::Rect {
+        x: 0.5,
+        y: 0.25,
+        width: 0.2,
+        height: 0.5,
+    }));
+    let report = run_located(&p, &hands, Some(&locator)).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    // The middle of the box, (0.6, 0.5) of a 40×20 window shot at scale 2, in points.
+    assert_eq!(hands.log(), ["click Left 12 5", "click Left 12 5", "type"]);
+    let asked = locator.asked.lock().unwrap();
+    let what: Vec<&str> = asked.iter().map(|(what, _)| what.as_str()).collect();
+    assert_eq!(what, ["the blue Save button", "the name field"]);
+    let (_, shot) = &asked[0];
+    assert_eq!(size(shot), (40, 20));
+    assert_eq!(pixel(shot, 2, 10), [128, 128, 128]);
+    assert_eq!(pixel(shot, 20, 10), [0, 200, 0]);
+    let step = &report.attempts[0].steps[0];
+    assert!(step.sent.is_some() && step.sent_masked);
+}
+
+#[test]
+fn a_described_element_that_is_not_on_screen_fails_with_its_description() {
+    let p = Project::new();
+    p.test(DESCRIBED, "save", 0);
+    let hands = Fake::new(solid([9, 9, 9]));
+    let report = run_located(&p, &hands, Some(&Locator::new(None))).report;
+    assert_eq!(failure_code(&report), "run.target.descriptionNotFound");
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.param("description"), "the blue Save button");
+    assert_eq!(
+        describe(&failure),
+        "Block save: “the blue Save button” was not found on screen."
+    );
+    assert!(report.attempts[0].steps[0].before.is_some());
+    assert!(hands.log().is_empty());
+}
+
+#[test]
+fn finding_by_description_needs_jev_and_a_cloud_service_allowed() {
+    let p = Project::new();
+    p.test(DESCRIBED, "save", 0);
+    let hands = Fake::new(solid([9, 9, 9]));
+    let report = run_located(&p, &hands, None).report;
+    assert_eq!(failure_code(&report), "run.target.noLocator");
+    assert!(describe(&report.attempts[0].failure.clone().unwrap()).contains("Settings → AI"));
+
+    // A provider other than JEV can't find elements.
+    let other = Judge::says(true);
+    let report = run_located(&p, &hands, Some(&other)).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.cannotLocate");
+    assert_eq!(failure.param("provider"), "Test Vision");
+
+    let secrets = secrets();
+    let locator = Locator::new(None);
+    let runner = Runner {
+        hands: &hands,
+        secrets: &secrets,
+        events: &|_: &Event| {},
+        control: RunControl::new(),
+        vision: None,
+        locator: Some(&locator),
+    };
+    let local_only = RunOptions {
+        local_only: true,
+        ..options()
+    };
+    let report = runner
+        .run(&p.0, Path::new("t.flow.json"), &local_only)
+        .unwrap()
+        .report;
+    assert_eq!(failure_code(&report), "run.vision.cloudBlocked");
+    assert!(locator.asked.lock().unwrap().is_empty());
 }

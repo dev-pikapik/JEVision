@@ -56,14 +56,14 @@ pub fn test_keywords(flow: &Flow) -> String {
                 words.extend(app.as_deref());
             }
             BlockKind::Click { target, .. } => {
-                if let Target::Image(image) = target {
-                    words.push(image);
+                if let Target::Image(text) | Target::Description(text) = target {
+                    words.push(text);
                 }
             }
             BlockKind::Type { text, into, .. } => {
                 words.push(text);
-                if let Some(Target::Image(image)) = into {
-                    words.push(image);
+                if let Some(Target::Image(text) | Target::Description(text)) = into {
+                    words.push(text);
                 }
             }
             BlockKind::PressKeys { keys, .. } => words.push(keys),

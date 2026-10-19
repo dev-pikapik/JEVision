@@ -3,6 +3,7 @@
 //! thread.
 
 use std::fmt;
+use std::sync::{Arc, OnceLock};
 
 use jevision_runner::{Provider, TIMEOUT, VisionClient, VisionConfig, VisionJudge};
 
@@ -31,7 +32,7 @@ pub struct VisionProvider {
 }
 
 /// Which model to ask and how to reach it.
-#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Default, PartialEq, Eq, uniffi::Record)]
 pub struct VisionSettings {
     /// A [`VisionProvider::id`].
     pub provider: String,
@@ -74,6 +75,87 @@ impl VisionSettings {
             },
             TIMEOUT,
         ))
+    }
+}
+
+/// The settings of each provider, asked for only when a block needs that provider, so a run
+/// reads no API key it doesn't need.
+#[uniffi::export(with_foreign)]
+pub trait ProviderSettings: Send + Sync {
+    /// `None` when the provider isn't set up.
+    fn settings(&self, provider: String) -> Option<VisionSettings>;
+}
+
+impl fmt::Debug for dyn ProviderSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ProviderSettings")
+    }
+}
+
+/// One provider's judge, which asks for its settings the first time a check needs more than
+/// its id.
+pub(crate) struct NamedJudge {
+    provider: Provider,
+    source: Arc<dyn ProviderSettings>,
+    client: OnceLock<VisionClient>,
+}
+
+impl NamedJudge {
+    pub(crate) fn new(provider: Provider, source: &Arc<dyn ProviderSettings>) -> Self {
+        Self {
+            provider,
+            source: source.clone(),
+            client: OnceLock::new(),
+        }
+    }
+
+    fn client(&self) -> &VisionClient {
+        self.client.get_or_init(|| {
+            let s = self
+                .source
+                .settings(self.provider.id().to_owned())
+                // Not set up: no key, so a provider that needs one says so.
+                .unwrap_or_else(|| VisionSettings {
+                    model: self.provider.default_model().to_owned(),
+                    pictures: true,
+                    ..VisionSettings::default()
+                });
+            VisionClient::new(
+                VisionConfig {
+                    provider: self.provider,
+                    model: s.model,
+                    address: s.address,
+                    key: s.key,
+                    pictures: s.pictures,
+                },
+                TIMEOUT,
+            )
+        })
+    }
+}
+
+impl VisionJudge for NamedJudge {
+    fn provider(&self) -> &str {
+        self.provider.name()
+    }
+    fn model(&self) -> &str {
+        self.client().model()
+    }
+    fn is_local(&self) -> bool {
+        self.client().is_local()
+    }
+    fn judge(
+        &self,
+        question: &jevision_runner::Question<'_>,
+    ) -> Result<jevision_runner::Judgement, jevision_runner::VisionError> {
+        self.client().judge(question)
+    }
+    fn locate(
+        &self,
+        screenshot: &jevision_runner::MaskedImage,
+        what: &str,
+    ) -> Result<Option<jevision_runner::Located>, jevision_runner::VisionError> {
+        self.client().locate(screenshot, what)
     }
 }
 
@@ -147,8 +229,37 @@ fn failed(client: &VisionClient, e: &jevision_runner::VisionError) -> VisionCall
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+
+    /// Settings that note every provider asked for.
+    #[derive(Default)]
+    pub(crate) struct Asked(pub(crate) std::sync::Mutex<Vec<String>>);
+
+    impl ProviderSettings for Asked {
+        fn settings(&self, provider: String) -> Option<VisionSettings> {
+            self.0.lock().unwrap().push(provider);
+            None
+        }
+    }
+
+    #[test]
+    fn a_named_judge_reads_its_settings_only_when_it_is_used() {
+        let asked = Arc::new(Asked::default());
+        let source: Arc<dyn ProviderSettings> = asked.clone();
+        let jev = NamedJudge::new(Provider::Jev, &source);
+        assert_eq!(jev.provider(), "JEV (TypeSafe AI)");
+        assert!(asked.0.lock().unwrap().is_empty());
+        assert!(!jev.is_local());
+        assert_eq!(jev.model(), Provider::Jev.default_model());
+        // JEV isn't set up: no key, so finding stops before anything is sent.
+        let picture = jevision_runner::MaskedImage::from_png(b"\x89PNG", &[]).unwrap();
+        assert_eq!(
+            jev.locate(&picture, "the Save button"),
+            Err(jevision_runner::VisionError::NoKey)
+        );
+        assert_eq!(*asked.0.lock().unwrap(), ["jev"]);
+    }
 
     fn settings(provider: &str, address: &str, key: Option<&str>) -> VisionSettings {
         VisionSettings {

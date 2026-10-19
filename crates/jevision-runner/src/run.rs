@@ -115,6 +115,9 @@ pub struct Runner<'a> {
     pub control: RunControl,
     /// Judges checks by meaning; without one they fail with `run.compare.meaningUnavailable`.
     pub vision: Option<&'a dyn VisionJudge>,
+    /// Finds elements a test describes in words; without one they fail with
+    /// `run.target.noLocator`.
+    pub locator: Option<&'a dyn VisionJudge>,
 }
 
 /// A finished run: its folder and the report saved there as `report.json`.
@@ -853,7 +856,7 @@ impl Exec<'_> {
                 let app = self.app();
                 self.hands(id, |h| h.activate(&app))?;
                 let before = self.snapshot(step, "before")?;
-                let at = self.locate(t, id, target, before.as_ref())?;
+                let at = self.locate(t, id, target, before.as_ref(), step)?;
                 self.hands(id, |h| h.click(&app, at, *button, *double))?;
                 if *wait_for_change {
                     let before = match before {
@@ -870,7 +873,7 @@ impl Exec<'_> {
                 self.hands(id, |h| h.activate(&app))?;
                 let before = self.snapshot(step, "before")?;
                 if let Some(target) = into {
-                    let at = self.locate(t, id, target, before.as_ref())?;
+                    let at = self.locate(t, id, target, before.as_ref(), step)?;
                     self.hands(id, |h| {
                         h.click(&app, at, jevision_core::MouseButton::Left, false)
                     })?;
@@ -1198,15 +1201,7 @@ impl Exec<'_> {
             Compare::Meaning { expect } => expect.trim(),
             _ => "",
         };
-        if (self.options.local_only || self.local_only) && !judge.is_local() {
-            let mut failure = Failure::new("run.vision.cloudBlocked")
-                .with("block", id)
-                .with("provider", judge.provider());
-            if self.local_only {
-                failure = failure.with("setting", "project");
-            }
-            return Err(fail(failure));
-        }
+        self.allow(id, judge)?;
         let reference = if expect.is_empty() {
             match self.load_reference(t, id, r, shot, strict, cache)? {
                 Ok(loaded) => Some(loaded),
@@ -1246,6 +1241,20 @@ impl Exec<'_> {
             private,
             sent: Some(screenshot),
         }))
+    }
+
+    /// Stops when only models on this computer are allowed and `judge` is not one of them.
+    fn allow(&self, id: &str, judge: &dyn VisionJudge) -> Result<(), Stop> {
+        if (self.options.local_only || self.local_only) && !judge.is_local() {
+            let mut failure = Failure::new("run.vision.cloudBlocked")
+                .with("block", id)
+                .with("provider", judge.provider());
+            if self.local_only {
+                failure = failure.with("setting", "project");
+            }
+            return Err(fail(failure));
+        }
+        Ok(())
     }
 
     /// The reference to compare with; the inner `Err` holds its name when it does not exist.
@@ -1341,10 +1350,11 @@ impl Exec<'_> {
         id: &str,
         target: &Target,
         shot: Option<&Screenshot>,
+        step: &mut Step,
     ) -> Result<Point, Stop> {
         let image = match target {
-            Target::Point(p) => {
-                // The test keeps the point as fractions of the window; hands click in points.
+            Target::Image(image) => image,
+            Target::Point(_) | Target::Description(_) => {
                 let captured;
                 let shot = match shot {
                     Some(shot) => shot,
@@ -1354,12 +1364,19 @@ impl Exec<'_> {
                     }
                 };
                 let window = decode_screenshot(id, shot)?;
+                let at = match target {
+                    Target::Point(p) => *p,
+                    Target::Description(what) => {
+                        self.find_described(id, what, shot, &window, step)?
+                    }
+                    Target::Image(_) => unreachable!("handled above"),
+                };
+                // The test keeps the point as fractions of the window; hands click in points.
                 return Ok(Point {
-                    x: p.x * f64::from(window.width) / shot.scale,
-                    y: p.y * f64::from(window.height) / shot.scale,
+                    x: at.x * f64::from(window.width) / shot.scale,
+                    y: at.y * f64::from(window.height) / shot.scale,
                 });
             }
-            Target::Image(image) => image,
         };
         let dark = dark_variant(image);
         let name = if shot.is_some_and(|s| s.dark) && self.resolve(t, id, &dark)?.exists() {
@@ -1383,6 +1400,40 @@ impl Exec<'_> {
                         .with("image", name),
                 )
             })
+    }
+
+    /// Asks the locator where the element `what` describes is on `shot`, private areas covered;
+    /// returns the centre of it in fractions of the window.
+    fn find_described(
+        &self,
+        id: &str,
+        what: &str,
+        shot: &Screenshot,
+        window: &Image,
+        step: &mut Step,
+    ) -> Result<Point, Stop> {
+        let locator = self
+            .runner
+            .locator
+            .ok_or_else(|| fail(Failure::new("run.target.noLocator").with("block", id)))?;
+        self.allow(id, locator)?;
+        let private = self.private_areas(shot, &[]);
+        let sent = masked(id, window, &private, None)?;
+        let found = locator
+            .locate(&sent, what)
+            .map_err(|e| fail(vision_failure(locator, &e).with("block", id)))?;
+        self.record_sent(step, &sent)?;
+        let area = found.map(|f| f.area).ok_or_else(|| {
+            fail(
+                Failure::new("run.target.descriptionNotFound")
+                    .with("block", id)
+                    .with("description", what.trim()),
+            )
+        })?;
+        Ok(Point {
+            x: area.x + area.width / 2.0,
+            y: area.y + area.height / 2.0,
+        })
     }
 
     /// Copies a file the test opens into the run folder, so the original stays intact.
@@ -1807,7 +1858,17 @@ fn for_model(
     private: &[Rect],
 ) -> Result<MaskedImage, Stop> {
     let covered: Vec<_> = r.ignore.iter().chain(private).copied().collect();
-    MaskedImage::view(image, &covered, r.area.as_ref(), VISION_MAX_SIDE).map_err(|reason| {
+    masked(id, image, &covered, r.area.as_ref())
+}
+
+/// `image` as a vision model gets it: `covered` painted over, cut to `crop`, made small enough.
+fn masked(
+    id: &str,
+    image: &Image,
+    covered: &[Rect],
+    crop: Option<&Rect>,
+) -> Result<MaskedImage, Stop> {
+    MaskedImage::view(image, covered, crop, VISION_MAX_SIDE).map_err(|reason| {
         fail(
             Failure::new("run.screenshot.unreadable")
                 .with("block", id)

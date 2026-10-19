@@ -322,7 +322,7 @@ readable diff.
 | --- | --- | --- |
 | `openApp` | actions | Opens the application under test, or another one by bundle identifier |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
-| `click` | actions | Clicks an image on screen or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
+| `click` | actions | Clicks an image on screen, an element described in words (found by JEV) or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
 | `type` | actions | Types text, optionally into a field found by its image |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
@@ -366,6 +366,10 @@ only and sends nothing anywhere.
 
 - **What is sent.** For each check by meaning: the compared part of the screen, the reference
   image if there is one, and the expected text. Nothing else is sent.
+- **Finding by description.** A `click` or `type` can target an element described in words,
+  like `{ "description": "the blue Save button" }`. JEV finds it on the masked screenshot, so JEV
+  must be set up here even when another provider checks by meaning; it needs model jev-1.14.0 or
+  newer, or jev-latest.
 - **Masking.** Before a picture leaves the Mac, solid grey blocks cover the regions the reference
   hides or ignores, the project's `hide` areas and every password field the Accessibility
   permission lets JEVision find. The report shows the picture exactly as it was sent, marked

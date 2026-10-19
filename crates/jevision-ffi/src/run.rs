@@ -11,7 +11,7 @@ use jevision_runner::{
     VideoMask, VideoMode, VideoWindow, VisionAnswer, VisionJudge,
 };
 
-use crate::vision::VisionSettings;
+use crate::vision::{NamedJudge, ProviderSettings, VisionSettings};
 
 /// Why the operating system layer could not do something.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -178,6 +178,10 @@ pub struct RunOptions {
     /// Name of the schedule that started the run, saved in the report.
     #[uniffi(default = None)]
     pub schedule: Option<String>,
+    /// Settings of the providers that blocks need besides `vision`'s: JEV finds elements a
+    /// test describes in words.
+    #[uniffi(default = None)]
+    pub providers: Option<Arc<dyn ProviderSettings>>,
     /// Whether to record a video of the app, and which videos to keep.
     pub video: VideoMode,
     /// Videos of the project's runs older than this many days are deleted after the run;
@@ -288,12 +292,17 @@ pub(crate) fn run(
     let hands = HandsAdapter(hands);
     let secrets = SecretAdapter(secrets, options.environment.clone());
     let vision = options.vision.and_then(|v| v.client().ok());
+    let locator = options
+        .providers
+        .as_ref()
+        .map(|p| NamedJudge::new(jevision_runner::Provider::Jev, p));
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
         events,
         control,
         vision: vision.as_ref().map(|c| c as &dyn VisionJudge),
+        locator: locator.as_ref().map(|c| c as &dyn VisionJudge),
     };
     let options = jevision_runner::RunOptions {
         start_at: options.start_at,
@@ -1050,11 +1059,20 @@ pub(crate) mod tests {
         }
 
         fn start(&self, run: &TestRun, hands: Arc<Fake>) -> Receiver<Message> {
+            self.start_with(run, hands, RunOptions::default())
+        }
+
+        fn start_with(
+            &self,
+            run: &TestRun,
+            hands: Arc<Fake>,
+            options: RunOptions,
+        ) -> Receiver<Message> {
             let (tx, rx) = channel();
             run.start(
                 path(&self.0),
                 "t.flow.json".into(),
-                RunOptions::default(),
+                options,
                 hands,
                 Arc::new(Secrets),
                 Arc::new(Listener(Mutex::new(tx))),
@@ -1128,6 +1146,23 @@ pub(crate) mod tests {
             .collect();
         assert_eq!(started, ["open", "pw", "go"]);
         assert!(!format!("{events:?}").contains(SECRET));
+    }
+
+    #[test]
+    fn a_run_without_described_elements_never_reads_provider_settings() {
+        let p = Project::new(
+            "providers",
+            r#""open":{"type":"openApp","next":"go"},
+               "go":{"type":"click","target":{"point":{"x":0.5,"y":0.5}}}"#,
+        );
+        let asked = Arc::new(crate::vision::tests::Asked::default());
+        let options = RunOptions {
+            providers: Some(asked.clone()),
+            ..RunOptions::default()
+        };
+        let rx = p.start_with(&TestRun::new(), Arc::new(Fake::default()), options);
+        wait(&rx, Duration::from_secs(10));
+        assert!(asked.0.lock().unwrap().is_empty());
     }
 
     #[test]

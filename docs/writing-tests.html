@@ -291,6 +291,7 @@
 <p>Where on screen a <code>click</code> or the <code>into</code> of a <code>type</code> happens. Exactly one of:</p>
 <ul>
   <li><code>{ "image": "refs/button.png" }</code>: the element that looks like this picture, found on the current screen. This keeps working when the window moves or changes size.</li>
+  <li><code>{ "description": "the blue Save button" }</code>: the element described in words, found on the current screen by JEV (TypeSafe AI) and clicked in its middle. JEV must be set up in Settings → AI, even when another provider checks by meaning; the screenshot is masked before it is sent, as for <a href="checks.html">checks by meaning</a>, and finding needs model jev-1.14.0 or newer, or jev-latest.</li>
   <li><code>{ "point": { "x": 0.5, "y": 0.2 } }</code>: a fixed point, in fractions of the window from its top-left corner. <code>x</code> and <code>y</code> go from 0 to 1.</li>
 </ul>
 

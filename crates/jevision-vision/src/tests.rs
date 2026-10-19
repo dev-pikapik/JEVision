@@ -515,3 +515,113 @@ fn local_providers_list_models_that_see() {
     );
     assert!(server.requests.lock().unwrap()[0].starts_with("GET /v1/models "));
 }
+
+#[test]
+fn jev_finds_an_element_by_description() {
+    let found = fixture("jev-box.json");
+    let absent = found.replace("0.97", "0.2");
+    let server = serve(vec![(200, found), (200, absent)]);
+    let c = client(Provider::Jev, &server.address);
+    let located = c
+        .locate(&SHOT_PICTURE, " the blue Save button ")
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        located.area,
+        Rect {
+            x: 0.5,
+            y: 0.25,
+            width: 0.7 - 0.5,
+            height: 0.5,
+        }
+    );
+    assert_eq!(located.confidence, 0.92);
+    // A box always comes back; whether the element is there is a question of its own.
+    assert_eq!(
+        c.locate(&SHOT_PICTURE, "the blue Save button").unwrap(),
+        None
+    );
+
+    let sent = server.requests.lock().unwrap()[0].clone();
+    assert!(sent.starts_with("POST /v1/systemone "));
+    let lower = sent.to_ascii_lowercase();
+    assert!(lower.contains(&format!(
+        "authorization: bearer {}",
+        KEY.to_ascii_lowercase()
+    )));
+    assert!(lower.contains("typesafe-danger-zone-images: true"));
+    let body: Value = serde_json::from_str(&sent[sent.find("\r\n\r\n").unwrap() + 4..]).unwrap();
+    assert_eq!(images(&body), [SHOT]);
+    assert_eq!(body["questions"]["visible"]["type"], "noul");
+    assert_eq!(body["questions"]["where"]["type"], "box");
+    for question in ["visible", "where"] {
+        let instructions = body["questions"][question]["instructions"]
+            .as_str()
+            .unwrap();
+        assert!(instructions.contains(JEV_SCREENSHOT), "{instructions}");
+        assert!(
+            instructions.contains("in the screenshot jevision-screenshot: the blue Save button")
+        );
+    }
+    assert!(body["questions"]["where"].get("criteria").is_none());
+}
+
+#[test]
+fn a_box_on_the_padding_of_a_long_screenshot_is_off_the_screen() {
+    let fill = (0.5, 1.0);
+    let answer = |left: f64, right: f64| {
+        format!(
+            r#"{{"answers": {{"visible": {{"noul": 0.9}}, "where": {{"box": {{"top": 0.1, "bottom": 0.3, "left": {left}, "right": {right}}}}}}}}}"#
+        )
+    };
+    let inside = located(&answer(0.1, 0.4), fill).unwrap().unwrap();
+    assert_eq!(inside.area.x, 0.2);
+    assert!((inside.area.width - 0.6).abs() < 1e-9);
+    assert_eq!(inside.confidence, 0.9);
+    assert_eq!(located(&answer(0.6, 0.9), fill).unwrap(), None);
+    assert!(matches!(
+        located(&answer(0.4, 0.1), fill),
+        Err(VisionError::BadAnswer { .. })
+    ));
+}
+
+#[test]
+fn only_jev_finds_elements_and_only_from_version_1_14() {
+    for provider in Provider::ALL.into_iter().filter(|p| *p != Provider::Jev) {
+        let c = Client::new(
+            config(provider, "http://127.0.0.1:9"),
+            Duration::from_secs(1),
+        );
+        assert_eq!(
+            c.locate(&SHOT_PICTURE, "the Save button"),
+            Err(VisionError::CannotLocate)
+        );
+    }
+    let locate = |c: Config| {
+        Client::new(c, Duration::from_secs(1))
+            .locate(&SHOT_PICTURE, "the Save button")
+            .unwrap_err()
+    };
+    let jev = |model: &str| Config {
+        model: model.into(),
+        ..config(Provider::Jev, "http://127.0.0.1:9")
+    };
+    assert_eq!(locate(jev("jev-1.13.0")), VisionError::ModelCannotLocate);
+    for model in ["jev-1.14.0", "jev-2.0.1", "jev-latest", "jev-preview"] {
+        assert!(jev_locates(model), "{model}");
+    }
+    assert_eq!(
+        locate(Config {
+            pictures: false,
+            ..jev("jev-latest")
+        }),
+        VisionError::NoPictures
+    );
+    assert_eq!(
+        locate(Config {
+            key: None,
+            ..jev("jev-latest")
+        }),
+        VisionError::NoKey
+    );
+}

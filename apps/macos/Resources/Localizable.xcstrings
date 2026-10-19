@@ -2079,6 +2079,56 @@
         }
       }
     },
+    "By Description" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По описанию"
+          }
+        }
+      }
+    },
+    "Element" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемент"
+          }
+        }
+      }
+    },
+    "The blue Save button" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синяя кнопка «Сохранить»"
+          }
+        }
+      }
+    },
+    "JEV finds it on the screen. Set up JEV in Settings → AI." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEV найдёт его на экране. Настройте JEV в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "an element described in words" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "элемент по описанию"
+          }
+        }
+      }
+    },
     "By Meaning" : {
       "localizations" : {
         "ru" : {
@@ -14346,6 +14396,38 @@
         }
       }
     },
+    "run.target.descriptionNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» не найден на экране."
+          }
+        }
+      }
+    },
+    "run.target.noLocator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: finding an element by its description needs JEV (TypeSafe AI). Set it up in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: чтобы найти элемент по описанию, нужен JEV (TypeSafe AI). Настройте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.test.invalid" : {
       "localizations" : {
         "en" : {
@@ -14406,6 +14488,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ дал ответ, который JEVision не может прочитать: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.cannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t find elements by description; only JEV (TypeSafe AI) can. Set up JEV in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не умеет находить элементы по описанию — это умеет только JEV (TypeSafe AI). Настройте JEV в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.modelCannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The JEV model “%@” can’t find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель JEV «%@» не умеет находить элементы по описанию — это умеют jev-1.14.0 и новее или jev-latest. Выберите такую в Настройках → ИИ."
           }
         }
       }
