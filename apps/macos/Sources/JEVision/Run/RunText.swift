@@ -169,7 +169,7 @@ enum RunText {
 
   static func needsAISetup(_ failure: Failure) -> Bool {
     [
-      "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noModel", "run.vision.noKey",
+      "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey",
       "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
     ].contains(failure.code)
   }
@@ -245,6 +245,12 @@ enum VisionText {
     let p = { (name: String) in failure.params[name] ?? "" }
     let provider = p("provider")
     switch failure.code {
+    case "run.vision.noPictures":
+      return String(
+        localized: "run.vision.noPictures",
+        defaultValue:
+          "The AI model for \(provider) doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+      )
     case "run.vision.noModel":
       return String(localized: "run.vision.noModel", defaultValue: "No model is chosen for \(provider). Choose one in Settings → AI.")
     case "run.vision.noKey":

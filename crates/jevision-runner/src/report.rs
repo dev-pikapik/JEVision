@@ -698,6 +698,9 @@ pub fn describe_vision(f: &Failure) -> String {
     let p = |name| f.param(name);
     let provider = p("provider");
     match f.code.as_str() {
+        "run.vision.noPictures" => format!(
+            "The AI model for {provider} doesn't understand pictures, so it can't check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+        ),
         "run.vision.noModel" => format!("No model is chosen for {provider}."),
         "run.vision.noKey" => format!("The API key for {provider} is not set."),
         "run.vision.badAddress" => format!(
