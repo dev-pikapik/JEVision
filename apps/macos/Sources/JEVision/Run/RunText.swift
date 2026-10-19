@@ -55,6 +55,8 @@ enum RunText {
       return String(localized: "Block “\(block)”: \(VisionText.failure(failure))")
     case "run.click.noChange":
       return String(localized: "run.click.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after the click.")
+    case "run.action.noChange":
+      return String(localized: "run.action.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after this step.")
     case "run.waitFor.timeout" where p("target") == "screenStable":
       return String(localized: "run.waitFor.timeout.screenStable", defaultValue: "Block “\(block)”: the screen didn’t settle within \(p("seconds")) s.")
     case "run.waitFor.timeout":
@@ -129,7 +131,7 @@ enum RunText {
 
   static func needsAISetup(_ failure: Failure) -> Bool {
     [
-      "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noModel", "run.vision.noKey",
+      "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey",
       "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
     ].contains(failure.code)
   }
@@ -149,7 +151,8 @@ enum RunText {
   static func batchOutcome(_ result: RunCenter.BatchResult) -> String {
     var counts = [String(localized: "Passed: \(result.passed)"), String(localized: "Failed: \(result.failed)")]
     if result.quarantined > 0 { counts.append(String(localized: "Failed in quarantine: \(result.quarantined)")) }
-    let notRun = result.total - result.passed - result.failed - result.quarantined
+    if result.unchecked > 0 { counts.append(String(localized: "Nothing checked: \(result.unchecked)")) }
+    let notRun = result.total - result.passed - result.failed - result.quarantined - result.unchecked
     if notRun > 0 { counts.append(String(localized: "Not run: \(notRun)")) }
     let summary = counts.joined(separator: " · ")
     return result.stopped
@@ -173,6 +176,9 @@ enum RunText {
       return String(localized: "\(RunChoices.rowTitle(number: Int(row.number), label: row.label)): \(text)")
     case .passed:
       let time = RunHistory.duration(report.durationMs)
+      if report.nothingChecked {
+        return String(localized: "Finished in \(time), but nothing was checked: the test has no Check block, so it can’t catch a wrong result.")
+      }
       if report.flaky {
         let tries = report.attempts.count
         return String(localized: "Passed on try \(tries), so the test is flaky: it failed before that.")
@@ -192,6 +198,12 @@ enum VisionText {
     let p = { (name: String) in failure.params[name] ?? "" }
     let provider = p("provider")
     switch failure.code {
+    case "run.vision.noPictures":
+      return String(
+        localized: "run.vision.noPictures",
+        defaultValue:
+          "The AI model for \(provider) doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+      )
     case "run.vision.noModel":
       return String(localized: "run.vision.noModel", defaultValue: "No model is chosen for \(provider). Choose one in Settings → AI.")
     case "run.vision.noKey":

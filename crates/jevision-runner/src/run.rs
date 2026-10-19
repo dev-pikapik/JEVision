@@ -202,6 +202,7 @@ impl Runner<'_> {
             verdict: Verdict::Failed,
             flaky: false,
             baselines_created: Vec::new(),
+            nothing_checked: true,
             requested_by: options.requested_by.clone(),
             schedule: options.schedule.clone(),
             environment: options.environment.clone(),
@@ -329,12 +330,14 @@ impl Runner<'_> {
                             apps: Vec::new(),
                             launched: Vec::new(),
                             baselines: Vec::new(),
+                            checked: false,
                             video,
                             local_only,
                             hide: &hide,
                             display_scale: &display_scale,
                         };
-                        let (mut attempt, opened, baselines) = exec.run(&root, &start);
+                        let (mut attempt, opened, baselines, checked) = exec.run(&root, &start);
+                        report.nothing_checked &= !checked;
                         attempt.row = data_row.clone();
                         launched = opened;
                         report.baselines_created.extend(baselines);
@@ -359,6 +362,7 @@ impl Runner<'_> {
         }
 
         (report.verdict, report.flaky) = summarize(&report.attempts);
+        report.nothing_checked &= report.verdict == Verdict::Passed;
         report.duration_ms = millis(clock.elapsed());
         report.display_scale = display_scale.get();
         let path = dir.join("report.json");
@@ -674,6 +678,9 @@ struct Exec<'r> {
     apps: Vec<String>,
     launched: Vec<String>,
     baselines: Vec<String>,
+    /// A block that looks at the screen ran to the end: a check, or a wait for something to
+    /// appear or disappear.
+    checked: bool,
     /// When the run's video started, if one is being recorded.
     video: Option<Instant>,
     /// The project allows only AI models on this computer.
@@ -685,7 +692,7 @@ struct Exec<'r> {
 }
 
 impl Exec<'_> {
-    fn run(mut self, root: &TestFile, start: &str) -> (Attempt, Vec<String>, Vec<String>) {
+    fn run(mut self, root: &TestFile, start: &str) -> (Attempt, Vec<String>, Vec<String>, bool) {
         let clock = Instant::now();
         self.tests.push(root.path.clone());
         self.apps.push(root.flow.app.clone());
@@ -703,7 +710,7 @@ impl Exec<'_> {
             row: None,
             steps: self.steps,
         };
-        (attempt, self.launched, self.baselines)
+        (attempt, self.launched, self.baselines, self.checked)
     }
 
     /// Runs blocks from `from` along their edges until a block has nowhere to go or the chain
@@ -765,7 +772,10 @@ impl Exec<'_> {
             sent_masked: false,
         };
         let result = match self.perform(t, &block.kind, &mut step) {
-            Ok(next) => Ok(next),
+            Ok(next) => {
+                self.checked |= block.kind.checks_screen();
+                Ok(next)
+            }
             Err(Stop::Cancelled) => {
                 step.status = StepStatus::Cancelled;
                 Err(Stop::Cancelled)
@@ -846,11 +856,63 @@ impl Exec<'_> {
                 let at = self.locate(t, id, target, before.as_ref())?;
                 self.hands(id, |h| h.click(&app, at, *button, *double))?;
                 if *wait_for_change {
-                    let before = match before {
-                        Some(shot) => shot,
-                        None => self.capture(id)?,
-                    };
-                    self.wait_for_change(id, &before)?;
+                    self.wait_for_change(id, before, "run.click.noChange")?;
+                }
+                self.snapshot(step, "after")?;
+                Ok(next.clone())
+            }
+            BlockKind::Hover {
+                target,
+                wait_for_change,
+                next,
+            } => {
+                let app = self.app();
+                self.hands(id, |h| h.activate(&app))?;
+                let before = self.snapshot(step, "before")?;
+                let at = self.locate(t, id, target, before.as_ref())?;
+                self.hands(id, |h| h.hover(&app, at))?;
+                if *wait_for_change {
+                    self.wait_for_change(id, before, "run.action.noChange")?;
+                }
+                self.snapshot(step, "after")?;
+                Ok(next.clone())
+            }
+            BlockKind::Drag {
+                from,
+                to,
+                wait_for_change,
+                next,
+            } => {
+                let app = self.app();
+                self.hands(id, |h| h.activate(&app))?;
+                let before = self.snapshot(step, "before")?;
+                // Both ends are found on the screen as it is before anything moves.
+                let start = self.locate(t, id, from, before.as_ref())?;
+                let end = self.locate(t, id, to, before.as_ref())?;
+                let path = drag_path(start, end);
+                self.hands(id, |h| h.drag(&app, &path))?;
+                if *wait_for_change {
+                    self.wait_for_change(id, before, "run.action.noChange")?;
+                }
+                self.snapshot(step, "after")?;
+                Ok(next.clone())
+            }
+            BlockKind::Scroll {
+                direction,
+                amount,
+                unit,
+                at,
+                wait_for_change,
+                next,
+            } => {
+                let app = self.app();
+                self.hands(id, |h| h.activate(&app))?;
+                let before = self.snapshot(step, "before")?;
+                let middle = Target::Point(Point { x: 0.5, y: 0.5 });
+                let at = self.locate(t, id, at.as_ref().unwrap_or(&middle), before.as_ref())?;
+                self.hands(id, |h| h.scroll(&app, at, *direction, *amount, *unit))?;
+                if *wait_for_change {
+                    self.wait_for_change(id, before, "run.action.noChange")?;
                 }
                 self.snapshot(step, "after")?;
                 Ok(next.clone())
@@ -1013,8 +1075,28 @@ impl Exec<'_> {
             WaitUntil::Appears(r) | WaitUntil::Disappears(r) => {
                 let want = matches!(until, WaitUntil::Appears(_));
                 let mut cache = None;
+                // The screen a vision model last judged and its verdict: an unchanged screen
+                // gets the same answer, so it is not paid for again.
+                let mut asked: Option<(Image, bool)> = None;
                 let reached = self.poll(id, timeout, || {
                     let shot = self.capture(id)?;
+                    if let Some((seen, passed)) = &asked {
+                        let image = decode_screenshot(id, &shot)?;
+                        let skip: Vec<_> = r
+                            .ignore
+                            .iter()
+                            .chain(&self.private_areas(&shot, &r.hide))
+                            .copied()
+                            .collect();
+                        if image
+                            .compare(seen, r.area.as_ref(), &skip, 0)
+                            .is_ok_and(|c| c.differing == 0)
+                        {
+                            let passed = *passed;
+                            last = Some(shot);
+                            return Ok((passed == want).then_some(()));
+                        }
+                    }
                     let passed = match self.evaluate(t, id, r, &shot, false, &mut cache) {
                         Ok(e) => {
                             let e = e.map_err(|name| missing_reference(id, &name))?;
@@ -1022,6 +1104,7 @@ impl Exec<'_> {
                             if let Judged::Model(answer) = e.judged {
                                 step.vision = Some(answer);
                                 sent = e.sent;
+                                asked = Some((e.actual, e.passed));
                             }
                             e.passed
                         }
@@ -1078,8 +1161,19 @@ impl Exec<'_> {
         Ok(())
     }
 
-    fn wait_for_change(&self, id: &str, before: &Screenshot) -> Result<(), Stop> {
-        let before = decode_screenshot(id, before)?;
+    /// Waits until the screen differs from `before`, the look before the action, or from the
+    /// look now when there was none; fails with `code` when it does not change in time.
+    fn wait_for_change(
+        &self,
+        id: &str,
+        before: Option<Screenshot>,
+        code: &str,
+    ) -> Result<(), Stop> {
+        let before = match before {
+            Some(shot) => shot,
+            None => self.capture(id)?,
+        };
+        let before = decode_screenshot(id, &before)?;
         let timeout = Duration::from_millis(DEFAULT_WAIT_TIMEOUT_MS);
         let changed = self.poll(id, timeout, || {
             let now = decode_screenshot(id, &self.capture(id)?)?;
@@ -1090,7 +1184,7 @@ impl Exec<'_> {
         })?;
         changed.map(|_| ()).ok_or_else(|| {
             fail(
-                Failure::new("run.click.noChange")
+                Failure::new(code)
                     .with("block", id)
                     .with("seconds", seconds(DEFAULT_WAIT_TIMEOUT_MS)),
             )
@@ -1684,6 +1778,27 @@ impl Exec<'_> {
             *value = self.mask(value);
         }
     }
+}
+
+/// Most points a drag moves between two steps of its path, so apps see the pointer travel.
+const DRAG_STEP: f64 = 12.0;
+/// Fewest and most steps of a drag, however short or long it is.
+const DRAG_STEPS: RangeInclusive<u32> = 4..=60;
+
+/// Where a drag passes, in points: `from`, evenly spaced places on the straight line, `to`.
+fn drag_path(from: Point, to: Point) -> Vec<Point> {
+    let distance = (to.x - from.x).hypot(to.y - from.y);
+    let steps =
+        ((distance / DRAG_STEP).ceil() as u32).clamp(*DRAG_STEPS.start(), *DRAG_STEPS.end());
+    (0..=steps)
+        .map(|i| {
+            let share = f64::from(i) / f64::from(steps);
+            Point {
+                x: from.x + (to.x - from.x) * share,
+                y: from.y + (to.y - from.y) * share,
+            }
+        })
+        .collect()
 }
 
 fn hands_failure(id: &str, e: HandsError) -> Failure {

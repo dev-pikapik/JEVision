@@ -31,6 +31,10 @@ pub struct RunReport {
     /// References saved by this run because they did not exist, relative to the project folder.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub baselines_created: Vec<String>,
+    /// The run passed, but no block looked at the screen — no check, no wait for something to
+    /// appear or disappear — so it couldn't have caught a wrong result.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub nothing_checked: bool,
     /// Name of the paired device that started the run from afar, such as `Anna's iPhone`;
     /// absent for a run started on this computer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -69,6 +73,12 @@ impl RunReport {
     /// The run failed while the test was in quarantine, so it doesn't fail a batch of runs.
     pub fn is_quarantined_failure(&self) -> bool {
         self.quarantined && self.verdict == Verdict::Failed
+    }
+
+    /// Reported as skipped rather than passed: the run was cancelled, failed in quarantine or
+    /// passed without checking anything.
+    fn is_skipped(&self) -> bool {
+        self.verdict == Verdict::Cancelled || self.is_quarantined_failure() || self.nothing_checked
     }
 
     /// Where the run ran, for the report's header: `Virtual machine` or `Physical Mac`, then the
@@ -495,6 +505,11 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("seconds")
         ),
+        "run.action.noChange" => format!(
+            "Block {}: the screen did not change within {} s after this step.",
+            p("block"),
+            p("seconds")
+        ),
         "run.waitFor.timeout" => format!(
             "Block {}: {} did not happen within {} s.",
             p("block"),
@@ -584,6 +599,9 @@ pub fn describe_vision(f: &Failure) -> String {
     let p = |name| f.param(name);
     let provider = p("provider");
     match f.code.as_str() {
+        "run.vision.noPictures" => format!(
+            "The AI model for {provider} doesn't understand pictures, so it can't check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+        ),
         "run.vision.noModel" => format!("No model is chosen for {provider}."),
         "run.vision.noKey" => format!("The API key for {provider} is not set."),
         "run.vision.badAddress" => format!(
@@ -625,29 +643,28 @@ fn wait_target(target: &str) -> String {
     }
 }
 
+/// Why a run that passed without looking at the screen isn't a pass, in English.
+pub const NOTHING_CHECKED: &str = "Finished, but nothing was checked: the test has no check or wait block that looks at the screen, so it can't catch a wrong result.";
+
 /// JUnit XML for one or more runs, one test case each. Retries use the Surefire elements
 /// `flakyFailure` (failed, then passed) and `rerunFailure` (failed again). A failure of a test
-/// in quarantine is reported as skipped, with the reason and the failure in its message.
+/// in quarantine is reported as skipped, with the reason and the failure in its message, and so
+/// is a run that passed without checking anything, so CI doesn't count it as a pass.
 pub fn junit_xml(reports: &[RunReport]) -> String {
     let reports: Vec<RunReport> = reports.iter().flat_map(RunReport::split_rows).collect();
-    let count = |v: Verdict| {
-        reports
-            .iter()
-            .filter(|r| r.verdict == v && !r.is_quarantined_failure())
-            .count()
-    };
-    let quarantined = reports
+    let failed = reports
         .iter()
-        .filter(|r| r.is_quarantined_failure())
+        .filter(|r| r.verdict == Verdict::Failed && !r.is_quarantined_failure())
         .count();
+    let skipped = reports.iter().filter(|r| r.is_skipped()).count();
     let seconds = |ms: u64| format!("{:.3}", ms as f64 / 1000.0);
     let total: u64 = reports.iter().map(|r| r.duration_ms).sum();
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     let head = format!(
         "name=\"JEVision\" tests=\"{}\" failures=\"{}\" errors=\"0\" skipped=\"{}\" time=\"{}\"",
         reports.len(),
-        count(Verdict::Failed),
-        count(Verdict::Cancelled) + quarantined,
+        failed,
+        skipped,
         seconds(total)
     );
     let _ = writeln!(out, "<testsuites {head}>");
@@ -676,7 +693,11 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             .flat_map(|a| &a.steps)
             .filter_map(|s| Some(format!("{}: {}", s.block, s.branch_text()?)))
             .collect();
-        if r.verdict == Verdict::Passed && failures.is_empty() && paths.is_empty() {
+        if r.verdict == Verdict::Passed
+            && !r.nothing_checked
+            && failures.is_empty()
+            && paths.is_empty()
+        {
             out.push_str("/>\n");
             continue;
         }
@@ -704,9 +725,14 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
                     xml(&format!("Quarantined{reason}. {failed}"))
                 );
             }
-            Verdict::Passed => failures
-                .iter()
-                .for_each(|f| element(&mut out, "flakyFailure", f)),
+            Verdict::Passed => {
+                if r.nothing_checked {
+                    let _ = writeln!(out, "      <skipped message=\"{NOTHING_CHECKED}\"/>");
+                }
+                failures
+                    .iter()
+                    .for_each(|f| element(&mut out, "flakyFailure", f));
+            }
             Verdict::Failed => match failures.split_last() {
                 Some((last, earlier)) => {
                     element(&mut out, "failure", last);
@@ -740,6 +766,7 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
 pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     let mut o = String::new();
     let (badge, label) = match (report.verdict, report.flaky) {
+        (Verdict::Passed, _) if report.nothing_checked => ("skip", "Nothing checked"),
         (Verdict::Passed, false) => ("pass", "Passed"),
         (Verdict::Passed, true) => ("flaky", "Passed, flaky"),
         (Verdict::Failed, _) if report.quarantined => ("skip", "Failed, quarantined"),
@@ -774,6 +801,9 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
         duration = duration(report.duration_ms),
         attempts = report.attempts.len(),
     );
+    if report.nothing_checked {
+        let _ = writeln!(o, "<p class=\"note\">{NOTHING_CHECKED}</p>");
+    }
     let rows = report.rows();
     if rows.is_empty() {
         if let Some(verdict) = RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())

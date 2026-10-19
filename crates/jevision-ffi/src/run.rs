@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{MouseButton, Point, Rect};
+use jevision_core::{MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
     VideoMask, VideoMode, VideoWindow, VisionAnswer, VisionJudge,
@@ -88,6 +88,21 @@ pub trait Hands: Send + Sync {
         at: Point,
         button: MouseButton,
         double_click: bool,
+    ) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and leaves it there.
+    fn hover(&self, app: String, at: Point) -> Result<(), HandsError>;
+    /// Presses the left button at the first point of `path`, moves through the others holding
+    /// it down, and lets go at the last, even when the run is cancelled on the way.
+    fn drag(&self, app: String, path: Vec<Point>) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
+    /// brings what is further down into sight.
+    fn scroll(
+        &self,
+        app: String,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
     ) -> Result<(), HandsError>;
     /// The text may hold secret values: never log it.
     fn type_text(&self, text: String) -> Result<(), HandsError>;
@@ -395,6 +410,25 @@ impl jevision_runner::Hands for HandsAdapter {
         Ok(self.0.click(app.to_owned(), at, button, double)?)
     }
 
+    fn hover(&self, app: &str, at: Point) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.hover(app.to_owned(), at)?)
+    }
+
+    fn drag(&self, app: &str, path: &[Point]) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.drag(app.to_owned(), path.to_vec())?)
+    }
+
+    fn scroll(
+        &self,
+        app: &str,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.scroll(app.to_owned(), at, direction, amount, unit)?)
+    }
+
     fn type_text(&self, text: &str) -> Result<(), jevision_runner::HandsError> {
         Ok(self.0.type_text(text.to_owned())?)
     }
@@ -589,6 +623,10 @@ pub struct RunReport {
     pub verdict: Verdict,
     pub flaky: bool,
     pub baselines_created: Vec<String>,
+    /// The run passed, but no block looked at the screen, so it couldn't have caught a wrong
+    /// result.
+    #[uniffi(default = false)]
+    pub nothing_checked: bool,
     /// Name of the paired device that started the run from afar; `None` for a run started on
     /// this Mac.
     #[uniffi(default = None)]
@@ -679,6 +717,7 @@ impl From<jevision_runner::RunReport> for RunReport {
             verdict: r.verdict,
             flaky: r.flaky,
             baselines_created: r.baselines_created,
+            nothing_checked: r.nothing_checked,
             requested_by: r.requested_by,
             schedule: r.schedule,
             environment: r.environment,
@@ -964,6 +1003,22 @@ pub(crate) mod tests {
             Ok(None)
         }
         fn click(&self, _: String, _: Point, _: MouseButton, _: bool) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn drag(&self, _: String, _: Vec<Point>) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn scroll(
+            &self,
+            _: String,
+            _: Point,
+            _: ScrollDirection,
+            _: u32,
+            _: ScrollUnit,
+        ) -> Result<(), HandsError> {
             Ok(())
         }
         fn type_text(&self, text: String) -> Result<(), HandsError> {

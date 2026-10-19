@@ -174,6 +174,7 @@ mod tests {
             verdict: attempts.last().map_or(Verdict::Failed, |a| a.0),
             flaky: false,
             baselines_created: Vec::new(),
+            nothing_checked: false,
             requested_by: None,
             schedule: None,
             environment: None,

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import JEVisionCore
 import Testing
@@ -55,6 +56,74 @@ struct BlockSummaryTests {
     #expect(BlockSummary.secretName("${secret.X_1}") == "X_1")
     #expect(BlockSummary.secretName("pass ${secret.X}") == nil)
   }
+
+  @Test func describesPointerBlocks() {
+    #expect(summary(.hover(target: .image(""), waitForChange: false, next: nil)) == "Choose what to point at")
+    #expect(summary(.hover(target: .image("refs/help-icon.png"), waitForChange: false, next: nil)) == "Point at “help icon”")
+    #expect(summary(.drag(from: .image("refs/file.png"), to: .image(""), waitForChange: false, next: nil)) == "Choose what to drag and where")
+    #expect(
+      summary(.drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), waitForChange: false, next: nil))
+        == "Drag “file” to “trash bin”")
+    #expect(summary(.scroll(direction: .down, amount: 5, unit: .lines, at: nil, waitForChange: false, next: nil)) == "Scroll down 5 lines")
+    #expect(summary(.scroll(direction: .up, amount: 3, unit: .lines, at: .image(""), waitForChange: false, next: nil)) == "Scroll up 3 lines")
+    #expect(
+      summary(.scroll(direction: .right, amount: 240, unit: .pixels, at: .image("refs/list.png"), waitForChange: false, next: nil))
+        == "Scroll right 240 px over “list”")
+  }
+}
+
+/// The pointer blocks are in the editor like any other: named, drawn, found, and their problems
+/// shown next to the setting they are about.
+@MainActor
+struct PointerBlockTests {
+  @Test func everyBlockHasANameASymbolAndWords() {
+    for spec in BlockInfo.catalog {
+      #expect(BlockInfo.title(spec.typeName) != spec.typeName, "\(spec.typeName) has a title")
+      #expect(NSImage(systemSymbolName: BlockInfo.symbol(spec.typeName), accessibilityDescription: nil) != nil)
+      #expect(BlockInfo.symbol(spec.typeName) != "square.dashed", "\(spec.typeName) has its own symbol")
+      #expect(!BlockInfo.explanation(spec.typeName).isEmpty && !BlockInfo.tagline(spec.typeName).isEmpty)
+    }
+    let actions = BlockInfo.catalog.filter { $0.group == .actions }.map(\.typeName)
+    #expect(["hover", "drag", "scroll"].allSatisfy(actions.contains))
+    for type in ["hover", "drag", "scroll"] {
+      let flow = try! loadFlow(json: #"{"format":1,"name":"T","app":"com.apple.TextEdit","start":"a","blocks":{"a":{"type":"pressKeys","keys":"a"}}}"#)
+      let kind = insertBlock(flow: flow, typeName: type, slot: nil)?.flow.blocks.first { $0.id != "a" }?.kind
+      #expect(kind?.typeName == type)
+    }
+  }
+
+  @Test func paletteFindsThemByWhatTheyDo() {
+    #expect(PaletteChoice.search("hover").first == .block("hover"))
+    #expect(PaletteChoice.search("tooltip").first == .block("hover"))
+    #expect(PaletteChoice.search("drag").first == .block("drag"))
+    #expect(PaletteChoice.search("drop").first == .block("drag"))
+    #expect(PaletteChoice.search("scroll").first == .block("scroll"))
+    #expect(PaletteChoice.search("wheel").first == .block("scroll"))
+  }
+
+  @Test func problemsShowNextToTheirSetting() throws {
+    let flow = try loadFlow(
+      json: #"""
+        {"format":1,"name":"T","app":"com.apple.TextEdit","start":"h","blocks":{
+          "h":{"type":"hover","target":{"point":{"x":2,"y":0.5}},"next":"d"},
+          "d":{"type":"drag","from":{"image":"refs/a.png"},"to":{"image":"refs/a.png"},"next":"s"},
+          "s":{"type":"scroll","direction":"down","amount":0,"at":{"image":"/abs.png"}}}}
+        """#)
+    let issues = validateFlow(flow: flow)
+    for id in ["h", "d", "s"] {
+      let kind = try #require(flow.blocks.first { $0.id == id }?.kind)
+      let fields = InspectorView.fields(of: kind)
+      let mine = issues.filter { $0.param("block") == id }
+      #expect(!mine.isEmpty, "\(id) has a problem")
+      for issue in mine {
+        let field = issue.param("field")?.split(separator: ".").first.map(String.init) ?? ""
+        #expect(fields.contains(field), "\(issue.code) on \(field) shows next to its setting")
+        #expect(IssueText.fieldLabel(field) != nil, "\(field) has a name in lists of problems")
+      }
+    }
+    #expect(issues.contains { $0.code == "flow.drag.samePlace" && $0.param("field") == "to" })
+    #expect(IssueText.message(issues.first { $0.code == "flow.drag.samePlace" }!).contains("drop"))
+  }
 }
 
 struct KeyComboTests {
@@ -65,11 +134,18 @@ struct KeyComboTests {
   }
 
   @Test func recordsKeysInFileOrder() {
-    #expect(KeyCombo.from(keyCode: 1, characters: "s", modifierFlags: [.shift, .command]) == "cmd+shift+s")
-    #expect(KeyCombo.from(keyCode: 36, characters: "\r", modifierFlags: []) == "return")
-    #expect(KeyCombo.from(keyCode: 96, characters: nil, modifierFlags: [.control]) == "ctrl+f5")
-    #expect(KeyCombo.from(keyCode: 0, characters: "é", modifierFlags: []) == nil)
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.shift, .command]) == "cmd+shift+s")
+    #expect(KeyCombo.from(keyCode: 36, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 76, modifierFlags: []) == "return")
+    #expect(KeyCombo.from(keyCode: 96, modifierFlags: [.control]) == "ctrl+f5")
+    #expect(KeyCombo.from(keyCode: 10, modifierFlags: []) == nil)
   }
+
+  /// On a Russian layout ⌘S types "ы"; the shortcut is still recorded as the key's place.
+  @Test func recordsShortcutsTheSameOnEveryLayout() {
+    #expect(KeyCombo.from(keyCode: 1, modifierFlags: [.command]) == "cmd+s")
+    #expect(KeyCombo.from(keyCode: 45, modifierFlags: [.command]) == "cmd+n")
+    #expect(KeyCombo.from(keyCode: 43, modifierFlags: [.command]) == "cmd+,")  }
 }
 
 struct RelativePathTests {

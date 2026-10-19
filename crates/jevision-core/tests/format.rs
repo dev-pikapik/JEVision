@@ -10,7 +10,10 @@ const ALL_BLOCKS: &str = r#"{
     "launch": { "next": "doc", "type": "openApp", "app": "com.apple.TextEdit" },
     "doc": { "type": "openFile", "files": ["fixtures/a.txt", "https://example.com"], "newInstance": true, "next": "name" },
     "name": { "type": "type", "text": "${data.name} ${secret.TOKEN}", "into": { "point": { "x": 0.5, "y": 0.25 } }, "next": "save" },
-    "save": { "type": "pressKeys", "keys": "cmd+s", "next": "menu" },
+    "save": { "type": "pressKeys", "keys": "cmd+s", "next": "tip" },
+    "tip": { "type": "hover", "target": { "image": "refs/help.png" }, "waitForChange": true, "next": "move" },
+    "move": { "next": "list", "to": { "point": { "x": 0.75, "y": 0.5 } }, "type": "drag", "from": { "image": "refs/file.png" } },
+    "list": { "type": "scroll", "at": { "point": { "x": 0.5, "y": 0.6 } }, "amount": 240, "unit": "pixels", "direction": "down", "next": "menu" },
     "menu": { "type": "click", "target": { "image": "refs/menu.png" }, "button": "right", "double": true, "waitForChange": true, "next": "spinner" },
     "spinner": { "type": "waitFor", "until": { "disappears": { "image": "refs/spinner.png", "compare": "exact" } }, "timeout": "120000ms", "next": "settle" },
     "settle": { "type": "waitFor", "until": "screenStable", "next": "branch" },
@@ -39,8 +42,42 @@ fn minimal(blocks: &str) -> String {
     )
 }
 
+/// The issues of a test made of `blocks`, without the warning that it checks nothing, which
+/// most of these small tests would get.
 fn issues_of(blocks: &str) -> Vec<Issue> {
     validate(&parse(&minimal(blocks)).unwrap())
+        .into_iter()
+        .filter(|i| i.code != "flow.noCheck")
+        .collect()
+}
+
+#[test]
+fn a_test_that_never_checks_the_screen_gets_a_warning() {
+    let warned = |blocks: &str| {
+        validate(&parse(&minimal(blocks)).unwrap())
+            .iter()
+            .any(|i| i.code == "flow.noCheck" && i.severity == Severity::Warning)
+    };
+    assert!(warned(r#"{"a": {"type": "pressKeys", "keys": "a"}}"#));
+    assert!(warned(
+        r#"{"a": {"type": "waitFor", "until": "screenStable"}}"#
+    ));
+    assert!(warned(
+        r#"{"a": {"type": "if", "reference": {"image": "x.png"}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "check", "reference": {"image": "x.png"}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "waitFor", "until": {"appears": {"image": "x.png"}}}}"#
+    ));
+    assert!(!warned(
+        r#"{"a": {"type": "waitFor", "until": {"disappears": {"image": "x.png"}}}}"#
+    ));
+    // The test it runs may check the screen.
+    assert!(!warned(
+        r#"{"a": {"type": "runTest", "test": "other.flow.json"}}"#
+    ));
 }
 
 #[test]
@@ -85,7 +122,8 @@ fn canonical_form_fixes_order_and_defaults() {
         keys,
         [
             "format", "name", "app", "start", "blocks", "users", "launch", "doc", "name", "save",
-            "menu", "spinner", "settle", "branch", "again", "shared", "done"
+            "tip", "move", "list", "menu", "spinner", "settle", "branch", "again", "shared",
+            "done"
         ]
     );
     assert!(once.contains("\"timeout\": \"2m\""));
@@ -185,7 +223,12 @@ fn broken_edges_are_errors() {
     assert_eq!(issues[0].param("edge"), Some("then"));
     assert_eq!(issues[0].param("target"), Some("nowhere"));
 
-    let start = validate(&parse(&minimal(r#"{"b": {"type": "openApp"}}"#)).unwrap());
+    let start = validate(
+        &parse(&minimal(
+            r#"{"b": {"type": "check", "reference": {"image": "b.png"}}}"#,
+        ))
+        .unwrap(),
+    );
     assert_eq!(codes(&start), ["flow.start.unknownBlock"]);
 }
 
@@ -235,7 +278,7 @@ const THREE_WAYS: &str = r#"{
 #[test]
 fn else_if_cases_round_trip_and_plain_ifs_stay_unchanged() {
     let flow = parse(THREE_WAYS).unwrap();
-    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
     assert_eq!(to_canonical_json(&flow), THREE_WAYS);
     let edges: Vec<(String, &str)> = flow.blocks[0]
         .kind
@@ -404,6 +447,128 @@ fn parameters_are_checked() {
 }
 
 #[test]
+fn pointer_blocks_are_written_in_canonical_form() {
+    let once = canonicalize(ALL_BLOCKS).unwrap();
+    assert!(once.contains(
+        r#""move": {
+      "type": "drag",
+      "from": {
+        "image": "refs/file.png"
+      },
+      "to": {
+        "point": {
+          "x": 0.75,
+          "y": 0.5
+        }
+      },
+      "next": "list"
+    }"#
+    ));
+    assert!(once.contains(
+        r#""type": "scroll",
+      "direction": "down",
+      "amount": 240,
+      "unit": "pixels",
+      "at": {"#
+    ));
+    // The unit is always written; a scroll without a place scrolls the middle of the window.
+    let plain = canonicalize(&minimal(
+        r#"{"a": {"type": "scroll", "direction": "up", "amount": 3}}"#,
+    ))
+    .unwrap();
+    assert!(plain.contains(
+        r#""type": "scroll",
+      "direction": "up",
+      "amount": 3,
+      "unit": "lines"
+    }"#
+    ));
+    let flow = parse(&plain).unwrap();
+    assert_eq!(
+        flow.blocks[0].kind,
+        BlockKind::Scroll {
+            direction: ScrollDirection::Up,
+            amount: 3,
+            unit: ScrollUnit::Lines,
+            at: None,
+            wait_for_change: false,
+            next: None,
+        }
+    );
+}
+
+#[test]
+fn malformed_pointer_blocks_are_reported() {
+    let issues = parse_err(&minimal(
+        r#"{"a": {"type": "drag", "from": {"image": "a.png"}, "next": "b"},
+            "b": {"type": "scroll", "direction": "sideways", "unit": "pages"},
+            "c": {"type": "hover", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}}}"#,
+    ));
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.missing", "to"),
+            ("flow.field.value", "direction"),
+            ("flow.field.missing", "amount"),
+            ("flow.field.value", "unit"),
+            ("flow.field.oneOf", "target"),
+        ]
+    );
+}
+
+#[test]
+fn pointer_blocks_are_validated() {
+    let issues = issues_of(
+        r#"{"a": {"type": "hover", "target": {"image": ""}, "next": "b"},
+            "b": {"type": "drag", "from": {"image": "refs/x.png"}, "to": {"image": "refs/x.png"}, "next": "c"},
+            "c": {"type": "drag", "from": {"point": {"x": 0.5, "y": 0.5}}, "to": {"point": {"x": 0.5, "y": 0.5}}, "next": "d"},
+            "d": {"type": "scroll", "direction": "left", "amount": 0, "next": "e"},
+            "e": {"type": "scroll", "direction": "right", "amount": 10001, "at": {"point": {"x": 2, "y": 0}}}}"#,
+    );
+    let found: Vec<(&str, &str, &str)> = issues
+        .iter()
+        .map(|i| {
+            (
+                i.code.as_str(),
+                i.param("block").unwrap_or(""),
+                i.param("field").unwrap_or(""),
+            )
+        })
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.empty", "a", "target.image"),
+            ("flow.drag.samePlace", "b", "to"),
+            ("flow.drag.samePlace", "c", "to"),
+            ("flow.field.range", "d", "amount"),
+            ("flow.field.range", "e", "amount"),
+            ("flow.point.invalid", "e", "at.point"),
+        ]
+    );
+    assert_eq!(issues[4].param("max"), Some("10000"));
+    // A new block starts empty but complete: only its pictures are left to choose.
+    for (type_name, empty) in [("hover", 1), ("drag", 2), ("scroll", 0)] {
+        let flow = Flow {
+            blocks: vec![Block {
+                id: "a".into(),
+                kind: BlockKind::new(type_name, "a").unwrap(),
+            }],
+            ..parse(&minimal(r#"{"a": {"type": "openApp"}}"#)).unwrap()
+        };
+        assert_eq!(
+            codes(&validate(&flow)),
+            [vec!["flow.field.empty"; empty], vec!["flow.noCheck"]].concat(),
+            "{type_name}"
+        );
+    }
+}
+
+#[test]
 fn model_edits_are_validated_too() {
     let mut flow = parse(ALL_BLOCKS).unwrap();
     flow.name = " ".into();
@@ -436,7 +601,7 @@ fn secrets_are_listed_by_name() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 11);
+    assert_eq!(specs.len(), 14);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -489,12 +654,14 @@ fn missing_files_are_warnings_next_to_the_test() {
         [
             ("flow.file.missing", "doc", "fixtures/a.txt"),
             ("flow.reference.notSaved", "done", "refs/done.png"),
+            ("flow.file.missing", "move", "refs/file.png"),
             (
                 "flow.file.missing",
                 "shared",
                 "../shared/close-dialog.flow.json"
             ),
             ("flow.file.missing", "spinner", "refs/spinner.png"),
+            ("flow.file.missing", "tip", "refs/help.png"),
         ]
     );
     assert_eq!(
@@ -502,7 +669,7 @@ fn missing_files_are_warnings_next_to_the_test() {
         "Block \"done\", field \"reference.image\": refs/done.png doesn't exist yet; the first run will save the screen there as the reference."
     );
     assert_eq!(
-        describe(&issues[3]),
+        describe(&issues[4]),
         "Block \"spinner\", field \"until.disappears.image\": refs/spinner.png doesn't exist; the run will stop at this block until it's added."
     );
 }
@@ -587,7 +754,7 @@ const CANVAS: &str = r#"{
 #[test]
 fn the_canvas_round_trips_in_canonical_form() {
     let flow = parse(CANVAS).unwrap();
-    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
     assert_eq!(flow.canvas.sections.len(), 2);
     assert_eq!(
         flow.canvas

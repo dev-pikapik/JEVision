@@ -17,7 +17,8 @@ private let smokeTest = """
 @Test func loadEditAndSave() throws {
   var flow = try loadFlow(json: smokeTest)
   #expect(flow.app == "com.apple.TextEdit")
-  #expect(validateFlow(flow: flow).isEmpty)
+  // Nothing in it is checked, which is all that is wrong with it.
+  #expect(validateFlow(flow: flow).map(\.code) == ["flow.noCheck"])
 
   let index = try #require(flow.blocks.firstIndex { $0.id == "new" })
   flow.blocks[index].kind = .pressKeys(keys: "cmd+shift+n", next: nil)
@@ -48,6 +49,6 @@ private let smokeTest = """
 
 @Test func catalogListsEveryBlockType() {
   let names = blockCatalog().map(\.typeName)
-  #expect(names.count == 11)
-  #expect(names.contains("repeat") && names.contains("useData"))
+  #expect(names.count == 14)
+  #expect(names.contains("repeat") && names.contains("useData") && names.contains("scroll"))
 }

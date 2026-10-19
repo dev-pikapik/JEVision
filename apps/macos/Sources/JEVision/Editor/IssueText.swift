@@ -72,6 +72,8 @@ enum IssueText {
         defaultValue: "\(p("path")) has no column “\(p("column"))”. Its columns are: \(p("columns")).")
     case "flow.keys.invalid":
       return String(localized: "flow.keys.invalid", defaultValue: "“\(p("value"))” isn’t a key combination. Record the keys again.")
+    case "flow.drag.samePlace":
+      return String(localized: "flow.drag.samePlace", defaultValue: "The drag ends where it starts. Choose another place to drop on.")
     case "flow.point.invalid":
       return String(localized: "flow.point.invalid", defaultValue: "The point must be inside the window.")
     case "flow.area.invalid":
@@ -82,6 +84,8 @@ enum IssueText {
       return String(localized: "flow.cycle", defaultValue: "These blocks lead round in a circle: \(p("blocks")). Use Repeat to run steps again.")
     case "flow.block.unreachable":
       return String(localized: "flow.block.unreachable", defaultValue: "Nothing leads to this block, so it never runs.")
+    case "flow.noCheck":
+      return String(localized: "flow.noCheck", defaultValue: "This test never checks the screen, so it can’t catch a wrong result. Add a Check block.")
     case "flow.loop.noReturn":
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
     case "flow.if.sameCondition":
@@ -131,6 +135,10 @@ enum IssueText {
     case "files": String(localized: "Files")
     case "target": String(localized: "Target")
     case "into": String(localized: "Field")
+    case "from": String(localized: "Drag From")
+    case "to": String(localized: "Drop On")
+    case "at": String(localized: "Over an element")
+    case "amount": String(localized: "Amount")
     case "until", "reference": String(localized: "Reference")
     case "timeout": String(localized: "Time Limit")
     case "times": String(localized: "Times")

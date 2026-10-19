@@ -19,6 +19,7 @@ fn config(provider: Provider, address: &str) -> Config {
         model: "vision-model".into(),
         address: address.into(),
         key: provider.key_name().map(|_| KEY.to_owned()),
+        pictures: true,
     }
 }
 
@@ -51,7 +52,9 @@ fn images(body: &Value) -> Vec<Vec<u8>> {
             Value::Object(map) => {
                 for (k, v) in map {
                     match (k.as_str(), v) {
-                        ("data" | "url", Value::String(s)) => found.extend(decode(s)),
+                        ("data" | "url" | "data_base64", Value::String(s)) => {
+                            found.extend(decode(s))
+                        }
                         ("images", Value::Array(list)) => {
                             found.extend(list.iter().filter_map(|i| decode(i.as_str()?)))
                         }
@@ -72,13 +75,26 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
     for provider in Provider::ALL {
         let c = config(provider, "http://localhost:9");
         let (url, body) = request(&c, &question());
-        assert_eq!(images(&body), [SHOT, REFERENCE], "{provider:?}");
+        // JEV names its pictures instead of ordering them.
+        let sent = match provider {
+            Provider::Jev => [JEV_SCREENSHOT, JEV_REFERENCE]
+                .iter()
+                .flat_map(|name| images(&body["assets"][name]))
+                .collect(),
+            _ => images(&body),
+        };
+        assert_eq!(sent, [SHOT, REFERENCE], "{provider:?}");
         let text = body.to_string();
         assert!(text.contains("The cart shows 2 items"), "{provider:?}");
         assert!(!text.contains(KEY), "{provider:?} puts the key in the body");
-        assert!(text.contains("\"passed\"") && text.contains("\"reason\""));
+        if provider == Provider::Jev {
+            assert_eq!(body["questions"]["passed"]["type"], "noul");
+        } else {
+            assert!(text.contains("\"passed\"") && text.contains("\"reason\""));
+        }
         let expected_url = match provider {
             Provider::Anthropic => "http://localhost:9/v1/messages",
+            Provider::Jev => "http://localhost:9/v1/systemone",
             Provider::Gemini => "http://localhost:9/v1beta/models/vision-model:generateContent",
             Provider::Ollama => "http://localhost:9/api/chat",
             _ => "http://localhost:9/chat/completions",
@@ -107,6 +123,16 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
     assert_eq!(body["format"], schema());
     assert_eq!(body["stream"], false);
 
+    // JEV turns down pictures that the state or the instructions do not name.
+    let (url, body) = request(&config(Provider::Jev, ""), &question());
+    assert_eq!(url, "https://api.typesafe.ai/v1/systemone");
+    let instructions = body["questions"]["passed"]["instructions"]
+        .as_str()
+        .unwrap();
+    for name in body["assets"].as_object().unwrap().keys() {
+        assert!(body["state"].to_string().contains(name) && instructions.contains(name));
+    }
+
     let only_shot = Question {
         expect: "",
         screenshot: &SHOT_PICTURE,
@@ -115,6 +141,42 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
     let (_, body) = request(&config(Provider::Ollama, ""), &only_shot);
     assert_eq!(images(&body), [SHOT]);
     assert!(body.to_string().contains("means the same as the reference"));
+    let (_, body) = request(&config(Provider::Jev, ""), &only_shot);
+    assert_eq!(images(&body), [SHOT]);
+    assert!(body["state"].get("reference").is_none());
+}
+
+#[test]
+fn pictures_for_jev_get_sides_it_accepts() {
+    let png = |width, height| {
+        let rgba = [200, 30, 30, 255].repeat((width * height) as usize);
+        image::Image {
+            width,
+            height,
+            rgba,
+        }
+        .encode()
+        .unwrap()
+    };
+    let sides = |width, height| {
+        let sized = image::Image::decode(&jev_sized(&png(width, height))).unwrap();
+        (sized.width, sized.height, sized)
+    };
+    // Small pictures grow as a whole, so "the left half" still means the same.
+    let (width, height, small) = sides(100, 50);
+    assert_eq!((width, height), (560, 280));
+    assert_eq!(&small.rgba[small.rgba.len() - 4..], [200, 30, 30, 255]);
+    let (width, height, long) = sides(3000, 100);
+    assert_eq!((width, height), (1568, 280));
+    assert_eq!(&long.rgba[..4], [200, 30, 30, 255]);
+    assert_eq!(&long.rgba[long.rgba.len() - 4..], MASK_COLOUR);
+    let (width, height, _) = sides(1000, 50);
+    assert_eq!((width, height), (1568, 280));
+    let (width, height, _) = sides(4000, 3000);
+    assert_eq!((width, height), (1568, 1176));
+    let fine = png(800, 600);
+    assert_eq!(*jev_sized(&fine), fine[..]);
+    assert_eq!(*jev_sized(SHOT), *SHOT);
 }
 
 #[test]
@@ -123,6 +185,8 @@ fn keys_go_in_headers_only() {
     assert!(h(Provider::Anthropic).contains(&("x-api-key", KEY.to_owned())));
     assert!(h(Provider::Gemini).contains(&("x-goog-api-key", KEY.to_owned())));
     assert!(h(Provider::OpenAi).contains(&("authorization", format!("Bearer {KEY}"))));
+    assert!(h(Provider::Jev).contains(&("authorization", format!("Bearer {KEY}"))));
+    assert!(h(Provider::Jev).contains(&("typesafe-danger-zone-images", "true".to_owned())));
     assert!(h(Provider::Ollama).is_empty());
     let no_key = Config {
         key: None,
@@ -163,6 +227,13 @@ fn answers_of_every_provider_are_read() {
             reason: "The Save button is visible.".into()
         }
     );
+    assert_eq!(
+        read(Provider::Jev, "jev.json"),
+        Judgement {
+            passed: false,
+            reason: "JEV is 96% sure the screenshot does not meet the expectation.".into()
+        }
+    );
 }
 
 #[test]
@@ -200,6 +271,11 @@ fn refusals_and_unreadable_answers_are_errors() {
         err(Provider::OpenAi, "<html>"),
         VisionError::BadAnswer { .. }
     ));
+    let no_probability = r#"{"answers": {"passed": {"type": "noul"}}}"#;
+    assert!(matches!(
+        err(Provider::Jev, no_probability),
+        VisionError::BadAnswer { .. }
+    ));
 }
 
 #[test]
@@ -223,7 +299,12 @@ fn only_this_computer_counts_as_local() {
         "http://localhost@example.com/v1"
     ));
     assert!(!local(Provider::OpenAiCompatible, ""));
-    for cloud in [Provider::Anthropic, Provider::OpenAi, Provider::Gemini] {
+    for cloud in [
+        Provider::Anthropic,
+        Provider::OpenAi,
+        Provider::Gemini,
+        Provider::Jev,
+    ] {
         assert!(!local(cloud, ""));
     }
 }
@@ -369,6 +450,14 @@ fn missing_settings_fail_before_anything_is_sent() {
     assert_eq!(judge(&c), VisionError::NoKey);
     c.model = " ".into();
     assert_eq!(judge(&c), VisionError::NoModel);
+    // A text-only model: the question stops before the closed port is tried.
+    let text_only = Config {
+        pictures: false,
+        ..config(Provider::Ollama, "http://localhost:9")
+    };
+    assert_eq!(judge(&text_only), VisionError::NoPictures);
+    let test = Client::new(text_only, Duration::from_secs(1)).test();
+    assert_eq!(test.unwrap_err(), VisionError::NoPictures);
     let c = config(Provider::OpenAiCompatible, "localhost:1234/v1");
     assert_eq!(
         judge(&c),

@@ -129,11 +129,16 @@ enum GitText {
   /// How the branch compares with the server.
   static func sync(_ status: GitStatus) -> String? {
     guard status.remote != nil, status.branch != nil else { return nil }
-    guard status.upstream != nil else { return String(localized: "This branch isn’t on the server yet") }
+    guard status.upstream != nil else {
+      return status.hasCommits
+        ? String(localized: "This branch isn’t on the server yet. Next, press Push.")
+        : String(localized: "This branch isn’t on the server yet")
+    }
     guard status.ahead > 0 || status.behind > 0 else { return String(localized: "Up to date with the server") }
     var parts: [String] = []
     if status.ahead > 0 { parts.append(String(localized: "\(Int(status.ahead)) commits to push")) }
     if status.behind > 0 { parts.append(String(localized: "\(Int(status.behind)) commits to pull")) }
-    return parts.joined(separator: ", ")
+    let next = status.behind > 0 ? String(localized: "Next, press Pull.") : String(localized: "Next, press Push.")
+    return parts.joined(separator: ", ") + ". " + next
   }
 }

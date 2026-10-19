@@ -323,6 +323,9 @@ readable diff.
 | `openApp` | actions | Opens the application under test, or another one by bundle identifier |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
 | `click` | actions | Clicks an image on screen or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
+| `hover` | actions | Moves the pointer onto an image on screen or a point and leaves it there, to show a tooltip or a menu that opens on hover |
+| `drag` | actions | Presses the left button `from` one image or point, moves holding it and lets go `to` another |
+| `scroll` | actions | Turns the scroll wheel `up`, `down`, `left` or `right` by an `amount` of `lines` or `pixels`, over the middle of the window or `at` an image or point |
 | `type` | actions | Types text, optionally into a field found by its image |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
@@ -359,6 +362,7 @@ only and sends nothing anywhere.
 | Anthropic | in the cloud | `ANTHROPIC_API_KEY` |
 | OpenAI | in the cloud | `OPENAI_API_KEY` |
 | Google Gemini | in the cloud | `GEMINI_API_KEY` |
+| JEV (TypeSafe AI) | in the cloud | `TYPESAFE_API_KEY` |
 | Ollama | on this Mac | none |
 | LM Studio | on this Mac | none |
 | OpenAI-compatible server | at the address you give | `OPENAI_COMPATIBLE_API_KEY`, if the server asks for one |

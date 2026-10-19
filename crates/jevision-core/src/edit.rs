@@ -5,9 +5,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::decode::DEFAULT_WAIT_TIMEOUT_MS;
 use crate::model::{
-    BODY, Block, BlockKind, Compare, ELSE, ElseIf, Flow, MouseButton, NEXT, Reference, THEN,
-    Target, WaitUntil, else_if_index,
+    BODY, Block, BlockKind, Compare, ELSE, ElseIf, Flow, MouseButton, NEXT, Reference,
+    ScrollDirection, ScrollUnit, THEN, Target, WaitUntil, else_if_index,
 };
+
+/// How far a new scroll block scrolls, in lines.
+pub const DEFAULT_SCROLL_LINES: u32 = 5;
 
 /// Name of the slot before the first block, used with an empty [`Slot::from`].
 pub const START: &str = "start";
@@ -40,6 +43,25 @@ impl BlockKind {
                 target: Target::Image(String::new()),
                 button: MouseButton::Left,
                 double: false,
+                wait_for_change: false,
+                next: None,
+            },
+            "hover" => Self::Hover {
+                target: Target::Image(String::new()),
+                wait_for_change: false,
+                next: None,
+            },
+            "drag" => Self::Drag {
+                from: Target::Image(String::new()),
+                to: Target::Image(String::new()),
+                wait_for_change: false,
+                next: None,
+            },
+            "scroll" => Self::Scroll {
+                direction: ScrollDirection::Down,
+                amount: DEFAULT_SCROLL_LINES,
+                unit: ScrollUnit::Lines,
+                at: None,
                 wait_for_change: false,
                 next: None,
             },
@@ -169,6 +191,9 @@ impl BlockKind {
             Self::OpenApp { next, .. }
             | Self::OpenFile { next, .. }
             | Self::Click { next, .. }
+            | Self::Hover { next, .. }
+            | Self::Drag { next, .. }
+            | Self::Scroll { next, .. }
             | Self::Type { next, .. }
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }
@@ -759,7 +784,7 @@ mod tests {
         assert_eq!(f.remove_block("loop").as_deref(), Some("x"));
         assert_eq!(next_of(&f, "a").as_deref(), Some("x"));
         assert_eq!(next_of(&f, "y").as_deref(), Some("z"));
-        assert!(crate::validate(&f).is_empty());
+        assert!(crate::validate(&f).iter().all(|i| i.code == "flow.noCheck"));
     }
 
     #[test]

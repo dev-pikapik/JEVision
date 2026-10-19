@@ -157,6 +157,9 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't a key combination like cmd+shift+s.",
             p("value")
         ),
+        "flow.drag.samePlace" => {
+            "the drag ends where it starts; choose another place to drop on.".to_owned()
+        }
         "flow.point.invalid" => {
             "the point must be inside the window: x and y from 0 to 1.".to_owned()
         }
@@ -174,6 +177,7 @@ pub fn describe(issue: &Issue) -> String {
                 .to_owned()
         }
         "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
+        "flow.noCheck" => "this test never checks the screen, so it can't catch a wrong result; add a check block.".to_owned(),
         "flow.reference.notSaved" => format!(
             "{} doesn't exist yet; the first run will save the screen there as the reference.",
             p("path")

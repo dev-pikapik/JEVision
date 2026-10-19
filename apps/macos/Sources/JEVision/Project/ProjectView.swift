@@ -130,6 +130,8 @@ struct ProjectView: View {
           }
         }
       }
+      // A fresh list for search results: reusing the tree's rows left a ghost of the selected one.
+      .id(isSearching)
       .onChange(of: project.selection, initial: true) {
         guard let id = project.selection else { return }
         var folder = ""

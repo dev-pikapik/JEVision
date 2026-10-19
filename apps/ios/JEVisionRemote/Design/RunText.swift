@@ -51,6 +51,8 @@ enum RunText {
       return String(localized: "Block “\(block)”: \(VisionText.failure(failure))")
     case "run.click.noChange":
       return String(localized: "run.click.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after the click.")
+    case "run.action.noChange":
+      return String(localized: "run.action.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after this step.")
     case "run.waitFor.timeout" where p("target") == "screenStable":
       return String(localized: "run.waitFor.timeout.screenStable", defaultValue: "Block “\(block)”: the screen didn’t settle within \(p("seconds")) s.")
     case "run.waitFor.timeout":
@@ -147,6 +149,12 @@ enum VisionText {
     let p = { (name: String) in failure.params[name] ?? "" }
     let provider = p("provider")
     switch failure.code {
+    case "run.vision.noPictures":
+      return String(
+        localized: "run.vision.noPictures",
+        defaultValue:
+          "The AI model for \(provider) doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+      )
     case "run.vision.noModel":
       return String(localized: "run.vision.noModel", defaultValue: "No model is chosen for \(provider). Choose one in Settings → AI.")
     case "run.vision.noKey":

@@ -3,15 +3,16 @@ import JEVisionCore
 
 /// The one line under a block's title that says what exactly it does.
 enum BlockSummary {
-  /// A `${data.name}` in it stays whole when the line wraps.
-  static func text(_ kind: BlockKind, appName: (String) -> String) -> String {
-    unbreakablePlaceholders(text: plainText(kind, appName: appName))
+  /// A `${data.name}` in it stays whole when the line wraps. `testApp` is the test's own app,
+  /// which an Open App block without one launches.
+  static func text(_ kind: BlockKind, appName: (String) -> String, testApp: String? = nil) -> String {
+    unbreakablePlaceholders(text: plainText(kind, appName: appName, testApp: testApp))
   }
 
-  private static func plainText(_ kind: BlockKind, appName: (String) -> String) -> String {
+  private static func plainText(_ kind: BlockKind, appName: (String) -> String, testApp: String?) -> String {
     switch kind {
     case .openApp(let app, _):
-      return app.map(appName) ?? String(localized: "The app under test")
+      return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
       let name = (first as NSString).lastPathComponent
@@ -26,6 +27,29 @@ enum BlockSummary {
         }
       }
       return String(localized: "Choose what to click")
+    case .hover(let target, _, _):
+      return isUnset(target) ? String(localized: "Choose what to point at") : String(localized: "Point at \(targetName(target))")
+    case .drag(let from, let to, _, _):
+      return isUnset(from) || isUnset(to)
+        ? String(localized: "Choose what to drag and where")
+        : String(localized: "Drag \(spotName(from)) to \(spotName(to))")
+    case .scroll(let direction, let amount, let unit, let at, _, _):
+      let much = unit == .lines ? String(localized: "\(Int(amount)) lines") : String(localized: "\(Int(amount)) px")
+      guard let at, !isUnset(at) else {
+        switch direction {
+        case .up: return String(localized: "Scroll up \(much)")
+        case .down: return String(localized: "Scroll down \(much)")
+        case .left: return String(localized: "Scroll left \(much)")
+        case .right: return String(localized: "Scroll right \(much)")
+        }
+      }
+      let place = targetName(at)
+      switch direction {
+      case .up: return String(localized: "Scroll up \(much) over \(place)")
+      case .down: return String(localized: "Scroll down \(much) over \(place)")
+      case .left: return String(localized: "Scroll left \(much) over \(place)")
+      case .right: return String(localized: "Scroll right \(much) over \(place)")
+      }
     case .type(let text, let into, _):
       guard !text.isEmpty else { return String(localized: "No text yet") }
       let what = secretName(text).map { String(localized: "secret \($0)") } ?? quoted(text)
@@ -111,6 +135,19 @@ enum BlockSummary {
     case .image(let path): imageName(path)
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
     }
+  }
+
+  /// A target without the “at” in front of a point.
+  private static func spotName(_ target: Target) -> String {
+    switch target {
+    case .image(let path): imageName(path)
+    case .point(let p): "\(percent(p.x)), \(percent(p.y))"
+    }
+  }
+
+  /// A picture target not chosen yet.
+  private static func isUnset(_ target: Target) -> Bool {
+    if case .image(let path) = target { path.isEmpty } else { false }
   }
 
   private static func referenceName(_ reference: Reference) -> String {
