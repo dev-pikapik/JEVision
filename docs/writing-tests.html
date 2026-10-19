@@ -97,6 +97,11 @@
     <tr><td><code>priority</code></td><td>No</td><td><code>critical</code>, <code>high</code>, <code>medium</code> or <code>low</code>.</td></tr>
     <tr><td><code>status</code></td><td>No</td><td><code>draft</code>, <code>ready</code> or <code>outdated</code>.</td></tr>
     <tr><td><code>tags</code></td><td>No</td><td>List of words for finding tests. No empty tags and no repeats.</td></tr>
+    <tr><td><code>preconditions</code></td><td>No</td><td>What must be true before the test starts, such as <code>Signed in as a teacher</code>.</td></tr>
+    <tr><td><code>author</code></td><td>No</td><td>Who wrote the test or looks after it.</td></tr>
+    <tr><td><code>platform</code></td><td>No</td><td>Where the test is meant to run, such as <code>macOS 26</code>.</td></tr>
+    <tr><td><code>link</code></td><td>No</td><td>Web address of the issue or requirement the test covers. Starts with <code>https://</code> or <code>http://</code>.</td></tr>
+    <tr><td><code>flaky</code></td><td>No</td><td><code>true</code> marks a test that sometimes fails for reasons outside the app. The test still runs and counts; see <a href="retries.html#flaky">Flaky tests</a>.</td></tr>
     <tr><td><code>retries</code></td><td>No</td><td>How many more times to run the test when it fails, 0 to 10. Without it, the project's default applies. See <a href="retries.html">Retries</a>.</td></tr>
     <tr><td><code>start</code></td><td>Yes</td><td>Id of the first block.</td></tr>
     <tr><td><code>blocks</code></td><td>Yes</td><td>The blocks, as an object from id to block.</td></tr>

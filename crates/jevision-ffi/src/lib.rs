@@ -212,12 +212,24 @@ pub fn disconnect_block(mut flow: Flow, id: String) -> Option<Flow> {
     flow.disconnect(&id).then_some(flow)
 }
 
-/// Words the test in `json` is found by besides its file name: its name, description, block
-/// texts and notes. Empty when it doesn't read as a test.
+/// What the sidebar shows and searches of a test file.
+#[derive(Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TestSummary {
+    /// Words the test is found by besides its file name: its name, description, details, block
+    /// texts and notes.
+    pub keywords: String,
+    /// Someone marked the test as flaky in its details.
+    pub flaky: bool,
+}
+
+/// The sidebar's summary of the test in `json`; empty when it doesn't read as a test.
 #[uniffi::export]
-pub fn test_keywords(json: String) -> String {
+pub fn test_summary(json: String) -> TestSummary {
     jevision_core::parse(&json)
-        .map(|flow| jevision_core::test_keywords(&flow))
+        .map(|flow| TestSummary {
+            keywords: jevision_core::test_keywords(&flow),
+            flaky: flow.flaky,
+        })
         .unwrap_or_default()
 }
 
@@ -335,6 +347,16 @@ pub struct Flow {
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
+    #[uniffi(default = None)]
+    pub preconditions: Option<String>,
+    #[uniffi(default = None)]
+    pub author: Option<String>,
+    #[uniffi(default = None)]
+    pub platform: Option<String>,
+    #[uniffi(default = None)]
+    pub link: Option<String>,
+    #[uniffi(default = false)]
+    pub flaky: bool,
     pub retries: Option<u32>,
     pub start: String,
     pub blocks: Vec<Block>,
@@ -658,6 +680,16 @@ mod tests {
         assert_eq!(removed.selection.as_deref(), Some("email"));
         assert_eq!(removed.flow, flow);
         assert!(insert_block(flow, "nope".into(), None).is_none());
+    }
+
+    #[test]
+    fn the_summary_finds_the_test_and_its_flaky_mark() {
+        let plain = test_summary(EXAMPLE.to_owned());
+        assert!(plain.keywords.contains("nobody is signed in"));
+        assert!(!plain.flaky);
+        let marked = test_summary(EXAMPLE.replace(r#""retries""#, r#""flaky": true, "retries""#));
+        assert!(marked.flaky);
+        assert_eq!(test_summary("{".to_owned()), TestSummary::default());
     }
 
     #[test]

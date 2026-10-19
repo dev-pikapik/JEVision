@@ -104,7 +104,7 @@ private struct RunRow: View {
 
 /// How a test has been doing: its pass rate over 30 days, its last 20 runs as bars (a pass up,
 /// a failure down), where it fails most often and since when it fails.
-private struct HealthView: View {
+struct HealthView: View {
   @Environment(ProjectStore.self) private var project
   /// Test file, relative to the project.
   let test: String

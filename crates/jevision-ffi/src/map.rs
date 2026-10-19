@@ -19,6 +19,8 @@ pub struct MapTest {
     pub errors: u32,
     /// The file is there and is a test this build can read.
     pub readable: bool,
+    /// Someone marked the test as flaky in its details.
+    pub flaky: bool,
 }
 
 /// Reads the tests `tests`, relative to the folder `project`, for the project map, in the
@@ -52,6 +54,7 @@ fn map_test(project: &Path, file: String) -> MapTest {
             uses: Vec::new(),
             errors: 0,
             readable: false,
+            flaky: false,
         };
     };
     let mut uses: Vec<String> = Vec::new();
@@ -74,6 +77,7 @@ fn map_test(project: &Path, file: String) -> MapTest {
         uses,
         errors: u32::try_from(errors).unwrap_or(u32::MAX),
         readable: true,
+        flaky: flow.flaky,
         file,
     }
 }
@@ -137,6 +141,11 @@ mod tests {
             "open",
             r#""open":{"type":"openApp"}"#,
         );
+        let login = root.join("shared/login.flow.json");
+        let marked = std::fs::read_to_string(&login)
+            .unwrap()
+            .replace(r#""start""#, r#""flaky":true,"start""#);
+        std::fs::write(&login, marked).unwrap();
         write(
             "smoke/inbox.flow.json",
             "Inbox",
@@ -173,6 +182,7 @@ mod tests {
             ["shared/login.flow.json", "smoke/missing.flow.json"]
         );
         assert_eq!(map[0].errors, 0, "a missing file is only a warning");
+        assert!(!map[0].flaky);
         assert_eq!(
             map[1],
             MapTest {
@@ -182,6 +192,7 @@ mod tests {
                 uses: vec![],
                 errors: 0,
                 readable: true,
+                flaky: true,
             }
         );
         assert!(!map[2].readable);

@@ -249,7 +249,7 @@ private struct MapCard: View {
           .font(.caption)
           .foregroundStyle(.secondary)
         }
-        if let flaky, last?.status != .flaky {
+        if let flakyHelp, last?.status != .flaky {
           Label {
             Text("Flaky").lineLimit(1)
           } icon: {
@@ -257,7 +257,7 @@ private struct MapCard: View {
           }
           .font(.caption)
           .foregroundStyle(.secondary)
-          .help(Text(RunHistory.flakyEvidence(flaky)))
+          .help(Text(flakyHelp))
         }
         if let blocks = info?.blocks, blocks > 0 {
           // A short bar per block, up to ten: how big the test is at a glance.
@@ -301,10 +301,12 @@ private struct MapCard: View {
     return (last.status.symbol, last.status.color, "\(last.status.title) · \(when)")
   }
 
+  private var flakyHelp: String? { TestFields.flakyHelp(flaky, marked: info?.flaky == true) }
+
   private var accessibilityValue: String {
     var parts = [state.text]
     if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
-    if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
+    if let flakyHelp { parts.append(flakyHelp) }
     if !uses.isEmpty { parts.append(String(localized: "Runs \(uses.formatted(.list(type: .and)))")) }
     if !usedBy.isEmpty { parts.append(String(localized: "Run by \(usedBy.formatted(.list(type: .and)))")) }
     return parts.joined(separator: ". ")

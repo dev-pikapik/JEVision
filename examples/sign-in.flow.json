@@ -9,6 +9,7 @@
   "tags": [
     "sign-in"
   ],
+  "preconditions": "AcmeMail is installed and nobody is signed in.",
   "retries": 2,
   "start": "open",
   "blocks": {

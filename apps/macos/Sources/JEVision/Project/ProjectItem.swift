@@ -12,8 +12,10 @@ struct ProjectItem: Identifiable, Hashable, Sendable {
   let children: [ProjectItem]
   let testCount: Int
   let modified: Date?
-  /// What a test is found by besides its file name: its name, description and block texts.
+  /// What a test is found by besides its file name: its name, description, details and block texts.
   var keywords = ""
+  /// Someone marked the test as flaky in its details.
+  var markedFlaky = false
 
   /// Children for an outline: `nil` marks a leaf.
   var outlineChildren: [ProjectItem]? { kind == .folder ? children : nil }

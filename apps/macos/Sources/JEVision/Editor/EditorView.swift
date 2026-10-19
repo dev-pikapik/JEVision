@@ -141,7 +141,7 @@ struct EditorView: View {
             }
           }
           .help(Text("Test details"))
-          .accessibilityHint(Text("Shows the name, app, secrets and retries of the test."))
+          .accessibilityHint(Text("Shows the test card: what it checks, who looks after it, its retries, flaky mark and secrets."))
           .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
             TestDetailsView(document: document)
           }

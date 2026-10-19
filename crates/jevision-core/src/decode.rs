@@ -368,6 +368,11 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     let priority = o.opt_choice("priority", PRIORITIES, out);
     let status = o.opt_choice("status", STATUSES, out);
     let tags = o.strings("tags", out).unwrap_or_default();
+    let preconditions = o.opt_string("preconditions", out);
+    let author = o.opt_string("author", out);
+    let platform = o.opt_string("platform", out);
+    let link = o.opt_string("link", out);
+    let flaky = o.flag("flaky", out);
     let retries = o.opt_uint("retries", out);
     let start = o.string("start", out);
     let blocks = o.object("blocks", out).map(|b| blocks(b, out));
@@ -384,6 +389,11 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
         priority,
         status,
         tags,
+        preconditions,
+        author,
+        platform,
+        link,
+        flaky,
         retries,
         start: start?,
         blocks: blocks?,

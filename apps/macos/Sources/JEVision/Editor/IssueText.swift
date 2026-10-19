@@ -40,6 +40,8 @@ enum IssueText {
       return String(localized: "flow.field.range", defaultValue: "Must be from \(p("min")) to \(p("max")).")
     case "flow.app.invalid":
       return String(localized: "flow.app.invalid", defaultValue: "“\(p("value"))” isn’t an app identifier like com.apple.TextEdit. Choose the app again.")
+    case "flow.link.invalid":
+      return String(localized: "flow.link.invalid", defaultValue: "“\(p("value"))” isn’t a web address. Start it with https://.")
     case "flow.tags.duplicate":
       return String(localized: "flow.tags.duplicate", defaultValue: "The tag “\(p("tag"))” is listed twice.")
     case "flow.block.duplicateId":
@@ -145,6 +147,7 @@ enum IssueText {
     case "file": String(localized: "Data File")
     case "test": String(localized: "Test")
     case "retries": String(localized: "Retries")
+    case "link": String(localized: "Link")
     default: nil
     }
   }

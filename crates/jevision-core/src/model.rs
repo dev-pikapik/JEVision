@@ -22,6 +22,16 @@ pub struct Flow {
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
+    /// What must be true before the test starts, such as `Signed in as a teacher`.
+    pub preconditions: Option<String>,
+    /// Who wrote the test or looks after it.
+    pub author: Option<String>,
+    /// Where the test is meant to run, such as `macOS 26`.
+    pub platform: Option<String>,
+    /// Web address of the issue or requirement the test covers.
+    pub link: Option<String>,
+    /// Someone marked the test as flaky: it sometimes fails for reasons outside the app.
+    pub flaky: bool,
     /// How many times a failed run is retried before it counts as failed; `None` uses the
     /// project's default retries.
     pub retries: Option<u32>,
@@ -489,6 +499,21 @@ impl Serialize for Flow {
         }
         if !self.tags.is_empty() {
             map.serialize_entry("tags", &self.tags)?;
+        }
+        if let Some(p) = &self.preconditions {
+            map.serialize_entry("preconditions", p)?;
+        }
+        if let Some(a) = &self.author {
+            map.serialize_entry("author", a)?;
+        }
+        if let Some(p) = &self.platform {
+            map.serialize_entry("platform", p)?;
+        }
+        if let Some(l) = &self.link {
+            map.serialize_entry("link", l)?;
+        }
+        if self.flaky {
+            map.serialize_entry("flaky", &true)?;
         }
         if let Some(retries) = self.retries {
             map.serialize_entry("retries", &retries)?;

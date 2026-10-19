@@ -68,4 +68,12 @@ struct LastRunTests {
     #expect(TestFields.tags(" smoke, sign-in,, smoke ,") == ["smoke", "sign-in"])
     #expect(TestFields.tags("  ").isEmpty)
   }
+
+  @Test func aTestIsFlakyByItsRunsOrItsMark() {
+    let evidence = FlakyEvidence(passed: 2, passedOnRetry: 0, failed: 1, environment: nil, since: "2026-10-01T09:00:00Z")
+    #expect(TestFields.flakyHelp(nil, marked: false) == nil)
+    #expect(TestFields.flakyHelp(nil, marked: true) == "Marked flaky in the test details.")
+    #expect(TestFields.flakyHelp(evidence, marked: false) == RunHistory.flakyEvidence(evidence))
+    #expect(TestFields.flakyHelp(evidence, marked: true) == RunHistory.flakyEvidence(evidence) + " Marked flaky in the test details.")
+  }
 }

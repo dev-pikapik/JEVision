@@ -314,7 +314,7 @@ private struct SidebarRow: View {
   /// How the test's last run ended.
   let status: RunStatus?
   let quarantine: Quarantined?
-  /// Why the test counts as flaky, when its recent runs say so.
+  /// Why the test counts as flaky, when its recent runs say so; a mark in its details also shows.
   let flaky: FlakyEvidence?
   /// Runs the test, or every test of the folder; `nil` while nothing can run.
   let run: (() -> Void)?
@@ -337,7 +337,7 @@ private struct SidebarRow: View {
                 .foregroundStyle(.secondary)
             }
           }
-          if status != nil || quarantine != nil || flaky != nil {
+          if status != nil || quarantine != nil || flakyHelp != nil {
             Spacer(minLength: 0)
           }
           if let quarantine {
@@ -345,11 +345,11 @@ private struct SidebarRow: View {
               .font(.system(size: 9))
               .accessibilityHidden(true)
           }
-          if let flaky, status != .flaky {
+          if let flakyHelp, status != .flaky {
             Image(systemName: RunStatus.flaky.dot)
               .font(.system(size: 7))
               .foregroundStyle(RunStatus.flaky.color)
-              .help(Text(RunHistory.flakyEvidence(flaky)))
+              .help(Text(flakyHelp))
               .accessibilityHidden(true)
           }
           if let status {
@@ -368,10 +368,12 @@ private struct SidebarRow: View {
     }
   }
 
+  private var flakyHelp: String? { TestFields.flakyHelp(flaky, marked: item.markedFlaky) }
+
   private var accessibilityValue: String {
     var parts: [String] = []
     if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
-    if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
+    if let flakyHelp { parts.append(flakyHelp) }
     if let status { parts.append(String(localized: "Last run: \(status.title)")) }
     return parts.joined(separator: ". ")
   }

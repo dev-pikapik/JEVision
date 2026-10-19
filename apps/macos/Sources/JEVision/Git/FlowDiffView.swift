@@ -107,6 +107,10 @@ struct FlowDiffView: View {
     case "priority": String(localized: "Priority")
     case "status": String(localized: "Status")
     case "tags": String(localized: "Tags")
+    case "preconditions": String(localized: "Preconditions")
+    case "platform": String(localized: "Platform")
+    case "link": String(localized: "Link")
+    case "flaky": String(localized: "Flaky")
     case "retries": String(localized: "Retries")
     default: key
     }
