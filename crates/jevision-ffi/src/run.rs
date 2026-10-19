@@ -11,7 +11,7 @@ use jevision_runner::{
     VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
-use crate::vision::{AiUsageSettings, VisionSettings};
+use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
 
 /// Why the operating system layer could not do something.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -196,6 +196,9 @@ pub struct RunOptions {
     /// Asked instead of `vision` when it can't be reached, is busy or has used up its limit.
     #[uniffi(default = None)]
     pub fallback: Option<VisionSettings>,
+    /// Settings of the providers that checks by meaning name instead of `vision`'s.
+    #[uniffi(default = None)]
+    pub providers: Option<Arc<dyn ProviderSettings>>,
     /// Where AI calls are logged and the spending limits they are held to; `None` logs
     /// nothing and limits nothing.
     #[uniffi(default = None)]
@@ -311,6 +314,12 @@ pub(crate) fn run(
     let secrets = SecretAdapter(secrets, options.environment.clone());
     let vision = options.vision.and_then(|v| v.client().ok());
     let fallback = options.fallback.and_then(|v| v.client().ok());
+    let providers = options
+        .providers
+        .as_ref()
+        .map(NamedJudge::every)
+        .unwrap_or_default();
+    let providers: Vec<&dyn VisionJudge> = providers.iter().map(|c| c as _).collect();
     let usage = options.usage.map(AiUsageSettings::book);
     let runner = Runner {
         hands: &hands,
@@ -319,6 +328,7 @@ pub(crate) fn run(
         control,
         vision: vision.as_ref().map(|c| c as &dyn VisionJudge),
         fallback: fallback.as_ref().map(|c| c as &dyn VisionJudge),
+        providers: &providers,
         usage: usage.as_ref(),
     };
     let options = jevision_runner::RunOptions {

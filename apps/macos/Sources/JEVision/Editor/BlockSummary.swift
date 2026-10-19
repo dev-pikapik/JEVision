@@ -70,10 +70,12 @@ enum BlockSummary {
         return String(localized: "Until the screen stops changing · \(limit)")
       }
     case .check(let reference, _):
-      if let expect = expectation(reference) { return String(localized: "Screen shows \(quoted(expect, limit: 40))") }
+      if let expect = expectation(reference) {
+        return judged(String(localized: "Screen shows \(quoted(expect, limit: 40))"), by: reference)
+      }
       return reference.image.isEmpty
         ? String(localized: "Choose how the screen should look")
-        : String(localized: "Screen matches \(imageName(reference.image))")
+        : judged(String(localized: "Screen matches \(imageName(reference.image))"), by: reference)
     case .if(let reference, _, let elseIf, _):
       let first =
         if let expect = expectation(reference) {
@@ -83,7 +85,8 @@ enum BlockSummary {
         } else {
           String(localized: "If \(imageName(reference.image)) is on screen")
         }
-      return elseIf.isEmpty ? first : first + " · " + String(localized: "or \(elseIf.count) more")
+      let judgedFirst = judged(first, by: reference)
+      return elseIf.isEmpty ? judgedFirst : judgedFirst + " · " + String(localized: "or \(elseIf.count) more")
     case .repeat(let times, _, _):
       return String(localized: "\(Int(times)) times")
     case .useData(let file, _, _):
@@ -157,9 +160,15 @@ enum BlockSummary {
 
   /// What a comparison by meaning expects, when it says.
   private static func expectation(_ reference: Reference) -> String? {
-    guard case .meaning(let expect, _) = reference.compare else { return nil }
+    guard case .meaning(let expect, _, _) = reference.compare else { return nil }
     let text = expect.trimmingCharacters(in: .whitespacesAndNewlines)
     return text.isEmpty ? nil : text
+  }
+
+  /// `text`, followed by the AI the block asks when it names one instead of the settings' one.
+  private static func judged(_ text: String, by reference: Reference) -> String {
+    guard case .meaning(_, _, let id) = reference.compare, !id.isEmpty else { return text }
+    return text + " · " + (visionProviders().first { $0.id == id }?.name ?? id)
   }
 
   static func percent(_ fraction: Double) -> String {

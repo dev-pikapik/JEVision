@@ -290,6 +290,7 @@ fn run_with(
         control,
         vision: None,
         fallback: None,
+        providers: &[],
         usage: None,
     };
     let run = runner
@@ -1035,6 +1036,7 @@ fn breakpoints_step_mode_and_user_input_pause() {
         control: control.clone(),
         vision: None,
         fallback: None,
+        providers: &[],
         usage: None,
     };
 
@@ -1522,6 +1524,18 @@ fn run_ai(
     usage: Option<&UsageBook>,
     local_only: bool,
 ) -> Run {
+    run_with_providers(project, hands, judge, fallback, &[], usage, local_only)
+}
+
+fn run_with_providers(
+    project: &Project,
+    hands: &Fake,
+    judge: Option<&Judge>,
+    fallback: Option<&Judge>,
+    providers: &[&dyn VisionJudge],
+    usage: Option<&UsageBook>,
+    local_only: bool,
+) -> Run {
     let secrets = secrets();
     let runner = Runner {
         hands,
@@ -1530,6 +1544,7 @@ fn run_ai(
         control: RunControl::new(),
         vision: judge.map(|j| j as &dyn VisionJudge),
         fallback: fallback.map(|j| j as &dyn VisionJudge),
+        providers,
         usage,
     };
     let options = RunOptions {
@@ -1870,6 +1885,7 @@ fn a_pause_shows_the_variables_of_the_block_ahead() {
         control: control.clone(),
         vision: None,
         fallback: None,
+        providers: &[],
         usage: None,
     };
     let seen = std::thread::scope(|s| {
@@ -2141,6 +2157,51 @@ fn ai_calls_are_logged_priced_and_stopped_at_the_limit() {
     // Without a journal nothing is logged and nothing is held back.
     let free = run_ai(&p, &hands, Some(&judge), None, None, false).report;
     assert_eq!(free.verdict, Verdict::Passed);
+}
+
+#[test]
+fn a_check_naming_a_provider_is_judged_by_that_provider() {
+    let p = Project::new();
+    meaning_check(&p, r#","provider":"ollama","model":"llava""#);
+    let hands = Fake::new(solid([0, 200, 0]));
+    let main = Judge::says(false);
+    let ollama = Judge {
+        name: "Ollama",
+        id: "ollama",
+        local: true,
+        ..Judge::says(true)
+    };
+    let other = Judge {
+        name: "OpenAI",
+        id: "openai",
+        ..Judge::says(false)
+    };
+    let providers: [&dyn VisionJudge; 2] = [&other, &ollama];
+    let report = run_with_providers(&p, &hands, Some(&main), None, &providers, None, true).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let answer = report.attempts[0].steps[0].vision.clone().unwrap();
+    assert_eq!(
+        (answer.provider.as_str(), answer.model.as_str()),
+        ("Ollama", "llava")
+    );
+    assert_eq!(ollama.asked.lock().unwrap()[0].model, "llava");
+    assert!(main.asked.lock().unwrap().is_empty());
+    assert!(other.asked.lock().unwrap().is_empty());
+
+    // Only models on this Mac holds for a named provider too.
+    meaning_check(&p, r#","provider":"openai""#);
+    let report = run_with_providers(&p, &hands, Some(&main), None, &providers, None, true).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.cloudBlocked");
+    assert_eq!(failure.param("provider"), "OpenAI");
+    assert!(other.asked.lock().unwrap().is_empty());
+
+    // A provider that isn't set up fails as if its key were missing, naming it.
+    meaning_check(&p, r#","provider":"gemini""#);
+    let report = run_with_providers(&p, &hands, Some(&main), None, &providers, None, false).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.noKey");
+    assert_eq!(failure.param("provider"), "Google Gemini");
 }
 
 #[test]

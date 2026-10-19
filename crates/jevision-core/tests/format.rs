@@ -186,7 +186,8 @@ fn unreadable_files_report_codes_with_params() {
             "c": {"type": "check", "reference": {"image": "x.png", "compare": "exact", "threshold": 0.5}},
             "d": {"type": "click", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}, "next": "e"},
             "e": {"type": "check", "reference": {"image": "x.png", "expect": "A cart"}},
-            "f": {"type": "check", "reference": {"image": "x.png", "model": "gpt-5"}}}"#,
+            "f": {"type": "check", "reference": {"image": "x.png", "model": "gpt-5"}},
+            "g": {"type": "check", "reference": {"image": "x.png", "provider": "openai"}}}"#,
     ));
     let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
         .iter()
@@ -215,6 +216,11 @@ fn unreadable_files_report_codes_with_params() {
                 "flow.reference.modelNeedsMeaning",
                 Some("f"),
                 Some("reference.model")
+            ),
+            (
+                "flow.reference.providerNeedsMeaning",
+                Some("g"),
+                Some("reference.provider")
             ),
         ]
     );
@@ -257,6 +263,7 @@ const THREE_WAYS: &str = r#"{
           "reference": {
             "compare": "meaning",
             "expect": "An update dialog is open",
+            "provider": "openai",
             "model": "gpt-5"
           },
           "then": "two"
@@ -429,7 +436,8 @@ fn parameters_are_checked() {
             "e": {"type": "runTest", "test": "other.json", "next": "f"},
             "f": {"type": "waitFor", "until": {"appears": {"image": "x.png", "threshold": 0,
                   "ignore": [{"x": 0.5, "y": 0, "width": 0.6, "height": 1}]}}, "timeout": "0s", "next": "g"},
-            "g": {"type": "pressKeys", "keys": "command+s"}}"#,
+            "g": {"type": "pressKeys", "keys": "command+s", "next": "h"},
+            "h": {"type": "check", "reference": {"compare": "meaning", "expect": "Saved", "provider": "skynet"}}}"#,
     );
     let found: Vec<(&str, &str)> = issues
         .iter()
@@ -448,9 +456,16 @@ fn parameters_are_checked() {
             ("flow.area.invalid", "until.appears.ignore.0"),
             ("flow.field.range", "timeout"),
             ("flow.keys.invalid", "keys"),
+            ("flow.reference.unknownProvider", "reference.provider"),
         ]
     );
     assert_eq!(issues[0].param("placeholder"), Some("${home.X}"));
+    assert_eq!(issues[10].param("provider"), Some("skynet"));
+    assert_eq!(
+        describe(&issues[10]),
+        "Block \"h\", field \"reference.provider\": \"skynet\" isn't an AI provider; use one of: \
+         anthropic, openai, gemini, ollama, lmstudio, openai-compatible."
+    );
 }
 
 #[test]

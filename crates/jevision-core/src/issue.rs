@@ -124,6 +124,14 @@ pub fn describe(issue: &Issue) -> String {
         "flow.reference.modelNeedsMeaning" => {
             "\"model\" works only with \"compare\": \"meaning\".".to_owned()
         }
+        "flow.reference.unknownProvider" => format!(
+            "\"{}\" isn't an AI provider; use one of: {}.",
+            p("provider"),
+            p("allowed")
+        ),
+        "flow.reference.providerNeedsMeaning" => {
+            "\"provider\" works only with \"compare\": \"meaning\".".to_owned()
+        }
         "flow.reference.thresholdNeedsSimilar" => {
             "\"threshold\" works only with \"compare\": \"similar\".".to_owned()
         }

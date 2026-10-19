@@ -86,6 +86,10 @@ public struct AISettings {
       key: Self.key(for: provider), pictures: pictures(for: provider))
   }
 
+  /// The settings of the providers checks by meaning name, read only when a check names one,
+  /// so a run reads no API key it doesn't need.
+  public var namedProviders: ProviderSettings { NamedProviders(settings: self) }
+
   /// The provider asked when the main one can't answer; empty for none.
   public var fallbackID: String { defaults.string(forKey: Self.fallbackKey) ?? "" }
 
@@ -133,5 +137,18 @@ public struct AISettings {
   /// The API key, from the provider's environment variable or the Keychain.
   public static func key(for provider: VisionProvider) -> String? {
     provider.keyVariable.isEmpty ? nil : SecretStore.value(provider.keyVariable, in: keyService)
+  }
+}
+
+/// UserDefaults and the Keychain may be read from any thread, so the run's thread asks here.
+private final class NamedProviders: ProviderSettings, @unchecked Sendable {
+  let settings: AISettings
+
+  init(settings: AISettings) {
+    self.settings = settings
+  }
+
+  func settings(provider: String) -> VisionSettings? {
+    settings.settings(provider: provider)
   }
 }

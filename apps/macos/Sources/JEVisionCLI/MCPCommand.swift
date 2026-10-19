@@ -85,7 +85,7 @@ final class AssistantBridge: AssistantHost, @unchecked Sendable {
     let videos = VideoSettings.app
     return RunOptions(
       startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly, fallback: ai.fallback(),
-      usage: ai.usage, video: videos.mode, keepVideosDays: videos.keepDays)
+      providers: ai.namedProviders, usage: ai.usage, video: videos.mode, keepVideosDays: videos.keepDays)
   }
 
   func capture(app: String) throws -> Screenshot {

@@ -548,8 +548,14 @@ pub struct Reference {
 #[uniffi::remote(Enum)]
 pub enum Compare {
     Exact,
-    Similar { threshold: f64 },
-    Meaning { expect: String, model: String },
+    Similar {
+        threshold: f64,
+    },
+    Meaning {
+        expect: String,
+        model: String,
+        provider: String,
+    },
 }
 
 #[uniffi::remote(Record)]

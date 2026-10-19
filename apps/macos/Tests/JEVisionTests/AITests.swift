@@ -131,7 +131,12 @@ struct VisionTextTests {
 
   @Test func checksByMeaningReadAsTheirExpectation() {
     let reference = Reference(
-      image: "", compare: .meaning(expect: "The cart shows 2 items", model: ""), area: nil, ignore: [], hide: [])
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: ""), area: nil, ignore: [],
+      hide: [])
     #expect(BlockSummary.text(.check(reference: reference, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
+    let named = Reference(
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "ollama"), area: nil,
+      ignore: [], hide: [])
+    #expect(BlockSummary.text(.check(reference: named, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items” · Ollama")
   }
 }

@@ -341,10 +341,26 @@ pub enum Compare {
     /// At least `threshold` (0–1] similar.
     Similar { threshold: f64 },
     /// Same meaning, judged by a vision model: the screen shows what `expect` says, or means
-    /// the same as the reference image when `expect` is empty. `model` names the model to ask
-    /// instead of the one chosen in the settings; empty for that one.
-    Meaning { expect: String, model: String },
+    /// the same as the reference image when `expect` is empty. `provider` names the AI provider
+    /// to ask instead of the one chosen in the settings, one of [`AI_PROVIDERS`]; `model` names
+    /// the model of that provider to ask instead of its chosen one. Each is empty for the
+    /// settings' choice.
+    Meaning {
+        expect: String,
+        model: String,
+        provider: String,
+    },
 }
+
+/// Ids of the AI providers a check by meaning can name, as the vision crate knows them.
+pub const AI_PROVIDERS: &[&str] = &[
+    "anthropic",
+    "openai",
+    "gemini",
+    "ollama",
+    "lmstudio",
+    "openai-compatible",
+];
 
 impl Compare {
     pub const DEFAULT_THRESHOLD: f64 = 0.95;
@@ -684,10 +700,17 @@ impl Serialize for Reference {
         }
         match &self.compare {
             Compare::Exact => map.serialize_entry("compare", "exact")?,
-            Compare::Meaning { expect, model } => {
+            Compare::Meaning {
+                expect,
+                model,
+                provider,
+            } => {
                 map.serialize_entry("compare", "meaning")?;
                 if !expect.is_empty() {
                     map.serialize_entry("expect", expect)?;
+                }
+                if !provider.is_empty() {
+                    map.serialize_entry("provider", provider)?;
                 }
                 if !model.is_empty() {
                     map.serialize_entry("model", model)?;

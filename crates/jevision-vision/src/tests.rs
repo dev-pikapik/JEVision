@@ -572,3 +572,9 @@ fn local_providers_list_models_that_see() {
     );
     assert!(server.requests.lock().unwrap()[0].starts_with("GET /v1/models "));
 }
+
+#[test]
+fn tests_can_name_every_provider() {
+    let ids: Vec<&str> = Provider::ALL.iter().map(|p| p.id()).collect();
+    assert_eq!(ids, jevision_core::AI_PROVIDERS);
+}
