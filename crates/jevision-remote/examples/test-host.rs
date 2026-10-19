@@ -279,7 +279,7 @@ impl Player {
                             } => Some((
                                 else_if.len() as u32 + 2,
                                 match &reference.compare {
-                                    Compare::Meaning { expect } => expect.clone(),
+                                    Compare::Meaning { expect, .. } => expect.clone(),
                                     _ => reference.image.clone(),
                                 },
                             )),

@@ -121,6 +121,9 @@ pub fn describe(issue: &Issue) -> String {
         "flow.reference.expectNeedsMeaning" => {
             "\"expect\" works only with \"compare\": \"meaning\".".to_owned()
         }
+        "flow.reference.modelNeedsMeaning" => {
+            "\"model\" works only with \"compare\": \"meaning\".".to_owned()
+        }
         "flow.reference.thresholdNeedsSimilar" => {
             "\"threshold\" works only with \"compare\": \"similar\".".to_owned()
         }

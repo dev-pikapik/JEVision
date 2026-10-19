@@ -445,6 +445,9 @@ private struct StepRow: View {
         }
         .foregroundStyle(.secondary)
       }
+      if let answer = step.vision {
+        AIUsageNote(answer: answer)
+      }
       if step.status == .baselineCreated, let after = images.after {
         Label(
           "There was no reference yet, so this screenshot became it: \(step.reference ?? "")",
@@ -610,5 +613,42 @@ private struct RowResults: View {
     case .failed: String(localized: "Failed")
     case .cancelled: String(localized: "Stopped")
     }
+  }
+}
+
+/// What an AI step cost, and whether it came near a limit or needed the fallback provider.
+private struct AIUsageNote: View {
+  let answer: VisionAnswer
+
+  var body: some View {
+    if answer.inputTokens > 0 || answer.outputTokens > 0 {
+      Text(usage)
+        .font(.callout)
+        .foregroundStyle(.secondary)
+    }
+    if let reason = answer.fallbackReason {
+      Label {
+        Text("Answered by \(answer.provider) instead: \(VisionText.failure(reason))")
+          .fixedSize(horizontal: false, vertical: true)
+      } icon: {
+        Image(systemName: "arrow.triangle.branch")
+      }
+      .foregroundStyle(.secondary)
+    }
+    if let warning = answer.warning {
+      Label {
+        Text(VisionText.failure(warning))
+          .fixedSize(horizontal: false, vertical: true)
+      } icon: {
+        Image(systemName: "exclamationmark.triangle.fill")
+          .foregroundStyle(.orange)
+      }
+    }
+  }
+
+  private var usage: String {
+    let tokens = String(localized: "\(answer.inputTokens) tokens sent, \(answer.outputTokens) received")
+    guard let cost = answer.cost else { return String(localized: "\(tokens) · no price for this model") }
+    return "\(tokens) · \(AIMoney.text(cost))"
   }
 }

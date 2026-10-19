@@ -15,6 +15,7 @@
 //!     expect: "",
 //!     screenshot: &b"\x89PNG"[..],
 //!     reference: None,
+//!     model: "",
 //! };
 //! ```
 

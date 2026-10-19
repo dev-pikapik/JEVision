@@ -341,7 +341,8 @@ pub struct Step {
 }
 
 /// A vision model's verdict on a screen, as kept in the report.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VisionAnswer {
     /// Provider name, such as `Anthropic`.
     pub provider: String,
@@ -349,6 +350,25 @@ pub struct VisionAnswer {
     pub passed: bool,
     /// The model's explanation, in a sentence.
     pub reason: String,
+    /// Tokens the call used, as the provider counted them.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub input_tokens: u64,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub output_tokens: u64,
+    /// What the call cost in US dollars, when the model has a price.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<f64>,
+    /// A spending limit of the provider is close or used up: `run.vision.limitNear` or
+    /// `run.vision.limitReached`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warning: Option<Failure>,
+    /// Why the fallback provider answered instead of the main one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_reason: Option<Failure>,
+}
+
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -626,6 +646,28 @@ pub fn describe_vision(f: &Failure) -> String {
         "run.vision.refused" => {
             format!("{provider} declined to judge the screen: {}", p("message"))
         }
+        "run.vision.limitReached" | "run.vision.limitNear" => {
+            let period = if p("period") == "month" {
+                "monthly"
+            } else {
+                "daily"
+            };
+            let spent = format!(
+                "{provider} has used ${} of its {period} limit of ${}",
+                p("spent"),
+                p("limit")
+            );
+            if f.code.ends_with("Reached") {
+                format!("{spent}; AI steps with it stop until the limit resets or is raised.")
+            } else {
+                format!("{spent}.")
+            }
+        }
+        "run.vision.journalFailed" => format!(
+            "The AI usage journal {} cannot be read or written, so spending can't be kept to its limits: {}",
+            p("path"),
+            p("reason")
+        ),
         "run.vision.badAnswer" => {
             format!(
                 "{provider} gave an answer that cannot be read: {}",

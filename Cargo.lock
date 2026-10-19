@@ -1695,6 +1695,7 @@ dependencies = [
 name = "jevision-runner"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "jevision-core",
  "jevision-vision",
  "png",

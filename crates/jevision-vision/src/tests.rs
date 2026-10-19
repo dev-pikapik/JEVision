@@ -32,6 +32,7 @@ fn question() -> Question<'static> {
         expect: "The cart shows 2 items",
         screenshot: &SHOT_PICTURE,
         reference: Some(&REFERENCE_PICTURE),
+        model: "",
     }
 }
 
@@ -137,6 +138,7 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
         expect: "",
         screenshot: &SHOT_PICTURE,
         reference: None,
+        model: "",
     };
     let (_, body) = request(&config(Provider::Ollama, ""), &only_shot);
     assert_eq!(images(&body), [SHOT]);
@@ -204,14 +206,22 @@ fn answers_of_every_provider_are_read() {
         read(Provider::Anthropic, "anthropic.json"),
         Judgement {
             passed: true,
-            reason: "The cart badge shows 2 items.".into()
+            reason: "The cart badge shows 2 items.".into(),
+            usage: Usage {
+                input_tokens: 1543,
+                output_tokens: 61
+            }
         }
     );
     assert_eq!(
         read(Provider::OpenAi, "openai.json"),
         Judgement {
             passed: false,
-            reason: "The cart is empty.".into()
+            reason: "The cart is empty.".into(),
+            usage: Usage {
+                input_tokens: 1117,
+                output_tokens: 46
+            }
         }
     );
     assert_eq!(
@@ -224,14 +234,36 @@ fn answers_of_every_provider_are_read() {
         read(Provider::LmStudio, "lmstudio.json"),
         Judgement {
             passed: true,
-            reason: "The Save button is visible.".into()
+            reason: "The Save button is visible.".into(),
+            usage: Usage {
+                input_tokens: 790,
+                output_tokens: 31
+            }
+        }
+    );
+    assert_eq!(
+        read(Provider::Gemini, "gemini.json").usage,
+        Usage {
+            input_tokens: 1290,
+            output_tokens: 24
+        }
+    );
+    assert_eq!(
+        read(Provider::Ollama, "ollama.json").usage,
+        Usage {
+            input_tokens: 812,
+            output_tokens: 19
         }
     );
     assert_eq!(
         read(Provider::Jev, "jev.json"),
         Judgement {
             passed: false,
-            reason: "JEV is 96% sure the screenshot does not meet the expectation.".into()
+            reason: "JEV is 96% sure the screenshot does not meet the expectation.".into(),
+            usage: Usage {
+                input_tokens: 1862,
+                output_tokens: 1
+            }
         }
     );
 }
@@ -373,6 +405,31 @@ fn judges_over_http() {
             .contains(&format!("x-api-key: {KEY}"))
     );
     assert!(sent.contains(&b64(SHOT)));
+}
+
+#[test]
+fn a_question_can_ask_another_model_of_the_same_provider() {
+    let server = serve(vec![(200, fixture("openai.json")), (404, "{}".into())]);
+    let c = client(Provider::OpenAi, &server.address);
+    let judgement = c
+        .judge(&Question {
+            model: " gpt-5 ",
+            ..question()
+        })
+        .unwrap();
+    assert_eq!(judgement.usage.output_tokens, 46);
+    let sent = server.requests.lock().unwrap()[0].clone();
+    assert!(sent.contains(r#""model":"gpt-5""#));
+    assert_eq!(
+        c.judge(&Question {
+            model: "gpt-0",
+            ..question()
+        }),
+        Err(VisionError::UnknownModel {
+            model: "gpt-0".into()
+        })
+    );
+    assert_eq!(c.model(), "vision-model");
 }
 
 #[test]

@@ -236,6 +236,8 @@ pub struct Question<'a> {
     pub expect: &'a str,
     pub screenshot: &'a MaskedImage,
     pub reference: Option<&'a MaskedImage>,
+    /// Model to ask instead of the configured one; empty for the configured one.
+    pub model: &'a str,
 }
 
 /// A model's verdict.
@@ -244,6 +246,14 @@ pub struct Judgement {
     pub passed: bool,
     /// Why, in a sentence.
     pub reason: String,
+    pub usage: Usage,
+}
+
+/// Tokens a question used, as the provider counted them; zero when it did not say.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Usage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
 }
 
 /// Why a question got no verdict. [`code`](Self::code) and [`params`](Self::params) name a
@@ -317,6 +327,8 @@ impl std::error::Error for VisionError {}
 pub trait VisionJudge: Send + Sync {
     /// Provider name for reports, such as `Anthropic`.
     fn provider(&self) -> &str;
+    /// Stable provider identifier, such as `anthropic` ([`Provider::id`]).
+    fn provider_id(&self) -> &str;
     fn model(&self) -> &str;
     /// Pictures stay on this computer.
     fn is_local(&self) -> bool;
@@ -359,6 +371,7 @@ impl Client {
             expect: TEST_EXPECTATION,
             screenshot: &picture,
             reference: None,
+            model: "",
         })
     }
 
@@ -513,6 +526,10 @@ impl VisionJudge for Client {
         self.config.provider.name()
     }
 
+    fn provider_id(&self) -> &str {
+        self.config.provider.id()
+    }
+
     fn model(&self) -> &str {
         self.config.model.trim()
     }
@@ -522,6 +539,21 @@ impl VisionJudge for Client {
     }
 
     fn judge(&self, question: &Question<'_>) -> Result<Judgement, VisionError> {
+        let model = question.model.trim();
+        if !model.is_empty() && model != self.config.model.trim() {
+            let client = Self {
+                config: Config {
+                    model: model.to_owned(),
+                    ..self.config.clone()
+                },
+                timeout: self.timeout,
+                agent: self.agent.clone(),
+            };
+            return client.judge(&Question {
+                model: "",
+                ..*question
+            });
+        }
         let c = &self.config;
         if !c.pictures {
             return Err(VisionError::NoPictures);
@@ -778,6 +810,48 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
         answer: text.to_owned(),
     };
     let v: Value = serde_json::from_str(body).map_err(|_| bad(body))?;
+    let mut judgement = verdict_of(provider, &v)?;
+    judgement.usage = usage(provider, &v);
+    Ok(judgement)
+}
+
+/// The tokens a successful response says it used.
+fn usage(provider: Provider, v: &Value) -> Usage {
+    let count = |v: &Value| v.as_u64().unwrap_or_default();
+    let (input, output) = match provider {
+        Provider::Anthropic | Provider::Jev => {
+            let u = &v["usage"];
+            (
+                count(&u["input_tokens"])
+                    + count(&u["cache_creation_input_tokens"])
+                    + count(&u["cache_read_input_tokens"]),
+                count(&u["output_tokens"]),
+            )
+        }
+        Provider::Gemini => {
+            let u = &v["usageMetadata"];
+            (
+                count(&u["promptTokenCount"]),
+                count(&u["candidatesTokenCount"]) + count(&u["thoughtsTokenCount"]),
+            )
+        }
+        Provider::Ollama => (count(&v["prompt_eval_count"]), count(&v["eval_count"])),
+        Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible => {
+            let u = &v["usage"];
+            (count(&u["prompt_tokens"]), count(&u["completion_tokens"]))
+        }
+    };
+    Usage {
+        input_tokens: input,
+        output_tokens: output,
+    }
+}
+
+/// The verdict in a successful response, without its usage.
+fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
+    let bad = |text: &str| VisionError::BadAnswer {
+        answer: text.to_owned(),
+    };
     let text = |v: &Value| v.as_str().unwrap_or_default().to_owned();
     match provider {
         Provider::Anthropic => {
@@ -833,7 +907,7 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
             let yes = v["answers"]["passed"]["noul"]
                 .as_f64()
                 .filter(|p| (0.0..=1.0).contains(p))
-                .ok_or_else(|| bad(body))?;
+                .ok_or_else(|| bad(&v.to_string()))?;
             let passed = yes >= 0.5;
             let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round();
             let reason = if passed {
@@ -841,7 +915,11 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
             } else {
                 format!("JEV is {sure}% sure the screenshot does not meet the expectation.")
             };
-            Ok(Judgement { passed, reason })
+            Ok(Judgement {
+                passed,
+                reason,
+                usage: Usage::default(),
+            })
         }
     }
 }
@@ -872,7 +950,11 @@ fn verdict(v: &Value) -> Option<Judgement> {
         _ => return None,
     };
     let reason = v["reason"].as_str().unwrap_or_default().trim().to_owned();
-    Some(Judgement { passed, reason })
+    Some(Judgement {
+        passed,
+        reason,
+        usage: Usage::default(),
+    })
 }
 
 /// The human part of an error response from any of the providers.

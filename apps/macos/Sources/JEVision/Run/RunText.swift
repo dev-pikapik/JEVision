@@ -133,6 +133,7 @@ enum RunText {
     [
       "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey",
       "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
+      "run.vision.limitReached",
     ].contains(failure.code)
   }
 
@@ -229,6 +230,25 @@ enum VisionText {
       return String(localized: "run.vision.serviceError", defaultValue: "\(provider) answered with error \(p("status")): \(p("message"))")
     case "run.vision.refused":
       return String(localized: "run.vision.refused", defaultValue: "\(provider) declined to judge the screen: \(p("message"))")
+    case "run.vision.limitReached" where p("period") == "month":
+      return String(
+        localized: "run.vision.limitReached.month",
+        defaultValue: "\(provider) has used $\(p("spent")) of its monthly limit of $\(p("limit")). AI checks with it stop until next month, or until the limit is raised in Settings → AI.")
+    case "run.vision.limitReached":
+      return String(
+        localized: "run.vision.limitReached",
+        defaultValue: "\(provider) has used $\(p("spent")) of its daily limit of $\(p("limit")). AI checks with it stop until tomorrow, or until the limit is raised in Settings → AI.")
+    case "run.vision.limitNear" where p("period") == "month":
+      return String(
+        localized: "run.vision.limitNear.month",
+        defaultValue: "\(provider) has used $\(p("spent")) of its monthly limit of $\(p("limit")).")
+    case "run.vision.limitNear":
+      return String(
+        localized: "run.vision.limitNear", defaultValue: "\(provider) has used $\(p("spent")) of its daily limit of $\(p("limit")).")
+    case "run.vision.journalFailed":
+      return String(
+        localized: "run.vision.journalFailed",
+        defaultValue: "Can’t write down the AI call in \(p("path")): \(p("reason")). Without it the spending limits can’t be kept, so AI checks stop.")
     case "run.vision.badAnswer":
       return String(localized: "run.vision.badAnswer", defaultValue: "\(provider) gave an answer JEVision can’t read: \(p("answer"))")
     default:

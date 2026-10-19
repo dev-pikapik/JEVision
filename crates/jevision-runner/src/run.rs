@@ -19,6 +19,7 @@ use crate::report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
     percent, summarize,
 };
+use crate::usage::{LimitState, UsageBook, UsageRecord, price_of};
 use crate::{
     Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
     SecretSource, VisionError, VisionJudge,
@@ -115,6 +116,11 @@ pub struct Runner<'a> {
     pub control: RunControl,
     /// Judges checks by meaning; without one they fail with `run.compare.meaningUnavailable`.
     pub vision: Option<&'a dyn VisionJudge>,
+    /// Judges instead when [`vision`](Self::vision) can't be reached, is overloaded or has used
+    /// up its spending limit.
+    pub fallback: Option<&'a dyn VisionJudge>,
+    /// Where every AI call is logged, and the limits it is held to.
+    pub usage: Option<&'a UsageBook>,
 }
 
 /// A finished run: its folder and the report saved there as `report.json`.
@@ -655,6 +661,43 @@ enum Judged {
     Model(VisionAnswer),
 }
 
+/// What a provider said, and what it cost.
+struct Answer {
+    provider: String,
+    /// The model that answered.
+    model: String,
+    judgement: crate::Judgement,
+    cost: Option<f64>,
+    /// A spending limit is close or used up.
+    warning: Option<Failure>,
+}
+
+/// Why a provider gave no verdict.
+enum Unanswered {
+    /// It can't be reached, is busy or has used up its limit: a fallback provider may answer.
+    Unavailable(Failure),
+    Failed(Failure),
+}
+
+/// The provider is down or busy for now, rather than set up wrong.
+fn unavailable(e: &VisionError) -> bool {
+    match e {
+        VisionError::Unreachable { .. }
+        | VisionError::Timeout { .. }
+        | VisionError::RateLimited { .. } => true,
+        VisionError::Service { status, .. } => *status >= 500,
+        _ => false,
+    }
+}
+
+/// The usage journal couldn't be read or written, so spending can't be kept to its limits.
+fn journal_failure(id: &str, book: &UsageBook, e: &io::Error) -> Failure {
+    Failure::new("run.vision.journalFailed")
+        .with("block", id)
+        .with("path", book.journal.display())
+        .with("reason", e.to_string())
+}
+
 /// One attempt of a run.
 struct Exec<'r> {
     runner: &'r Runner<'r>,
@@ -1121,7 +1164,7 @@ impl Exec<'_> {
                     Ok((passed == want).then_some(()))
                 })?;
                 let target = match &r.compare {
-                    Compare::Meaning { expect } if r.image.is_empty() => expect.as_str(),
+                    Compare::Meaning { expect, .. } if r.image.is_empty() => expect.as_str(),
                     _ => r.image.as_str(),
                 };
                 (reached, target, Some(r))
@@ -1278,11 +1321,12 @@ impl Exec<'_> {
         let judge = self.runner.vision.ok_or_else(|| {
             fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
         })?;
-        let expect = match &r.compare {
-            Compare::Meaning { expect } => expect.trim(),
-            _ => "",
+        let (expect, model) = match &r.compare {
+            Compare::Meaning { expect, model } => (expect.trim(), model.trim()),
+            _ => ("", ""),
         };
-        if (self.options.local_only || self.local_only) && !judge.is_local() {
+        let local_only = self.options.local_only || self.local_only;
+        if local_only && !judge.is_local() {
             let mut failure = Failure::new("run.vision.cloudBlocked")
                 .with("block", id)
                 .with("provider", judge.provider());
@@ -1312,24 +1356,105 @@ impl Exec<'_> {
             expect,
             screenshot: &screenshot,
             reference: reference_picture.as_ref(),
+            model,
         };
-        let judgement = judge
-            .judge(&question)
-            .map_err(|e| fail(vision_failure(judge, &e).with("block", id)))?;
+        let fallback = self.runner.fallback.filter(|f| !local_only || f.is_local());
+        let (answer, fallback_reason) = match (self.ask(t, id, judge, &question), fallback) {
+            (Ok(answer), _) => (answer, None),
+            (Err(Unanswered::Unavailable(reason)), Some(fallback)) => {
+                // A model named in the block belongs to the main provider.
+                let question = Question {
+                    model: "",
+                    ..question
+                };
+                match self.ask(t, id, fallback, &question) {
+                    Ok(answer) => (answer, Some(reason)),
+                    Err(_) => return Err(fail(reason)),
+                }
+            }
+            (Err(Unanswered::Unavailable(f) | Unanswered::Failed(f)), _) => return Err(fail(f)),
+        };
+        let judgement = answer.judgement;
         Ok(Ok(Evaluation {
             reference,
             actual,
             passed: judgement.passed,
             judged: Judged::Model(VisionAnswer {
-                provider: judge.provider().to_owned(),
-                model: judge.model().to_owned(),
+                provider: answer.provider,
+                model: answer.model,
                 passed: judgement.passed,
                 // The model may read a secret off the screen.
                 reason: self.mask(&judgement.reason),
+                input_tokens: judgement.usage.input_tokens,
+                output_tokens: judgement.usage.output_tokens,
+                cost: answer.cost,
+                warning: answer.warning,
+                fallback_reason,
             }),
             private,
             sent: Some(screenshot),
         }))
+    }
+
+    /// Asks one provider, held to its spending limits, and logs what the call used.
+    fn ask(
+        &self,
+        t: &TestFile,
+        id: &str,
+        judge: &dyn VisionJudge,
+        question: &Question<'_>,
+    ) -> Result<Answer, Unanswered> {
+        let book = self.runner.usage;
+        let state = |book: &UsageBook| {
+            book.limit_state(judge.provider_id(), judge.provider(), SystemTime::now())
+                .map_err(|e| Unanswered::Failed(journal_failure(id, book, &e)))
+        };
+        if let Some(book) = book
+            && let LimitState::Reached(f) = state(book)?
+        {
+            return Err(Unanswered::Unavailable(f.with("block", id)));
+        }
+        let judgement = judge.judge(question).map_err(|e| {
+            let failure = vision_failure(judge, &e).with("block", id);
+            if unavailable(&e) {
+                Unanswered::Unavailable(failure)
+            } else {
+                Unanswered::Failed(failure)
+            }
+        })?;
+        let model = match question.model.trim() {
+            "" => judge.model(),
+            model => model,
+        }
+        .to_owned();
+        let mut answer = Answer {
+            provider: judge.provider().to_owned(),
+            model,
+            judgement,
+            cost: None,
+            warning: None,
+        };
+        if let Some(book) = book {
+            let usage = answer.judgement.usage;
+            let record = UsageRecord {
+                time: rfc3339(SystemTime::now()),
+                provider: judge.provider_id().to_owned(),
+                model: answer.model.clone(),
+                test: t.file.clone(),
+                block: id.to_owned(),
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+            };
+            book.record(&record)
+                .map_err(|e| Unanswered::Failed(journal_failure(id, book, &e)))?;
+            answer.cost = price_of(&book.prices, judge.provider_id(), &answer.model)
+                .map(|p| p.cost(usage.input_tokens, usage.output_tokens));
+            answer.warning = match state(book)? {
+                LimitState::Near(f) | LimitState::Reached(f) => Some(f),
+                LimitState::Within => None,
+            };
+        }
+        Ok(answer)
     }
 
     /// The reference to compare with; the inner `Err` holds its name when it does not exist.
@@ -1842,7 +1967,7 @@ fn write_failed(path: &Path, e: impl ToString) -> Stop {
 /// What a condition looks for, for people: what the screen should show, or the name of its
 /// reference image, `refs/update-dialog.png` → `update dialog`.
 fn condition_name(r: &Reference) -> String {
-    if let Compare::Meaning { expect } = &r.compare
+    if let Compare::Meaning { expect, .. } = &r.compare
         && !expect.trim().is_empty()
     {
         return expect.trim().to_owned();
@@ -2032,7 +2157,7 @@ fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<P
 }
 
 /// UTC time as `2026-10-18T14:30:05.123Z`.
-fn rfc3339(time: SystemTime) -> String {
+pub(crate) fn rfc3339(time: SystemTime) -> String {
     let since = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = since.as_secs() as i64;
     let (days, day_secs) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));

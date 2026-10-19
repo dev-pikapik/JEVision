@@ -5,10 +5,10 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    DataRow, Event, Hands, HandsError, Judgement, MouseButton, Openable, PauseReason, Point,
-    Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, Screenshot,
-    ScrollDirection, ScrollUnit, StepStatus, VIDEO_FILE, Verdict, VideoMode, VisionAnswer,
-    VisionError, VisionJudge, describe, html, junit_xml, prune_videos,
+    DataRow, Event, Hands, HandsError, Judgement, Limit, MouseButton, Openable, PauseReason, Point,
+    Price, Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, Screenshot,
+    ScrollDirection, ScrollUnit, StepStatus, Usage, UsageBook, VIDEO_FILE, Verdict, VideoMode,
+    VisionAnswer, VisionError, VisionJudge, describe, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -289,6 +289,8 @@ fn run_with(
         events: &sink,
         control,
         vision: None,
+        fallback: None,
+        usage: None,
     };
     let run = runner
         .run(&project.0, Path::new("t.flow.json"), options)
@@ -1032,6 +1034,8 @@ fn breakpoints_step_mode_and_user_input_pause() {
         events: &sink,
         control: control.clone(),
         vision: None,
+        fallback: None,
+        usage: None,
     };
 
     let pauses = std::thread::scope(|s| {
@@ -1437,6 +1441,8 @@ fn placeholders_fill_the_paths_of_files_blocks_read() {
 
 /// A vision model that gives a fixed answer and keeps what it was shown.
 struct Judge {
+    name: &'static str,
+    id: &'static str,
     local: bool,
     answer: Result<Judgement, VisionError>,
     asked: Mutex<Vec<Asked>>,
@@ -1444,6 +1450,7 @@ struct Judge {
 
 struct Asked {
     expect: String,
+    model: String,
     screenshot: Vec<u8>,
     reference: Option<Vec<u8>>,
 }
@@ -1451,6 +1458,8 @@ struct Asked {
 impl Judge {
     fn new(local: bool, answer: Result<Judgement, VisionError>) -> Self {
         Self {
+            name: "Test Vision",
+            id: "test-vision",
             local,
             answer,
             asked: Mutex::new(Vec::new()),
@@ -1468,6 +1477,10 @@ impl Judge {
                     "The cart is empty."
                 }
                 .into(),
+                usage: Usage {
+                    input_tokens: 4000,
+                    output_tokens: 1000,
+                },
             }),
         )
     }
@@ -1475,7 +1488,10 @@ impl Judge {
 
 impl VisionJudge for Judge {
     fn provider(&self) -> &str {
-        "Test Vision"
+        self.name
+    }
+    fn provider_id(&self) -> &str {
+        self.id
     }
     fn model(&self) -> &str {
         "seer-1"
@@ -1486,6 +1502,7 @@ impl VisionJudge for Judge {
     fn judge(&self, q: &Question<'_>) -> Result<Judgement, VisionError> {
         self.asked.lock().unwrap().push(Asked {
             expect: q.expect.to_owned(),
+            model: q.model.to_owned(),
             screenshot: q.screenshot.png().to_vec(),
             reference: q.reference.map(|r| r.png().to_vec()),
         });
@@ -1494,6 +1511,17 @@ impl VisionJudge for Judge {
 }
 
 fn run_judged(project: &Project, hands: &Fake, judge: Option<&Judge>, local_only: bool) -> Run {
+    run_ai(project, hands, judge, None, None, local_only)
+}
+
+fn run_ai(
+    project: &Project,
+    hands: &Fake,
+    judge: Option<&Judge>,
+    fallback: Option<&Judge>,
+    usage: Option<&UsageBook>,
+    local_only: bool,
+) -> Run {
     let secrets = secrets();
     let runner = Runner {
         hands,
@@ -1501,6 +1529,8 @@ fn run_judged(project: &Project, hands: &Fake, judge: Option<&Judge>, local_only
         events: &|_: &Event| {},
         control: RunControl::new(),
         vision: judge.map(|j| j as &dyn VisionJudge),
+        fallback: fallback.map(|j| j as &dyn VisionJudge),
+        usage,
     };
     let options = RunOptions {
         local_only,
@@ -1551,6 +1581,11 @@ fn checks_by_meaning_show_the_model_only_the_compared_part_with_private_parts_co
             model: "seer-1".into(),
             passed: true,
             reason: "Two items in the cart.".into(),
+            input_tokens: 4000,
+            output_tokens: 1000,
+            cost: None,
+            warning: None,
+            fallback_reason: None,
         })
     );
     assert_eq!(step.similarity, None);
@@ -1561,6 +1596,7 @@ fn checks_by_meaning_show_the_model_only_the_compared_part_with_private_parts_co
         expect,
         screenshot: shot,
         reference,
+        ..
     } = &asked[0];
     assert_eq!(expect, "The cart shows 2 items");
     assert_eq!(size(shot), (20, 20));
@@ -1799,6 +1835,7 @@ fn a_model_quoting_a_secret_from_the_screen_is_masked() {
         Ok(Judgement {
             passed: false,
             reason: format!("The password field shows {SECRET}."),
+            usage: Usage::default(),
         }),
     );
     let run = run_judged(&p, &hands, Some(&judge), false);
@@ -1832,6 +1869,8 @@ fn a_pause_shows_the_variables_of_the_block_ahead() {
         events: &sink,
         control: control.clone(),
         vision: None,
+        fallback: None,
+        usage: None,
     };
     let seen = std::thread::scope(|s| {
         let handle = s.spawn(|| {
@@ -2027,4 +2066,137 @@ fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
         "Test file t.flow.json cannot be read: Field \"app\": required, but missing. \
          Block \"a\", field \"colour\": not a known field."
     );
+}
+
+fn meaning_check(p: &Project, model: &str) {
+    p.test(
+        &format!(
+            r#""check":{{"type":"check","reference":{{"compare":"meaning","expect":"The cart shows 2 items"{model}}}}}"#
+        ),
+        "check",
+        0,
+    );
+}
+
+fn usage_book(p: &Project, daily: Option<f64>) -> UsageBook {
+    UsageBook {
+        journal: p.0.join("ai-usage.jsonl"),
+        prices: vec![Price {
+            provider: "test-vision".into(),
+            model: "seer".into(),
+            input: 1.0,
+            output: 2.0,
+        }],
+        limits: vec![Limit {
+            provider: "test-vision".into(),
+            daily,
+            monthly: None,
+        }],
+    }
+}
+
+#[test]
+fn ai_calls_are_logged_priced_and_stopped_at_the_limit() {
+    let p = Project::new();
+    meaning_check(&p, "");
+    let hands = Fake::new(solid([0, 200, 0]));
+    let judge = Judge::says(true);
+    // Each call costs $0.006 of $0.01 a day.
+    let book = usage_book(&p, Some(0.01));
+    let run = || run_ai(&p, &hands, Some(&judge), None, Some(&book), false).report;
+
+    let first = run();
+    let answer = first.attempts[0].steps[0].vision.clone().unwrap();
+    assert!((answer.cost.unwrap() - 0.006).abs() < 1e-12);
+    assert_eq!(answer.warning, None);
+
+    let second = run();
+    assert_eq!(second.verdict, Verdict::Passed);
+    let warning = second.attempts[0].steps[0].vision.clone().unwrap().warning;
+    assert_eq!(warning.unwrap().code, "run.vision.limitReached");
+
+    let third = run();
+    assert_eq!(failure_code(&third), "run.vision.limitReached");
+    let failure = third.attempts[0].steps[0].failure.clone().unwrap();
+    assert_eq!(failure.param("period"), "day");
+    assert_eq!(failure.param("spent"), "0.01");
+    assert_eq!(failure.param("block"), "check");
+    assert_eq!(judge.asked.lock().unwrap().len(), 2);
+    assert!(describe(&failure).contains("Test Vision has used $0.01 of its daily limit of $0.01"));
+
+    let records = book.records().unwrap();
+    assert_eq!(records.len(), 2);
+    assert_eq!(
+        (
+            records[0].provider.as_str(),
+            records[0].model.as_str(),
+            records[0].test.as_str(),
+            records[0].block.as_str(),
+            records[0].input_tokens,
+            records[0].output_tokens
+        ),
+        ("test-vision", "seer-1", "t.flow.json", "check", 4000, 1000)
+    );
+
+    // Without a journal nothing is logged and nothing is held back.
+    let free = run_ai(&p, &hands, Some(&judge), None, None, false).report;
+    assert_eq!(free.verdict, Verdict::Passed);
+}
+
+#[test]
+fn the_fallback_provider_answers_when_the_main_one_is_down_or_out_of_money() {
+    let p = Project::new();
+    meaning_check(&p, r#","model":"seer-2""#);
+    let hands = Fake::new(solid([0, 200, 0]));
+    let down = Judge::new(
+        false,
+        Err(VisionError::Unreachable {
+            address: "http://127.0.0.1:9".into(),
+        }),
+    );
+    let backup = Judge {
+        name: "Backup",
+        id: "backup",
+        ..Judge::says(true)
+    };
+    let report = run_ai(&p, &hands, Some(&down), Some(&backup), None, false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let answer = report.attempts[0].steps[0].vision.clone().unwrap();
+    assert_eq!(
+        (answer.provider.as_str(), answer.model.as_str()),
+        ("Backup", "seer-1")
+    );
+    assert_eq!(
+        answer.fallback_reason.unwrap().code,
+        "run.vision.unreachable"
+    );
+    // The block's model is asked of the main provider; the fallback uses its own.
+    assert_eq!(down.asked.lock().unwrap()[0].model, "seer-2");
+    assert_eq!(backup.asked.lock().unwrap()[0].model, "");
+
+    // A main provider over its limit isn't asked at all.
+    let main = Judge::says(false);
+    let book = usage_book(&p, Some(0.0));
+    let report = run_ai(&p, &hands, Some(&main), Some(&backup), Some(&book), false).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let answer = report.attempts[0].steps[0].vision.clone().unwrap();
+    assert_eq!(
+        answer.fallback_reason.unwrap().code,
+        "run.vision.limitReached"
+    );
+    assert!(main.asked.lock().unwrap().is_empty());
+    assert_eq!(book.records().unwrap()[0].provider, "backup");
+
+    // A setup mistake is shown, not covered up by the fallback.
+    let wrong = Judge::new(false, Err(VisionError::BadKey));
+    let report = run_ai(&p, &hands, Some(&wrong), Some(&backup), None, false).report;
+    assert_eq!(failure_code(&report), "run.vision.badKey");
+
+    // Only models on this Mac: a fallback in the cloud is not used.
+    let local_down = Judge {
+        local: true,
+        ..Judge::new(false, Err(VisionError::Timeout { seconds: 120 }))
+    };
+    let report = run_ai(&p, &hands, Some(&local_down), Some(&backup), None, true).report;
+    assert_eq!(failure_code(&report), "run.vision.timeout");
 }

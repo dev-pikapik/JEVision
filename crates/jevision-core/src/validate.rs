@@ -298,7 +298,7 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 let earlier = std::iter::once(r).chain(else_if[..i].iter().map(|c| &c.reference));
                 // A case not filled in yet is reported as empty, not as a repeat.
                 let filled = !case.reference.image.is_empty()
-                    || matches!(&case.reference.compare, Compare::Meaning { expect } if !expect.trim().is_empty());
+                    || matches!(&case.reference.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty());
                 if filled && earlier.into_iter().any(|e| *e == case.reference) {
                     out.push(
                         Issue::warning("flow.if.sameCondition")
@@ -419,7 +419,7 @@ fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
 
 fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
     let image_optional =
-        matches!(&r.compare, Compare::Meaning { expect } if !expect.trim().is_empty());
+        matches!(&r.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty());
     if !(image_optional && r.image.is_empty()) {
         relative_path(block, &format!("{field}.image"), &r.image, out);
     }

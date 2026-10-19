@@ -1,10 +1,14 @@
-//! Vision models for checks by meaning: the providers, the models a server offers and a quick
-//! test that the settings work. Calls go over the network and block; call them off the main
+//! Vision models for checks by meaning: the providers, the models a server offers, a quick
+//! test that the settings work, and what the calls cost. Calls go over the network and block; call them off the main
 //! thread.
 
 use std::fmt;
+use std::time::SystemTime;
 
-use jevision_runner::{Provider, TIMEOUT, VisionClient, VisionConfig, VisionJudge};
+use jevision_runner::{
+    DaySpend, Limit, Price, Provider, ProviderSpend, Spend, TIMEOUT, UsageBook, UsageSummary,
+    VisionClient, VisionConfig, VisionJudge,
+};
 
 use crate::run::Failure;
 
@@ -136,6 +140,98 @@ pub fn vision_test(settings: VisionSettings) -> Result<VisionVerdict, VisionCall
         passed: judgement.passed,
         reason: judgement.reason,
     })
+}
+
+/// Where AI calls are logged, what they cost and how much they may cost.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct AiUsageSettings {
+    /// The journal file, made on the first call.
+    pub journal: String,
+    pub prices: Vec<Price>,
+    pub limits: Vec<Limit>,
+}
+
+impl AiUsageSettings {
+    pub(crate) fn book(self) -> UsageBook {
+        UsageBook {
+            journal: self.journal.into(),
+            prices: self.prices,
+            limits: self.limits,
+        }
+    }
+}
+
+#[uniffi::remote(Record)]
+pub struct Price {
+    pub provider: String,
+    pub model: String,
+    pub input: f64,
+    pub output: f64,
+}
+
+#[uniffi::remote(Record)]
+pub struct Limit {
+    pub provider: String,
+    pub daily: Option<f64>,
+    pub monthly: Option<f64>,
+}
+
+#[uniffi::remote(Record)]
+pub struct Spend {
+    pub cost: f64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub calls: u64,
+    pub unpriced_calls: u64,
+}
+
+#[uniffi::remote(Record)]
+pub struct ProviderSpend {
+    pub provider: String,
+    pub today: Spend,
+    pub month: Spend,
+}
+
+#[uniffi::remote(Record)]
+pub struct DaySpend {
+    pub day: String,
+    pub provider: String,
+    pub spend: Spend,
+}
+
+#[uniffi::remote(Record)]
+pub struct UsageSummary {
+    pub providers: Vec<ProviderSpend>,
+    pub days: Vec<DaySpend>,
+}
+
+/// Public list prices of common models, to start the price table from. In US dollars per
+/// million tokens; a row's model is the start of the model names it is for.
+#[uniffi::export]
+pub fn ai_default_prices() -> Vec<Price> {
+    jevision_runner::default_prices()
+}
+
+/// Spend per provider today and this month, and per day over the last `days` days, in this
+/// Mac's time zone. Fails when the journal can't be read.
+#[uniffi::export]
+pub fn ai_usage_summary(
+    settings: AiUsageSettings,
+    days: u32,
+) -> Result<UsageSummary, AiUsageError> {
+    settings
+        .book()
+        .summary(SystemTime::now(), days)
+        .map_err(|e| AiUsageError::Unreadable {
+            reason: e.to_string(),
+        })
+}
+
+/// Why the usage journal couldn't be read.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum AiUsageError {
+    #[error("the AI usage journal can't be read: {reason}")]
+    Unreadable { reason: String },
 }
 
 fn failed(client: &VisionClient, e: &jevision_runner::VisionError) -> VisionCallError {

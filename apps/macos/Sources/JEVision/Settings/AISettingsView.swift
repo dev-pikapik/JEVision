@@ -6,6 +6,7 @@ import SwiftUI
 struct AISettingsView: View {
   @AppStorage(AISettings.providerKey) private var providerID = ""
   @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
   @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
   @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
 
@@ -15,11 +16,13 @@ struct AISettingsView: View {
         tab: .ai,
         text: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       AISections()
+      FallbackSections()
+      AIUsageSections()
       ProjectPrivacySection()
       AssistantsSection()
       RestoreDefaultsSection(
-        message: Text("No provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and the project’s own settings stay as they are."),
-        isDefault: providerID.isEmpty && !localOnly && !mayRun && !mayCapture && Self.providerKeys.isEmpty,
+        message: Text("No provider or fallback provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),
+        isDefault: providerID.isEmpty && fallbackID.isEmpty && !localOnly && !mayRun && !mayCapture && Self.providerKeys.isEmpty,
         reset: reset)
     }
     .formStyle(.grouped)
@@ -35,6 +38,7 @@ struct AISettingsView: View {
 
   private func reset() {
     providerID = ""
+    fallbackID = ""
     localOnly = false
     mayRun = false
     mayCapture = false
@@ -74,6 +78,37 @@ struct AISections: View {
     if let provider = providers.first(where: { $0.id == providerID }) {
       ProviderSection(provider: provider, localOnly: localOnly)
         .id(provider.id)
+    }
+  }
+}
+
+/// The provider asked when the main one can't answer, with its own model and key.
+private struct FallbackSections: View {
+  @AppStorage(AISettings.providerKey) private var providerID = ""
+  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
+  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  private let providers = AISettings.providers
+
+  var body: some View {
+    if !providerID.isEmpty {
+      Section {
+        Picker("Fallback Provider", selection: $fallbackID) {
+          Text("None").tag("")
+          Divider()
+          ForEach(providers.filter { $0.id != providerID }, id: \.id) { Text(verbatim: $0.name).tag($0.id) }
+          if fallbackID == providerID { Text(verbatim: AISettings.provider(fallbackID)?.name ?? "").tag(fallbackID) }
+        }
+        .settingAnchor("fallbackProvider")
+      } footer: {
+        Text("Asked when the main provider can’t be reached, is overloaded or has reached its limit. Problems with the setup, like a wrong key, still stop the check.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      if fallbackID != providerID, let fallback = providers.first(where: { $0.id == fallbackID }) {
+        ProviderSection(provider: fallback, localOnly: localOnly)
+          .id("fallback." + fallback.id)
+      }
     }
   }
 }

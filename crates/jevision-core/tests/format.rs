@@ -185,7 +185,8 @@ fn unreadable_files_report_codes_with_params() {
             "b": {"type": "waitFor", "until": {"appears": {}}, "timeout": "soon"},
             "c": {"type": "check", "reference": {"image": "x.png", "compare": "exact", "threshold": 0.5}},
             "d": {"type": "click", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}, "next": "e"},
-            "e": {"type": "check", "reference": {"image": "x.png", "expect": "A cart"}}}"#,
+            "e": {"type": "check", "reference": {"image": "x.png", "expect": "A cart"}},
+            "f": {"type": "check", "reference": {"image": "x.png", "model": "gpt-5"}}}"#,
     ));
     let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
         .iter()
@@ -209,6 +210,11 @@ fn unreadable_files_report_codes_with_params() {
                 "flow.reference.expectNeedsMeaning",
                 Some("e"),
                 Some("reference.expect")
+            ),
+            (
+                "flow.reference.modelNeedsMeaning",
+                Some("f"),
+                Some("reference.model")
             ),
         ]
     );
@@ -250,7 +256,8 @@ const THREE_WAYS: &str = r#"{
         {
           "reference": {
             "compare": "meaning",
-            "expect": "An update dialog is open"
+            "expect": "An update dialog is open",
+            "model": "gpt-5"
           },
           "then": "two"
         },

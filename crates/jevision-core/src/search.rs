@@ -44,8 +44,9 @@ pub fn test_keywords(flow: &Flow) -> String {
     words.extend(flow.tags.iter().map(String::as_str));
     fn reference<'a>(r: &'a Reference, words: &mut Vec<&'a str>) {
         words.push(&r.image);
-        if let Compare::Meaning { expect } = &r.compare {
+        if let Compare::Meaning { expect, model } = &r.compare {
             words.push(expect);
+            words.push(model);
         }
     }
     for block in &flow.blocks {

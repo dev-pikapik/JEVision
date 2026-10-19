@@ -234,7 +234,8 @@ final class RunCenter {
         startAt: request.from, retries: choices.retries.map(UInt32.init),
         environment: ProjectEnvironments.read(request.project).selected?.name, dataRows: choices.rows(in: table),
         vision: ai.settings(), localOnly: ai.localOnly,
-        requestedBy: request.requestedBy, video: videos.mode, keepVideosDays: videos.keepDays),
+        requestedBy: request.requestedBy, fallback: ai.fallback(), usage: ai.usage, video: videos.mode,
+        keepVideosDays: videos.keepDays),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: RunBridge(center: self, remote: remoteListener?(request.project)))
     return true

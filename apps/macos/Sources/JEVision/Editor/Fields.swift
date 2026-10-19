@@ -305,7 +305,7 @@ struct ReferenceEditor: View {
         switch $0 {
         case .exact: reference.compare = .exact
         case .similar: reference.compare = .similar(threshold: 0.95)
-        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "") }
+        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "", model: "") }
         }
       })
   }
@@ -316,8 +316,19 @@ struct ReferenceEditor: View {
 
   private var expectation: Binding<String> {
     Binding(
-      get: { if case .meaning(let expect) = reference.compare { expect } else { "" } },
-      set: { reference.compare = .meaning(expect: $0) })
+      get: { if case .meaning(let expect, _) = reference.compare { expect } else { "" } },
+      set: { reference.compare = .meaning(expect: $0, model: model.wrappedValue) })
+  }
+
+  private var model: Binding<String> {
+    Binding(
+      get: { if case .meaning(_, let model) = reference.compare { model } else { "" } },
+      set: { reference.compare = .meaning(expect: expectation.wrappedValue, model: $0) })
+  }
+
+  /// The model of the provider chosen in Settings → AI, shown when a block keeps it.
+  private var settingsModel: String {
+    AISettings.provider(aiProvider).map { AISettings(.standard).model(for: $0) } ?? ""
   }
 
   private var threshold: Binding<Double> {
@@ -358,6 +369,12 @@ struct ReferenceEditor: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".expect"))
+      TextField(text: model, prompt: Text(settingsModel)) { Text("Model") }
+      Text("Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+      IssueList(issues: context.issues(field + ".model"))
     }
     if aiProvider.isEmpty {
       HStack(alignment: .firstTextBaseline) {

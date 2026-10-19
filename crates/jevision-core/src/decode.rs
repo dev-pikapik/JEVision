@@ -737,6 +737,7 @@ fn else_ifs(o: &mut Obj<'_>, out: &mut Out) -> Option<Vec<ElseIf>> {
 fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
     let mode = o.opt_choice("compare", COMPARE, out);
     let expect = o.opt_string("expect", out);
+    let model = o.opt_string("model", out);
     // A meaning check that says what to expect needs no reference image.
     let image = match (mode, &expect) {
         (Some(CompareMode::Meaning), Some(e)) if !e.trim().is_empty() => {
@@ -758,6 +759,7 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
         (CompareMode::Exact, None) => Some(Compare::Exact),
         (CompareMode::Meaning, None) => Some(Compare::Meaning {
             expect: expect.clone().unwrap_or_default(),
+            model: model.clone().unwrap_or_default().trim().to_owned(),
         }),
         (_, Some(_)) => {
             out.push(o.issue(
@@ -769,6 +771,9 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
     };
     let compare = if expect.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
         out.push(o.issue("flow.reference.expectNeedsMeaning", &o.path_of("expect")));
+        None
+    } else if model.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
+        out.push(o.issue("flow.reference.modelNeedsMeaning", &o.path_of("model")));
         None
     } else {
         compare

@@ -8,10 +8,10 @@ use std::sync::Arc;
 use jevision_core::{MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
-    VideoMask, VideoMode, VideoWindow, VisionAnswer, VisionJudge,
+    VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
-use crate::vision::VisionSettings;
+use crate::vision::{AiUsageSettings, VisionSettings};
 
 /// Why the operating system layer could not do something.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -193,6 +193,13 @@ pub struct RunOptions {
     /// Name of the schedule that started the run, saved in the report.
     #[uniffi(default = None)]
     pub schedule: Option<String>,
+    /// Asked instead of `vision` when it can't be reached, is busy or has used up its limit.
+    #[uniffi(default = None)]
+    pub fallback: Option<VisionSettings>,
+    /// Where AI calls are logged and the spending limits they are held to; `None` logs
+    /// nothing and limits nothing.
+    #[uniffi(default = None)]
+    pub usage: Option<AiUsageSettings>,
     /// Whether to record a video of the app, and which videos to keep.
     pub video: VideoMode,
     /// Videos of the project's runs older than this many days are deleted after the run;
@@ -303,12 +310,16 @@ pub(crate) fn run(
     let hands = HandsAdapter(hands);
     let secrets = SecretAdapter(secrets, options.environment.clone());
     let vision = options.vision.and_then(|v| v.client().ok());
+    let fallback = options.fallback.and_then(|v| v.client().ok());
+    let usage = options.usage.map(AiUsageSettings::book);
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
         events,
         control,
         vision: vision.as_ref().map(|c| c as &dyn VisionJudge),
+        fallback: fallback.as_ref().map(|c| c as &dyn VisionJudge),
+        usage: usage.as_ref(),
     };
     let options = jevision_runner::RunOptions {
         start_at: options.start_at,
@@ -859,7 +870,7 @@ impl From<jevision_runner::Step> for Step {
             diff: s.diff,
             reference: s.reference,
             similarity: s.similarity,
-            vision: s.vision,
+            vision: s.vision.map(Into::into),
             branch: s.branch,
             failure: s.failure.map(Into::into),
             video_at_ms: s.video_at_ms,
@@ -919,7 +930,7 @@ pub struct Screenshot {
     pub secure: Vec<Rect>,
 }
 
-#[uniffi::remote(Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct VisionAnswer {
     /// Provider name, such as `Anthropic`.
     pub provider: String,
@@ -927,6 +938,36 @@ pub struct VisionAnswer {
     pub passed: bool,
     /// The model's explanation, in a sentence.
     pub reason: String,
+    /// Tokens the call used, as the provider counted them.
+    #[uniffi(default = 0)]
+    pub input_tokens: u64,
+    #[uniffi(default = 0)]
+    pub output_tokens: u64,
+    /// What the call cost in US dollars, when the model has a price.
+    #[uniffi(default = None)]
+    pub cost: Option<f64>,
+    /// A spending limit is close or used up: `run.vision.limitNear` or `run.vision.limitReached`.
+    #[uniffi(default = None)]
+    pub warning: Option<Failure>,
+    /// Why the fallback provider answered instead of the main one.
+    #[uniffi(default = None)]
+    pub fallback_reason: Option<Failure>,
+}
+
+impl From<jevision_runner::VisionAnswer> for VisionAnswer {
+    fn from(a: jevision_runner::VisionAnswer) -> Self {
+        Self {
+            provider: a.provider,
+            model: a.model,
+            passed: a.passed,
+            reason: a.reason,
+            input_tokens: a.input_tokens,
+            output_tokens: a.output_tokens,
+            cost: a.cost,
+            warning: a.warning.map(Into::into),
+            fallback_reason: a.fallback_reason.map(Into::into),
+        }
+    }
 }
 
 #[uniffi::remote(Enum)]
@@ -1066,18 +1107,22 @@ pub(crate) mod tests {
     }
 
     enum Message {
-        Event(RunEvent),
-        Finished(RunOutcome),
+        Event(Box<RunEvent>),
+        Finished(Box<RunOutcome>),
     }
 
     struct Listener(Mutex<Sender<Message>>);
 
     impl RunListener for Listener {
         fn event(&self, event: RunEvent) {
-            let _ = self.0.lock().unwrap().send(Message::Event(event));
+            let _ = self.0.lock().unwrap().send(Message::Event(Box::new(event)));
         }
         fn finished(&self, outcome: RunOutcome) {
-            let _ = self.0.lock().unwrap().send(Message::Finished(outcome));
+            let _ = self
+                .0
+                .lock()
+                .unwrap()
+                .send(Message::Finished(Box::new(outcome)));
         }
     }
 
@@ -1125,8 +1170,8 @@ pub(crate) mod tests {
         let deadline = Instant::now() + limit;
         loop {
             match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                Ok(Message::Event(e)) => events.push(e),
-                Ok(Message::Finished(outcome)) => return (events, outcome),
+                Ok(Message::Event(e)) => events.push(*e),
+                Ok(Message::Finished(outcome)) => return (events, *outcome),
                 Err(e) => panic!("run did not finish: {e}"),
             }
         }
@@ -1190,11 +1235,11 @@ pub(crate) mod tests {
         run.set_step_mode(true);
         let rx = p.start(&run, Arc::new(Fake::default()));
         match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Message::Event(RunEvent::RunStarted { .. })) => {}
+            Ok(Message::Event(e)) if matches!(*e, RunEvent::RunStarted { .. }) => {}
             _ => panic!("expected RunStarted"),
         }
         let next = || match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Message::Event(e)) => e,
+            Ok(Message::Event(e)) => *e,
             _ => panic!("expected an event"),
         };
         assert_eq!(next(), RunEvent::AttemptStarted { attempt: 1 });

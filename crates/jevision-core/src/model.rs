@@ -341,8 +341,9 @@ pub enum Compare {
     /// At least `threshold` (0–1] similar.
     Similar { threshold: f64 },
     /// Same meaning, judged by a vision model: the screen shows what `expect` says, or means
-    /// the same as the reference image when `expect` is empty.
-    Meaning { expect: String },
+    /// the same as the reference image when `expect` is empty. `model` names the model to ask
+    /// instead of the one chosen in the settings; empty for that one.
+    Meaning { expect: String, model: String },
 }
 
 impl Compare {
@@ -683,10 +684,13 @@ impl Serialize for Reference {
         }
         match &self.compare {
             Compare::Exact => map.serialize_entry("compare", "exact")?,
-            Compare::Meaning { expect } => {
+            Compare::Meaning { expect, model } => {
                 map.serialize_entry("compare", "meaning")?;
                 if !expect.is_empty() {
                     map.serialize_entry("expect", expect)?;
+                }
+                if !model.is_empty() {
+                    map.serialize_entry("model", model)?;
                 }
             }
             Compare::Similar { threshold } => {
