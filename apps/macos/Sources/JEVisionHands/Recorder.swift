@@ -10,6 +10,8 @@ public final class Recorder: @unchecked Sendable {
   public enum Notice: Sendable, Equatable {
     /// A click outside the app's window, in its menus say: a test can't repeat it.
     case outsideWindow
+    /// A drag let go outside the app's window: a test can't repeat it.
+    case dragOutsideWindow
     /// No picture of the app's window to record the click with.
     case noWindow
     /// The area to check isn't over the app's window.
@@ -65,7 +67,7 @@ public final class Recorder: @unchecked Sendable {
     }
     thread.name = "JEVision recorder pictures"
     thread.start()
-    guard tap.start([.leftMouseDown, .rightMouseDown, .keyDown]) else {
+    guard tap.start([.leftMouseDown, .leftMouseUp, .rightMouseDown, .scrollWheel, .keyDown]) else {
       lock.withLock { running = false }
       return false
     }
@@ -141,6 +143,24 @@ public final class Recorder: @unchecked Sendable {
         characters: String(utf16CodeUnits: units, count: length), modifiers: modifiers,
         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, time: now)
       queue.async { [self] in key(press, ignoring: ignoring, frame: frame) }
+    } else if type == .leftMouseUp {
+      let location = event.location
+      queue.async { [self] in release(at: location) }
+    } else if type == .scrollWheel {
+      let location = event.location
+      // A trackpad scrolls by pixels, a mouse wheel by lines.
+      let pixels = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
+      let vertical = Int(event.getIntegerValueField(pixels ? .scrollWheelEventPointDeltaAxis1 : .scrollWheelEventDeltaAxis1))
+      let horizontal = Int(event.getIntegerValueField(pixels ? .scrollWheelEventPointDeltaAxis2 : .scrollWheelEventDeltaAxis2))
+      let owner = Self.windowOwner(at: location)
+      queue.async { [self] in
+        let inApp = !ignoring && owner.map(currentPIDs().contains) == true
+        switch recording.scroll(at: location, vertical: vertical, horizontal: horizontal, pixels: pixels, inApp: inApp, frame: frame) {
+        case .recorded: publish(nil)
+        case .outsideWindow where frame == nil: publish(.noWindow)
+        case .outsideWindow, .ignored: break
+        }
+      }
     } else {
       let location = event.location
       let button: MouseButton = type == .rightMouseDown ? .right : .left
@@ -160,6 +180,15 @@ public final class Recorder: @unchecked Sendable {
       publish(nil)
       checkFocusSoon()
     case .outsideWindow: publish(frame == nil ? .noWindow : .outsideWindow)
+    case .ignored: break
+    }
+  }
+
+  private func release(at point: CGPoint) {
+    let element = Accessibility.element(at: point, pids: currentPIDs())
+    switch recording.release(at: point, element: element) {
+    case .recorded: publish(nil)
+    case .outsideWindow: publish(.dragOutsideWindow)
     case .ignored: break
     }
   }

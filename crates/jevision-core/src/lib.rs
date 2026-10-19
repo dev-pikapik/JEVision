@@ -23,7 +23,7 @@ pub use canvas::CanvasItem;
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
-pub use edit::{START, Slot};
+pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
 pub use env::{
     AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
     required_env_values, validate_environment_values,
@@ -44,8 +44,8 @@ pub use schedule::{
 };
 pub use search::{SearchCandidate, rank, test_keywords};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, unbreakable_placeholders, validate,
-    validate_in,
+    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, required_secrets,
+    unbreakable_placeholders, validate, validate_in,
 };
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.
@@ -93,6 +93,9 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("openApp", BlockGroup::Actions, &[NEXT]),
     ("openFile", BlockGroup::Actions, &[NEXT]),
     ("click", BlockGroup::Actions, &[NEXT]),
+    ("hover", BlockGroup::Actions, &[NEXT]),
+    ("drag", BlockGroup::Actions, &[NEXT]),
+    ("scroll", BlockGroup::Actions, &[NEXT]),
     ("type", BlockGroup::Actions, &[NEXT]),
     ("pressKeys", BlockGroup::Actions, &[NEXT]),
     ("waitFor", BlockGroup::Waiting, &[NEXT]),

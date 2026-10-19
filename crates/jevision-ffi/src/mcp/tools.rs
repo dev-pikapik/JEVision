@@ -59,7 +59,7 @@ pub(super) fn definitions() -> Vec<Value> {
         tool(
             "write_test",
             "Write a test",
-            "Creates or replaces a test file with the given JSON, saved in canonical form (fixed key order, blocks in reading order, the click button, comparison and timeout written out, settings that are off or empty left out). Nothing is saved if the test has errors; the answer then lists them with the block and field each concerns. Call list_block_types first to learn the format.",
+            "Creates or replaces a test file with the given JSON, saved in canonical form (fixed key order, blocks in reading order, the click button, scroll unit, comparison and timeout written out, settings that are off or empty left out). Nothing is saved if the test has errors; the answer then lists them with the block and field each concerns. Call list_block_types first to learn the format.",
             json!({
                 "path": path("Test file to write, relative to the project folder; must end in .flow.json. Missing folders are created."),
                 "test": {

@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use jevision_core::{
     Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
     ElseIf, Flow, FlowLayout, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
-    MouseButton, Note, Point, Priority, Rect, Reference, SearchCandidate, Severity, Slot, Target,
-    TestStatus, TestType, WaitUntil,
+    MouseButton, Note, Point, Priority, Rect, Reference, ScrollDirection, ScrollUnit,
+    SearchCandidate, Severity, Slot, Target, TestStatus, TestType, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -422,6 +422,25 @@ pub enum BlockKind {
         wait_for_change: bool,
         next: Option<String>,
     },
+    Hover {
+        target: Target,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
+    Drag {
+        from: Target,
+        to: Target,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
+    Scroll {
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+        at: Option<Target>,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
     Type {
         text: String,
         into: Option<Target>,
@@ -492,6 +511,20 @@ pub struct Rect {
 pub enum MouseButton {
     Left,
     Right,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ScrollDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ScrollUnit {
+    Lines,
+    Pixels,
 }
 
 #[uniffi::remote(Enum)]

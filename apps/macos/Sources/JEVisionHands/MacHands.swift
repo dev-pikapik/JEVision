@@ -13,6 +13,8 @@ public final class MacHands: Hands, @unchecked Sendable {
   static let launchTimeout: TimeInterval = 20
   /// Pause between typed characters, so apps keep up.
   static let keyInterval: useconds_t = 8_000
+  /// Pixels a single scroll event moves at most.
+  static let pixelsPerScroll: Int32 = 40
 
   private let input: InputWatcher
   private let isCancelled: @Sendable () -> Bool
@@ -134,10 +136,8 @@ public final class MacHands: Hands, @unchecked Sendable {
   // MARK: Mouse and keyboard
 
   public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {
-    try requireInput()
-    guard let window = Self.frontWindow(of: Self.runningApps(app)) else { throw .NoWindow(app: app) }
-    let point = CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y)
-    clicking(window.bounds)
+    let (window, point) = try place(app, at)
+    clicking(window)
     defer { clicking(nil) }
     let (down, up, mouse): (CGEventType, CGEventType, CGMouseButton) =
       button == .left ? (.leftMouseDown, .leftMouseUp, .left) : (.rightMouseDown, .rightMouseUp, .right)
@@ -151,6 +151,82 @@ public final class MacHands: Hands, @unchecked Sendable {
         usleep(30_000)
       }
     }
+  }
+
+  public func hover(app: String, at: Point) throws(HandsError) {
+    let (window, point) = try place(app, at)
+    clicking(window)
+    defer { clicking(nil) }
+    try mouse(.mouseMoved, at: point)
+    usleep(50_000)
+  }
+
+  public func drag(app: String, path: [Point]) throws(HandsError) {
+    guard let first = path.first else { return }
+    let (window, start) = try place(app, first)
+    let points = path.map { CGPoint(x: window.minX + $0.x, y: window.minY + $0.y) }
+    clicking(window)
+    defer { clicking(nil) }
+    try mouse(.mouseMoved, at: start)
+    usleep(50_000)
+    try mouse(.leftMouseDown, at: start)
+    var last = start
+    // Whatever happens on the way, the button doesn't stay pressed.
+    defer { try? mouse(.leftMouseUp, at: last) }
+    // Apps tell a drag from a click by the pause after the press and the moves that follow.
+    usleep(100_000)
+    for point in points.dropFirst() {
+      if isCancelled() { return }
+      try mouse(.leftMouseDragged, at: point)
+      last = point
+      usleep(10_000)
+    }
+    usleep(100_000)
+  }
+
+  public func scroll(app: String, at: Point, direction: ScrollDirection, amount: UInt32, unit: ScrollUnit) throws(HandsError) {
+    let (window, point) = try place(app, at)
+    clicking(window)
+    defer { clicking(nil) }
+    try mouse(.mouseMoved, at: point)
+    usleep(50_000)
+    // A line a turn, as a wheel does; pixels in small steps, as a trackpad does.
+    let step = unit == .lines ? 1 : Self.pixelsPerScroll
+    var left = Int32(clamping: amount)
+    while left > 0 {
+      if isCancelled() { return }
+      let turn = min(step, left)
+      left -= turn
+      // Positive values bring what is above or to the left into sight.
+      let (vertical, horizontal): (Int32, Int32) =
+        switch direction {
+        case .up: (turn, 0)
+        case .down: (-turn, 0)
+        case .left: (0, turn)
+        case .right: (0, -turn)
+        }
+      let event = CGEvent(
+        scrollWheelEvent2Source: SyntheticInput.source, units: unit == .lines ? .line : .pixel, wheelCount: 2,
+        wheel1: vertical, wheel2: horizontal, wheel3: 0)
+      event?.location = point
+      if unit == .pixels { event?.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1) }
+      try post(event)
+      usleep(unit == .lines ? 30_000 : 10_000)
+    }
+    usleep(50_000)
+  }
+
+  /// The front window of `app` and `at` in screen points; input must be possible.
+  private func place(_ app: String, _ at: Point) throws(HandsError) -> (window: CGRect, point: CGPoint) {
+    try requireInput()
+    guard let window = Self.frontWindow(of: Self.runningApps(app)) else { throw .NoWindow(app: app) }
+    return (window.bounds, CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y))
+  }
+
+  private func mouse(_ type: CGEventType, at point: CGPoint) throws(HandsError) {
+    let event = CGEvent(mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point, mouseButton: .left)
+    if type != .mouseMoved { event?.setIntegerValueField(.mouseEventClickState, value: 1) }
+    try post(event)
   }
 
   public func typeText(text: String) throws(HandsError) {
@@ -338,12 +414,32 @@ public final class MacHands: Hands, @unchecked Sendable {
     return try Self.captureFrontWindow(app)
   }
 
-  /// A picture of the app's front window, the window it shows, and pixels per point.
+  /// The app's windows above its front window and over it, front to back: tooltips, menus and
+  /// popovers are windows of their own. `list` is `CGWindowListCopyWindowInfo` output.
+  static func overlays(above front: CGWindowID, bounds: CGRect, pids: Set<pid_t>, in list: [[String: Any]]) -> [CGWindowID] {
+    var ids: [CGWindowID] = []
+    for info in list {
+      guard let id = info[kCGWindowNumber as String] as? CGWindowID else { continue }
+      if id == front { break }
+      guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pids.contains(pid),
+        let dict = info[kCGWindowBounds as String] as? NSDictionary,
+        let rect = CGRect(dictionaryRepresentation: dict), rect.intersects(bounds)
+      else { continue }
+      ids.append(id)
+    }
+    return ids
+  }
+
+  /// A picture of the app's front window with whatever of the app shows over it, the window it
+  /// shows, and pixels per point.
   static func captureFrontWindow(_ app: String) throws(HandsError) -> (
     image: CGImage, scale: Double, window: (id: CGWindowID, bounds: CGRect, title: String?)
   ) {
-    guard let window = frontWindow(of: runningApps(app)) else { throw .NoWindow(app: app) }
+    let apps = runningApps(app)
+    guard let window = frontWindow(of: apps) else { throw .NoWindow(app: app) }
     let id = window.id
+    let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    let above = Set(overlays(above: id, bounds: window.bounds, pids: Set(apps.map(\.processIdentifier)), in: list))
     let result = wait { (done: @escaping @Sendable (Result<Shot, HandsError>) -> Void) in
       Task {
         do {
@@ -351,13 +447,28 @@ public final class MacHands: Hands, @unchecked Sendable {
           guard let scWindow = content.windows.first(where: { $0.windowID == id }) else {
             return done(.failure(.NoWindow(app: app)))
           }
-          let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-          let scale = Double(filter.pointPixelScale)
           let config = SCStreamConfiguration()
-          config.width = Int((filter.contentRect.width * CGFloat(scale)).rounded())
-          config.height = Int((filter.contentRect.height * CGFloat(scale)).rounded())
+          let filter: SCContentFilter
+          let size: CGSize
+          let center = CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+          let shown = content.windows.filter { above.contains($0.windowID) }
+          if !shown.isEmpty, let display = content.displays.first(where: { $0.frame.contains(center) }) {
+            // The window's part of the screen with only this app's windows on it, so other apps
+            // never cover it and a tooltip or menu over it is in the picture.
+            filter = SCContentFilter(display: display, including: [scWindow] + shown)
+            config.sourceRect = window.bounds.offsetBy(dx: -display.frame.minX, dy: -display.frame.minY)
+            config.backgroundColor = .clear
+            config.ignoreShadowsDisplay = true
+            size = window.bounds.size
+          } else {
+            filter = SCContentFilter(desktopIndependentWindow: scWindow)
+            config.ignoreShadowsSingleWindow = true
+            size = filter.contentRect.size
+          }
+          let scale = Double(filter.pointPixelScale)
+          config.width = Int((size.width * CGFloat(scale)).rounded())
+          config.height = Int((size.height * CGFloat(scale)).rounded())
           config.showsCursor = false
-          config.ignoreShadowsSingleWindow = true
           let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
           done(.success(Shot(image: image, scale: scale)))
         } catch {

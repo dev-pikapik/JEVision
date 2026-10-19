@@ -493,6 +493,9 @@ private final class WaitingHands: Hands, @unchecked Sendable {
   func capture(app: String) throws(HandsError) -> Screenshot { throw .NoWindow(app: app) }
   func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? { nil }
   func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {}
+  func hover(app: String, at: Point) throws(HandsError) {}
+  func drag(app: String, path: [Point]) throws(HandsError) {}
+  func scroll(app: String, at: Point, direction: ScrollDirection, amount: UInt32, unit: ScrollUnit) throws(HandsError) {}
   func typeText(text: String) throws(HandsError) {}
   func pressKeys(keys: String) throws(HandsError) {}
   func userInputDetected() -> Bool { false }
