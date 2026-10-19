@@ -9,6 +9,7 @@ struct ProjectView: View {
   @State private var query = ""
   @State private var renaming: ProjectItem?
   @State private var newName = ""
+  @State private var newBoardName = ""
   @State private var quarantining: QuarantineRequest?
   @State private var failure: String?
   /// Open folders; the folders around the selected test open by themselves.
@@ -76,6 +77,18 @@ struct ProjectView: View {
       }
       Button("Cancel", role: .cancel) {}
     }
+    .onChange(of: project.boards.renaming) { if let name = project.boards.renaming { newBoardName = name } }
+    .alert(
+      "Rename Board",
+      isPresented: Binding(get: { project.boards.renaming != nil }, set: { if !$0 { project.boards.renaming = nil } })
+    ) {
+      TextField("Name", text: $newBoardName)
+      Button("Rename") {
+        guard let name = project.boards.renaming else { return }
+        attempt { try project.boards.rename(name, to: newBoardName) }
+      }
+      Button("Cancel", role: .cancel) {}
+    }
     .alert(
       "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
       presenting: failure
@@ -94,8 +107,8 @@ struct ProjectView: View {
           "Select a run", systemImage: "clock.arrow.circlepath",
           description: Text("Its report shows every step, with screenshots."))
       }
-    } else if project.showsMap {
-      ProjectMapView()
+    } else if project.showsBoard {
+      BoardView()
     } else if let document = project.document {
       EditorView(document: document)
         .id(document.url)
@@ -110,11 +123,10 @@ struct ProjectView: View {
     @Bindable var project = project
     let found = isSearching ? ProjectScanner.tests(in: project.items, matching: query) : []
     let selection = Binding<ProjectItem.ID?>(
-      get: { project.showsMap ? Self.mapTag : project.selection },
+      get: { project.showsBoard ? project.boards.current.map(Self.boardTag) : project.selection },
       set: { id in
-        if id == Self.mapTag {
-          project.showsMap = true
-          project.selection = nil
+        if let id, id.hasPrefix(Self.boardTag("")) {
+          project.showBoard(String(id.dropFirst(Self.boardTag("").count)))
         } else {
           project.selection = id
         }
@@ -123,8 +135,18 @@ struct ProjectView: View {
         if isSearching {
           ForEach(found) { row($0, showsPath: true) }
         } else {
-          MapRow(run: canRun ? { runAll(project.items, title: String(localized: "All tests")) } : nil)
-            .tag(Self.mapTag)
+          Section {
+            ForEach(project.boards.names, id: \.self) { boardRow($0) }
+          } header: {
+            HStack {
+              Text("Boards")
+              Spacer()
+              Button("New Board", systemImage: "plus") { newBoard() }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help(Text("Make a new board"))
+            }
+          }
           Section("Tests") {
             ForEach(project.items) { tree($0) }
           }
@@ -194,8 +216,39 @@ struct ProjectView: View {
       }
   }
 
-  /// Tag of the Project Map row: no test or folder path looks like it.
-  private static let mapTag = "\u{1}map"
+  /// Tag of a board's row: no test or folder path looks like it.
+  private static func boardTag(_ name: String) -> String { "\u{1}board:" + name }
+
+  private func boardRow(_ name: String) -> some View {
+    let isAllTests = name == project.boards.allTests
+    return BoardRow(
+      name: name, isAllTests: isAllTests,
+      run: isAllTests && canRun ? { runAll(project.items, title: String(localized: "All tests")) } : nil
+    )
+    .tag(Self.boardTag(name))
+    .contextMenu {
+      Button("Rename…") {
+        project.boards.renaming = name
+      }
+      if !isAllTests {
+        Button("Move to Trash") { attempt { try project.boards.moveToTrash(name) } }
+      }
+      Divider()
+      Button("Show in Finder") {
+        if let folder = project.boards.folder {
+          NSWorkspace.shared.activateFileViewerSelecting([folder.appending(path: name + ProjectBoards.suffix)])
+        }
+      }
+    }
+  }
+
+  private func newBoard() {
+    attempt {
+      let name = try project.boards.create(String(localized: "New Board"))
+      project.showBoard(name)
+      project.boards.renaming = name
+    }
+  }
 
   private var canRun: Bool { !runs.isRunning && !records.isRecording && project.rootURL != nil }
 
@@ -298,13 +351,16 @@ private struct RunOnHover: ViewModifier {
   }
 }
 
-/// The first row of the test list: the project map, with Run All on hover.
-private struct MapRow: View {
+/// A board in the sidebar; the board of all tests offers Run All on hover.
+private struct BoardRow: View {
+  let name: String
+  let isAllTests: Bool
   let run: (() -> Void)?
 
   var body: some View {
-    Label("Project Map", systemImage: "rectangle.3.group")
+    Label(name, systemImage: isAllTests ? "square.grid.3x3.square" : "rectangle.on.rectangle")
       .modifier(RunOnHover(title: Text("Run All Tests"), run: run))
+      .help(isAllTests ? Text("Every test of the project, in the frames of their folders") : Text(verbatim: name))
   }
 }
 

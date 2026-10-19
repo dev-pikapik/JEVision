@@ -23,12 +23,12 @@ final class ProjectStore {
     didSet {
       guard selection != oldValue else { return }
       UserDefaults.standard.set(selection, forKey: Key.selection)
-      if selection != nil { showsMap = false }
+      if selection != nil { showsBoard = false }
       openSelection()
     }
   }
-  /// The project map fills the center instead of a test.
-  var showsMap = false
+  /// The board in view fills the center instead of a test.
+  var showsBoard = false
   /// The selected test, open in the editor.
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
@@ -52,6 +52,7 @@ final class ProjectStore {
   var historyPath: String?
   let git = ProjectGit()
   let environments = ProjectEnvironments()
+  let boards = ProjectBoards()
   let schedules = ProjectSchedules()
   /// Settings shared through the project's settings file: default retries and the tests in
   /// quarantine.
@@ -172,9 +173,17 @@ final class ProjectStore {
       flow.name = name
       try? saveFlow(flow: flow).write(to: target, atomically: true, encoding: .utf8)
     }
-    if selection == item.id {
-      selection = item.parentPath.isEmpty ? target.lastPathComponent : item.parentPath + "/" + target.lastPathComponent
-    }
+    let id = item.parentPath.isEmpty ? target.lastPathComponent : item.parentPath + "/" + target.lastPathComponent
+    boards.renamed(item.id, to: id)
+    if selection == item.id { selection = id }
+  }
+
+  /// Shows the board `name` in the center.
+  func showBoard(_ name: String) {
+    boards.select(name)
+    sidebar = .tests
+    showsBoard = true
+    selection = nil
   }
 
   func moveToTrash(_ item: ProjectItem) throws {
@@ -352,7 +361,7 @@ final class ProjectStore {
     rootURL = url
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
-    showsMap = false
+    showsBoard = false
     showsCommandPalette = false
     items = []
     show(History([]))
@@ -362,6 +371,7 @@ final class ProjectStore {
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
     git.open(url)
     environments.open(url)
+    boards.open(url)
     schedules.open(url)
     rescan()
   }
@@ -369,6 +379,7 @@ final class ProjectStore {
   private func rescan() {
     guard let url = rootURL else { return }
     environments.reload()
+    boards.reload()
     schedules.reload()
     reloadSettings()
     document?.revalidate()
@@ -386,6 +397,7 @@ final class ProjectStore {
       case .success(let (found, history)):
         // The folder changes all the time while a test runs; unchanged lists don't redraw the sidebar.
         if items != found { items = found }
+        boards.sync(tests: ProjectMap.groups(found, rootTitle: name).flatMap(\.tests).map(\.id), rootTitle: name)
         show(history)
         let saved = history.runs
         if let selectedRun, !saved.contains(where: { $0.id == selectedRun }),

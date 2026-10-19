@@ -4,6 +4,7 @@
 //! [`validate`] lists problems as localizable [`Issue`]s, and [`to_canonical_json`] writes it
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
+mod board;
 mod canvas;
 mod data;
 mod decode;
@@ -20,6 +21,10 @@ mod schedule;
 mod search;
 mod validate;
 
+pub use board::{
+    BOARD_SUFFIX, BOARDS_FOLDER, Board, BoardEdge, BoardLayout, BoardNode, BoardNodeKind,
+    CARD_HEIGHT, CARD_WIDTH, FRAME_HEADER, LaidBoardEdge, LaidNode,
+};
 pub use canvas::CanvasItem;
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};

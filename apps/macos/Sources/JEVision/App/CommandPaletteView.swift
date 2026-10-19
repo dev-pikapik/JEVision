@@ -52,6 +52,7 @@ struct CommandPaletteView: View {
             section(Text("Commands"), kind: .command)
             section(Text("Add a Block"), kind: .block)
             section(Text("Tests"), kind: .test)
+            section(Text("Boards"), kind: .board)
           }
         }
         .listStyle(.sidebar)
@@ -116,6 +117,7 @@ struct CommandPaletteView: View {
     case .command: Text("Command")
     case .block: Text("Block")
     case .test: Text("Test")
+    case .board: Text("Board")
     }
   }
 
@@ -131,7 +133,7 @@ struct CommandPaletteView: View {
   private var rowOrder: [PaletteAction] {
     let shown = entries
     if isSearching { return shown.map(\.id) }
-    return [PaletteEntry.Kind.command, .block, .test].flatMap { kind in shown.filter { $0.kind == kind }.map(\.id) }
+    return [PaletteEntry.Kind.command, .block, .test, .board].flatMap { kind in shown.filter { $0.kind == kind }.map(\.id) }
   }
 
   private func submit() {
@@ -161,6 +163,21 @@ struct CommandPaletteView: View {
     state.hasTests = !tests.isEmpty
     state.hasLastRun = lastRun != nil
     state.tests = tests.map { ($0.id, $0.name, $0.parentPath, $0.keywords) }
+    state.boards = project.boards.names
+    if project.showsBoard, let name = project.boards.current, let board = project.boards.board {
+      state.boardInView = name
+      let on = Set(board.nodes.compactMap { node -> String? in if case .file(let file) = node.kind { file } else { nil } })
+      state.boardLacksTests = tests.contains { !on.contains($0.id) }
+      state.boardItems = board.nodes.compactMap { node in
+        switch node.kind {
+        case .group(let label, _, _): (node.id, label, String(localized: "Frame on \(name)"))
+        case .text(let text):
+          (node.id, String(text.prefix { $0 != "\n" }.prefix(80)), String(localized: "Note on \(name)"))
+        case .link(let url): (node.id, url, String(localized: "Link on \(name)"))
+        case .file: nil
+        }
+      }.filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
     if case .tracked(let status) = project.git.state {
       state.git = PaletteState.Git(
         isTracked: true, hasChanges: !status.changes.isEmpty, hasCommits: status.hasCommits,
@@ -199,7 +216,17 @@ struct CommandPaletteView: View {
     case .arrange: document?.arrange()
     case .disconnect: if let document, let id = document.selection { document.disconnect(id) }
     case .openReport: if let run = lastRun { project.showRun(run.url) }
-    case .projectMap: project.showsMap = true
+    case .newBoard:
+      do {
+        let name = try project.boards.create(String(localized: "New Board"))
+        project.showBoard(name)
+        project.boards.renaming = name
+      } catch {
+        NSSound.beep()
+      }
+    case .addToBoard(let addition): project.boards.request = .add(addition)
+    case .showBoard(let name): project.showBoard(name)
+    case .showOnBoard(let id): project.boards.request = .reveal(id)
     case .commit: openWindow(id: SceneID.commit)
     case .newPullRequest: project.git.isComposingPullRequest = true
     case .pullRequests: openWindow(id: SceneID.pullRequests)

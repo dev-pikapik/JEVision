@@ -60,12 +60,12 @@ struct AppCommands: Commands {
       Divider()
     }
     CommandGroup(after: .toolbar) {
-      Button("Zoom In") { zoom.map { $0.set(Zoom.step($0.value, up: true)) } }
+      Button("Zoom In") { zoom.map { $0.set(Zoom.step($0.value, up: true, in: $0.range)) } }
         .keyboardShortcut("+")
-        .disabled(zoom.map { $0.value >= Zoom.range.upperBound } ?? true)
-      Button("Zoom Out") { zoom.map { $0.set(Zoom.step($0.value, up: false)) } }
+        .disabled(zoom.map { $0.value >= $0.range.upperBound } ?? true)
+      Button("Zoom Out") { zoom.map { $0.set(Zoom.step($0.value, up: false, in: $0.range)) } }
         .keyboardShortcut("-")
-        .disabled(zoom.map { $0.value <= Zoom.range.lowerBound } ?? true)
+        .disabled(zoom.map { $0.value <= $0.range.lowerBound } ?? true)
       Button("Zoom to Fit") { zoom?.fit() }
         .keyboardShortcut("0")
         .disabled(zoom == nil)
