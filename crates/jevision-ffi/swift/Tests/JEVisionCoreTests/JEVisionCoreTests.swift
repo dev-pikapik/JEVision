@@ -49,6 +49,6 @@ private let smokeTest = """
 
 @Test func catalogListsEveryBlockType() {
   let names = blockCatalog().map(\.typeName)
-  #expect(names.count == 11)
-  #expect(names.contains("repeat") && names.contains("useData"))
+  #expect(names.count == 14)
+  #expect(names.contains("repeat") && names.contains("useData") && names.contains("scroll"))
 }
