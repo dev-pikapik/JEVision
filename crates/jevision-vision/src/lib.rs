@@ -1,7 +1,7 @@
 //! Asks vision models whether a screenshot shows what a test expects.
 //!
 //! [`Client`] talks to one provider over blocking HTTP(S): Anthropic, OpenAI, Google Gemini,
-//! Ollama, LM Studio or any server with an OpenAI-compatible API. Answers are requested in a
+//! JEV (TypeSafe AI), Ollama, LM Studio or any server with an OpenAI-compatible API. Answers are requested in a
 //! fixed JSON shape (`passed`, `reason`) wherever the provider can enforce one, and read
 //! leniently where it cannot. The API key is sent only in a request header; error messages and
 //! answers have it masked. Pictures go out only as [`MaskedImage`]s, private areas painted
@@ -42,12 +42,28 @@ colour hide private parts of the screen on purpose; ignore them. Answer with JSO
 {\"passed\": true or false, \"reason\": \"one short sentence on what you see that decides it\"}. \
 Write the reason in the language of the expectation.";
 
+/// For JEV, which answers with the probability of "yes" instead of a verdict in JSON.
+const JEV_INSTRUCTIONS: &str = "You check screenshots for automated tests of app interfaces. \
+Does the screenshot jevision-screenshot show what is expected? When the reference picture \
+jevision-reference is given, it shows how the screen looked when the test was made: judge \
+whether the screenshot means the same — the same screen, state and content — and ignore \
+differences in exact pixels, fonts, colours, positions, times and dates unless the expectation \
+mentions them. Flat boxes of one colour hide private parts of the screen on purpose; ignore \
+them. Give the probability that the answer is yes.";
+const JEV_SCREENSHOT: &str = "jevision-screenshot";
+const JEV_REFERENCE: &str = "jevision-reference";
+/// Sides JEV accepts, in pixels; it turns down pictures outside them instead of scaling.
+const JEV_MIN_SIDE: u32 = 280;
+const JEV_MAX_SIDE: u32 = 1568;
+
 /// Who answers the questions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Provider {
     Anthropic,
     OpenAi,
     Gemini,
+    /// TypeSafe AI's image-understanding model.
+    Jev,
     Ollama,
     LmStudio,
     /// Any server with the OpenAI Chat Completions API, at an address of the user's choice.
@@ -55,10 +71,11 @@ pub enum Provider {
 }
 
 impl Provider {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Anthropic,
         Self::OpenAi,
         Self::Gemini,
+        Self::Jev,
         Self::Ollama,
         Self::LmStudio,
         Self::OpenAiCompatible,
@@ -70,6 +87,7 @@ impl Provider {
             Self::Anthropic => "anthropic",
             Self::OpenAi => "openai",
             Self::Gemini => "gemini",
+            Self::Jev => "jev",
             Self::Ollama => "ollama",
             Self::LmStudio => "lmstudio",
             Self::OpenAiCompatible => "openai-compatible",
@@ -85,6 +103,7 @@ impl Provider {
             Self::Anthropic => "Anthropic",
             Self::OpenAi => "OpenAI",
             Self::Gemini => "Google Gemini",
+            Self::Jev => "JEV (TypeSafe AI)",
             Self::Ollama => "Ollama",
             Self::LmStudio => "LM Studio",
             Self::OpenAiCompatible => "OpenAI-compatible server",
@@ -97,6 +116,7 @@ impl Provider {
             Self::Anthropic => "https://api.anthropic.com",
             Self::OpenAi => "https://api.openai.com/v1",
             Self::Gemini => "https://generativelanguage.googleapis.com",
+            Self::Jev => "https://api.typesafe.ai",
             Self::Ollama => "http://localhost:11434",
             Self::LmStudio => "http://localhost:1234/v1",
             Self::OpenAiCompatible => "",
@@ -109,6 +129,7 @@ impl Provider {
             Self::Anthropic => "claude-sonnet-5-5",
             Self::OpenAi => "gpt-5-mini",
             Self::Gemini => "gemini-2.5-flash",
+            Self::Jev => "jev-latest",
             Self::Ollama | Self::LmStudio | Self::OpenAiCompatible => "",
         }
     }
@@ -119,6 +140,7 @@ impl Provider {
             Self::Anthropic => Some("ANTHROPIC_API_KEY"),
             Self::OpenAi => Some("OPENAI_API_KEY"),
             Self::Gemini => Some("GEMINI_API_KEY"),
+            Self::Jev => Some("TYPESAFE_API_KEY"),
             Self::OpenAiCompatible => Some("OPENAI_COMPATIBLE_API_KEY"),
             Self::Ollama | Self::LmStudio => None,
         }
@@ -126,7 +148,15 @@ impl Provider {
 
     /// Questions fail without a key.
     pub fn needs_key(self) -> bool {
-        matches!(self, Self::Anthropic | Self::OpenAi | Self::Gemini)
+        matches!(
+            self,
+            Self::Anthropic | Self::OpenAi | Self::Gemini | Self::Jev
+        )
+    }
+
+    /// The user may point it at another address than [`default_address`](Self::default_address).
+    pub fn address_editable(self) -> bool {
+        !self.needs_key() || self == Self::Jev
     }
 
     /// [`Client::models`] can ask the provider which models it has.
@@ -350,7 +380,7 @@ impl Client {
                     .filter_map(|m| m["id"].as_str().map(str::to_owned))
                     .collect()
             }
-            Provider::Anthropic | Provider::OpenAi | Provider::Gemini => Vec::new(),
+            Provider::Anthropic | Provider::OpenAi | Provider::Gemini | Provider::Jev => Vec::new(),
         };
         models.sort();
         models.dedup();
@@ -520,6 +550,12 @@ fn headers(c: &Config) -> Vec<(&'static str, String)> {
             .map(|k| ("x-goog-api-key", k.to_owned()))
             .into_iter()
             .collect(),
+        Provider::Jev => {
+            // Without it the API turns down requests with pictures.
+            let mut h = vec![("typesafe-danger-zone-images", "true".to_owned())];
+            h.extend(key.map(|k| ("authorization", format!("Bearer {k}"))));
+            h
+        }
         Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible | Provider::Ollama => {
             key.map(|k| ("authorization", format!("Bearer {k}")))
                 .into_iter()
@@ -667,7 +703,59 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
             }
             (format!("{base}/chat/completions"), body)
         }
+        Provider::Jev => {
+            let asset = |png: &[u8]| json!({ "type": "image", "format": "png", "data_base64": b64(&jev_sized(png)) });
+            let mut state = json!({ "screenshot": JEV_SCREENSHOT });
+            let mut assets = json!({ JEV_SCREENSHOT: asset(q.screenshot.png()) });
+            if let Some(reference) = q.reference {
+                state["reference"] = json!(JEV_REFERENCE);
+                assets[JEV_REFERENCE] = asset(reference.png());
+            }
+            let body = json!({
+                "model": model,
+                "state": state,
+                "assets": assets,
+                "questions": {
+                    "passed": { "type": "noul", "instructions": format!("{JEV_INSTRUCTIONS}\n{expected}") }
+                }
+            });
+            (format!("{base}/v1/systemone"), body)
+        }
     }
+}
+
+/// `png` with every side within what JEV accepts: scaled to fit, and where the shape is too
+/// long for that, padded with [`MASK_COLOUR`] on the right or bottom. Bytes that are not a PNG
+/// pass as they are.
+fn jev_sized(png: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    let Ok(picture) = image::Image::decode(png) else {
+        return png.into();
+    };
+    let long = f64::from(picture.width.max(picture.height));
+    let short = f64::from(picture.width.min(picture.height));
+    let scale = if long > f64::from(JEV_MAX_SIDE) {
+        f64::from(JEV_MAX_SIDE) / long
+    } else if short < f64::from(JEV_MIN_SIDE) {
+        (f64::from(JEV_MIN_SIDE) / short).min(f64::from(JEV_MAX_SIDE) / long)
+    } else {
+        return png.into();
+    };
+    let side = |s: u32| ((f64::from(s) * scale).round() as u32).max(1);
+    let fitted = picture.resized(side(picture.width), side(picture.height));
+    let width = fitted.width.max(JEV_MIN_SIDE);
+    let height = fitted.height.max(JEV_MIN_SIDE);
+    let mut rgba = MASK_COLOUR.repeat((width * height) as usize);
+    let row = fitted.width as usize * 4;
+    for (y, line) in fitted.rgba.chunks_exact(row).enumerate() {
+        let start = y * width as usize * 4;
+        rgba[start..start + row].copy_from_slice(line);
+    }
+    let sized = image::Image {
+        width,
+        height,
+        rgba,
+    };
+    sized.encode().map_or_else(|_| png.into(), Into::into)
 }
 
 /// Reads the verdict from a successful response body.
@@ -726,6 +814,20 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
                 });
             }
             verdict_in(&text(&message["content"]))
+        }
+        Provider::Jev => {
+            let yes = v["answers"]["passed"]["noul"]
+                .as_f64()
+                .filter(|p| (0.0..=1.0).contains(p))
+                .ok_or_else(|| bad(body))?;
+            let passed = yes >= 0.5;
+            let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round();
+            let reason = if passed {
+                format!("JEV is {sure}% sure the screenshot meets the expectation.")
+            } else {
+                format!("JEV is {sure}% sure the screenshot does not meet the expectation.")
+            };
+            Ok(Judgement { passed, reason })
         }
     }
 }

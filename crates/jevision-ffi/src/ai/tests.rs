@@ -375,6 +375,21 @@ fn provider_errors_keep_their_code() {
 }
 
 #[test]
+fn a_provider_that_only_checks_screenshots_is_not_asked() {
+    let folder = Folder::new();
+    let model = model(Vec::new());
+    let jev = VisionSettings {
+        provider: "jev".to_owned(),
+        ..settings(&model)
+    };
+    let Err(error) = AiSession::draft_test(jev, Vec::new(), request(&folder)) else {
+        panic!("expected the provider to be refused");
+    };
+    assert!(matches!(error, AiError::OnlyChecks { .. }), "{error}");
+    assert!(model.requests().is_empty());
+}
+
+#[test]
 fn a_cancelled_session_stops() {
     let folder = Folder::new();
     let model = model(Vec::new());

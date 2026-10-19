@@ -11,21 +11,19 @@ struct GeneralSettingsView: View {
 
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "gearshape.fill", color: .gray, title: Text("General"),
-          message: Text("How JEVision looks and which language it speaks."))
-      }
+      SettingsHeader(tab: .general, text: Text("How JEVision looks and which language it speaks."))
       Section {
         Picker("Appearance", selection: $appearance) {
           ForEach(Appearance.allCases) { Text($0.title).tag($0) }
         }
         .pickerStyle(.segmented)
+        .settingAnchor("appearance")
         Picker("Language", selection: $language) {
           Text("System").tag("")
           Divider()
           ForEach(AppLanguage.choices.dropFirst(), id: \.self) { Text(verbatim: AppLanguage.name($0)).tag($0) }
         }
+        .settingAnchor("language")
         if needsRestart {
           LabeledContent {
             Button("Restart", systemImage: "arrow.clockwise", action: restart)
@@ -40,6 +38,13 @@ struct GeneralSettingsView: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       UpdatesSection(updates: updates)
+      RestoreDefaultsSection(
+        message: Text("Appearance and language follow the system again."),
+        isDefault: appearance == .system && language.isEmpty
+      ) {
+        appearance = .system
+        language = ""
+      }
     }
     .formStyle(.grouped)
     .onChange(of: appearance) { appearance.apply() }
@@ -72,6 +77,7 @@ private struct UpdatesSection: View {
     Section {
       if updates.isAvailable {
         Toggle("Check for updates automatically", isOn: $updates.checksAutomatically)
+          .settingAnchor("updates")
         LabeledContent {
           Button("Check Now") { updates.check() }
             .disabled(!updates.canCheck)
@@ -80,6 +86,7 @@ private struct UpdatesSection: View {
         }
       } else {
         LabeledContent("Version", value: Self.version)
+          .settingAnchor("updates")
       }
     } header: {
       Text("Updates")

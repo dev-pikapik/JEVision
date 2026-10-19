@@ -4,19 +4,41 @@ import SwiftUI
 
 /// Settings → AI: the model that checks screens by meaning.
 struct AISettingsView: View {
+  @AppStorage(AISettings.providerKey) private var providerID = ""
+  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
+  @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
+
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "sparkles", color: .purple, title: Text("AI"),
-          message: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
-      }
+      SettingsHeader(
+        tab: .ai,
+        text: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       AISections()
       ProjectPrivacySection()
       MCPServersSection()
       AssistantsSection()
+      RestoreDefaultsSection(
+        message: Text("No provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and the project’s own settings stay as they are."),
+        isDefault: providerID.isEmpty && !localOnly && !mayRun && !mayCapture && Self.providerKeys.isEmpty,
+        reset: reset)
     }
     .formStyle(.grouped)
+  }
+
+  /// The saved model and address of each provider.
+  private static var providerKeys: [String] {
+    let defaults = UserDefaults.standard
+    return AISettings.providers.flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id)] }
+      .filter { defaults.object(forKey: $0) != nil }
+  }
+
+  private func reset() {
+    providerID = ""
+    localOnly = false
+    mayRun = false
+    mayCapture = false
+    Self.providerKeys.forEach(UserDefaults.standard.removeObject(forKey:))
   }
 }
 
@@ -34,10 +56,13 @@ struct AISections: View {
         Divider()
         ForEach(providers, id: \.id) { Text(verbatim: $0.name).tag($0.id) }
       }
+      .settingAnchor("provider")
       Toggle(isOn: $localOnly) {
-        Text("Only models on this Mac")
-        Text("Screenshots never go to a cloud service. Checks that would need one stop with a message.")
+        RowLabel(
+          Text("Only models on this Mac"),
+          Text("Screenshots never go to a cloud service. Checks that would need one stop with a message."))
       }
+      .settingAnchor("localOnly")
     } footer: {
       if providerID.isEmpty {
         Text("Without a provider, checks compare pictures only. JEVision sends nothing anywhere.")
@@ -89,8 +114,8 @@ private struct ProviderSection: View {
     visionIsLocal(settings: VisionSettings(provider: provider.id, model: "", address: address, key: nil))
   }
 
-  /// Cloud services have one address; local servers and compatible ones need theirs.
-  private var hasAddress: Bool { !provider.needsKey }
+  /// Most cloud services have one address; local servers and compatible ones need theirs.
+  private var hasAddress: Bool { provider.addressEditable }
 
   var body: some View {
     Section {
@@ -145,7 +170,7 @@ private struct ProviderSection: View {
       Text("The model runs on this Mac: screenshots and expected texts stay here.")
     } else {
       Text(
-        "For each check by meaning, JEVision sends \(provider.needsKey ? provider.name : (address.isEmpty ? provider.name : address)) the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture."
+        "For each check by meaning, JEVision sends \(!hasAddress || address.isEmpty ? provider.name : address) the compared part of the screen, the reference image if there is one, and the expected text. Password fields and the areas the test or project hides are painted over first. Test Connection sends a small built-in picture."
       )
     }
   }
@@ -209,12 +234,11 @@ private struct ProviderSection: View {
           .disabled(fromEnvironment)
       }
     } label: {
-      Text("API Key")
-      if fromEnvironment {
-        Text("From the environment variable \(provider.keyVariable)")
-      } else if !provider.needsKey {
-        Text("Only if the server asks for one")
-      }
+      RowLabel(
+        Text("API Key"),
+        fromEnvironment
+          ? Text("From the environment variable \(provider.keyVariable)")
+          : provider.needsKey ? nil : Text("Only if the server asks for one"))
     }
   }
 

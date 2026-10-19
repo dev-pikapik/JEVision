@@ -92,8 +92,24 @@ struct EditorView: View {
               .padding(.bottom, 12)
           }
           if let result = runs.result, result.test == document.url {
-            RunResultBar(result: result, showFailedBlock: failedBlock.map { id in { showBlock(id) } })
+            RunResultBar(
+              result: result, showFailedBlock: failedBlock.map { id in { showBlock(id) } },
+              addCheck: result.nothingChecked ? { addCheck() } : nil)
               .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+          } else if !document.layout.blocks.isEmpty, document.issues.contains(where: { $0.code == "flow.noCheck" }) {
+            HStack(spacing: 10) {
+              Image(systemName: RunStatus.unchecked.symbol)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+              Text("This test never checks the screen, so it can’t catch a wrong result.")
+                .fixedSize(horizontal: false, vertical: true)
+              Button("Add Check", systemImage: "eye", action: addCheck)
+                .buttonStyle(.glassProminent)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .adaptiveGlass()
+            .padding()
           }
           if let error = document.saveError {
             Label("Changes aren’t saved: \(error)", systemImage: "exclamationmark.triangle.fill")
@@ -431,6 +447,13 @@ struct EditorView: View {
   }
 
   /// Adds a note signed with the git user's name.
+  /// A Check at the end of the test, shown in the inspector, so the next run looks at the screen.
+  private func addCheck() {
+    document.insert("check", at: nil)
+    showsInspector = true
+    runs.dismissResult()
+  }
+
   private func addNote(at point: Point?) {
     let at = point ?? freeSpot
     Task { document.addNote(at: at, author: await project.git.identity().name) }

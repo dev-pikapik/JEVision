@@ -100,6 +100,8 @@ enum AIText {
     switch error {
     case AiError.UnknownProvider(let provider):
       String(localized: "There’s no AI provider “\(provider)”. Choose one in Settings → AI.")
+    case AiError.OnlyChecks(let provider):
+      String(localized: "\(provider) only checks screenshots. To write tests and analyze failures, choose another provider in Settings → AI.")
     case AiError.Provider(let failure, _) where failure.code == "run.vision.refused":
       String(localized: "\(failure.params["provider"] ?? "") declined to help: \(failure.params["message"] ?? "")")
     case AiError.Provider(let failure, _):

@@ -78,8 +78,14 @@ struct NewPullRequestView: View {
       } else {
         Section {
           TextField("Title", text: $title, prompt: Text("What this change does"))
+        }
+        Section {
           TextField("Description", text: $description, prompt: Text("Why, and what to look at (optional)"), axis: .vertical)
+            .labelsHidden()
+            .multilineTextAlignment(.leading)
             .lineLimit(5...10)
+        } header: {
+          Text("Description")
         } footer: {
           VStack(alignment: .leading, spacing: 6) {
             if draft.unpushed {
@@ -151,6 +157,7 @@ struct NewPullRequestView: View {
     switch result {
     case .success(let found):
       base = found.bases.contains(found.base) ? found.base : found.bases.first ?? ""
+      if title.isEmpty { title = found.title }
       draft = found
     case .failure(let error):
       loadFailure = GitText.failure(error)

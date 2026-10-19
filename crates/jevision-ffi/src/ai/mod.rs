@@ -74,6 +74,9 @@ pub enum AiStep {
 pub enum AiError {
     #[error("unknown AI provider `{provider}`")]
     UnknownProvider { provider: String },
+    /// The provider only checks screenshots: it can't write tests or explain failures.
+    #[error("{provider} only checks screenshots")]
+    OnlyChecks { provider: String },
     /// A `run.vision.*` code with its values, and the English sentence.
     #[error("{message}")]
     Provider { failure: Failure, message: String },
@@ -160,6 +163,12 @@ impl AiSession {
         let client = settings.client().map_err(|_| AiError::UnknownProvider {
             provider: settings.provider.clone(),
         })?;
+        let provider = client.config().provider;
+        if !provider.converses() {
+            return Err(AiError::OnlyChecks {
+                provider: provider.name().to_owned(),
+            });
+        }
         Ok(Arc::new(Self {
             state: Mutex::new(State {
                 client,

@@ -36,6 +36,13 @@ impl Message {
     }
 }
 
+impl Provider {
+    /// Whether the provider holds a conversation. JEV only judges screenshots.
+    pub fn converses(self) -> bool {
+        self != Self::Jev
+    }
+}
+
 impl Client {
     /// The model's next answer in the conversation `messages`, which follows `system`: one JSON
     /// object, of the shape `schema` where the provider can enforce one.
@@ -52,14 +59,18 @@ impl Client {
         if c.provider.needs_key() && c.key().is_none() {
             return Err(VisionError::NoKey);
         }
-        let (url, body) = request(
+        let Some((url, body)) = request(
             c.provider,
             c.model.trim(),
             c.address(),
             system,
             messages,
             schema,
-        );
+        ) else {
+            return Err(VisionError::Refused {
+                message: format!("{} only checks screenshots", c.provider.name()),
+            });
+        };
         let (status, text) = self.send(&url, Some(&body))?;
         if status != 200 {
             return Err(self.http_error(status, &text));
@@ -85,7 +96,7 @@ impl Client {
     }
 }
 
-/// URL and JSON body that continue `messages`.
+/// URL and JSON body that continue `messages`; `None` for a provider that doesn't converse.
 fn request(
     provider: Provider,
     model: &str,
@@ -93,7 +104,7 @@ fn request(
     system: &str,
     messages: &[Message],
     schema: &Value,
-) -> (String, Value) {
+) -> Option<(String, Value)> {
     let b64 = |m: &MaskedImage| base64::engine::general_purpose::STANDARD.encode(m.png());
     let system =
         format!("{system}\n\nAnswer with one JSON object only, of this JSON Schema:\n{schema}");
@@ -127,8 +138,9 @@ fn request(
                 "tool_choice": { "type": "tool", "name": "answer" },
                 "messages": messages
             });
-            (format!("{base}/v1/messages"), body)
+            Some((format!("{base}/v1/messages"), body))
         }
+        Provider::Jev => None,
         Provider::Gemini => {
             let contents: Vec<Value> = messages
                 .iter()
@@ -152,10 +164,10 @@ fn request(
                 }
             });
             let model = model.strip_prefix("models/").unwrap_or(model);
-            (
+            Some((
                 format!("{base}/v1beta/models/{model}:generateContent"),
                 body,
-            )
+            ))
         }
         Provider::Ollama => {
             let mut list = vec![json!({ "role": "system", "content": system })];
@@ -180,7 +192,7 @@ fn request(
                 "options": { "temperature": 0 },
                 "messages": list
             });
-            (format!("{base}/api/chat"), body)
+            Some((format!("{base}/api/chat"), body))
         }
         Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible => {
             let mut list = vec![json!({ "role": "system", "content": system })];
@@ -211,7 +223,7 @@ fn request(
             if provider != Provider::OpenAi {
                 body["temperature"] = json!(0);
             }
-            (format!("{base}/chat/completions"), body)
+            Some((format!("{base}/chat/completions"), body))
         }
     }
 }
@@ -266,6 +278,8 @@ fn answer(provider: Provider, body: &str) -> Result<Value, VisionError> {
             said
         }
         Provider::Ollama => text(&v["message"]["content"]),
+        // Never asked: it doesn't converse.
+        Provider::Jev => return Err(bad(body)),
         Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible => {
             let message = &v["choices"][0]["message"];
             if let Some(refusal) = message["refusal"].as_str() {
@@ -314,14 +328,17 @@ mod tests {
     fn every_provider_gets_the_whole_conversation_and_the_shape() {
         let schema = json!({ "type": "object", "properties": { "x": { "type": "string" } } });
         for provider in Provider::ALL {
-            let (url, body) = request(
+            let Some((url, body)) = request(
                 provider,
                 "m",
                 "http://localhost:9",
                 "Be brief.",
                 &conversation(),
                 &schema,
-            );
+            ) else {
+                assert!(!provider.converses(), "{provider:?}");
+                continue;
+            };
             let text = body.to_string();
             assert!(url.starts_with("http://localhost:9/"), "{provider:?}");
             for part in [
@@ -400,6 +417,11 @@ mod tests {
             client(Provider::Ollama, " ", None).ask("", &[], &schema),
             Err(VisionError::NoModel)
         );
+        // Nothing is sent to a provider that only checks screenshots.
+        assert!(matches!(
+            client(Provider::Jev, "m", Some(KEY)).ask("", &[], &schema),
+            Err(VisionError::Refused { .. })
+        ));
         assert!(!format!("{:?}", client(Provider::OpenAi, "m", Some(KEY)).config()).contains(KEY));
     }
 }
