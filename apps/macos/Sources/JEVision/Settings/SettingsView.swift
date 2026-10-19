@@ -234,6 +234,7 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .git, id: "repository", title: String(localized: "Repository")),
         SettingsItem(tab: .git, id: "branch", title: String(localized: "Branch")),
         SettingsItem(tab: .git, id: "gitHubAccount", title: String(localized: "Account")),
+        SettingsItem(tab: .git, id: "gitHubClientID", title: String(localized: "OAuth App Client ID")),
         SettingsItem(tab: .git, id: "pullRequests", title: String(localized: "Pull Requests")),
         SettingsItem(tab: .advanced, id: "retries", title: String(localized: "Retries")),
         SettingsItem(tab: .advanced, id: "commandLine", title: String(localized: "Run tests from Terminal and scripts")),

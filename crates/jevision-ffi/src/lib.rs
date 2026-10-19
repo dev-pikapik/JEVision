@@ -29,6 +29,7 @@ mod project;
 mod remote;
 mod run;
 mod schedule;
+mod signin;
 mod stats;
 mod vision;
 

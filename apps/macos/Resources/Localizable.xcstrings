@@ -1625,6 +1625,16 @@
         }
       }
     },
+    "Access was declined on GitHub. To sign in, start again and choose Authorize." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ отклонён на GitHub. Чтобы войти, начните заново и нажмите Authorize."
+          }
+        }
+      }
+    },
     "Accessibility" : {
       "localizations" : {
         "ru" : {
@@ -4075,6 +4085,16 @@
         }
       }
     },
+    "Client ID" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client ID"
+          }
+        }
+      }
+    },
     "Close" : {
       "localizations" : {
         "ru" : {
@@ -4091,6 +4111,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Код"
+          }
+        }
+      }
+    },
+    "Code %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код %@"
           }
         }
       }
@@ -4567,6 +4597,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Copy Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать код"
           }
         }
       }
@@ -6611,6 +6651,16 @@
         }
       }
     },
+    "Forget the sign-in kept in the Keychain" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить вход из Связки ключей"
+          }
+        }
+      }
+    },
     "Forward" : {
       "localizations" : {
         "ru" : {
@@ -6859,12 +6909,32 @@
         }
       }
     },
+    "GitHub CLI is signed in as %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub CLI вошёл как %@"
+          }
+        }
+      }
+    },
     "GitHub CLI isn’t installed. Install it from cli.github.com, then run “gh auth login” in Terminal." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub CLI не установлен. Установите его с cli.github.com, затем выполните «gh auth login» в Терминале."
+          }
+        }
+      }
+    },
+    "GitHub didn’t accept the OAuth app’s Client ID. Check it, and that device flow is turned on in the app’s settings on GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub не принял Client ID OAuth-приложения. Проверьте его и включён ли Device flow в настройках приложения на GitHub."
           }
         }
       }
@@ -7586,16 +7656,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision нужны два разрешения"
-          }
-        }
-      }
-    },
-    "JEVision uses the account GitHub CLI is signed in to. To use another one, run “gh auth login” in Terminal." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "JEVision работает с аккаунтом, в который вошёл GitHub CLI. Чтобы сменить аккаунт, выполните «gh auth login» в Терминале."
           }
         }
       }
@@ -9194,6 +9254,26 @@
         }
       }
     },
+    "OAuth App Client ID" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client ID OAuth-приложения"
+          }
+        }
+      }
+    },
+    "OAuth app Client ID" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Client ID OAuth-приложения"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "ru" : {
@@ -9440,6 +9520,16 @@
         }
       }
     },
+    "Open GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть GitHub"
+          }
+        }
+      }
+    },
     "Open Issue" : {
       "localizations" : {
         "ru" : {
@@ -9668,6 +9758,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает настройки Git"
+          }
+        }
+      }
+    },
+    "Opens GitHub in your browser to let JEVision in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откроет GitHub в браузере, чтобы разрешить доступ JEVision"
           }
         }
       }
@@ -13344,6 +13444,36 @@
         }
       }
     },
+    "Sign In with GitHub…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войти через GitHub…"
+          }
+        }
+      }
+    },
+    "Sign Out" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти"
+          }
+        }
+      }
+    },
+    "Sign in once in your browser to open pull requests and push to GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите один раз в браузере, чтобы открывать пул-реквесты и отправлять изменения на GitHub."
+          }
+        }
+      }
+    },
     "Sign in once in your browser. JEVision checks again when you come back." : {
       "localizations" : {
         "ru" : {
@@ -13364,12 +13494,22 @@
         }
       }
     },
-    "Signing in to the server uses your Mac’s git setup: GitHub CLI, passwords in the Keychain or SSH keys." : {
+    "Sign in with the same account, without the browser." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вход на сервер — через настройки git на этом Mac: GitHub CLI, пароли в Связке ключей или SSH-ключи."
+            "value" : "Войти под этой же учётной записью, без браузера."
+          }
+        }
+      }
+    },
+    "Signing in to the server uses your GitHub sign-in below, otherwise your Mac’s git setup: GitHub CLI, passwords in the Keychain or SSH keys." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для входа на сервер используется вход в GitHub ниже, а если его нет — настройки git на этом Mac: GitHub CLI, пароли в Связке ключей или SSH-ключи."
           }
         }
       }
@@ -14224,6 +14364,16 @@
         }
       }
     },
+    "The GitHub OAuth app JEVision signs in through. Device flow must be turned on in its settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OAuth-приложение GitHub, через которое входит JEVision. В его настройках должен быть включён Device flow."
+          }
+        }
+      }
+    },
     "The Picture Wasn’t Changed" : {
       "localizations" : {
         "ru" : {
@@ -14354,12 +14504,32 @@
         }
       }
     },
+    "The code expired before it was entered on GitHub. Sign in again to get a new one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код истёк, прежде чем его ввели на GitHub. Войдите снова, чтобы получить новый."
+          }
+        }
+      }
+    },
     "The code has expired." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Срок действия кода истёк."
+          }
+        }
+      }
+    },
+    "The code is copied. Paste it on the GitHub page that opened and choose Authorize. JEVision is waiting." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код скопирован. Вставьте его на открывшейся странице GitHub и нажмите Authorize. JEVision ждёт."
           }
         }
       }
@@ -14764,12 +14934,12 @@
         }
       }
     },
-    "The server didn’t accept your sign-in. Sign in with GitHub CLI (gh auth login) or set up an SSH key, then try again." : {
+    "The server didn’t accept your sign-in. Sign in to GitHub in Settings → Git and GitHub, or set up an SSH key, then try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сервер не принял вход. Войдите через GitHub CLI (gh auth login) или настройте SSH-ключ и попробуйте снова."
+            "value" : "Сервер не принял вход. Войдите в GitHub в Настройках → Git и GitHub или настройте SSH-ключ, затем попробуйте снова."
           }
         }
       }
@@ -14790,6 +14960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Доля пикселей, которые должны выглядеть как в эталоне. Около %@ пропускает мелкие отличия вроде сглаженного текста или мигающего курсора; %@ требует совпадения каждого пикселя."
+          }
+        }
+      }
+    },
+    "The sign-in is kept in your Keychain. JEVision uses it for pull requests and to push to GitHub." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход хранится в Связке ключей. JEVision использует его для пул-реквестов и отправки изменений на GitHub."
           }
         }
       }
@@ -15506,6 +15686,16 @@
         }
       }
     },
+    "To sign in in the browser, enter the Client ID of your GitHub OAuth app below." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы войти через браузер, введите ниже Client ID вашего OAuth-приложения GitHub."
+          }
+        }
+      }
+    },
     "To take screenshots of the app you test" : {
       "localizations" : {
         "ru" : {
@@ -15984,6 +16174,16 @@
         }
       }
     },
+    "Use This Account" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать эту учётную запись"
+          }
+        }
+      }
+    },
     "Use a column in Type Text blocks inside the loop with Insert." : {
       "localizations" : {
         "ru" : {
@@ -16190,6 +16390,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ожидание"
+          }
+        }
+      }
+    },
+    "Waiting for GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидание GitHub"
           }
         }
       }
@@ -16632,12 +16842,12 @@
         }
       }
     },
-    "You’re not signed in to GitHub. Run “gh auth login” in Terminal, then try again." : {
+    "You’re not signed in to GitHub. Sign in in Settings → Git and GitHub, then try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вы не вошли в GitHub. Выполните «gh auth login» в Терминале и попробуйте снова."
+            "value" : "Вы не вошли в GitHub. Войдите в Настройках → Git и GitHub, затем попробуйте снова."
           }
         }
       }

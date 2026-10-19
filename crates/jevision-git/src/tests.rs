@@ -1275,3 +1275,146 @@ fn a_bug_report_shows_its_screenshots_and_a_repeat_goes_to_the_open_issue() {
         serde_json::json!({"body": "### Sign in fails\n\nText"})
     );
 }
+
+const DEVICE_CODE: &str = r#"{"device_code": "3584d83530557fdd1f46af8289938c8ef79f9dc5",
+    "user_code": "WDJB-MJHT", "verification_uri": "https://github.com/login/device",
+    "expires_in": 900, "interval": 5}"#;
+
+#[test]
+fn browser_sign_in_asks_for_a_code_then_waits_for_the_token() {
+    let api = Api::serve(vec![
+        (200, DEVICE_CODE),
+        (200, r#"{"error": "authorization_pending"}"#),
+        (200, r#"{"error": "slow_down", "interval": 10}"#),
+        (200, r#"{"error": "slow_down"}"#),
+        (
+            200,
+            r#"{"access_token": "gho_secret", "token_type": "bearer", "scope": "repo"}"#,
+        ),
+    ]);
+    let flow = DeviceFlow::new(&api.address, " Iv1.abc ");
+    let code = flow.start().unwrap();
+    assert_eq!(
+        code,
+        DeviceCode {
+            device_code: "3584d83530557fdd1f46af8289938c8ef79f9dc5".into(),
+            user_code: "WDJB-MJHT".into(),
+            verification_uri: "https://github.com/login/device".into(),
+            interval: 5,
+            expires_in: 900,
+        }
+    );
+    let poll = |interval| flow.poll(&code.device_code, interval).unwrap();
+    assert_eq!(poll(5), SignInStep::Waiting);
+    assert_eq!(poll(5), SignInStep::SlowDown { interval: 10 });
+    assert_eq!(
+        poll(10),
+        SignInStep::SlowDown { interval: 15 },
+        "without a new interval, waits 5 seconds longer"
+    );
+    assert_eq!(poll(15), SignInStep::Token("gho_secret".into()));
+
+    let requests = api.requests();
+    assert!(requests[0].starts_with("POST /login/device/code HTTP/1.1\r\n"));
+    assert!(
+        requests[0].ends_with("\r\n\r\nclient_id=Iv1.abc&scope=repo"),
+        "{}",
+        requests[0]
+    );
+    assert!(
+        requests[0]
+            .to_lowercase()
+            .contains("accept: application/json\r\n")
+    );
+    assert!(requests[1].starts_with("POST /login/oauth/access_token HTTP/1.1\r\n"));
+    assert!(
+        requests[1].ends_with(
+            "client_id=Iv1.abc&device_code=3584d83530557fdd1f46af8289938c8ef79f9dc5\
+         &grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code"
+        ),
+        "{}",
+        requests[1]
+    );
+}
+
+#[test]
+fn browser_sign_in_explains_why_it_stopped() {
+    let api = Api::serve(vec![
+        (200, r#"{"error": "expired_token"}"#),
+        (200, r#"{"error": "access_denied"}"#),
+        (200, r#"{"error": "device_flow_disabled"}"#),
+        (404, "Not Found"),
+        (
+            200,
+            r#"{"error": "something_new", "error_description": "Try later."}"#,
+        ),
+        (500, "<html>"),
+    ]);
+    let flow = DeviceFlow::new(&api.address, "Iv1.abc");
+    assert_eq!(flow.poll("code", 5), Err(GitError::SignInExpired));
+    assert_eq!(flow.poll("code", 5), Err(GitError::SignInDenied));
+    assert_eq!(flow.start(), Err(GitError::SignInUnavailable));
+    assert_eq!(
+        flow.start(),
+        Err(GitError::SignInUnavailable),
+        "unknown Client ID"
+    );
+    assert_eq!(
+        flow.poll("code", 5),
+        Err(GitError::Failed {
+            message: "Try later.".into()
+        })
+    );
+    assert!(matches!(flow.start(), Err(GitError::Failed { .. })));
+    assert_eq!(api.requests().len(), 6);
+
+    let unset = DeviceFlow::new("http://127.0.0.1:9", " ");
+    assert_eq!(
+        unset.start(),
+        Err(GitError::SignInUnavailable),
+        "no Client ID yet"
+    );
+    let offline = DeviceFlow::new("http://127.0.0.1:9", "Iv1.abc");
+    assert_eq!(offline.start(), Err(GitError::Unreachable));
+}
+
+#[test]
+fn git_gets_the_github_token_from_the_environment_only_when_asked() {
+    let ask = |action: &str, request: &str| {
+        let mut git = Command::new("git")
+            .args(["-c", GITHUB_CREDENTIAL, "credential", action])
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .env(GITHUB_TOKEN_VARIABLE, "gho_secret")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        git.stdin
+            .take()
+            .unwrap()
+            .write_all(request.as_bytes())
+            .unwrap();
+        let out = git.wait_with_output().unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let filled = ask("fill", "protocol=https\nhost=github.com\n\n");
+    assert!(filled.contains("username=x-access-token\n"), "{filled}");
+    assert!(filled.contains("password=gho_secret\n"), "{filled}");
+    let approve =
+        "protocol=https\nhost=github.com\nusername=x-access-token\npassword=gho_secret\n\n";
+    assert_eq!(
+        ask("approve", approve),
+        "",
+        "storing a credential is left to the user's own helpers"
+    );
+    assert!(!GITHUB_CREDENTIAL.contains("gho_secret"));
+}

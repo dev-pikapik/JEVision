@@ -18,7 +18,7 @@ use jevision_runner::PictureDiff;
 use crate::FlowError;
 
 /// The git installed on this Mac, looked for again until there is one.
-fn git() -> Result<Git, GitError> {
+pub(crate) fn git() -> Result<Git, GitError> {
     static FOUND: OnceLock<Git> = OnceLock::new();
     if let Some(git) = FOUND.get() {
         return Ok(git.clone());
@@ -154,7 +154,7 @@ pub fn git_set_identity(project: String, identity: GitIdentity) -> Result<(), Gi
     git()?.set_identity(Path::new(&project), &identity)
 }
 
-/// Who GitHub CLI is signed in to GitHub as.
+/// Who the user is signed in to GitHub as.
 #[uniffi::export]
 pub fn github_account() -> Result<GitHubAccount, GitError> {
     git()?.github()?.account()
@@ -262,6 +262,9 @@ pub enum GitError {
     NotInCommit { path: String },
     NoGitHubCli,
     GitHubSignedOut,
+    SignInExpired,
+    SignInDenied,
+    SignInUnavailable,
     NotGitHub,
     NoPermission,
     NotPushed { branch: String },
