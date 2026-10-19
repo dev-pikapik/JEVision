@@ -15,6 +15,7 @@ public struct AISettings {
 
   public static func modelKey(_ provider: String) -> String { "ai.model.\(provider)" }
   public static func addressKey(_ provider: String) -> String { "ai.address.\(provider)" }
+  public static func picturesKey(_ provider: String) -> String { "ai.pictures.\(provider)" }
 
   /// The app's settings, from the app or from the `jevision` tool.
   public static var app: AISettings {
@@ -62,13 +63,18 @@ public struct AISettings {
     defaults.string(forKey: Self.addressKey(provider.id)) ?? ""
   }
 
+  /// The model understands pictures, unless the user said it reads only text.
+  public func pictures(for provider: VisionProvider) -> Bool {
+    defaults.object(forKey: Self.picturesKey(provider.id)) as? Bool ?? true
+  }
+
   /// What a run passes to the core: the chosen provider and model unless others are given.
   /// Nil when no provider is chosen.
   public func settings(provider id: String? = nil, model: String? = nil) -> VisionSettings? {
     guard let provider = Self.provider(id ?? providerID) else { return nil }
     return VisionSettings(
       provider: provider.id, model: model ?? self.model(for: provider), address: address(for: provider),
-      key: Self.key(for: provider))
+      key: Self.key(for: provider), pictures: pictures(for: provider))
   }
 
   /// The API key, from the provider's environment variable or the Keychain.
