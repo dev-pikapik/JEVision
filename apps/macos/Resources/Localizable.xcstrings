@@ -12196,18 +12196,12 @@
         }
       }
     },
-    "Run every test on this board, one after another" : {
+    "Run every test on this board, one after another or side by side as chosen in the menu" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Run every test on this board, one after another"
-          }
-        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запустить все тесты на этой доске по очереди"
+            "value" : "Запустить все тесты этой доски — по очереди или параллельно, как выбрано в меню"
           }
         }
       }

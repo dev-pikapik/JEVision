@@ -15,6 +15,8 @@ enum ProjectMap {
     let to: CGRect
     /// Where the arrow runs, around the cards and folder titles between the two.
     let points: [CGPoint]
+    /// `to` must pass before `from` runs; otherwise `from` runs `to`.
+    var isDependency = false
   }
 
   /// The key of a folder title among the cards' frames: arrows go around it too.
@@ -49,17 +51,18 @@ enum ProjectMap {
     return usedBy
   }
 
-  /// An arrow from each test to each test it runs, between the cards' frames. `bounds` also
-  /// holds the frames of the folder titles.
+  /// An arrow from each test to each test it runs and each test it depends on, between the
+  /// cards' frames. `bounds` also holds the frames of the folder titles.
   static func links(_ map: [String: MapTest], bounds: [String: CGRect]) -> [Link] {
     let keys = bounds.keys.sorted()
     return map.keys.sorted().flatMap { file -> [Link] in
       guard let from = bounds[file], let test = map[file] else { return [] }
-      return test.uses.compactMap { used in
-        guard used != file, let to = bounds[used] else { return nil }
-        let others = keys.filter { $0 != file && $0 != used }.compactMap { bounds[$0].map(rect) }
+      let targets = test.uses.map { ($0, false) } + test.dependsOn.map { ($0, true) }
+      return targets.compactMap { target, isDependency in
+        guard target != file, let to = bounds[target] else { return nil }
+        let others = keys.filter { $0 != file && $0 != target }.compactMap { bounds[$0].map(rect) }
         let points = mapLinkRoute(from: rect(from), to: rect(to), others: others).map { CGPoint(x: $0.x, y: $0.y) }
-        return Link(from: from, to: to, points: points)
+        return Link(from: from, to: to, points: points, isDependency: isDependency)
       }
     }
   }
@@ -78,8 +81,8 @@ struct DashedLine: Shape {
   }
 }
 
-/// Dashed arrows from a card to the cards of the tests it runs, in straight runs with rounded
-/// turns that go around the other cards.
+/// Arrows from a card to the cards of the tests it runs, dashed, and of the tests it depends on,
+/// solid in the accent colour; in straight runs with rounded turns that go around the other cards.
 enum UsesArrows {
   /// Draws `links`, laid out in board points, where `transform` puts the board.
   static func draw(_ links: [ProjectMap.Link], in context: GraphicsContext, transform: CGAffineTransform) {
@@ -95,7 +98,8 @@ enum UsesArrows {
         line.addArc(tangent1End: corner, tangent2End: after, radius: min(8, room / 2))
       }
       line.addLine(to: end)
-      context.stroke(line, with: .color(.secondary), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+      let shading: GraphicsContext.Shading = link.isDependency ? .color(.accentColor) : .color(.secondary)
+      context.stroke(line, with: shading, style: StrokeStyle(lineWidth: 1.5, dash: link.isDependency ? [] : [5, 4]))
       // The head points the way the last run arrives.
       let last = points[points.count - 2]
       let angle = atan2(end.y - last.y, end.x - last.x)
@@ -104,7 +108,7 @@ enum UsesArrows {
       head.addLine(to: CGPoint(x: end.x - 8 * cos(angle - 0.45), y: end.y - 8 * sin(angle - 0.45)))
       head.addLine(to: CGPoint(x: end.x - 8 * cos(angle + 0.45), y: end.y - 8 * sin(angle + 0.45)))
       head.closeSubpath()
-      context.fill(head, with: .color(.secondary))
+      context.fill(head, with: shading)
     }
   }
 }
@@ -121,6 +125,8 @@ struct TestCard: View {
   /// Names of the tests it runs, and of the tests that run it.
   let uses: [String]
   let usedBy: [String]
+  /// Names of the tests that must pass before it runs.
+  let needs: [String]
   let isRunning: Bool
   /// The test file is no longer in the project.
   let isMissing: Bool
@@ -160,6 +166,15 @@ struct TestCard: View {
             }
             .help(Text(RunHistory.flakyEvidence(flaky)))
           }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      }
+      if !needs.isEmpty {
+        Label {
+          Text("After \(needs.formatted(.list(type: .and)))").lineLimit(2)
+        } icon: {
+          Image(systemName: "arrow.turn.down.right").foregroundStyle(.tint)
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -210,6 +225,7 @@ struct TestCard: View {
     if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
     if !uses.isEmpty { parts.append(String(localized: "Runs \(uses.formatted(.list(type: .and)))")) }
     if !usedBy.isEmpty { parts.append(String(localized: "Run by \(usedBy.formatted(.list(type: .and)))")) }
+    if !needs.isEmpty { parts.append(String(localized: "Runs after \(needs.formatted(.list(type: .and))) pass")) }
     return parts.joined(separator: ". ")
   }
 }

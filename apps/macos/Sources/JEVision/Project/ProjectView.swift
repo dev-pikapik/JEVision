@@ -230,6 +230,12 @@ struct ProjectView: View {
     )
     .tag(Self.boardTag(name))
     .contextMenu {
+      if isAllTests {
+        Button("Run All Tests") { runAll(project.items, title: String(localized: "All tests")) }
+          .disabled(!canRun)
+        RunModePicker(folder: ".") { failure = $0 }
+        Divider()
+      }
       Button("Rename…") {
         project.boards.renaming = name
       }

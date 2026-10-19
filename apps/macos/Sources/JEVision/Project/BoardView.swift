@@ -139,6 +139,11 @@ struct BoardView: View {
           .stroke(.secondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
           .frame(width: 28, height: 2)
         Text("runs another test")
+        DashedLine()
+          .stroke(.tint, style: StrokeStyle(lineWidth: 1.5))
+          .frame(width: 28, height: 2)
+          .padding(.leading, 8)
+        Text("needs it to pass first")
       }
       .font(.callout)
       .foregroundStyle(.secondary)
@@ -149,13 +154,20 @@ struct BoardView: View {
       .toggleStyle(.button)
       .labelStyle(.iconOnly)
       .help(Text("Snap what you move to the grid; hold ⌘ while moving to do the opposite"))
-      Button("Run All", systemImage: "play.fill") {
+      Menu {
+        RunModePicker(folder: ".") { failure = $0 }
+      } label: {
+        Label("Run All", systemImage: "play.fill")
+      } primaryAction: {
         guard let root = project.rootURL else { return }
         let title = isAllTests ? String(localized: "All tests") : boards.current ?? ""
         runs.runAll(tests.map { root.appending(path: $0) }, in: root, title: title)
       }
+      .menuStyle(.button)
       .buttonStyle(.glassProminent)
-      .help(Text("Run every test on this board, one after another"))
+      .fixedSize()
+      .help(Text("Run every test on this board, one after another or side by side as chosen in the menu"))
+      .accessibilityHint(Text("Runs every test. Open the menu to choose whether they run one after another or side by side."))
       .disabled(!canRun || tests.isEmpty)
     }
     .padding(.horizontal, 24)
@@ -281,6 +293,7 @@ struct BoardView: View {
       name: names[file] ?? ProjectScanner.testName((file as NSString).lastPathComponent), info: map[file],
       last: project.latestRuns[file], quarantine: project.quarantine(of: file), flaky: project.flaky[file],
       uses: (map[file]?.uses ?? []).compactMap { names[$0] }, usedBy: (usedBy[file] ?? []).compactMap { names[$0] },
+      needs: (map[file]?.dependsOn ?? []).map { names[$0] ?? $0 },
       isRunning: isRunning(file), isMissing: names[file] == nil, isPicked: isPicked)
   }
 
