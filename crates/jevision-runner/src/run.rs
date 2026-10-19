@@ -1023,8 +1023,28 @@ impl Exec<'_> {
             WaitUntil::Appears(r) | WaitUntil::Disappears(r) => {
                 let want = matches!(until, WaitUntil::Appears(_));
                 let mut cache = None;
+                // The screen a vision model last judged and its verdict: an unchanged screen
+                // gets the same answer, so it is not paid for again.
+                let mut asked: Option<(Image, bool)> = None;
                 let reached = self.poll(id, timeout, || {
                     let shot = self.capture(id)?;
+                    if let Some((seen, passed)) = &asked {
+                        let image = decode_screenshot(id, &shot)?;
+                        let skip: Vec<_> = r
+                            .ignore
+                            .iter()
+                            .chain(&self.private_areas(&shot, &r.hide))
+                            .copied()
+                            .collect();
+                        if image
+                            .compare(seen, r.area.as_ref(), &skip, 0)
+                            .is_ok_and(|c| c.differing == 0)
+                        {
+                            let passed = *passed;
+                            last = Some(shot);
+                            return Ok((passed == want).then_some(()));
+                        }
+                    }
                     let passed = match self.evaluate(t, id, r, &shot, false, &mut cache) {
                         Ok(e) => {
                             let e = e.map_err(|name| missing_reference(id, &name))?;
@@ -1032,6 +1052,7 @@ impl Exec<'_> {
                             if let Judged::Model(answer) = e.judged {
                                 step.vision = Some(answer);
                                 sent = e.sent;
+                                asked = Some((e.actual, e.passed));
                             }
                             e.passed
                         }
