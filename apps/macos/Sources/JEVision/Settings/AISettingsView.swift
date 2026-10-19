@@ -26,10 +26,11 @@ struct AISettingsView: View {
     .formStyle(.grouped)
   }
 
-  /// The saved model and address of each provider.
+  /// The saved model, address and picture setting of each provider.
   private static var providerKeys: [String] {
     let defaults = UserDefaults.standard
-    return AISettings.providers.flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id)] }
+    return AISettings.providers
+      .flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id), AISettings.picturesKey($0.id)] }
       .filter { defaults.object(forKey: $0) != nil }
   }
 
@@ -83,6 +84,7 @@ private struct ProviderSection: View {
   let localOnly: Bool
   @AppStorage private var model: String
   @AppStorage private var address: String
+  @AppStorage private var pictures: Bool
   @State private var models: [String] = []
   @State private var listing = Listing.idle
   @State private var test = Test.idle
@@ -103,15 +105,17 @@ private struct ProviderSection: View {
     self.localOnly = localOnly
     _model = AppStorage(wrappedValue: provider.defaultModel, AISettings.modelKey(provider.id))
     _address = AppStorage(wrappedValue: "", AISettings.addressKey(provider.id))
+    _pictures = AppStorage(wrappedValue: true, AISettings.picturesKey(provider.id))
   }
 
   /// Read when needed, not on every redraw: the key comes from the Keychain.
   private var settings: VisionSettings {
-    VisionSettings(provider: provider.id, model: model, address: address, key: AISettings.key(for: provider))
+    VisionSettings(
+      provider: provider.id, model: model, address: address, key: AISettings.key(for: provider), pictures: pictures)
   }
 
   private var isLocal: Bool {
-    visionIsLocal(settings: VisionSettings(provider: provider.id, model: "", address: address, key: nil))
+    visionIsLocal(settings: VisionSettings(provider: provider.id, model: "", address: address, key: nil, pictures: true))
   }
 
   /// Most cloud services have one address; local servers and compatible ones need theirs.
@@ -126,6 +130,14 @@ private struct ProviderSection: View {
       }
       modelRow
       if !provider.keyVariable.isEmpty { keyRow }
+      if provider.mayLackPictures {
+        Toggle(isOn: $pictures) {
+          RowLabel(
+            Text("Understands pictures"),
+            Text("Turn off for a text-only model. Checks that send screenshots then stop with a message."))
+        }
+        .settingAnchor("pictures")
+      }
       testRow
     } header: {
       Text(verbatim: provider.name)
