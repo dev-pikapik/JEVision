@@ -464,7 +464,7 @@ fn parameters_are_checked() {
     assert_eq!(
         describe(&issues[10]),
         "Block \"h\", field \"reference.provider\": \"skynet\" isn't an AI provider; use one of: \
-         anthropic, openai, gemini, ollama, lmstudio, openai-compatible."
+         anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible."
     );
 }
 

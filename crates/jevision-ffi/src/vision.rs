@@ -124,6 +124,7 @@ impl NamedJudge {
                 // Not set up: no key, so a provider that needs one says so.
                 .unwrap_or_else(|| VisionSettings {
                     model: self.provider.default_model().to_owned(),
+                    pictures: true,
                     ..VisionSettings::default()
                 });
             VisionClient::new(
@@ -132,6 +133,7 @@ impl NamedJudge {
                     model: s.model,
                     address: s.address,
                     key: s.key,
+                    pictures: s.pictures,
                 },
                 TIMEOUT,
             )

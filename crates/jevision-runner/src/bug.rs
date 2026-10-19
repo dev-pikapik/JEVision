@@ -342,7 +342,9 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
 /// What the screen should look like for `reference` to match.
 fn looks_like(reference: &Reference) -> String {
     match &reference.compare {
-        Compare::Meaning { expect } if !expect.is_empty() => format!("the screen shows {expect}"),
+        Compare::Meaning { expect, .. } if !expect.is_empty() => {
+            format!("the screen shows {expect}")
+        }
         Compare::Meaning { .. } => format!("the screen means the same as “{}”", reference.image),
         Compare::Exact => format!("the screen is exactly “{}”", reference.image),
         Compare::Similar { threshold } => format!(

@@ -357,6 +357,7 @@ pub const AI_PROVIDERS: &[&str] = &[
     "anthropic",
     "openai",
     "gemini",
+    "jev",
     "ollama",
     "lmstudio",
     "openai-compatible",
