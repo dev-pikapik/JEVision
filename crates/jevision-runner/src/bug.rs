@@ -4,10 +4,14 @@
 use std::collections::HashMap;
 use std::fmt::Write as _;
 
-use jevision_core::{BlockKind, Compare, Flow, Reference, Target, WaitUntil, format_duration};
+use jevision_core::{
+    BlockKind, Compare, Condition, FileState, Flow, Reference, ScriptLanguage, Target, WaitUntil,
+    format_duration,
+};
 use sha2::{Digest, Sha256};
 
 use crate::report::{duration, percent, wait_target};
+use crate::system::sign;
 use crate::{Attempt, Failure, RetryVerdict, RunReport, SECRET_MASK, Step, StepStatus, Verdict};
 
 /// What the report says about the computer and the app, besides what the run saved.
@@ -255,6 +259,11 @@ fn type_title(block_type: &str) -> String {
         "repeat" => "Repeat".to_owned(),
         "useData" => "Use Data".to_owned(),
         "runTest" => "Run Test".to_owned(),
+        "script" => "Script".to_owned(),
+        "command" => "Command".to_owned(),
+        "http" => "HTTP Request".to_owned(),
+        "checkFile" => "Check File".to_owned(),
+        "database" => "Database".to_owned(),
         other => other.to_owned(),
     }
 }
@@ -332,10 +341,37 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
             format!("Wait up to {} until {what}", format_duration(*timeout_ms))
         }
         BlockKind::Check { reference, .. } => format!("Check that {}", looks_like(reference)),
-        BlockKind::If { reference, .. } => format!("If {}", looks_like(reference)),
+        BlockKind::If { condition, .. } => match condition {
+            Condition::Screen(reference) => format!("If {}", looks_like(reference)),
+            Condition::Value(v) => format!("If `{}` {} `{}`", v.of, sign(v.is), v.to),
+        },
         BlockKind::Repeat { times, .. } => format!("Repeat {times} times"),
         BlockKind::UseData { file, .. } => format!("For each row of {file}"),
         BlockKind::RunTest { test, .. } => format!("Run test `{test}`"),
+        BlockKind::Script { language, .. } => {
+            let language = match language {
+                ScriptLanguage::Sh => "sh",
+                ScriptLanguage::Zsh => "zsh",
+                ScriptLanguage::Python3 => "Python",
+                ScriptLanguage::Node => "Node.js",
+                ScriptLanguage::AppleScript => "AppleScript",
+            };
+            format!("Run a {language} script")
+        }
+        BlockKind::Command { command, .. } => format!("Run `{command}`"),
+        BlockKind::Http { method, url, .. } => {
+            format!("Send {} {url}", format!("{method:?}").to_uppercase())
+        }
+        BlockKind::CheckFile { path, until, .. } => {
+            let state = match until {
+                FileState::Exists => "exists".to_owned(),
+                FileState::Missing => "is gone".to_owned(),
+                FileState::Changed => "changes".to_owned(),
+                FileState::Contains(text) => format!("contains “{text}”"),
+            };
+            format!("Wait until `{path}` {state}")
+        }
+        BlockKind::Database { file, query, .. } => format!("Query `{file}`: `{query}`"),
     }
 }
 
@@ -369,7 +405,13 @@ fn expected_and_actual(failure: &Failure, block: Option<&BlockKind>) -> (String,
         ),
         "run.check.meaningMismatch" => {
             let expected = match block {
-                Some(BlockKind::Check { reference, .. } | BlockKind::If { reference, .. }) => {
+                Some(
+                    BlockKind::Check { reference, .. }
+                    | BlockKind::If {
+                        condition: Condition::Screen(reference),
+                        ..
+                    },
+                ) => {
                     format!("{}.", capitalized(&looks_like(reference)))
                 }
                 _ => "The screen shows what the check expects.".to_owned(),
