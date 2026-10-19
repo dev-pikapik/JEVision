@@ -1076,3 +1076,202 @@ fn a_pull_request_shows_the_project_files_it_changes_after_downloading_it() {
         Err(GitError::Failed { .. })
     ));
 }
+
+const ISSUE: &str = r#"{"number": 12, "title": "Sign in fails", "html_url": "https://github.com/acme/qa/issues/12"}"#;
+
+fn body(request: &str) -> serde_json::Value {
+    serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap()
+}
+
+#[test]
+fn bug_reports_are_filed_found_again_and_commented_on() {
+    let listed = r#"[
+        {"number": 3, "title": "A pull request", "body": "<!-- jevision-bug: ab -->", "pull_request": {}},
+        {"number": 5, "title": "Other", "body": null},
+        {"number": 12, "title": "Sign in fails", "body": "x\n<!-- jevision-bug: ab -->", "html_url": "https://github.com/acme/qa/issues/12"}
+    ]"#;
+    let api = Api::serve(vec![
+        (200, listed),
+        (200, "[]"),
+        (201, ISSUE),
+        (
+            201,
+            r#"{"html_url": "https://github.com/acme/qa/issues/12#issuecomment-1"}"#,
+        ),
+    ]);
+    let hub = api.hub();
+    let found = hub
+        .open_issue_with(&acme(), "<!-- jevision-bug: ab -->")
+        .unwrap();
+    assert_eq!(
+        found,
+        Some(GitHubIssue {
+            number: 12,
+            title: "Sign in fails".into(),
+            url: "https://github.com/acme/qa/issues/12".into()
+        })
+    );
+    assert_eq!(
+        hub.open_issue_with(&acme(), "<!-- jevision-bug: cd -->"),
+        Ok(None)
+    );
+    assert_eq!(
+        hub.create_issue(&acme(), "Sign in fails", "Body")
+            .unwrap()
+            .number,
+        12
+    );
+    assert_eq!(
+        hub.comment_on_issue(&acme(), 12, "Again").unwrap(),
+        "https://github.com/acme/qa/issues/12#issuecomment-1"
+    );
+    let requests = api.requests();
+    let line = |i: usize| requests[i].lines().next().unwrap().to_owned();
+    assert!(
+        line(0).starts_with("GET /repos/acme/qa/issues?state=open&"),
+        "{}",
+        line(0)
+    );
+    assert!(line(2).starts_with("POST /repos/acme/qa/issues HTTP/1.1"));
+    assert_eq!(
+        body(&requests[2]),
+        serde_json::json!({"title": "Sign in fails", "body": "Body"})
+    );
+    assert!(line(3).starts_with("POST /repos/acme/qa/issues/12/comments HTTP/1.1"));
+    assert_eq!(body(&requests[3]), serde_json::json!({"body": "Again"}));
+}
+
+#[test]
+fn screenshots_go_to_their_own_branch_and_keep_their_address() {
+    // The first time the branch is made, without a parent.
+    let api = Api::serve(vec![
+        (404, r#"{"message": "Not Found"}"#),
+        (201, r#"{"sha": "b1"}"#),
+        (201, r#"{"sha": "t1"}"#),
+        (201, r#"{"sha": "c1"}"#),
+        (201, "{}"),
+    ]);
+    let urls = api
+        .hub()
+        .attach(
+            &acme(),
+            &[("2026-10-18 sign in/Actual.png".into(), vec![1, 2, 3])],
+            "Sign in",
+        )
+        .unwrap();
+    assert_eq!(
+        urls,
+        ["https://github.com/acme/qa/blob/c1/2026-10-18%20sign%20in/Actual.png?raw=true"]
+    );
+    let requests = api.requests();
+    let line = |i: usize| requests[i].lines().next().unwrap().to_owned();
+    assert!(line(0).starts_with("GET /repos/acme/qa/git/ref/heads/jevision-attachments "));
+    assert_eq!(
+        body(&requests[1]),
+        serde_json::json!({"content": "AQID", "encoding": "base64"})
+    );
+    assert_eq!(
+        body(&requests[2]),
+        serde_json::json!({"tree": [{"path": "2026-10-18 sign in/Actual.png", "mode": "100644", "type": "blob", "sha": "b1"}]})
+    );
+    assert_eq!(
+        body(&requests[3]),
+        serde_json::json!({"message": "Sign in", "tree": "t1", "parents": []})
+    );
+    assert!(line(4).starts_with("POST /repos/acme/qa/git/refs "));
+    assert_eq!(
+        body(&requests[4]),
+        serde_json::json!({"ref": "refs/heads/jevision-attachments", "sha": "c1"})
+    );
+
+    // Then each upload adds to what is there.
+    let api = Api::serve(vec![
+        (200, r#"{"object": {"sha": "c1"}}"#),
+        (200, r#"{"tree": {"sha": "t1"}}"#),
+        (201, r#"{"sha": "b2"}"#),
+        (201, r#"{"sha": "t2"}"#),
+        (201, r#"{"sha": "c2"}"#),
+        (200, "{}"),
+    ]);
+    api.hub()
+        .attach(&acme(), &[("run/Expected.png".into(), vec![0])], "Run")
+        .unwrap();
+    let requests = api.requests();
+    assert_eq!(body(&requests[3])["base_tree"], "t1");
+    assert_eq!(body(&requests[4])["parents"], serde_json::json!(["c1"]));
+    assert!(requests[5].starts_with("PATCH /repos/acme/qa/git/refs/heads/jevision-attachments "));
+    assert_eq!(body(&requests[5]), serde_json::json!({"sha": "c2"}));
+
+    let api = Api::serve(vec![(403, r#"{"message": "Resource not accessible"}"#)]);
+    assert!(api.hub().attach(&acme(), &[], "Run").is_err());
+}
+
+#[test]
+fn a_test_has_its_page_on_github() {
+    let scratch = Scratch::new("web-url");
+    let (_, repo, _) = on_github(&scratch);
+    assert_eq!(
+        repo.web_url("login.flow.json").unwrap(),
+        "https://github.com/acme/qa/blob/main/qa/login.flow.json"
+    );
+    repo.create_branch("feat/new-login").unwrap();
+    assert_eq!(
+        repo.web_url("a b.flow.json").unwrap(),
+        "https://github.com/acme/qa/blob/HEAD/qa/a%20b.flow.json"
+    );
+}
+
+#[test]
+fn a_bug_report_shows_its_screenshots_and_a_repeat_goes_to_the_open_issue() {
+    let attach = || {
+        vec![
+            (404, r#"{"message": "Not Found"}"#),
+            (201, r#"{"sha": "b1"}"#),
+            (201, r#"{"sha": "t1"}"#),
+            (201, r#"{"sha": "c1"}"#),
+            (201, "{}"),
+        ]
+    };
+    let mut replies = attach();
+    replies.push((201, ISSUE));
+    let api = Api::serve(replies);
+    let pictures = [("run/Actual.png".to_owned(), vec![1])];
+    let url = api
+        .hub()
+        .report_bug(
+            &acme(),
+            "Sign in fails",
+            "Text\n",
+            "<!-- m -->",
+            &pictures,
+            None,
+        )
+        .unwrap();
+    assert_eq!(url, "https://github.com/acme/qa/issues/12");
+    let requests = api.requests();
+    assert_eq!(
+        body(&requests[5]),
+        serde_json::json!({"title": "Sign in fails", "body": "Text\n\n### Screenshots\n\n**Actual**\n\n![Actual](https://github.com/acme/qa/blob/c1/run/Actual.png?raw=true)\n\n<!-- m -->\n"})
+    );
+
+    let api = Api::serve(vec![(
+        201,
+        r#"{"html_url": "https://github.com/acme/qa/issues/12#c"}"#,
+    )]);
+    api.hub()
+        .report_bug(
+            &acme(),
+            "Sign in fails",
+            "Text",
+            "<!-- m -->",
+            &[],
+            Some(12),
+        )
+        .unwrap();
+    let request = &api.requests()[0];
+    assert!(request.starts_with("POST /repos/acme/qa/issues/12/comments "));
+    assert_eq!(
+        body(request),
+        serde_json::json!({"body": "### Sign in fails\n\nText"})
+    );
+}

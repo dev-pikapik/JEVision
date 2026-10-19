@@ -11,7 +11,9 @@ use jevision_core::{
     Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, describe, parse,
     parse_block, to_canonical_json, validate_in,
 };
-use jevision_runner::{MaskedImage, Run, StepStatus};
+use jevision_runner::{MaskedImage, Run, StepStatus, Verdict};
+
+use crate::{BugReport, draft_bug_report};
 use serde_json::{Map, Value, json};
 
 use super::jobs::RunChoices;
@@ -176,6 +178,29 @@ pub(super) fn definitions() -> Vec<Value> {
             &[],
             json!({ "readOnlyHint": true, "openWorldHint": true }),
         ),
+        tool(
+            "draft_bug_report",
+            "Draft a bug report",
+            "The bug report JEVision would file about a failed run: a title, and a Markdown text with the cause, the steps up to the failure, what was expected and what was seen, and where it ran, secret values masked. Nothing is sent. To look into the cause, get_report with images: failed shows the failed step's screenshots.",
+            json!({ "report": { "type": "string", "description": "Report name from get_run. Leave out for the newest failed run." } }),
+            &[],
+            read_only(),
+        ),
+        tool(
+            "send_bug_report",
+            "Send a bug report",
+            "Files the bug report about a failed run as an issue of the project's GitHub repository, with the failed step's screenshots (private areas painted over, secret values masked). If an issue for the same failure is already open, nothing is sent and the answer names it: then add this run to it with commentOn, or give newIssue: true. Show the person the draft from draft_bug_report and send only when they agree.",
+            json!({
+                "report": { "type": "string", "description": "Report name from get_run. Leave out for the newest failed run." },
+                "title": { "type": "string", "description": "Title to use instead of the drafted one." },
+                "body": { "type": "string", "description": "Markdown text to use instead of the drafted one, such as the draft with your analysis of the cause added." },
+                "screenshots": { "type": "array", "items": { "type": "string" }, "description": "Labels of the screenshots to include, from draft_bug_report. Default: all of them." },
+                "commentOn": { "type": "integer", "minimum": 1, "description": "Number of an open issue to add this run to as a comment, instead of opening a new issue." },
+                "newIssue": { "type": "boolean", "description": "true to open a new issue even if one for the same failure is open." },
+            }),
+            &[],
+            json!({ "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": true }),
+        ),
     ]
 }
 
@@ -222,6 +247,8 @@ impl Server {
             "stop_run" => self.stop_run(args),
             "get_report" => self.get_report(args),
             "screenshot" => self.screenshot(args),
+            "draft_bug_report" => self.draft_bug_report(args),
+            "send_bug_report" => self.send_bug_report(args),
             _ => return None,
         })
     }
@@ -498,19 +525,113 @@ impl Server {
         ))])
     }
 
-    fn get_report(&self, args: &Value) -> Content {
-        let runs = self.project.join(".jevision").join("runs");
-        let run = match optional(args, "report")? {
-            Some(name) => {
-                let mut parts = Path::new(name).components();
-                let (Some(Component::Normal(_)), None) = (parts.next(), parts.next()) else {
-                    return Err(format!(
-                        "\"{name}\" isn't a report name. Report names come from get_run, such as 2026-10-18-120000-sign-in."
-                    ));
-                };
-                Run::load(&runs.join(name))
-                    .map_err(|_| format!("There is no readable report \"{name}\"."))?
+    /// The run of the report named in `args`; `None` when none is named.
+    fn named_run(&self, args: &Value) -> Result<Option<Run>, String> {
+        let Some(name) = optional(args, "report")? else {
+            return Ok(None);
+        };
+        let mut parts = Path::new(name).components();
+        let (Some(Component::Normal(_)), None) = (parts.next(), parts.next()) else {
+            return Err(format!(
+                "\"{name}\" isn't a report name. Report names come from get_run, such as 2026-10-18-120000-sign-in."
+            ));
+        };
+        let dir = self.project.join(".jevision").join("runs").join(name);
+        Run::load(&dir)
+            .map(Some)
+            .map_err(|_| format!("There is no readable report \"{name}\"."))
+    }
+
+    /// The bug report about the run of the report named in `args`, or the newest failed one.
+    fn bug_draft(&self, args: &Value) -> Result<(Run, BugReport), String> {
+        let run = match self.named_run(args)? {
+            Some(run) => run,
+            None => Run::list(&self.project)
+                .ok()
+                .and_then(|runs| {
+                    runs.into_iter()
+                        .find(|r| r.report.verdict == Verdict::Failed)
+                })
+                .ok_or("No run in this project has failed. Name the report with report.")?,
+        };
+        let draft = draft_bug_report(
+            self.project.to_string_lossy().into_owned(),
+            run.dir.to_string_lossy().into_owned(),
+            self.host.secrets(),
+        )
+        .map_err(|e| e.to_string())?
+        .ok_or("That run didn't fail, so there is no bug to report.")?;
+        Ok((run, draft))
+    }
+
+    fn draft_bug_report(&self, args: &Value) -> Content {
+        let (run, draft) = self.bug_draft(args)?;
+        Ok(vec![pretty(&json!({
+            "report": run.dir.file_name().map(|n| n.to_string_lossy()),
+            "title": draft.title,
+            "body": draft.body,
+            "screenshots": draft.screenshots.iter().map(|s| &s.label).collect::<Vec<_>>(),
+        }))])
+    }
+
+    fn send_bug_report(&self, args: &Value) -> Content {
+        let (run, mut draft) = self.bug_draft(args)?;
+        if let Some(title) = optional(args, "title")? {
+            draft.title = title.to_owned();
+        }
+        if let Some(body) = optional(args, "body")? {
+            draft.body = body.to_owned();
+        }
+        if let Some(chosen) = args.get("screenshots") {
+            let chosen: Vec<&str> = chosen
+                .as_array()
+                .and_then(|labels| labels.iter().map(Value::as_str).collect())
+                .ok_or("\"screenshots\" must be a list of labels from draft_bug_report.")?;
+            draft
+                .screenshots
+                .retain(|s| chosen.contains(&s.label.as_str()));
+        }
+        let comment_on = match args.get("commentOn") {
+            None => None,
+            Some(number) => Some(
+                number
+                    .as_u64()
+                    .ok_or("\"commentOn\" must be an issue number.")?,
+            ),
+        };
+        let project = self.project.to_string_lossy().into_owned();
+        let (repo, hub) = crate::git::on_github(&project).map_err(|e| github_message(&e))?;
+        let github = repo.github().map_err(|e| github_message(&e))?.1;
+        if comment_on.is_none() && args.get("newIssue").and_then(Value::as_bool) != Some(true) {
+            let open = hub
+                .open_issue_with(&github, &crate::bug::marker(&draft.fingerprint))
+                .map_err(|e| github_message(&e))?;
+            if let Some(issue) = open {
+                return Err(format!(
+                    "Issue #{} \"{}\" ({}) is already open for this failure. Call again with commentOn: {} to add this run to it, or with newIssue: true to open another issue anyway.",
+                    issue.number, issue.title, issue.url, issue.number
+                ));
             }
+        }
+        let url = crate::bug::send(
+            &hub,
+            &github,
+            &self.project,
+            &run.dir,
+            &draft,
+            comment_on,
+            &*self.host.secrets(),
+        )
+        .map_err(|e| github_message(&e))?;
+        Ok(vec![text(match comment_on {
+            Some(number) => format!("Added the run to issue #{number}: {url}"),
+            None => format!("Opened the issue: {url}"),
+        })])
+    }
+
+    fn get_report(&self, args: &Value) -> Content {
+        let run = match self.named_run(args)? {
+            Some(run) => run,
             None => Run::list(&self.project)
                 .ok()
                 .and_then(|runs| runs.into_iter().next())
@@ -936,6 +1057,19 @@ fn required<'a>(args: &'a Value, name: &str) -> Result<&'a str, String> {
 
 fn pretty(value: &Value) -> Value {
     text(serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string()))
+}
+
+/// What went wrong with GitHub, and what the person can do about it.
+fn github_message(error: &jevision_git::GitError) -> String {
+    use jevision_git::GitError::*;
+    match error {
+        NotRepository | NoCommits => "The project isn't in a git repository yet, so there is no GitHub repository to file the issue in. The person can set it up in JEVision → Settings → Git.".to_owned(),
+        NoRemote | NotGitHub => "The project's repository isn't on GitHub, so the issue can't be filed there. Give the person the drafted text to file it by hand.".to_owned(),
+        NoGitHubCli => "GitHub isn't connected: GitHub CLI (gh) isn't installed on this Mac. The person can connect it in JEVision → Settings → Git.".to_owned(),
+        GitHubSignedOut | SignIn => "GitHub isn't connected: GitHub CLI isn't signed in. The person can run gh auth login in Terminal, or connect in JEVision → Settings → Git.".to_owned(),
+        NoPermission => "The GitHub account can't open issues in this repository.".to_owned(),
+        other => format!("GitHub didn't take the bug report: {other}."),
+    }
 }
 
 fn image(picture: &MaskedImage) -> Value {

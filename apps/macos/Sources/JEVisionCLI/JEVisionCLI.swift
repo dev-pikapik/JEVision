@@ -37,6 +37,8 @@ enum JEVisionCLI {
       return MCPCommand(project: project).execute()
     case .scheduleRun(let project):
       return ScheduleCommand(project: project).execute()
+    case .issue(let request):
+      return IssueCommand(request: request).execute()
     }
   }
 }
@@ -91,6 +93,7 @@ enum Command: Equatable {
   case run(RunRequest)
   case mcp(project: String?)
   case scheduleRun(project: String)
+  case issue(IssueRequest)
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }
@@ -175,6 +178,28 @@ enum Command: Equatable {
         throw UsageError(message: "name one project folder", command: name)
       }
       return .scheduleRun(project: options.paths[1])
+    case "issue":
+      let options = try Options.parse(
+        rest, command: name, flags: ["--send", "--new"], values: ["--project", "--title", "--comment-on"])
+      if options.wantsHelp { return .help(name) }
+      guard options.paths.count <= 1 else { throw UsageError(message: "name one test file or run folder", command: name) }
+      var request = IssueRequest(target: options.paths.first, project: options.values["--project"])
+      request.send = options.flags.contains("--send")
+      request.title = options.values["--title"]
+      request.newIssue = options.flags.contains("--new")
+      if let number = options.values["--comment-on"] {
+        guard let issue = UInt64(number.drop { $0 == "#" }) else {
+          throw UsageError(message: "--comment-on needs the number of an issue, such as 12, not “\(number)”", command: name)
+        }
+        request.commentOn = issue
+      }
+      if request.commentOn != nil, request.newIssue {
+        throw UsageError(message: "use either --comment-on or --new, not both", command: name)
+      }
+      if !request.send, request.commentOn != nil || request.newIssue {
+        throw UsageError(message: "--comment-on and --new say where --send files the report; add --send", command: name)
+      }
+      return .issue(request)
     default:
       let what = name.hasPrefix("-") ? "option" : "command"
       throw UsageError(message: "there is no \(what) “\(name)”")
@@ -235,13 +260,14 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "fmt", "mcp", "schedule"]
+  static let commands = ["run", "validate", "fmt", "issue", "mcp", "schedule"]
 
   static func usage(_ command: String?) -> String {
     switch command {
     case "run": "Usage: jevision run <tests>… [options]"
     case "validate": "Usage: jevision validate <tests>… [--json]"
     case "fmt": "Usage: jevision fmt <tests>… [--check]"
+    case "issue": "Usage: jevision issue [<test or run>] [--send] [options]"
     case "mcp": "Usage: jevision mcp [--project <folder>]"
     case "schedule": "Usage: jevision schedule run <project>"
     default: "Usage: jevision <command> [options]"
@@ -342,6 +368,39 @@ enum Help {
       a test, 2 — wrong arguments or a file could not be read or written.
 
       """
+    case "issue":
+      """
+      Writes a bug report about a failed run: the steps, what was expected and what
+      happened, the cause, screenshots of the failed step and this Mac's versions. It is
+      printed for you to read; with --send it is filed as an issue of the project's GitHub
+      repository. Secret values are replaced with ••••, and areas the project always hides
+      are painted over in the screenshots, which are saved in the repository's
+      jevision-attachments branch.
+
+      \(usage(command))
+
+      Arguments:
+        <test or run>        A test file (.flow.json), to report its newest failed run, or
+                             the folder of a run in .jevision/runs. Default: the newest
+                             failed run of the project
+
+      Options:
+        --project <folder>   Project folder. Default: the nearest folder at or above the
+                             test (or the current folder) that has a .jevision folder
+        --send               File the report on GitHub and print the address of the issue
+        --title <text>       Title of the issue instead of the drafted one
+        --comment-on <n>     Add the report to issue n as a comment
+        --new                Open a new issue even when one about the same failure is open
+        -h, --help           Show this help
+
+      Sending uses GitHub CLI: install it (brew install gh) and sign in once with
+      gh auth login. When an issue about the same failure is already open, nothing is sent
+      until you choose --comment-on or --new.
+
+      Exit status: 0 — printed or sent, 1 — not sent because an issue about the failure is
+      open, 2 — wrong arguments, no failed run, or GitHub didn't take the report.
+
+      """
     case "mcp":
       """
       Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or
@@ -397,6 +456,7 @@ enum Help {
         run        Run tests on this Mac
         validate   Check tests for errors and warnings
         fmt        Rewrite tests in canonical form
+        issue      Report a failed run as a GitHub issue
         mcp        Let AI assistants read, edit and run tests (MCP server)
         schedule   Run the schedules of a project that are due now
 

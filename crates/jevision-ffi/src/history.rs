@@ -311,7 +311,7 @@ fn flaky_evidence(runs: &[&RunReport]) -> Option<FlakyEvidence> {
 
 /// Milliseconds since 1970 of an RFC 3339 time, such as `2026-10-18T14:30:05.123Z` or
 /// `2026-10-18T16:30:05+02:00`.
-fn unix_ms(text: &str) -> Option<i64> {
+pub(crate) fn unix_ms(text: &str) -> Option<i64> {
     let number = |from: usize, to: usize| -> Option<i64> {
         let digits = text.get(from..to)?;
         digits

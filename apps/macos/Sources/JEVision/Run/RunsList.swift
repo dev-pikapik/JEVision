@@ -106,6 +106,7 @@ private struct RunRow: View {
 /// a failure down), where it fails most often and since when it fails.
 private struct HealthView: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(\.openWindow) private var openWindow
   /// Test file, relative to the project.
   let test: String
   let health: TestHealth
@@ -153,6 +154,13 @@ private struct HealthView: View {
           .foregroundStyle(.red)
           .fixedSize(horizontal: false, vertical: true)
       }
+      Button("All-Time Statistics…", systemImage: "chart.bar.xaxis") {
+        project.statisticsTest = test
+        openWindow(id: SceneID.statistics)
+      }
+      .buttonStyle(.link)
+      .font(.caption)
+      .help(Text("Pass rate, durations, trend and where it fails, over every run of the test"))
     }
     .padding(.vertical, 4)
   }

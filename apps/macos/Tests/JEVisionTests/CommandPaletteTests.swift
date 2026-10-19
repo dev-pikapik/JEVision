@@ -44,6 +44,26 @@ struct CommandPaletteTests {
     #expect(!actions(running).contains(.record))
   }
 
+  @Test func offersBugReportsAndStatisticsOnceTestsHaveRun() {
+    let fresh = actions(editing)
+    for action in [PaletteAction.reportBug, .testStatistics, .projectStatistics] {
+      #expect(!fresh.contains(action), "Nothing has run yet")
+    }
+
+    var passed = editing
+    passed.hasLastRun = true
+    passed.hasRuns = true
+    let afterPass = actions(passed)
+    #expect(afterPass.contains(.testStatistics))
+    #expect(afterPass.contains(.projectStatistics))
+    #expect(!afterPass.contains(.reportBug), "The last run passed")
+
+    var failed = passed
+    failed.lastRunFailed = true
+    #expect(actions(failed).contains(.reportBug))
+    #expect(CommandPalette.search("bug", in: CommandPalette.entries(failed)).first?.action == .reportBug)
+  }
+
   @Test func followsTheSelectionAndGit() {
     var state = editing
     state.selection = "check"

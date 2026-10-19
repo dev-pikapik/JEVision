@@ -50,6 +50,11 @@ final class ProjectStore {
   private(set) var referenceChanges = 0
   /// The test or folder, relative to the project, whose history is shown.
   var historyPath: String?
+  /// Folder of the failed run whose bug report is being written.
+  var bugReportRun: SavedRun.ID?
+  /// The test, relative to the project, the Statistics window is about; `nil` for the whole
+  /// project.
+  var statisticsTest: String?
   let git = ProjectGit()
   let environments = ProjectEnvironments()
   let boards = ProjectBoards()

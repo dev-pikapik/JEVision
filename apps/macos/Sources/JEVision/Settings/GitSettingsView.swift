@@ -4,7 +4,6 @@ import SwiftUI
 struct GitSettingsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openWindow) private var openWindow
-  @Environment(\.openURL) private var openURL
   @State private var isNamingBranch = false
   @State private var branchName = ""
   @State private var isComposing = false
@@ -168,8 +167,9 @@ struct GitSettingsView: View {
             .textSelection(.enabled)
         case .signedOut(let problem):
           HStack {
-            if problem == .NoGitHubCli {
-              Button("Get GitHub CLI…") { openURL(URL(string: "https://cli.github.com")!) }
+            if problem == .NoGitHubCli || problem == .GitHubSignedOut {
+              Button("Connect GitHub…") { GitHubConnect.start() }
+                .help(Text("Opens Terminal to sign in to GitHub in your browser"))
             }
             Button("Check Again", action: git.checkGitHub)
           }
@@ -211,8 +211,8 @@ struct GitSettingsView: View {
 
   private func signInHelp(_ problem: GitError) -> String {
     switch problem {
-    case .NoGitHubCli: String(localized: "Install GitHub CLI, then run “gh auth login” in Terminal to sign in.")
-    case .GitHubSignedOut: String(localized: "Run “gh auth login” in Terminal to sign in, then check again.")
+    case .NoGitHubCli, .GitHubSignedOut:
+      String(localized: "Connect GitHub to sign in once in your browser, then check again.")
     default: GitText.failure(problem)
     }
   }

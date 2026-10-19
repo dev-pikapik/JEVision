@@ -56,6 +56,9 @@ struct MainView: View {
     .sheet(isPresented: Binding(get: { project.historyPath != nil }, set: { if !$0 { project.historyPath = nil } })) {
       if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
     }
+    .sheet(isPresented: Binding(get: { project.bugReportRun != nil }, set: { if !$0 { project.bugReportRun = nil } })) {
+      if let dir = project.bugReportRun { BugReportSheet(dir: dir) }
+    }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
     .sheet(isPresented: $git.isComposingPullRequest) { NewPullRequestView() }
     .sheet(isPresented: Binding(get: { git.conflicts != nil }, set: { if !$0 { git.conflicts = nil } })) {

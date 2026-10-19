@@ -161,7 +161,10 @@ struct CommandPaletteView: View {
     }
     let tests = project.items.flatMap(\.tests)
     state.hasTests = !tests.isEmpty
-    state.hasLastRun = lastRun != nil
+    let last = lastRun
+    state.hasLastRun = last != nil
+    state.lastRunFailed = last?.report.verdict == .failed
+    state.hasRuns = !project.runs.isEmpty
     state.tests = tests.map { ($0.id, $0.name, $0.parentPath, $0.keywords) }
     state.boards = project.boards.names
     if project.showsBoard, let name = project.boards.current, let board = project.boards.board {
@@ -227,6 +230,14 @@ struct CommandPaletteView: View {
     case .addToBoard(let addition): project.boards.request = .add(addition)
     case .showBoard(let name): project.showBoard(name)
     case .showOnBoard(let id): project.boards.request = .reveal(id)
+    case .reportBug: if let run = lastRun { project.bugReportRun = run.dir }
+    case .testStatistics:
+      guard let root, let document else { return }
+      project.statisticsTest = RelativePath.from(root, to: document.url)
+      openWindow(id: SceneID.statistics)
+    case .projectStatistics:
+      project.statisticsTest = nil
+      openWindow(id: SceneID.statistics)
     case .commit: openWindow(id: SceneID.commit)
     case .newPullRequest: project.git.isComposingPullRequest = true
     case .pullRequests: openWindow(id: SceneID.pullRequests)

@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+base64 = "0.23"
 serde_json.workspace = true
 thiserror.workspace = true
 ureq = { version = "3.1", default-features = false, features = ["rustls"] }

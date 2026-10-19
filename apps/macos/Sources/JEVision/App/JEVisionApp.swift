@@ -76,6 +76,13 @@ struct JEVisionApp: App {
     .defaultPosition(.center)
     .restorationBehavior(.disabled)
 
+    Window("Statistics", id: SceneID.statistics) {
+      StatisticsView()
+        .environment(project)
+    }
+    .defaultSize(width: 960, height: 760)
+    .restorationBehavior(.disabled)
+
     Window("Pull Requests", id: SceneID.pullRequests) {
       PullRequestsView()
         .environment(project)
@@ -100,5 +107,6 @@ enum SceneID {
   static let commandLineTool = "commandLineTool"
   static let commit = "commit"
   static let pullRequests = "pullRequests"
+  static let statistics = "statistics"
   static let hiddenAreas = "hiddenAreas"
 }

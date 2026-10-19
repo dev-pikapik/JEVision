@@ -78,6 +78,7 @@ struct RunReportView: View {
           run: run, hasTest: project.hasTest, isRunning: runs.isRunning,
           openFailedBlock: { step in project.showBlock(step.block, in: step.test, from: run.id) },
           runAgain: { runAgain(report) },
+          reportBug: { project.bugReportRun = run.dir },
           export: { export(run, as: $0) })
         if let player {
           RunVideoView(player: player, steps: steps)
@@ -203,6 +204,7 @@ private struct ReportHeader: View {
   let isRunning: Bool
   let openFailedBlock: (Step) -> Void
   let runAgain: () -> Void
+  let reportBug: () -> Void
   let export: (Export) -> Void
 
   var body: some View {
@@ -249,6 +251,11 @@ private struct ReportHeader: View {
           Button("Run Again", systemImage: "arrow.clockwise", action: runAgain)
             .buttonStyle(.glass)
             .disabled(!hasTest(report.file) || isRunning)
+          if report.verdict == .failed {
+            Button("Report Bug…", systemImage: "ladybug", action: reportBug)
+              .buttonStyle(.glass)
+              .help(Text("File an issue on GitHub with the steps, the cause and the screenshots"))
+          }
           Menu {
             Button("HTML Report…") { export(.html) }
             Button("JUnit XML…") { export(.junit) }

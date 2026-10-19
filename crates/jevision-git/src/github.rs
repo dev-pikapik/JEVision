@@ -112,6 +112,19 @@ pub struct PullRequestChanges {
     pub files: Vec<FileChange>,
 }
 
+/// An issue of a repository.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitHubIssue {
+    pub number: u64,
+    pub title: String,
+    /// The page of the issue on github.com.
+    pub url: String,
+}
+
+/// Branch of the project's repository that keeps the screenshots of bug reports, apart from
+/// the project's own history.
+pub const ATTACHMENTS_BRANCH: &str = "jevision-attachments";
+
 /// GitHub's REST API, called with the user's token.
 pub struct GitHub {
     agent: ureq::Agent,
@@ -188,20 +201,173 @@ impl GitHub {
             request["body"] = body.into();
         }
         let path = repo_path(repo, "/pulls");
-        let created = self
-            .send(&path, Some(&request))
-            .and_then(|(status, body)| {
-                if status == 201 {
-                    parse(&body)
-                } else {
-                    Err(error(status, &body))
-                }
-            })?;
-        Ok(pull_request(&created))
+        Ok(pull_request(&self.created("POST", &path, &request)?))
+    }
+
+    /// The open issue whose description contains `marker`, the latest updated first.
+    pub fn open_issue_with(
+        &self,
+        repo: &GitHubRepo,
+        marker: &str,
+    ) -> Result<Option<GitHubIssue>, GitError> {
+        let path = repo_path(repo, "/issues?state=open&sort=updated&direction=desc");
+        Ok(self
+            .pages(&path)?
+            .iter()
+            // The list has the pull requests too.
+            .filter(|i| i.get("pull_request").is_none())
+            .find(|i| i["body"].as_str().is_some_and(|b| b.contains(marker)))
+            .map(issue))
+    }
+
+    /// Opens an issue with exactly these words.
+    pub fn create_issue(
+        &self,
+        repo: &GitHubRepo,
+        title: &str,
+        body: &str,
+    ) -> Result<GitHubIssue, GitError> {
+        let request = json!({ "title": title, "body": body });
+        let path = repo_path(repo, "/issues");
+        Ok(issue(&self.created("POST", &path, &request)?))
+    }
+
+    /// Adds a comment to an issue; returns the comment's page on github.com.
+    pub fn comment_on_issue(
+        &self,
+        repo: &GitHubRepo,
+        number: u64,
+        body: &str,
+    ) -> Result<String, GitError> {
+        let path = repo_path(repo, &format!("/issues/{number}/comments"));
+        Ok(text(
+            &self.created("POST", &path, &json!({ "body": body }))?["html_url"],
+        ))
+    }
+
+    /// Saves `files`, by path, in [`ATTACHMENTS_BRANCH`], making the branch when it isn't
+    /// there, in one commit described by `message`. Returns the address
+    /// each file is shown from, in the order given: it points to the commit, so it keeps
+    /// showing that very file.
+    pub fn attach(
+        &self,
+        repo: &GitHubRepo,
+        files: &[(String, Vec<u8>)],
+        message: &str,
+    ) -> Result<Vec<String>, GitError> {
+        use base64::Engine;
+        let reference = repo_path(repo, &format!("/git/ref/heads/{ATTACHMENTS_BRANCH}"));
+        let parent = match self.send("GET", &reference, None)? {
+            (200, body) => Some(text(&parse(&body)?["object"]["sha"])),
+            (404, _) => None,
+            (status, body) => return Err(error(status, &body)),
+        };
+        let base_tree = match &parent {
+            Some(commit) => {
+                let path = repo_path(repo, &format!("/git/commits/{commit}"));
+                Some(text(&self.get(&path)?["tree"]["sha"]))
+            }
+            None => None,
+        };
+        let mut tree = Vec::new();
+        let mut paths = Vec::new();
+        for (path, bytes) in files {
+            let blob = self.created(
+                "POST",
+                &repo_path(repo, "/git/blobs"),
+                &json!({
+                    "content": base64::engine::general_purpose::STANDARD.encode(bytes),
+                    "encoding": "base64",
+                }),
+            )?;
+            tree.push(json!({ "path": path, "mode": "100644", "type": "blob", "sha": text(&blob["sha"]) }));
+            paths.push(path.clone());
+        }
+        let mut request = json!({ "tree": tree });
+        if let Some(base) = base_tree {
+            request["base_tree"] = base.into();
+        }
+        let tree = self.created("POST", &repo_path(repo, "/git/trees"), &request)?;
+        let commit = self.created(
+            "POST",
+            &repo_path(repo, "/git/commits"),
+            &json!({ "message": message, "tree": text(&tree["sha"]), "parents": parent.iter().collect::<Vec<_>>() }),
+        )?;
+        let commit = text(&commit["sha"]);
+        let (method, path, request) = match parent {
+            Some(_) => (
+                "PATCH",
+                repo_path(repo, &format!("/git/refs/heads/{ATTACHMENTS_BRANCH}")),
+                json!({ "sha": commit }),
+            ),
+            None => (
+                "POST",
+                repo_path(repo, "/git/refs"),
+                json!({ "ref": format!("refs/heads/{ATTACHMENTS_BRANCH}"), "sha": commit }),
+            ),
+        };
+        match self.send(method, &path, Some(&request))? {
+            (200 | 201, _) => {}
+            (status, body) => return Err(error(status, &body)),
+        }
+        Ok(paths
+            .iter()
+            .map(|path| {
+                let path: Vec<String> = path.split('/').map(encode).collect();
+                format!(
+                    "https://github.com/{}/blob/{commit}/{}?raw=true",
+                    repo.full_name(),
+                    path.join("/")
+                )
+            })
+            .collect())
+    }
+
+    /// Files a bug report with `pictures`, PNG files saved by [`GitHub::attach`] and shown
+    /// under its text by their names: a new issue titled `title`, or a comment on issue
+    /// `comment_on`. `marker`, hidden in a new issue, is how [`GitHub::open_issue_with`] finds
+    /// it again. Returns the page of the issue or comment.
+    pub fn report_bug(
+        &self,
+        repo: &GitHubRepo,
+        title: &str,
+        body: &str,
+        marker: &str,
+        pictures: &[(String, Vec<u8>)],
+        comment_on: Option<u64>,
+    ) -> Result<String, GitError> {
+        let mut text = match comment_on {
+            Some(_) => format!("### {title}\n\n{}", body.trim_end()),
+            None => body.trim_end().to_owned(),
+        };
+        if !pictures.is_empty() {
+            let urls = self.attach(repo, pictures, title)?;
+            text.push_str("\n\n### Screenshots\n");
+            for ((name, _), url) in pictures.iter().zip(urls) {
+                let name = name.rsplit('/').next().unwrap_or(name);
+                let label = name.strip_suffix(".png").unwrap_or(name);
+                text.push_str(&format!("\n**{label}**\n\n![{label}]({url})\n"));
+            }
+        }
+        match comment_on {
+            Some(number) => self.comment_on_issue(repo, number, &text),
+            None => {
+                text.push_str(&format!("\n{marker}\n"));
+                Ok(self.create_issue(repo, title, &text)?.url)
+            }
+        }
+    }
+
+    /// The answer to a request that makes something, which GitHub answers with 201.
+    fn created(&self, method: &str, path: &str, body: &Value) -> Result<Value, GitError> {
+        match self.send(method, path, Some(body))? {
+            (201, answer) => parse(&answer),
+            (status, answer) => Err(error(status, &answer)),
+        }
     }
 
     fn get(&self, path: &str) -> Result<Value, GitError> {
-        let (status, body) = self.send(path, None)?;
+        let (status, body) = self.send("GET", path, None)?;
         if status != 200 {
             return Err(error(status, &body));
         }
@@ -227,18 +393,27 @@ impl GitHub {
         Ok(items)
     }
 
-    fn send(&self, path: &str, body: Option<&Value>) -> Result<(u16, String), GitError> {
+    fn send(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<(u16, String), GitError> {
         let url = format!("{}{path}", self.api);
         let authorization = format!("Bearer {}", self.token);
         let result = match body {
-            Some(body) => self
-                .agent
-                .post(&url)
-                .header("Accept", "application/vnd.github+json")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("Authorization", &authorization)
-                .content_type("application/json")
-                .send(body.to_string()),
+            Some(body) => {
+                let request = match method {
+                    "PATCH" => self.agent.patch(&url),
+                    _ => self.agent.post(&url),
+                };
+                request
+                    .header("Accept", "application/vnd.github+json")
+                    .header("X-GitHub-Api-Version", "2022-11-28")
+                    .header("Authorization", &authorization)
+                    .content_type("application/json")
+                    .send(body.to_string())
+            }
             None => self
                 .agent
                 .get(&url)
@@ -391,6 +566,28 @@ impl Repo {
         })
     }
 
+    /// The page of `path`, relative to the project, on GitHub: on the current branch when it
+    /// is there, otherwise on the repository's default branch.
+    pub fn web_url(&self, path: &str) -> Result<String, GitError> {
+        let (remote, repo) = self.github()?;
+        let branch = match self.upstream()? {
+            Some(upstream) => upstream.strip_prefix(&format!("{remote}/")).map_or_else(
+                || "HEAD".to_owned(),
+                |b| b.split('/').map(encode).collect::<Vec<_>>().join("/"),
+            ),
+            None => "HEAD".to_owned(),
+        };
+        let path: Vec<String> = format!("{}{path}", self.prefix)
+            .split('/')
+            .map(encode)
+            .collect();
+        Ok(format!(
+            "https://github.com/{}/blob/{branch}/{}",
+            repo.full_name(),
+            path.join("/")
+        ))
+    }
+
     /// The current branch as named on `remote`, and whether it has commits that aren't there.
     /// The first line of the one commit HEAD adds to `base`; empty when it adds more or none,
     /// or `base` isn't known here.
@@ -437,6 +634,14 @@ fn pull_request(v: &Value) -> PullRequest {
         base_commit: text(&v["base"]["sha"]),
         draft: v["draft"].as_bool().unwrap_or(false),
         updated: v["updated_at"].as_str().map_or(0, seconds),
+    }
+}
+
+fn issue(v: &Value) -> GitHubIssue {
+    GitHubIssue {
+        number: v["number"].as_u64().unwrap_or(0),
+        title: text(&v["title"]),
+        url: text(&v["html_url"]),
     }
 }
 
@@ -488,7 +693,7 @@ pub(crate) fn error(status: u16, body: &str) -> GitError {
     }
 }
 
-/// `owner:branch` for a query: everything but letters, digits and `-_.~` escaped.
+/// Text for a URL: everything but letters, digits and `-_.~` escaped.
 fn encode(text: &str) -> String {
     text.bytes()
         .map(|b| {

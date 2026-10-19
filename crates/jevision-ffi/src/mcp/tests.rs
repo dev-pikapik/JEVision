@@ -250,7 +250,9 @@ fn speaks_the_protocol_over_lines() {
             "get_run",
             "stop_run",
             "get_report",
-            "screenshot"
+            "screenshot",
+            "draft_bug_report",
+            "send_bug_report"
         ]
     );
     assert!(
@@ -687,4 +689,154 @@ fn runs_chosen_rows_of_a_data_table() {
     assert_eq!(rows[1]["label"], "Cy", "{status}");
     assert_eq!(rows[1]["verdict"], "passed", "{status}");
     assert_eq!(*host.hands.typed.lock().unwrap(), ["bo", "cy"]);
+}
+
+/// A failed run of the sign-in test saved in `project`, with its screenshots; returns its name.
+fn failed_run(project: &Project) -> &'static str {
+    project.write(
+        "login/sign-in.flow.json",
+        &json!({
+            "format": FORMAT_VERSION, "name": "Sign in", "app": "com.example.mail", "start": "open",
+            "blocks": {
+                "open": { "type": "openApp", "next": "password" },
+                "password": { "type": "type", "text": "${secret.PASSWORD}", "next": "inbox" },
+                "inbox": { "type": "check", "reference": { "image": "refs/inbox.png", "compare": "similar", "threshold": 0.95 } },
+            },
+        })
+        .to_string(),
+    );
+    let name = "2026-10-18-120000-sign-in";
+    let run = format!(".jevision/runs/{name}");
+    project.write(
+        &format!("{run}/report.json"),
+        r#"{"format":1,"test":"Sign in","file":"login/sign-in.flow.json","app":"com.example.mail",
+        "startedAt":"2026-10-18T12:00:00.000Z","durationMs":4200,"verdict":"failed","flaky":false,
+        "attempts":[{"number":1,"verdict":"failed","durationMs":2200,"steps":[
+          {"seq":1,"test":"login/sign-in.flow.json","block":"open","type":"openApp","status":"passed","durationMs":900},
+          {"seq":2,"test":"login/sign-in.flow.json","block":"password","type":"type","status":"passed","durationMs":300},
+          {"seq":3,"test":"login/sign-in.flow.json","block":"inbox","type":"check","status":"failed","durationMs":200,
+           "after":"shots/1-003-inbox-after.png","expected":"shots/1-003-inbox-expected.png","similarity":0.81,
+           "failure":{"code":"run.check.mismatch","params":{"block":"inbox","image":"refs/inbox.png",
+             "similarity":"81.0%","threshold":"95.0%"}}}]}]}"#,
+    );
+    for shot in ["1-003-inbox-after", "1-003-inbox-expected"] {
+        let path = project.0.join(&run).join(format!("shots/{shot}.png"));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, screen().png).unwrap();
+    }
+    name
+}
+
+/// A GitHub API on this Mac that gives `replies` in turn; the requests it got.
+fn github(replies: Vec<(u16, &str)>) -> (String, Arc<Mutex<Vec<String>>>) {
+    use std::io::{BufRead, BufReader, Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = format!("http://{}", listener.local_addr().unwrap());
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let seen = requests.clone();
+    let replies: Vec<(u16, String)> = replies.into_iter().map(|(s, b)| (s, b.into())).collect();
+    std::thread::spawn(move || {
+        for (status, body) in replies {
+            let Ok((stream, _)) = listener.accept() else {
+                return;
+            };
+            let mut reader = BufReader::new(stream);
+            let (mut request, mut length) = (String::new(), 0);
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                    length = v.trim().parse().unwrap();
+                }
+                request.push_str(&line);
+                if line == "\r\n" || line.is_empty() {
+                    break;
+                }
+            }
+            let mut content = vec![0; length];
+            reader.read_exact(&mut content).unwrap();
+            request.push_str(&String::from_utf8_lossy(&content));
+            seen.lock().unwrap().push(request);
+            let _ = write!(
+                reader.into_inner(),
+                "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+        }
+    });
+    (address, requests)
+}
+
+#[test]
+fn a_failed_run_is_drafted_as_a_bug_report_and_sent_with_secrets_masked() {
+    let (project, host, server) = setup();
+    let name = failed_run(&project);
+
+    let (failed, draft) = call(&server, "draft_bug_report", json!({}));
+    assert!(!failed, "{draft}");
+    let draft: Value = serde_json::from_str(&draft).unwrap();
+    assert_eq!(draft["report"], name);
+    assert_eq!(draft["title"], "Sign in fails at Check “inbox”");
+    assert!(
+        draft["body"]
+            .as_str()
+            .unwrap()
+            .contains("### Steps to reproduce")
+    );
+    assert_eq!(draft["screenshots"], json!(["Expected", "Actual"]));
+
+    // Not on GitHub: nothing is sent, and the person is told why.
+    let (failed, text) = call(&server, "send_bug_report", json!({ "report": name }));
+    assert!(
+        failed && text.contains("isn't in a git repository"),
+        "{text}"
+    );
+
+    // What reaches GitHub has the secret masked, even when typed into the text.
+    let dir = project.0.join(".jevision/runs").join(name);
+    let report = crate::draft_bug_report(
+        project.0.to_string_lossy().into(),
+        dir.to_string_lossy().into(),
+        host.secrets(),
+    )
+    .unwrap()
+    .unwrap();
+    let mut edited = report.clone();
+    edited.body = format!("The password {SECRET} is typed.\n");
+    edited.screenshots.retain(|s| s.label == "Actual");
+    let (address, requests) = github(vec![
+        (404, "{}"),
+        (201, r#"{"sha": "b1"}"#),
+        (201, r#"{"sha": "t1"}"#),
+        (201, r#"{"sha": "c1"}"#),
+        (201, "{}"),
+        (
+            201,
+            r#"{"number": 4, "title": "t", "html_url": "https://github.com/acme/qa/issues/4"}"#,
+        ),
+    ]);
+    let hub = jevision_git::GitHub::new(&address, "token".into());
+    let repo = jevision_git::GitHubRepo::from_url("https://github.com/acme/qa.git").unwrap();
+    let url = crate::bug::send(&hub, &repo, &project.0, &dir, &edited, None, &Secrets).unwrap();
+    assert_eq!(url, "https://github.com/acme/qa/issues/4");
+    let requests = requests.lock().unwrap();
+    assert_eq!(requests.len(), 6);
+    let issue: Value = serde_json::from_str(requests[5].split("\r\n\r\n").nth(1).unwrap()).unwrap();
+    let body = issue["body"].as_str().unwrap();
+    assert!(body.starts_with("The password •••• is typed."), "{body}");
+    assert!(
+        body.contains(&format!("/blob/c1/{name}/Actual.png?raw=true")),
+        "{body}"
+    );
+    assert!(body.contains(&format!("<!-- jevision-bug: {} -->", report.fingerprint)));
+    assert!(requests.iter().all(|r| !r.contains(SECRET)));
+
+    // Only pictures of the run itself are sent.
+    let mut outside = report;
+    outside.screenshots[0].path = project
+        .0
+        .join("login/sign-in.flow.json")
+        .to_string_lossy()
+        .into();
+    assert!(crate::bug::send(&hub, &repo, &project.0, &dir, &outside, None, &Secrets).is_err());
 }

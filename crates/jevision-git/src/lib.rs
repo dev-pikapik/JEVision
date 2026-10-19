@@ -14,7 +14,8 @@ mod github;
 mod tests;
 
 pub use github::{
-    API, GitHub, GitHubAccount, GitHubRepo, PullRequest, PullRequestChanges, PullRequestDraft,
+    API, ATTACHMENTS_BRANCH, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, PullRequest,
+    PullRequestChanges, PullRequestDraft,
 };
 
 /// Why a git operation didn't happen. Nothing on disk changed unless the variant says so.

@@ -60,6 +60,31 @@ struct CommandLineArgumentTests {
     #expect(VideoMode.all.allSatisfy { VideoMode(name: $0.name) == $0 })
   }
 
+  @Test func bugReport() throws {
+    #expect(try Command.parse(["issue"]) == .issue(IssueRequest()))
+    #expect(try Command.parse(["issue", "-h"]) == .help("issue"))
+    #expect(
+      try Command.parse(["issue", "t.flow.json", "--project", "p", "--send", "--title", "Sign in fails", "--comment-on", "#12"])
+        == .issue(IssueRequest(target: "t.flow.json", project: "p", send: true, title: "Sign in fails", commentOn: 12)))
+    #expect(try Command.parse(["issue", "--send", "--new"]) == .issue(IssueRequest(send: true, newIssue: true)))
+    for wrong in [
+      ["issue", "a.flow.json", "b.flow.json"], ["issue", "--send", "--comment-on", "twelve"],
+      ["issue", "--send", "--comment-on", "12", "--new"], ["issue", "--new"], ["issue", "--comment-on", "12"],
+    ] {
+      #expect(throws: UsageError.self) { try Command.parse(wrong) }
+    }
+    #expect(Help.text("issue").contains("--comment-on"))
+    #expect(Help.text(nil).contains("issue"))
+  }
+
+  @Test func bugReportNeedsAFailedRun() {
+    let root = FileManager.default.temporaryDirectory.appending(path: "jevision-issue-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: root) }
+    try? FileManager.default.createDirectory(at: root.appending(path: ".jevision"), withIntermediateDirectories: true)
+    let request = IssueRequest(project: root.path(percentEncoded: false))
+    #expect(IssueCommand(request: request).execute() == .failure, "No run has failed, so nothing is sent")
+  }
+
   @Test func assistantServer() throws {
     #expect(try Command.parse(["mcp"]) == .mcp(project: nil))
     #expect(try Command.parse(["mcp", "--project", "p"]) == .mcp(project: "p"))
