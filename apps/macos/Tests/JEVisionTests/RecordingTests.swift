@@ -58,6 +58,8 @@ struct RecordingTests {
       switch step {
       case .openApp: "open"
       case .click(let t, let button, let double): (double ? "double " : "") + (button == .right ? "right " : "") + "click" + target(t)
+      case .drag(let from, let to): "drag" + target(from) + " to" + target(to)
+      case .scroll(let direction, let amount, let unit, let at): "scroll \(direction) \(amount) \(unit) at \(at.x) \(at.y)"
       case .type(let text, let into): "type \(text)" + target(into)
       case .secret(let name, let into): "secret \(name)" + target(into)
       case .pressKeys(let keys): "keys \(keys)"
@@ -186,6 +188,54 @@ struct RecordingTests {
     // Undo takes the wait along with the step.
     r.undoLastStep()
     #expect(Self.describe(r.steps) == ["click @click", "keys cmd+s", "wait untitled", "keys escape"])
+  }
+
+  @Test func movingWithTheButtonDownIsADrag() {
+    var r = Recording(appName: "Finder", opensApp: false)
+    let frame = Self.tiles()
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: frame, element: nil)
+    // A small slip of the hand stays a click.
+    #expect(r.release(at: CGPoint(x: 153, y: 82), element: nil) == .ignored)
+    #expect(Self.describe(r.steps) == ["click @click"])
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: frame, element: nil)
+    #expect(r.release(at: CGPoint(x: 250, y: 140), element: nil) == .recorded)
+    #expect(Self.describe(r.steps) == ["click @click", "drag @click to @click"])
+    // The blocks keep both places.
+    guard case .drag(.image, .image, false, nil) = Recording.preview(r.steps[1]) else {
+      Issue.record("Expected a drag block, got \(Recording.preview(r.steps[1]))")
+      return
+    }
+    // A drag that ends outside the window can't be repeated.
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: frame, element: nil)
+    #expect(r.release(at: CGPoint(x: 20, y: 10), element: nil) == .outsideWindow)
+    #expect(r.steps.count == 2)
+    // A right click, or a second click of a double click, is never a drag.
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .right, count: 1, inApp: true, frame: frame, element: nil)
+    #expect(r.release(at: CGPoint(x: 250, y: 140), element: nil) == .ignored)
+  }
+
+  @Test func turnsOfTheWheelJoinIntoOneScroll() {
+    var r = Recording(appName: "TextEdit", opensApp: false)
+    let frame = Self.tiles()
+    for _ in 0..<3 {
+      #expect(r.scroll(at: CGPoint(x: 150, y: 80), vertical: -2, horizontal: 0, pixels: false, inApp: true, frame: frame) == .recorded)
+    }
+    // The page moved: the next turn is not a new screen to wait for.
+    _ = r.scroll(at: CGPoint(x: 150, y: 80), vertical: -1, horizontal: 0, pixels: false, inApp: true, frame: Self.tiles(shift: 3))
+    _ = r.scroll(at: CGPoint(x: 150, y: 80), vertical: 1, horizontal: 0, pixels: false, inApp: true, frame: Self.tiles(shift: 3))
+    _ = r.scroll(at: CGPoint(x: 200, y: 110), vertical: 3, horizontal: -40, pixels: true, inApp: true, frame: Self.tiles(shift: 3))
+    #expect(
+      Self.describe(r.steps) == [
+        "scroll down 7 lines at 0.25 0.25", "scroll up 1 lines at 0.25 0.25", "scroll right 40 pixels at 0.5 0.5",
+      ])
+    #expect(r.scroll(at: CGPoint(x: 150, y: 80), vertical: 0, horizontal: 0, pixels: false, inApp: true, frame: frame) == .ignored)
+    #expect(r.scroll(at: CGPoint(x: 150, y: 80), vertical: -1, horizontal: 0, pixels: false, inApp: false, frame: frame) == .ignored)
+    #expect(r.scroll(at: CGPoint(x: 20, y: 10), vertical: -1, horizontal: 0, pixels: false, inApp: true, frame: frame) == .outsideWindow)
+    guard case .scroll(.down, 7, .lines, .point(let at), false, nil) = Recording.preview(r.steps[0]) else {
+      Issue.record("Expected a scroll block, got \(Recording.preview(r.steps[0]))")
+      return
+    }
+    #expect((at.x, at.y) == (0.25, 0.25))
   }
 
   @Test func ignoresInputOutsideTheApp() {
