@@ -153,6 +153,14 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}} or ${{data.COLUMN}}.",
             p("placeholder")
         ),
+        "flow.input.invalid" => format!(
+            "\"{}\" can't name an input; use letters, digits and _, not starting with a digit.",
+            p("name")
+        ),
+        "flow.input.missing" => format!(
+            "the block reads the input {}; give it a value.",
+            p("name")
+        ),
         "flow.keys.invalid" => format!(
             "\"{}\" isn't a key combination like cmd+shift+s.",
             p("value")

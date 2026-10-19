@@ -713,6 +713,16 @@
         }
       }
     },
+    "Pause" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
     "Paused on the Mac" : {
       "localizations" : {
         "ru" : {

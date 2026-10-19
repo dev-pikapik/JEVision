@@ -79,6 +79,10 @@ impl Hands for Fake {
         self.note(format!("open {items:?} in {app:?}"));
         Ok(())
     }
+    fn close(&self, items: &[Openable], app: Option<&str>) -> Result<(), HandsError> {
+        self.note(format!("close {items:?} in {app:?}"));
+        Ok(())
+    }
     fn activate(&self, _: &str) -> Result<(), HandsError> {
         Ok(())
     }
@@ -1205,6 +1209,56 @@ fn open_file_opens_a_fresh_copy() {
     );
     let report = run_with(&p, &hands, RunControl::new(), &options()).0.report;
     assert_eq!(failure_code(&report), "run.path.outsideProject");
+}
+
+#[test]
+fn files_opened_to_close_after_the_test_close_even_when_it_fails() {
+    let p = Project::new();
+    p.write("note.txt", "original").test(
+        r#""open":{"type":"openFile","files":["note.txt"],"closeAfter":true,"next":"keep"},
+           "keep":{"type":"openFile","files":["https://example.com"],"next":"wait"},
+           "wait":{"type":"pause","duration":"20ms","next":"miss"},
+           "miss":{"type":"runTest","test":"missing.flow.json"}"#,
+        "open",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let started = std::time::Instant::now();
+    let run = run(&p, &hands);
+    assert!(started.elapsed() >= Duration::from_millis(20));
+    assert_eq!(run.report.verdict, Verdict::Failed);
+    let copy = Openable::File(run.dir.join("files/1-001-0/note.txt"));
+    let log = hands.log();
+    assert_eq!(log.len(), 3, "{log:?}");
+    assert_eq!(log[2], format!("close {:?} in None", vec![copy]));
+    assert_eq!(
+        std::fs::read_to_string(p.0.join("note.txt")).unwrap(),
+        "original"
+    );
+}
+
+#[test]
+fn a_custom_block_reads_the_inputs_the_test_gives_it() {
+    let p = Project::new();
+    p.write(
+        "blocks/sign in.block.json",
+        format!(
+            r#"{{"format":1,"name":"Sign in","icon":"person","app":"{APP}","start":"k","blocks":{{
+                "k":{{"type":"type","text":"${{input.email}}/${{input.password}}"}}}}}}"#
+        ),
+    )
+    .test(
+        r#""sub":{"type":"runTest","test":"blocks/sign in.block.json",
+              "inputs":{"email":"me@example.com","password":"${secret.ACME_PASSWORD}"},"next":"after"},
+           "after":{"type":"type","text":"${input.email}"}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(hands.typed(), [format!("me@example.com/{SECRET}")]);
+    // Inputs belong to the block: the test itself has none.
+    assert_eq!(failure_code(&report), "run.input.missing");
 }
 
 #[test]

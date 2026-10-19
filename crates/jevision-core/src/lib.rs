@@ -17,6 +17,7 @@ mod project;
 mod route;
 mod schedule;
 mod search;
+mod template;
 mod validate;
 
 pub use canvas::CanvasItem;
@@ -43,9 +44,10 @@ pub use schedule::{
     parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
 };
 pub use search::{SearchCandidate, rank, test_keywords};
+pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_secrets, unbreakable_placeholders, validate,
-    validate_in,
+    MAX_REPEAT, MAX_RETRIES, MAX_TIMEOUT_MS, required_inputs, required_secrets,
+    unbreakable_placeholders, validate, validate_in,
 };
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.
@@ -96,6 +98,7 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("type", BlockGroup::Actions, &[NEXT]),
     ("pressKeys", BlockGroup::Actions, &[NEXT]),
     ("waitFor", BlockGroup::Waiting, &[NEXT]),
+    ("pause", BlockGroup::Waiting, &[NEXT]),
     ("check", BlockGroup::Checks, &[NEXT]),
     ("if", BlockGroup::Logic, &[THEN, ELSE]),
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),

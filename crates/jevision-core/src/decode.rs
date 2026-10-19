@@ -3,6 +3,8 @@
 //! Decoding is hand-written rather than derived so that every problem becomes an [`Issue`]
 //! with a stable code and parameters, and so that all problems are reported at once.
 
+use std::collections::HashMap;
+
 use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
@@ -354,6 +356,7 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     o.get("format");
     let name = o.string("name", out);
     let description = o.opt_string("description", out);
+    let icon = o.opt_string("icon", out);
     let app = o.string("app", out);
     let test_type = o.opt_choice("testType", TEST_TYPES, out);
     let priority = o.opt_choice("priority", PRIORITIES, out);
@@ -370,6 +373,7 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     Some(Flow {
         name: name?,
         description,
+        icon,
         app: app?,
         test_type,
         priority,
@@ -474,12 +478,14 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let files = o.require("files", files, out);
             let app = o.opt_string("app", out);
             let new_instance = o.flag("newInstance", out);
+            let close_after = o.flag("closeAfter", out);
             let next = next(&mut o, out);
             all_present(|| {
                 Some(BlockKind::OpenFile {
                     files: files?,
                     app,
                     new_instance,
+                    close_after,
                     next,
                 })
             })
@@ -527,6 +533,18 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 Some(BlockKind::WaitFor {
                     until: until?,
                     timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "pause" => {
+            let given = o.map.contains_key("duration");
+            let duration_ms = o.duration("duration", 0, out).filter(|_| given);
+            let duration_ms = o.require("duration", duration_ms, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Pause {
+                    duration_ms: duration_ms?,
                     next,
                 })
             })
@@ -582,8 +600,29 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         }
         "runTest" => {
             let test = o.string("test", out);
+            let inputs = o
+                .opt_object("inputs", out)
+                .map(|i| {
+                    let mut values = HashMap::new();
+                    for (name, value) in i.map {
+                        match value {
+                            Value::String(v) => {
+                                values.insert(name.clone(), v.clone());
+                            }
+                            _ => i.wrong_type(name, "string", out),
+                        }
+                    }
+                    values
+                })
+                .unwrap_or_default();
             let next = next(&mut o, out);
-            all_present(|| Some(BlockKind::RunTest { test: test?, next }))
+            all_present(|| {
+                Some(BlockKind::RunTest {
+                    test: test?,
+                    inputs,
+                    next,
+                })
+            })
         }
         other => {
             out.push(

@@ -21,6 +21,9 @@ public final class MacHands: Hands, @unchecked Sendable {
   private var displayOn: IOPMAssertionID = 0
   /// The run's video while it records.
   private var video: RunVideo?
+  /// Who opened each file or link (its path or address): the app, and whether opening it
+  /// started that app.
+  private var openers: [String: (pid: pid_t, launched: Bool)] = [:]
 
   /// `input` reports the person's own mouse and keyboard; `isCancelled` tells long actions to
   /// stop early. `clicking` hears the frame of the window about to be clicked (global, top-left
@@ -70,6 +73,8 @@ public final class MacHands: Hands, @unchecked Sendable {
       groups[opener, default: []].append(url)
     }
     for (opener, urls) in groups {
+      let id = Bundle(url: opener)?.bundleIdentifier
+      let wasRunning = !newInstance && id.map { !Self.runningApps($0).isEmpty } == true
       let config = NSWorkspace.OpenConfiguration()
       config.activates = true
       config.createsNewApplicationInstance = newInstance
@@ -79,7 +84,53 @@ public final class MacHands: Hands, @unchecked Sendable {
         }
       }
       guard result.1 == nil else { throw .CannotOpen(item: urls[0].isFileURL ? urls[0].path : urls[0].absoluteString) }
+      if let pid = result.0 {
+        for url in urls { openers[url.isFileURL ? url.path : url.absoluteString] = (pid, !wasRunning) }
+      }
       waitForWindow(result.0.flatMap { NSRunningApplication(processIdentifier: $0) }.map { [$0] } ?? [])
+    }
+  }
+
+  /// Quits the apps that opening `items` started; in an app that was already running, closes
+  /// only the windows showing those files. Links stay open there, so the person's own browser
+  /// tabs are never touched.
+  public func closeItems(items: [Openable], app: String?) throws(HandsError) {
+    var started: Set<pid_t> = []
+    for item in items {
+      let key: String
+      switch item {
+      case .file(let path): key = path
+      case .url(let address): key = address
+      }
+      guard let opener = openers.removeValue(forKey: key) else { continue }
+      if opener.launched {
+        started.insert(opener.pid)
+      } else if case .file(let path) = item {
+        Self.closeWindows(of: opener.pid, showing: URL(fileURLWithPath: path))
+      }
+    }
+    let running = started.compactMap { NSRunningApplication(processIdentifier: $0) }
+    running.forEach { $0.terminate() }
+    _ = poll(timeout: 10) { running.allSatisfy(\.isTerminated) }
+  }
+
+  /// Presses the close button of every window of `pid` whose document is `file`.
+  private static func closeWindows(of pid: pid_t, showing file: URL) {
+    let app = AXUIElementCreateApplication(pid)
+    var windows: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
+      let windows = windows as? [AXUIElement]
+    else { return }
+    for window in windows {
+      var document: CFTypeRef?
+      var button: CFTypeRef?
+      guard AXUIElementCopyAttributeValue(window, kAXDocumentAttribute as CFString, &document) == .success,
+        let address = document as? String, let url = URL(string: address),
+        url.standardizedFileURL.path == file.standardizedFileURL.path,
+        AXUIElementCopyAttributeValue(window, kAXCloseButtonAttribute as CFString, &button) == .success,
+        let button, CFGetTypeID(button) == AXUIElementGetTypeID()
+      else { continue }
+      AXUIElementPerformAction(button as! AXUIElement, kAXPressAction as CFString)
     }
   }
 

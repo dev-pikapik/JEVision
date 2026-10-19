@@ -82,7 +82,7 @@ pub fn test_keywords(flow: &Flow) -> String {
                     reference(&branch.reference, &mut words);
                 }
             }
-            BlockKind::Repeat { .. } => {}
+            BlockKind::Pause { .. } | BlockKind::Repeat { .. } => {}
             BlockKind::UseData { file, .. } => words.push(file),
             BlockKind::RunTest { test, .. } => words.push(test),
         }

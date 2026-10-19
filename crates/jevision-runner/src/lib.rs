@@ -51,6 +51,9 @@ pub trait Hands: Send + Sync {
         app: Option<&str>,
         new_instance: bool,
     ) -> Result<(), HandsError>;
+    /// Closes what [`Hands::open`] opened for these items: the windows showing the files, and
+    /// the application if that call started it. A document with unsaved changes may stay open.
+    fn close(&self, items: &[Openable], app: Option<&str>) -> Result<(), HandsError>;
     /// Brings the application to the front so typed keys reach it.
     fn activate(&self, app: &str) -> Result<(), HandsError>;
     /// Asks the application to quit, as the user would.

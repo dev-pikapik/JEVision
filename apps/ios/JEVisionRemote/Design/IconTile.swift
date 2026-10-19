@@ -27,6 +27,7 @@ enum BlockInfo {
     case "type": "character.cursor.ibeam"
     case "pressKeys": "command"
     case "waitFor": "hourglass"
+    case "pause": "timer"
     case "check": "checkmark.seal"
     case "if": "arrow.triangle.branch"
     case "repeat": "repeat"
@@ -44,6 +45,7 @@ enum BlockInfo {
     case "type": String(localized: "Type Text")
     case "pressKeys": String(localized: "Press Keys")
     case "waitFor": String(localized: "Wait For")
+    case "pause": String(localized: "Pause")
     case "check": String(localized: "Check")
     case "if": String(localized: "If")
     case "repeat": String(localized: "Repeat")
@@ -56,7 +58,7 @@ enum BlockInfo {
   static func color(_ kind: String) -> Color {
     switch kind {
     case "openApp", "openFile", "click", "type", "pressKeys": .blue
-    case "waitFor", "check": .orange
+    case "waitFor", "pause", "check": .orange
     case "if", "repeat", "runTest": .purple
     case "useData": .green
     default: .gray

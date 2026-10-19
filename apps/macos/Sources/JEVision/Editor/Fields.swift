@@ -245,6 +245,7 @@ struct PlaceholderTextField: View {
 /// How long to wait before giving up, in seconds.
 struct TimeoutField: View {
   @Binding var milliseconds: UInt64
+  var label = Text("Time Limit")
 
   private var seconds: Binding<Double> {
     Binding(
@@ -255,16 +256,16 @@ struct TimeoutField: View {
   var body: some View {
     LabeledContent {
       HStack(spacing: 6) {
-        TextField(value: seconds, format: .number.precision(.fractionLength(0...1))) { Text("Time Limit") }
+        TextField(value: seconds, format: .number.precision(.fractionLength(0...1))) { label }
           .labelsHidden()
           .multilineTextAlignment(.trailing)
           .frame(width: 64)
-        Stepper(value: seconds, in: 1...3600, step: 1) { Text("Time Limit") }
+        Stepper(value: seconds, in: 1...3600, step: 1) { label }
           .labelsHidden()
         Text("seconds")
       }
     } label: {
-      Text("Time Limit")
+      label
     }
   }
 }

@@ -235,6 +235,7 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::Check { reference, .. } | BlockKind::If { reference, .. } => {
             reference.image.clone()
         }
+        BlockKind::Pause { duration_ms, .. } => jevision_core::format_duration(*duration_ms),
         BlockKind::Repeat { times, .. } => times.to_string(),
         BlockKind::UseData { file, .. } => file.clone(),
         BlockKind::RunTest { test, .. } => test.clone(),

@@ -12,7 +12,7 @@ enum BlockSummary {
     switch kind {
     case .openApp(let app, _):
       return app.map(appName) ?? String(localized: "The app under test")
-    case .openFile(let files, _, _, _):
+    case .openFile(let files, _, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
       let name = (first as NSString).lastPathComponent
       return files.count == 1 ? name : String(localized: "\(name) and \(files.count - 1) more")
@@ -45,6 +45,8 @@ enum BlockSummary {
       case .screenStable:
         return String(localized: "Until the screen stops changing · \(limit)")
       }
+    case .pause(let durationMs, _):
+      return duration(durationMs)
     case .check(let reference, _):
       if let expect = expectation(reference) { return String(localized: "Screen shows \(quoted(expect, limit: 40))") }
       return reference.image.isEmpty
@@ -66,10 +68,18 @@ enum BlockSummary {
       return file.isEmpty
         ? String(localized: "Choose a CSV file")
         : String(localized: "For each row of \((file as NSString).lastPathComponent)")
-    case .runTest(let test, _):
-      return test.isEmpty
-        ? String(localized: "Choose a test")
-        : String(localized: "Runs \(quoted(ProjectScanner.testName((test as NSString).lastPathComponent)))")
+    case .runTest(let test, let inputs, _):
+      if test.isEmpty { return String(localized: "Choose a test") }
+      let file = (test as NSString).lastPathComponent
+      guard file.lowercased().hasSuffix(ProjectLibrary.blockSuffix) else {
+        return String(localized: "Runs \(quoted(ProjectScanner.testName(file)))")
+      }
+      guard !inputs.isEmpty else {
+        return String(localized: "Runs \(quoted(ProjectScanner.testName(file)))")
+      }
+      return inputs.sorted { $0.key < $1.key }
+        .map { "\($0.key): \(secretName($0.value).map { String(localized: "secret \($0)") } ?? quoted($0.value, limit: 24))" }
+        .joined(separator: " · ")
     }
   }
 

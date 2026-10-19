@@ -457,6 +457,7 @@ private final class WaitingHands: Hands, @unchecked Sendable {
   func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {}
   func activate(app: String) throws(HandsError) {}
   func quit(app: String) throws(HandsError) {}
+  func closeItems(items: [Openable], app: String?) throws(HandsError) {}
   func capture(app: String) throws(HandsError) -> Screenshot { throw .NoWindow(app: app) }
   func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? { nil }
   func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {}

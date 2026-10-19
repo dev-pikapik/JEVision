@@ -17,6 +17,8 @@ enum RunText {
       return String(localized: "run.start.unknownBlock", defaultValue: "There’s no block “\(block)” to start from.")
     case "run.secret.missing":
       return String(localized: "run.secret.missing", defaultValue: "The secret \(p("name")) isn’t set. Set it in Test details.")
+    case "run.input.missing":
+      return String(localized: "run.input.missing", defaultValue: "Block “\(block)”: nothing gives the input \(p("name")). Run this block from a test that fills it in.")
     case "run.path.outsideProject":
       return String(localized: "run.path.outsideProject", defaultValue: "Block “\(block)”: \(p("path")) is outside the project folder.")
     case "run.file.missing":

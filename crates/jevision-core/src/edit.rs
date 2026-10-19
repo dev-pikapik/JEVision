@@ -12,6 +12,9 @@ use crate::model::{
 /// Name of the slot before the first block, used with an empty [`Slot::from`].
 pub const START: &str = "start";
 
+/// How long a new pause block waits.
+const DEFAULT_PAUSE_MS: u64 = 2000;
+
 /// A place where a block can be added: on the edge `edge` leaving block `from`.
 /// An empty `from` with the edge [`START`] is the place before the first block.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +37,7 @@ impl BlockKind {
                 files: Vec::new(),
                 app: None,
                 new_instance: false,
+                close_after: false,
                 next: None,
             },
             "click" => Self::Click {
@@ -55,6 +59,10 @@ impl BlockKind {
             "waitFor" => Self::WaitFor {
                 until: WaitUntil::ScreenStable,
                 timeout_ms: DEFAULT_WAIT_TIMEOUT_MS,
+                next: None,
+            },
+            "pause" => Self::Pause {
+                duration_ms: DEFAULT_PAUSE_MS,
                 next: None,
             },
             "check" => Self::Check {
@@ -79,6 +87,7 @@ impl BlockKind {
             },
             "runTest" => Self::RunTest {
                 test: String::new(),
+                inputs: HashMap::new(),
                 next: None,
             },
             _ => return None,
@@ -172,6 +181,7 @@ impl BlockKind {
             | Self::Type { next, .. }
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }
+            | Self::Pause { next, .. }
             | Self::Check { next, .. }
             | Self::Repeat { next, .. }
             | Self::UseData { next, .. }

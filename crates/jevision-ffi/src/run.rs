@@ -73,6 +73,9 @@ pub trait Hands: Send + Sync {
         app: Option<String>,
         new_instance: bool,
     ) -> Result<(), HandsError>;
+    /// Closes what `open_items` opened for these items: the windows showing the files, and the
+    /// application if that call started it.
+    fn close_items(&self, items: Vec<Openable>, app: Option<String>) -> Result<(), HandsError>;
     fn activate(&self, app: String) -> Result<(), HandsError>;
     fn quit(&self, app: String) -> Result<(), HandsError>;
     fn capture(&self, app: String) -> Result<Screenshot, HandsError>;
@@ -350,16 +353,19 @@ impl jevision_runner::Hands for HandsAdapter {
         app: Option<&str>,
         new_instance: bool,
     ) -> Result<(), jevision_runner::HandsError> {
-        let items = items
-            .iter()
-            .map(|item| match item {
-                jevision_runner::Openable::File(p) => Openable::File { path: path(p) },
-                jevision_runner::Openable::Url(url) => Openable::Url { url: url.clone() },
-            })
-            .collect();
         Ok(self
             .0
-            .open_items(items, app.map(str::to_owned), new_instance)?)
+            .open_items(openables(items), app.map(str::to_owned), new_instance)?)
+    }
+
+    fn close(
+        &self,
+        items: &[jevision_runner::Openable],
+        app: Option<&str>,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self
+            .0
+            .close_items(openables(items), app.map(str::to_owned))?)
     }
 
     fn activate(&self, app: &str) -> Result<(), jevision_runner::HandsError> {
@@ -429,6 +435,16 @@ impl jevision_runner::SecretSource for SecretAdapter {
     fn secret(&self, name: &str) -> Option<String> {
         self.0.secret(name.to_owned(), self.1.clone())
     }
+}
+
+fn openables(items: &[jevision_runner::Openable]) -> Vec<Openable> {
+    items
+        .iter()
+        .map(|item| match item {
+            jevision_runner::Openable::File(p) => Openable::File { path: path(p) },
+            jevision_runner::Openable::Url(url) => Openable::Url { url: url.clone() },
+        })
+        .collect()
 }
 
 fn path(p: &Path) -> String {
@@ -947,6 +963,9 @@ pub(crate) mod tests {
             _: Option<String>,
             _: bool,
         ) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn close_items(&self, _: Vec<Openable>, _: Option<String>) -> Result<(), HandsError> {
             Ok(())
         }
         fn activate(&self, _: String) -> Result<(), HandsError> {

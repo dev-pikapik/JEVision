@@ -84,6 +84,10 @@ enum IssueText {
       return String(localized: "flow.block.unreachable", defaultValue: "Nothing leads to this block, so it never runs.")
     case "flow.loop.noReturn":
       return String(localized: "flow.loop.noReturn", defaultValue: "The blocks inside don’t lead back to this loop.")
+    case "flow.input.invalid":
+      return String(localized: "flow.input.invalid", defaultValue: "“\(p("name"))” can’t name an input. Use letters, digits and _, and don’t start with a digit.")
+    case "flow.input.missing":
+      return String(localized: "flow.input.missing", defaultValue: "The block asks for \(p("name")). Fill it in below.")
     case "flow.if.sameCondition":
       return String(localized: "flow.if.sameCondition", defaultValue: "An earlier condition of this block checks the same thing, so this one never leads anywhere.")
     default:

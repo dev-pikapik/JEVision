@@ -48,6 +48,9 @@ struct EditorView: View {
       apps.load()
     }
     .onChange(of: undoManager) { document.undoManager = undoManager }
+    .sheet(item: Binding(get: { document.savingToLibrary }, set: { document.savingToLibrary = $0 })) { kind in
+      SaveToLibrarySheet(kind: kind, document: document)
+    }
   }
 
   private func editor(_ flow: Flow) -> some View {
@@ -59,13 +62,16 @@ struct EditorView: View {
       .overlay(alignment: .topLeading) {
         if let target = palette {
           GeometryReader { box in
-            PaletteView { choice in
+            PaletteView(library: project.library.entries) { choice in
               palette = nil
               canvasFocused = true
               switch choice {
               case .block(let type):
                 document.insert(type, at: target.slot, placedAt: target.point)
                 showsInspector = true
+              case .library(let entry):
+                document.add(entry, at: target.slot, placedAt: target.point)
+                showsInspector = entry.kind == .block
               case .note: addNote(at: target.point)
               case .frame: addFrame(at: target.point)
               }

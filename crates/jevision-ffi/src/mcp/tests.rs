@@ -57,6 +57,9 @@ impl Hands for FakeHands {
     fn open_items(&self, _: Vec<Openable>, _: Option<String>, _: bool) -> Result<(), HandsError> {
         Ok(())
     }
+    fn close_items(&self, _: Vec<Openable>, _: Option<String>) -> Result<(), HandsError> {
+        Ok(())
+    }
     fn activate(&self, _: String) -> Result<(), HandsError> {
         Ok(())
     }

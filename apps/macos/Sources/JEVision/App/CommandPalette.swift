@@ -6,6 +6,10 @@ enum PaletteAction: Hashable {
   case newTest, openProject, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
   case addBlock(String), addCondition, arrange, disconnect
+  /// Adds a template or a custom block of the project.
+  case addFromLibrary(LibraryEntry)
+  /// Saves the selected blocks to the library.
+  case saveToLibrary(LibraryEntry.Kind)
   case openReport, projectMap
   case commit, newPullRequest, pullRequests, pull, push
   /// Opens the test with this sidebar id.
@@ -43,11 +47,15 @@ struct PaletteState {
   var selection: String?
   var selectionIsIf = false
   var selectionHasLinks = false
+  /// Blocks are selected on the canvas.
+  var hasPickedBlocks = false
   var hasTests = false
   var hasLastRun = false
   var git = Git()
   /// Tests of the project, as `(sidebar id, name, folder, what else finds it)`.
   var tests: [(id: String, name: String, folder: String, keywords: String)] = []
+  /// The project's templates and custom blocks.
+  var library: [LibraryEntry] = []
 
   struct Git {
     var isTracked = false
@@ -64,7 +72,7 @@ struct PaletteState {
 enum CommandPalette {
   /// Everything that can be done in `state`: commands, then blocks to add, then tests to open.
   static func entries(_ state: PaletteState) -> [PaletteEntry] {
-    commands(state) + blocks(state) + tests(state)
+    commands(state) + blocks(state) + library(state) + tests(state)
   }
 
   /// `entries` that match `query`, best first; all of them for an empty query.
@@ -115,6 +123,16 @@ enum CommandPalette {
       String(localized: "Removes the links into and out of the selected block."), symbol: "scissors",
       shortcut: Shortcuts.disconnect, keywords: String(localized: "unlink link arrow"),
       if: state.hasTest && state.selectionHasLinks)
+    add(
+      .saveToLibrary(.template), String(localized: "Save as Template…"),
+      String(localized: "Keeps the selected blocks in the library, to add them to other tests."),
+      symbol: ProjectLibrary.templateSymbol, keywords: String(localized: "template block library"),
+      if: state.hasTest && state.hasPickedBlocks)
+    add(
+      .saveToLibrary(.block), String(localized: "Make Block…"),
+      String(localized: "Turns the selected blocks into one custom block other tests can run."),
+      symbol: ProjectLibrary.defaultBlockSymbol, keywords: String(localized: "custom block library subflow reuse"),
+      if: state.hasTest && state.hasPickedBlocks)
     add(
       .arrange, String(localized: "Arrange Automatically"), String(localized: "Lays the blocks out neatly again."),
       symbol: "rectangle.3.group", keywords: String(localized: "layout tidy"), if: state.hasTest)
@@ -169,6 +187,17 @@ enum CommandPalette {
         color: BlockInfo.color(spec.group), shortcut: nil,
         keywords: [group, BlockInfo.explanation(spec.typeName), String(localized: "add block"), spec.typeName]
           .joined(separator: " "))
+    }
+  }
+
+  private static func library(_ state: PaletteState) -> [PaletteEntry] {
+    guard state.hasTest else { return [] }
+    return state.library.map { entry in
+      let choice = PaletteChoice.library(entry)
+      return PaletteEntry(
+        action: .addFromLibrary(entry), kind: .block, title: entry.name, detail: choice.tagline, symbol: entry.symbol,
+        color: choice.color, shortcut: nil,
+        keywords: [choice.groupTitle, entry.detail, String(localized: "template block library")].joined(separator: " "))
     }
   }
 

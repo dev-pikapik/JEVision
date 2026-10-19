@@ -56,6 +56,8 @@ final class FlowDocument {
   private(set) var linking: PendingLink?
   /// How the next runs go, picked in the Run menu.
   var runChoices = RunChoices()
+  /// The selection is being saved to the library as this kind; `nil` while it isn't.
+  var savingToLibrary: LibraryEntry.Kind?
   /// The run a report opened the test from: the blocks show how they did in it, not in the newest run.
   var reportRun: SavedRun.ID?
 
@@ -115,11 +117,42 @@ final class FlowDocument {
 
   /// Adds a block of `type` on `slot`; with `point`, puts it there on the canvas.
   func insert(_ type: String, at slot: Slot?, placedAt point: Point? = nil) {
-    guard let flow, var edited = insertBlock(flow: flow, typeName: type, slot: slot) else { return }
+    guard let flow else { return }
+    place(insertBlock(flow: flow, typeName: type, slot: slot), at: point)
+  }
+
+  /// Adds a step that runs the custom block `file`, relative to this test, on `slot`; with
+  /// `point`, puts it there on the canvas.
+  func insertCustomBlock(_ file: String, at slot: Slot?, placedAt point: Point? = nil) {
+    guard let flow else { return }
+    place(insertBlocks(flow: flow, blocks: [.runTest(test: file, inputs: [:], next: nil)], slot: slot), at: point)
+  }
+
+  /// Adds `entry` from the library on `slot`: the blocks of a template, or a step that runs a
+  /// custom block.
+  func add(_ entry: LibraryEntry, at slot: Slot?, placedAt point: Point? = nil) {
+    if let text = entry.text {
+      insertTemplate(text, at: slot)
+    } else if let file = entry.url {
+      insertCustomBlock(RelativePath.from(url.deletingLastPathComponent(), to: file), at: slot, placedAt: point)
+    }
+  }
+
+  private func place(_ edited: Edited?, at point: Point?) {
+    guard var edited else { return }
     if let point, let id = edited.selection, let placed = placeBlock(flow: edited.flow, id: id, at: point) {
       edited.flow = placed
     }
     apply(edited.flow, select: edited.selection, action: String(localized: "Add Block"))
+  }
+
+  /// Adds the blocks of the template `text` on `slot`, run after the block the slot leaves
+  /// from, and selects them.
+  func insertTemplate(_ text: String, at slot: Slot?) {
+    let after = slot.flatMap { ["next", "then"].contains($0.edge) ? $0.from : nil }
+    guard let flow, let edit = pasteOnCanvas(flow: flow, text: text, after: after) else { return }
+    apply(edit.flow, select: selection, action: String(localized: "Add Template"))
+    pick(Set(edit.items))
   }
 
   /// Where a block added now goes: after the selected block, or at the end without one.
@@ -408,7 +441,10 @@ final class FlowDocument {
 
   private func check(_ flow: Flow) -> [Issue] {
     let folder = url.deletingLastPathComponent().path(percentEncoded: false)
-    return validateFlow(flow: flow) + environmentIssues(flow: flow, folder: folder) + dataIssues(flow: flow, folder: folder)
+    // Of the checks against the disk, only the custom blocks' inputs aren't shown next to their fields.
+    let inputs = validateFlowIn(flow: flow, folder: folder).filter { $0.code == "flow.input.missing" }
+    return validateFlow(flow: flow) + inputs + environmentIssues(flow: flow, folder: folder)
+      + dataIssues(flow: flow, folder: folder)
   }
 
   private func save() {

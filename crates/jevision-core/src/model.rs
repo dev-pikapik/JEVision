@@ -16,6 +16,9 @@ use crate::FORMAT_VERSION;
 pub struct Flow {
     pub name: String,
     pub description: Option<String>,
+    /// SF Symbol shown for a block made of this test, see [`BLOCK_SUFFIX`]; `None` for the
+    /// default one.
+    pub icon: Option<String>,
     /// Bundle identifier of the application under test, e.g. `com.apple.TextEdit`.
     pub app: String,
     pub test_type: Option<TestType>,
@@ -126,6 +129,10 @@ pub enum BlockKind {
         app: Option<String>,
         #[serde(skip_serializing_if = "is_false")]
         new_instance: bool,
+        /// When the attempt ends, passed or not, quit the apps this block started and close
+        /// the copies of the files it opened.
+        #[serde(skip_serializing_if = "is_false")]
+        close_after: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
@@ -163,6 +170,13 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+    /// Waits a fixed time, whatever the screen shows.
+    Pause {
+        #[serde(rename = "duration", serialize_with = "duration")]
+        duration_ms: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
     /// Fails the run unless the screen matches the reference.
     Check {
         reference: Reference,
@@ -196,9 +210,14 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Runs another test file in place, as a sub-process.
+    /// Runs another test file in place, as a sub-process: a test, or a block of the project's
+    /// own, see [`BLOCK_SUFFIX`].
     RunTest {
         test: String,
+        /// Values of the `${input.NAME}` placeholders in the test it runs, by name. They may
+        /// hold placeholders themselves, filled in where this block runs.
+        #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "sorted")]
+        inputs: HashMap<String, String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
@@ -306,6 +325,15 @@ impl Default for Compare {
     }
 }
 
+/// Ending of the file of a block made by the project: a test with `${input.NAME}` placeholders
+/// that other tests use as one block through `runTest`. Kept apart from tests, it isn't run on
+/// its own.
+pub const BLOCK_SUFFIX: &str = ".block.json";
+/// Ending of the file of a test.
+pub const TEST_SUFFIX: &str = ".flow.json";
+/// Ending of the file of a template: blocks that are copied into a test as they are.
+pub const TEMPLATE_SUFFIX: &str = ".template.json";
+
 /// Names of the edges between blocks.
 pub const NEXT: &str = "next";
 pub const THEN: &str = "then";
@@ -324,6 +352,7 @@ impl BlockKind {
             Self::Type { .. } => "type",
             Self::PressKeys { .. } => "pressKeys",
             Self::WaitFor { .. } => "waitFor",
+            Self::Pause { .. } => "pause",
             Self::Check { .. } => "check",
             Self::If { .. } => "if",
             Self::Repeat { .. } => "repeat",
@@ -376,6 +405,7 @@ impl BlockKind {
             | Self::Type { next, .. }
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }
+            | Self::Pause { next, .. }
             | Self::Check { next, .. }
             | Self::RunTest { next, .. } => {
                 out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
@@ -406,6 +436,9 @@ impl Serialize for Flow {
         map.serialize_entry("name", &self.name)?;
         if let Some(d) = &self.description {
             map.serialize_entry("description", d)?;
+        }
+        if let Some(icon) = &self.icon {
+            map.serialize_entry("icon", icon)?;
         }
         map.serialize_entry("app", &self.app)?;
         if let Some(t) = &self.test_type {
@@ -639,6 +672,10 @@ impl Serialize for Reference {
 
 fn is_false(b: &bool) -> bool {
     !b
+}
+
+fn sorted<S: Serializer>(map: &HashMap<String, String>, s: S) -> Result<S::Ok, S::Error> {
+    s.collect_map(map.iter().collect::<std::collections::BTreeMap<_, _>>())
 }
 
 fn duration<S: Serializer>(ms: &u64, s: S) -> Result<S::Ok, S::Error> {
