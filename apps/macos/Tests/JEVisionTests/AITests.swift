@@ -33,7 +33,7 @@ struct AISettingsTests {
 
   @Test func everyProviderCanBeChosen() {
     let providers = AISettings.providers
-    #expect(providers.map(\.name) == ["Anthropic", "OpenAI", "Google Gemini", "Ollama", "LM Studio", "OpenAI-compatible server"])
+    #expect(providers.map(\.name) == ["Anthropic", "OpenAI", "Google Gemini", "JEV (TypeSafe AI)", "Ollama", "LM Studio", "OpenAI-compatible server"])
     // Cloud services need a key; local servers list their models.
     for provider in providers where provider.needsKey {
       #expect(!provider.keyVariable.isEmpty && provider.defaultAddress.hasPrefix("https://"))

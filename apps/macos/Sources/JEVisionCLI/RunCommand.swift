@@ -70,7 +70,10 @@ struct RunCommand {
   static func plan(_ request: RunRequest) throws(UsageError) -> (project: String, tests: [String], environment: String?) {
     var targets: [String] = []
     for path in request.paths {
-      guard let real = realPath(path) else { throw UsageError(message: "there is no file or folder “\(path)”") }
+      // The app lists tests without the suffix, so `notes/add-milk` runs notes/add-milk.flow.json.
+      guard let real = realPath(path) ?? realPath(path + ".flow.json") else {
+        throw UsageError(message: "there is no file or folder “\(path)”")
+      }
       targets.append(real)
     }
     let (tests, _) = collectTests(targets)
@@ -185,6 +188,7 @@ struct RunCommand {
     let count = { (verdict: String) in JSON.int(Int64(results.count { $0.verdict == verdict })) }
     return .object([
       ("passed", count("passed")),
+      ("nothingChecked", count("nothingChecked")),
       ("failed", count("failed")),
       ("quarantined", count("quarantined")),
       ("cancelled", count("cancelled")),
@@ -217,7 +221,7 @@ struct TestResult {
     switch outcome {
     case .finished(_, _, let report):
       switch report.verdict {
-      case .passed: "passed"
+      case .passed: report.nothingChecked ? "nothingChecked" : "passed"
       case .failed: report.quarantined ? "quarantined" : "failed"
       case .cancelled: "cancelled"
       }
@@ -229,7 +233,7 @@ struct TestResult {
   /// A failure in quarantine doesn't count unless asked: see `RunRequest.includeQuarantinedFailures`.
   var status: ExitStatus {
     switch verdict {
-    case "passed", "quarantined": .ok
+    case "passed", "quarantined", "nothingChecked": .ok
     case "error": .failure
     default: .problems
     }
@@ -413,6 +417,8 @@ final class TestSession: @unchecked Sendable {
     let attempts = report.attempts.count
     let line =
       switch report.verdict {
+      case .passed where report.nothingChecked:
+        progress.paint("Finished in \(took), but nothing was checked: the test has no check or wait block that looks at the screen", .yellow)
       case .passed:
         progress.paint(
           report.flaky ? "Passed on attempt \(attempts) in \(took). It failed before, so it may be flaky." : "Passed in \(took)",
@@ -454,6 +460,7 @@ final class TestSession: @unchecked Sendable {
     let count = { (verdict: String) in results.count { $0.verdict == verdict } }
     var parts: [String] = []
     if count("passed") > 0 { parts.append(progress.paint("\(count("passed")) passed", .green)) }
+    if count("nothingChecked") > 0 { parts.append(progress.paint("\(count("nothingChecked")) checked nothing", .yellow)) }
     if count("failed") > 0 { parts.append(progress.paint("\(count("failed")) failed", .red)) }
     if count("quarantined") > 0 {
       parts.append(progress.paint("\(count("quarantined")) failed in quarantine", request.includeQuarantinedFailures ? .red : .yellow))

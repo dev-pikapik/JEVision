@@ -96,6 +96,9 @@ pub struct PullRequestDraft {
     pub unpushed: bool,
     /// The pull request already open for the branch.
     pub existing: Option<PullRequest>,
+    /// A title to start from: the first line of the message when the branch adds one commit
+    /// to `base`, empty otherwise.
+    pub title: String,
 }
 
 /// The files of the project a pull request changes, and the two commits to compare them in.
@@ -306,12 +309,14 @@ impl Repo {
             .filter(|b| *b != branch)
             .collect();
         let existing = hub.pull_requests(&repo, Some(&branch))?.into_iter().next();
+        let title = self.only_commit_since(&format!("{remote}/{base}"));
         Ok(PullRequestDraft {
             branch,
             base,
             bases,
             unpushed,
             existing,
+            title,
         })
     }
 
@@ -387,6 +392,19 @@ impl Repo {
     }
 
     /// The current branch as named on `remote`, and whether it has commits that aren't there.
+    /// The first line of the one commit HEAD adds to `base`; empty when it adds more or none,
+    /// or `base` isn't known here.
+    fn only_commit_since(&self, base: &str) -> String {
+        let range = format!("{base}..HEAD");
+        match self.run(&["rev-list", "--count", &range]) {
+            Ok(count) if count.trim() == "1" => self
+                .run(&["log", "-1", "--format=%s"])
+                .map(|s| s.trim().to_owned())
+                .unwrap_or_default(),
+            _ => String::new(),
+        }
+    }
+
     fn branch_on(&self, remote: &str) -> Result<(String, bool), GitError> {
         let branch = self.branch()?;
         if !self.has_commits()? {

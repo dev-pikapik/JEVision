@@ -359,6 +359,7 @@ only and sends nothing anywhere.
 | Anthropic | in the cloud | `ANTHROPIC_API_KEY` |
 | OpenAI | in the cloud | `OPENAI_API_KEY` |
 | Google Gemini | in the cloud | `GEMINI_API_KEY` |
+| JEV (TypeSafe AI) | in the cloud | `TYPESAFE_API_KEY` |
 | Ollama | on this Mac | none |
 | LM Studio | on this Mac | none |
 | OpenAI-compatible server | at the address you give | `OPENAI_COMPATIBLE_API_KEY`, if the server asks for one |

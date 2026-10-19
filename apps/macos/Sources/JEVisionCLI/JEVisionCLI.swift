@@ -282,7 +282,7 @@ enum Help {
                             row runs the whole test and has its own retries
         --start-at <block>  Start from this block instead of the first one (one test only)
         --provider <id>     AI provider for checks by meaning instead of the one chosen
-                            in the app (Settings → AI): anthropic, openai, gemini,
+                            in the app (Settings → AI): anthropic, openai, gemini, jev,
                             ollama, lmstudio or openai-compatible
         --model <name>      AI model for checks by meaning instead of the chosen one
         --junit <file>      Also save a JUnit XML report of all the tests, for CI

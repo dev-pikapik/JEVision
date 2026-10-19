@@ -19,11 +19,8 @@ struct NotificationSettingsView: View {
 
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "bell.badge", color: .red, title: Text("Notifications"),
-          message: Text("A message to Slack, Telegram or email when a test fails, or after every run."))
-      }
+      SettingsHeader(
+        tab: .notifications, text: Text("A message to Slack, Telegram or email when a test fails, or after every run."))
       if let root = project.rootURL {
         if let loadProblem {
           Section {
@@ -73,10 +70,12 @@ struct NotificationSettingsView: View {
         Text("When a test fails or passes again").tag(NotifyWhen.failedOrFixed)
         Text("After every run").tag(NotifyWhen.every)
       }
+      .settingAnchor("notifyWhen")
       Toggle(isOn: $draft.unattendedOnly) {
         Text("Only for scheduled runs and CI")
         Text("Runs you start yourself in JEVision send nothing.")
       }
+      .settingAnchor("unattendedOnly")
     } footer: {
       Text("A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing.")
         .font(.callout)
@@ -86,6 +85,7 @@ struct NotificationSettingsView: View {
 
     Section {
       Toggle("Post to Slack", isOn: $draft.slack)
+        .settingAnchor("slack")
       if draft.slack {
         secretRow(.slack, root: root, label: Text("Webhook"))
         testRow(.slack)
@@ -102,6 +102,7 @@ struct NotificationSettingsView: View {
 
     Section {
       Toggle("Post to Telegram", isOn: $draft.telegram)
+        .settingAnchor("telegram")
       if draft.telegram {
         secretRow(.telegram, root: root, label: Text("Bot token"))
         TextField(text: $draft.chat, prompt: Text(verbatim: "-1001234567890")) { Text("Chat ID") }
@@ -120,6 +121,7 @@ struct NotificationSettingsView: View {
 
     Section {
       Toggle("Send email", isOn: $draft.email)
+        .settingAnchor("email")
       if draft.email {
         TextField(text: $draft.server, prompt: Text(verbatim: "smtp.gmail.com")) { Text("Mail server") }
         TextField(text: $draft.port, prompt: Text(verbatim: "465")) { Text("Port") }

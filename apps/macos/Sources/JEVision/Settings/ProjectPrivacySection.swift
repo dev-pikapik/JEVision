@@ -14,18 +14,20 @@ struct ProjectPrivacySection: View {
         LabeledContent {
           Button("Open Project…", action: project.choose)
         } label: {
-          Text("No project is open")
-          Text("Open the folder with your tests to keep its screenshots on this Mac.")
+          RowLabel(Text("No project is open"), Text("Open the folder with your tests to keep its screenshots on this Mac."))
         }
+        .settingAnchor("projectLocalOnly")
       } else if let problem = project.settingsProblem {
         Label(problem, systemImage: "exclamationmark.triangle.fill")
           .foregroundStyle(.red)
           .textSelection(.enabled)
       } else {
         Toggle(isOn: Binding(get: { project.settings.localOnly }, set: { set(localOnly: $0) })) {
-          Text("Only models on this Mac for this project")
-          Text("Its screenshots never go to a cloud service or to AI assistants, whatever each person’s settings say.")
+          RowLabel(
+            Text("Only models on this Mac for this project"),
+            Text("Its screenshots never go to a cloud service or to AI assistants, whatever each person’s settings say."))
         }
+        .settingAnchor("projectLocalOnly")
         LabeledContent("Areas always hidden") {
           HStack {
             if project.settings.hide.isEmpty {
@@ -37,6 +39,7 @@ struct ProjectPrivacySection: View {
               .accessibilityLabel(Text("Edit Areas Always Hidden"))
           }
         }
+        .settingAnchor("hiddenAreas")
       }
     } header: {
       Text("This project")

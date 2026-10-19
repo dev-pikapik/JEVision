@@ -47,6 +47,7 @@ struct JEVisionApp: App {
         .environment(permissions)
         .environment(project)
         .environment(records)
+        .environment(runs)
     }
     .windowResizability(.contentSize)
     .windowStyle(.hiddenTitleBar)
@@ -89,6 +90,7 @@ struct JEVisionApp: App {
         .environment(remote)
         .environment(updates)
     }
+    .windowResizability(.contentMinSize)
   }
 }
 
