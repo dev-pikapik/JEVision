@@ -1629,6 +1629,29 @@ fn vision_problems_are_localizable_failures() {
 }
 
 #[test]
+fn waiting_by_meaning_asks_again_only_when_the_screen_changes() {
+    let p = Project::new();
+    p.test(
+        r#""wait":{"type":"waitFor","until":{"appears":{"compare":"meaning","expect":"Done"}},
+                   "timeout":"1s"}"#,
+        "wait",
+        0,
+    );
+    let asked = |hands: &Fake| {
+        let judge = Judge::says(false);
+        let report = run_judged(&p, hands, Some(&judge), false).report;
+        assert_eq!(failure_code(&report), "run.waitFor.timeout");
+        let step = &report.attempts[0].steps[0];
+        assert_eq!(step.vision.as_ref().unwrap().reason, "The cart is empty.");
+        assert!(step.sent.is_some());
+        judge.asked.lock().unwrap().len()
+    };
+    assert_eq!(asked(&Fake::new(solid([9, 9, 9]))), 1);
+    let changing = Fake::new(solid([9, 9, 9])).with(|s| s.after_capture = Some(solid([0, 9, 9])));
+    assert_eq!(asked(&changing), 2);
+}
+
+#[test]
 fn a_model_quoting_a_secret_from_the_screen_is_masked() {
     let p = Project::new();
     p.test(
