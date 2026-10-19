@@ -211,7 +211,7 @@ mod tests {
         let block = parse(&text).unwrap();
         assert_eq!(block.icon.as_deref(), Some("person.badge.key"));
         assert_eq!(required_inputs(&block), ["e_mail", "e_mail_2"]);
-        assert!(validate(&block).is_empty());
+        assert_eq!(validate(&block), [crate::Issue::warning("flow.noCheck")]);
         assert_eq!(input_name("2 cards"), "input_2_cards");
     }
 }
