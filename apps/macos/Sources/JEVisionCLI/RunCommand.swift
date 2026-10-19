@@ -2,7 +2,7 @@ import Foundation
 import JEVisionCore
 import JEVisionHands
 
-/// `jevision run`: runs tests one after another on this Mac, shows how it goes and saves reports.
+/// `jevision run`: runs tests one after another on this Mac, the tests they depend on first, shows how it goes and saves reports.
 struct RunCommand {
   let request: RunRequest
   /// Progress and the summary; standard error when the result goes out as JSON.
@@ -127,7 +127,7 @@ struct RunCommand {
   /// The nearest folder above `target` that has a `.jevision` folder, as the app makes one in
   /// the project it opens, or the environments file; otherwise the current folder if it holds all the tests; otherwise
   /// the folder of `target`.
-  private static func defaultProject(for target: String, tests: [String]) -> String {
+  static func defaultProject(for target: String, tests: [String]) -> String {
     let start = isFolder(target) ? target : (target as NSString).deletingLastPathComponent
     var folder = start
     while true {
@@ -148,7 +148,7 @@ struct RunCommand {
     folder == "/" || path.hasPrefix(folder + "/")
   }
 
-  private static func realPath(_ path: String) -> String? {
+  static func realPath(_ path: String) -> String? {
     guard let resolved = realpath(path, nil) else { return nil }
     defer { free(resolved) }
     return String(cString: resolved)
@@ -194,6 +194,7 @@ struct RunCommand {
       ("failed", count("failed")),
       ("quarantined", count("quarantined")),
       ("cancelled", count("cancelled")),
+      ("blocked", count("blocked")),
       ("notRun", count("notRun")),
       ("errors", count("error")),
       ("tests", .array(results.map(\.json))),
@@ -226,6 +227,7 @@ struct TestResult {
       case .passed: report.nothingChecked ? "nothingChecked" : "passed"
       case .failed: report.quarantined ? "quarantined" : "failed"
       case .cancelled: "cancelled"
+      case .blocked: "blocked"
       }
     case .error: "error"
     case .notRun: "notRun"
@@ -251,6 +253,8 @@ struct TestResult {
         ("flaky", .bool(report.flaky)),
         ("quarantined", .bool(report.quarantined)),
         ("quarantineReason", report.quarantineReason.map { .string($0) } ?? .null),
+        ("blockedBy", report.blocked.map { .string(describeBlocker(blocker: $0)) } ?? .null),
+        ("addedAsDependency", .bool(report.addedAsDependency)),
         ("attempts", .int(Int64(report.attempts.count))),
         ("rows", .array(report.rows.map(\.json))),
         ("durationMs", .int(Int64(report.durationMs))),
@@ -324,26 +328,70 @@ final class TestSession: @unchecked Sendable {
     let started = Date()
     let count = tests.count == 1 ? "1 test" : "\(tests.count) tests"
     progress.line("Running \(count) in \(project). Press Esc twice or Ctrl-C to stop.")
-    var results: [TestResult] = []
-    for test in tests {
-      let file = String(test.dropFirst(project == "/" ? 1 : project.count + 1))
+    // One at a time: every test uses the screen, so tests side by side would still take turns.
+    let batch = TestBatch(
+      project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: .sequential)
+    let entries = batch.entries()
+    let added = entries.filter(\.added).map(\.name)
+    if !added.isEmpty {
+      progress.line(progress.paint("Also running, because other tests depend on them: \(added.joined(separator: ", "))", .dim))
+    }
+    var outcomes: [TestResult.Outcome?] = Array(repeating: nil, count: entries.count)
+    while true {
+      for (i, entry) in batch.entries().enumerated() where outcomes[i] == nil {
+        if case .blocked(let blocker) = entry.state { outcomes[i] = saveBlocked(entry, blocker) }
+      }
       let run = TestRun()
       let isStopped = lock.withLock {
         current = run
         return stopped
       }
-      guard !isStopped else {
-        results.append(TestResult(file: file, outcome: .notRun))
-        continue
-      }
-      results.append(TestResult(file: file, outcome: self.run(test, with: run)))
+      if isStopped { batch.stop() }
+      guard let position = batch.startNext() else { break }
+      let entry = entries[Int(position)]
+      let outcome = self.run((project as NSString).appendingPathComponent(entry.file), entry: entry, with: run)
+      outcomes[Int(position)] = outcome
+      _ = batch.finish(position: position, outcome: Self.testOutcome(outcome))
     }
     lock.withLock { current = nil }
+    let results = zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) }
     printSummary(results, duration: Date().timeIntervalSince(started))
     return results
   }
 
-  private func run(_ test: String, with run: TestRun) -> TestResult.Outcome {
+  /// What the tests that depend on this one go by.
+  private static func testOutcome(_ outcome: TestResult.Outcome) -> TestOutcome {
+    guard case .finished(_, _, let report) = outcome else { return .notRun }
+    switch report.verdict {
+    case .passed: return .passed
+    case .cancelled: return .cancelled
+    case .blocked: return .notRun
+    // A failure in quarantine still means the test didn't do what the ones after it need.
+    case .failed: return .failed
+    }
+  }
+
+  /// Saves the run of a test that didn't start because a test it depends on didn't pass.
+  private func saveBlocked(_ entry: BatchEntry, _ blocker: Blocker) -> TestResult.Outcome {
+    progress.line()
+    progress.line(progress.paint(entry.name, .bold) + progress.paint("  \(entry.file)", .dim))
+    progress.line("  " + progress.paint(describeBlocker(blocker: blocker), .yellow))
+    let outcome = saveBlockedRun(
+      project: project, test: entry.file, blocker: blocker,
+      options: RunOptions(
+        startAt: nil, retries: nil, environment: request.environment, vision: nil, localOnly: localOnly,
+        schedule: request.schedule, video: .off, addedAsDependency: entry.added))
+    switch outcome {
+    case .finished(let dir, let html, let report):
+      progress.line("  " + progress.paint("Report: \(html ?? dir)", .dim))
+      return .finished(dir: dir, html: html, report: report)
+    case .failed(let reason):
+      progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
+      return .error(reason)
+    }
+  }
+
+  private func run(_ test: String, entry: BatchEntry, with run: TestRun) -> TestResult.Outcome {
     let flow = (try? String(contentsOfFile: test, encoding: .utf8)).flatMap { try? loadFlow(json: $0) }
     // Without branches and loops every block runs once, so the count tells how far the test is.
     let linear = flow?.blocks.allSatisfy {
@@ -365,7 +413,7 @@ final class TestSession: @unchecked Sendable {
         startAt: request.startAt, retries: request.retries, environment: request.environment, dataRows: request.rows,
         vision: vision,
         localOnly: localOnly, schedule: request.schedule, fallback: fallback, providers: providers, usage: usage,
-        video: request.video ?? .off, keepVideosDays: keepVideosDays),
+        video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
     switch listener.outcome {
@@ -416,6 +464,7 @@ final class TestSession: @unchecked Sendable {
       case .failed where report.quarantined: progress.paint("Failed in \(took), in quarantine", .yellow)
       case .failed: progress.paint("Failed in \(took)", .red)
       case .cancelled: progress.paint("Stopped", .yellow)
+      case .blocked: progress.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
       }
     progress.line("  " + line)
     if !report.rows.isEmpty {
@@ -455,6 +504,7 @@ final class TestSession: @unchecked Sendable {
     if count("quarantined") > 0 {
       parts.append(progress.paint("\(count("quarantined")) failed in quarantine", request.includeQuarantinedFailures ? .red : .yellow))
     }
+    if count("blocked") > 0 { parts.append(progress.paint("\(count("blocked")) blocked", .yellow)) }
     if count("cancelled") > 0 { parts.append(progress.paint("\(count("cancelled")) stopped", .yellow)) }
     if count("notRun") > 0 { parts.append(progress.paint("\(count("notRun")) not run", .yellow)) }
     if count("error") > 0 { parts.append(progress.paint("\(count("error")) couldn’t be saved", .red)) }

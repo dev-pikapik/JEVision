@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
+use jevision_core::{Blocker, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
     VideoMask, VideoMode, VideoWindow, VisionJudge,
@@ -209,6 +209,9 @@ pub struct RunOptions {
     /// `None` keeps them all.
     #[uniffi(default = None)]
     pub keep_videos_days: Option<u32>,
+    /// The test is in the run only because other tests in it depend on it.
+    #[uniffi(default = false)]
+    pub added_as_dependency: bool,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -312,15 +315,15 @@ pub(crate) fn run(
 ) -> RunOutcome {
     let hands = HandsAdapter(hands);
     let secrets = SecretAdapter(secrets, options.environment.clone());
-    let vision = options.vision.and_then(|v| v.client().ok());
-    let fallback = options.fallback.and_then(|v| v.client().ok());
+    let vision = options.vision.clone().and_then(|v| v.client().ok());
+    let fallback = options.fallback.clone().and_then(|v| v.client().ok());
     let providers = options
         .providers
         .as_ref()
         .map(NamedJudge::every)
         .unwrap_or_default();
     let providers: Vec<&dyn VisionJudge> = providers.iter().map(|c| c as _).collect();
-    let usage = options.usage.map(AiUsageSettings::book);
+    let usage = options.usage.clone().map(AiUsageSettings::book);
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
@@ -331,42 +334,76 @@ pub(crate) fn run(
         providers: &providers,
         usage: usage.as_ref(),
     };
-    let options = jevision_runner::RunOptions {
-        start_at: options.start_at,
+    match runner.run(
+        Path::new(project),
+        Path::new(test),
+        &runner_options(&options),
+    ) {
+        Ok(run) => finished(run),
+        Err(e) => RunOutcome::Failed {
+            reason: e.to_string(),
+        },
+    }
+}
+
+fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
+    jevision_runner::RunOptions {
+        start_at: options.start_at.clone(),
         retries: options.retries,
-        environment: options.environment,
+        environment: options.environment.clone(),
         rows: options
             .data_rows
+            .as_ref()
             .map(|r| r.first as usize..=r.last as usize),
         local_only: options.local_only,
-        requested_by: options.requested_by,
-        schedule: options.schedule,
+        requested_by: options.requested_by.clone(),
+        schedule: options.schedule.clone(),
         video: options.video,
         keep_videos_for: options
             .keep_videos_days
             .map(|days| std::time::Duration::from_secs(u64::from(days) * 24 * 60 * 60)),
+        added_as_dependency: options.added_as_dependency,
         ..Default::default()
-    };
-    match runner.run(Path::new(project), Path::new(test), &options) {
-        Ok(run) => {
-            let html_path = run.dir.join("report.html");
-            let html = std::fs::write(
-                &html_path,
-                jevision_runner::html(&run.report, &run.dir, run.report.video.as_deref()),
-            )
-            .ok()
-            .map(|()| path(&html_path));
-            // For CI: a missing file only costs the export, not the run.
-            let _ = std::fs::write(
-                run.dir.join("junit.xml"),
-                jevision_runner::junit_xml(std::slice::from_ref(&run.report)),
-            );
-            RunOutcome::Finished {
-                dir: path(&run.dir),
-                html,
-                report: run.report.into(),
-            }
-        }
+    }
+}
+
+/// Saves `report.html` and `junit.xml` next to the report of `run`.
+fn finished(run: jevision_runner::Run) -> RunOutcome {
+    let html_path = run.dir.join("report.html");
+    let html = std::fs::write(
+        &html_path,
+        jevision_runner::html(&run.report, &run.dir, run.report.video.as_deref()),
+    )
+    .ok()
+    .map(|()| path(&html_path));
+    // For CI: a missing file only costs the export, not the run.
+    let _ = std::fs::write(
+        run.dir.join("junit.xml"),
+        jevision_runner::junit_xml(std::slice::from_ref(&run.report)),
+    );
+    RunOutcome::Finished {
+        dir: path(&run.dir),
+        html,
+        report: run.report.into(),
+    }
+}
+
+/// Saves the test file `test` of the folder `project` as blocked: it didn't run because
+/// `blocker` didn't pass. The run shows in the history like any other.
+#[uniffi::export]
+pub fn save_blocked_run(
+    project: String,
+    test: String,
+    blocker: Blocker,
+    options: RunOptions,
+) -> RunOutcome {
+    match jevision_runner::Run::blocked(
+        Path::new(&project),
+        Path::new(&test),
+        blocker,
+        &runner_options(&options),
+    ) {
+        Ok(run) => finished(run),
         Err(e) => RunOutcome::Failed {
             reason: e.to_string(),
         },
@@ -675,6 +712,12 @@ pub struct RunReport {
     /// Device pixels per point of the display the run looked at: 2 on Retina.
     #[uniffi(default = None)]
     pub display_scale: Option<f64>,
+    /// Why the test didn't run: a test it depends on failed or couldn't run.
+    #[uniffi(default = None)]
+    pub blocked: Option<Blocker>,
+    /// The test ran only because other tests in the batch depend on it.
+    #[uniffi(default = false)]
+    pub added_as_dependency: bool,
     pub attempts: Vec<Attempt>,
     /// One result per row of the test's data table, in the order they ran; empty for a test
     /// without one.
@@ -748,6 +791,8 @@ impl From<jevision_runner::RunReport> for RunReport {
             quarantine_reason: r.quarantine_reason,
             virtual_machine: r.virtual_machine,
             display_scale: r.display_scale,
+            blocked: r.blocked,
+            added_as_dependency: r.added_as_dependency,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }
@@ -993,6 +1038,7 @@ pub enum Verdict {
     Passed,
     Failed,
     Cancelled,
+    Blocked,
 }
 
 #[uniffi::remote(Enum)]

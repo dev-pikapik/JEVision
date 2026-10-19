@@ -193,6 +193,9 @@ struct ProjectView: View {
       .contextMenu {
         Button(item.kind == .test ? "Run" : "Run Folder") { run(item) }
           .disabled(!canRun)
+        if item.kind == .folder {
+          RunModePicker(folder: item.id) { failure = $0 }
+        }
         Divider()
         if item.kind == .test {
           Button("Rename…") {
@@ -260,13 +263,13 @@ struct ProjectView: View {
       project.selection = item.id
       if let document = project.document { runs.run(document, in: root) }
     case .folder:
-      runAll([item], title: item.name)
+      runAll([item], title: item.name, folder: item.id)
     }
   }
 
-  private func runAll(_ items: [ProjectItem], title: String) {
+  private func runAll(_ items: [ProjectItem], title: String, folder: String = ".") {
     guard let root = project.rootURL else { return }
-    runs.runAll(items.flatMap(\.tests).map(\.url), in: root, title: title)
+    runs.runAll(items.flatMap(\.tests).map(\.url), in: root, title: title, folder: folder)
   }
 
   private func trash(_ item: ProjectItem) {

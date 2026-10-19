@@ -3,7 +3,8 @@
 //! when its file doesn't say, and the tests in quarantine. A quarantined test still runs, but
 //! its failure doesn't fail Run All, the command line or the JUnit report. The file also says
 //! how private the project's screens are: areas covered in every screenshot before it is saved
-//! or sent anywhere, and whether screenshots may go to AI models outside this computer.
+//! or sent anywhere, and whether screenshots may go to AI models outside this computer, and
+//! which folders run their tests side by side rather than one after another.
 
 use std::path::{Component, Path};
 use std::{fs, io};
@@ -11,6 +12,7 @@ use std::{fs, io};
 use serde::{Deserialize, Serialize};
 
 use crate::Rect;
+use crate::batch::{DEFAULT_PARALLEL, MAX_PARALLEL, RunMode};
 use crate::validate::{MAX_RETRIES, rect_fits};
 
 /// Name of the project settings file in the project folder.
@@ -32,6 +34,34 @@ pub struct ProjectSettings {
     /// Areas of the window, in fractions from its top-left corner, covered in every screenshot
     /// before it is saved or sent to an AI model.
     pub hide: Vec<Rect>,
+    /// How the tests of folders run, set explicitly, sorted by folder. A folder without an
+    /// entry runs like the nearest folder above it that has one; the project folder, without
+    /// one, runs one test after another.
+    pub run_modes: Vec<FolderRunMode>,
+}
+
+/// How the tests of a folder run when the folder, or a folder above it, is run.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FolderRunMode {
+    /// Relative to the project folder, with `/` between folders; `.` is the project folder.
+    pub folder: String,
+    pub mode: RunMode,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RunModeEntry {
+    folder: String,
+    run: RunKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+enum RunKind {
+    Sequential,
+    Parallel,
 }
 
 /// A test in quarantine.
@@ -61,6 +91,8 @@ struct File {
     local_only: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     hide: Vec<Rect>,
+    #[serde(default, rename = "runModes", skip_serializing_if = "Vec::is_empty")]
+    run_modes: Vec<RunModeEntry>,
 }
 
 impl ProjectSettings {
@@ -105,11 +137,23 @@ impl ProjectSettings {
             ));
         }
         check_hide(&file.hide)?;
+        let mut run_modes = Vec::with_capacity(file.run_modes.len());
+        for entry in file.run_modes {
+            run_modes.push(run_mode(entry)?);
+        }
+        run_modes.sort_by(|a, b| a.folder.cmp(&b.folder));
+        if let Some(twice) = run_modes.windows(2).find(|w| w[0].folder == w[1].folder) {
+            return Err(format!(
+                "the folder \"{}\" is in \"runModes\" more than once",
+                twice[0].folder
+            ));
+        }
         Ok(Self {
             retries: file.retries,
             quarantine,
             local_only: file.local_only,
             hide: file.hide,
+            run_modes,
         })
     }
 
@@ -132,6 +176,22 @@ impl ProjectSettings {
             quarantine: self.quarantine.clone(),
             local_only: self.local_only,
             hide: self.hide.clone(),
+            run_modes: self
+                .run_modes
+                .iter()
+                .map(|m| match m.mode {
+                    RunMode::Sequential => RunModeEntry {
+                        folder: m.folder.clone(),
+                        run: RunKind::Sequential,
+                        limit: None,
+                    },
+                    RunMode::Parallel { limit } => RunModeEntry {
+                        folder: m.folder.clone(),
+                        run: RunKind::Parallel,
+                        limit: Some(limit),
+                    },
+                })
+                .collect(),
         };
         let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
         text.push('\n');
@@ -182,6 +242,45 @@ impl ProjectSettings {
         Ok(())
     }
 
+    /// How the tests of `folder`, relative to the project folder (`.` for the project folder),
+    /// run: as set for it or for the nearest folder above it, otherwise one after another.
+    pub fn run_mode(&self, folder: &str) -> RunMode {
+        let mut folder = folder.trim_matches('/');
+        loop {
+            let key = if folder.is_empty() { "." } else { folder };
+            if let Some(m) = self.run_modes.iter().find(|m| m.folder == key) {
+                return m.mode;
+            }
+            if folder.is_empty() || folder == "." {
+                return RunMode::Sequential;
+            }
+            folder = folder.rfind('/').map_or("", |at| &folder[..at]);
+        }
+    }
+
+    /// Sets how the tests of `folder` run; `Err` when the folder or the limit isn't allowed.
+    pub fn set_run_mode(&mut self, folder: &str, mode: RunMode) -> Result<(), String> {
+        let entry = run_mode(RunModeEntry {
+            folder: folder.to_owned(),
+            run: match mode {
+                RunMode::Sequential => RunKind::Sequential,
+                RunMode::Parallel { .. } => RunKind::Parallel,
+            },
+            limit: match mode {
+                RunMode::Sequential => None,
+                RunMode::Parallel { limit } => Some(limit),
+            },
+        })?;
+        match self
+            .run_modes
+            .binary_search_by(|m| m.folder.as_str().cmp(&entry.folder))
+        {
+            Ok(i) => self.run_modes[i] = entry,
+            Err(i) => self.run_modes.insert(i, entry),
+        }
+        Ok(())
+    }
+
     /// Takes the test file `test` out of quarantine; `false` when it wasn't in.
     pub fn release(&mut self, test: &str) -> bool {
         let before = self.quarantine.len();
@@ -200,6 +299,44 @@ fn check_hide(hide: &[Rect]) -> Result<(), String> {
         )),
         None => Ok(()),
     }
+}
+
+fn run_mode(entry: RunModeEntry) -> Result<FolderRunMode, String> {
+    let folder = entry.folder.trim_end_matches('/');
+    let valid = folder == "."
+        || (!folder.is_empty()
+            && !folder.contains('\\')
+            && Path::new(folder)
+                .components()
+                .all(|c| matches!(c, Component::Normal(_))));
+    if !valid {
+        return Err(format!(
+            "\"{}\" in \"runModes\" isn't a folder of the project; write its path from the \
+             project folder, such as checkout, or . for the project folder",
+            entry.folder
+        ));
+    }
+    let mode = match (entry.run, entry.limit) {
+        (RunKind::Sequential, None) => RunMode::Sequential,
+        (RunKind::Sequential, Some(_)) => {
+            return Err(format!(
+                "\"limit\" of \"{folder}\" in \"runModes\" works only with \"run\": \"parallel\""
+            ));
+        }
+        (RunKind::Parallel, limit) => {
+            let limit = limit.unwrap_or(DEFAULT_PARALLEL);
+            if !(2..=MAX_PARALLEL).contains(&limit) {
+                return Err(format!(
+                    "\"limit\" of \"{folder}\" in \"runModes\" is {limit}; it must be from 2 to {MAX_PARALLEL}"
+                ));
+            }
+            RunMode::Parallel { limit }
+        }
+    };
+    Ok(FolderRunMode {
+        folder: folder.to_owned(),
+        mode,
+    })
 }
 
 /// A relative path to a test file inside the project, with `/` between folders.
@@ -325,6 +462,56 @@ mod tests {
         assert!(settings.release("a.flow.json"));
         assert!(!settings.release("a.flow.json"));
         assert_eq!(settings.quarantine.len(), 1);
+    }
+
+    #[test]
+    fn folders_run_as_set_for_them_or_above_them() {
+        let text = r#"{"format": 1, "runModes": [
+            {"folder": "checkout/slow", "run": "sequential"},
+            {"folder": ".", "run": "parallel"},
+            {"folder": "checkout", "run": "parallel", "limit": 8}
+        ]}"#;
+        let mut settings = ProjectSettings::parse(text).unwrap();
+        assert_eq!(
+            settings.run_mode("."),
+            RunMode::Parallel {
+                limit: DEFAULT_PARALLEL
+            }
+        );
+        assert_eq!(
+            settings.run_mode("about"),
+            RunMode::Parallel {
+                limit: DEFAULT_PARALLEL
+            }
+        );
+        assert_eq!(
+            settings.run_mode("checkout/cart"),
+            RunMode::Parallel { limit: 8 }
+        );
+        assert_eq!(settings.run_mode("checkout/slow/pay"), RunMode::Sequential);
+        assert_eq!(
+            ProjectSettings::default().run_mode("checkout"),
+            RunMode::Sequential
+        );
+        settings
+            .set_run_mode("checkout", RunMode::Sequential)
+            .unwrap();
+        assert_eq!(settings.run_mode("checkout/cart"), RunMode::Sequential);
+        let saved = ProjectSettings::parse(&settings.to_json()).unwrap();
+        assert_eq!(saved, settings);
+        assert!(settings.to_json().contains(
+            r#""folder": ".",
+      "run": "parallel",
+      "limit": 4"#
+        ));
+        for bad in [
+            r#"{"format": 1, "runModes": [{"folder": "../x", "run": "parallel"}]}"#,
+            r#"{"format": 1, "runModes": [{"folder": "x", "run": "parallel", "limit": 1}]}"#,
+            r#"{"format": 1, "runModes": [{"folder": "x", "run": "sequential", "limit": 2}]}"#,
+            r#"{"format": 1, "runModes": [{"folder": "x", "run": "sequential"}, {"folder": "x/", "run": "sequential"}]}"#,
+        ] {
+            assert!(ProjectSettings::parse(bad).is_err(), "{bad}");
+        }
     }
 
     #[test]

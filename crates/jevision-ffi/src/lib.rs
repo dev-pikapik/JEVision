@@ -17,6 +17,7 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod batch;
 mod board;
 mod bug;
 mod env;
@@ -33,6 +34,7 @@ mod signin;
 mod stats;
 mod vision;
 
+pub use batch::*;
 pub use board::*;
 pub use bug::*;
 pub use env::*;
@@ -351,6 +353,8 @@ pub struct Flow {
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
     pub retries: Option<u32>,
+    #[uniffi(default = [])]
+    pub depends_on: Vec<String>,
     pub start: String,
     pub blocks: Vec<Block>,
     pub canvas: CanvasContent,

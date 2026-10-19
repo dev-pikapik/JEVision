@@ -209,6 +209,7 @@ pub enum Verdict {
     Passed,
     Failed,
     Cancelled,
+    Blocked,
 }
 
 #[uniffi::remote(Enum)]
@@ -412,6 +413,9 @@ pub struct RunReport {
     pub attempts: Vec<Attempt>,
     /// Name of the paired device that started the run; `None` when it was started on the Mac.
     pub requested_by: Option<String>,
+    /// Name of the test that didn't pass, so this one, depending on it, didn't run.
+    #[uniffi(default = None)]
+    pub blocked_by: Option<String>,
 }
 
 impl From<jevision_remote::RunReport> for RunReport {
@@ -427,6 +431,7 @@ impl From<jevision_remote::RunReport> for RunReport {
             baselines_created: r.baselines_created,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
             requested_by: r.requested_by,
+            blocked_by: r.blocked.map(|b| b.cause_name),
         }
     }
 }

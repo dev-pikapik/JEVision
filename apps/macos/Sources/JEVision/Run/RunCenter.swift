@@ -20,6 +20,8 @@ final class RunCenter {
     var requestedBy: String? = nil
     /// Row of the data table the device chose, counted from 0, in place of the test's Run menu.
     var dataRow: Int? = nil
+    /// The test is in a batch only because other tests of it depend on it.
+    var addedAsDependency = false
   }
 
   struct Result: Equatable {
@@ -38,14 +40,16 @@ final class RunCenter {
     var nothingChecked = false
   }
 
-  /// Tests run one after another, as Run All or a folder's Run starts them.
+  /// Tests run as Run All or a folder's Run starts them, each after the tests it depends on.
   struct Batch {
     /// "All Tests" or the folder's name.
     let title: String
     let project: URL
-    /// Tests still to run.
-    var queue: [URL]
-    let total: Int
+    let plan: TestBatch
+    /// The tests of the batch, chosen and added for their dependents, as the plan last said.
+    var entries: [BatchEntry]
+    /// Position in `entries` of the test running now.
+    var current: UInt32?
     var passed = 0
     var failed = 0
     /// Tests in quarantine that failed: they don't fail the batch.
@@ -54,11 +58,19 @@ final class RunCenter {
     var unchecked = 0
     /// Tests that couldn't start: unreadable, with errors, or refused by the Mac.
     var notRun = 0
+    /// Tests that didn't run because a test they depend on didn't pass.
+    var blocked = 0
+    /// Blocked tests already saved in the history.
+    var saved: Set<UInt32> = []
     var isStopping = false
+
+    var total: Int { entries.count }
+    /// Tests that ended one way or another.
+    var done: Int { passed + failed + quarantined + unchecked + notRun + blocked }
 
     /// "Test 2 of 5": the test running now, counted from 1.
     var progress: String {
-      String(localized: "Test \(total - queue.count) of \(total)")
+      String(localized: "Test \(min(done + 1, total)) of \(total)")
     }
   }
 
@@ -72,6 +84,10 @@ final class RunCenter {
     var quarantined = 0
     /// Tests that passed without checking anything, not counted in `passed`.
     var unchecked = 0
+    /// Tests that didn't run because a test they depend on didn't pass.
+    var blocked = 0
+    /// Tests the batch added because chosen tests depend on them.
+    var added = 0
     /// The batch was stopped before every test ran.
     let stopped: Bool
   }
@@ -130,9 +146,13 @@ final class RunCenter {
   }
 
   /// Runs the test, or asks for what it needs first.
-  func run(_ document: FlowDocument, in project: URL, from block: String? = nil, stepByStep: Bool = false) {
+  func run(
+    _ document: FlowDocument, in project: URL, from block: String? = nil, stepByStep: Bool = false,
+    addedAsDependency: Bool = false
+  ) {
     guard !isRunning, document.flow != nil else { return }
-    let request = Request(document: document, project: project, from: block, stepByStep: stepByStep)
+    let request = Request(
+      document: document, project: project, from: block, stepByStep: stepByStep, addedAsDependency: addedAsDependency)
     let missing = Self.missing(for: request)
     if !missing.permissions.isEmpty || !missing.values.isEmpty || missing.errors > 0 || !start(request) {
       blocked = request
@@ -145,7 +165,7 @@ final class RunCenter {
   func runRemotely(_ test: String, in project: URL, dataRow: Int? = nil, requestedBy device: String) -> RemoteError? {
     guard !isRunning, blocked == nil else { return .RunInProgress }
     let request = Request(
-      document: FlowDocument(url: project.appending(path: test)), project: project, from: nil, stepByStep: false,
+      document: FlowDocument(url: project.appending(path: test), project: project), project: project, from: nil, stepByStep: false,
       requestedBy: device, dataRow: dataRow)
     let missing = Self.missing(for: request)
     guard request.document.flow != nil, missing.errors == 0 else { return .TestUnreadable }
@@ -157,24 +177,43 @@ final class RunCenter {
   func confirm() {
     guard let request = blocked else { return }
     // Asks again, with a new sheet, if something is still missing.
-    run(request.document, in: request.project, from: request.from, stepByStep: request.stepByStep)
+    run(
+      request.document, in: request.project, from: request.from, stepByStep: request.stepByStep,
+      addedAsDependency: request.addedAsDependency)
     if isRunning { blocked = nil }
   }
 
-  /// Runs `tests` one after another, each saved in the history, and sums up how they did.
-  func runAll(_ tests: [URL], in project: URL, title: String) {
+  /// Runs `tests` with the tests they depend on, each after its dependencies and saved in the
+  /// history, and sums up how they did. A test whose dependency didn't pass is saved as blocked
+  /// instead of run. They run as the project settings say for `folder`, relative to the project.
+  func runAll(_ tests: [URL], in project: URL, title: String, folder: String = ".") {
     guard !isRunning, blocked == nil, !tests.isEmpty else { return }
     batchResult = nil
-    batch = Batch(title: title, project: project, queue: tests, total: tests.count)
+    let path = project.path(percentEncoded: false)
+    // Settings that can't be read fail each run with the reason; one after another is the safe way.
+    let mode = (try? projectSettings(project: path)).map { folderRunMode(settings: $0, folder: folder) } ?? .sequential
+    let plan = TestBatch(project: path, tests: tests.map { RelativePath.from(project, to: $0) }, mode: mode)
+    batch = Batch(title: title, project: project, plan: plan, entries: plan.entries())
     runNextInBatch()
   }
 
   func dismissBatchResult() { batchResult = nil }
 
   private func runNextInBatch() {
-    while let current = batch, !current.isStopping, let test = current.queue.first {
-      batch?.queue.removeFirst()
-      run(FlowDocument(url: test), in: current.project)
+    while var current = batch {
+      saveBlocked(&current)
+      // The app drives one test at a time: every test it can run uses the screen.
+      guard !current.isStopping, let next = current.plan.startNext() else {
+        batch = current
+        break
+      }
+      let entry = current.entries[Int(next)]
+      current.current = next
+      current.entries = current.plan.entries()
+      batch = current
+      run(
+        FlowDocument(url: current.project.appending(path: entry.file), project: current.project), in: current.project,
+        addedAsDependency: entry.added)
       if isRunning { return }
       if blocked != nil {
         showApp()
@@ -182,17 +221,36 @@ final class RunCenter {
       }
       // Unreadable: `run` refuses it without a word.
       batch?.notRun += 1
+      _ = batch?.plan.finish(position: next, outcome: .notRun)
+      batch?.current = nil
     }
     endBatch()
   }
 
+  /// Saves the tests the plan blocked since the last look, so the history shows why they didn't run.
+  private func saveBlocked(_ batch: inout Batch) {
+    batch.entries = batch.plan.entries()
+    let environment = ProjectEnvironments.read(batch.project).selected?.name
+    for (index, entry) in batch.entries.enumerated() {
+      guard case .blocked(let blocker) = entry.state, batch.saved.insert(UInt32(index)).inserted else { continue }
+      batch.blocked += 1
+      _ = saveBlockedRun(
+        project: batch.project.path(percentEncoded: false), test: entry.file, blocker: blocker,
+        options: RunOptions(
+          startAt: nil, retries: nil, environment: environment, vision: nil, localOnly: false, video: .off,
+          addedAsDependency: entry.added))
+    }
+  }
+
   private func endBatch() {
-    guard let batch else { return }
+    guard var batch else { return }
+    batch.plan.stop()
+    saveBlocked(&batch)
     self.batch = nil
     let summary = BatchResult(
       title: batch.title, total: batch.total, passed: batch.passed, failed: batch.failed,
-      quarantined: batch.quarantined, unchecked: batch.unchecked,
-      stopped: batch.passed + batch.failed + batch.quarantined + batch.unchecked + batch.notRun < batch.total)
+      quarantined: batch.quarantined, unchecked: batch.unchecked, blocked: batch.blocked,
+      added: batch.entries.count { $0.added }, stopped: batch.done < batch.total)
     result = nil
     batchResult = summary
     if isOutOfTheWay { showApp() }
@@ -235,7 +293,7 @@ final class RunCenter {
         environment: ProjectEnvironments.read(request.project).selected?.name, dataRows: choices.rows(in: table),
         vision: ai.settings(), localOnly: ai.localOnly,
         requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, usage: ai.usage, video: videos.mode,
-        keepVideosDays: videos.keepDays),
+        keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: RunBridge(center: self, remote: remoteListener?(request.project)))
     return true
@@ -345,16 +403,32 @@ final class RunCenter {
     hud?.close()
     hud = nil
     if var batch {
+      let ended: TestOutcome
       switch outcome {
-      case .finished(_, _, let report) where report.nothingChecked: batch.unchecked += 1
-      case .finished(_, _, let report) where report.verdict == .passed: batch.passed += 1
-      case .finished(_, _, let report) where report.verdict == .failed && report.quarantined: batch.quarantined += 1
-      case .finished(_, _, let report) where report.verdict == .failed: batch.failed += 1
-      case .finished: batch.isStopping = true
-      case .failed: batch.notRun += 1
+      // It did all it was asked to without failing, so the tests after it can go on.
+      case .finished(_, _, let report) where report.nothingChecked:
+        batch.unchecked += 1
+        ended = .passed
+      case .finished(_, _, let report) where report.verdict == .passed:
+        batch.passed += 1
+        ended = .passed
+      case .finished(_, _, let report) where report.verdict == .failed && report.quarantined:
+        batch.quarantined += 1
+        ended = .failed
+      case .finished(_, _, let report) where report.verdict == .failed:
+        batch.failed += 1
+        ended = .failed
+      case .finished:
+        batch.isStopping = true
+        ended = .cancelled
+      case .failed:
+        batch.notRun += 1
+        ended = .notRun
       }
+      if let current = batch.current { _ = batch.plan.finish(position: current, outcome: ended) }
+      batch.current = nil
       self.batch = batch
-      if !batch.isStopping, !batch.queue.isEmpty {
+      if !batch.isStopping, !batch.plan.isOver() {
         // The window stays away: the next test starts right after this one.
         if case .finished(let dir, _, let report) = outcome {
           result = Result(

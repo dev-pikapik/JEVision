@@ -992,3 +992,44 @@ fn json_paths_name_fields_and_items() {
         assert_eq!(json_path(wrong), None, "{wrong}");
     }
 }
+
+#[test]
+fn dependencies_round_trip_and_are_validated() {
+    let text = format!(
+        r#"{{"format": {FORMAT_VERSION}, "name": "Pay", "app": "com.example.App", "retries": 1,
+            "dependsOn": ["../login.flow.json", "cart.flow.json"], "start": "a",
+            "blocks": {{"a": {{"type": "pressKeys", "keys": "return"}}}}}}"#
+    );
+    let flow = parse(&text).unwrap();
+    assert_eq!(flow.depends_on, ["../login.flow.json", "cart.flow.json"]);
+    let saved = to_canonical_json(&flow);
+    assert!(saved.contains("\"retries\": 1,\n  \"dependsOn\": [\n    \"../login.flow.json\""));
+    assert_eq!(parse(&saved).unwrap(), flow);
+    assert!(
+        validate(&flow)
+            .iter()
+            .all(|i| i.severity == Severity::Warning)
+    );
+
+    let mut bad = flow;
+    bad.depends_on = vec![
+        "/abs.flow.json".into(),
+        "cart.csv".into(),
+        "cart.flow.json".into(),
+        "cart.flow.json".into(),
+    ];
+    let issues = validate(&bad);
+    assert_eq!(
+        codes(&issues),
+        [
+            "flow.dependency.invalid",
+            "flow.dependency.invalid",
+            "flow.dependency.duplicate",
+            "flow.noCheck"
+        ]
+    );
+    assert_eq!(
+        describe(&issues[2]),
+        "Field \"dependsOn\": cart.flow.json is listed twice."
+    );
+}

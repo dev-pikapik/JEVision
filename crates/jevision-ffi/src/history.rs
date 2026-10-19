@@ -184,7 +184,7 @@ const HEALTH_BARS: usize = 20;
 pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
     let mut finished: Vec<(i64, &RunReport)> = runs
         .iter()
-        .filter(|run| run.verdict != Verdict::Cancelled)
+        .filter(|run| !matches!(run.verdict, Verdict::Cancelled | Verdict::Blocked))
         .map(|run| (unix_ms(&run.started_at).unwrap_or(i64::MIN), run))
         .collect();
     finished.sort_by_key(|(at, _)| *at);

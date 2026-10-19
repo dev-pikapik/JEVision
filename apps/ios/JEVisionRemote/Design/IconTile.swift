@@ -93,6 +93,7 @@ struct VerdictStyle {
     case .passed: (title, symbol, color) = (String(localized: "Passed"), "checkmark.circle.fill", .green)
     case .failed: (title, symbol, color) = (String(localized: "Failed"), "xmark.square.fill", .red)
     case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    case .blocked: (title, symbol, color) = (String(localized: "Blocked"), "minus.circle.fill", .yellow)
     }
   }
 

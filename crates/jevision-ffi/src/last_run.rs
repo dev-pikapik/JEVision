@@ -185,6 +185,8 @@ mod tests {
             quarantine_reason: None,
             virtual_machine: None,
             display_scale: None,
+            blocked: None,
+            added_as_dependency: false,
             rows: Vec::new(),
             attempts: attempts
                 .into_iter()

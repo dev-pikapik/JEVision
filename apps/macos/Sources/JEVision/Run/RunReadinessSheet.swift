@@ -21,8 +21,8 @@ struct RunReadinessSheet: View {
       VStack(alignment: .leading, spacing: 4) {
         Group {
           // Every test a batch has yet to run waits for this one.
-          if let batch = runs.batch, !batch.queue.isEmpty {
-            Text("Before \(batch.queue.count + 1) tests can run")
+          if let batch = runs.batch, batch.total - batch.done > 1 {
+            Text("Before \(batch.total - batch.done) tests can run")
           } else {
             Text("Before the test can run")
           }

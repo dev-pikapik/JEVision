@@ -4,6 +4,7 @@
 //! [`validate`] lists problems as localizable [`Issue`]s, and [`to_canonical_json`] writes it
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
+mod batch;
 mod board;
 mod canvas;
 mod data;
@@ -21,6 +22,10 @@ mod schedule;
 mod search;
 mod validate;
 
+pub use batch::{
+    Batch, BatchTest, BlockReason, Blocker, DEFAULT_PARALLEL, Loaded, MAX_PARALLEL, RunMode,
+    TestOutcome, TestState, WaitingFor, dependency_issues, resolve_test,
+};
 pub use board::{
     BOARD_SUFFIX, BOARDS_FOLDER, Board, BoardEdge, BoardLayout, BoardNode, BoardNodeKind,
     CARD_HEIGHT, CARD_WIDTH, FRAME_HEADER, LaidBoardEdge, LaidNode,
@@ -42,7 +47,7 @@ pub use merge::{
     ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
-pub use project::{PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use project::{FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,

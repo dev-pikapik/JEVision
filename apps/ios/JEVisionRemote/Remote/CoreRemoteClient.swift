@@ -183,6 +183,7 @@ extension Verdict {
     case .passed: self = .passed
     case .failed: self = .failed
     case .cancelled: self = .cancelled
+    case .blocked: self = .blocked
     }
   }
 }
@@ -311,6 +312,6 @@ extension RunReport {
               branch: step.branch, branches: step.branches.map(Int.init), branchCondition: step.branchCondition)
           })
       },
-      requestedBy: report.requestedBy)
+      requestedBy: report.requestedBy, blockedBy: report.blockedBy)
   }
 }

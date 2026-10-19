@@ -10,7 +10,8 @@ func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) 
     let issues: [Issue]
     do {
       let folder = URL(filePath: file).deletingLastPathComponent().path
-      issues = validateFlowIn(flow: try loadFlow(json: text), folder: folder)
+      let flow = try loadFlow(json: text)
+      issues = validateFlowIn(flow: flow, folder: folder) + dependencyProblems(flow, file)
     } catch let FlowError.Invalid(found) {
       issues = found
     } catch {
@@ -27,6 +28,14 @@ func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) 
     for report in reports { printIssues(report.issues, of: report.file, to: output) }
   }
   return status
+}
+
+/// Tests `flow`, saved as `file`, runs after that don't exist or that run after it in turn,
+/// looked up in the project the test would run in.
+private func dependencyProblems(_ flow: Flow, _ file: String) -> [Issue] {
+  guard !flow.dependsOn.isEmpty, let real = RunCommand.realPath(file) else { return [] }
+  let project = RunCommand.defaultProject(for: real, tests: [real])
+  return dependencyIssues(flow: flow, project: project, file: String(real.dropFirst(project == "/" ? 1 : project.count + 1)))
 }
 
 /// `jevision fmt`: rewrites tests in canonical form, or with `check` only names the ones that aren't.

@@ -2470,3 +2470,40 @@ fn files_and_databases_are_waited_for_and_read() {
     assert_eq!(failure.param("state"), "exists");
     assert!(!failure.param("path").starts_with('~'));
 }
+
+#[test]
+fn a_blocked_test_is_saved_with_its_reason_and_skipped_in_junit() {
+    let p = Project::new();
+    p.test(r#""a":{"type":"pressKeys","keys":"cmd+n"}"#, "a", 0);
+    let blocker = jevision_core::Blocker {
+        dependency: "login.flow.json".into(),
+        cause: "login.flow.json".into(),
+        cause_name: "Login".into(),
+        reason: jevision_core::BlockReason::Failed,
+    };
+    let options = RunOptions {
+        added_as_dependency: true,
+        ..RunOptions::default()
+    };
+    let run = Run::blocked(&p.0, Path::new("t.flow.json"), blocker, &options).unwrap();
+    let saved = Run::load(&run.dir).unwrap().report;
+    assert_eq!(saved, run.report);
+    assert_eq!(saved.verdict, Verdict::Blocked);
+    assert_eq!((saved.test.as_str(), saved.app.as_str()), ("T", APP));
+    assert!(saved.attempts.is_empty() && saved.added_as_dependency);
+    assert_eq!(Run::list(&p.0).unwrap().len(), 1, "history lists it");
+
+    let xml = junit_xml(std::slice::from_ref(&saved));
+    assert_well_formed_xml(&xml);
+    assert!(
+        xml.contains(r#"failures="0" errors="0" skipped="1""#),
+        "{xml}"
+    );
+    assert!(
+        xml.contains(r#"<skipped message="Blocked: Login failed."/>"#),
+        "{xml}"
+    );
+    let page = html(&saved, &run.dir, None);
+    assert!(page.contains("Blocked: Login failed. The test didn’t run"));
+    assert!(page.contains("Added to the run because other tests depend on it."));
+}

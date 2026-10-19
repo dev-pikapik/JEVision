@@ -15,6 +15,10 @@ pub struct MapTest {
     /// Test files its `runTest` blocks run, relative to the project folder, each once, in the
     /// order the blocks are saved. Paths that lead out of the project are left out.
     pub uses: Vec<String>,
+    /// Tests that must pass before this one runs, relative to the project folder, as saved in
+    /// its `dependsOn`. Paths that lead out of the project are left out.
+    #[uniffi(default = [])]
+    pub depends_on: Vec<String>,
     /// Problems that keep the test from running; 0 when it can run.
     pub errors: u32,
     /// The file is there and is a test this build can read.
@@ -50,6 +54,7 @@ fn map_test(project: &Path, file: String) -> MapTest {
             name: String::new(),
             blocks: 0,
             uses: Vec::new(),
+            depends_on: Vec::new(),
             errors: 0,
             readable: false,
         };
@@ -59,62 +64,38 @@ fn map_test(project: &Path, file: String) -> MapTest {
         let BlockKind::RunTest { test, .. } = &block.kind else {
             continue;
         };
-        if let Some(used) = resolve(&file, test).filter(|used| !uses.contains(used)) {
+        if let Some(used) =
+            jevision_core::resolve_test(&file, test).filter(|used| !uses.contains(used))
+        {
             uses.push(used);
         }
     }
     let folder = path.parent().unwrap_or(project);
-    let errors = jevision_core::validate_in(&flow, folder)
+    let mut issues = jevision_core::validate_in(&flow, folder);
+    issues.extend(jevision_core::dependency_issues(&flow, project, &file));
+    let errors = issues
         .iter()
         .filter(|issue| issue.severity == Severity::Error)
         .count();
+    let depends_on = flow
+        .depends_on
+        .iter()
+        .filter_map(|path| jevision_core::resolve_test(&file, path))
+        .collect();
     MapTest {
         name: flow.name.clone(),
         blocks: u32::try_from(flow.blocks.len()).unwrap_or(u32::MAX),
         uses,
+        depends_on,
         errors: u32::try_from(errors).unwrap_or(u32::MAX),
         readable: true,
         file,
     }
 }
 
-/// `path`, relative to the folder of the test `file`, as a path relative to the project;
-/// `None` when it leads out of the project.
-fn resolve(file: &str, path: &str) -> Option<String> {
-    if path.starts_with('/') {
-        return None;
-    }
-    let mut parts: Vec<&str> = file.split('/').collect();
-    parts.pop();
-    for part in path.split('/') {
-        match part {
-            "" | "." => {}
-            ".." => {
-                parts.pop()?;
-            }
-            part => parts.push(part),
-        }
-    }
-    Some(parts.join("/"))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn resolves_paths_from_the_test_folder() {
-        assert_eq!(
-            resolve("a.flow.json", "b.flow.json").as_deref(),
-            Some("b.flow.json")
-        );
-        assert_eq!(
-            resolve("smoke/a.flow.json", "../shared/./login.flow.json").as_deref(),
-            Some("shared/login.flow.json")
-        );
-        assert_eq!(resolve("a.flow.json", "../outside.flow.json"), None);
-        assert_eq!(resolve("a.flow.json", "/etc/x.flow.json"), None);
-    }
 
     #[test]
     fn maps_tests_and_what_they_run() {
@@ -180,6 +161,7 @@ mod tests {
                 name: "Log in".into(),
                 blocks: 1,
                 uses: vec![],
+                depends_on: vec![],
                 errors: 0,
                 readable: true,
             }

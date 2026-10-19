@@ -241,6 +241,10 @@ private struct ReportHeader: View {
           .foregroundStyle(.secondary)
           .textSelection(.enabled)
         }
+        if report.addedAsDependency {
+          Label("Added to the run because other tests in it depend on this one", systemImage: "arrow.turn.down.right")
+            .foregroundStyle(.secondary)
+        }
         HStack(spacing: 8) {
           if let failed {
             Button("Open Failed Block", systemImage: "scope") { openFailedBlock(failed) }
@@ -615,6 +619,7 @@ private struct RowResults: View {
     case .passed: "checkmark.circle.fill"
     case .failed: "xmark.square.fill"
     case .cancelled: "stop.circle.fill"
+    case .blocked: "minus.circle.fill"
     }
   }
 
@@ -623,6 +628,7 @@ private struct RowResults: View {
     case .passed: .green
     case .failed: .red
     case .cancelled: .secondary
+    case .blocked: .yellow
     }
   }
 
@@ -631,6 +637,7 @@ private struct RowResults: View {
     case .passed: String(localized: "Passed")
     case .failed: String(localized: "Failed")
     case .cancelled: String(localized: "Stopped")
+    case .blocked: String(localized: "Blocked")
     }
   }
 }

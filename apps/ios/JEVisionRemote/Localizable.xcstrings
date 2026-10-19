@@ -2391,6 +2391,36 @@
           }
         }
       }
+    },
+    "Blocked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован"
+          }
+        }
+      }
+    },
+    "The test didn’t run: a test it depends on didn’t pass." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не запускался: не прошёл тест, после которого он идёт."
+          }
+        }
+      }
+    },
+    "Blocked: %@ didn’t pass. The test didn’t run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован: тест «%@» не прошёл. Этот тест не запускался."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

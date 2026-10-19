@@ -45,6 +45,8 @@ enum Verdict: Hashable, Sendable {
   case passed
   case failed
   case cancelled
+  /// Didn't run: a test it depends on didn't pass.
+  case blocked
 }
 
 /// A test as the Mac lays it out, for drawing only. Geometry is in canvas points.
@@ -171,6 +173,8 @@ struct RunReport: Hashable, Sendable {
   var attempts: [Attempt]
   /// The paired device that started the run; `nil` when it was started on the Mac.
   var requestedBy: String? = nil
+  /// The test that didn't pass, so this one, depending on it, didn't run.
+  var blockedBy: String? = nil
 
   struct Attempt: Hashable, Sendable {
     var number: Int

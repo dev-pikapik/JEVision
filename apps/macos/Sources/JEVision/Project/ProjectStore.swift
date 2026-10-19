@@ -118,7 +118,7 @@ final class ProjectStore {
       return
     }
     let url = rootURL.appending(path: selection)
-    if document?.url != url { document = FlowDocument(url: url) }
+    if document?.url != url { document = FlowDocument(url: url, project: rootURL) }
   }
 
   /// The folder new tests go to: the selected folder, or the folder of the selected test.
@@ -279,6 +279,17 @@ final class ProjectStore {
   /// How many times a failed test is retried when its file doesn't say; `nil` retries none.
   func setDefaultRetries(_ retries: UInt32?) throws {
     try changeSettings { try JEVisionCore.setDefaultRetries(project: $0, retries: retries) }
+  }
+
+  /// How the tests of `folder`, relative to the project (`.` for Run All), run together.
+  func runMode(of folder: String) -> RunMode {
+    folderRunMode(settings: settings, folder: folder)
+  }
+
+  /// Sets how the tests of `folder` run together; saved in the project settings file, so everyone
+  /// who runs the project gets the same.
+  func setRunMode(_ mode: RunMode, of folder: String) throws {
+    try changeSettings { try setFolderRunMode(project: $0, folder: folder, mode: mode) }
   }
 
   /// Whether screenshots of the project's apps may go to cloud models.
