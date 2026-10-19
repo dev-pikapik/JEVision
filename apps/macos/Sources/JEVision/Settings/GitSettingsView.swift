@@ -179,9 +179,14 @@ struct GitSettingsView: View {
         case .signedOut:
           HStack {
             if git.signInCode == nil {
-              Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
-                .disabled(signInClientID.isEmpty)
-                .help(Text("Opens GitHub in your browser to let JEVision in"))
+              if signInClientID.isEmpty {
+                // Without an OAuth app, GitHub CLI signs in; its account is then offered below.
+                Button("Connect GitHub…") { GitHubConnect.start() }
+                  .help(Text("Opens Terminal to sign in to GitHub in your browser"))
+              } else {
+                Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
+                  .help(Text("Opens GitHub in your browser to let JEVision in"))
+              }
             }
             Button("Check Again", action: git.checkGitHub)
           }
@@ -264,9 +269,9 @@ struct GitSettingsView: View {
 
   private func signInHelp(_ problem: GitError) -> String {
     switch problem {
-    case .GitHubSignedOut:
+    case .NoGitHubCli, .GitHubSignedOut:
       signInClientID.isEmpty
-        ? String(localized: "To sign in in the browser, enter the Client ID of your GitHub OAuth app below.")
+        ? String(localized: "Connect GitHub to sign in once in your browser, then check again.")
         : String(localized: "Sign in once in your browser to open pull requests and push to GitHub.")
     default: GitText.failure(problem)
     }

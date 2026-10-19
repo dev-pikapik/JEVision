@@ -54,7 +54,10 @@ struct BugReportSheet: View {
     .frame(width: 640, height: 700)
     .task { await load() }
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-      // Back from Terminal after connecting GitHub.
+      // Back from the browser or Terminal after signing in to GitHub.
+      if case .unavailable = github, let draft { Task { await check(draft) } }
+    }
+    .onChange(of: project.git.gitHub) {
       if case .unavailable = github, let draft { Task { await check(draft) } }
     }
     .alert(
@@ -177,22 +180,23 @@ struct BugReportSheet: View {
     }
   }
 
+  private func openGitSettings() {
+    UserDefaults.standard.set(SettingsTab.git.rawValue, forKey: SettingsTab.key)
+    openSettings()
+  }
+
   @ViewBuilder private func unavailable(_ problem: GitError) -> some View {
     switch problem {
     case .NoGitHubCli, .GitHubSignedOut, .SignIn:
       LabeledContent {
-        Button("Connect GitHub…") { GitHubConnect.start() }
-          .help(Text("Opens Terminal to sign in to GitHub in your browser"))
+        Button("Open Git Settings…", action: openGitSettings)
       } label: {
         Text("GitHub isn’t connected")
         Text("Sign in once in your browser. JEVision checks again when you come back.")
       }
     case .NotRepository, .NoCommits, .NoRemote, .NotGitHub:
       LabeledContent {
-        Button("Open Git Settings…") {
-          UserDefaults.standard.set(SettingsTab.git.rawValue, forKey: SettingsTab.key)
-          openSettings()
-        }
+        Button("Open Git Settings…", action: openGitSettings)
       } label: {
         Text("This project isn’t on GitHub")
         Text("Bug reports go to the project’s GitHub repository. Put the project on GitHub, or copy the text to file it elsewhere.")

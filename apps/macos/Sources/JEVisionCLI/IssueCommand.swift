@@ -118,10 +118,8 @@ struct IssueCommand {
 
   static func message(_ error: GitError) -> String {
     switch error {
-    case .NoGitHubCli:
-      "GitHub isn’t connected: install GitHub CLI (brew install gh), then sign in with: gh auth login"
-    case .GitHubSignedOut, .SignIn:
-      "GitHub isn’t connected: sign in with: gh auth login"
+    case .NoGitHubCli, .GitHubSignedOut, .SignIn:
+      "GitHub isn’t connected: sign in to GitHub in JEVision (Settings → Git), or set GH_TOKEN"
     case .NotRepository, .NoCommits, .NoRemote, .NotGitHub:
       "the project isn’t on GitHub, so the bug can’t be filed there; print the report without --send to file it elsewhere"
     case .NoPermission:

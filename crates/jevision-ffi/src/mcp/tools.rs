@@ -1065,8 +1065,7 @@ fn github_message(error: &jevision_git::GitError) -> String {
     match error {
         NotRepository | NoCommits => "The project isn't in a git repository yet, so there is no GitHub repository to file the issue in. The person can set it up in JEVision → Settings → Git.".to_owned(),
         NoRemote | NotGitHub => "The project's repository isn't on GitHub, so the issue can't be filed there. Give the person the drafted text to file it by hand.".to_owned(),
-        NoGitHubCli => "GitHub isn't connected: GitHub CLI (gh) isn't installed on this Mac. The person can connect it in JEVision → Settings → Git.".to_owned(),
-        GitHubSignedOut | SignIn => "GitHub isn't connected: GitHub CLI isn't signed in. The person can run gh auth login in Terminal, or connect in JEVision → Settings → Git.".to_owned(),
+        NoGitHubCli | GitHubSignedOut | SignIn => "GitHub isn't connected. The person can sign in to GitHub in JEVision → Settings → Git.".to_owned(),
         NoPermission => "The GitHub account can't open issues in this repository.".to_owned(),
         other => format!("GitHub didn't take the bug report: {other}."),
     }

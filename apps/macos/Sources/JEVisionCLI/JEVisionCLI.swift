@@ -393,9 +393,9 @@ enum Help {
         --new                Open a new issue even when one about the same failure is open
         -h, --help           Show this help
 
-      Sending uses GitHub CLI: install it (brew install gh) and sign in once with
-      gh auth login. When an issue about the same failure is already open, nothing is sent
-      until you choose --comment-on or --new.
+      Sending uses the GitHub account JEVision is signed in to (Settings → Git), or the
+      token in GH_TOKEN or GITHUB_TOKEN when set. When an issue about the same failure is
+      already open, nothing is sent until you choose --comment-on or --new.
 
       Exit status: 0 — printed or sent, 1 — not sent because an issue about the failure is
       open, 2 — wrong arguments, no failed run, or GitHub didn't take the report.

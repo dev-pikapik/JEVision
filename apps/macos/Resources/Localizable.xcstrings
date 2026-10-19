@@ -15686,16 +15686,6 @@
         }
       }
     },
-    "To sign in in the browser, enter the Client ID of your GitHub OAuth app below." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Чтобы войти через браузер, введите ниже Client ID вашего OAuth-приложения GitHub."
-          }
-        }
-      }
-    },
     "To take screenshots of the app you test" : {
       "localizations" : {
         "ru" : {
