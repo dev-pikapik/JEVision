@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "name": "Scroll to the end of a long note",
+  "description": "Opens a copy of long-note.txt in TextEdit, scrolls down past the end of the text, checks how the window looks and quits TextEdit.",
+  "app": "com.apple.TextEdit",
+  "testType": "smoke",
+  "priority": "low",
+  "status": "ready",
+  "tags": [
+    "example"
+  ],
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "openFile",
+      "files": [
+        "long-note.txt"
+      ],
+      "app": "com.apple.TextEdit",
+      "next": "scroll"
+    },
+    "scroll": {
+      "type": "scroll",
+      "direction": "down",
+      "amount": 200,
+      "unit": "lines",
+      "waitForChange": true,
+      "next": "settle"
+    },
+    "settle": {
+      "type": "waitFor",
+      "until": "screenStable",
+      "timeout": "10s",
+      "next": "check"
+    },
+    "check": {
+      "type": "check",
+      "reference": {
+        "image": "refs/long-note-end.png",
+        "compare": "similar",
+        "threshold": 0.95
+      },
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

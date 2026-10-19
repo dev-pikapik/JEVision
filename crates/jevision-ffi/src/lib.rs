@@ -11,8 +11,8 @@ use jevision_core::{
     Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod,
     Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton, NamedValue, Note,
     OutputKind, Point, Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput,
-    SearchCandidate, Severity, Slot, Target, TestStatus, TestType, ValueCheck, ValueTest,
-    WaitUntil,
+    ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot, Target, TestStatus, TestType,
+    ValueCheck, ValueTest, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -426,6 +426,25 @@ pub enum BlockKind {
         wait_for_change: bool,
         next: Option<String>,
     },
+    Hover {
+        target: Target,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
+    Drag {
+        from: Target,
+        to: Target,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
+    Scroll {
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+        at: Option<Target>,
+        wait_for_change: bool,
+        next: Option<String>,
+    },
     Type {
         text: String,
         into: Option<Target>,
@@ -623,6 +642,20 @@ pub struct Rect {
 pub enum MouseButton {
     Left,
     Right,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ScrollDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ScrollUnit {
+    Lines,
+    Pixels,
 }
 
 #[uniffi::remote(Enum)]

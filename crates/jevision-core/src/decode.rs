@@ -9,8 +9,8 @@ use crate::issue::{Issue, ParseError};
 use crate::model::{
     Block, BlockKind, CanvasContent, CanvasSection, Compare, Condition, DatabaseExpect, ElseIf,
     ExpectStatus, FileState, Flow, HttpMethod, MouseButton, NamedValue, Note, OutputKind, Point,
-    Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput, Target, TestStatus,
-    TestType, ValueCheck, ValueTest, WaitUntil, parse_duration,
+    Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput, ScrollDirection,
+    ScrollUnit, Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -348,6 +348,14 @@ const STATUSES: &[(&str, TestStatus)] = &[
 ];
 const BUTTONS: &[(&str, MouseButton)] =
     &[("left", MouseButton::Left), ("right", MouseButton::Right)];
+const SCROLL_DIRECTIONS: &[(&str, ScrollDirection)] = &[
+    ("up", ScrollDirection::Up),
+    ("down", ScrollDirection::Down),
+    ("left", ScrollDirection::Left),
+    ("right", ScrollDirection::Right),
+];
+const SCROLL_UNITS: &[(&str, ScrollUnit)] =
+    &[("lines", ScrollUnit::Lines), ("pixels", ScrollUnit::Pixels)];
 
 #[derive(Clone, Copy)]
 enum CompareMode {
@@ -540,6 +548,52 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     target: target?,
                     button: button.unwrap_or(MouseButton::Left),
                     double,
+                    wait_for_change,
+                    next,
+                })
+            })
+        }
+        "hover" => {
+            let target = o.object("target", out).and_then(|t| target(t, out));
+            let wait_for_change = o.flag("waitForChange", out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Hover {
+                    target: target?,
+                    wait_for_change,
+                    next,
+                })
+            })
+        }
+        "drag" => {
+            let from = o.object("from", out).and_then(|t| target(t, out));
+            let to = o.object("to", out).and_then(|t| target(t, out));
+            let wait_for_change = o.flag("waitForChange", out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Drag {
+                    from: from?,
+                    to: to?,
+                    wait_for_change,
+                    next,
+                })
+            })
+        }
+        "scroll" => {
+            let direction = o.opt_choice("direction", SCROLL_DIRECTIONS, out);
+            let direction = o.require("direction", direction, out);
+            let amount = o.opt_uint("amount", out);
+            let amount = o.require("amount", amount, out);
+            let unit = o.opt_choice("unit", SCROLL_UNITS, out);
+            let at = o.opt_object("at", out).and_then(|t| target(t, out));
+            let wait_for_change = o.flag("waitForChange", out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Scroll {
+                    direction: direction?,
+                    amount: amount?,
+                    unit: unit.unwrap_or(ScrollUnit::Lines),
+                    at,
                     wait_for_change,
                     next,
                 })

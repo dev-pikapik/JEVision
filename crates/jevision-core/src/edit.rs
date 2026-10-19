@@ -6,9 +6,12 @@ use std::collections::{HashMap, HashSet};
 use crate::decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS};
 use crate::model::{
     BODY, Block, BlockKind, Compare, Condition, ELSE, ElseIf, ExpectStatus, FileState, Flow,
-    HttpMethod, MouseButton, NEXT, Reference, ScriptLanguage, THEN, Target, ValueCheck, ValueTest,
-    WaitUntil, else_if_index,
+    HttpMethod, MouseButton, NEXT, Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN,
+    Target, ValueCheck, ValueTest, WaitUntil, else_if_index,
 };
+
+/// How far a new scroll block scrolls, in lines.
+pub const DEFAULT_SCROLL_LINES: u32 = 5;
 
 /// Name of the slot before the first block, used with an empty [`Slot::from`].
 pub const START: &str = "start";
@@ -41,6 +44,25 @@ impl BlockKind {
                 target: Target::Image(String::new()),
                 button: MouseButton::Left,
                 double: false,
+                wait_for_change: false,
+                next: None,
+            },
+            "hover" => Self::Hover {
+                target: Target::Image(String::new()),
+                wait_for_change: false,
+                next: None,
+            },
+            "drag" => Self::Drag {
+                from: Target::Image(String::new()),
+                to: Target::Image(String::new()),
+                wait_for_change: false,
+                next: None,
+            },
+            "scroll" => Self::Scroll {
+                direction: ScrollDirection::Down,
+                amount: DEFAULT_SCROLL_LINES,
+                unit: ScrollUnit::Lines,
+                at: None,
                 wait_for_change: false,
                 next: None,
             },
@@ -223,6 +245,9 @@ impl BlockKind {
             Self::OpenApp { next, .. }
             | Self::OpenFile { next, .. }
             | Self::Click { next, .. }
+            | Self::Hover { next, .. }
+            | Self::Drag { next, .. }
+            | Self::Scroll { next, .. }
             | Self::Type { next, .. }
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }

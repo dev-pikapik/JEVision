@@ -263,6 +263,16 @@
         }
       }
     },
+    "Drag" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивание"
+          }
+        }
+      }
+    },
     "Expected" : {
       "localizations" : {
         "ru" : {
@@ -319,6 +329,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Забыть «%@»?"
+          }
+        }
+      }
+    },
+    "Hover" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведение"
           }
         }
       }
@@ -873,6 +893,22 @@
         }
       }
     },
+    "run.action.noChange" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen didn’t change within %@ s after this step."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не изменился за %2$@ с после этого шага."
+          }
+        }
+      }
+    },
     "Running Now" : {
       "localizations" : {
         "ru" : {
@@ -979,6 +1015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запись экрана"
+          }
+        }
+      }
+    },
+    "Scroll" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутка"
           }
         }
       }

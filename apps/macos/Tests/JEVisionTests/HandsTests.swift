@@ -43,6 +43,22 @@ struct FrontWindowTests {
     #expect(MacHands.front(of: [helper])?.id == 2)
     #expect(MacHands.front(of: []) == nil)
   }
+
+  @Test func picksTheAppsWindowsOverTheFrontOne() {
+    func info(_ id: Int, pid: Int, _ rect: CGRect) -> [String: Any] {
+      [kCGWindowNumber as String: CGWindowID(id), kCGWindowOwnerPID as String: pid_t(pid), kCGWindowBounds as String: rect.dictionaryRepresentation]
+    }
+    let finder = CGRect(x: 104, y: 237, width: 920, height: 492)
+    let list = [
+      info(9, pid: 7, CGRect(x: 0, y: 0, width: 3440, height: 24)),  // another app's menu bar
+      info(8, pid: 1, CGRect(x: 690, y: 285, width: 303, height: 21)),  // the tooltip
+      info(6, pid: 1, CGRect(x: 2000, y: 900, width: 50, height: 50)),  // the app's, elsewhere
+      info(5, pid: 1, finder),
+      info(4, pid: 1, CGRect(x: 200, y: 300, width: 400, height: 200)),  // behind it
+    ]
+    #expect(MacHands.overlays(above: 5, bounds: finder, pids: [1], in: list) == [8])
+    #expect(MacHands.overlays(above: 8, bounds: finder, pids: [1], in: list) == [])
+  }
 }
 
 struct KeyStrokeTests {

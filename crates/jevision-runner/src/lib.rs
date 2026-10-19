@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 pub use control::{PauseReason, RunControl};
 pub use jevision_core::{DataError, DataTable};
-pub use jevision_core::{MouseButton, Point};
+pub use jevision_core::{MouseButton, Point, ScrollDirection, ScrollUnit};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, MaskedImage, PixelArea, Provider,
@@ -74,6 +74,21 @@ pub trait Hands: Send + Sync {
         at: Point,
         button: MouseButton,
         double: bool,
+    ) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and leaves it there.
+    fn hover(&self, app: &str, at: Point) -> Result<(), HandsError>;
+    /// Presses the left button at the first point of `path`, moves through the others holding
+    /// it down, and lets go at the last. The button is let go even when the run is cancelled.
+    fn drag(&self, app: &str, path: &[Point]) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
+    /// brings what is further down into sight.
+    fn scroll(
+        &self,
+        app: &str,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
     ) -> Result<(), HandsError>;
     /// Types text into the front application. The text may hold secret values: never log it.
     fn type_text(&self, text: &str) -> Result<(), HandsError>;

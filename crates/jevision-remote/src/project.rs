@@ -6,7 +6,9 @@ use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use jevision_core::{BlockKind, Condition, DataTable, Target, WaitUntil};
+use jevision_core::{
+    BlockKind, Condition, DataTable, ScrollDirection, ScrollUnit, Target, WaitUntil,
+};
 use jevision_runner::{Run, RunReport};
 
 use crate::RemoteError;
@@ -222,10 +224,27 @@ fn title(kind: &BlockKind) -> String {
     match kind {
         BlockKind::OpenApp { app, .. } => app.clone().unwrap_or_default(),
         BlockKind::OpenFile { files, .. } => files.join(", "),
-        BlockKind::Click { target, .. } => match target {
-            Target::Image(image) => image.clone(),
-            Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
-        },
+        BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => target_title(target),
+        BlockKind::Drag { from, to, .. } => {
+            format!("{} → {}", target_title(from), target_title(to))
+        }
+        BlockKind::Scroll {
+            direction,
+            amount,
+            unit,
+            ..
+        } => {
+            let arrow = match direction {
+                ScrollDirection::Up => '↑',
+                ScrollDirection::Down => '↓',
+                ScrollDirection::Left => '←',
+                ScrollDirection::Right => '→',
+            };
+            match unit {
+                ScrollUnit::Lines => format!("{arrow} {amount}"),
+                ScrollUnit::Pixels => format!("{arrow} {amount} px"),
+            }
+        }
         BlockKind::Type { text, .. } => text.clone(),
         BlockKind::PressKeys { keys, .. } => keys.clone(),
         BlockKind::WaitFor { until, .. } => match until {
@@ -249,6 +268,13 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::Http { url, .. } => url.clone(),
         BlockKind::CheckFile { path, .. } => path.clone(),
         BlockKind::Database { file, .. } => file.clone(),
+    }
+}
+
+fn target_title(target: &Target) -> String {
+    match target {
+        Target::Image(image) => image.clone(),
+        Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
     }
 }
 

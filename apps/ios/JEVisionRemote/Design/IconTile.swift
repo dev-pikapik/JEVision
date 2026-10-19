@@ -24,6 +24,9 @@ enum BlockInfo {
     case "openApp": "macwindow.badge.plus"
     case "openFile": "doc"
     case "click": "cursorarrow.click"
+    case "hover": "cursorarrow.rays"
+    case "drag": "cursorarrow.and.square.on.square.dashed"
+    case "scroll": "scroll"
     case "type": "character.cursor.ibeam"
     case "pressKeys": "command"
     case "waitFor": "hourglass"
@@ -46,6 +49,9 @@ enum BlockInfo {
     case "openApp": String(localized: "Open App")
     case "openFile": String(localized: "Open File")
     case "click": String(localized: "Click")
+    case "hover": String(localized: "Hover")
+    case "drag": String(localized: "Drag")
+    case "scroll": String(localized: "Scroll")
     case "type": String(localized: "Type Text")
     case "pressKeys": String(localized: "Press Keys")
     case "waitFor": String(localized: "Wait For")
@@ -65,7 +71,7 @@ enum BlockInfo {
 
   static func color(_ kind: String) -> Color {
     switch kind {
-    case "openApp", "openFile", "click", "type", "pressKeys": .blue
+    case "openApp", "openFile", "click", "hover", "drag", "scroll", "type", "pressKeys": .blue
     case "waitFor", "check": .orange
     case "if", "repeat", "runTest": .purple
     case "useData", "http", "database", "checkFile", "command", "script": .green
