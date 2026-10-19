@@ -34,6 +34,12 @@ enum IssueText {
       return String(localized: "flow.reference.expectNeedsMeaning", defaultValue: "An expected text works only with “By Meaning” comparison.")
     case "flow.reference.modelNeedsMeaning":
       return String(localized: "flow.reference.modelNeedsMeaning", defaultValue: "A model works only with “By Meaning” comparison.")
+    case "flow.reference.providerNeedsMeaning":
+      return String(localized: "flow.reference.providerNeedsMeaning", defaultValue: "An AI choice works only with “By Meaning” comparison.")
+    case "flow.reference.unknownProvider":
+      return String(
+        localized: "flow.reference.unknownProvider",
+        defaultValue: "“\(p("provider"))” isn’t an AI JEVision knows. Use one of: \(p("allowed")).")
     case "flow.reference.thresholdNeedsSimilar":
       return String(localized: "flow.reference.thresholdNeedsSimilar", defaultValue: "A similarity threshold works only with “Similar” comparison.")
     case "flow.field.empty":

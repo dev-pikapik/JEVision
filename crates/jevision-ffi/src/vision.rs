@@ -3,6 +3,7 @@
 //! thread.
 
 use std::fmt;
+use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 
 use jevision_runner::{
@@ -31,7 +32,7 @@ pub struct VisionProvider {
 }
 
 /// Which model to ask and how to reach it.
-#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Clone, Default, PartialEq, Eq, uniffi::Record)]
 pub struct VisionSettings {
     /// A [`VisionProvider::id`].
     pub provider: String,
@@ -70,6 +71,84 @@ impl VisionSettings {
             },
             TIMEOUT,
         ))
+    }
+}
+
+/// The settings of each provider, asked for only when a check by meaning names that provider,
+/// so a run reads no API key it doesn't need.
+#[uniffi::export(with_foreign)]
+pub trait ProviderSettings: Send + Sync {
+    /// `None` when the provider isn't set up.
+    fn settings(&self, provider: String) -> Option<VisionSettings>;
+}
+
+impl fmt::Debug for dyn ProviderSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ProviderSettings")
+    }
+}
+
+/// One provider's judge, which asks for its settings the first time a check needs more than
+/// its id.
+pub(crate) struct NamedJudge {
+    provider: Provider,
+    source: Arc<dyn ProviderSettings>,
+    client: OnceLock<VisionClient>,
+}
+
+impl NamedJudge {
+    pub(crate) fn every(source: &Arc<dyn ProviderSettings>) -> Vec<Self> {
+        Provider::ALL
+            .into_iter()
+            .map(|provider| Self {
+                provider,
+                source: source.clone(),
+                client: OnceLock::new(),
+            })
+            .collect()
+    }
+
+    fn client(&self) -> &VisionClient {
+        self.client.get_or_init(|| {
+            let s = self
+                .source
+                .settings(self.provider.id().to_owned())
+                // Not set up: no key, so a provider that needs one says so.
+                .unwrap_or_else(|| VisionSettings {
+                    model: self.provider.default_model().to_owned(),
+                    ..VisionSettings::default()
+                });
+            VisionClient::new(
+                VisionConfig {
+                    provider: self.provider,
+                    model: s.model,
+                    address: s.address,
+                    key: s.key,
+                },
+                TIMEOUT,
+            )
+        })
+    }
+}
+
+impl VisionJudge for NamedJudge {
+    fn provider(&self) -> &str {
+        self.provider.name()
+    }
+    fn provider_id(&self) -> &str {
+        self.provider.id()
+    }
+    fn model(&self) -> &str {
+        self.client().model()
+    }
+    fn is_local(&self) -> bool {
+        self.client().is_local()
+    }
+    fn judge(
+        &self,
+        question: &jevision_runner::Question<'_>,
+    ) -> Result<jevision_runner::Judgement, jevision_runner::VisionError> {
+        self.client().judge(question)
     }
 }
 
@@ -235,6 +314,45 @@ fn failed(client: &VisionClient, e: &jevision_runner::VisionError) -> VisionCall
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Settings that note every provider asked for.
+    #[derive(Default)]
+    struct Asked(std::sync::Mutex<Vec<String>>);
+
+    impl ProviderSettings for Asked {
+        fn settings(&self, provider: String) -> Option<VisionSettings> {
+            self.0.lock().unwrap().push(provider.clone());
+            (provider == "ollama").then(|| VisionSettings {
+                provider,
+                model: "llava".into(),
+                ..VisionSettings::default()
+            })
+        }
+    }
+
+    #[test]
+    fn a_run_reads_only_the_settings_of_the_providers_its_checks_name() {
+        let asked = Arc::new(Asked::default());
+        let source: Arc<dyn ProviderSettings> = asked.clone();
+        let judges = NamedJudge::every(&source);
+        let ids: Vec<&str> = judges.iter().map(|j| j.provider_id()).collect();
+        assert_eq!(ids, jevision_core::AI_PROVIDERS);
+        assert!(asked.0.lock().unwrap().is_empty());
+
+        let ollama = judges.iter().find(|j| j.provider_id() == "ollama").unwrap();
+        assert_eq!(ollama.provider(), "Ollama");
+        assert!(asked.0.lock().unwrap().is_empty());
+        assert_eq!(ollama.model(), "llava");
+        assert!(ollama.is_local());
+        assert_eq!(*asked.0.lock().unwrap(), ["ollama"]);
+
+        // A provider that isn't set up keeps its usual model and has no key, so its checks say
+        // the key is missing.
+        let openai = judges.iter().find(|j| j.provider_id() == "openai").unwrap();
+        assert!(!openai.is_local());
+        assert_eq!(openai.model(), Provider::OpenAi.default_model());
+        assert_eq!(*asked.0.lock().unwrap(), ["ollama", "openai"]);
+    }
 
     fn settings(provider: &str, address: &str, key: Option<&str>) -> VisionSettings {
         VisionSettings {

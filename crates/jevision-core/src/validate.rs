@@ -6,7 +6,8 @@ use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
-    BODY, Block, BlockKind, Compare, Flow, Point, Rect, Reference, Target, format_duration,
+    AI_PROVIDERS, BODY, Block, BlockKind, Compare, Flow, Point, Rect, Reference, Target,
+    format_duration,
 };
 
 pub const MAX_RETRIES: u32 = 10;
@@ -382,6 +383,18 @@ fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
         matches!(&r.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty());
     if !(image_optional && r.image.is_empty()) {
         relative_path(block, &format!("{field}.image"), &r.image, out);
+    }
+    if let Compare::Meaning { provider, .. } = &r.compare
+        && !provider.is_empty()
+        && !AI_PROVIDERS.contains(&provider.as_str())
+    {
+        out.push(
+            Issue::error("flow.reference.unknownProvider")
+                .with("block", block)
+                .with("field", format!("{field}.provider"))
+                .with("provider", provider)
+                .with("allowed", AI_PROVIDERS.join(", ")),
+        );
     }
     if let Compare::Similar { threshold } = r.compare {
         if !(threshold > 0.0 && threshold <= 1.0) {

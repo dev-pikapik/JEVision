@@ -25,8 +25,8 @@ use crate::{
     SecretSource, VisionError, VisionJudge,
 };
 use jevision_core::DataTable;
-use jevision_vision::MaskedImage;
 use jevision_vision::image::{Comparison, Image};
+use jevision_vision::{MaskedImage, Provider};
 
 /// How far a pixel channel may be off and still count as the same colour when comparing by
 /// similarity; absorbs font smoothing and colour-profile noise.
@@ -119,6 +119,10 @@ pub struct Runner<'a> {
     /// Judges instead when [`vision`](Self::vision) can't be reached, is overloaded or has used
     /// up its spending limit.
     pub fallback: Option<&'a dyn VisionJudge>,
+    /// Judges for checks that name their provider, found by [`VisionJudge::provider_id`] after
+    /// [`vision`](Self::vision); a check naming a provider in neither fails with
+    /// `run.vision.noKey`.
+    pub providers: &'a [&'a dyn VisionJudge],
     /// Where every AI call is logged, and the limits it is held to.
     pub usage: Option<&'a UsageBook>,
 }
@@ -1224,12 +1228,35 @@ impl Exec<'_> {
         strict: bool,
         cache: &mut Option<Loaded>,
     ) -> Result<Result<Evaluation, String>, Stop> {
-        let judge = self.runner.vision.ok_or_else(|| {
-            fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
-        })?;
-        let (expect, model) = match &r.compare {
-            Compare::Meaning { expect, model } => (expect.trim(), model.trim()),
-            _ => ("", ""),
+        let (expect, model, provider) = match &r.compare {
+            Compare::Meaning {
+                expect,
+                model,
+                provider,
+            } => (expect.trim(), model.trim(), provider.as_str()),
+            _ => ("", "", ""),
+        };
+        let judge = if provider.is_empty() {
+            self.runner.vision.ok_or_else(|| {
+                fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
+            })?
+        } else {
+            // The run's own provider first: its settings may be the command line's.
+            let named = self.runner.providers.iter().copied();
+            self.runner
+                .vision
+                .into_iter()
+                .chain(named)
+                .find(|j| j.provider_id() == provider)
+                .ok_or_else(|| {
+                    let name = Provider::from_id(provider)
+                        .map_or(provider.to_owned(), |p| p.name().to_owned());
+                    fail(
+                        Failure::new("run.vision.noKey")
+                            .with("block", id)
+                            .with("provider", name),
+                    )
+                })?
         };
         let local_only = self.options.local_only || self.local_only;
         if local_only && !judge.is_local() {

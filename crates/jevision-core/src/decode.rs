@@ -683,6 +683,7 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
     let mode = o.opt_choice("compare", COMPARE, out);
     let expect = o.opt_string("expect", out);
     let model = o.opt_string("model", out);
+    let provider = o.opt_string("provider", out);
     // A meaning check that says what to expect needs no reference image.
     let image = match (mode, &expect) {
         (Some(CompareMode::Meaning), Some(e)) if !e.trim().is_empty() => {
@@ -705,6 +706,7 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
         (CompareMode::Meaning, None) => Some(Compare::Meaning {
             expect: expect.clone().unwrap_or_default(),
             model: model.clone().unwrap_or_default().trim().to_owned(),
+            provider: provider.clone().unwrap_or_default().trim().to_owned(),
         }),
         (_, Some(_)) => {
             out.push(o.issue(
@@ -719,6 +721,12 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
         None
     } else if model.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
         out.push(o.issue("flow.reference.modelNeedsMeaning", &o.path_of("model")));
+        None
+    } else if provider.is_some() && !matches!(mode, Some(CompareMode::Meaning)) {
+        out.push(o.issue(
+            "flow.reference.providerNeedsMeaning",
+            &o.path_of("provider"),
+        ));
         None
     } else {
         compare

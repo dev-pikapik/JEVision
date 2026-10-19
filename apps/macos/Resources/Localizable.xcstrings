@@ -4829,6 +4829,16 @@
         }
       }
     },
+    "From Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в настройках"
+          }
+        }
+      }
+    },
     "From Top" : {
       "localizations" : {
         "ru" : {
@@ -12108,6 +12118,16 @@
         }
       }
     },
+    "Which AI judges this check. “From Settings” uses the one chosen in Settings → AI." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какой ИИ проверяет этот блок. «Как в настройках» — тот, что выбран в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "Who ran what, and when" : {
       "localizations" : {
         "ru" : {
@@ -13078,6 +13098,22 @@
         }
       }
     },
+    "flow.reference.providerNeedsMeaning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An AI choice works only with “By Meaning” comparison."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбор ИИ работает только со сравнением «По смыслу»."
+          }
+        }
+      }
+    },
     "flow.reference.thresholdNeedsSimilar" : {
       "localizations" : {
         "ru" : {
@@ -13090,6 +13126,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A similarity threshold works only with “Similar” comparison."
+          }
+        }
+      }
+    },
+    "flow.reference.unknownProvider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t an AI JEVision knows. Use one of: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%1$@» — не ИИ, который знает JEVision. Используйте одно из: %2$@."
           }
         }
       }

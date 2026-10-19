@@ -306,7 +306,7 @@ struct ReferenceEditor: View {
         switch $0 {
         case .exact: reference.compare = .exact
         case .similar: reference.compare = .similar(threshold: 0.95)
-        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "", model: "") }
+        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "", model: "", provider: "") }
         }
       })
   }
@@ -315,21 +315,36 @@ struct ReferenceEditor: View {
     if case .meaning = reference.compare { true } else { false }
   }
 
+  private var meaning: (expect: String, model: String, provider: String) {
+    if case .meaning(let expect, let model, let provider) = reference.compare { (expect, model, provider) } else { ("", "", "") }
+  }
+
   private var expectation: Binding<String> {
     Binding(
-      get: { if case .meaning(let expect, _) = reference.compare { expect } else { "" } },
-      set: { reference.compare = .meaning(expect: $0, model: model.wrappedValue) })
+      get: { meaning.expect },
+      set: { reference.compare = .meaning(expect: $0, model: meaning.model, provider: meaning.provider) })
   }
 
   private var model: Binding<String> {
     Binding(
-      get: { if case .meaning(_, let model) = reference.compare { model } else { "" } },
-      set: { reference.compare = .meaning(expect: expectation.wrappedValue, model: $0) })
+      get: { meaning.model },
+      set: { reference.compare = .meaning(expect: meaning.expect, model: $0, provider: meaning.provider) })
   }
 
-  /// The model of the provider chosen in Settings → AI, shown when a block keeps it.
+  /// A model belongs to its provider, so choosing another provider clears it.
+  private var provider: Binding<String> {
+    Binding(
+      get: { meaning.provider },
+      set: {
+        guard $0 != meaning.provider else { return }
+        reference.compare = .meaning(expect: meaning.expect, model: "", provider: $0)
+      })
+  }
+
+  /// The model the settings choose for the block's provider, shown when the block keeps it.
   private var settingsModel: String {
-    AISettings.provider(aiProvider).map { AISettings(.standard).model(for: $0) } ?? ""
+    AISettings.provider(meaning.provider.isEmpty ? aiProvider : meaning.provider)
+      .map { AISettings(.standard).model(for: $0) } ?? ""
   }
 
   private var threshold: Binding<Double> {
@@ -370,6 +385,17 @@ struct ReferenceEditor: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".expect"))
+      Picker(selection: provider) {
+        Text("From Settings").tag("")
+        ForEach(AISettings.providers, id: \.id) { Text($0.name).tag($0.id) }
+      } label: {
+        Text("AI")
+      }
+      Text("Which AI judges this check. “From Settings” uses the one chosen in Settings → AI.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+      IssueList(issues: context.issues(field + ".provider"))
       TextField(text: model, prompt: Text(settingsModel)) { Text("Model") }
       Text("Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check.")
         .font(.callout)
