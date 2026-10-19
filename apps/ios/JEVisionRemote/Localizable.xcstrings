@@ -2063,6 +2063,23 @@
         }
       }
     },
+    "run.vision.noPictures" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI model for %@ doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ для %@ не понимает картинки, поэтому не может проверить этот экран. Включите «Понимает картинки» в Настройках → ИИ или выберите другого провайдера."
+          }
+        }
+      }
+    },
     "run.vision.rateLimited" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

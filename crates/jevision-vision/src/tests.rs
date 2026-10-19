@@ -19,6 +19,7 @@ fn config(provider: Provider, address: &str) -> Config {
         model: "vision-model".into(),
         address: address.into(),
         key: provider.key_name().map(|_| KEY.to_owned()),
+        pictures: true,
     }
 }
 
@@ -449,6 +450,14 @@ fn missing_settings_fail_before_anything_is_sent() {
     assert_eq!(judge(&c), VisionError::NoKey);
     c.model = " ".into();
     assert_eq!(judge(&c), VisionError::NoModel);
+    // A text-only model: the question stops before the closed port is tried.
+    let text_only = Config {
+        pictures: false,
+        ..config(Provider::Ollama, "http://localhost:9")
+    };
+    assert_eq!(judge(&text_only), VisionError::NoPictures);
+    let test = Client::new(text_only, Duration::from_secs(1)).test();
+    assert_eq!(test.unwrap_err(), VisionError::NoPictures);
     let c = config(Provider::OpenAiCompatible, "localhost:1234/v1");
     assert_eq!(
         judge(&c),
