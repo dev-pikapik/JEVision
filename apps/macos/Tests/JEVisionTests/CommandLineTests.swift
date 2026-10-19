@@ -42,6 +42,9 @@ struct CommandLineArgumentTests {
     var counting = RunRequest(paths: ["t.flow.json"])
     counting.includeQuarantinedFailures = true
     #expect(try Command.parse(["run", "t.flow.json", "--include-quarantined-failures"]) == .run(counting))
+    var quiet = RunRequest(paths: ["t.flow.json"])
+    quiet.notify = false
+    #expect(try Command.parse(["run", "t.flow.json", "--no-notify"]) == .run(quiet))
   }
 
   @Test func videoSettings() throws {

@@ -419,12 +419,31 @@ final class TestSession: @unchecked Sendable {
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
       printVerdict(report, dir: dir, html: html ?? dir)
+      if request.notify { notify(about: dir) }
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
       progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
       return .error(reason)
     case nil:
       return .error("The run ended without a result.")
+    }
+  }
+
+  /// Sends the messages the project's notification settings ask for, and says how it went.
+  private func notify(about dir: String) {
+    do {
+      for sent in try notifyRun(project: project, dir: dir) {
+        let channel = notifyChannelName(channel: sent.channel)
+        if let failure = sent.failure {
+          progress.line("  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red))
+        } else {
+          progress.line("  Message sent to \(channel)")
+        }
+      }
+    } catch let error as NotifyError {
+      progress.line("  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red))
+    } catch {
+      progress.line("  " + progress.paint("✗ No messages sent: \(error)", .red))
     }
   }
 

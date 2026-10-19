@@ -36,6 +36,8 @@ final class RunCenter {
     var offersGitIgnore: Bool
     /// The run stopped for something Settings → AI fixes.
     var needsAISetup = false
+    /// Why messages about the run to Slack, Telegram or email didn't go.
+    var notificationProblem: String?
     /// The run passed without any block looking at the screen.
     var nothingChecked = false
   }
@@ -295,7 +297,7 @@ final class RunCenter {
         requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, usage: ai.usage, video: videos.mode,
         keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
-      secrets: StoredSecrets(), listener: RunBridge(center: self, remote: remoteListener?(request.project)))
+      secrets: StoredSecrets(), listener: RunBridge(center: self, project: request.project.path, remote: remoteListener?(request.project)))
     return true
   }
 
@@ -369,6 +371,12 @@ final class RunCenter {
   }
 
   func dismissResult() { result = nil }
+
+  /// Messages about the run in `dir` didn't go; shown with its result while that is on screen.
+  fileprivate func notificationsFailed(_ problem: String, run dir: String) {
+    guard result?.run == URL(filePath: dir, directoryHint: .isDirectory) else { return }
+    result?.notificationProblem = problem
+  }
 
   func addToGitIgnore() throws {
     guard let project = result?.project else { return }
@@ -485,10 +493,12 @@ final class RunCenter {
 /// right away, on the run's thread.
 private final class RunBridge: RunListener {
   let center: RunCenter
+  let project: String
   let remote: (any RunListener)?
 
-  init(center: RunCenter, remote: (any RunListener)?) {
+  init(center: RunCenter, project: String, remote: (any RunListener)?) {
     self.center = center
+    self.project = project
     self.remote = remote
   }
 
@@ -503,6 +513,13 @@ private final class RunBridge: RunListener {
     remote?.finished(outcome: outcome)
     DispatchQueue.main.async { [center] in
       MainActor.assumeIsolated { center.finish(outcome) }
+    }
+    // Still on the run's thread, which has nothing else to do: the services may take a while.
+    guard case .finished(let dir, _, _) = outcome,
+      let problem = NotificationsText.notify(project: project, dir: dir)
+    else { return }
+    DispatchQueue.main.async { [center] in
+      MainActor.assumeIsolated { center.notificationsFailed(problem, run: dir) }
     }
   }
 }

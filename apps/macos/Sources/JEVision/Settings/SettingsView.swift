@@ -13,7 +13,7 @@ struct SettingsView: View {
         if model.query.isEmpty {
           Section { rows([.general]) }
           Section("Testing") { rows([.ai, .permissions, .advanced]) }
-          Section("Connections") { rows([.remote, .git]) }
+          Section("Connections") { rows([.remote, .git, .notifications]) }
         } else {
           results
         }
@@ -103,6 +103,7 @@ struct SettingsView: View {
     case .permissions: PermissionsSettingsView()
     case .remote: RemoteSettingsView()
     case .git: GitSettingsView()
+    case .notifications: NotificationSettingsView()
     case .advanced: AdvancedSettingsView()
     }
   }
@@ -110,7 +111,7 @@ struct SettingsView: View {
 
 /// The open Settings pane; set it before opening Settings to show a given one.
 enum SettingsTab: String, CaseIterable, Identifiable {
-  case general, ai, permissions, remote, git, advanced
+  case general, ai, permissions, remote, git, notifications, advanced
 
   static let key = "settingsTab"
   static let iconSize: CGFloat = 20
@@ -128,6 +129,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case .permissions: String(localized: "Permissions")
     case .remote: String(localized: "iPhone & Remote")
     case .git: String(localized: "Git and GitHub")
+    case .notifications: String(localized: "Notifications")
     case .advanced: String(localized: "Advanced")
     }
   }
@@ -140,6 +142,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
       case .permissions: warns ? ("exclamationmark.triangle.fill", .orange) : ("hand.raised.fill", .blue)
       case .remote: ("iphone", .green)
       case .git: ("arrow.triangle.branch", .orange)
+      case .notifications: ("bell.badge.fill", .red)
       case .advanced: ("slider.horizontal.3", .indigo)
       }
     return SectionIcon(symbol: symbol, color: color, size: size)
@@ -236,6 +239,11 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .git, id: "gitHubAccount", title: String(localized: "Account")),
         SettingsItem(tab: .git, id: "gitHubClientID", title: String(localized: "OAuth App Client ID")),
         SettingsItem(tab: .git, id: "pullRequests", title: String(localized: "Pull Requests")),
+        SettingsItem(tab: .notifications, id: "notifyWhen", title: String(localized: "Send a message")),
+        SettingsItem(tab: .notifications, id: "unattendedOnly", title: String(localized: "Only for scheduled runs and CI")),
+        SettingsItem(tab: .notifications, id: "slack", title: String(localized: "Post to Slack")),
+        SettingsItem(tab: .notifications, id: "telegram", title: String(localized: "Post to Telegram")),
+        SettingsItem(tab: .notifications, id: "email", title: String(localized: "Send email")),
         SettingsItem(tab: .advanced, id: "retries", title: String(localized: "Retries")),
         SettingsItem(tab: .advanced, id: "commandLine", title: String(localized: "Run tests from Terminal and scripts")),
         SettingsItem(tab: .advanced, id: "continuousIntegration", title: String(localized: "Run tests on every pull request")),

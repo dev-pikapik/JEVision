@@ -57,6 +57,24 @@ struct RunResultBar: View {
           .keyboardShortcut(.cancelAction)
           .help(Text("Close"))
       }
+      if let problem = result.notificationProblem {
+        Divider()
+        HStack(spacing: 10) {
+          Label {
+            Text(problem).textSelection(.enabled)
+          } icon: {
+            Image(systemName: "bell.slash").foregroundStyle(.red)
+          }
+          .font(.callout)
+          .fixedSize(horizontal: false, vertical: true)
+          Spacer(minLength: 12)
+          Button("Notification Settings") {
+            UserDefaults.standard.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
+            openSettings()
+          }
+          .buttonStyle(.glass)
+        }
+      }
       if result.offersGitIgnore {
         Divider()
         HStack(spacing: 10) {
