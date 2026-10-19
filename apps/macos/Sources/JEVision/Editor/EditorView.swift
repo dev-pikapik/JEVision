@@ -68,6 +68,7 @@ struct EditorView: View {
                 showsInspector = true
               case .note: addNote(at: target.point)
               case .frame: addFrame(at: target.point)
+              case .describe: describeTest()
               }
             } close: {
               palette = nil
@@ -76,6 +77,12 @@ struct EditorView: View {
             .offset(paletteOffset(target, in: box.size))
           }
           .transition(reduceMotion ? .opacity : .scale(scale: 0.96).combined(with: .opacity))
+        }
+      }
+      .overlay(alignment: .top) {
+        if let drafter = document.drafter {
+          DraftPanel(document: document, drafter: drafter)
+            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
         }
       }
       .overlay(alignment: .bottom) {
@@ -98,6 +105,7 @@ struct EditorView: View {
         }
       }
       .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: palette)
+      .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: document.drafter == nil)
       .animation(reduceMotion ? nil : .snappy, value: runs.result)
       .onChange(of: document.flow) { runs.clearMarks(of: document) }
       .onChange(of: document.saveError) { _, error in
@@ -155,16 +163,17 @@ struct EditorView: View {
           } primaryAction: {
             run()
           }
-          .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
+          .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
           .help(Text("Run the test (⌘R)"))
           Button("Record", systemImage: "record.circle") { records.record(document) }
-            .disabled(runs.isRunning || records.isRecording || project.rootURL == nil)
+            .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
         ToolbarItemGroup(placement: .primaryAction) {
           Menu {
             Button("Add Note", systemImage: "note.text") { addNote(at: nil) }
             Button("Add Frame", systemImage: "rectangle.dashed") { addFrame(at: nil) }
+            Button("Describe the Test…", systemImage: "sparkles") { describeTest() }
             Divider()
             Button("Arrange Automatically", systemImage: "rectangle.3.group") { document.arrange() }
               .disabled(flow.canvas.positions.isEmpty)
@@ -376,6 +385,10 @@ struct EditorView: View {
       ? String(localized: "Step \(step), \(title)")
       : String(localized: "Linking to step \(step), \(title). Choose another block with the arrow keys, then press Return to link or Escape to cancel.")
     AccessibilityNotification.Announcement(text).post()
+  }
+
+  private func describeTest() {
+    if document.drafter == nil { document.drafter = TestDrafter() }
   }
 
   private func openPalette() {

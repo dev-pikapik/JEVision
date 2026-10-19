@@ -51,6 +51,16 @@
         }
       }
     },
+    "%@ declined to help: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ отказался помогать: %2$@"
+          }
+        }
+      }
+    },
     "%@ finished. %@" : {
       "localizations" : {
         "en" : {
@@ -107,6 +117,58 @@
         }
       }
     },
+    "%@ is connected with %lld tools." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ is connected with %lld tool."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ is connected with %lld tools."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ подключён, %lld инструмент."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ подключён, %lld инструмента."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ подключён, %lld инструментов."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ подключён, %lld инструмента."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ is version %@ from another copy of JEVision" : {
       "localizations" : {
         "ru" : {
@@ -133,6 +195,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь «%1$@» от %2$@ к %3$@"
+          }
+        }
+      }
+    },
+    "%@ on %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%1$@» на %2$@"
+          }
+        }
+      }
+    },
+    "%@ on %@, not allowed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%1$@» на %2$@, не разрешено"
           }
         }
       }
@@ -235,6 +317,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld blocks need attention, such as reference images to take. They’re marked on the canvas." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld block needs attention, such as a reference image to take. It’s marked on the canvas."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld blocks need attention, such as reference images to take. They’re marked on the canvas."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блок требует внимания, например нужно снять эталон. Он отмечен на холсте."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блока требуют внимания, например нужно снять эталоны. Они отмечены на холсте."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блоков требуют внимания, например нужно снять эталоны. Они отмечены на холсте."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блока требуют внимания, например нужно снять эталоны. Они отмечены на холсте."
+                }
+              }
+            }
           }
         }
       }
@@ -899,6 +1033,26 @@
         }
       }
     },
+    "Accept" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принять"
+          }
+        }
+      }
+    },
+    "Accept Draft" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принять черновик"
+          }
+        }
+      }
+    },
     "Accept as New Reference" : {
       "localizations" : {
         "ru" : {
@@ -925,6 +1079,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Приёмочный"
+          }
+        }
+      }
+    },
+    "Access Token" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Токен доступа"
           }
         }
       }
@@ -1189,6 +1353,16 @@
         }
       }
     },
+    "Add Server…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить сервер…"
+          }
+        }
+      }
+    },
     "Add Value" : {
       "localizations" : {
         "ru" : {
@@ -1199,12 +1373,32 @@
         }
       }
     },
+    "Add Wait" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ожидание"
+          }
+        }
+      }
+    },
     "Add a Block" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить блок"
+          }
+        }
+      }
+    },
+    "Add a Wait Before the Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ожидание перед блоком"
           }
         }
       }
@@ -1497,6 +1691,16 @@
         }
       }
     },
+    "Allow %@ on %@?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить «%1$@» на %2$@?"
+          }
+        }
+      }
+    },
     "Allow assistants to run tests" : {
       "localizations" : {
         "ru" : {
@@ -1543,6 +1747,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Also check the total in the cart" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё проверь сумму в корзине"
           }
         }
       }
@@ -1627,12 +1841,42 @@
         }
       }
     },
+    "Analyze" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разобрать"
+          }
+        }
+      }
+    },
+    "Analyze Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разобрать снова"
+          }
+        }
+      }
+    },
     "Another schedule has this name." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписание с таким названием уже есть."
+          }
+        }
+      }
+    },
+    "Another server has this name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это имя уже занято другим сервером."
           }
         }
       }
@@ -1753,6 +1997,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спрашивать на Mac перед удалённым запуском"
+          }
+        }
+      }
+    },
+    "Ask the AI to change the draft as you wrote" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попросить ИИ изменить черновик, как вы написали"
+          }
+        }
+      }
+    },
+    "Ask the AI why the run failed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить ИИ, почему прогон не прошёл"
           }
         }
       }
@@ -2135,12 +2399,32 @@
         }
       }
     },
+    "Can’t reach %@. Check that the server is running." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет связи с %@. Проверьте, что сервер запущен."
+          }
+        }
+      }
+    },
     "Can’t reach the server. Check the internet connection and try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся связаться с сервером. Проверьте подключение к интернету и попробуйте снова."
+          }
+        }
+      }
+    },
+    "Can’t read the report of the run: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать отчёт прогона: %@"
           }
         }
       }
@@ -2217,6 +2501,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось начать пул-реквест"
+          }
+        }
+      }
+    },
+    "Can’t start “%@”: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся запустить «%1$@»: %2$@"
           }
         }
       }
@@ -2371,6 +2665,16 @@
         }
       }
     },
+    "Changing the draft…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меняю черновик…"
+          }
+        }
+      }
+    },
     "Check" : {
       "localizations" : {
         "ru" : {
@@ -2417,6 +2721,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверять обновления автоматически"
+          }
+        }
+      }
+    },
+    "Check the blocks on the canvas. Nothing is saved until you accept the draft." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверьте блоки на холсте. Ничего не сохранится, пока вы не примете черновик."
           }
         }
       }
@@ -2531,6 +2845,16 @@
         }
       }
     },
+    "Choose an AI model in Settings → AI first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала выберите модель ИИ в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "Choose at least one day." : {
       "localizations" : {
         "ru" : {
@@ -2557,6 +2881,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите, как должен выглядеть экран"
+          }
+        }
+      }
+    },
+    "Choose the app the test runs in first, in the toolbar." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала выберите на панели инструментов приложение, в котором идёт тест."
           }
         }
       }
@@ -3011,6 +3345,16 @@
         }
       }
     },
+    "Connect" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключить"
+          }
+        }
+      }
+    },
     "Connect an Assistant" : {
       "localizations" : {
         "ru" : {
@@ -3021,12 +3365,52 @@
         }
       }
     },
+    "Connect by" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение"
+          }
+        }
+      }
+    },
     "Connected now" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключён сейчас"
+          }
+        }
+      }
+    },
+    "Connected. The server has no tools." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключено. У сервера нет инструментов."
+          }
+        }
+      }
+    },
+    "Connected. Tools: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключено. Инструменты: %@"
+          }
+        }
+      }
+    },
+    "Connecting…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключение…"
           }
         }
       }
@@ -3227,6 +3611,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось включить: %@"
+          }
+        }
+      }
+    },
+    "Couldn’t use %@: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось использовать %1$@: %2$@"
           }
         }
       }
@@ -3531,6 +3925,36 @@
         }
       }
     },
+    "Describe a Test…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Описать тест…"
+          }
+        }
+      }
+    },
+    "Describe the Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Описать тест"
+          }
+        }
+      }
+    },
+    "Describe the Test…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Описать тест…"
+          }
+        }
+      }
+    },
     "Describe what changed" : {
       "localizations" : {
         "ru" : {
@@ -3657,6 +4081,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Done. Undo brings it back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово. Отменить можно через «Отменить»."
           }
         }
       }
@@ -3837,6 +4271,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рисовать"
+          }
+        }
+      }
+    },
+    "Drop the draft and keep the test as it was" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отбросить черновик и оставить тест как был"
           }
         }
       }
@@ -5348,6 +5792,16 @@
         }
       }
     },
+    "JEVision runs the command in your login shell and talks to it through its input and output." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision запускает команду в вашей оболочке входа и общается с ней через её ввод и вывод."
+          }
+        }
+      }
+    },
     "JEVision uses the account GitHub CLI is signed in to. To use another one, run “gh auth login” in Terminal." : {
       "localizations" : {
         "ru" : {
@@ -5638,6 +6092,36 @@
         }
       }
     },
+    "Looks like a bug in the app" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже на ошибку в приложении"
+          }
+        }
+      }
+    },
+    "Looks like a flaky test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже на нестабильный тест"
+          }
+        }
+      }
+    },
+    "Looks like a problem with this Mac, not the app" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Похоже на проблему этого Mac, а не приложения"
+          }
+        }
+      }
+    },
     "Low" : {
       "localizations" : {
         "ru" : {
@@ -5648,12 +6132,32 @@
         }
       }
     },
+    "MCP Server" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MCP-сервер"
+          }
+        }
+      }
+    },
     "Mac" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac"
+          }
+        }
+      }
+    },
+    "Make the draft the test. Undo brings the old test back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать черновик тестом. «Отменить» вернёт прежний тест."
           }
         }
       }
@@ -5744,6 +6248,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ещё"
+          }
+        }
+      }
+    },
+    "More for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё для %@"
           }
         }
       }
@@ -6610,6 +7124,26 @@
         }
       }
     },
+    "Open Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки"
+          }
+        }
+      }
+    },
+    "Open Settings, turn on Dark Mode and check that the window is dark. If a sign-in window appears, close it first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Настройки, включить тёмный режим и проверить, что окно тёмное. Если появится окно входа, сначала закрыть его."
+          }
+        }
+      }
+    },
     "Open System Settings" : {
       "localizations" : {
         "ru" : {
@@ -6696,6 +7230,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть на GitHub"
+          }
+        }
+      }
+    },
+    "Open the Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть блок"
           }
         }
       }
@@ -6838,6 +7382,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "По желанию. Модель ИИ может проверить экран по фразе вроде «В корзине 2 товара». Выберите её сейчас или позже в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "Optional: what the test does, and the AI writes its blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Необязательно: что делает тест — ИИ напишет его блоки"
           }
         }
       }
@@ -7524,6 +8078,16 @@
         }
       }
     },
+    "Put the Test in Quarantine…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поместить тест в карантин…"
+          }
+        }
+      }
+    },
     "Put the file back as it was after this commit. Edit › Undo takes it back." : {
       "localizations" : {
         "ru" : {
@@ -7900,6 +8464,16 @@
         }
       }
     },
+    "Remove Token" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить токен"
+          }
+        }
+      }
+    },
     "Remove this value" : {
       "localizations" : {
         "ru" : {
@@ -8220,6 +8794,16 @@
         }
       }
     },
+    "Retry the Test Twice When It Fails" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторять тест дважды при сбое"
+          }
+        }
+      }
+    },
     "Return adds after the selected block. Drag a block onto the canvas to place it." : {
       "localizations" : {
         "ru" : {
@@ -8256,6 +8840,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отозвать доступ у «%@»?"
+          }
+        }
+      }
+    },
+    "Rework" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переделать"
           }
         }
       }
@@ -8774,6 +9368,16 @@
         }
       }
     },
+    "Saved — type to replace" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранён — введите, чтобы заменить"
+          }
+        }
+      }
+    },
     "Saves a version of the changed tests in Git." : {
       "localizations" : {
         "ru" : {
@@ -8900,6 +9504,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
+          }
+        }
+      }
+    },
+    "Screenshots weren’t sent: only models on this Mac may see them. The AI judged from the steps alone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана не отправлены: их могут видеть только модели на этом Mac. ИИ судил только по шагам."
           }
         }
       }
@@ -9616,6 +10230,16 @@
         }
       }
     },
+    "Starts the server and lists its tools." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает сервер и показывает его инструменты."
+          }
+        }
+      }
+    },
     "Status" : {
       "localizations" : {
         "ru" : {
@@ -9976,6 +10600,190 @@
         }
       }
     },
+    "The AI is looking at the run…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ изучает прогон…"
+          }
+        }
+      }
+    },
+    "The AI reads the steps and screenshots of this run and says whether it’s a bug in the app, a flaky test, an outdated reference or a problem with this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ изучит шаги и снимки экрана этого прогона и скажет, что это: ошибка в приложении, нестабильный тест, устаревший эталон или проблема на этом Mac."
+          }
+        }
+      }
+    },
+    "The AI rewrites the open test from what you describe in words." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ перепишет открытый тест по вашему описанию словами."
+          }
+        }
+      }
+    },
+    "The AI saw %u screenshots of the run." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The AI saw %u screenshot of the run."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The AI saw %u screenshots of the run."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ видел %u снимок экрана прогона."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ видел %u снимка экрана прогона."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ видел %u снимков экрана прогона."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ видел %u снимка экрана прогона."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The AI wants to use %@ on %@. Allow it?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ хочет использовать «%1$@» на сервере %2$@. Разрешить?"
+          }
+        }
+      }
+    },
+    "The AI was stopped after %u tool calls without an answer." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The AI was stopped after %u tool call without an answer."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The AI was stopped after %u tool calls without an answer."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ остановлен после %u вызова инструмента без ответа."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ остановлен после %u вызовов инструментов без ответа."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ остановлен после %u вызовов инструментов без ответа."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ остановлен после %u вызовов инструментов без ответа."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The AI writes a new test from what you describe in words." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ напишет новый тест по вашему описанию словами."
+          }
+        }
+      }
+    },
+    "The AI writes the blocks from what you describe in words" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ напишет блоки по вашему описанию словами"
+          }
+        }
+      }
+    },
+    "The AI writes the blocks of this test from your words. You see them on the canvas before anything is saved." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ напишет блоки этого теста по вашим словам. Вы увидите их на холсте до того, как что-либо сохранится."
+          }
+        }
+      }
+    },
+    "The AI’s answer still had mistakes after it was asked to fix them. Try describing it differently.\n%@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В ответе ИИ остались ошибки, даже после просьбы их исправить. Попробуйте описать иначе.\n%@"
+          }
+        }
+      }
+    },
     "The Picture Wasn’t Changed" : {
       "localizations" : {
         "ru" : {
@@ -10106,12 +10914,84 @@
         }
       }
     },
+    "The command is empty." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команда пустая."
+          }
+        }
+      }
+    },
     "The device disconnects now. To use it again, pair it with a new code." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Устройство сразу отключится. Чтобы снова им пользоваться, подключите его по новому коду."
+          }
+        }
+      }
+    },
+    "The draft is on the canvas with %lld blocks. Accept it, or say what to change." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The draft is on the canvas with %lld block. Accept it, or say what to change."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The draft is on the canvas with %lld blocks. Accept it, or say what to change."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Черновик на холсте: %lld блок. Примите его или скажите, что изменить."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Черновик на холсте: %lld блока. Примите его или скажите, что изменить."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Черновик на холсте: %lld блоков. Примите его или скажите, что изменить."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Черновик на холсте: %lld блока. Примите его или скажите, что изменить."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The draft is saved as the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Черновик сохранён как тест."
           }
         }
       }
@@ -10306,6 +11186,16 @@
         }
       }
     },
+    "The reference image looks out of date" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эталонное изображение, похоже, устарело"
+          }
+        }
+      }
+    },
     "The repository wasn’t found on the server, or your account can’t open it." : {
       "localizations" : {
         "ru" : {
@@ -10386,6 +11276,36 @@
         }
       }
     },
+    "The server answered with error %lld: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер ответил ошибкой %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "The server answered with error %u: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер ответил ошибкой %1$u: %2$@"
+          }
+        }
+      }
+    },
+    "The server didn’t accept the access token. Set it again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер не принял токен доступа. Задайте его заново."
+          }
+        }
+      }
+    },
     "The server didn’t accept your sign-in. Sign in with GitHub CLI (gh auth login) or set up an SSH key, then try again." : {
       "localizations" : {
         "ru" : {
@@ -10396,12 +11316,52 @@
         }
       }
     },
+    "The server didn’t answer within %llu s." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер не ответил за %llu с."
+          }
+        }
+      }
+    },
     "The server has changes you don’t have yet. Pull first, then push again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "На сервере есть изменения, которых у вас ещё нет. Сначала получите их, затем отправьте снова."
+          }
+        }
+      }
+    },
+    "The server stopped." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер остановился."
+          }
+        }
+      }
+    },
+    "The server stopped. It said: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер остановился. Он сообщил: %@"
+          }
+        }
+      }
+    },
+    "The server’s answer can’t be read: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответ сервера не удаётся прочитать: %@"
           }
         }
       }
@@ -10642,6 +11602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Окружение %@ уже есть."
+          }
+        }
+      }
+    },
+    "There’s no AI provider “%@”. Choose one in Settings → AI." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет поставщика ИИ «%@». Выберите его в Настройках → ИИ."
           }
         }
       }
@@ -10932,6 +11902,16 @@
         }
       }
     },
+    "This tool may change something outside JEVision. The AI uses it only if you allow it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот инструмент может что-то изменить за пределами JEVision. ИИ воспользуется им, только если вы разрешите."
+          }
+        }
+      }
+    },
     "This version can’t be shown as a picture." : {
       "localizations" : {
         "ru" : {
@@ -11038,6 +12018,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выбран путь «%@»"
+          }
+        }
+      }
+    },
+    "Tools" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инструменты"
+          }
+        }
+      }
+    },
+    "Tracker" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Трекер"
           }
         }
       }
@@ -11352,12 +12352,32 @@
         }
       }
     },
+    "Use the Screenshot as the Reference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать снимок эталоном"
+          }
+        }
+      }
+    },
     "Use up to 64 Latin letters, digits, - and _ in the name, without spaces." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "В названии можно использовать до 64 латинских букв, цифр, - и _, без пробелов."
+          }
+        }
+      }
+    },
+    "Used: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовано: %@"
           }
         }
       }
@@ -11562,6 +12582,16 @@
         }
       }
     },
+    "Web Address" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Веб-адрес"
+          }
+        }
+      }
+    },
     "Weekday Mornings" : {
       "localizations" : {
         "ru" : {
@@ -11602,6 +12632,26 @@
         }
       }
     },
+    "What the test does" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что делает тест"
+          }
+        }
+      }
+    },
+    "What the tool gets" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что получит инструмент"
+          }
+        }
+      }
+    },
     "What this change does" : {
       "localizations" : {
         "ru" : {
@@ -11612,12 +12662,42 @@
         }
       }
     },
+    "What to change" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что изменить"
+          }
+        }
+      }
+    },
+    "What went wrong?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что пошло не так?"
+          }
+        }
+      }
+    },
     "What you do while paused isn’t recorded" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Действия во время паузы не записываются"
+          }
+        }
+      }
+    },
+    "When the AI writes a test or analyzes a failure, it can use the tools of these MCP servers, such as finding an issue in a tracker. It asks you before every tool that may change something." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда ИИ пишет тест или разбирает сбой, он может пользоваться инструментами этих MCP-серверов, например найти задачу в трекере. Перед каждым инструментом, который может что-то изменить, он спрашивает вас."
           }
         }
       }
@@ -11688,6 +12768,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них macOS не даст JEVision видеть другие приложения и нажимать в них."
+          }
+        }
+      }
+    },
+    "Write Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Написать тест"
+          }
+        }
+      }
+    },
+    "Writing the test…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пишу тест…"
           }
         }
       }
@@ -11838,6 +12938,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "добавить блок"
+          }
+        }
+      }
+    },
+    "ai write generate draft words text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ии написать создать черновик словами текст описание"
           }
         }
       }
@@ -14384,6 +15494,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» подключён."
+          }
+        }
+      }
+    },
+    "“%@” isn’t a web address. It should start with http:// or https://." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Он должен начинаться с http:// или https://."
           }
         }
       }

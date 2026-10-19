@@ -58,6 +58,10 @@ final class FlowDocument {
   var runChoices = RunChoices()
   /// The run a report opened the test from: the blocks show how they did in it, not in the newest run.
   var reportRun: SavedRun.ID?
+  /// The test as it is in the file while a drafted test is shown on the canvas in its place.
+  private(set) var beforeDraft: Flow?
+  /// Writes a test from a description; the panel is open while it is set.
+  var drafter: TestDrafter?
 
   @ObservationIgnored weak var undoManager: UndoManager?
   /// The text last read from or written to the file, to tell our own writes from changes made elsewhere.
@@ -84,6 +88,7 @@ final class FlowDocument {
     do {
       let loaded = try loadFlow(json: text)
       if flow != nil { undoManager?.removeAllActions(withTarget: self) }
+      beforeDraft = nil
       savedText = text
       failure = nil
       set(loaded)
@@ -371,7 +376,49 @@ final class FlowDocument {
     if !text.isEmpty { paste(text, action: String(localized: "Duplicate")) }
   }
 
+  /// Applies an edit made by the core, as one step for Undo named `action`.
+  func apply(_ edited: Edited, action: String) {
+    apply(edited.flow, select: edited.selection, action: action)
+  }
+
+  // MARK: Draft
+
+  /// Shows `draft` on the canvas in place of the test, without saving it.
+  func showDraft(_ draft: Flow) {
+    guard let flow else { return }
+    if beforeDraft == nil { beforeDraft = flow }
+    set(draft)
+    selection = nil
+  }
+
+  /// Makes the draft shown the test, as one step for Undo.
+  func acceptDraft() {
+    guard let before = beforeDraft, let draft = flow else { return }
+    beforeDraft = nil
+    set(before)
+    apply(draft, select: nil, action: String(localized: "Accept Draft"))
+  }
+
+  /// Shows the test again in place of the draft.
+  func discardDraft() {
+    guard let before = beforeDraft else { return }
+    beforeDraft = nil
+    set(before)
+    selection = nil
+  }
+
   private func apply(_ new: Flow, select: String?, action: String, coalesce: String? = nil) {
+    if beforeDraft != nil {
+      if undoManager?.isUndoing == true || undoManager?.isRedoing == true {
+        // Undo and Redo change the test in the file, so the draft goes away first.
+        discardDraft()
+      } else {
+        // Changes to a draft are part of it until it is accepted: nothing to save or undo yet.
+        set(new)
+        selection = select
+        return
+      }
+    }
     guard let old = flow, new != old else { return }
     if coalesce == nil || coalesce != coalescing, let undoManager {
       let oldSelection = selection

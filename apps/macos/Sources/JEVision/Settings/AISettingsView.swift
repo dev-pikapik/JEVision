@@ -13,6 +13,7 @@ struct AISettingsView: View {
       }
       AISections()
       ProjectPrivacySection()
+      MCPServersSection()
       AssistantsSection()
     }
     .formStyle(.grouped)

@@ -91,3 +91,94 @@ struct VisionTextTests {
     #expect(BlockSummary.text(.check(reference: reference, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
   }
 }
+
+@MainActor
+struct DraftPreviewTests {
+  private static let test = """
+    {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+      "a": {"type": "pressKeys", "keys": "a"}}}
+    """
+  private static let draft = """
+    {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "x", "blocks": {
+      "x": {"type": "pressKeys", "keys": "x", "next": "y"},
+      "y": {"type": "pressKeys", "keys": "y"}}}
+    """
+
+  private func document() throws -> (FlowDocument, UndoManager, URL) {
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let url = folder.appending(path: "t.flow.json")
+    try Self.test.write(to: url, atomically: true, encoding: .utf8)
+    let document = FlowDocument(url: url)
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    return (document, undo, url)
+  }
+
+  private func saved(_ url: URL) throws -> [String] {
+    try loadFlow(json: String(contentsOf: url, encoding: .utf8)).blocks.map(\.id).sorted()
+  }
+
+  @Test func aDraftIsShownButNotSavedUntilAccepted() throws {
+    let (document, undo, url) = try document()
+    document.showDraft(try loadFlow(json: Self.draft))
+    #expect(document.order == ["x", "y"])
+    #expect(try saved(url) == ["a"])
+    // Edits to the draft stay in it.
+    document.delete("y")
+    #expect(document.order == ["x"])
+    #expect(try saved(url) == ["a"])
+    #expect(!undo.canUndo)
+
+    undo.beginUndoGrouping()
+    document.acceptDraft()
+    undo.endUndoGrouping()
+    #expect(document.beforeDraft == nil)
+    #expect(try saved(url) == ["x"])
+    undo.undo()
+    #expect(document.order == ["a"])
+    #expect(try saved(url) == ["a"])
+  }
+
+  @Test func cancelOrUndoPutsTheTestBack() throws {
+    let (document, undo, url) = try document()
+    document.showDraft(try loadFlow(json: Self.draft))
+    document.discardDraft()
+    #expect(document.order == ["a"])
+    #expect(document.beforeDraft == nil)
+
+    undo.beginUndoGrouping()
+    document.insert("click", at: Slot(from: "a", edge: "next"))
+    undo.endUndoGrouping()
+    document.showDraft(try loadFlow(json: Self.draft))
+    undo.undo()
+    #expect(document.beforeDraft == nil, "Undo changes the test, so the draft goes")
+    #expect(document.order == ["a"])
+    #expect(try saved(url) == ["a"])
+  }
+
+  @Test func theAIIsOneStepAway() {
+    #expect(PaletteChoice.search("describe").first == .describe)
+    #expect(PaletteChoice.grouped().flatMap(\.choices).contains(.describe))
+    var state = PaletteState()
+    state.hasProject = true
+    #expect(CommandPalette.search("describe", in: CommandPalette.entries(state)).first?.action == .describeTest)
+  }
+}
+
+struct MCPServersTests {
+  @Test func serversAreKeptInTheSettings() throws {
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    #expect(MCPServers.load(from: defaults).isEmpty)
+    let tracker = MCPServerEntry(name: "tracker", kind: .command, command: "python3 tracker.py")
+    let web = MCPServerEntry(name: "web", kind: .http, url: "http://127.0.0.1:9/mcp")
+    MCPServers.save([tracker, web], to: defaults)
+    let loaded = MCPServers.load(from: defaults)
+    #expect(loaded == [tracker, web])
+    #expect(loaded[0].server == McpServer(name: "tracker", transport: .command(command: "python3 tracker.py")))
+    #expect(loaded[1].location == "http://127.0.0.1:9/mcp")
+  }
+}

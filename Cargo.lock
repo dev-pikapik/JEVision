@@ -1642,12 +1642,14 @@ dependencies = [
  "jevision-git",
  "jevision-remote",
  "jevision-runner",
+ "jevision-vision",
  "p256",
  "png",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "uniffi",
+ "ureq",
 ]
 
 [[package]]

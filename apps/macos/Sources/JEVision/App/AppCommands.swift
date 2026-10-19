@@ -116,6 +116,7 @@ struct AppCommands: Commands {
 
   private var canRun: Bool {
     !runs.isRunning && !records.isRecording && project.rootURL != nil && project.document?.flow != nil
+      && project.document?.beforeDraft == nil
   }
 
   private var git: GitStatus? { project.git.status }

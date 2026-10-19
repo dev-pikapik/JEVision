@@ -9,6 +9,8 @@ struct NewTestSheet: View {
   @Environment(\.dismiss) private var dismiss
   @State private var name = ""
   @State private var app: String?
+  /// What the test does, for the AI to write its blocks; empty for a test with only Open App.
+  @State private var description = ""
   @State private var error: String?
 
   private var canCreate: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && app != nil }
@@ -23,6 +25,14 @@ struct NewTestSheet: View {
         LabeledContent("App") {
           AppPicker(bundleID: $app, noneTitle: Text("Choose App"))
         }
+        if !records {
+          TextField(
+            text: $description, prompt: Text("Optional: what the test does, and the AI writes its blocks"), axis: .vertical
+          ) {
+            Text("Description")
+          }
+          .lineLimit(3...6)
+        }
       }
       .formStyle(.columns)
       if let error {
@@ -36,6 +46,10 @@ struct NewTestSheet: View {
           guard let app else { return }
           do {
             try project.createTest(name: name, app: app)
+            let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !records, !description.isEmpty {
+              project.document?.drafter = TestDrafter(description: description, startsRightAway: true)
+            }
             created()
             dismiss()
           } catch {

@@ -7,9 +7,11 @@
 //! answers have it masked. Pictures go out only as [`MaskedImage`]s, private areas painted
 //! over first.
 
+mod ask;
 pub mod image;
 mod mask;
 
+pub use ask::Message;
 pub use mask::{MASK_COLOUR, MaskedImage, PixelArea, VideoMask, VideoWindow, video_mask};
 
 use std::fmt;

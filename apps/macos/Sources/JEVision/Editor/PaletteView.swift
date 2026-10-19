@@ -7,12 +7,15 @@ enum PaletteChoice: Hashable {
   case block(String)
   case note
   case frame
+  /// Not a block: the AI writes the whole test from a description.
+  case describe
 
   var title: String {
     switch self {
     case .block(let type): BlockInfo.title(type)
     case .note: String(localized: "Note")
     case .frame: String(localized: "Frame")
+    case .describe: String(localized: "Describe the Test")
     }
   }
 
@@ -22,6 +25,7 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.tagline(type)
     case .note: String(localized: "A sticky note for whoever reads the test")
     case .frame: String(localized: "Groups blocks into a section with a title")
+    case .describe: String(localized: "The AI writes the blocks from what you describe in words")
     }
   }
 
@@ -30,6 +34,7 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.symbol(type)
     case .note: "note.text"
     case .frame: "rectangle.dashed"
+    case .describe: "sparkles"
     }
   }
 
@@ -38,6 +43,7 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.color(ofType: type)
     case .note: .yellow
     case .frame: .gray
+    case .describe: .purple
     }
   }
 
@@ -46,17 +52,19 @@ enum PaletteChoice: Hashable {
     switch self {
     case .block(let type): BlockInfo.catalog.first { $0.typeName == type }.map { BlockInfo.groupTitle($0.group) } ?? ""
     case .note, .frame: String(localized: "Canvas")
+    case .describe: String(localized: "AI")
     }
   }
 
-  /// Every block type in palette order, then a note and a frame.
-  static let all: [PaletteChoice] = BlockInfo.catalog.map { .block($0.typeName) } + [.note, .frame]
+  /// Every block type in palette order, then a note, a frame and a test from a description.
+  static let all: [PaletteChoice] = BlockInfo.catalog.map { .block($0.typeName) } + [.note, .frame, .describe]
 
   /// `choices` matching `query`, best first; all of them for an empty query.
   static func search(_ query: String, in choices: [PaletteChoice] = all) -> [PaletteChoice] {
     let candidates = choices.map { choice in
       var keywords = [choice.tagline, choice.groupTitle]
       if case .block(let type) = choice { keywords += [BlockInfo.explanation(type), type] }
+      if choice == .describe { keywords.append(String(localized: "ai write generate draft words text")) }
       return SearchCandidate(title: choice.title, keywords: keywords.joined(separator: " "))
     }
     return rankSearch(query: query, candidates: candidates).map { choices[Int($0)] }

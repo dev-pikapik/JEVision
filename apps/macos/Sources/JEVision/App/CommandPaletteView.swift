@@ -152,6 +152,7 @@ struct CommandPaletteView: View {
     state.hasProject = project.status == .ready
     state.hasTest = flow != nil
     state.canRun = !runs.isRunning && !records.isRecording && project.rootURL != nil && flow != nil
+      && document?.beforeDraft == nil
     state.selection = selection
     if let selection, let document {
       state.selectionIsIf = document.block(selection)?.kind.typeName == "if"
@@ -182,6 +183,12 @@ struct CommandPaletteView: View {
     let root = project.rootURL
     switch action {
     case .newTest: project.isCreatingTest = true
+    case .describeTest:
+      if let document, document.flow != nil {
+        if document.drafter == nil { document.drafter = TestDrafter() }
+      } else {
+        project.isCreatingTest = true
+      }
     case .openProject: project.choose()
     case .settings: openSettings()
     case .run, .runStepByStep, .runFromSelection:
