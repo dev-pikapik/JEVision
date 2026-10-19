@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use jevision_core::{BlockKind, Compare};
+use jevision_core::{BlockKind, Compare, Condition};
 use jevision_remote::{
     Device, Failure, Host, HostConfig, HostDelegate, Network, Permission, Project, Relay,
     RemoteError, RunEvent, RunState, RunStatus, StepStatus, Verdict,
@@ -275,12 +275,15 @@ impl Player {
                         .find(|b| &b.id == block)
                         .and_then(|b| match &b.kind {
                             BlockKind::If {
-                                reference, else_if, ..
+                                condition, else_if, ..
                             } => Some((
                                 else_if.len() as u32 + 2,
-                                match &reference.compare {
-                                    Compare::Meaning { expect, .. } => expect.clone(),
-                                    _ => reference.image.clone(),
+                                match condition {
+                                    Condition::Screen(reference) => match &reference.compare {
+                                        Compare::Meaning { expect, .. } => expect.clone(),
+                                        _ => reference.image.clone(),
+                                    },
+                                    Condition::Value(check) => check.of.clone(),
                                 },
                             )),
                             _ => None,

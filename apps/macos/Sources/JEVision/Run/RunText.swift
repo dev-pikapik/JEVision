@@ -8,6 +8,8 @@ enum RunText {
     let p = { (name: String) in failure.params[name] ?? "" }
     let block = p("block")
     let app = AppCatalog.shared.name(of: p("app"))
+    let reason = p("reason").isEmpty ? "" : "\n" + p("reason")
+    let code = { (name: String) in p(name) == "signal" ? String(localized: "none, the system stopped it") : p(name) }
     switch failure.code {
     case "run.test.unreadable":
       return String(localized: "run.test.unreadable", defaultValue: "Can’t read the test file \(p("test")): \(p("reason")).")
@@ -104,6 +106,44 @@ enum RunText {
       return String(localized: "run.hands.screenLocked", defaultValue: "Block “\(block)”: the screen is locked. Unlock the Mac and run the test again.")
     case "run.hands.failed":
       return String(localized: "run.hands.failed", defaultValue: "Block “\(block)”: \(p("reason"))")
+    case "run.var.missing":
+      return String(localized: "run.var.missing", defaultValue: "Block “\(block)”: no block before it saved a value named \(p("name")).")
+    case "run.value.notNumber":
+      return String(localized: "run.value.notNumber", defaultValue: "Block “\(block)”: “\(p("value"))” isn’t a number, so it can’t be compared as one.")
+    case "run.process.notFound":
+      return String(localized: "run.process.notFound", defaultValue: "Block “\(block)”: \(p("program")) isn’t installed on this Mac.")
+    case "run.process.cannotStart":
+      return String(localized: "run.process.cannotStart", defaultValue: "Block “\(block)”: \(p("program")) can’t start: \(p("reason")).")
+    case "run.process.timeout":
+      return String(localized: "run.process.timeout", defaultValue: "Block “\(block)”: still running after \(p("seconds")) s, so it was stopped.")
+    case "run.script.failed":
+      return String(localized: "run.script.failed", defaultValue: "Block “\(block)”: the script ended with exit code \(code("code")).\(reason)")
+    case "run.script.missingOutput":
+      return String(localized: "run.script.missingOutput", defaultValue: "Block “\(block)”: the script didn’t write \(p("name")) to $JEV_OUTPUT.")
+    case "run.script.badOutput":
+      return String(localized: "run.script.badOutput", defaultValue: "Block “\(block)”: the output \(p("name")) should be \(outputKind(p("type"))), but the script wrote “\(p("value"))”.")
+    case "run.command.exitCode":
+      return String(localized: "run.command.exitCode", defaultValue: "Block “\(block)”: the command ended with exit code \(code("actual")) instead of \(p("expected")).\(reason)")
+    case "run.http.failed":
+      return String(localized: "run.http.failed", defaultValue: "Block “\(block)”: \(p("url")) didn’t answer: \(p("reason")).")
+    case "run.http.status":
+      return String(localized: "run.http.status", defaultValue: "Block “\(block)”: \(p("url")) answered with status \(p("status")) instead of \(p("expected")).\(p("body").isEmpty ? "" : "\n" + p("body"))")
+    case "run.http.noValue":
+      return String(localized: "run.http.noValue", defaultValue: "Block “\(block)”: the answer has no \(p("from")).")
+    case "run.file.timeout" where p("state") == "exists":
+      return String(localized: "run.file.timeout.exists", defaultValue: "Block “\(block)”: \(p("path")) didn’t appear within \(p("seconds")) s.")
+    case "run.file.timeout" where p("state") == "missing":
+      return String(localized: "run.file.timeout.missing", defaultValue: "Block “\(block)”: \(p("path")) didn’t disappear within \(p("seconds")) s.")
+    case "run.file.timeout" where p("state") == "changed":
+      return String(localized: "run.file.timeout.changed", defaultValue: "Block “\(block)”: \(p("path")) didn’t change within \(p("seconds")) s.")
+    case "run.file.timeout":
+      return String(localized: "run.file.timeout.contains", defaultValue: "Block “\(block)”: \(p("path")) didn’t contain “\(p("text"))” within \(p("seconds")) s.")
+    case "run.database.failed":
+      return String(localized: "run.database.failed", defaultValue: "Block “\(block)”: the query failed: \(p("reason")).")
+    case "run.database.value":
+      return String(localized: "run.database.value", defaultValue: "Block “\(block)”: the query gave “\(p("actual"))” instead of “\(p("expected"))” for \(p("seconds")) s.")
+    case "run.database.rows":
+      return String(localized: "run.database.rows", defaultValue: "Block “\(block)”: the query gave \(p("actual")) rows instead of \(p("expected")) for \(p("seconds")) s.")
     default:
       return describeFailure(failure: failure)
     }
@@ -188,6 +228,15 @@ enum RunText {
         return String(localized: "Passed in \(time). New reference images were saved: check them in the report.")
       }
       return String(localized: "Passed in \(time).")
+    }
+  }
+
+  /// `text`, `number` or `boolean` from the core, in words.
+  private static func outputKind(_ kind: String) -> String {
+    switch kind {
+    case "number": String(localized: "a number")
+    case "boolean": String(localized: "true or false")
+    default: String(localized: "text")
     }
   }
 }

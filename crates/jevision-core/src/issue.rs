@@ -161,7 +161,7 @@ pub fn describe(issue: &Issue) -> String {
         }
         "flow.path.extension" => format!("must name a {} file.", p("expected")),
         "flow.placeholder.invalid" => format!(
-            "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}} or ${{data.COLUMN}}.",
+            "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}}, ${{data.COLUMN}} or ${{var.NAME}}.",
             p("placeholder")
         ),
         "flow.keys.invalid" => format!(
@@ -218,6 +218,28 @@ pub fn describe(issue: &Issue) -> String {
             p("path"),
             p("column"),
             p("columns")
+        ),
+        "flow.name.invalid" => format!(
+            "\"{}\" can't be a name: start with a letter or _, then use letters, digits and _.",
+            p("value")
+        ),
+        "flow.name.duplicate" => format!("the name \"{}\" is used twice.", p("value")),
+        "flow.http.url" => format!(
+            "\"{}\" isn't a web address; start it with http:// or https://.",
+            p("value")
+        ),
+        "flow.http.header" => format!("\"{}\" can't be a header name.", p("value")),
+        "flow.http.saveFrom" => format!(
+            "\"{}\" isn't a part of the answer; use status, body, body.FIELD like body.items[0].id, or header.NAME.",
+            p("value")
+        ),
+        "flow.value.notNumber" => format!(
+            "\"{}\" isn't a number, so it can't be compared as greater or less.",
+            p("value")
+        ),
+        "flow.var.unknown" => format!(
+            "no block of this test saves the value {}; the run stops here unless a test it runs saves it.",
+            p("name")
         ),
         _ => {
             let params: Vec<String> = issue

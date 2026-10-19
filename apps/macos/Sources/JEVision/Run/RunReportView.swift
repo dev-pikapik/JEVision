@@ -386,8 +386,15 @@ private struct StepRow: View {
 
   private var accessibilityValue: String {
     let status = StepStatusText(step.status)
-    let parts = [status.title, RunHistory.duration(step.durationMs)] + (step.failure.map { [RunText.failure($0)] } ?? [])
+    var parts = [status.title, RunHistory.duration(step.durationMs)]
+    if !step.outputs.isEmpty { parts.append(String(localized: "saved \(outputs)")) }
+    parts += step.failure.map { [RunText.failure($0)] } ?? []
     return parts.joined(separator: ", ")
+  }
+
+  /// Values the block saved, as `name = value`; secrets are already masked by the core.
+  private var outputs: String {
+    step.outputs.map { "\($0.name) = \($0.value)" }.joined(separator: " · ")
   }
 
   private var header: some View {
@@ -406,6 +413,18 @@ private struct StepRow: View {
           .foregroundStyle(.secondary)
           .lineLimit(1)
           .truncationMode(.middle)
+        if !step.outputs.isEmpty {
+          Label {
+            Text(verbatim: outputs)
+              .font(.subheadline.monospaced())
+              .lineLimit(isExpanded ? nil : 1)
+              .truncationMode(.tail)
+          } icon: {
+            Image(systemName: "arrow.down.doc")
+          }
+          .foregroundStyle(.secondary)
+          .help(Text("Values saved for later blocks"))
+        }
         if let failure = step.failure {
           Text(RunText.failure(failure))
             .font(.subheadline)

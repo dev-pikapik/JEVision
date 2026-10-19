@@ -86,10 +86,11 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }),
         ),
         "if" => (
-            "Goes to then if the screen matches the reference; otherwise to the then of the first elseIf whose reference matches; otherwise to else. All conditions are checked on the same screenshot.",
+            "Goes to then if its condition holds; otherwise to the then of the first elseIf whose condition holds; otherwise to else. A condition is either reference (the screen matches it) or value (a comparison of text or numbers). All screen conditions are checked on the same screenshot.",
             json!({
-                "reference": "what to look for: a reference (see shapes)",
-                "elseIf": "optional list of more conditions, checked in order when the ones before don't match: [{ \"reference\": reference, \"then\": block id }]. Their ways out are called elseIf1, elseIf2…",
+                "reference": "what to look for: a reference (see shapes); or instead value",
+                "value": "{ \"of\": text, usually ${var.NAME}, \"is\": \"equals\" | \"notEquals\" | \"contains\" | \"greaterThan\" | \"lessThan\", \"to\": text }. Equal numbers are equal however written (3 and 3.0); greaterThan and lessThan need numbers",
+                "elseIf": "optional list of more conditions, checked in order when the ones before don't hold: [{ \"reference\": reference or \"value\": value, \"then\": block id }]. Their ways out are called elseIf1, elseIf2…",
             }),
             json!({ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "elseIf": [{ "reference": { "image": "refs/update-dialog.png" } }] }),
         ),
@@ -107,6 +108,61 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             "Runs the blocks on its body once for every row of a CSV file, then goes to next; ${data.COLUMN} is the value of the current row. The last block of the body leads back to the useData block.",
             json!({ "file": "CSV file with a header row, relative to the test file" }),
             json!({ "type": "useData", "file": "data/accounts.csv" }),
+        ),
+        "http" => (
+            "Sends an HTTP request and fails unless the answer has the expected status; can save parts of the answer for ${var.NAME}.",
+            json!({
+                "method": "optional: GET (default), POST, PUT, PATCH, DELETE or HEAD",
+                "url": "http:// or https:// address",
+                "headers": "optional list of { \"name\", \"value\" }",
+                "body": "optional text to send; JSON is sent as application/json unless a Content-Type header says otherwise",
+                "expectStatus": "optional: \"success\" (default, any 2xx), \"any\", or a status code such as 201",
+                "save": "optional list of { \"name\", \"from\" }: from is status, body, body.PATH into a JSON answer (items[0].id) or header.NAME",
+                "timeout": "optional duration, default 30s",
+            }),
+            json!({ "type": "http", "method": "POST", "url": "${env.API}/orders", "body": "{\"item\": 1}", "expectStatus": 201, "save": [{ "name": "order", "from": "body.id" }] }),
+        ),
+        "database" => (
+            "Runs one SQL statement on an SQLite file; can save the first column of the first row and wait until the result is as expected.",
+            json!({
+                "file": "SQLite file: absolute, ~/… or relative to the test file",
+                "query": "one SQL statement",
+                "saveAs": "optional name to save the first value as, for ${var.NAME}",
+                "expect": "optional { \"value\": text } for the first value or { \"rows\": count }; the query runs again until it holds or the timeout passes",
+                "timeout": "optional duration, default 10s",
+            }),
+            json!({ "type": "database", "file": "~/Library/Containers/com.example.App/Data/app.sqlite", "query": "select count(*) from notes", "expect": { "value": "1" } }),
+        ),
+        "checkFile" => (
+            "Waits until a file appears, disappears, changes after the run started or contains a text.",
+            json!({
+                "path": "file path: absolute, ~/… or relative to the test file",
+                "until": "\"exists\", \"missing\", \"changed\" or { \"contains\": text }",
+                "timeout": "optional duration, default 10s",
+            }),
+            json!({ "type": "checkFile", "path": "~/Downloads/report.pdf", "until": "exists" }),
+        ),
+        "command" => (
+            "Runs a command line in zsh and fails unless it ends with the expected exit code; can save what it printed.",
+            json!({
+                "command": "the command line",
+                "folder": "optional folder to run in, relative to the test file; default: the test's folder",
+                "exitCode": "optional expected exit code, default 0",
+                "saveOutput": "optional name to save what it printed as, for ${var.NAME}",
+                "timeout": "optional duration, default 30s",
+            }),
+            json!({ "type": "command", "command": "defaults read com.example.App lastUser", "saveOutput": "user" }),
+        ),
+        "script" => (
+            "Runs a script and fails if it ends with an exit code other than 0. Inputs reach it as environment variables; it saves outputs by writing name=value lines to the file in $JEV_OUTPUT.",
+            json!({
+                "language": "sh, zsh (default), python3, node or appleScript",
+                "code": "the script",
+                "inputs": "optional list of { \"name\", \"value\" } passed as environment variables",
+                "outputs": "optional list of { \"name\", \"type\": \"text\" | \"number\" | \"boolean\" } the script must write; each becomes ${var.NAME}",
+                "timeout": "optional duration, default 30s",
+            }),
+            json!({ "type": "script", "language": "python3", "code": "import os\nopen(os.environ['JEV_OUTPUT'], 'a').write('total=3\\n')", "outputs": [{ "name": "total", "type": "number" }] }),
         ),
         other => unreachable!("block type {other} has no description"),
     }
@@ -151,6 +207,7 @@ pub(super) fn guide() -> Value {
             "duration": "text like 500ms, 10s or 2m",
             "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",
             "secrets": "${secret.NAME} in a type block's text is typed as the secret's value, which the person keeps in JEVision or the environment. Secret values never appear in tests, reports or here.",
+            "variables": "${var.NAME} anywhere a block takes text is a value an earlier block of the run saved: the outputs of a script, saveOutput of a command, save of an http block, saveAs of a database block.",
             "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder.",
         },
     })

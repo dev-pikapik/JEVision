@@ -19,6 +19,11 @@ enum BlockInfo {
     case "repeat": "repeat"
     case "useData": "tablecells"
     case "runTest": "rectangle.stack"
+    case "http": "network"
+    case "database": "cylinder"
+    case "checkFile": "doc.badge.clock"
+    case "command": "terminal"
+    case "script": "curlybraces"
     default: "square.dashed"
     }
   }
@@ -39,6 +44,11 @@ enum BlockInfo {
     case "repeat": String(localized: "Repeat")
     case "useData": String(localized: "Use Data")
     case "runTest": String(localized: "Run Test")
+    case "http": String(localized: "HTTP Request")
+    case "database": String(localized: "Database")
+    case "checkFile": String(localized: "Wait For File")
+    case "command": String(localized: "Run Command")
+    case "script": String(localized: "Script")
     default: type
     }
   }
@@ -55,10 +65,15 @@ enum BlockInfo {
     case "pressKeys": String(localized: "Presses one key combination.")
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
     case "check": String(localized: "Fails the test unless the screen looks as expected.")
-    case "if": String(localized: "Takes a different path depending on which reference the screen matches.")
+    case "if": String(localized: "Takes a different path depending on what the screen shows or what a saved value is.")
     case "repeat": String(localized: "Runs the blocks inside it several times.")
     case "useData": String(localized: "Runs the blocks inside it once for each row of a CSV file.")
     case "runTest": String(localized: "Runs another test as a single step.")
+    case "http": String(localized: "Sends a request to a web address, checks the answer and saves parts of it for later blocks.")
+    case "database": String(localized: "Reads an SQLite database with a query, checks the result and saves it for later blocks.")
+    case "checkFile": String(localized: "Waits until a file appears, disappears, changes or contains a text.")
+    case "command": String(localized: "Runs a Terminal command with your permissions and checks how it ended.")
+    case "script": String(localized: "Runs a short program in sh, zsh, Python, JavaScript or AppleScript, with your permissions.")
     default: ""
     }
   }
@@ -76,10 +91,15 @@ enum BlockInfo {
     case "pressKeys": String(localized: "Presses a key combination")
     case "waitFor": String(localized: "Waits for the screen to change")
     case "check": String(localized: "Fails unless the screen matches")
-    case "if": String(localized: "Takes a path by what’s on screen")
+    case "if": String(localized: "Takes a path by the screen or a value")
     case "repeat": String(localized: "Repeats the steps inside")
     case "useData": String(localized: "Repeats the steps for each table row")
     case "runTest": String(localized: "Runs another test as one step")
+    case "http": String(localized: "Sends a request to a web service")
+    case "database": String(localized: "Reads an SQLite database")
+    case "checkFile": String(localized: "Waits for a file to change")
+    case "command": String(localized: "Runs a Terminal command")
+    case "script": String(localized: "Runs a short program")
     default: ""
     }
   }
@@ -102,12 +122,37 @@ enum BlockInfo {
     case .checks: String(localized: "Checks")
     case .logic: String(localized: "Conditions and Loops")
     case .subTests: String(localized: "Sub-Tests")
-    case .data: String(localized: "Data")
+    case .data: String(localized: "Data and System")
     }
   }
 
   /// Every block type in palette order, read once from the core.
   static let catalog: [BlockSpec] = blockCatalog()
+
+  static let languages: [ScriptLanguage] = [.sh, .zsh, .python3, .node, .appleScript]
+
+  static func languageName(_ language: ScriptLanguage) -> String {
+    switch language {
+    case .sh: "sh"
+    case .zsh: "zsh"
+    case .python3: "Python 3"
+    case .node: String(localized: "JavaScript (Node.js)")
+    case .appleScript: "AppleScript"
+    }
+  }
+
+  static let methods: [HttpMethod] = [.get, .post, .put, .patch, .delete, .head]
+
+  static func methodName(_ method: HttpMethod) -> String {
+    switch method {
+    case .get: "GET"
+    case .post: "POST"
+    case .put: "PUT"
+    case .patch: "PATCH"
+    case .delete: "DELETE"
+    case .head: "HEAD"
+    }
+  }
 
   static func color(ofType type: String) -> Color {
     catalog.first { $0.typeName == type }.map { color($0.group) } ?? .gray
@@ -143,6 +188,11 @@ extension BlockKind {
     case .repeat: "repeat"
     case .useData: "useData"
     case .runTest: "runTest"
+    case .script: "script"
+    case .command: "command"
+    case .http: "http"
+    case .checkFile: "checkFile"
+    case .database: "database"
     }
   }
 }

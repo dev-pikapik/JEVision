@@ -1,7 +1,7 @@
 //! Ranking for the editor's search fields: the block palette, the command palette and the
 //! project's test list.
 
-use crate::{BlockKind, Compare, Flow, Reference, Target, WaitUntil};
+use crate::{BlockKind, Compare, Condition, Flow, Reference, Target, WaitUntil};
 
 /// Something a search can find: what it is called, and other words it answers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +55,12 @@ pub fn test_keywords(flow: &Flow) -> String {
             words.push(provider);
         }
     }
+    fn condition<'a>(c: &'a Condition, words: &mut Vec<&'a str>) {
+        match c {
+            Condition::Screen(r) => reference(r, words),
+            Condition::Value(v) => words.extend([v.of.as_str(), v.to.as_str()]),
+        }
+    }
     for block in &flow.blocks {
         match &block.kind {
             BlockKind::OpenApp { app, .. } => words.extend(app.as_deref()),
@@ -92,18 +98,25 @@ pub fn test_keywords(flow: &Flow) -> String {
             },
             BlockKind::Check { reference: r, .. } => reference(r, &mut words),
             BlockKind::If {
-                reference: r,
+                condition: c,
                 else_if,
                 ..
             } => {
-                reference(r, &mut words);
+                condition(c, &mut words);
                 for branch in else_if {
-                    reference(&branch.reference, &mut words);
+                    condition(&branch.condition, &mut words);
                 }
             }
             BlockKind::Repeat { .. } => {}
             BlockKind::UseData { file, .. } => words.push(file),
             BlockKind::RunTest { test, .. } => words.push(test),
+            BlockKind::Script { code, .. } => words.push(code),
+            BlockKind::Command { command, .. } => words.push(command),
+            BlockKind::Http { url, .. } => words.push(url),
+            BlockKind::CheckFile { path, .. } => words.push(path),
+            BlockKind::Database { file, query, .. } => {
+                words.extend([file.as_str(), query.as_str()])
+            }
         }
     }
     words.extend(flow.canvas.notes.iter().map(|n| n.text.as_str()));

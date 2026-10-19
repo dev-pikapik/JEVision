@@ -1419,6 +1419,26 @@
         }
       }
     },
+    "A JSON body is sent as JSON unless a Content-Type header says otherwise." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тело в формате JSON отправляется как JSON, если заголовок Content-Type не говорит иначе."
+          }
+        }
+      }
+    },
+    "A Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение"
+          }
+        }
+      }
+    },
     "A board of all tests appears once the project has a test. Make your own with the + button next to Boards." : {
       "localizations" : {
         "en" : {
@@ -1445,12 +1465,42 @@
         }
       }
     },
+    "A first value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первое значение"
+          }
+        }
+      }
+    },
     "A new issue" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новая задача"
+          }
+        }
+      }
+    },
+    "A number of rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Число строк"
+          }
+        }
+      }
+    },
+    "A path inside the project, from the home folder (~/…) or a full path." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Путь внутри проекта, от домашней папки (~/…) или полный путь."
           }
         }
       }
@@ -1955,6 +2005,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить заметку на доску"
+          }
+        }
+      }
+    },
+    "Add Output" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить результат"
           }
         }
       }
@@ -2571,6 +2631,16 @@
         }
       }
     },
+    "Any Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Любой статус"
+          }
+        }
+      }
+    },
     "App" : {
       "localizations" : {
         "ru" : {
@@ -2977,6 +3047,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Доски"
+          }
+        }
+      }
+    },
+    "Body" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тело"
           }
         }
       }
@@ -3715,6 +3795,26 @@
         }
       }
     },
+    "Choose a database" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите базу данных"
+          }
+        }
+      }
+    },
+    "Choose a file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите файл"
+          }
+        }
+      }
+    },
     "Choose a folder." : {
       "localizations" : {
         "ru" : {
@@ -3731,6 +3831,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите тест"
+          }
+        }
+      }
+    },
+    "Choose a value to check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите значение для проверки"
           }
         }
       }
@@ -3885,6 +3995,16 @@
         }
       }
     },
+    "Clear" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить"
+          }
+        }
+      }
+    },
     "Click" : {
       "localizations" : {
         "ru" : {
@@ -3961,6 +4081,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код"
           }
         }
       }
@@ -4277,6 +4407,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Область сравнения"
+          }
+        }
+      }
+    },
+    "Compare With" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнить с"
+          }
+        }
+      }
+    },
+    "Comparison" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнение"
           }
         }
       }
@@ -4737,16 +4887,6 @@
         }
       }
     },
-    "Data" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Данные"
-          }
-        }
-      }
-    },
     "Data Columns" : {
       "localizations" : {
         "ru" : {
@@ -4813,6 +4953,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таблица данных"
+          }
+        }
+      }
+    },
+    "Data and System" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данные и система"
+          }
+        }
+      }
+    },
+    "Database" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "База данных"
           }
         }
       }
@@ -5137,6 +5297,16 @@
         }
       }
     },
+    "Don’t Save" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сохранять"
+          }
+        }
+      }
+    },
     "Double-click" : {
       "localizations" : {
         "ru" : {
@@ -5415,6 +5585,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "У каждого условия на холсте свой выход."
+          }
+        }
+      }
+    },
+    "Each input reaches the script as an environment variable. Values can use Insert placeholders, such as ${var.NAME}." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждое входное значение попадает в скрипт как переменная окружения. В значениях можно использовать подстановки из «Вставить», например ${var.NAME}."
           }
         }
       }
@@ -5843,12 +6023,62 @@
         }
       }
     },
+    "Exactly…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Точно…"
+          }
+        }
+      }
+    },
+    "Exit code 0 means success. The saved output is what the command printed, without the last line break." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код выхода 0 означает успех. Сохраняется то, что напечатала команда, без последнего перевода строки."
+          }
+        }
+      }
+    },
+    "Expect" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидать"
+          }
+        }
+      }
+    },
     "Expected" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ожидается"
+          }
+        }
+      }
+    },
+    "Expected Exit Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидаемый код выхода"
+          }
+        }
+      }
+    },
+    "Expected Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидаемый статус"
           }
         }
       }
@@ -6167,6 +6397,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Первый тест"
+          }
+        }
+      }
+    },
+    "First Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первое значение"
           }
         }
       }
@@ -6685,6 +6925,26 @@
         }
       }
     },
+    "HTTP Request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP-запрос"
+          }
+        }
+      }
+    },
+    "Headers" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заголовки"
+          }
+        }
+      }
+    },
     "Height, px" : {
       "localizations" : {
         "ru" : {
@@ -6877,6 +7137,16 @@
         }
       }
     },
+    "If %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если %@"
+          }
+        }
+      }
+    },
     "If %@ is on screen" : {
       "localizations" : {
         "ru" : {
@@ -7023,6 +7293,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Цена входа для %@"
+          }
+        }
+      }
+    },
+    "Inputs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Входные значения"
           }
         }
       }
@@ -7350,6 +7630,16 @@
         }
       }
     },
+    "JavaScript (Node.js)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JavaScript (Node.js)"
+          }
+        }
+      }
+    },
     "Keep" : {
       "localizations" : {
         "ru" : {
@@ -7406,6 +7696,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиши"
+          }
+        }
+      }
+    },
+    "Kind of Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вид значения"
           }
         }
       }
@@ -7870,6 +8170,16 @@
         }
       }
     },
+    "Method" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метод"
+          }
+        }
+      }
+    },
     "Mine" : {
       "localizations" : {
         "ru" : {
@@ -8022,6 +8332,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название"
+          }
+        }
+      }
+    },
+    "Name %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя %lld"
           }
         }
       }
@@ -8360,6 +8680,16 @@
         }
       }
     },
+    "No address yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адреса пока нет"
+          }
+        }
+      }
+    },
     "No areas yet" : {
       "localizations" : {
         "ru" : {
@@ -8416,6 +8746,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет изменений с последнего коммита"
+          }
+        }
+      }
+    },
+    "No code yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кода пока нет"
+          }
+        }
+      }
+    },
+    "No command yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команды пока нет"
           }
         }
       }
@@ -8754,6 +9104,16 @@
         }
       }
     },
+    "Nothing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего"
+          }
+        }
+      }
+    },
     "Nothing Checked" : {
       "localizations" : {
         "ru" : {
@@ -8820,6 +9180,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пока пусто"
+          }
+        }
+      }
+    },
+    "Number" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Число"
           }
         }
       }
@@ -9484,12 +9854,32 @@
         }
       }
     },
+    "Output %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результат %lld"
+          }
+        }
+      }
+    },
     "Output price for %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Цена выхода для %@"
+          }
+        }
+      }
+    },
+    "Outputs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результаты"
           }
         }
       }
@@ -10338,6 +10728,16 @@
         }
       }
     },
+    "Query" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрос"
+          }
+        }
+      }
+    },
     "Quick Look" : {
       "localizations" : {
         "ru" : {
@@ -10364,6 +10764,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтение обеих версий"
+          }
+        }
+      }
+    },
+    "Reads an SQLite database" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читает базу SQLite"
+          }
+        }
+      }
+    },
+    "Reads an SQLite database with a query, checks the result and saves it for later blocks." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читает базу SQLite запросом, проверяет результат и сохраняет его для следующих блоков."
           }
         }
       }
@@ -11356,6 +11776,16 @@
         }
       }
     },
+    "Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки"
+          }
+        }
+      }
+    },
     "Run" : {
       "localizations" : {
         "ru" : {
@@ -11404,6 +11834,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запустить все тесты"
+          }
+        }
+      }
+    },
+    "Run Command" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполнить команду"
           }
         }
       }
@@ -11708,6 +12148,46 @@
         }
       }
     },
+    "Runs a Terminal command" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняет команду Терминала"
+          }
+        }
+      }
+    },
+    "Runs a Terminal command with your permissions and checks how it ended." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняет команду Терминала с вашими правами и проверяет, как она завершилась."
+          }
+        }
+      }
+    },
+    "Runs a short program" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает короткую программу"
+          }
+        }
+      }
+    },
+    "Runs a short program in sh, zsh, Python, JavaScript or AppleScript, with your permissions." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает короткую программу на sh, zsh, Python, JavaScript или AppleScript с вашими правами."
+          }
+        }
+      }
+    },
     "Runs another test as a single step." : {
       "localizations" : {
         "ru" : {
@@ -11788,6 +12268,16 @@
         }
       }
     },
+    "Runs in zsh, as in Terminal, with your permissions." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется в zsh, как в Терминале, с вашими правами."
+          }
+        }
+      }
+    },
     "Runs tests by themselves at set times." : {
       "localizations" : {
         "ru" : {
@@ -11838,6 +12328,16 @@
         }
       }
     },
+    "SQLite File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл SQLite"
+          }
+        }
+      }
+    },
     "Same by %@" : {
       "localizations" : {
         "ru" : {
@@ -11854,6 +12354,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить"
+          }
+        }
+      }
+    },
+    "Save First Value As" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить первое значение как"
+          }
+        }
+      }
+    },
+    "Save From the Answer" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить из ответа"
+          }
+        }
+      }
+    },
+    "Save Output As" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить вывод как"
           }
         }
       }
@@ -11884,6 +12414,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить отчёт одним HTML-файлом со снимками или в формате JUnit XML для CI"
+          }
+        }
+      }
+    },
+    "Saved Values" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранённые значения"
           }
         }
       }
@@ -12024,6 +12564,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снимки упавшего шага"
+          }
+        }
+      }
+    },
+    "Script" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрипт"
           }
         }
       }
@@ -12340,6 +12890,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправка…"
+          }
+        }
+      }
+    },
+    "Sends a request to a web address, checks the answer and saves parts of it for later blocks." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляет запрос на веб-адрес, проверяет ответ и сохраняет его части для следующих блоков."
+          }
+        }
+      }
+    },
+    "Sends a request to a web service" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляет запрос веб-сервису"
           }
         }
       }
@@ -13204,6 +13774,16 @@
         }
       }
     },
+    "Status Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код статуса"
+          }
+        }
+      }
+    },
     "Step" : {
       "localizations" : {
         "ru" : {
@@ -13334,6 +13914,16 @@
         }
       }
     },
+    "Success (200–299)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Успех (200–299)"
+          }
+        }
+      }
+    },
     "Switch already on but still ✕? Press Reset and Allow, then turn JEVision on again." : {
       "localizations" : {
         "ru" : {
@@ -13384,6 +13974,16 @@
         }
       }
     },
+    "Take status, body, a field of a JSON body such as body.items[0].id, or a header such as header.Location. Later blocks read it as ${var.NAME}." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Берите status, body, поле JSON-тела, например body.items[0].id, или заголовок, например header.Location. Следующие блоки читают значение как ${var.NAME}."
+          }
+        }
+      }
+    },
     "Taken in the last run" : {
       "localizations" : {
         "ru" : {
@@ -13394,22 +13994,22 @@
         }
       }
     },
-    "Takes a different path depending on which reference the screen matches." : {
+    "Takes a different path depending on what the screen shows or what a saved value is." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выбирает путь в зависимости от того, с каким эталоном совпадает экран."
+            "value" : "Выбирает путь в зависимости от того, что на экране или каким получилось сохранённое значение."
           }
         }
       }
     },
-    "Takes a path by what’s on screen" : {
+    "Takes a path by the screen or a value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выбирает путь по тому, что на экране"
+            "value" : "Выбирает путь по экрану или значению"
           }
         }
       }
@@ -13584,6 +14184,26 @@
         }
       }
     },
+    "Text or number" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст или число"
+          }
+        }
+      }
+    },
+    "Text to find" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст для поиска"
+          }
+        }
+      }
+    },
     "Text to type" : {
       "localizations" : {
         "ru" : {
@@ -13634,12 +14254,32 @@
         }
       }
     },
+    "The Screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран"
+          }
+        }
+      }
+    },
     "The Table Can’t Be Opened" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таблицу не открыть"
+          }
+        }
+      }
+    },
+    "The Test’s Folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка теста"
           }
         }
       }
@@ -13810,6 +14450,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот провал не делает провальными «Запустить все», командную строку и отчёт JUnit."
+          }
+        }
+      }
+    },
+    "The file appears" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл появится"
+          }
+        }
+      }
+    },
+    "The file changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл изменится"
+          }
+        }
+      }
+    },
+    "The file contains a text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле появится текст"
+          }
+        }
+      }
+    },
+    "The file disappears" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл исчезнет"
+          }
+        }
+      }
+    },
+    "The first value is the first column of the first row, empty when there are no rows. With an expected result, the query runs again until it holds or the time limit passes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первое значение — первый столбец первой строки; если строк нет, оно пустое. С ожидаемым результатом запрос повторяется, пока результат не совпадёт или не выйдет время."
           }
         }
       }
@@ -14064,6 +14754,16 @@
         }
       }
     },
+    "The script must write each output. Later blocks read it as ${var.NAME}." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрипт должен записать каждый результат. Следующие блоки читают его как ${var.NAME}."
+          }
+        }
+      }
+    },
     "The server didn’t accept your sign-in. Sign in with GitHub CLI (gh auth login) or set up an SSH key, then try again." : {
       "localizations" : {
         "ru" : {
@@ -14124,12 +14824,12 @@
         }
       }
     },
-    "The test goes the Yes way when the screen matches the image, and the No way when it doesn’t." : {
+    "The test goes the Yes way when the condition holds, and the No way when it doesn’t." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тест идёт по ветке «Да», если экран совпадает с картинкой, и по ветке «Нет», если не совпадает."
+            "value" : "Тест идёт путём «Да», когда условие выполнено, и путём «Нет», когда нет."
           }
         }
       }
@@ -14194,12 +14894,12 @@
         }
       }
     },
-    "The test takes the way of the first condition the screen matches, and the Otherwise way when it matches none." : {
+    "The test takes the way of the first condition that holds, and the Otherwise way when none does." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тест идёт по ветке первого условия, с которым совпадает экран, а если ни с одним — по ветке «Иначе»."
+            "value" : "Тест идёт путём первого выполненного условия, а если не выполнено ни одно — путём «Иначе»."
           }
         }
       }
@@ -14796,6 +15496,16 @@
         }
       }
     },
+    "To hand a value to later blocks, write a name=value line to the file in $JEV_OUTPUT, like: echo \"total=3\" >> \"$JEV_OUTPUT\"" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы передать значение следующим блокам, допишите строку имя=значение в файл из $JEV_OUTPUT, например: echo \"total=3\" >> \"$JEV_OUTPUT\""
+          }
+        }
+      }
+    },
     "To take screenshots of the app you test" : {
       "localizations" : {
         "ru" : {
@@ -14852,6 +15562,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попыток: %lld"
+          }
+        }
+      }
+    },
+    "True or False" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Истина или ложь"
           }
         }
       }
@@ -15138,6 +15858,26 @@
         }
       }
     },
+    "Until %@ changes · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока не изменится %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Until %@ contains %@ · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока в %1$@ не появится %2$@ · %3$@"
+          }
+        }
+      }
+    },
     "Until %@ disappears · %@" : {
       "localizations" : {
         "ru" : {
@@ -15284,6 +16024,16 @@
         }
       }
     },
+    "Value %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение %lld"
+          }
+        }
+      }
+    },
     "Value Name" : {
       "localizations" : {
         "ru" : {
@@ -15310,6 +16060,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значения хранятся в Связке ключей на этом Mac или берутся из одноимённых переменных окружения."
+          }
+        }
+      }
+    },
+    "Values saved for later blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значения, сохранённые для следующих блоков"
           }
         }
       }
@@ -15384,6 +16144,16 @@
         }
       }
     },
+    "Wait For File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать файл"
+          }
+        }
+      }
+    },
     "Wait Until" : {
       "localizations" : {
         "ru" : {
@@ -15434,12 +16204,32 @@
         }
       }
     },
+    "Waits for a file to change" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт, пока изменится файл"
+          }
+        }
+      }
+    },
     "Waits for the screen to change" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждёт, пока экран изменится"
+          }
+        }
+      }
+    },
+    "Waits until a file appears, disappears, changes or contains a text." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт, пока файл появится, исчезнет, изменится или в нём появится текст."
           }
         }
       }
@@ -15912,6 +16702,16 @@
         }
       }
     },
+    "a number" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "число"
+          }
+        }
+      }
+    },
     "add block" : {
       "localizations" : {
         "ru" : {
@@ -16066,6 +16866,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "доска url веб адрес"
+          }
+        }
+      }
+    },
+    "contains" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "содержит"
           }
         }
       }
@@ -16634,6 +17444,54 @@
         }
       }
     },
+    "flow.http.header" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be a header name: use letters, digits and -, with no spaces."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не подходит как имя заголовка: только буквы, цифры и -, без пробелов."
+          }
+        }
+      }
+    },
+    "flow.http.saveFrom" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a part of the answer. Use status, body, body.field or header.Name."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не часть ответа. Используйте status, body, body.поле или header.Имя."
+          }
+        }
+      }
+    },
+    "flow.http.url" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a web address. Start it with http:// or https://."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Начните его с http:// или https://."
+          }
+        }
+      }
+    },
     "flow.if.sameCondition" : {
       "localizations" : {
         "ru" : {
@@ -16730,6 +17588,38 @@
         }
       }
     },
+    "flow.name.duplicate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name “%@” is used twice in this block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя «%@» в этом блоке встречается дважды."
+          }
+        }
+      }
+    },
+    "flow.name.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be a name: start with a letter or _, then use only letters, digits and _."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не подходит как имя: начните с буквы или _, дальше только буквы, цифры и _."
+          }
+        }
+      }
+    },
     "flow.noCheck" : {
       "localizations" : {
         "en" : {
@@ -16783,13 +17673,13 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME}, ${env.NAME} или ${data.column}."
+            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME}, ${env.NAME}, ${data.column} или ${var.NAME}."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME} or ${data.column}."
+            "value" : "“%@” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME}, ${data.column} or ${var.NAME}."
           }
         }
       }
@@ -16922,6 +17812,38 @@
         }
       }
     },
+    "flow.value.notNumber" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a number, and greater or less than compares numbers."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не число, а «больше» и «меньше» сравнивают числа."
+          }
+        }
+      }
+    },
+    "flow.var.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No block before this one saves a value named %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни один блок до этого не сохраняет значение %@."
+          }
+        }
+      }
+    },
     "git github review" : {
       "localizations" : {
         "ru" : {
@@ -17002,6 +17924,46 @@
         }
       }
     },
+    "is equal to" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "равно"
+          }
+        }
+      }
+    },
+    "is greater than" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "больше"
+          }
+        }
+      }
+    },
+    "is less than" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "меньше"
+          }
+        }
+      }
+    },
+    "isn’t equal to" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не равно"
+          }
+        }
+      }
+    },
     "issue github failure bug report" : {
       "localizations" : {
         "ru" : {
@@ -17068,6 +18030,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS помнит старую копию JEVision, поэтому её переключатель не работает: нажмите «Сбросить и разрешить», затем включите JEVision."
+          }
+        }
+      }
+    },
+    "none, the system stopped it" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "нет, его остановила система"
           }
         }
       }
@@ -17904,6 +18876,22 @@
         }
       }
     },
+    "run.command.exitCode" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the command ended with exit code %@ instead of %@.%@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: команда завершилась с кодом %2$@ вместо %3$@.%4$@"
+          }
+        }
+      }
+    },
     "run.compare.meaningUnavailable" : {
       "localizations" : {
         "en" : {
@@ -17980,6 +18968,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: не удаётся прочитать таблицу %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.database.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the query failed: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: запрос не выполнился: %2$@."
+          }
+        }
+      }
+    },
+    "run.database.rows" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the query gave %@ rows instead of %@ for %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: запрос %4$@ с давал строк: %2$@ вместо %3$@."
+          }
+        }
+      }
+    },
+    "run.database.value" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the query gave “%@” instead of “%@” for %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: запрос %4$@ с давал «%2$@» вместо «%3$@»."
           }
         }
       }
@@ -18080,6 +19116,70 @@
         }
       }
     },
+    "run.file.timeout.changed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t change within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не изменился за %3$@ с."
+          }
+        }
+      }
+    },
+    "run.file.timeout.contains" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t contain “%@” within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: в %2$@ не появилось «%3$@» за %4$@ с."
+          }
+        }
+      }
+    },
+    "run.file.timeout.exists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t appear within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не появился за %3$@ с."
+          }
+        }
+      }
+    },
+    "run.file.timeout.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t disappear within %@ s."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не исчез за %3$@ с."
+          }
+        }
+      }
+    },
     "run.hands.appNotFound" : {
       "localizations" : {
         "en" : {
@@ -18176,6 +19276,54 @@
         }
       }
     },
+    "run.http.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t answer: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не ответил: %3$@."
+          }
+        }
+      }
+    },
+    "run.http.noValue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the answer has no %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: в ответе нет %2$@."
+          }
+        }
+      }
+    },
+    "run.http.status" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ answered with status %@ instead of %@.%@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ ответил статусом %3$@ вместо %4$@.%5$@"
+          }
+        }
+      }
+    },
     "run.io.writeFailed" : {
       "localizations" : {
         "en" : {
@@ -18204,6 +19352,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: %2$@ лежит вне папки проекта."
+          }
+        }
+      }
+    },
+    "run.process.cannotStart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ can’t start: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не удаётся запустить %2$@: %3$@."
+          }
+        }
+      }
+    },
+    "run.process.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ isn’t installed on this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не установлен на этом Mac."
+          }
+        }
+      }
+    },
+    "run.process.timeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: still running after %@ s, so it was stopped."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: всё ещё работал через %2$@ с, поэтому его остановили."
           }
         }
       }
@@ -18288,6 +19484,54 @@
         }
       }
     },
+    "run.script.badOutput" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the output %@ should be %@, but the script wrote “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: результат %2$@ должен быть таким: %3$@, а скрипт записал «%4$@»."
+          }
+        }
+      }
+    },
+    "run.script.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the script ended with exit code %@.%@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: скрипт завершился с кодом %2$@.%3$@"
+          }
+        }
+      }
+    },
+    "run.script.missingOutput" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the script didn’t write %@ to $JEV_OUTPUT."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: скрипт не записал %2$@ в $JEV_OUTPUT."
+          }
+        }
+      }
+    },
     "run.secret.missing" : {
       "localizations" : {
         "en" : {
@@ -18364,6 +19608,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать файл теста %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.value.notNumber" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” isn’t a number, so it can’t be compared as one."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» — не число, поэтому сравнить его как число нельзя."
+          }
+        }
+      }
+    },
+    "run.var.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: no block before it saved a value named %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: ни один блок до него не сохранил значение %2$@."
           }
         }
       }
@@ -18720,6 +19996,16 @@
         }
       }
     },
+    "saved %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сохранено: %@"
+          }
+        }
+      }
+    },
     "scroll.down" : {
       "localizations" : {
         "en" : {
@@ -18854,6 +20140,16 @@
         }
       }
     },
+    "text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "текст"
+          }
+        }
+      }
+    },
     "timer nightly" : {
       "localizations" : {
         "ru" : {
@@ -18880,6 +20176,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "завтра в %@"
+          }
+        }
+      }
+    },
+    "true or false" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "true или false"
           }
         }
       }
@@ -18976,6 +20282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» — это не веб-адрес."
+          }
+        }
+      }
+    },
+    "“Changes” means the file was saved after the run started." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Изменится» значит, что файл сохранили после начала прогона."
           }
         }
       }

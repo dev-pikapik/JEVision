@@ -14,6 +14,7 @@ mod env;
 mod machine;
 mod report;
 mod run;
+mod system;
 mod usage;
 
 use std::collections::{BTreeMap, HashMap};

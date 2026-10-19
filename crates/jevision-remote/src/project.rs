@@ -6,7 +6,9 @@ use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use jevision_core::{BlockKind, DataTable, ScrollDirection, ScrollUnit, Target, WaitUntil};
+use jevision_core::{
+    BlockKind, Condition, DataTable, ScrollDirection, ScrollUnit, Target, WaitUntil,
+};
 use jevision_runner::{Run, RunReport};
 
 use crate::RemoteError;
@@ -249,12 +251,23 @@ fn title(kind: &BlockKind) -> String {
             WaitUntil::Appears(r) | WaitUntil::Disappears(r) => r.image.clone(),
             WaitUntil::ScreenStable => String::new(),
         },
-        BlockKind::Check { reference, .. } | BlockKind::If { reference, .. } => {
-            reference.image.clone()
-        }
+        BlockKind::Check { reference, .. } => reference.image.clone(),
+        BlockKind::If { condition, .. } => match condition {
+            Condition::Screen(reference) => reference.image.clone(),
+            Condition::Value(check) => check.of.clone(),
+        },
         BlockKind::Repeat { times, .. } => times.to_string(),
         BlockKind::UseData { file, .. } => file.clone(),
         BlockKind::RunTest { test, .. } => test.clone(),
+        BlockKind::Script { code, .. } => code
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or_default()
+            .to_owned(),
+        BlockKind::Command { command, .. } => command.clone(),
+        BlockKind::Http { url, .. } => url.clone(),
+        BlockKind::CheckFile { path, .. } => path.clone(),
+        BlockKind::Database { file, .. } => file.clone(),
     }
 }
 

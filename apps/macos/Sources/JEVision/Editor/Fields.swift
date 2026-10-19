@@ -182,19 +182,22 @@ struct KeyRecorder: View {
 /// placeholders.
 struct PlaceholderTextField: View {
   @Binding var text: String
-  let secrets: [String]
-  let columns: [String]
-  var environmentValues: [String] = []
+  let values: InsertableValues
+  var label = Text("Text")
+  var prompt = Text("Text to type")
+  var monospaced = false
   @State private var isNamingSecret = false
   @State private var secretName = ""
 
   var body: some View {
-    TextField(text: $text, prompt: Text("Text to type"), axis: .vertical) { Text("Text") }
+    TextField(text: $text, prompt: prompt, axis: .vertical) { label }
       .lineLimit(1...4)
+      .font(monospaced ? .body.monospaced() : .body)
+      .autocorrectionDisabled(monospaced)
     LabeledContent {
       Menu {
         Section("Secrets") {
-          ForEach(secrets, id: \.self) { name in
+          ForEach(values.secrets, id: \.self) { name in
             Button(name) { insert("secret", name) }
           }
           Button("New Secret…") {
@@ -202,17 +205,24 @@ struct PlaceholderTextField: View {
             isNamingSecret = true
           }
         }
-        if !environmentValues.isEmpty {
+        if !values.environment.isEmpty {
           Section("Environment Values") {
-            ForEach(environmentValues, id: \.self) { name in
+            ForEach(values.environment, id: \.self) { name in
               Button(name) { insert("env", name) }
             }
           }
         }
-        if !columns.isEmpty {
+        if !values.columns.isEmpty {
           Section("Data Columns") {
-            ForEach(columns, id: \.self) { name in
+            ForEach(values.columns, id: \.self) { name in
               Button(name) { insert("data", name) }
+            }
+          }
+        }
+        if !values.variables.isEmpty {
+          Section("Saved Values") {
+            ForEach(values.variables, id: \.self) { name in
+              Button(name) { insert("var", name) }
             }
           }
         }

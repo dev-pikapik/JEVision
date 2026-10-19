@@ -154,6 +154,7 @@ mod tests {
             sent_masked: false,
             branches: None,
             branch_condition: None,
+            outputs: Vec::new(),
         }
     }
 

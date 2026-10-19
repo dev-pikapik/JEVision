@@ -332,6 +332,9 @@ pub struct Step {
     /// should show, or the name of the reference image. Absent for `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch_condition: Option<String>,
+    /// Values the block saved for the blocks after it, read as `${var.NAME}`. Secrets are masked.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub outputs: BTreeMap<String, String>,
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
@@ -566,6 +569,107 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("column")
         ),
+        "run.var.missing" => format!(
+            "Block {}: there is no value {} yet. A block before this one must save it.",
+            p("block"),
+            p("name")
+        ),
+        "run.value.notNumber" => format!(
+            "Block {}: “{}” is not a number, so it cannot be compared as one.",
+            p("block"),
+            p("value")
+        ),
+        "run.process.notFound" => format!(
+            "Block {}: {} is not installed on this computer.",
+            p("block"),
+            p("program")
+        ),
+        "run.process.cannotStart" => format!(
+            "Block {}: {} cannot start: {}.",
+            p("block"),
+            p("program"),
+            p("reason")
+        ),
+        "run.process.timeout" => format!(
+            "Block {}: it did not finish within {} s and was stopped.",
+            p("block"),
+            p("seconds")
+        ),
+        "run.script.failed" => format!(
+            "Block {}: the script stopped with exit code {}{}",
+            p("block"),
+            p("code"),
+            because(p("reason"))
+        ),
+        "run.script.missingOutput" => format!(
+            "Block {}: the script did not write {} to $JEV_OUTPUT.",
+            p("block"),
+            p("name")
+        ),
+        "run.script.badOutput" => format!(
+            "Block {}: {} should be {}, but the script wrote “{}”.",
+            p("block"),
+            p("name"),
+            match p("type") {
+                "number" => "a number",
+                _ => "true or false",
+            },
+            p("value")
+        ),
+        "run.command.exitCode" => format!(
+            "Block {}: the command ended with exit code {} instead of {}{}",
+            p("block"),
+            p("actual"),
+            p("expected"),
+            because(p("reason"))
+        ),
+        "run.http.failed" => format!(
+            "Block {}: {} did not answer: {}.",
+            p("block"),
+            p("url"),
+            p("reason")
+        ),
+        "run.http.status" => format!(
+            "Block {}: {} answered with status {} instead of {}.",
+            p("block"),
+            p("url"),
+            p("status"),
+            p("expected")
+        ),
+        "run.http.noValue" => format!("Block {}: the answer has no {}.", p("block"), p("from")),
+        "run.file.timeout" => {
+            let what = match p("state") {
+                "exists" => "did not appear".to_owned(),
+                "missing" => "did not disappear".to_owned(),
+                "changed" => "did not change".to_owned(),
+                _ => format!("does not contain “{}”", p("text")),
+            };
+            format!(
+                "Block {}: {} {what} within {} s.",
+                p("block"),
+                p("path"),
+                p("seconds")
+            )
+        }
+        "run.database.failed" => format!(
+            "Block {}: the database query failed: {}.",
+            p("block"),
+            p("reason")
+        ),
+        "run.database.value" => format!(
+            "Block {}: the query returned “{}” instead of “{}” within {} s.",
+            p("block"),
+            p("actual"),
+            p("expected"),
+            p("seconds")
+        ),
+        "run.database.rows" => format!(
+            "Block {}: the query returned {} rows instead of {} within {} s.",
+            p("block"),
+            p("actual"),
+            p("expected"),
+            p("seconds")
+        ),
         "run.runTest.recursion" => format!(
             "Block {}: test {} is already running; a test cannot run itself.",
             p("block"),
@@ -678,6 +782,15 @@ pub fn describe_vision(f: &Failure) -> String {
     }
 }
 
+/// `: what the program said.`, or just `.` when it said nothing.
+fn because(reason: &str) -> String {
+    if reason.is_empty() {
+        ".".to_owned()
+    } else {
+        format!(": {reason}")
+    }
+}
+
 pub(crate) fn wait_target(target: &str) -> String {
     match target {
         "screenStable" => "the screen settling".to_owned(),
@@ -727,13 +840,21 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             .iter()
             .filter_map(|a| a.failure.as_ref())
             .collect();
-        // Which way each `if` of the last attempt went, so a CI log shows the path the test took.
+        // Which way each `if` of the last attempt went and what its blocks saved, so a CI log
+        // shows the path the test took.
         let paths: Vec<String> = r
             .attempts
             .last()
             .into_iter()
             .flat_map(|a| &a.steps)
-            .filter_map(|s| Some(format!("{}: {}", s.block, s.branch_text()?)))
+            .flat_map(|s| {
+                let branch = s.branch_text().map(|b| format!("{}: {b}", s.block));
+                let saved = s
+                    .outputs
+                    .iter()
+                    .map(|(n, v)| format!("{}: {n} = {v}", s.block));
+                branch.into_iter().chain(saved)
+            })
             .collect();
         if r.verdict == Verdict::Passed
             && !r.nothing_checked
@@ -937,6 +1058,14 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             }
             if let Some(b) = s.branch_text() {
                 let _ = write!(o, "<span class=\"type\">{}</span>", xml(&b));
+            }
+            for (name, value) in &s.outputs {
+                let _ = write!(
+                    o,
+                    "<span class=\"type\">{} = {}</span>",
+                    xml(name),
+                    xml(value)
+                );
             }
             if let Some(sim) = s.similarity {
                 let _ = write!(o, "<span class=\"type\">{} alike</span>", percent(sim));

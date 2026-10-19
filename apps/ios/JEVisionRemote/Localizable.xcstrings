@@ -813,6 +813,56 @@
         }
       }
     },
+    "HTTP Request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP-запрос"
+          }
+        }
+      }
+    },
+    "Database" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "База данных"
+          }
+        }
+      }
+    },
+    "Wait For File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать файл"
+          }
+        }
+      }
+    },
+    "Run Command" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполнить команду"
+          }
+        }
+      }
+    },
+    "Script" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрипт"
+          }
+        }
+      }
+    },
     "Run Test" : {
       "localizations" : {
         "ru" : {

@@ -3,10 +3,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::decode::DEFAULT_WAIT_TIMEOUT_MS;
+use crate::decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS};
 use crate::model::{
-    BODY, Block, BlockKind, Compare, ELSE, ElseIf, Flow, MouseButton, NEXT, Reference,
-    ScrollDirection, ScrollUnit, THEN, Target, WaitUntil, else_if_index,
+    BODY, Block, BlockKind, Compare, Condition, ELSE, ElseIf, ExpectStatus, FileState, Flow,
+    HttpMethod, MouseButton, NEXT, Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN,
+    Target, ValueCheck, ValueTest, WaitUntil, else_if_index,
 };
 
 /// How far a new scroll block scrolls, in lines.
@@ -84,7 +85,7 @@ impl BlockKind {
                 next: None,
             },
             "if" => Self::If {
-                reference: reference(),
+                condition: Condition::Screen(reference()),
                 then: None,
                 else_if: Vec::new(),
                 otherwise: None,
@@ -103,6 +104,46 @@ impl BlockKind {
                 test: String::new(),
                 next: None,
             },
+            "script" => Self::Script {
+                language: ScriptLanguage::Zsh,
+                code: String::new(),
+                inputs: Vec::new(),
+                outputs: Vec::new(),
+                timeout_ms: DEFAULT_TASK_TIMEOUT_MS,
+                next: None,
+            },
+            "command" => Self::Command {
+                command: String::new(),
+                folder: None,
+                exit_code: 0,
+                save_output: None,
+                timeout_ms: DEFAULT_TASK_TIMEOUT_MS,
+                next: None,
+            },
+            "http" => Self::Http {
+                method: HttpMethod::Get,
+                url: String::new(),
+                headers: Vec::new(),
+                body: String::new(),
+                expect_status: ExpectStatus::Success,
+                save: Vec::new(),
+                timeout_ms: DEFAULT_TASK_TIMEOUT_MS,
+                next: None,
+            },
+            "checkFile" => Self::CheckFile {
+                path: String::new(),
+                until: FileState::Exists,
+                timeout_ms: DEFAULT_WAIT_TIMEOUT_MS,
+                next: None,
+            },
+            "database" => Self::Database {
+                file: String::new(),
+                query: String::new(),
+                save_as: None,
+                expect: None,
+                timeout_ms: DEFAULT_WAIT_TIMEOUT_MS,
+                next: None,
+            },
             _ => return None,
         })
     }
@@ -116,22 +157,35 @@ impl BlockKind {
     }
 
     /// Adds a condition to an `if`, checked after all the others. Until it is linked elsewhere,
-    /// its way out leads where `else` does. `false` for other blocks.
+    /// its way out leads where `else` does. After a value check it checks the same value, so
+    /// that each way out can stand for one answer. `false` for other blocks.
     pub fn add_condition(&mut self) -> bool {
         let Self::If {
-            else_if, otherwise, ..
+            condition,
+            else_if,
+            otherwise,
+            ..
         } = self
         else {
             return false;
         };
+        let last = else_if.last().map_or(&*condition, |c| &c.condition);
+        let condition = match last {
+            Condition::Value(v) => Condition::Value(ValueCheck {
+                of: v.of.clone(),
+                is: ValueTest::Equals,
+                to: String::new(),
+            }),
+            Condition::Screen(_) => Condition::Screen(empty_reference()),
+        };
         else_if.push(ElseIf {
-            reference: empty_reference(),
+            condition,
             then: otherwise.clone(),
         });
         true
     }
 
-    /// Removes condition `n` of an `if`, with its way out; 0 is the first, `reference`. The only
+    /// Removes condition `n` of an `if`, with its way out; 0 is the first, `condition`. The only
     /// condition stays. `false` when nothing changed.
     pub fn remove_condition(&mut self, n: usize) -> bool {
         self.edit_conditions(|all| {
@@ -159,7 +213,7 @@ impl BlockKind {
     /// Runs `edit` on the conditions of an `if` in the order they are checked.
     fn edit_conditions(&mut self, edit: impl FnOnce(&mut Vec<ElseIf>) -> bool) -> bool {
         let Self::If {
-            reference,
+            condition,
             then,
             else_if,
             ..
@@ -168,14 +222,14 @@ impl BlockKind {
             return false;
         };
         let mut all = vec![ElseIf {
-            reference: reference.clone(),
+            condition: condition.clone(),
             then: then.clone(),
         }];
         all.append(else_if);
         let changed = edit(&mut all);
         let mut all = all.into_iter();
         let first = all.next().expect("an if keeps one condition");
-        *reference = first.reference;
+        *condition = first.condition;
         *then = first.then;
         *else_if = all.collect();
         changed
@@ -200,7 +254,12 @@ impl BlockKind {
             | Self::Check { next, .. }
             | Self::Repeat { next, .. }
             | Self::UseData { next, .. }
-            | Self::RunTest { next, .. } => Some(next),
+            | Self::RunTest { next, .. }
+            | Self::Script { next, .. }
+            | Self::Command { next, .. }
+            | Self::Http { next, .. }
+            | Self::CheckFile { next, .. }
+            | Self::Database { next, .. } => Some(next),
         }
     }
 }
@@ -631,10 +690,10 @@ mod tests {
         let mut kind = f.blocks[0].kind.clone();
         let images = |k: &BlockKind| match k {
             BlockKind::If {
-                reference, else_if, ..
-            } => std::iter::once(reference)
-                .chain(else_if.iter().map(|c| &c.reference))
-                .map(|r| r.image.clone())
+                condition, else_if, ..
+            } => std::iter::once(condition)
+                .chain(else_if.iter().map(|c| &c.condition))
+                .map(|c| c.reference().unwrap().image.clone())
                 .collect::<Vec<_>>(),
             _ => unreachable!(),
         };

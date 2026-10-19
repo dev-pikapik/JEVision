@@ -7,9 +7,10 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Block, BlockKind, CanvasContent, CanvasSection, Compare, ElseIf, Flow, MouseButton, Note,
-    Point, Priority, Rect, Reference, ScrollDirection, ScrollUnit, Target, TestStatus, TestType,
-    WaitUntil, parse_duration,
+    Block, BlockKind, CanvasContent, CanvasSection, Compare, Condition, DatabaseExpect, ElseIf,
+    ExpectStatus, FileState, Flow, HttpMethod, MouseButton, NamedValue, Note, OutputKind, Point,
+    Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput, ScrollDirection,
+    ScrollUnit, Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -206,6 +207,18 @@ impl<'v> Obj<'v> {
         n
     }
 
+    /// A whole number that may be left out; `0` then.
+    fn opt_int(&mut self, key: &'static str, out: &mut Out) -> Option<i32> {
+        let Some(v) = self.get(key) else {
+            return Some(0);
+        };
+        let n = v.as_i64().and_then(|n| i32::try_from(n).ok());
+        if n.is_none() {
+            self.wrong_type(key, "integer", out);
+        }
+        n
+    }
+
     fn number(&mut self, key: &'static str, out: &mut Out) -> Option<f64> {
         let n = match self.get(key) {
             None => None,
@@ -356,8 +369,39 @@ const COMPARE: &[(&str, CompareMode)] = &[
     ("meaning", CompareMode::Meaning),
 ];
 
-/// Default for `waitFor.timeout` when the file leaves it out.
+const LANGUAGES: &[(&str, ScriptLanguage)] = &[
+    ("sh", ScriptLanguage::Sh),
+    ("zsh", ScriptLanguage::Zsh),
+    ("python3", ScriptLanguage::Python3),
+    ("node", ScriptLanguage::Node),
+    ("appleScript", ScriptLanguage::AppleScript),
+];
+const OUTPUT_KINDS: &[(&str, OutputKind)] = &[
+    ("text", OutputKind::Text),
+    ("number", OutputKind::Number),
+    ("boolean", OutputKind::Boolean),
+];
+const METHODS: &[(&str, HttpMethod)] = &[
+    ("GET", HttpMethod::Get),
+    ("POST", HttpMethod::Post),
+    ("PUT", HttpMethod::Put),
+    ("PATCH", HttpMethod::Patch),
+    ("DELETE", HttpMethod::Delete),
+    ("HEAD", HttpMethod::Head),
+];
+const VALUE_TESTS: &[(&str, ValueTest)] = &[
+    ("equals", ValueTest::Equals),
+    ("notEquals", ValueTest::NotEquals),
+    ("contains", ValueTest::Contains),
+    ("greaterThan", ValueTest::GreaterThan),
+    ("lessThan", ValueTest::LessThan),
+];
+
+/// Default for `waitFor.timeout`, and for the time `checkFile` and `database` wait, when the
+/// file leaves it out.
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 10_000;
+/// Default for the time a script, command or HTTP request may take.
+pub const DEFAULT_TASK_TIMEOUT_MS: u64 = 30_000;
 
 fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     o.get("format");
@@ -597,13 +641,13 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "if" => {
-            let reference = o.object("reference", out).and_then(|r| reference(r, out));
+            let condition = condition(&mut o, out);
             let then = o.opt_string("then", out);
             let else_if = else_ifs(&mut o, out);
             let otherwise = o.opt_string("else", out);
             all_present(|| {
                 Some(BlockKind::If {
-                    reference: reference?,
+                    condition: condition?,
                     then,
                     else_if: else_if?,
                     otherwise,
@@ -639,6 +683,130 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let test = o.string("test", out);
             let next = next(&mut o, out);
             all_present(|| Some(BlockKind::RunTest { test: test?, next }))
+        }
+        "script" => {
+            let language = o.opt_choice("language", LANGUAGES, out);
+            let language = o.require("language", language, out);
+            let code = o.string("code", out);
+            let inputs = named_values(&mut o, "inputs", "value", out);
+            let outputs = named_values(&mut o, "outputs", "type", out).and_then(|all| {
+                all.into_iter()
+                    .enumerate()
+                    .map(|(i, v)| {
+                        let field = format!("outputs.{i}.type");
+                        let kind = OUTPUT_KINDS.iter().find(|(n, _)| *n == v.value);
+                        if kind.is_none() {
+                            out.push(
+                                o.issue("flow.field.value", &field)
+                                    .with("value", &v.value)
+                                    .with("allowed", "text, number, boolean"),
+                            );
+                        }
+                        kind.map(|(_, kind)| ScriptOutput {
+                            name: v.name,
+                            kind: *kind,
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .collect::<Option<Vec<_>>>()
+            });
+            let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Script {
+                    language: language?,
+                    code: code?,
+                    inputs: inputs?,
+                    outputs: outputs?,
+                    timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "command" => {
+            let command = o.string("command", out);
+            let folder = o.opt_string("folder", out);
+            let exit_code = o.opt_int("exitCode", out);
+            let save_output = o.opt_string("saveOutput", out);
+            let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Command {
+                    command: command?,
+                    folder,
+                    exit_code: exit_code?,
+                    save_output,
+                    timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "http" => {
+            let method = o.opt_choice("method", METHODS, out);
+            let url = o.string("url", out);
+            let headers = named_values(&mut o, "headers", "value", out);
+            let body = o.opt_string("body", out).unwrap_or_default();
+            let expect_status = expect_status(&mut o, out);
+            let save = named_values(&mut o, "save", "from", out).map(|all| {
+                all.into_iter()
+                    .map(|v| SavedValue {
+                        name: v.name,
+                        from: v.value,
+                    })
+                    .collect()
+            });
+            let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Http {
+                    method: method.unwrap_or(HttpMethod::Get),
+                    url: url?,
+                    headers: headers?,
+                    body,
+                    expect_status: expect_status?,
+                    save: save?,
+                    timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "checkFile" => {
+            let path = o.string("path", out);
+            let until = o.get("until");
+            let until = o.require("until", until, out);
+            let until = until.and_then(|v| file_state(&o, v, out));
+            let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::CheckFile {
+                    path: path?,
+                    until: until?,
+                    timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "database" => {
+            let file = o.string("file", out);
+            let query = o.string("query", out);
+            let save_as = o.opt_string("saveAs", out);
+            let expect = match o.opt_object("expect", out) {
+                None => Some(None),
+                Some(e) => database_expect(e, out).map(Some),
+            };
+            let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Database {
+                    file: file?,
+                    query: query?,
+                    save_as,
+                    expect: expect?,
+                    timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
         }
         other => {
             out.push(
@@ -720,18 +888,127 @@ fn else_ifs(o: &mut Obj<'_>, out: &mut Out) -> Option<Vec<ElseIf>> {
         .enumerate()
         .map(|(i, v)| {
             let mut case = o.child(&format!("elseIf.{i}"), v, out)?;
-            let reference = case
-                .object("reference", out)
-                .and_then(|r| reference(r, out));
+            let condition = condition(&mut case, out);
             let then = case.opt_string("then", out);
             case.finish(out);
             Some(ElseIf {
-                reference: reference?,
+                condition: condition?,
                 then,
             })
         })
         .collect();
     cases.into_iter().collect()
+}
+
+/// What an `if`, or one of its `elseIf` cases, checks: `reference` or `value`.
+fn condition(o: &mut Obj<'_>, out: &mut Out) -> Option<Condition> {
+    match o.one_of(&["reference", "value"], out) {
+        Some("reference") => o
+            .object("reference", out)
+            .and_then(|r| reference(r, out))
+            .map(Condition::Screen),
+        Some(_) => o
+            .object("value", out)
+            .and_then(|v| value_check(v, out))
+            .map(Condition::Value),
+        None => {
+            o.known.extend(["reference", "value"]);
+            None
+        }
+    }
+}
+
+fn value_check(mut o: Obj<'_>, out: &mut Out) -> Option<ValueCheck> {
+    let of = o.string("of", out);
+    let is = o.opt_choice("is", VALUE_TESTS, out);
+    let is = o.require("is", is, out);
+    let to = o.string("to", out);
+    o.finish(out);
+    Some(ValueCheck {
+        of: of?,
+        is: is?,
+        to: to?,
+    })
+}
+
+/// A list of `{"name": …, value_key: …}` objects, such as script inputs or HTTP headers.
+fn named_values(
+    o: &mut Obj<'_>,
+    key: &'static str,
+    value_key: &'static str,
+    out: &mut Out,
+) -> Option<Vec<NamedValue>> {
+    let Some(items) = o.opt_array(key, out) else {
+        return (!o.map.contains_key(key)).then(Vec::new);
+    };
+    let found: Vec<Option<NamedValue>> = items
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let mut item = o.child(&format!("{key}.{i}"), v, out)?;
+            let name = item.string("name", out);
+            let value = item.string(value_key, out);
+            item.finish(out);
+            Some(NamedValue {
+                name: name?,
+                value: value?,
+            })
+        })
+        .collect();
+    found.into_iter().collect()
+}
+
+/// `expectStatus`: absent or `"success"`, `"any"`, or a status code.
+fn expect_status(o: &mut Obj<'_>, out: &mut Out) -> Option<ExpectStatus> {
+    match o.get("expectStatus") {
+        None => Some(ExpectStatus::Success),
+        Some(Value::String(s)) if s == "success" => Some(ExpectStatus::Success),
+        Some(Value::String(s)) if s == "any" => Some(ExpectStatus::Any),
+        Some(v) => {
+            let code = v.as_u64().and_then(|n| u16::try_from(n).ok());
+            if code.is_none() {
+                o.wrong_type("expectStatus", "a status code, \"success\" or \"any\"", out);
+            }
+            code.map(ExpectStatus::Exactly)
+        }
+    }
+}
+
+fn file_state(o: &Obj<'_>, value: &Value, out: &mut Out) -> Option<FileState> {
+    match value.as_str() {
+        Some("exists") => return Some(FileState::Exists),
+        Some("missing") => return Some(FileState::Missing),
+        Some("changed") => return Some(FileState::Changed),
+        Some(other) => {
+            out.push(
+                o.issue("flow.field.value", &o.path_of("until"))
+                    .with("value", other)
+                    .with("allowed", "exists, missing, changed, {\"contains\": …}"),
+            );
+            return None;
+        }
+        None => {}
+    }
+    let mut until = o.child("until", value, out)?;
+    let text = until.string("contains", out);
+    until.finish(out);
+    text.map(FileState::Contains)
+}
+
+fn database_expect(mut o: Obj<'_>, out: &mut Out) -> Option<DatabaseExpect> {
+    let result = match o.one_of(&["value", "rows"], out) {
+        Some("value") => o.string("value", out).map(DatabaseExpect::Value),
+        Some(_) => {
+            let rows = o.opt_uint("rows", out);
+            o.require("rows", rows, out).map(DatabaseExpect::Rows)
+        }
+        None => {
+            o.known.extend(["value", "rows"]);
+            None
+        }
+    };
+    o.finish(out);
+    result
 }
 
 fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {

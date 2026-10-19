@@ -27,7 +27,7 @@ pub use board::{
 };
 pub use canvas::CanvasItem;
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
-pub use decode::{DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
+pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
 pub use env::{
@@ -53,7 +53,7 @@ pub use schedule::{
 };
 pub use search::{SearchCandidate, rank, test_keywords};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, required_secrets,
+    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, required_secrets, saved_variables,
     unbreakable_placeholders, validate, validate_in,
 };
 
@@ -84,6 +84,8 @@ pub enum BlockGroup {
     /// Conditions and loops.
     Logic,
     SubTests,
+    /// Test data, and blocks that work without the screen: requests, files, databases,
+    /// commands and scripts.
     Data,
 }
 
@@ -113,6 +115,11 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),
     ("runTest", BlockGroup::SubTests, &[NEXT]),
     ("useData", BlockGroup::Data, &[BODY, NEXT]),
+    ("http", BlockGroup::Data, &[NEXT]),
+    ("database", BlockGroup::Data, &[NEXT]),
+    ("checkFile", BlockGroup::Data, &[NEXT]),
+    ("command", BlockGroup::Data, &[NEXT]),
+    ("script", BlockGroup::Data, &[NEXT]),
 ];
 
 /// Every block type, in palette order.
