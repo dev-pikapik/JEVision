@@ -8,7 +8,8 @@ import Testing
 
 private let valid = #"""
   {"format": 1, "name": "t", "app": "com.example.App", "start": "a",
-    "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s"}}}
+    "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s", "next": "b"},
+      "b": {"type": "check", "reference": {"image": "saved.png"}}}}
   """#
 private let brokenEdge = #"""
   {"format": 1, "name": "t", "app": "com.example.App", "start": "a",
@@ -115,7 +116,7 @@ struct CommandLineArgumentTests {
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
     (
       ["run", "a", "--provider", "skynet"],
-      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, ollama, lmstudio, openai-compatible"
+      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible"
     ),
   ])
   func usageErrors(arguments: [String], message: String) {
@@ -144,6 +145,8 @@ struct CommandLineToolTests {
   @Test func examplesAreValidAndFormatted() throws {
     let validated = try jevision("validate", Self.examples)
     #expect(validated.status == 0)
+    #expect(validated.out.contains("sign-in.flow.json: ok"), "every picture the examples point at is there")
+    #expect(validated.out.contains("open-mail.flow.json: ok"))
     #expect(validated.out.contains("write-a-note.flow.json: 0 errors, 1 warning"))
     #expect(
       validated.out.contains(
@@ -156,6 +159,7 @@ struct CommandLineToolTests {
     let dir = try Scratch()
     let good = try dir.file("good.flow.json", valid)
     let bad = try dir.file("bad.flow.json", brokenEdge)
+    _ = try dir.file("saved.png", "png")
 
     let ok = try jevision("validate", good)
     #expect(ok.status == 0)
@@ -163,7 +167,7 @@ struct CommandLineToolTests {
 
     let failed = try jevision("validate", good, bad)
     #expect(failed.status == 1)
-    #expect(failed.out.contains("\(bad): 1 error, 0 warnings"))
+    #expect(failed.out.contains("\(bad): 1 error, 1 warning"))
     #expect(failed.out.contains("  error   Block \"a\", edge \"next\": leads to \"gone\", but there is no such block.\n"))
 
     let missing = try jevision("validate", dir.url.appending(path: "none.flow.json").path)
@@ -175,13 +179,15 @@ struct CommandLineToolTests {
     let dir = try Scratch()
     let test = try dir.file("click.flow.json", #"""
       {"format": 1, "name": "t", "app": "com.example.App", "start": "a",
-        "blocks": {"a": {"type": "click", "target": {"image": "button.png"}}}}
+        "blocks": {"a": {"type": "click", "target": {"image": "button.png"}, "next": "b"},
+          "b": {"type": "waitFor", "until": {"appears": {"image": "button.png"}}}}}
       """#)
     let missing = try jevision("validate", test)
     #expect(missing.status == 0, "warnings don't fail validation")
     #expect(missing.out == """
-      \(test): 0 errors, 1 warning
+      \(test): 0 errors, 2 warnings
         warning Block "a", field "target.image": button.png doesn't exist; the run will stop at this block until it's added.
+        warning Block "b", field "until.appears.image": button.png doesn't exist; the run will stop at this block until it's added.
 
       """)
     _ = try dir.file("button.png", "png")
@@ -393,6 +399,8 @@ struct CommandLineRunTests {
     let plan = try RunCommand.plan(RunRequest(paths: [dir.url.appending(path: "login").path]))
     #expect(plan.project == dir.url.path, "the folder with .jevision above the tests")
     #expect(plan.tests.map { ($0 as NSString).lastPathComponent } == ["a.flow.json", "b.flow.json"])
+    let stem = try RunCommand.plan(RunRequest(paths: [dir.url.appending(path: "login/a").path]))
+    #expect(stem.tests.map { ($0 as NSString).lastPathComponent } == ["a.flow.json"], "the name the app shows, without .flow.json")
 
     #expect(throws: UsageError.self) {
       try RunCommand.plan(RunRequest(paths: [dir.url.path], project: dir.url.appending(path: "login").path))

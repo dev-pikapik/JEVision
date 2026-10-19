@@ -605,6 +605,10 @@ pub struct RunReport {
     pub verdict: Verdict,
     pub flaky: bool,
     pub baselines_created: Vec<String>,
+    /// The run passed, but no block looked at the screen, so it couldn't have caught a wrong
+    /// result.
+    #[uniffi(default = false)]
+    pub nothing_checked: bool,
     /// Name of the paired device that started the run from afar; `None` for a run started on
     /// this Mac.
     #[uniffi(default = None)]
@@ -695,6 +699,7 @@ impl From<jevision_runner::RunReport> for RunReport {
             verdict: r.verdict,
             flaky: r.flaky,
             baselines_created: r.baselines_created,
+            nothing_checked: r.nothing_checked,
             requested_by: r.requested_by,
             schedule: r.schedule,
             environment: r.environment,

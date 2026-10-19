@@ -3,15 +3,16 @@ import JEVisionCore
 
 /// The one line under a block's title that says what exactly it does.
 enum BlockSummary {
-  /// A `${data.name}` in it stays whole when the line wraps.
-  static func text(_ kind: BlockKind, appName: (String) -> String) -> String {
-    unbreakablePlaceholders(text: plainText(kind, appName: appName))
+  /// A `${data.name}` in it stays whole when the line wraps. `testApp` is the test's own app,
+  /// which an Open App block without one launches.
+  static func text(_ kind: BlockKind, appName: (String) -> String, testApp: String? = nil) -> String {
+    unbreakablePlaceholders(text: plainText(kind, appName: appName, testApp: testApp))
   }
 
-  private static func plainText(_ kind: BlockKind, appName: (String) -> String) -> String {
+  private static func plainText(_ kind: BlockKind, appName: (String) -> String, testApp: String?) -> String {
     switch kind {
     case .openApp(let app, _):
-      return app.map(appName) ?? String(localized: "The app under test")
+      return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
       let name = (first as NSString).lastPathComponent

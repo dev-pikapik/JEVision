@@ -6,6 +6,7 @@ struct FirstTestStep: View {
   @Binding var app: String?
   let needsFolder: Bool
   let record: () -> Void
+  let runDemo: () -> Void
   @State private var running: [String] = FirstTestStep.runningApps()
 
   private let columns = [GridItem(.adaptive(minimum: 104, maximum: 120), spacing: 12)]
@@ -34,15 +35,19 @@ struct FirstTestStep: View {
       .disabled(app == nil)
       Group {
         if needsFolder {
-          Text("First you choose a folder for your tests. JEVision saves each test there as a file.")
+          Text("Each test is saved as a file in the “JEVision Tests” folder in Documents.")
         } else {
-          Text("The test is saved in the open project.")
+          Text("The test is saved as a file in the open project.")
         }
       }
       .font(.callout)
       .foregroundStyle(.secondary)
       .multilineTextAlignment(.center)
       .padding(.top, 10)
+      Button("Or run the ready demo test on TextEdit", action: runDemo)
+        .buttonStyle(.link)
+        .font(.callout)
+        .padding(.top, 4)
     }
     .padding(.horizontal, 32)
     .padding(.top, 28)
@@ -66,11 +71,15 @@ struct FirstTestStep: View {
     .padding(.vertical, 12)
   }
 
-  /// Running apps, plus the one chosen from the list if it isn't running.
+  /// Running apps, then installed apps that are easy to try, then the one chosen from the list.
   private var tiles: [String] {
-    guard let app, !running.contains(app) else { return running }
-    return running + [app]
+    var seen = Set<String>()
+    return (running + Self.suggested + [app].compactMap(\.self)).filter { seen.insert($0).inserted }
   }
+
+  /// Apps that come with every Mac and make a good first test, when they are installed.
+  private static let suggested = ["com.apple.TextEdit", "com.apple.Notes", "com.apple.calculator", "com.apple.Safari"]
+    .filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
 
   /// Bundle ids of the apps with a window in the Dock, other than JEVision, in the order they were opened.
   static func runningApps() -> [String] {

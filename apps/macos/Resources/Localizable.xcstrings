@@ -789,6 +789,46 @@
         }
       }
     },
+    "**Check by eye.** A test compares the screen with a picture, so it notices what looks wrong." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Проверка «на глаз».** Тест сравнивает экран с картинкой и замечает, если что-то выглядит не так."
+          }
+        }
+      }
+    },
+    "**Record once.** Use the app as usual; JEVision writes down the steps." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Запишите один раз.** Работайте с приложением как обычно — JEVision запишет шаги."
+          }
+        }
+      }
+    },
+    "**Run from anywhere.** From the app, the Terminal or CI, with a report you can open." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Запуск откуда угодно.** Из приложения, Терминала или CI — с отчётом, который можно открыть."
+          }
+        }
+      }
+    },
+    "- milk\n" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "- молоко\n"
+          }
+        }
+      }
+    },
     "1. Open JEVision on your iPhone" : {
       "localizations" : {
         "ru" : {
@@ -1299,6 +1339,16 @@
         }
       }
     },
+    "Add a line to a note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить строку в заметку"
+          }
+        }
+      }
+    },
     "Add an If after the selected block, so the test can take different paths (⇧⌘B)" : {
       "localizations" : {
         "ru" : {
@@ -1683,6 +1733,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Оформление"
+          }
+        }
+      }
+    },
+    "Appearance and language follow the system again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оформление и язык снова будут как в системе."
           }
         }
       }
@@ -2641,12 +2701,12 @@
         }
       }
     },
-    "Choose the folder that holds your tests." : {
+    "Choose the folder that holds your tests" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выберите папку с тестами."
+            "value" : "Выберите папку с тестами"
           }
         }
       }
@@ -2981,6 +3041,16 @@
         }
       }
     },
+    "Commit More" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммитить ещё"
+          }
+        }
+      }
+    },
     "Commit the checked changes (⌘↩)" : {
       "localizations" : {
         "ru" : {
@@ -3027,6 +3097,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В коммите только то, что написали вы. JEVision ничего не добавляет."
+          }
+        }
+      }
+    },
+    "Committed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммичено"
           }
         }
       }
@@ -3137,6 +3217,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключение работает"
+          }
+        }
+      }
+    },
+    "Connections" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключения"
           }
         }
       }
@@ -3347,6 +3437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создать пул-реквест"
+          }
+        }
+      }
+    },
+    "Create Pull Request…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать pull request…"
           }
         }
       }
@@ -4021,6 +4121,16 @@
         }
       }
     },
+    "Each test is saved as a file in the “JEVision Tests” folder in Documents." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый тест сохраняется файлом в папке «JEVision Tests» в Документах."
+          }
+        }
+      }
+    },
     "Each test that uses the block fills in the chosen fields." : {
       "localizations" : {
         "ru" : {
@@ -4639,22 +4749,22 @@
         }
       }
     },
+    "Finished in %@, but nothing was checked: the test has no Check block, so it can’t catch a wrong result." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завершён за %@, но ничего не проверено: в тесте нет блока «Проверка», поэтому он не заметит неверный результат."
+          }
+        }
+      }
+    },
     "First Test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Первый тест"
-          }
-        }
-      }
-    },
-    "First you choose a folder for your tests. JEVision saves each test there as a file." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сначала выберите папку для тестов. JEVision сохранит туда каждый тест отдельным файлом."
           }
         }
       }
@@ -4751,6 +4861,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Всегда хранить"
+          }
+        }
+      }
+    },
+    "Forward" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вперёд"
           }
         }
       }
@@ -5498,12 +5618,12 @@
         }
       }
     },
-    "JEVision checks every 1.5 seconds, so there’s no need to restart. If JEVision is already in the list but doesn’t work, remove it with the − button and add it again." : {
+    "JEVision checks every 1.5 seconds and when you come back, so there’s no need to restart." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEVision проверяет каждые 1,5 секунды — перезапускать ничего не нужно. Если JEVision уже в списке, но не работает, удалите его кнопкой − и добавьте снова."
+            "value" : "JEVision проверяет каждые 1,5 секунды и когда вы возвращаетесь, так что перезапускать ничего не нужно."
           }
         }
       }
@@ -5938,6 +6058,16 @@
         }
       }
     },
+    "Makes macOS forget the old switch for JEVision, then opens this list in System Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS забудет старый переключатель JEVision, затем откроется этот список в Системных настройках"
+          }
+        }
+      }
+    },
     "Match" : {
       "localizations" : {
         "ru" : {
@@ -6248,6 +6378,26 @@
         }
       }
     },
+    "Next, press Pull." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дальше нажмите «Получить»."
+          }
+        }
+      }
+    },
+    "Next, press Push." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дальше нажмите «Отправить»."
+          }
+        }
+      }
+    },
     "No" : {
       "localizations" : {
         "ru" : {
@@ -6294,6 +6444,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет эталонной картинки"
+          }
+        }
+      }
+    },
+    "No Results" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не найдено"
           }
         }
       }
@@ -6434,6 +6594,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проект не открыт"
+          }
+        }
+      }
+    },
+    "No provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and the project’s own settings stay as they are." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер не будет выбран, модели и адреса забудутся, а ассистенты не смогут запускать тесты и делать снимки экрана. API-ключи останутся в Связке ключей, а настройки самого проекта не изменятся."
           }
         }
       }
@@ -6630,12 +6800,32 @@
         }
       }
     },
+    "Nothing Checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не проверено"
+          }
+        }
+      }
+    },
     "Nothing changes in this project" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этом проекте ничего не меняется"
+          }
+        }
+      }
+    },
+    "Nothing checked: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не проверили: %lld"
           }
         }
       }
@@ -7066,6 +7256,26 @@
         }
       }
     },
+    "Opens TextEdit, adds a line to a note and checks the window. Takes about 10 seconds." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откроет TextEdit, добавит строку в заметку и проверит окно. Займёт около 10 секунд."
+          }
+        }
+      }
+    },
+    "Opens a copy of note.txt in TextEdit, adds a line at the end, checks how the window looks and quits TextEdit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает копию note.txt в TextEdit, добавляет строку в конец, проверяет, как выглядит окно, и закрывает TextEdit."
+          }
+        }
+      }
+    },
     "Opens a file or a web page" : {
       "localizations" : {
         "ru" : {
@@ -7148,6 +7358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Или установите сами"
+          }
+        }
+      }
+    },
+    "Or run the ready demo test on TextEdit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или запустите готовый демо-тест в TextEdit"
           }
         }
       }
@@ -8190,6 +8410,16 @@
         }
       }
     },
+    "Remote access turns off, remote runs start without asking, this Mac stays awake while remote access is on, and the standard relay is used. Paired devices stay paired." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалённый доступ выключится, удалённые запуски будут начинаться без вопроса, Mac не будет засыпать при удалённом доступе, а ретранслятор станет стандартным. Подключённые устройства останутся подключёнными."
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "ru" : {
@@ -8380,6 +8610,16 @@
         }
       }
     },
+    "Reset and Allow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить и разрешить"
+          }
+        }
+      }
+    },
     "Reset and Restart" : {
       "localizations" : {
         "ru" : {
@@ -8450,6 +8690,26 @@
         }
       }
     },
+    "Restore Defaults" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить"
+          }
+        }
+      }
+    },
+    "Restore Defaults…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить настройки по умолчанию…"
+          }
+        }
+      }
+    },
     "Restore This Version" : {
       "localizations" : {
         "ru" : {
@@ -8466,6 +8726,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Возврат версии"
+          }
+        }
+      }
+    },
+    "Restore default settings?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить настройки по умолчанию?"
           }
         }
       }
@@ -8854,6 +9124,16 @@
         }
       }
     },
+    "Run the Demo Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить демо-тест"
+          }
+        }
+      }
+    },
     "Run the test (⌘R)" : {
       "localizations" : {
         "ru" : {
@@ -8880,6 +9160,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Видео прогонов"
+          }
+        }
+      }
+    },
+    "Run videos are recorded only when a test fails and kept for 30 days. Retries and quarantine stay: they belong to the project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео прогонов будут записываться, только если тест провален, и храниться 30 дней. Повторы и карантин останутся: они принадлежат проекту."
           }
         }
       }
@@ -9474,6 +9764,16 @@
         }
       }
     },
+    "Set Up Step by Step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить по шагам"
+          }
+        }
+      }
+    },
     "Sets the zoom to actual size." : {
       "localizations" : {
         "ru" : {
@@ -9530,6 +9830,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поделиться"
+          }
+        }
+      }
+    },
+    "Shopping list\n\n- apples\n- bread\n" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список покупок\n\n- яблоки\n- хлеб\n"
           }
         }
       }
@@ -10146,6 +10456,16 @@
         }
       }
     },
+    "Switch already on but still ✕? Press Reset and Allow, then turn JEVision on again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переключатель включён, а здесь всё ещё ✕? Нажмите «Сбросить и разрешить» и снова включите JEVision."
+          }
+        }
+      }
+    },
     "Switching branches…" : {
       "localizations" : {
         "ru" : {
@@ -10302,6 +10622,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прогон теста"
+          }
+        }
+      }
+    },
+    "Testing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестирование"
           }
         }
       }
@@ -10522,6 +10852,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Код одноразовый, истекает через %@."
+          }
+        }
+      }
+    },
+    "The commit is saved on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коммит сохранён на этом Mac."
           }
         }
       }
@@ -10926,12 +11266,12 @@
         }
       }
     },
-    "The test is saved in the open project." : {
+    "The test is saved as a file in the open project." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тест сохранится в открытом проекте."
+            "value" : "Тест сохранится файлом в открытом проекте."
           }
         }
       }
@@ -11232,6 +11572,16 @@
         }
       }
     },
+    "This branch isn’t on the server yet. Next, press Push." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой ветки ещё нет на сервере. Дальше нажмите «Отправить»."
+          }
+        }
+      }
+    },
     "This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub." : {
       "localizations" : {
         "ru" : {
@@ -11388,6 +11738,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест пуст."
+          }
+        }
+      }
+    },
+    "This test never checks the screen, so it can’t catch a wrong result." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест ни разу не смотрит на экран, поэтому не заметит неверный результат."
           }
         }
       }
@@ -13078,6 +13438,22 @@
         }
       }
     },
+    "flow.noCheck" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This test never checks the screen, so it can’t catch a wrong result. Add a Check block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест ни разу не смотрит на экран, поэтому не заметит неверный результат. Добавьте блок «Проверка»."
+          }
+        }
+      }
+    },
     "flow.path.extension" : {
       "localizations" : {
         "ru" : {
@@ -13332,6 +13708,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS установит его вместе с инструментами разработчика за несколько минут."
+          }
+        }
+      }
+    },
+    "macOS still remembers an older copy of JEVision, so its switch doesn’t work: press Reset and Allow, then turn JEVision on." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS помнит старую копию JEVision, поэтому её переключатель не работает: нажмите «Сбросить и разрешить», затем включите JEVision."
           }
         }
       }
