@@ -73,7 +73,7 @@ struct GitSettingsView: View {
     }
     .alert(
       failureTitle, isPresented: Binding(
-        get: { git.failure.map { ![.committing, .proposing].contains($0.activity) } ?? false }, set: { if !$0 { git.failure = nil } }),
+        get: { git.failure.map { ![.committing, .proposing].contains($0.activity) && git.conflicts == nil } ?? false }, set: { if !$0 { git.failure = nil } }),
       presenting: git.failure
     ) { _ in
       Button("OK") {}

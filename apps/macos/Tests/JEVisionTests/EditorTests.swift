@@ -517,7 +517,7 @@ struct CanvasKeyboardTests {
     #expect(diff.sections == [BlockChange(id: "s1", kind: .added, fields: [])])
     #expect(diff.testFields.isEmpty)
     #expect(FlowDiffView.marks(diff.sections, on: .before).isEmpty, "An added frame isn’t on the old version")
-    #expect(FlowDiffView.marks(diff.notes, on: .before) == ["n1": .changed])
+    #expect(FlowDiffView.marks(diff.notes, on: .before) == ["n1": DiffMark(.changed)])
     for field in ["text", "title", "author", "position", "size"] {
       #expect(FlowDiffView.fieldName(field) != field)
     }

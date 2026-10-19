@@ -4,12 +4,17 @@
 use std::path::Path;
 use std::sync::OnceLock;
 
-use jevision_core::{BlockChange, BlockChangeKind, Flow, FlowDiff};
+use jevision_core::{
+    BlockChange, BlockChangeKind, ConflictKind, ConflictPart, Flow, FlowDiff, MergeChoice,
+    MergeConflict,
+};
 use jevision_git::{
-    ChangeKind, FileChange, Git, GitBranch, GitCommit, GitError, GitHub, GitHubAccount,
-    GitIdentity, GitStatus, PullRequest, PullRequestChanges, PullRequestDraft, Repo,
+    ChangeKind, ConflictVersions, FileChange, Git, GitBranch, GitCommit, GitError, GitHub,
+    GitHubAccount, GitIdentity, GitStatus, PullRequest, PullRequestChanges, PullRequestDraft, Repo,
 };
 use jevision_runner::PictureDiff;
+
+use crate::FlowError;
 
 /// The git installed on this Mac, looked for again until there is one.
 fn git() -> Result<Git, GitError> {
@@ -95,6 +100,28 @@ pub fn git_push(project: String) -> Result<(), GitError> {
 #[uniffi::export]
 pub fn git_pull(project: String) -> Result<(), GitError> {
     repo(&project)?.pull()
+}
+
+/// A file that conflicted on pull: where the two sides parted, here and on the server.
+#[uniffi::export]
+pub fn git_conflict_versions(project: String, path: String) -> Result<ConflictVersions, GitError> {
+    repo(&project)?.conflict_versions(&path)
+}
+
+/// A file that conflicted, as the user settled it; no contents removes it.
+#[derive(uniffi::Record)]
+pub struct SettledFile {
+    pub path: String,
+    pub contents: Option<Vec<u8>>,
+}
+
+/// Brings in the server's commits with the conflicted files as settled and commits the merge;
+/// returns its id. On any failure nothing changes.
+#[uniffi::export]
+pub fn git_finish_pull(project: String, files: Vec<SettledFile>) -> Result<String, GitError> {
+    let files: Vec<(String, Option<Vec<u8>>)> =
+        files.into_iter().map(|f| (f.path, f.contents)).collect();
+    repo(&project)?.finish_pull(&files)
 }
 
 /// Branches here, then those only on the server.
@@ -186,6 +213,24 @@ pub fn github_create_pull_request(
 #[uniffi::export]
 pub fn diff_flows(before: Option<Flow>, after: Option<Flow>) -> FlowDiff {
     jevision_core::diff(before.as_ref(), after.as_ref())
+}
+
+/// What both versions of a test changed differently since `base`, block by block.
+#[uniffi::export]
+pub fn merge_conflicts(base: Option<Flow>, mine: Flow, theirs: Flow) -> Vec<MergeConflict> {
+    jevision_core::merge_conflicts(base.as_ref(), &mine, &theirs)
+}
+
+/// Both versions of a test combined, with each conflict settled by the choice at its position.
+#[uniffi::export]
+pub fn merge_flows(
+    base: Option<Flow>,
+    mine: Flow,
+    theirs: Flow,
+    choices: Vec<MergeChoice>,
+) -> Result<Flow, FlowError> {
+    jevision_core::merge_flows(base.as_ref(), &mine, &theirs, &choices)
+        .map_err(|e| FlowError::Invalid { issues: e.issues })
 }
 
 /// How two versions of a picture differ; `None` when they can't be compared pixel by pixel.
@@ -333,6 +378,46 @@ pub struct FlowDiff {
     pub test_fields: Vec<String>,
     pub notes: Vec<BlockChange>,
     pub sections: Vec<BlockChange>,
+}
+
+#[uniffi::remote(Record)]
+pub struct ConflictVersions {
+    pub base: Option<Vec<u8>>,
+    pub mine: Option<Vec<u8>>,
+    pub theirs: Option<Vec<u8>>,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ConflictPart {
+    Test,
+    Block,
+    Note,
+    Frame,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ConflictKind {
+    Changed,
+    Link,
+    RemovedHere,
+    RemovedThere,
+    AddedBoth,
+}
+
+#[uniffi::remote(Enum)]
+pub enum MergeChoice {
+    Mine,
+    Theirs,
+    Both,
+}
+
+#[uniffi::remote(Record)]
+pub struct MergeConflict {
+    pub part: ConflictPart,
+    pub id: String,
+    pub field: Option<String>,
+    pub kind: ConflictKind,
+    pub can_keep_both: bool,
 }
 
 #[uniffi::remote(Record)]

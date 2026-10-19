@@ -12,6 +12,7 @@ mod edit;
 mod env;
 mod issue;
 mod layout;
+mod merge;
 mod model;
 mod project;
 mod route;
@@ -31,6 +32,9 @@ pub use env::{
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
+};
+pub use merge::{
+    ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
 pub use project::{PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};

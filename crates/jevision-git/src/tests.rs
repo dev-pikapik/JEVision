@@ -471,6 +471,116 @@ fn push_and_pull_sync_with_the_server_and_keep_files_whole_on_conflict() {
 }
 
 /// Switching branches carries uncommitted changes the other branch doesn't touch.
+#[test]
+fn a_conflict_is_settled_with_the_files_the_user_chose_and_a_merge_commit() {
+    let scratch = Scratch::new("settle");
+    let git = scratch.git();
+    let server = scratch.0.join("server.git");
+    fs::create_dir_all(&server).unwrap();
+    sh(&git, &server, &["init", "--quiet", "--bare"]);
+    let (_, mine) = repository(&scratch);
+    let top = mine.dir.join("..");
+    sh(
+        &git,
+        &top,
+        &["remote", "add", "origin", server.to_str().unwrap()],
+    );
+    write(&mine.dir, "a.flow.json", "base a");
+    write(&mine.dir, "b.flow.json", "base b");
+    write(&mine.dir, "gone.png", "picture");
+    let all = [
+        "a.flow.json".into(),
+        "b.flow.json".into(),
+        "gone.png".into(),
+    ];
+    mine.commit(&all, "Start").unwrap();
+    mine.push().unwrap();
+
+    sh(
+        &git,
+        &scratch.0,
+        &["clone", "--quiet", server.to_str().unwrap(), "theirs"],
+    );
+    git.set_identity(&scratch.0.join("theirs"), &me()).unwrap();
+    let theirs = git.open(&scratch.0.join("theirs/qa")).unwrap().unwrap();
+    write(&theirs.dir, "a.flow.json", "their a");
+    write(&theirs.dir, "b.flow.json", "their b");
+    write(&theirs.dir, "gone.png", "their picture");
+    theirs.commit(&all, "Theirs").unwrap();
+    theirs.push().unwrap();
+
+    write(&mine.dir, "a.flow.json", "my a");
+    write(&mine.dir, "b.flow.json", "my b");
+    fs::remove_file(mine.dir.join("gone.png")).unwrap();
+    mine.commit(&all, "Mine").unwrap();
+    let conflicted = vec![
+        "a.flow.json".to_owned(),
+        "b.flow.json".into(),
+        "gone.png".into(),
+    ];
+    assert_eq!(
+        mine.pull(),
+        Err(GitError::Conflict {
+            paths: conflicted.clone()
+        })
+    );
+
+    let versions = |base: &str, mine: Option<&str>, theirs: &str| ConflictVersions {
+        base: Some(base.into()),
+        mine: mine.map(Into::into),
+        theirs: Some(theirs.into()),
+    };
+    assert_eq!(
+        mine.conflict_versions("a.flow.json").unwrap(),
+        versions("base a", Some("my a"), "their a")
+    );
+    assert_eq!(
+        mine.conflict_versions("gone.png").unwrap(),
+        versions("picture", None, "their picture")
+    );
+
+    // A file left unsettled undoes the merge.
+    let head = sh(&git, &top, &["rev-parse", "HEAD"]);
+    assert_eq!(
+        mine.finish_pull(&[("a.flow.json".into(), Some(b"both a".to_vec()))]),
+        Err(GitError::Conflict {
+            paths: vec!["b.flow.json".into(), "gone.png".into()]
+        })
+    );
+    assert_eq!(sh(&git, &top, &["rev-parse", "HEAD"]), head);
+    assert_eq!(read(&mine.dir, "a.flow.json"), "my a");
+    assert!(!top.join(".git/MERGE_HEAD").exists());
+    assert!(mine.status().unwrap().changes.is_empty());
+
+    let id = mine
+        .finish_pull(&[
+            ("a.flow.json".into(), Some(b"both a".to_vec())),
+            ("b.flow.json".into(), Some(b"their b".to_vec())),
+            ("gone.png".into(), None),
+        ])
+        .unwrap();
+    assert_eq!(sh(&git, &top, &["rev-parse", "HEAD"]).trim(), id);
+    assert_eq!(
+        sh(&git, &top, &["rev-list", "--parents", "-n", "1", "HEAD"])
+            .split(' ')
+            .count(),
+        3
+    );
+    assert_eq!(read(&mine.dir, "a.flow.json"), "both a");
+    assert_eq!(read(&mine.dir, "b.flow.json"), "their b");
+    assert!(!mine.dir.join("gone.png").exists());
+    let status = mine.status().unwrap();
+    assert!(status.changes.is_empty());
+    assert_eq!((status.ahead, status.behind), (2, 0));
+    mine.push().unwrap();
+
+    // Nothing left to bring in.
+    assert!(matches!(
+        mine.finish_pull(&[]),
+        Err(GitError::Failed { .. })
+    ));
+}
+
 fn repo_switch_keeps_draft(repo: &Repo) {
     write(&repo.dir, "c.flow.json", "draft");
     repo.restore("HEAD", "b.flow.json", "b.flow.json").unwrap();

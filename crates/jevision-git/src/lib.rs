@@ -145,6 +145,17 @@ pub struct GitIdentity {
     pub email: String,
 }
 
+/// One file in three versions, for settling a conflict; `None` where the file isn't.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConflictVersions {
+    /// Where the two sides parted.
+    pub base: Option<Vec<u8>>,
+    /// The latest commit here.
+    pub mine: Option<Vec<u8>>,
+    /// The latest commit on the server.
+    pub theirs: Option<Vec<u8>>,
+}
+
 /// The `git` command and the environment it runs in.
 #[derive(Debug, Clone)]
 pub struct Git {
@@ -462,7 +473,8 @@ impl Repo {
     }
 
     /// Brings in the server's commits, merging them with the ones made here. When both
-    /// changed the same lines the merge is undone, leaving every file as it was.
+    /// changed the same lines the merge is undone, leaving every file as it was, to be settled
+    /// with [`Repo::conflict_versions`] and [`Repo::finish_pull`].
     pub fn pull(&self) -> Result<(), GitError> {
         let branch = self.branch()?;
         if self.upstream()?.is_none() {
@@ -474,21 +486,92 @@ impl Repo {
         }
         match self.network(&["pull", "--quiet", "--no-rebase", "--ff", "--no-edit"]) {
             Err(error) => {
-                let unmerged = self.run(&["ls-files", "--unmerged", "-z"])?;
-                if unmerged.is_empty() {
+                let paths = self.unmerged()?;
+                if paths.is_empty() {
                     return Err(error);
                 }
-                let mut paths: Vec<String> = unmerged
-                    .split('\0')
-                    .filter_map(|line| line.split_once('\t'))
-                    .map(|(_, path)| self.inside(path).unwrap_or_else(|| path.to_owned()))
-                    .collect();
-                paths.dedup();
                 self.run(&["merge", "--abort"])?;
                 Err(GitError::Conflict { paths })
             }
             ok => ok,
         }
+    }
+
+    /// A file both sides changed, for settling a conflict [`Repo::pull`] reported: as it was
+    /// where this branch and the server's parted, here, and on the server. `None` where the
+    /// file isn't, as when one side removed it or the histories share no commit.
+    pub fn conflict_versions(&self, path: &str) -> Result<ConflictVersions, GitError> {
+        let upstream = self.upstream_or_error()?;
+        let base = self.output(&["merge-base", "HEAD", &upstream])?;
+        let base = String::from_utf8_lossy(&base.stdout).trim().to_owned();
+        Ok(ConflictVersions {
+            base: if base.is_empty() {
+                None
+            } else {
+                self.file(&base, path)?
+            },
+            mine: self.file("HEAD", path)?,
+            theirs: self.file(&upstream, path)?,
+        })
+    }
+
+    /// Brings in the server's commits after a conflict, with the files that conflicted as the
+    /// user settled them (`None` removes one), and commits the merge with git's usual message.
+    /// Returns the new commit's id. When a file that isn't among `files` still conflicts, or
+    /// anything else fails, the merge is undone and every file is as it was.
+    pub fn finish_pull(&self, files: &[(String, Option<Vec<u8>>)]) -> Result<String, GitError> {
+        let upstream = self.upstream_or_error()?;
+        let specs = files
+            .iter()
+            .map(|(path, _)| pathspec(path))
+            .collect::<Result<Vec<_>, _>>()?;
+        let merge = self.output(&["merge", "--quiet", "--no-ff", "--no-commit", &upstream])?;
+        let merging = self
+            .output(&["rev-parse", "--quiet", "--verify", "MERGE_HEAD"])?
+            .status
+            .success();
+        if !merging {
+            self.check(merge)?;
+            return Err(GitError::Failed {
+                message: format!("the commits of `{upstream}` are already here"),
+            });
+        }
+        let finish = || -> Result<String, GitError> {
+            let failed = |e: std::io::Error| GitError::Failed {
+                message: e.to_string(),
+            };
+            for ((_, bytes), spec) in files.iter().zip(&specs) {
+                let file = self.dir.join(spec);
+                match bytes {
+                    Some(bytes) => {
+                        if let Some(folder) = file.parent() {
+                            std::fs::create_dir_all(folder).map_err(failed)?;
+                        }
+                        std::fs::write(&file, bytes).map_err(failed)?;
+                    }
+                    None => match std::fs::remove_file(&file) {
+                        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                            return Err(failed(e));
+                        }
+                        _ => {}
+                    },
+                }
+            }
+            if !specs.is_empty() {
+                let mut add = vec!["add", "--all", "--"];
+                add.extend(&specs);
+                self.run(&add)?;
+            }
+            let paths = self.unmerged()?;
+            if !paths.is_empty() {
+                return Err(GitError::Conflict { paths });
+            }
+            self.run(&["commit", "--quiet", "--no-edit"])?;
+            Ok(self.run(&["rev-parse", "HEAD"])?.trim().to_owned())
+        };
+        finish().inspect_err(|_| {
+            let _ = self.output(&["merge", "--abort"]);
+        })
     }
 
     /// Branches here, then those only on the server; each in name order.
@@ -571,6 +654,28 @@ impl Repo {
             return Err(GitError::Detached);
         }
         Ok(String::from_utf8_lossy(&out.stdout).trim().to_owned())
+    }
+
+    /// Files git couldn't merge on its own, relative to the project where they're inside it.
+    fn unmerged(&self) -> Result<Vec<String>, GitError> {
+        let mut paths: Vec<String> = self
+            .run(&["ls-files", "--unmerged", "-z"])?
+            .split('\0')
+            .filter_map(|line| line.split_once('\t'))
+            .map(|(_, path)| self.inside(path).unwrap_or_else(|| path.to_owned()))
+            .collect();
+        paths.dedup();
+        Ok(paths)
+    }
+
+    /// The server branch this one syncs with, or why there is none.
+    fn upstream_or_error(&self) -> Result<String, GitError> {
+        match self.upstream()? {
+            Some(upstream) => Ok(upstream),
+            None => Err(GitError::NoUpstream {
+                branch: self.branch()?,
+            }),
+        }
     }
 
     fn has_commits(&self) -> Result<bool, GitError> {
