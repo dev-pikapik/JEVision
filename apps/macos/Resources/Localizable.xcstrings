@@ -9818,6 +9818,16 @@
         }
       }
     },
+    "Screenshots weren’t sent: this model reads only text. The AI judged from the steps alone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана не отправлены: эта модель читает только текст. ИИ судил только по шагам."
+          }
+        }
+      }
+    },
     "Search" : {
       "localizations" : {
         "ru" : {
@@ -12472,22 +12482,22 @@
         }
       }
     },
-    "Turn off for a text-only model. Checks that send screenshots then stop with a message." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Выключите для модели, которая читает только текст. Проверки, которые отправляют снимки экрана, тогда остановятся с сообщением."
-          }
-        }
-      }
-    },
     "Turn On" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включить"
+          }
+        }
+      }
+    },
+    "Turn off for a text-only model. Checks that send screenshots then stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключите для модели, которая читает только текст. Проверки, которые отправляют снимки экрана, тогда остановятся с сообщением."
           }
         }
       }

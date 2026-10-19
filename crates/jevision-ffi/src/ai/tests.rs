@@ -130,6 +130,7 @@ fn settings(model: &Model) -> VisionSettings {
         model: "test-model".to_owned(),
         address: model.address.clone(),
         key: None,
+        pictures: true,
     }
 }
 
@@ -260,6 +261,18 @@ fn local_only_projects_get_no_checks_by_meaning_from_a_cloud_model() {
     let session = AiSession::draft_test(settings(&local), Vec::new(), request).unwrap();
     session.step().unwrap();
     assert!(local.requests()[0].contains("Prefer"));
+
+    // A model that reads only text can't check by meaning either.
+    let blind = model(vec![says(
+        json!({ "answer": { "test": good_test(), "summary": "" } }),
+    )]);
+    let text_only = VisionSettings {
+        pictures: false,
+        ..settings(&blind)
+    };
+    let session = AiSession::draft_test(text_only, Vec::new(), self::request(&folder)).unwrap();
+    session.step().unwrap();
+    assert!(blind.requests()[0].contains("never use"));
 
     let job = DraftJob {
         app: String::new(),
@@ -482,6 +495,29 @@ fn a_failed_run_is_explained_with_its_screenshots() {
     assert!(sent.contains("similarity 71.0%"));
     assert!(sent.contains("updateReference"));
     assert!(sent.contains("addWait"));
+}
+
+#[test]
+fn a_model_that_reads_only_text_gets_no_screenshots() {
+    let (project, run) = failed_run();
+    let model = model(vec![says(json!({ "answer": {
+        "cause": "flakyTest",
+        "explanation": "Timing.",
+        "fix": "addRetries",
+    } }))]);
+    let blind = VisionSettings {
+        pictures: false,
+        ..settings(&model)
+    };
+    let request = failure_request(&project, run, false);
+    let session =
+        AiSession::explain_failure(blind, Vec::new(), request, "English".to_owned()).unwrap();
+    let AiStep::Explained { explanation } = session.step().unwrap() else {
+        panic!("expected an explanation");
+    };
+    assert_eq!(explanation.pictures_sent, 0);
+    assert!(explanation.pictures_withheld);
+    assert!(!model.requests()[0].contains("Pictures in order"));
 }
 
 #[test]

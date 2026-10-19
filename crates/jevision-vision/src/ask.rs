@@ -404,6 +404,7 @@ mod tests {
                     model: model.into(),
                     address: "http://127.0.0.1:9".into(),
                     key: key.map(Into::into),
+                    pictures: true,
                 },
                 TIMEOUT,
             )

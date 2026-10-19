@@ -75,7 +75,8 @@ pub struct FailureExplanation {
     pub block: Option<String>,
     /// Screenshots sent with the question, private parts covered.
     pub pictures_sent: u32,
-    /// Screenshots kept back because they may go only to a model on this computer.
+    /// Screenshots kept back: the model reads only text, or they may go only to a model on
+    /// this computer.
     pub pictures_withheld: bool,
     pub calls: Vec<AiToolCall>,
     pub unavailable: Vec<McpProblem>,
@@ -93,7 +94,8 @@ impl AiSession {
         language: String,
     ) -> Result<Arc<Self>, AiError> {
         let local = settings.client().is_ok_and(|c| c.config().is_local());
-        let (job, message) = TriageJob::read(&request, !request.local_only || local, &language)?;
+        let pictures = settings.pictures && (!request.local_only || local);
+        let (job, message) = TriageJob::read(&request, pictures, &language)?;
         Self::new(&settings, servers, Job::Triage(job), vec![message])
     }
 }
@@ -247,9 +249,7 @@ impl TriageJob {
             }
         }
         if withheld {
-            text.push_str(
-                "\n\nThe screenshots are not shown: they may go only to a model on this computer.",
-            );
+            text.push_str("\n\nThe screenshots are not shown to you; judge from the steps.");
         }
         message.text = text;
 

@@ -53,7 +53,9 @@ impl AiSession {
         servers: Vec<McpServer>,
         request: DraftRequest,
     ) -> Result<Arc<Self>, AiError> {
-        let meaning = !request.local_only || settings.client().is_ok_and(|c| c.config().is_local());
+        // Checks by meaning send screenshots to the model, which must see them and be allowed to.
+        let meaning = settings.pictures
+            && (!request.local_only || settings.client().is_ok_and(|c| c.config().is_local()));
         let messages = conversation(&request);
         let job = DraftJob {
             app: request.app,
@@ -128,8 +130,8 @@ impl DraftJob {
 image only for a screen that must look exactly the same each time."
         } else {
             "Check the result of the important steps with check blocks comparing the screen \
-with a reference image (refs/<what>.png); never use \"compare\": \"meaning\", which this project \
-does not allow."
+with a reference image (refs/<what>.png); never use \"compare\": \"meaning\", which can't be used \
+here."
         };
         format!(
             "You write JEVision tests. A JEVision test checks the user interface of a Mac app \

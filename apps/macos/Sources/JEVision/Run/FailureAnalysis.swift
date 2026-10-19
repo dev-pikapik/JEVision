@@ -14,6 +14,8 @@ struct FailureAnalysisCard: View {
   @State private var conversation = AIConversation()
   @State private var explanation: FailureExplanation?
   @State private var noModel = false
+  /// The model of the last analysis reads only text.
+  @State private var textOnly = false
   @State private var fixed = false
   @State private var fixError: String?
   @State private var quarantining: QuarantineRequest?
@@ -90,7 +92,9 @@ struct FailureAnalysisCard: View {
         .textSelection(.enabled)
         .fixedSize(horizontal: false, vertical: true)
       Group {
-        if explanation.picturesWithheld {
+        if explanation.picturesWithheld, textOnly {
+          Text("Screenshots weren’t sent: this model reads only text. The AI judged from the steps alone.")
+        } else if explanation.picturesWithheld {
           Text("Screenshots weren’t sent: only models on this Mac may see them. The AI judged from the steps alone.")
         } else if explanation.picturesSent > 0 {
           Text("The AI saw \(explanation.picturesSent) screenshots of the run.")
@@ -132,6 +136,7 @@ struct FailureAnalysisCard: View {
       localOnly: AISettings.app.localOnly || project.settings.localOnly, flaky: project.flaky[report.file])
     let servers = MCPServers.all
     let language = Self.language
+    textOnly = !settings.pictures
     conversation.start {
       try AiSession.explainFailure(settings: settings, servers: servers, request: request, language: language)
     } finished: { step in
