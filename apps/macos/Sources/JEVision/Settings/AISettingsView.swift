@@ -4,20 +4,44 @@ import SwiftUI
 
 /// Settings → AI: the model that checks screens by meaning.
 struct AISettingsView: View {
+  @AppStorage(AISettings.providerKey) private var providerID = ""
+  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
+  @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
+  @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
+
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "sparkles", color: .purple, title: Text("AI"),
-          message: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
-      }
+      SettingsHeader(
+        tab: .ai,
+        text: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       AISections()
       FallbackSections()
       AIUsageSections()
       ProjectPrivacySection()
       AssistantsSection()
+      RestoreDefaultsSection(
+        message: Text("No provider or fallback provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),
+        isDefault: providerID.isEmpty && fallbackID.isEmpty && !localOnly && !mayRun && !mayCapture && Self.providerKeys.isEmpty,
+        reset: reset)
     }
     .formStyle(.grouped)
+  }
+
+  /// The saved model and address of each provider.
+  private static var providerKeys: [String] {
+    let defaults = UserDefaults.standard
+    return AISettings.providers.flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id)] }
+      .filter { defaults.object(forKey: $0) != nil }
+  }
+
+  private func reset() {
+    providerID = ""
+    fallbackID = ""
+    localOnly = false
+    mayRun = false
+    mayCapture = false
+    Self.providerKeys.forEach(UserDefaults.standard.removeObject(forKey:))
   }
 }
 
@@ -35,10 +59,13 @@ struct AISections: View {
         Divider()
         ForEach(providers, id: \.id) { Text(verbatim: $0.name).tag($0.id) }
       }
+      .settingAnchor("provider")
       Toggle(isOn: $localOnly) {
-        Text("Only models on this Mac")
-        Text("Screenshots never go to a cloud service. Checks that would need one stop with a message.")
+        RowLabel(
+          Text("Only models on this Mac"),
+          Text("Screenshots never go to a cloud service. Checks that would need one stop with a message."))
       }
+      .settingAnchor("localOnly")
     } footer: {
       if providerID.isEmpty {
         Text("Without a provider, checks compare pictures only. JEVision sends nothing anywhere.")
@@ -70,6 +97,7 @@ private struct FallbackSections: View {
           ForEach(providers.filter { $0.id != providerID }, id: \.id) { Text(verbatim: $0.name).tag($0.id) }
           if fallbackID == providerID { Text(verbatim: AISettings.provider(fallbackID)?.name ?? "").tag(fallbackID) }
         }
+        .settingAnchor("fallbackProvider")
       } footer: {
         Text("Asked when the main provider can’t be reached, is overloaded or has reached its limit. Problems with the setup, like a wrong key, still stop the check.")
           .font(.callout)
@@ -240,12 +268,11 @@ private struct ProviderSection: View {
           .disabled(fromEnvironment)
       }
     } label: {
-      Text("API Key")
-      if fromEnvironment {
-        Text("From the environment variable \(provider.keyVariable)")
-      } else if !provider.needsKey {
-        Text("Only if the server asks for one")
-      }
+      RowLabel(
+        Text("API Key"),
+        fromEnvironment
+          ? Text("From the environment variable \(provider.keyVariable)")
+          : provider.needsKey ? nil : Text("Only if the server asks for one"))
     }
   }
 

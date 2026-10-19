@@ -258,7 +258,11 @@ fn answers_of_every_provider_are_read() {
         read(Provider::Jev, "jev.json"),
         Judgement {
             passed: false,
-            reason: "JEV is 96% sure the screenshot does not meet the expectation.".into()
+            reason: "JEV is 96% sure the screenshot does not meet the expectation.".into(),
+            usage: Usage {
+                input_tokens: 1862,
+                output_tokens: 1
+            }
         }
     );
 }

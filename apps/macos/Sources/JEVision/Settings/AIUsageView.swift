@@ -30,6 +30,7 @@ struct AIUsageSections: View {
   var body: some View {
     Section {
       spending
+        .settingAnchor("aiSpending")
     } header: {
       Text("Spending")
     } footer: {
@@ -42,6 +43,7 @@ struct AIUsageSections: View {
     if !used.isEmpty {
       Section {
         ForEach(used, id: \.id) { LimitRows(provider: $0) { version += 1 } }
+          .settingAnchor("aiLimits")
       } header: {
         Text("Limits")
       } footer: {
@@ -72,8 +74,7 @@ struct AIUsageSections: View {
           }
           .monospacedDigit()
         } label: {
-          Text(verbatim: Self.name(spend.provider))
-          Text("\(spend.month.calls) checks this month")
+          RowLabel(Text(verbatim: Self.name(spend.provider)), Text("\(spend.month.calls) checks this month"))
         }
         .accessibilityElement(children: .combine)
       }
@@ -114,6 +115,7 @@ struct AIUsageSections: View {
         Spacer()
         Button("Restore Public Prices") { prices = aiDefaultPrices() }
       }
+      .settingAnchor("aiPrices")
     } header: {
       Text("Prices")
     } footer: {

@@ -8,11 +8,7 @@ struct AdvancedSettingsView: View {
 
   var body: some View {
     Form {
-      Section {
-        PageHeader(
-          symbol: "slider.horizontal.3", color: .gray, title: Text("Advanced"),
-          message: Text("Command line, CI, run videos and other settings most people never change."))
-      }
+      SettingsHeader(tab: .advanced, text: Text("Command line, CI, run videos and other settings most people never change."))
       RetriesSection()
       CommandLineSection()
       ContinuousIntegrationSection()
@@ -20,10 +16,12 @@ struct AdvancedSettingsView: View {
         Picker("Record video", selection: $mode) {
           ForEach(VideoMode.all, id: \.name) { Text(Self.title($0)).tag($0.name) }
         }
+        .settingAnchor("recordVideo")
         Picker("Keep run videos for", selection: $keepDays) {
           ForEach(VideoSettings.keepChoices, id: \.self) { Text(Self.title(days: $0)).tag($0) }
         }
         .disabled(mode == VideoMode.off.name)
+        .settingAnchor("keepVideos")
       } header: {
         Text("Run videos")
       } footer: {
@@ -35,6 +33,13 @@ struct AdvancedSettingsView: View {
         .fixedSize(horizontal: false, vertical: true)
       }
       ResetSettingsSection()
+      RestoreDefaultsSection(
+        message: Text("Run videos are recorded only when a test fails and kept for 30 days. Retries and quarantine stay: they belong to the project."),
+        isDefault: mode == VideoSettings.defaultMode.name && keepDays == VideoSettings.defaultKeepDays
+      ) {
+        mode = VideoSettings.defaultMode.name
+        keepDays = VideoSettings.defaultKeepDays
+      }
     }
     .formStyle(.grouped)
   }

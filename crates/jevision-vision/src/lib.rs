@@ -803,7 +803,7 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
 fn usage(provider: Provider, v: &Value) -> Usage {
     let count = |v: &Value| v.as_u64().unwrap_or_default();
     let (input, output) = match provider {
-        Provider::Anthropic => {
+        Provider::Anthropic | Provider::Jev => {
             let u = &v["usage"];
             (
                 count(&u["input_tokens"])
@@ -891,7 +891,7 @@ fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
             let yes = v["answers"]["passed"]["noul"]
                 .as_f64()
                 .filter(|p| (0.0..=1.0).contains(p))
-                .ok_or_else(|| bad(body))?;
+                .ok_or_else(|| bad(&v.to_string()))?;
             let passed = yes >= 0.5;
             let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round();
             let reason = if passed {
@@ -899,7 +899,11 @@ fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
             } else {
                 format!("JEV is {sure}% sure the screenshot does not meet the expectation.")
             };
-            Ok(Judgement { passed, reason })
+            Ok(Judgement {
+                passed,
+                reason,
+                usage: Usage::default(),
+            })
         }
     }
 }
