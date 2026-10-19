@@ -59,7 +59,7 @@ private let smokeTest = """
   flow.blocks[index].kind = .script(
     language: .python3, code: "print(1)", inputs: [NamedValue(name: "NAME", value: "Ann")],
     outputs: [ScriptOutput(name: "total", kind: .number)], timeoutMs: 30_000, next: nil)
-  #expect(validateFlow(flow: flow).isEmpty)
+  #expect(validateFlow(flow: flow).map(\.code) == ["flow.noCheck"])
   #expect(savedVariables(flow: flow) == ["total"])
   #expect(try loadFlow(json: saveFlow(flow: flow)) == flow)
 }
