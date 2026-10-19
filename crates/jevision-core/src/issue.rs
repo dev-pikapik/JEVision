@@ -160,6 +160,9 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't a key combination like cmd+shift+s.",
             p("value")
         ),
+        "flow.drag.samePlace" => {
+            "the drag ends where it starts; choose another place to drop on.".to_owned()
+        }
         "flow.point.invalid" => {
             "the point must be inside the window: x and y from 0 to 1.".to_owned()
         }

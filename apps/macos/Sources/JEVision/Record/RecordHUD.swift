@@ -107,7 +107,7 @@ struct RecordHUD: View {
       .accessibilityElement(children: .combine)
       .accessibilityLabel(Text("Last step: \(Self.text(of: step, appName: center.appName))"))
     } else {
-      Text("Click, type and press keys in \(center.appName). Each action becomes a step.")
+      Text("Click, drag, scroll, type and press keys in \(center.appName). Each action becomes a step.")
         .font(.callout)
         .foregroundStyle(.secondary)
         .lineLimit(2)
@@ -125,6 +125,8 @@ struct RecordHUD: View {
     switch notice {
     case .outsideWindow:
       String(localized: "Clicks outside the app’s window, like in its menus, can’t be recorded. Use a keyboard shortcut instead.")
+    case .dragOutsideWindow:
+      String(localized: "Drags that end outside the app’s window can’t be recorded. Drop inside the window.")
     case .noWindow: String(localized: "JEVision can’t see the app’s window. Bring it to the front.")
     case .checkOutsideWindow: String(localized: "Drag over a part of the app’s window to check it.")
     }

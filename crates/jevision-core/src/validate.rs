@@ -12,6 +12,8 @@ use crate::model::{
 pub const MAX_RETRIES: u32 = 10;
 pub const MAX_REPEAT: u32 = 10_000;
 pub const MAX_TIMEOUT_MS: u64 = 60 * 60 * 1000;
+/// Most a scroll block may scroll, in lines or in pixels.
+pub const MAX_SCROLL: u32 = 10_000;
 const MAX_ID_LEN: usize = 64;
 
 /// Lists every problem in `flow`, errors and warnings, in a stable order.
@@ -108,7 +110,15 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
             .filter(|(_, f)| !is_web_address(f))
             .map(|(i, f)| (format!("files.{i}"), f))
             .collect(),
-        BlockKind::Click { target, .. } => image("target", Some(target)),
+        BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => {
+            image("target", Some(target))
+        }
+        BlockKind::Drag { from, to, .. } => {
+            let mut both = image("from", Some(from));
+            both.extend(image("to", Some(to)));
+            both
+        }
+        BlockKind::Scroll { at, .. } => image("at", at.as_ref()),
         BlockKind::Type { into, .. } => image("into", into.as_ref()),
         BlockKind::WaitFor {
             until: Appears(r), ..
@@ -220,7 +230,29 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             }
             app_id(id, app.as_deref(), out);
         }
-        BlockKind::Click { target: t, .. } => target(id, "target", t, out),
+        BlockKind::Click { target: t, .. } | BlockKind::Hover { target: t, .. } => {
+            target(id, "target", t, out)
+        }
+        BlockKind::Drag { from, to, .. } => {
+            target(id, "from", from, out);
+            target(id, "to", to, out);
+            let same = match (from, to) {
+                (Target::Image(a), Target::Image(b)) => !a.is_empty() && a == b,
+                (Target::Point(a), Target::Point(b)) => a == b,
+                _ => false,
+            };
+            if same {
+                out.push(err("flow.drag.samePlace", "to"));
+            }
+        }
+        BlockKind::Scroll { amount, at, .. } => {
+            if !(1..=MAX_SCROLL).contains(amount) {
+                out.push(range(Some(id), "amount", 1, MAX_SCROLL));
+            }
+            if let Some(t) = at {
+                target(id, "at", t, out);
+            }
+        }
         BlockKind::Type { text, into, .. } => {
             if text.is_empty() {
                 out.push(err("flow.field.empty", "text"));
