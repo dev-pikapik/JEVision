@@ -19,6 +19,7 @@ public struct AISettings {
   public static func addressKey(_ provider: String) -> String { "ai.address.\(provider)" }
   public static func dailyLimitKey(_ provider: String) -> String { "ai.limit.daily.\(provider)" }
   public static func monthlyLimitKey(_ provider: String) -> String { "ai.limit.monthly.\(provider)" }
+  public static func picturesKey(_ provider: String) -> String { "ai.pictures.\(provider)" }
 
   /// The journal of every AI call, shared by the app and the `jevision` tool.
   public static var journal: URL {
@@ -71,13 +72,18 @@ public struct AISettings {
     defaults.string(forKey: Self.addressKey(provider.id)) ?? ""
   }
 
+  /// The model understands pictures, unless the user said it reads only text.
+  public func pictures(for provider: VisionProvider) -> Bool {
+    defaults.object(forKey: Self.picturesKey(provider.id)) as? Bool ?? true
+  }
+
   /// What a run passes to the core: the chosen provider and model unless others are given.
   /// Nil when no provider is chosen.
   public func settings(provider id: String? = nil, model: String? = nil) -> VisionSettings? {
     guard let provider = Self.provider(id ?? providerID) else { return nil }
     return VisionSettings(
       provider: provider.id, model: model ?? self.model(for: provider), address: address(for: provider),
-      key: Self.key(for: provider))
+      key: Self.key(for: provider), pictures: pictures(for: provider))
   }
 
   /// The provider asked when the main one can't answer; empty for none.

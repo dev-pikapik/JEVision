@@ -19,8 +19,11 @@ struct AISettingsTests {
     defaults.set("http://127.0.0.1:11500", forKey: AISettings.addressKey("ollama"))
     defaults.set(true, forKey: AISettings.localOnlyKey)
     #expect(
-      ai.settings() == VisionSettings(provider: "ollama", model: "qwen2.5vl:7b", address: "http://127.0.0.1:11500", key: nil))
+      ai.settings() == VisionSettings(provider: "ollama", model: "qwen2.5vl:7b", address: "http://127.0.0.1:11500", key: nil, pictures: true))
     #expect(ai.localOnly)
+    defaults.set(false, forKey: AISettings.picturesKey("ollama"))
+    #expect(ai.settings()?.pictures == false)
+    #expect(ai.settings(provider: "lmstudio")?.pictures == true)
 
     // The command line picks another provider or model for one run; unset models fall back to
     // the provider's suggestion.
@@ -73,13 +76,14 @@ struct AISettingsTests {
       #expect(!provider.keyVariable.isEmpty && provider.defaultAddress.hasPrefix("https://"))
     }
     #expect(providers.filter(\.listsModels).map(\.id) == ["ollama", "lmstudio", "openai-compatible"])
+    #expect(providers.filter(\.mayLackPictures).map(\.id) == ["jev", "ollama", "lmstudio", "openai-compatible"])
   }
 }
 
 @MainActor
 struct VisionTextTests {
   private let codes = [
-    "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
+    "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
     "run.vision.badKey", "run.vision.unknownModel", "run.vision.rateLimited", "run.vision.serviceError",
     "run.vision.refused", "run.vision.badAnswer", "run.vision.limitReached", "run.vision.limitNear",
     "run.vision.journalFailed",

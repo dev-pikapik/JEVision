@@ -30,6 +30,8 @@ pub struct VisionProvider {
     pub needs_key: bool,
     /// The server can list its models.
     pub lists_models: bool,
+    /// The model may read only text; the user says whether it understands pictures.
+    pub may_lack_pictures: bool,
 }
 
 /// Which model to ask and how to reach it.
@@ -41,6 +43,8 @@ pub struct VisionSettings {
     /// Empty for the provider's default address.
     pub address: String,
     pub key: Option<String>,
+    /// The model understands pictures; checks that send screenshots stop when it doesn't.
+    pub pictures: bool,
 }
 
 impl fmt::Debug for VisionSettings {
@@ -53,6 +57,7 @@ impl fmt::Debug for VisionSettings {
                 "key",
                 &self.key.as_ref().map(|_| jevision_runner::SECRET_MASK),
             )
+            .field("pictures", &self.pictures)
             .finish()
     }
 }
@@ -69,6 +74,7 @@ impl VisionSettings {
                 model: self.model.clone(),
                 address: self.address.clone(),
                 key: self.key.clone(),
+                pictures: self.pictures,
             },
             TIMEOUT,
         ))
@@ -107,6 +113,7 @@ pub fn vision_providers() -> Vec<VisionProvider> {
             key_variable: p.key_name().unwrap_or_default().into(),
             needs_key: p.needs_key(),
             lists_models: p.lists_models(),
+            may_lack_pictures: p.may_lack_pictures(),
         })
         .collect()
 }
@@ -245,6 +252,7 @@ mod tests {
             model: "m".into(),
             address: address.into(),
             key: key.map(Into::into),
+            pictures: true,
         }
     }
 
@@ -282,6 +290,12 @@ mod tests {
             .map(|p| p.id)
             .collect();
         assert_eq!(editable, ["jev", "ollama", "lmstudio", "openai-compatible"]);
+        let unsure: Vec<_> = vision_providers()
+            .into_iter()
+            .filter(|p| p.may_lack_pictures)
+            .map(|p| p.id)
+            .collect();
+        assert_eq!(unsure, ["jev", "ollama", "lmstudio", "openai-compatible"]);
         assert!(!vision_is_local(settings("nope", "", None)));
     }
 

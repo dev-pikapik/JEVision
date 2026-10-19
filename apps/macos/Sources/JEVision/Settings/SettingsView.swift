@@ -213,6 +213,7 @@ struct SettingsItem: Identifiable {
       SettingsItem(tab: .general, id: "updates", title: String(localized: "Updates")),
       SettingsItem(tab: .ai, id: "provider", title: String(localized: "Provider")),
       SettingsItem(tab: .ai, id: "localOnly", title: String(localized: "Only models on this Mac")),
+      SettingsItem(tab: .ai, id: "pictures", title: String(localized: "Understands pictures")),
       SettingsItem(tab: .ai, id: "fallbackProvider", title: String(localized: "Fallback Provider")),
       SettingsItem(tab: .ai, id: "aiSpending", title: String(localized: "Spending")),
       SettingsItem(tab: .ai, id: "aiLimits", title: String(localized: "Limits")),

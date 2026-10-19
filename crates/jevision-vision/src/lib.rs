@@ -161,6 +161,14 @@ impl Provider {
     pub fn lists_models(self) -> bool {
         matches!(self, Self::Ollama | Self::LmStudio | Self::OpenAiCompatible)
     }
+
+    /// The chosen model may be one that reads only text, so the user says whether it sees.
+    pub fn may_lack_pictures(self) -> bool {
+        matches!(
+            self,
+            Self::Jev | Self::Ollama | Self::LmStudio | Self::OpenAiCompatible
+        )
+    }
 }
 
 /// Which provider and model to ask.
@@ -171,6 +179,8 @@ pub struct Config {
     /// Base address of the API; empty for the provider's default.
     pub address: String,
     pub key: Option<String>,
+    /// The model understands pictures; without it, questions stop before anything is sent.
+    pub pictures: bool,
 }
 
 impl fmt::Debug for Config {
@@ -180,6 +190,7 @@ impl fmt::Debug for Config {
             .field("model", &self.model)
             .field("address", &self.address)
             .field("key", &self.key.as_ref().map(|_| MASK))
+            .field("pictures", &self.pictures)
             .finish()
     }
 }
@@ -249,6 +260,7 @@ pub struct Usage {
 /// localizable text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VisionError {
+    NoPictures,
     NoModel,
     NoKey,
     BadAddress { address: String },
@@ -265,6 +277,7 @@ pub enum VisionError {
 impl VisionError {
     pub fn code(&self) -> &'static str {
         match self {
+            Self::NoPictures => "run.vision.noPictures",
             Self::NoModel => "run.vision.noModel",
             Self::NoKey => "run.vision.noKey",
             Self::BadAddress { .. } => "run.vision.badAddress",
@@ -281,7 +294,7 @@ impl VisionError {
 
     pub fn params(&self) -> Vec<(&'static str, String)> {
         match self {
-            Self::NoModel | Self::NoKey | Self::BadKey => Vec::new(),
+            Self::NoPictures | Self::NoModel | Self::NoKey | Self::BadKey => Vec::new(),
             Self::BadAddress { address } | Self::Unreachable { address } => {
                 vec![("address", address.clone())]
             }
@@ -542,6 +555,9 @@ impl VisionJudge for Client {
             });
         }
         let c = &self.config;
+        if !c.pictures {
+            return Err(VisionError::NoPictures);
+        }
         if c.model.trim().is_empty() {
             return Err(VisionError::NoModel);
         }
