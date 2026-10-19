@@ -3,7 +3,7 @@ import JEVisionCore
 
 /// `jevision validate`: lists the errors and warnings of every test.
 func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) -> ExitStatus {
-  var (files, status) = collectTests(paths)
+  var (files, status) = collectTests(paths, reportingEmptyFolders: true)
   var reports: [(file: String, issues: [Issue])] = []
   for file in files {
     guard let text = read(file, status: &status) else { continue }
@@ -31,7 +31,8 @@ func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) 
 
 /// `jevision fmt`: rewrites tests in canonical form, or with `check` only names the ones that aren't.
 func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -> ExitStatus {
-  var (files, status) = collectTests(paths)
+  var (files, status) = collectTests(paths, reportingEmptyFolders: true)
+  var changed = 0
   for file in files {
     guard let text = read(file, status: &status) else { continue }
     let canonical: String
@@ -45,6 +46,7 @@ func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -
       continue
     }
     guard canonical != text else { continue }
+    changed += 1
     if check {
       output.line("\(file): not formatted")
       status = max(status, .problems)
@@ -56,6 +58,9 @@ func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -
         status = max(status, ioFailure(file, "write", error))
       }
     }
+  }
+  if !files.isEmpty {
+    output.line("\(files.count) test\(files.count == 1 ? "" : "s") checked, \(changed) \(check ? "not formatted" : "formatted")")
   }
   return status
 }
@@ -88,8 +93,9 @@ extension Issue {
 // MARK: Files
 
 /// Expands folders into the `*.flow.json` files inside them, sorted by path; hidden files and
-/// folders are skipped. Other paths are taken as they are.
-func collectTests(_ paths: [String]) -> (files: [String], status: ExitStatus) {
+/// folders are skipped. Other paths are taken as they are. With `reportingEmptyFolders`, a folder
+/// without tests is an error, so the command never ends without a word.
+func collectTests(_ paths: [String], reportingEmptyFolders: Bool = false) -> (files: [String], status: ExitStatus) {
   var files: [String] = []
   var status = ExitStatus.ok
   for path in paths {
@@ -98,7 +104,12 @@ func collectTests(_ paths: [String]) -> (files: [String], status: ExitStatus) {
       continue
     }
     do {
+      let found = files.count
       try walk(path, into: &files)
+      if reportingEmptyFolders && files.count == found {
+        Console.standardError.line("jevision: there are no tests (*.flow.json files) in \(path)")
+        status = .failure
+      }
     } catch {
       status = max(status, ioFailure(path, "read", error))
     }

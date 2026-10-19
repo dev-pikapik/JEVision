@@ -183,7 +183,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments or a file could not be read.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read.</p>
 
 <h2 id="fmt"><code>jevision fmt</code></h2>
 <p>Rewrites test files in <a href="writing-tests.html#canonical">canonical form</a>, so every change shows up as a small, readable diff.</p>
@@ -196,7 +196,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments or a file could not be read or written.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read or written.</p>
 
 <h2 id="mcp"><code>jevision mcp</code></h2>
 <p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
