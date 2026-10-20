@@ -7,7 +7,8 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 use jevision_core::{
-    BlockKind, Condition, DataTable, ScrollDirection, ScrollUnit, Target, WaitUntil,
+    BlockKind, ClipboardAction, Condition, DataTable, ScrollDirection, ScrollUnit, Target,
+    WaitUntil,
 };
 use jevision_runner::{Run, RunReport};
 
@@ -269,6 +270,12 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::Http { url, .. } => url.clone(),
         BlockKind::CheckFile { path, .. } => path.clone(),
         BlockKind::Database { file, .. } => file.clone(),
+        BlockKind::Clipboard { action, .. } => match action {
+            ClipboardAction::Put { text } => text.clone(),
+            ClipboardAction::Read { save_as } => save_as.clone(),
+            ClipboardAction::Check { to, .. } => to.clone(),
+        },
+        BlockKind::DateTime { save_as, .. } => save_as.clone(),
     }
 }
 

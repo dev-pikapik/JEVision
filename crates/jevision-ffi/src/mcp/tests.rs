@@ -2,7 +2,9 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use jevision_core::{FORMAT_VERSION, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
+use jevision_core::{
+    FORMAT_VERSION, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit,
+};
 use serde_json::{Value, json};
 
 use super::{AssistantHost, AssistantPermissions, Server};
@@ -72,13 +74,26 @@ impl Hands for FakeHands {
     fn locate(&self, _: String, _: Vec<u8>, _: f64) -> Result<Option<Point>, HandsError> {
         Ok(None)
     }
-    fn click(&self, _: String, _: Point, _: MouseButton, _: bool) -> Result<(), HandsError> {
+    fn click(
+        &self,
+        _: String,
+        _: Point,
+        _: MouseButton,
+        _: bool,
+        _: Modifiers,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
         Ok(())
     }
-    fn drag(&self, _: String, _: Vec<Point>) -> Result<(), HandsError> {
+    fn drag(
+        &self,
+        _: String,
+        _: Vec<Point>,
+        _: MouseButton,
+        _: Modifiers,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn scroll(
@@ -96,6 +111,12 @@ impl Hands for FakeHands {
         Ok(())
     }
     fn press_keys(&self, _: String) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn clipboard(&self) -> Result<String, HandsError> {
+        Ok(String::new())
+    }
+    fn set_clipboard(&self, _: String) -> Result<(), HandsError> {
         Ok(())
     }
     fn user_input_detected(&self) -> bool {

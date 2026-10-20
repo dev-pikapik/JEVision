@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 pub use bug::{BugContext, BugDraft, BugPicture, bug_report, mask_secrets};
 pub use control::{PauseReason, RunControl};
 pub use jevision_core::{DataError, DataTable};
-pub use jevision_core::{MouseButton, Point, ScrollDirection, ScrollUnit};
+pub use jevision_core::{Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Located, MaskedImage, PixelArea,
@@ -79,18 +79,27 @@ pub trait Hands: Send + Sync {
         template: &[u8],
         min_similarity: f64,
     ) -> Result<Option<Point>, HandsError>;
+    /// Clicks at `at` with the keys of `modifiers` held down.
     fn click(
         &self,
         app: &str,
         at: Point,
         button: MouseButton,
         double: bool,
+        modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and leaves it there.
     fn hover(&self, app: &str, at: Point) -> Result<(), HandsError>;
-    /// Presses the left button at the first point of `path`, moves through the others holding
-    /// it down, and lets go at the last. The button is let go even when the run is cancelled.
-    fn drag(&self, app: &str, path: &[Point]) -> Result<(), HandsError>;
+    /// Presses `button` at the first point of `path`, moves through the others holding it down,
+    /// and lets go at the last, with the keys of `modifiers` held down all the while. The button
+    /// and the keys are let go even when the run is cancelled.
+    fn drag(
+        &self,
+        app: &str,
+        path: &[Point],
+        button: MouseButton,
+        modifiers: Modifiers,
+    ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
     /// brings what is further down into sight.
     fn scroll(
@@ -105,6 +114,11 @@ pub trait Hands: Send + Sync {
     fn type_text(&self, text: &str) -> Result<(), HandsError>;
     /// Presses one key combination such as `cmd+shift+s`.
     fn press_keys(&self, keys: &str) -> Result<(), HandsError>;
+    /// The text on the clipboard; empty when it holds none. The text may be secret: never log it.
+    fn clipboard(&self) -> Result<String, HandsError>;
+    /// Replaces what is on the clipboard with `text`. The text may hold secret values: never log
+    /// it.
+    fn set_clipboard(&self, text: &str) -> Result<(), HandsError>;
     /// Whether a person moved the mouse or typed since the last call; synthetic input sent by
     /// this object does not count. A `true` pauses the run.
     fn user_input_detected(&self) -> bool;
