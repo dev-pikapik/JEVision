@@ -305,8 +305,8 @@ struct CommandLineToolTests {
     #expect(missing.status == 0, "warnings don't fail validation")
     #expect(missing.out == """
       \(test): 0 errors, 2 warnings
-        warning Block "a", field "target.image": button.png doesn't exist; the run will stop at this block until it's added.
-        warning Block "b", field "until.appears.image": button.png doesn't exist; the run will stop at this block until it's added.
+        warning Block “a”, field “target.image”: button.png doesn’t exist. The run will stop at this block until it’s added.
+        warning Block “b”, field “until.appears.image”: button.png doesn’t exist. The run will stop at this block until it’s added.
 
       """)
     _ = try dir.file("button.png", "png")
