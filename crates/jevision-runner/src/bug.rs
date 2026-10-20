@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use jevision_core::{
-    BlockKind, Compare, Condition, FileState, Flow, Reference, ScriptLanguage, Target, WaitUntil,
-    format_duration,
+    BLOCK_SUFFIX, BlockKind, Compare, Condition, FileState, Flow, Reference, ScriptLanguage,
+    Target, WaitUntil, format_duration,
 };
 use sha2::{Digest, Sha256};
 
@@ -254,6 +254,7 @@ fn type_title(block_type: &str) -> String {
         "type" => "Type".to_owned(),
         "pressKeys" => "Press Keys".to_owned(),
         "waitFor" => "Wait For".to_owned(),
+        "pause" => "Pause".to_owned(),
         "check" => "Check".to_owned(),
         "if" => "If".to_owned(),
         "repeat" => "Repeat".to_owned(),
@@ -340,6 +341,9 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
             };
             format!("Wait up to {} until {what}", format_duration(*timeout_ms))
         }
+        BlockKind::Pause { duration_ms, .. } => {
+            format!("Pause for {}", format_duration(*duration_ms))
+        }
         BlockKind::Check { reference, .. } => format!("Check that {}", looks_like(reference)),
         BlockKind::If { condition, .. } => match condition {
             Condition::Screen(reference) => format!("If {}", looks_like(reference)),
@@ -347,6 +351,9 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
         },
         BlockKind::Repeat { times, .. } => format!("Repeat {times} times"),
         BlockKind::UseData { file, .. } => format!("For each row of {file}"),
+        BlockKind::RunTest { test, .. } if test.ends_with(BLOCK_SUFFIX) => {
+            format!("Run the custom block `{test}`")
+        }
         BlockKind::RunTest { test, .. } => format!("Run test `{test}`"),
         BlockKind::Script { language, .. } => {
             let language = match language {

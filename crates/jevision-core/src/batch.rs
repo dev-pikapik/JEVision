@@ -701,6 +701,7 @@ mod tests {
             id: "a".into(),
             kind: BlockKind::RunTest {
                 test: "q2.flow.json".into(),
+                inputs: Default::default(),
                 next: None,
             },
         }];
