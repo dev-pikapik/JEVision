@@ -284,7 +284,7 @@ struct RecordingTests {
     #expect(r.scroll(at: CGPoint(x: 150, y: 80), vertical: 0, horizontal: 0, pixels: false, inApp: true, frame: frame) == .ignored)
     #expect(r.scroll(at: CGPoint(x: 150, y: 80), vertical: -1, horizontal: 0, pixels: false, inApp: false, frame: frame) == .ignored)
     #expect(r.scroll(at: CGPoint(x: 20, y: 10), vertical: -1, horizontal: 0, pixels: false, inApp: true, frame: frame) == .outsideWindow)
-    guard case .scroll(.down, 7, .lines, .point(let at), false, nil) = Recording.preview(r.steps[0]) else {
+    guard case .scroll(.down, 7, .lines, .point(let at), .none, false, nil) = Recording.preview(r.steps[0]) else {
       Issue.record("Expected a scroll block, got \(Recording.preview(r.steps[0]))")
       return
     }

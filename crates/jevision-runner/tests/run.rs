@@ -48,6 +48,10 @@ struct State {
     looked_at: Vec<String>,
     typed: Vec<String>,
     clipboard: String,
+    /// The picture on the clipboard, as PNG.
+    clipboard_image: Option<Vec<u8>>,
+    /// The files on the clipboard.
+    clipboard_files: Vec<String>,
     /// Put on the clipboard after the first look at it, as another application would.
     after_look: Option<String>,
 }
@@ -174,8 +178,8 @@ impl Hands for Fake {
         ));
         Ok(())
     }
-    fn hover(&self, _: &str, at: Point) -> Result<(), HandsError> {
-        self.pointer(format!("hover {} {}", at.x, at.y));
+    fn hover(&self, _: &str, at: Point, modifiers: Modifiers) -> Result<(), HandsError> {
+        self.pointer(format!("hover {} {}{}", at.x, at.y, holding(modifiers)));
         Ok(())
     }
     fn drag(
@@ -205,10 +209,13 @@ impl Hands for Fake {
         direction: ScrollDirection,
         amount: u32,
         unit: ScrollUnit,
+        modifiers: Modifiers,
     ) -> Result<(), HandsError> {
         self.pointer(format!(
-            "scroll {direction:?} {amount} {unit:?} at {} {}",
-            at.x, at.y
+            "scroll {direction:?} {amount} {unit:?} at {} {}{}",
+            at.x,
+            at.y,
+            holding(modifiers)
         ));
         Ok(())
     }
@@ -235,6 +242,16 @@ impl Hands for Fake {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), HandsError> {
         self.state.lock().unwrap().clipboard = text.to_owned();
+        Ok(())
+    }
+    fn clipboard_image(&self) -> Result<Option<Vec<u8>>, HandsError> {
+        Ok(self.state.lock().unwrap().clipboard_image.clone())
+    }
+    fn clipboard_files(&self) -> Result<Vec<String>, HandsError> {
+        Ok(self.state.lock().unwrap().clipboard_files.clone())
+    }
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<(), HandsError> {
+        self.state.lock().unwrap().clipboard_image = Some(png.to_vec());
         Ok(())
     }
     fn user_input_detected(&self) -> bool {
@@ -3225,6 +3242,298 @@ fn script_values_keep_their_types_between_blocks() {
         pic.ends_with("refs/pic.png") && Path::new(pic).is_absolute(),
         "{pic}"
     );
+}
+
+#[test]
+fn hover_and_scroll_hold_keys_and_clicks_and_drags_take_the_middle_button() {
+    let p = Project::new();
+    p.test(
+        r#""hover":{"type":"hover","target":{"point":{"x":0.5,"y":0.5}},"modifiers":["option"],"next":"zoom"},
+           "zoom":{"type":"scroll","direction":"up","amount":3,"modifiers":["cmd"],"next":"plain"},
+           "plain":{"type":"scroll","direction":"down","amount":1,"next":"middle"},
+           "middle":{"type":"click","target":{"point":{"x":0.5,"y":0.5}},"button":"middle","next":"pan"},
+           "pan":{"type":"drag","from":{"point":{"x":0,"y":0}},"to":{"point":{"x":1,"y":0}},"button":"middle","modifiers":["shift"]}"#,
+        "hover",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    let log = hands.log();
+    assert_eq!(log[0], "hover 10 5 holding option");
+    assert_eq!(log[1], "scroll Up 3 Lines at 10 5 holding cmd");
+    assert_eq!(log[2], "scroll Down 1 Lines at 10 5");
+    assert_eq!(log[3], "click Middle 10 5");
+    assert!(
+        log[4].ends_with(", 20 0 with Middle holding shift"),
+        "{log:?}"
+    );
+}
+
+#[test]
+fn a_picture_from_the_clipboard_is_a_target_a_reference_and_goes_back() {
+    let p = Project::new();
+    p.test(
+        r#""grab":{"type":"clipboard","action":"read","content":"image","saveAs":"shot","next":"click"},
+           "click":{"type":"click","target":{"image":"${var.shot}"},"next":"hover"},
+           "hover":{"type":"hover","target":{"image":"${var.shot}"},"next":"scroll"},
+           "scroll":{"type":"scroll","direction":"down","amount":1,"at":{"image":"${var.shot}"},"next":"drag"},
+           "drag":{"type":"drag","from":{"image":"${var.shot}"},"to":{"point":{"x":0.5,"y":0.85}},"next":"clear"},
+           "clear":{"type":"clipboard","action":"put","text":"gone","next":"back"},
+           "back":{"type":"clipboard","action":"put","image":"${var.shot}","next":"check"},
+           "check":{"type":"check","reference":{"image":"${var.shot}","compare":"exact"}}"#,
+        "grab",
+        0,
+    );
+    let copied = solid([7, 8, 9]);
+    let hands = Fake::new(copied.clone()).with(|s| s.clipboard_image = Some(copied.clone()));
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Passed, "{:?}", run.report);
+    assert!(run.report.baselines_created.is_empty());
+    // The clipboard got the same picture back, byte for byte.
+    assert_eq!(
+        hands.state.lock().unwrap().clipboard_image,
+        Some(copied.clone())
+    );
+    let kept = &last_steps(&run.report)[0].outputs["shot"];
+    assert!(
+        Path::new(kept).is_absolute() && kept.ends_with("-clipboard.png"),
+        "{kept}"
+    );
+    assert_eq!(std::fs::read(kept).unwrap(), copied);
+}
+
+#[test]
+fn a_missing_picture_variable_is_an_error_never_a_baseline() {
+    let p = Project::new();
+    p.test(
+        r#""calc":{"type":"script","language":"sh","code":"echo \"shot=/nonexistent/shot.png\" >> \"$JEV_OUTPUT\"","outputs":[{"name":"shot","type":"text"}],"next":"check"},
+           "check":{"type":"check","reference":{"image":"${var.shot}","compare":"exact"}}"#,
+        "calc",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Failed);
+    assert_eq!(failure_code(&report), "run.reference.missing");
+    assert!(report.baselines_created.is_empty());
+    assert!(!Path::new("/nonexistent/shot.png").exists());
+}
+
+#[test]
+fn an_area_is_a_target_written_in_the_test_or_kept_in_a_variable() {
+    let p = Project::new();
+    p.test(
+        r#""literal":{"type":"click","target":{"area":"0.25,0.5,0.5,0.25"},"next":"calc"},
+           "calc":{"type":"script","language":"sh","code":"echo \"zone=0, 0, 0.5, 0.5\" >> \"$JEV_OUTPUT\"","outputs":[{"name":"zone","type":"area"}],"next":"kept"},
+           "kept":{"type":"hover","target":{"area":"${var.zone}"},"next":"drag"},
+           "drag":{"type":"drag","from":{"area":"${var.zone}"},"to":{"area":"0.5,0.5,0.5,0.5"}}"#,
+        "literal",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    // The window is 20×10 points; the pointer goes to the centre of each area.
+    let log = hands.log();
+    assert_eq!(log[0], "click Left 10 6.25");
+    assert_eq!(log[1], "hover 5 2.5");
+    assert!(log[2].starts_with("drag 5 2.5, "), "{log:?}");
+    assert!(log[2].ends_with(", 15 7.5"), "{log:?}");
+}
+
+#[test]
+fn an_area_that_is_not_one_fails_the_block() {
+    let p = Project::new();
+    p.test(
+        r#""calc":{"type":"script","language":"sh","code":"echo \"zone=0.1,0.2,3\" >> \"$JEV_OUTPUT\"","outputs":[{"name":"zone","type":"text"}],"next":"click"},
+           "click":{"type":"click","target":{"area":"${var.zone}"}}"#,
+        "calc",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.target.badArea");
+    assert_eq!(failure.param("value"), "0.1,0.2,3");
+    assert!(hands.log().is_empty());
+}
+
+#[test]
+fn the_clipboard_gives_files_and_fails_when_it_holds_neither_files_nor_a_picture() {
+    let p = Project::new();
+    p.test(
+        r#""files":{"type":"clipboard","action":"read","content":"files","saveAs":"files","next":"show"},
+           "show":{"type":"type","text":"${var.files}"}"#,
+        "files",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]))
+        .with(|s| s.clipboard_files = vec!["/tmp/a.txt".to_owned(), "/tmp/b b.txt".to_owned()]);
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    assert_eq!(hands.typed(), ["/tmp/a.txt\n/tmp/b b.txt"]);
+
+    let hands = Fake::new(solid([0, 0, 0]));
+    assert_eq!(
+        failure_code(&run(&p, &hands).report),
+        "run.clipboard.noFiles"
+    );
+
+    p.test(
+        r#""grab":{"type":"clipboard","action":"read","content":"image","saveAs":"shot"}"#,
+        "grab",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    assert_eq!(
+        failure_code(&run(&p, &hands).report),
+        "run.clipboard.noImage"
+    );
+
+    // Only a PNG goes on the clipboard as a picture.
+    p.write("refs/not.png", b"text").test(
+        r#""put":{"type":"clipboard","action":"put","image":"refs/not.png"}"#,
+        "put",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.clipboard.notPicture");
+    assert!(hands.state.lock().unwrap().clipboard_image.is_none());
+}
+
+#[test]
+fn a_picture_put_on_the_clipboard_comes_from_the_project() {
+    let p = Project::new();
+    let shot = solid([4, 5, 6]);
+    p.write("refs/logo.png", &shot).test(
+        r#""put":{"type":"clipboard","action":"put","image":"refs/logo.png","next":"read"},
+           "read":{"type":"clipboard","action":"read","content":"image","saveAs":"back"}"#,
+        "put",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    assert_eq!(hands.state.lock().unwrap().clipboard_image, Some(shot));
+}
+
+#[test]
+fn the_date_names_follow_the_language_and_the_time_zone() {
+    let p = Project::new();
+    p.test(
+        r#""ru":{"type":"dateTime","saveAs":"ru","format":"%B|%OB|%A|%^a","language":"ru","next":"en"},
+           "en":{"type":"dateTime","saveAs":"en","format":"%B|%A","language":"en","next":"app"},
+           "app":{"type":"dateTime","saveAs":"app","format":"%B","next":"east"},
+           "east":{"type":"dateTime","saveAs":"east","format":"%z","timeZone":"Pacific/Kiritimati","next":"west"},
+           "west":{"type":"dateTime","saveAs":"west","format":"%z %Z","timeZone":"Pacific/Pago_Pago"}"#,
+        "ru",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let russian = RunOptions {
+        language: Some("ru".to_owned()),
+        ..options()
+    };
+    let report = run_with(&p, &hands, RunControl::new(), &russian).0.report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    let out = |name: &str| {
+        last_steps(&report)
+            .iter()
+            .find_map(|s| s.outputs.get(name))
+            .cloned()
+            .unwrap()
+    };
+    let months = [
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+    ];
+    let nominative = [
+        "январь",
+        "февраль",
+        "март",
+        "апрель",
+        "май",
+        "июнь",
+        "июль",
+        "август",
+        "сентябрь",
+        "октябрь",
+        "ноябрь",
+        "декабрь",
+    ];
+    let english = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+    let ru = out("ru");
+    let parts: Vec<&str> = ru.split('|').collect();
+    assert!(months.contains(&parts[0]), "{ru}");
+    assert_eq!(
+        nominative.iter().position(|m| *m == parts[1]),
+        months.iter().position(|m| *m == parts[0]),
+        "{ru}"
+    );
+    assert!(
+        [
+            "Понедельник",
+            "Вторник",
+            "Среда",
+            "Четверг",
+            "Пятница",
+            "Суббота",
+            "Воскресенье"
+        ]
+        .iter()
+        .any(|d| d.to_lowercase() == parts[2]),
+        "{ru}"
+    );
+    assert!(parts[3].chars().next().unwrap().is_uppercase(), "{ru}");
+    // A block's own language wins over the one the run was started with; without one the run's
+    // language names the month.
+    let en = out("en");
+    assert!(english.contains(&en.split('|').next().unwrap()), "{en}");
+    assert!(months.contains(&out("app").as_str()));
+    assert_eq!(out("east"), "+1400");
+    assert_eq!(out("west"), "-1100 SST");
+
+    // Without a language of the run the names are English.
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    let app = &last_steps(&report)[2].outputs["app"];
+    assert!(english.contains(&app.as_str()), "{app}");
+}
+
+#[test]
+fn a_time_zone_the_test_cannot_know_stops_the_run_before_it_starts() {
+    let p = Project::new();
+    p.test(
+        r#""when":{"type":"dateTime","saveAs":"when","format":"%F","timeZone":"Mars/Olympus"}"#,
+        "when",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    assert_eq!(failure_code(&run(&p, &hands).report), "run.test.unreadable");
+    assert!(hands.log().is_empty());
 }
 
 /// Answers one request on 127.0.0.1 and hands back what was sent.

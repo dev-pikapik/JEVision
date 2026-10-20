@@ -235,6 +235,9 @@ pub enum BlockKind {
     /// that open on hover.
     Hover {
         target: Target,
+        /// Keys held down while the pointer moves.
+        #[serde(skip_serializing_if = "Modifiers::is_empty")]
+        modifiers: Modifiers,
         /// After moving, wait until the screen changes; fail if it does not.
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
@@ -263,6 +266,9 @@ pub enum BlockKind {
         unit: ScrollUnit,
         #[serde(skip_serializing_if = "Option::is_none")]
         at: Option<Target>,
+        /// Keys held down while the wheel turns: `cmd` zooms in most applications.
+        #[serde(skip_serializing_if = "Modifiers::is_empty")]
+        modifiers: Modifiers,
         /// After scrolling, wait until the screen changes; fail if it does not.
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
@@ -428,7 +434,8 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Puts text on the clipboard, reads it into a run variable, or checks what it holds.
+    /// Puts text or a picture on the clipboard, reads its text, a picture or a list of files
+    /// into a run variable, or checks the text it holds.
     Clipboard {
         #[serde(flatten)]
         action: ClipboardAction,
@@ -439,9 +446,17 @@ pub enum BlockKind {
     /// variable `save_as`.
     DateTime {
         save_as: String,
-        /// `strftime` pattern, e.g. `%d.%m.%Y %H:%M`; month and day names are in English.
+        /// `strftime` pattern, e.g. `%d.%m.%Y %H:%M`.
         #[serde(skip_serializing_if = "is_default_format")]
         format: String,
+        /// Language of month and day names, one of [`DATE_LANGUAGES`]; `None` is the language
+        /// the app runs in.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        language: Option<String>,
+        /// Time zone the time is told in, an IANA name such as `Europe/Berlin` or `UTC`; `None`
+        /// is the time zone of this computer.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        time_zone: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         shift: Option<TimeShift>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -460,8 +475,17 @@ pub enum ClipboardAction {
     /// Replaces the clipboard with the text, which may contain placeholders. Whatever the
     /// clipboard held before is gone, and the text stays there after the run.
     Put { text: String },
-    /// Keeps the text on the clipboard as a run variable.
-    Read { save_as: String },
+    /// Replaces the clipboard with a picture: the path of a PNG, or `${var.NAME}` of a variable
+    /// of type image.
+    #[serde(rename = "put")]
+    PutImage { image: String },
+    /// Keeps what is on the clipboard as a run variable: its text, a picture (a variable of
+    /// type image) or the list of files, as text with one path to a line.
+    Read {
+        save_as: String,
+        #[serde(skip_serializing_if = "ClipboardContent::is_text")]
+        content: ClipboardContent,
+    },
     /// Waits until the text on the clipboard passes the test against `to`, which may contain
     /// placeholders; fails after `timeout`.
     Check {
@@ -470,6 +494,41 @@ pub enum ClipboardAction {
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
     },
+}
+
+/// What a clipboard block reads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClipboardContent {
+    #[default]
+    Text,
+    Image,
+    Files,
+}
+
+impl ClipboardContent {
+    pub const ALL: [Self; 3] = [Self::Text, Self::Image, Self::Files];
+
+    pub fn is_text(&self) -> bool {
+        *self == Self::Text
+    }
+
+    /// The word a file uses.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Image => "image",
+            Self::Files => "files",
+        }
+    }
+
+    /// Kind of the variable a read of this content leaves.
+    pub fn kind(&self) -> ValueKind {
+        match self {
+            Self::Image => ValueKind::Image,
+            Self::Text | Self::Files => ValueKind::Text,
+        }
+    }
 }
 
 /// How far the date and time of a [`BlockKind::DateTime`] block are moved: negative goes back.
@@ -489,6 +548,14 @@ pub enum TimeUnit {
     Weeks,
     Months,
     Years,
+}
+
+/// Languages a date and time block can write month and day names in.
+pub const DATE_LANGUAGES: &[&str] = &["en", "ru"];
+
+/// Whether `name` is an IANA time zone name such as `Europe/Berlin`.
+pub fn time_zone_known(name: &str) -> bool {
+    name.parse::<chrono_tz::Tz>().is_ok()
 }
 
 /// Pattern of a date and time block that does not say another: `2026-03-31 14:05:09`.
@@ -661,21 +728,33 @@ impl ValueKind {
                 _ => None,
             },
             Self::Image => (!trimmed.is_empty()).then(|| trimmed.to_owned()),
-            Self::Area => {
-                let parts: Vec<f64> = trimmed.split(',').map(number).collect::<Option<_>>()?;
-                let [x, y, width, height] = parts[..] else {
-                    return None;
-                };
-                let area = Rect {
+            Self::Area => parse_area(trimmed).map(|a| {
+                let Rect {
                     x,
                     y,
                     width,
                     height,
-                };
-                crate::validate::rect_fits(&area).then(|| format!("{x},{y},{width},{height}"))
-            }
+                } = a;
+                format!("{x},{y},{width},{height}")
+            }),
         }
     }
+}
+
+/// An area written `x,y,width,height`, in fractions of the window, when it lies inside it.
+pub fn parse_area(text: &str) -> Option<Rect> {
+    let number = |text: &str| text.trim().parse::<f64>().ok().filter(|n| n.is_finite());
+    let parts: Vec<f64> = text.split(',').map(number).collect::<Option<_>>()?;
+    let [x, y, width, height] = parts[..] else {
+        return None;
+    };
+    let area = Rect {
+        x,
+        y,
+        width,
+        height,
+    };
+    crate::validate::rect_fits(&area).then_some(area)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -778,6 +857,9 @@ pub enum Target {
     Image(String),
     /// A fixed point, in fractions of the window size.
     Point(Point),
+    /// The middle of an area: `x,y,width,height` in fractions of the window size, or
+    /// `${var.NAME}` of a variable of type area.
+    Area(String),
     /// Found by AI: the element described in words, like "the blue Save button".
     Description(String),
 }
@@ -818,6 +900,7 @@ pub struct Rect {
 pub enum MouseButton {
     Left,
     Right,
+    Middle,
 }
 
 impl MouseButton {

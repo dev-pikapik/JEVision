@@ -233,7 +233,7 @@ fn unreadable_files_report_codes_with_params() {
     assert_eq!(unknown[0].param("type"), Some("teleport"));
 
     let issues = parse_err(&minimal(
-        r#"{"a": {"type": "click", "target": {"image": 5}, "colour": "red", "button": "middle"},
+        r#"{"a": {"type": "click", "target": {"image": 5}, "colour": "red", "button": "thumb"},
             "b": {"type": "waitFor", "until": {"appears": {}}, "timeout": "soon"},
             "c": {"type": "check", "reference": {"image": "x.png", "compare": "exact", "threshold": 0.5}},
             "d": {"type": "click", "target": {"image": "a.png", "point": {"x": 0, "y": 0}}, "next": "e"},
@@ -276,7 +276,7 @@ fn unreadable_files_report_codes_with_params() {
             ),
         ]
     );
-    assert_eq!(issues[1].param("allowed"), Some("left, right"));
+    assert_eq!(issues[1].param("allowed"), Some("left, right, middle"));
 }
 
 #[test]
@@ -565,6 +565,7 @@ fn pointer_blocks_are_written_in_canonical_form() {
             amount: 3,
             unit: ScrollUnit::Lines,
             at: None,
+            modifiers: Modifiers::default(),
             wait_for_change: false,
             next: None,
         }
@@ -1558,7 +1559,7 @@ fn clicks_and_drags_hold_keys_and_a_button() {
 
     let bad = parse_err(&minimal(
         r#"{"a": {"type": "click", "target": {"description": "x"}, "modifiers": ["fn"]},
-            "b": {"type": "drag", "from": {"description": "x"}, "to": {"description": "y"}, "button": "middle", "modifiers": "cmd"}}"#,
+            "b": {"type": "drag", "from": {"description": "x"}, "to": {"description": "y"}, "button": "thumb", "modifiers": "cmd"}}"#,
     ));
     let found: Vec<(&str, Option<&str>)> = bad
         .iter()
@@ -1628,6 +1629,275 @@ fn clipboard_and_date_blocks_round_trip_in_canonical_form() {
         let block = BlockKind::new(name, "x").unwrap();
         assert_eq!(block.type_name(), name);
     }
+}
+
+#[test]
+fn the_middle_button_and_keys_on_hover_and_scroll_round_trip() {
+    let text = minimal(
+        r#"{"a": {"type": "click", "target": {"point": {"x": 0.5, "y": 0.5}}, "button": "middle", "next": "b"},
+            "b": {"type": "drag", "from": {"point": {"x": 0.1, "y": 0.1}}, "to": {"point": {"x": 0.9, "y": 0.9}}, "button": "middle", "next": "c"},
+            "c": {"type": "hover", "target": {"point": {"x": 0.5, "y": 0.5}}, "modifiers": ["option", "shift"], "next": "d"},
+            "d": {"type": "scroll", "direction": "up", "amount": 2, "modifiers": ["cmd"]}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    assert!(validate(&flow).iter().all(|i| i.code == "flow.noCheck"));
+    let kind = |id: &str| &flow.blocks.iter().find(|b| b.id == id).unwrap().kind;
+    let BlockKind::Click { button, .. } = kind("a") else {
+        panic!("not a click");
+    };
+    assert_eq!(*button, MouseButton::Middle);
+    let BlockKind::Drag { button, .. } = kind("b") else {
+        panic!("not a drag");
+    };
+    assert_eq!(*button, MouseButton::Middle);
+    let BlockKind::Hover { modifiers, .. } = kind("c") else {
+        panic!("not a hover");
+    };
+    assert_eq!(modifiers.names(), ["shift", "option"]);
+    let BlockKind::Scroll { modifiers, .. } = kind("d") else {
+        panic!("not a scroll");
+    };
+    assert_eq!(modifiers.names(), ["cmd"]);
+
+    let once = to_canonical_json(&flow);
+    assert_eq!(once.matches("\"button\": \"middle\"").count(), 2);
+    assert!(once.contains("\"modifiers\": [\n        \"shift\",\n        \"option\"\n      ]"));
+    assert!(once.contains("\"modifiers\": [\n        \"cmd\"\n      ]"));
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+    // Without keys nothing is written, as before.
+    let plain = to_canonical_json(&parse(&minimal(
+        r#"{"a": {"type": "hover", "target": {"point": {"x": 0.5, "y": 0.5}}, "modifiers": []}}"#,
+    ))
+    .unwrap());
+    assert!(!plain.contains("modifiers"));
+
+    let bad = parse_err(&minimal(
+        r#"{"a": {"type": "hover", "target": {"point": {"x": 0.5, "y": 0.5}}, "modifiers": ["fn"], "next": "b"},
+            "b": {"type": "scroll", "direction": "up", "amount": 1, "modifiers": "cmd"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = bad
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.value", Some("a"), Some("modifiers")),
+            ("flow.field.type", Some("b"), Some("modifiers")),
+        ]
+    );
+}
+
+#[test]
+fn the_clipboard_reads_a_picture_or_files_and_puts_a_picture() {
+    let text = minimal(
+        r#"{"a": {"type": "clipboard", "action": "read", "saveAs": "shot", "content": "image", "next": "b"},
+            "b": {"type": "clipboard", "action": "read", "saveAs": "files", "content": "files", "next": "c"},
+            "c": {"type": "clipboard", "action": "read", "saveAs": "words", "content": "text", "next": "d"},
+            "d": {"type": "clipboard", "action": "put", "image": "${var.shot}", "next": "e"},
+            "e": {"type": "clipboard", "action": "put", "image": "refs/logo.png"}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    assert!(
+        validate(&flow)
+            .iter()
+            .all(|i| i.severity != Severity::Error),
+        "{:?}",
+        validate(&flow)
+    );
+    let kind = |id: &str| &flow.blocks.iter().find(|b| b.id == id).unwrap().kind;
+    assert_eq!(
+        *kind("a"),
+        BlockKind::Clipboard {
+            action: ClipboardAction::Read {
+                save_as: "shot".to_owned(),
+                content: ClipboardContent::Image
+            },
+            next: Some("b".to_owned()),
+        }
+    );
+    assert_eq!(
+        *kind("e"),
+        BlockKind::Clipboard {
+            action: ClipboardAction::PutImage {
+                image: "refs/logo.png".to_owned()
+            },
+            next: None,
+        }
+    );
+    let once = to_canonical_json(&flow);
+    // Text is the default and is left out; the other two are written.
+    assert!(once.contains("\"content\": \"image\""));
+    assert!(once.contains("\"content\": \"files\""));
+    assert!(!once.contains("\"content\": \"text\""));
+    assert!(once.contains("\"image\": \"refs/logo.png\""));
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+    // The picture a put names is looked for next to the test; one a variable names is not.
+    let dir = std::env::temp_dir().join(format!("jevision-clip-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let missing: Vec<(String, String)> = validate_in(&flow, &dir)
+        .iter()
+        .filter(|i| i.code == "flow.file.missing")
+        .map(|i| {
+            (
+                i.param("block").unwrap_or_default().to_owned(),
+                i.param("path").unwrap_or_default().to_owned(),
+            )
+        })
+        .collect();
+    fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(missing, [("e".to_owned(), "refs/logo.png".to_owned())]);
+
+    let bad = parse_err(&minimal(
+        r#"{"a": {"type": "clipboard", "action": "read", "saveAs": "x", "content": "video", "next": "b"},
+            "b": {"type": "clipboard", "action": "put", "text": "x", "image": "a.png"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = bad
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    assert_eq!(found[0], ("flow.field.value", Some("a"), Some("content")));
+    assert_eq!(found[1].0, "flow.field.oneOf");
+}
+
+#[test]
+fn the_date_takes_a_language_and_a_time_zone() {
+    let text = minimal(
+        r#"{"a": {"type": "dateTime", "saveAs": "ru", "format": "%d %B %Y, %A", "language": "ru", "timeZone": "Europe/Moscow", "next": "b"},
+            "b": {"type": "dateTime", "saveAs": "plain", "format": "%OB %^a"}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    assert!(validate(&flow).iter().all(|i| i.code == "flow.noCheck"));
+    assert_eq!(
+        flow.blocks[0].kind,
+        BlockKind::DateTime {
+            save_as: "ru".to_owned(),
+            format: "%d %B %Y, %A".to_owned(),
+            language: Some("ru".to_owned()),
+            time_zone: Some("Europe/Moscow".to_owned()),
+            shift: None,
+            next: Some("b".to_owned()),
+        }
+    );
+    let once = to_canonical_json(&flow);
+    assert!(once.contains("\"language\": \"ru\""));
+    assert!(once.contains("\"timeZone\": \"Europe/Moscow\""));
+    // The language and the zone of the computer are the defaults and are left out.
+    let plain = once.split("\"plain\"").nth(1).unwrap();
+    assert!(!plain.contains("language") && !plain.contains("timeZone"));
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+
+    let bad = parse_err(&minimal(
+        r#"{"a": {"type": "dateTime", "saveAs": "x", "language": "de", "next": "b"},
+            "b": {"type": "dateTime", "saveAs": "y", "timeZone": "Mars/Olympus"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = bad
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.value", Some("a"), Some("language")),
+            ("flow.field.value", Some("b"), Some("timeZone")),
+        ]
+    );
+    assert!(
+        issues_of(r#"{"a": {"type": "dateTime", "saveAs": "x", "format": "%Q"}}"#)
+            .iter()
+            .any(|i| i.code == "flow.dateTime.format")
+    );
+}
+
+#[test]
+fn an_area_target_is_checked_and_a_variable_must_hold_what_the_field_takes() {
+    let kinds = |blocks: &str| -> Vec<(String, String, String)> {
+        issues_of(blocks)
+            .iter()
+            .filter(|i| i.code == "flow.var.kind")
+            .map(|i| {
+                (
+                    i.param("block").unwrap_or("").to_owned(),
+                    i.param("field").unwrap_or("").to_owned(),
+                    format!(
+                        "{} {} {}",
+                        i.param("type").unwrap_or(""),
+                        i.param("variable").unwrap_or(""),
+                        i.param("from").unwrap_or("")
+                    ),
+                )
+            })
+            .collect()
+    };
+    // What a clipboard picture, a script's area or text are saved as fits the fields that take
+    // that kind, and text fits any, since only a run can tell what it holds.
+    assert_eq!(
+        kinds(
+            r#"{"a": {"type": "clipboard", "action": "read", "saveAs": "shot", "content": "image", "next": "b"},
+                "b": {"type": "script", "language": "sh", "code": "true", "outputs": [{"name": "zone", "type": "area"}, {"name": "said", "type": "text"}], "next": "c"},
+                "c": {"type": "click", "target": {"image": "${var.shot}"}, "next": "d"},
+                "d": {"type": "hover", "target": {"area": "${var.zone}"}, "next": "e"},
+                "e": {"type": "drag", "from": {"image": "${var.said}"}, "to": {"area": "${var.said}"}, "next": "f"},
+                "f": {"type": "check", "reference": {"image": "${var.shot}", "compare": "exact"}}}"#
+        ),
+        vec![]
+    );
+    // A variable of the wrong kind is told at once, before any run.
+    assert_eq!(
+        kinds(
+            r#"{"a": {"type": "clipboard", "action": "read", "saveAs": "shot", "content": "image", "next": "b"},
+                "b": {"type": "script", "language": "sh", "code": "true", "outputs": [{"name": "zone", "type": "area"}], "next": "c"},
+                "c": {"type": "click", "target": {"image": "${var.zone}"}, "next": "d"},
+                "d": {"type": "scroll", "direction": "up", "amount": 1, "at": {"area": "${var.shot}"}, "next": "e"},
+                "e": {"type": "check", "reference": {"image": "${var.zone}", "compare": "exact"}, "next": "f"},
+                "f": {"type": "clipboard", "action": "put", "image": "${var.zone}"}}"#
+        ),
+        vec![
+            ("c".into(), "target.image".into(), "image zone area".into()),
+            ("d".into(), "at.area".into(), "area shot image".into()),
+            (
+                "e".into(),
+                "reference.image".into(),
+                "image zone area".into()
+            ),
+            ("f".into(), "image".into(), "image zone area".into()),
+        ]
+    );
+    // A written area must be one inside the window; a placeholder is left to the run.
+    let area_issues: Vec<(String, String)> = issues_of(
+        r#"{"a": {"type": "click", "target": {"area": "0.2,0.2,0.5,0.5"}, "next": "b"},
+            "b": {"type": "click", "target": {"area": "0.8,0.8,0.5,0.5"}, "next": "c"},
+            "c": {"type": "click", "target": {"area": "wide"}, "next": "d"},
+            "d": {"type": "click", "target": {"area": " "}, "next": "e"},
+            "e": {"type": "click", "target": {"area": "${data.zone}"}}}"#,
+    )
+    .iter()
+    .map(|i| {
+        (
+            i.code.clone(),
+            i.param("block").unwrap_or_default().to_owned(),
+        )
+    })
+    .collect();
+    assert_eq!(
+        area_issues,
+        [
+            ("flow.target.area".to_owned(), "b".to_owned()),
+            ("flow.target.area".to_owned(), "c".to_owned()),
+            ("flow.field.empty".to_owned(), "d".to_owned()),
+        ]
+    );
+    // An area target round-trips in canonical form.
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "click", "target": {"area": "0.2,0.2,0.5,0.5"}}}"#,
+    ))
+    .unwrap();
+    let once = to_canonical_json(&flow);
+    assert!(once.contains("\"area\": \"0.2,0.2,0.5,0.5\""));
+    assert_eq!(parse(&once).unwrap(), flow);
 }
 
 #[test]
@@ -1725,7 +1995,7 @@ fn clipboard_and_date_blocks_are_validated() {
         .collect();
     for expected in [
         ("flow.field.value", Some("a"), Some("action")),
-        ("flow.field.missing", Some("b"), Some("text")),
+        ("flow.field.oneOf", Some("b"), Some("text|image")),
         ("flow.field.unknown", Some("c"), Some("text")),
         ("flow.field.missing", Some("d"), Some("is")),
         ("flow.field.missing", Some("e"), Some("saveAs")),

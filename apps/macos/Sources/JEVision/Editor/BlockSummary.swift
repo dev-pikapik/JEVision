@@ -23,45 +23,50 @@ enum BlockSummary {
         let place = targetName(target)
         switch (button, double) {
         case (.right, _): return holding(modifiers, String(localized: "Right-click \(place)"))
+        case (.middle, _): return holding(modifiers, String(localized: "Middle-click \(place)"))
         case (.left, true): return holding(modifiers, String(localized: "Double-click \(place)"))
         case (.left, false): return holding(modifiers, String(localized: "Click \(place)"))
         }
       }
       return String(localized: "Choose what to click")
-    case .hover(let target, _, _):
-      return isUnset(target) ? String(localized: "Choose what to point at") : String(localized: "Point at \(targetName(target))")
+    case .hover(let target, let modifiers, _, _):
+      guard !isUnset(target) else { return String(localized: "Choose what to point at") }
+      return holding(modifiers, String(localized: "Point at \(targetName(target))"))
     case .drag(let from, let to, let button, let modifiers, _, _):
       guard !isUnset(from), !isUnset(to) else { return String(localized: "Choose what to drag and where") }
       let text =
-        button == .right
-        ? String(localized: "Right-drag \(spotName(from)) to \(spotName(to))")
-        : String(localized: "Drag \(spotName(from)) to \(spotName(to))")
+        switch button {
+        case .left: String(localized: "Drag \(spotName(from)) to \(spotName(to))")
+        case .right: String(localized: "Right-drag \(spotName(from)) to \(spotName(to))")
+        case .middle: String(localized: "Middle-drag \(spotName(from)) to \(spotName(to))")
+        }
       return holding(modifiers, text)
-    case .scroll(let direction, let amount, let unit, let at, _, _):
+    case .scroll(let direction, let amount, let unit, let at, let modifiers, _, _):
       let much = unit == .lines ? String(localized: "\(Int(amount)) lines") : String(localized: "\(Int(amount)) px")
       guard let at, !isUnset(at) else {
         switch direction {
-        case .up: return String(localized: "Scroll up \(much)")
-        case .down: return String(localized: "Scroll down \(much)")
-        case .left: return String(localized: "Scroll left \(much)")
-        case .right: return String(localized: "Scroll right \(much)")
+        case .up: return holding(modifiers, String(localized: "Scroll up \(much)"))
+        case .down: return holding(modifiers, String(localized: "Scroll down \(much)"))
+        case .left: return holding(modifiers, String(localized: "Scroll left \(much)"))
+        case .right: return holding(modifiers, String(localized: "Scroll right \(much)"))
         }
       }
       let place = targetName(at)
       switch direction {
-      case .up: return String(localized: "Scroll up \(much) over \(place)")
-      case .down: return String(localized: "Scroll down \(much) over \(place)")
-      case .left: return String(localized: "Scroll left \(much) over \(place)")
-      case .right: return String(localized: "Scroll right \(much) over \(place)")
+      case .up: return holding(modifiers, String(localized: "Scroll up \(much) over \(place)"))
+      case .down: return holding(modifiers, String(localized: "Scroll down \(much) over \(place)"))
+      case .left: return holding(modifiers, String(localized: "Scroll left \(much) over \(place)"))
+      case .right: return holding(modifiers, String(localized: "Scroll right \(much) over \(place)"))
       }
     case .type(let text, let into, _):
       guard !text.isEmpty else { return String(localized: "No text yet") }
       let what = secretName(text).map { String(localized: "secret \($0)") } ?? quoted(text)
-      if let into, case .image(let path) = into, !path.isEmpty {
-        return String(localized: "Type \(what) into \(imageName(path))")
-      }
-      if let into, case .description = into, !isUnset(into) {
-        return String(localized: "Type \(what) into \(targetName(into))")
+      // A point says nothing about the field, so only a picture, a description or an area names it.
+      if let into, !isUnset(into) {
+        switch into {
+        case .point: break
+        default: return String(localized: "Type \(what) into \(targetName(into))")
+        }
       }
       return String(localized: "Type \(what)")
     case .pressKeys(let keys, _):
@@ -123,15 +128,24 @@ enum BlockSummary {
       switch action {
       case .put(let text):
         return text.isEmpty ? String(localized: "No text yet") : String(localized: "Put \(quoted(text, limit: 32)) on the clipboard")
-      case .read(let saveAs):
-        return saveAs.isEmpty ? String(localized: "Choose a name to save it as") : String(localized: "Read the clipboard → \(saveAs)")
+      case .putImage(let image):
+        return image.isEmpty ? String(localized: "No picture yet") : String(localized: "Put \(imageName(image)) on the clipboard")
+      case .read(let saveAs, let content):
+        guard !saveAs.isEmpty else { return String(localized: "Choose a name to save it as") }
+        switch content {
+        case .text: return String(localized: "Read the clipboard → \(saveAs)")
+        case .image: return String(localized: "Read the picture on the clipboard → \(saveAs)")
+        case .files: return String(localized: "Read the copied files → \(saveAs)")
+        }
       case .check(let test, let to, let timeoutMs):
         return String(localized: "Until the clipboard \(sign(of: test)) \(quoted(to)) · \(duration(timeoutMs))")
       }
-    case .dateTime(let saveAs, let format, let shift, _):
+    case .dateTime(let saveAs, let format, let language, let timeZone, let shift, _):
       guard !saveAs.isEmpty else { return String(localized: "Choose a name to save it as") }
+      let names = language.map { " · " + AppLanguage.name($0) } ?? ""
+      let zone = timeZone.map { " · " + $0 } ?? ""
       let moved = shift.map { " · " + BlockInfo.timeUnitName($0.unit).lowercased() + " " + signed($0.amount) } ?? ""
-      return quoted(format, limit: 24) + moved + " → " + saveAs
+      return quoted(format, limit: 24) + names + zone + moved + " → " + saveAs
     case .script(let language, let code, _, let outputs, _, _):
       let line = code.split(whereSeparator: \.isNewline).first { !$0.allSatisfy(\.isWhitespace) }
       guard let line else { return String(localized: "No code yet") }
@@ -162,7 +176,7 @@ enum BlockSummary {
     }
   }
 
-  /// `⌘ ` before what a click or drag does, when keys are held down.
+  /// What a click, drag, hover or scroll does, with the keys held down during it.
   private static func holding(_ modifiers: Modifiers, _ text: String) -> String {
     modifiers.isEmpty ? text : String(localized: "\(text) holding \(modifiers.symbols)")
   }
@@ -184,8 +198,10 @@ enum BlockSummary {
     }
   }
 
-  /// `refs/sign-in-button.png` → “sign in button”.
+  /// `refs/sign-in-button.png` → “sign in button”; a picture a block saves, like
+  /// `${var.shot}`, as it is written.
   static func imageName(_ path: String) -> String {
+    if path.contains("${") { return quoted(path, limit: 32) }
     let base = ((path as NSString).lastPathComponent as NSString).deletingPathExtension
     return quoted(base.replacing(/[-_]+/, with: " ").trimmingCharacters(in: .whitespaces))
   }
@@ -222,6 +238,7 @@ enum BlockSummary {
     case .image(let path): imageName(path)
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
     case .description(let text): quoted(text, limit: 40)
+    case .area(let area): String(localized: "area \(quoted(area, limit: 32))")
     }
   }
 
@@ -231,14 +248,15 @@ enum BlockSummary {
     case .image(let path): imageName(path)
     case .point(let p): "\(percent(p.x)), \(percent(p.y))"
     case .description(let text): quoted(text, limit: 40)
+    case .area(let area): quoted(area, limit: 32)
     }
   }
 
-  /// A picture not chosen or an element not described yet.
+  /// A picture not chosen, an element not described or an area not given yet.
   private static func isUnset(_ target: Target) -> Bool {
     switch target {
     case .image(let path): path.isEmpty
-    case .description(let text): text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    case .description(let text), .area(let text): text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     case .point: false
     }
   }

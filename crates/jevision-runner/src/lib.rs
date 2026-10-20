@@ -111,8 +111,9 @@ pub trait Hands: Send + Sync {
         double: bool,
         modifiers: Modifiers,
     ) -> Result<(), HandsError>;
-    /// Moves the pointer to `at` and leaves it there.
-    fn hover(&self, app: &str, at: Point) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and leaves it there, with the keys of `modifiers` held down
+    /// while it moves.
+    fn hover(&self, app: &str, at: Point, modifiers: Modifiers) -> Result<(), HandsError>;
     /// Presses `button` at the first point of `path`, moves through the others holding it down,
     /// and lets go at the last, with the keys of `modifiers` held down all the while. The button
     /// and the keys are let go even when the run is cancelled.
@@ -124,7 +125,8 @@ pub trait Hands: Send + Sync {
         modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
-    /// brings what is further down into sight.
+    /// brings what is further down into sight. The keys of `modifiers` are held down while the
+    /// wheel turns: with ⌘ most apps zoom instead of scrolling.
     fn scroll(
         &self,
         app: &str,
@@ -132,6 +134,7 @@ pub trait Hands: Send + Sync {
         direction: ScrollDirection,
         amount: u32,
         unit: ScrollUnit,
+        modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// Types text into the front application. The text may hold secret values: never log it.
     fn type_text(&self, text: &str) -> Result<(), HandsError>;
@@ -142,6 +145,12 @@ pub trait Hands: Send + Sync {
     /// Replaces what is on the clipboard with `text`. The text may hold secret values: never log
     /// it.
     fn set_clipboard(&self, text: &str) -> Result<(), HandsError>;
+    /// The picture on the clipboard as PNG; `None` when it holds none.
+    fn clipboard_image(&self) -> Result<Option<Vec<u8>>, HandsError>;
+    /// The files copied to the clipboard, as absolute paths; empty when it holds none.
+    fn clipboard_files(&self) -> Result<Vec<String>, HandsError>;
+    /// Replaces what is on the clipboard with the PNG picture `png`.
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<(), HandsError>;
     /// Whether a person moved the mouse or typed since the last call; synthetic input sent by
     /// this object does not count. A `true` pauses the run.
     fn user_input_detected(&self) -> bool;

@@ -104,8 +104,8 @@ struct InspectorView: View {
     case .runTest: ["test", "inputs"]
     case .script: ["language", "code", "inputs", "outputs", "timeout"]
     case .command: ["command", "folder", "exitCode", "saveOutput", "timeout"]
-    case .clipboard: ["text", "saveAs", "to", "timeout"]
-    case .dateTime: ["saveAs", "format", "shift"]
+    case .clipboard: ["text", "image", "content", "saveAs", "to", "timeout"]
+    case .dateTime: ["saveAs", "format", "language", "timeZone", "shift"]
     case .http: ["method", "url", "headers", "body", "expectStatus", "save", "timeout"]
     case .checkFile: ["path", "until", "timeout"]
     case .database: ["file", "query", "saveAs", "expect", "timeout"]
@@ -273,6 +273,7 @@ struct InspectorView: View {
         }) {
           Text("Left").tag(MouseButton.left)
           Text("Right").tag(MouseButton.right)
+          Text("Middle").tag(MouseButton.middle)
         } label: {
           Text("Button")
         }
@@ -296,20 +297,29 @@ struct InspectorView: View {
         }
       }
 
-    case .hover(let target, let waitForChange, let next):
+    case .hover(let target, let modifiers, let waitForChange, let next):
       Section {
         TargetEditor(
-          target: bind("target", target) { .hover(target: $0, waitForChange: waitForChange, next: next) },
+          target: bind("target", target) { .hover(target: $0, modifiers: modifiers, waitForChange: waitForChange, next: next) },
           field: "target", context: context)
       }
       Section {
+        ModifiersField(
+          modifiers: bind("modifiers", modifiers) {
+            .hover(target: target, modifiers: $0, waitForChange: waitForChange, next: next)
+          })
         DisclosureGroup {
-          Toggle(isOn: bind("waitForChange", waitForChange) { .hover(target: target, waitForChange: $0, next: next) }) {
+          Toggle(isOn: bind("waitForChange", waitForChange) {
+            .hover(target: target, modifiers: modifiers, waitForChange: $0, next: next)
+          }) {
             Text("Wait until the screen changes")
           }
         } label: {
           Text("More")
         }
+      } footer: {
+        Text("Some apps show more on hover while a key is held, like ⌥ in menus.")
+          .foregroundStyle(.secondary)
       }
 
     case .drag(let from, let to, let button, let modifiers, let waitForChange, let next):
@@ -337,6 +347,7 @@ struct InspectorView: View {
         }) {
           Text("Left").tag(MouseButton.left)
           Text("Right").tag(MouseButton.right)
+          Text("Middle").tag(MouseButton.middle)
         } label: {
           Text("Button")
         }
@@ -355,10 +366,10 @@ struct InspectorView: View {
         }
       }
 
-    case .scroll(let direction, let amount, let unit, let at, let waitForChange, let next):
+    case .scroll(let direction, let amount, let unit, let at, let modifiers, let waitForChange, let next):
       Section {
         Picker(selection: bind("direction", direction) {
-          .scroll(direction: $0, amount: amount, unit: unit, at: at, waitForChange: waitForChange, next: next)
+          .scroll(direction: $0, amount: amount, unit: unit, at: at, modifiers: modifiers, waitForChange: waitForChange, next: next)
         }) {
           Text(String(localized: "scroll.down", defaultValue: "Down", bundle: .app, locale: .app)).tag(ScrollDirection.down)
           Text(String(localized: "scroll.up", defaultValue: "Up", bundle: .app, locale: .app)).tag(ScrollDirection.up)
@@ -373,7 +384,7 @@ struct InspectorView: View {
               value: bind("amount", Int(amount)) {
                 .scroll(
                   direction: direction, amount: UInt32(clamping: max($0, 1)), unit: unit, at: at,
-                  waitForChange: waitForChange, next: next)
+                  modifiers: modifiers, waitForChange: waitForChange, next: next)
               }, format: .number
             ) { Text("Amount") }
             .labelsHidden()
@@ -383,14 +394,14 @@ struct InspectorView: View {
               value: bind("amount", Int(amount)) {
                 .scroll(
                   direction: direction, amount: UInt32(clamping: $0), unit: unit, at: at,
-                  waitForChange: waitForChange, next: next)
+                  modifiers: modifiers, waitForChange: waitForChange, next: next)
               }, in: 1...10_000
             ) { Text("Amount") }
             .labelsHidden()
           }
         }
         Picker(selection: bind("unit", unit) {
-          .scroll(direction: direction, amount: amount, unit: $0, at: at, waitForChange: waitForChange, next: next)
+          .scroll(direction: direction, amount: amount, unit: $0, at: at, modifiers: modifiers, waitForChange: waitForChange, next: next)
         }) {
           Text("Lines").tag(ScrollUnit.lines)
           Text("Pixels").tag(ScrollUnit.pixels)
@@ -402,15 +413,15 @@ struct InspectorView: View {
       Section {
         Toggle(isOn: bind("at", at != nil) {
           .scroll(
-            direction: direction, amount: amount, unit: unit, at: $0 ? .image("") : nil, waitForChange: waitForChange,
-            next: next)
+            direction: direction, amount: amount, unit: unit, at: $0 ? .image("") : nil, modifiers: modifiers,
+            waitForChange: waitForChange, next: next)
         }) {
           Text("Over an element")
         }
         if let at {
           TargetEditor(
             target: bind("at", at) {
-              .scroll(direction: direction, amount: amount, unit: unit, at: $0, waitForChange: waitForChange, next: next)
+              .scroll(direction: direction, amount: amount, unit: unit, at: $0, modifiers: modifiers, waitForChange: waitForChange, next: next)
             },
             field: "at", context: context)
         }
@@ -418,15 +429,22 @@ struct InspectorView: View {
         if at == nil { Text("Without an element, the wheel turns over the middle of the window.") }
       }
       Section {
+        ModifiersField(
+          modifiers: bind("modifiers", modifiers) {
+            .scroll(direction: direction, amount: amount, unit: unit, at: at, modifiers: $0, waitForChange: waitForChange, next: next)
+          })
         DisclosureGroup {
           Toggle(isOn: bind("waitForChange", waitForChange) {
-            .scroll(direction: direction, amount: amount, unit: unit, at: at, waitForChange: $0, next: next)
+            .scroll(direction: direction, amount: amount, unit: unit, at: at, modifiers: modifiers, waitForChange: $0, next: next)
           }) {
             Text("Wait until the screen changes")
           }
         } label: {
           Text("More")
         }
+      } footer: {
+        Text("With ⌘ held, most apps zoom instead of scrolling.")
+          .foregroundStyle(.secondary)
       }
 
     case .type(let text, let into, let next):
@@ -654,8 +672,9 @@ struct InspectorView: View {
     case .clipboard(let action, let next):
       clipboardFields(action: action, next: next, context: context, values: values)
 
-    case .dateTime(let saveAs, let format, let shift, let next):
-      dateTimeFields(saveAs: saveAs, format: format, shift: shift, next: next, context: context)
+    case .dateTime(let saveAs, let format, let language, let timeZone, let shift, let next):
+      dateTimeFields(
+        saveAs: saveAs, format: format, language: language, timeZone: timeZone, shift: shift, next: next, context: context)
 
     case .command(let command, let folder, let exitCode, let saveOutput, let timeoutMs, let next):
       commandFields(
