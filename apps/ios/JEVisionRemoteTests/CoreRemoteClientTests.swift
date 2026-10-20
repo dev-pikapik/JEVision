@@ -73,9 +73,10 @@ struct CoreMappingTests {
 
     let summary = JEVisionMobile.TestSummary(
       name: "Sign in", description: nil, priority: "high", testType: "regression", status: "draft", author: "Anna",
-      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [])
+      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [])
     let flow = TestFlow(summary)
     #expect((flow.priority, flow.testType, flow.status, flow.author) == ("high", "regression", "draft", "Anna"))
+    #expect(flow.notes.isEmpty)
   }
 
   /// A newer Mac may send a verdict or a step status this version doesn't know; the core reads

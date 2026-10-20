@@ -158,7 +158,11 @@ impl Client {
         path: String,
     ) -> Result<TestSummary, RemoteError> {
         match self.call(Request::GetTest { project, path }).await? {
-            (Response::Test { test }, _) => Ok(*test),
+            (Response::Test { test }, _) => {
+                let mut test = *test;
+                test.notes = wire::bounded_notes(test.notes);
+                Ok(test)
+            }
             _ => Err(RemoteError::Protocol),
         }
     }

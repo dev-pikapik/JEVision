@@ -30,6 +30,22 @@ final class TourTests: XCTestCase {
     XCTAssertTrue(app.buttons["run"].waitForExistence(timeout: 20))
     snap("test")
 
+    scrollTo(app.buttons["note-greeting"])
+    tap(app.buttons["note-greeting"], "notes")
+    XCTAssertTrue(app.buttons["noteDone"].waitForExistence(timeout: 10))
+    snap("note")
+    app.swipeUp()
+    snap("note-full")
+    app.swipeUp()
+    app.swipeUp()
+    snap("note-replies")
+    tap(app.buttons["noteDone"], nil)
+    tap(app.switches["hideResolved"], nil)
+    XCTAssertFalse(app.buttons["note-blank"].waitForExistence(timeout: 3))
+    snap("notes-hidden")
+    app.switches["hideResolved"].tap()
+    XCTAssertTrue(app.buttons["note-blank"].waitForExistence(timeout: 10))
+
     tap(app.buttons["rowMenu"], nil)
     snap("rows")
     tap(button(containing: "Boris"), nil)
@@ -42,6 +58,12 @@ final class TourTests: XCTestCase {
     tap(app.buttons["showReport"], nil)
     XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Boris")).firstMatch.waitForExistence(timeout: 20))
     snap("report")
+  }
+
+  /// Swipes up until `element` is on the screen.
+  private func scrollTo(_ element: XCUIElement) {
+    XCTAssertTrue(element.waitForExistence(timeout: 20), "\(element) didn't show up")
+    for _ in 0..<8 where !element.isHittable { app.swipeUp() }
   }
 
   private func button(containing text: String) -> XCUIElement {
