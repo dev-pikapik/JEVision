@@ -112,8 +112,8 @@ enum AppLog {
     let info = Bundle.main.infoDictionary
     let version = info?["CFBundleShortVersionString"] as? String ?? "?"
     let build = info?["CFBundleVersion"] as? String ?? "?"
-    let system = ProcessInfo.processInfo.operatingSystemVersionString
-    AppLog.info("JEVision \(version) (\(build)) started on macOS \(system), log level \(level.rawValue)")
+    let os = ProcessInfo.processInfo.operatingSystemVersion
+    AppLog.info("JEVision \(version) (\(build)) started on macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion), log level \(level.rawValue)")
   }
 
   /// A run began.
