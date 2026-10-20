@@ -263,14 +263,9 @@ struct HealthView: View {
       }
       HealthBars(marks: health.recent)
       if let flaky = health.flaky {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-          Image(systemName: RunStatus.flaky.symbol)
-            .foregroundStyle(RunStatus.flaky.color)
-          Text(RunHistory.flakyEvidence(flaky))
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .font(.caption)
+        Text("\(Text(Image(systemName: RunStatus.flaky.symbol)).foregroundStyle(RunStatus.flaky.color)) \(Text(verbatim: RunHistory.flakyEvidence(flaky)).foregroundStyle(.secondary))")
+          .font(.caption)
+          .fixedSize(horizontal: false, vertical: true)
       }
       if let point = health.failsMostAt {
         Text("Fails most often at \(place(point))")

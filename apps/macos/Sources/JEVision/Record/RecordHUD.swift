@@ -19,18 +19,17 @@ struct RecordHUD: View {
       feed
         .frame(maxWidth: .infinity, minHeight: Self.feedHeight, maxHeight: Self.feedHeight, alignment: .topLeading)
       VStack(spacing: 8) {
-        HStack(spacing: 8) {
+        HUDButtonRow {
           Button("Add Check", systemImage: "viewfinder", action: center.addCheck)
             .help(Text("Drag a frame around the part of the screen the test should check"))
           Button("Wait \(Recording.manualWaitMs / 1000) s", systemImage: "timer", action: center.addWait)
             .disabled(center.isPaused)
             .help(Text("Make the test wait here for a moment, for an app that needs time"))
-          Spacer(minLength: 0)
         }
-        HStack(spacing: 8) {
+        HUDButtonRow {
           Button("Undo Last Step", systemImage: "arrow.uturn.backward", action: center.undoLastStep)
             .disabled(!center.steps.contains { if case .openApp = $0 { false } else { true } })
-          Spacer(minLength: 0)
+        } trailing: {
           if center.isPaused {
             Button("Resume", systemImage: "record.circle", action: center.togglePause)
           } else {
@@ -39,11 +38,10 @@ struct RecordHUD: View {
           }
         }
         Button("Done", systemImage: "checkmark", action: center.done)
-          .buttonStyle(.glassProminent)
-          .frame(maxWidth: .infinity)
+          .buttonStyle(HUDButtonStyle(tint: .accentColor, fillsWidth: true))
           .help(Text("Stop recording and add the steps to the test"))
       }
-      .buttonStyle(.glass)
+      .buttonStyle(HUDButtonStyle())
       .labelStyle(.titleAndIcon)
 
       VStack(alignment: .leading, spacing: 2) {
