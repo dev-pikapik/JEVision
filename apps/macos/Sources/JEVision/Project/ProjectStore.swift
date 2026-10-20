@@ -37,13 +37,16 @@ final class ProjectStore {
   var showsCommandPalette = false
   /// Saved runs, newest first.
   private(set) var runs: [SavedRun] = []
-  /// The newest run of each test, by test file relative to the project.
+  /// The newest run of each test made on this Mac or started from it, by test file relative to
+  /// the project: a CI run is of another checkout, and says nothing about the test here.
   private(set) var latestRuns: [String: SavedRun] = [:]
   /// Tests whose recent runs both passed and failed without the test changing, by test file
   /// relative to the project, with the evidence.
   private(set) var flaky: [String: FlakyEvidence] = [:]
   /// What the sidebar lists.
   var sidebar = Sidebar.tests
+  /// The runs the Runs list shows by where they were started; all of them when `nil`.
+  var runSource: RunSource?
   /// Folder of the run whose report is open.
   var selectedRun: SavedRun.ID?
   /// Counts reference images replaced or put back, so views that compare with them look again.
@@ -59,6 +62,7 @@ final class ProjectStore {
   let environments = ProjectEnvironments()
   let boards = ProjectBoards()
   let schedules = ProjectSchedules()
+  let ci = ProjectCI()
   let library = ProjectLibrary()
   /// Settings shared through the project's settings file: default retries and the tests in
   /// quarantine.
@@ -77,6 +81,7 @@ final class ProjectStore {
   }
 
   init() {
+    ci.imported = { [weak self] in self?.rescan() }
     guard UserDefaults.standard.data(forKey: Key.bookmark) != nil else { return }
     name = UserDefaults.standard.string(forKey: Key.name) ?? ""
     let selected = UserDefaults.standard.string(forKey: Key.selection)
@@ -413,6 +418,7 @@ final class ProjectStore {
     items = []
     show(History([]))
     selectedRun = nil
+    runSource = nil
     sidebar = .tests
     status = .loading
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
@@ -420,6 +426,7 @@ final class ProjectStore {
     environments.open(url)
     boards.open(url)
     schedules.open(url)
+    ci.open(url)
     library.open(url)
     rescan()
   }
@@ -484,7 +491,7 @@ final class ProjectStore {
 
     init(_ runs: [SavedRun]) {
       self.runs = runs
-      latest = ProjectMap.latestRuns(runs)
+      latest = ProjectMap.latestRuns(runs.filter { $0.report.ci == nil })
       flaky = runs.isEmpty ? [:] : flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000))
     }
   }

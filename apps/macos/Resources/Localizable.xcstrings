@@ -371,6 +371,16 @@
         }
       }
     },
+    "%@, from %@, %@, took %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, из %2$@, %3$@, длительность %4$@"
+          }
+        }
+      }
+    },
     "%@, row %lld" : {
       "localizations" : {
         "ru" : {
@@ -3003,6 +3013,16 @@
         }
       }
     },
+    "All Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все прогоны"
+          }
+        }
+      }
+    },
     "All Tests" : {
       "localizations" : {
         "en" : {
@@ -4093,6 +4113,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "По месту"
+          }
+        }
+      }
+    },
+    "CI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI"
+          }
+        }
+      }
+    },
+    "CI has uploaded reports, but none had a run JEVision can read." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI выгрузил отчёты, но ни в одном нет прогона, который JEVision может прочитать."
+          }
+        }
+      }
+    },
+    "CI runs come from GitHub Actions. Connect the project’s repository to GitHub to see them here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогоны CI приходят из GitHub Actions. Подключите репозиторий проекта к GitHub, и они появятся здесь."
+          }
+        }
+      }
+    },
+    "CI runs come from GitHub. Sign in to GitHub in Settings, and the runs of this project’s workflow show up here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогоны CI приходят с GitHub. Войдите в GitHub в Настройках, и здесь появятся прогоны workflow этого проекта."
+          }
+        }
+      }
+    },
+    "CI · branch %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI · ветка %@"
+          }
+        }
+      }
+    },
+    "CI · pull request #%llu" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CI · пул-реквест #%llu"
           }
         }
       }
@@ -5841,6 +5921,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать заголовок и описание, чтобы сообщить об ошибке в другом месте"
+          }
+        }
+      }
+    },
+    "Couldn’t Get CI Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось получить прогоны CI"
           }
         }
       }
@@ -7771,6 +7861,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запасной провайдер"
+          }
+        }
+      }
+    },
+    "Fetch the runs CI has finished on GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузить прогоны, которые CI завершил на GitHub"
+          }
+        }
+      }
+    },
+    "Fetching CI runs…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружаем прогоны CI…"
           }
         }
       }
@@ -10784,6 +10894,26 @@
         }
       }
     },
+    "No CI Runs Yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогонов CI пока нет"
+          }
+        }
+      }
+    },
+    "No CI Runs to Show" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет прогонов CI для показа"
+          }
+        }
+      }
+    },
     "No Color" : {
       "localizations" : {
         "en" : {
@@ -11086,6 +11216,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Строк пока нет. С каждой строкой тест проходит целиком один раз — добавьте строку кнопкой «Добавить строку»."
+          }
+        }
+      }
+    },
+    "No runs from %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет прогонов: %@"
           }
         }
       }
@@ -11774,6 +11914,16 @@
         }
       }
     },
+    "Open Advanced Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть дополнительные настройки"
+          }
+        }
+      }
+    },
     "Open App" : {
       "localizations" : {
         "ru" : {
@@ -11796,6 +11946,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть доску"
+          }
+        }
+      }
+    },
+    "Open CI Run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть прогон CI"
           }
         }
       }
@@ -11836,6 +11996,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть GitHub"
+          }
+        }
+      }
+    },
+    "Open GitHub Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки GitHub"
           }
         }
       }
@@ -12830,6 +13000,16 @@
         }
       }
     },
+    "Pick another source to see the rest." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите другой источник, чтобы увидеть остальные."
+          }
+        }
+      }
+    },
     "Pick what to connect “%@” to, then press Return" : {
       "localizations" : {
         "en" : {
@@ -13806,6 +13986,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обновить"
+          }
+        }
+      }
+    },
+    "Refresh CI Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить прогоны CI"
           }
         }
       }
@@ -15468,6 +15658,16 @@
         }
       }
     },
+    "Schedule" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписание"
+          }
+        }
+      }
+    },
     "Schedule · %@" : {
       "localizations" : {
         "ru" : {
@@ -16430,6 +16630,16 @@
         }
       }
     },
+    "Show only the runs started from this Mac, by a schedule, from an iPhone or by CI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать только прогоны, запущенные на этом Mac, по расписанию, с iPhone или из CI"
+          }
+        }
+      }
+    },
     "Show the block in the editor" : {
       "localizations" : {
         "ru" : {
@@ -16598,6 +16808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вход"
+          }
+        }
+      }
+    },
+    "Sign In to See CI Runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите, чтобы видеть прогоны CI"
           }
         }
       }
@@ -16864,6 +17084,16 @@
         }
       }
     },
+    "Some CI results couldn’t be fetched: they are too large, broken or gone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часть результатов CI не удалось загрузить: они слишком большие, повреждены или удалены."
+          }
+        }
+      }
+    },
     "Something went wrong" : {
       "localizations" : {
         "ru" : {
@@ -17058,6 +17288,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Начал падать сегодня в %@."
+          }
+        }
+      }
+    },
+    "Started from" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник запуска"
           }
         }
       }
@@ -18934,6 +19174,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сравнивается вся картинка"
+          }
+        }
+      }
+    },
+    "The workflow hasn’t uploaded any reports. Add it to the project in Settings (replace an older one), push it, and let it run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workflow ещё не выгрузил ни одного отчёта. Добавьте его в проект в Настройках (замените старый), отправьте на GitHub и дайте ему отработать."
           }
         }
       }
@@ -22748,6 +22998,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "git загрузить отправить"
+          }
+        }
+      }
+    },
+    "iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iPhone"
           }
         }
       }

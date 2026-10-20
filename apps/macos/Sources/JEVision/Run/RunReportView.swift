@@ -252,6 +252,20 @@ private struct ReportHeader: View {
           .accessibilityAddTraits(.isHeader)
         Text(meta(report))
           .foregroundStyle(.secondary)
+        if let ci = report.ci {
+          HStack(spacing: 8) {
+            Label {
+              Text(([RunHistory.origin(report)] + [ci.commit.map { String($0.prefix(7)) }].compactMap(\.self)).joined(separator: " · "))
+                .textSelection(.enabled)
+            } icon: {
+              Image(systemName: RunSource.ci.symbol)
+            }
+            if let link = RunHistory.link(ci) {
+              Link("Open CI Run", destination: link)
+            }
+          }
+          .foregroundStyle(.secondary)
+        }
         if report.verdict == .failed, let verdict {
           Label(verdict, systemImage: "arrow.clockwise")
             .foregroundStyle(.secondary)

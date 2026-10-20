@@ -10,7 +10,8 @@ struct RunsList: View {
 
   var body: some View {
     @Bindable var project = project
-    let days = RunHistory.days(project.runs, matching: query)
+    let days = RunHistory.days(project.runs, matching: query, from: project.runSource)
+    let isFiltering = !query.trimmingCharacters(in: .whitespaces).isEmpty
     List(selection: $project.selectedRun) {
       if let test = healthTest {
         let runs = project.runs.filter { $0.report.file == test }
@@ -36,15 +37,26 @@ struct RunsList: View {
         }
       }
     }
+    .safeAreaBar(edge: .top, spacing: 0) { RunSourceBar() }
+    // Opening the runs asks GitHub for the ones CI finished since last time.
+    .task { project.ci.refresh() }
     .overlay {
-      if project.runs.isEmpty {
+      if days.isEmpty, !isFiltering, project.runSource == .ci {
+        CIRunsUnavailable()
+      } else if project.runs.isEmpty {
         ContentUnavailableView {
           Label("No runs yet", systemImage: "clock.arrow.circlepath")
         } description: {
           Text("Every run of a test is kept here.")
         }
-      } else if days.isEmpty, !query.trimmingCharacters(in: .whitespaces).isEmpty {
+      } else if days.isEmpty, isFiltering {
         ContentUnavailableView.search(text: query)
+      } else if days.isEmpty, let source = project.runSource {
+        ContentUnavailableView {
+          Label("No runs from \(source.title)", systemImage: source.symbol)
+        } description: {
+          Text("Pick another source to see the rest.")
+        }
       }
     }
     .onDeleteCommand {
@@ -91,8 +103,8 @@ private struct RunRow: View {
         VStack(alignment: .leading, spacing: 1) {
           Text(run.report.test.isEmpty ? String(localized: "Untitled Test") : run.report.test)
             .lineLimit(1)
-          // Runs started from a phone name it first.
-          Text(verbatim: [run.report.requestedBy ?? run.report.schedule.map { String(localized: "Schedule · \($0)") } ?? String(localized: "This Mac"), time, duration].joined(separator: " · "))
+          // Runs started from a phone name it first; those from CI, the pull request or branch.
+          Text(verbatim: [RunHistory.origin(run.report), time, duration].joined(separator: " · "))
             .font(.caption)
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -101,10 +113,113 @@ private struct RunRow: View {
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(Text(run.report.test))
       .accessibilityValue(
-        run.report.requestedBy.map { Text("\(status.title), started from \($0), \(time), took \(duration)") }
+        run.report.ci.map { _ in Text("\(status.title), from \(RunHistory.origin(run.report)), \(time), took \(duration)") }
+          ?? run.report.requestedBy.map { Text("\(status.title), started from \($0), \(time), took \(duration)") }
           ?? run.report.schedule.map { Text("\(status.title), started by the schedule \($0), \(time), took \(duration)") }
           ?? Text("\(status.title), \(time), took \(duration)"))
     }
+  }
+}
+
+/// Above the runs: which of them to show, and a button to fetch what CI has finished.
+private struct RunSourceBar: View {
+  @Environment(ProjectStore.self) private var project
+
+  var body: some View {
+    @Bindable var project = project
+    let ci = project.ci
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
+        Picker("Started from", selection: $project.runSource) {
+          Text("All Runs").tag(RunSource?.none)
+          Divider()
+          ForEach(RunSource.allCases) { source in
+            Label(source.title, systemImage: source.symbol).tag(RunSource?.some(source))
+          }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .help(Text("Show only the runs started from this Mac, by a schedule, from an iPhone or by CI"))
+        Spacer(minLength: 0)
+        if ci.state != .notOnGitHub {
+          Button {
+            ci.refresh()
+          } label: {
+            if ci.state == .checking {
+              ProgressView().controlSize(.small)
+            } else {
+              Image(systemName: "arrow.triangle.2.circlepath")
+            }
+          }
+          .buttonStyle(.borderless)
+          .disabled(ci.state == .checking)
+          .help(Text("Fetch the runs CI has finished on GitHub"))
+          .accessibilityLabel(Text("Refresh CI Runs"))
+        }
+      }
+      if let problem = ProjectCI.problem(in: ci.state) {
+        Text(problem)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.bottom, 6)
+  }
+}
+
+/// Shown for the CI filter when no CI run is in the history: why, and what to do about it.
+private struct CIRunsUnavailable: View {
+  @Environment(ProjectStore.self) private var project
+  @Environment(\.openSettings) private var openSettings
+
+  var body: some View {
+    switch project.ci.state {
+    case .idle, .checking:
+      ProgressView("Fetching CI runs…")
+    case .needsSignIn:
+      ContentUnavailableView {
+        Label("Sign In to See CI Runs", systemImage: "person.crop.circle.badge.questionmark")
+      } description: {
+        Text("CI runs come from GitHub. Sign in to GitHub in Settings, and the runs of this project’s workflow show up here.")
+      } actions: {
+        Button("Open GitHub Settings") { show(.git) }
+      }
+    case .notOnGitHub:
+      ContentUnavailableView {
+        Label("This project isn’t on GitHub", systemImage: "gearshape.2")
+      } description: {
+        Text("CI runs come from GitHub Actions. Connect the project’s repository to GitHub to see them here.")
+      }
+    case .done(let found) where found.artifacts == 0:
+      ContentUnavailableView {
+        Label("No CI Runs Yet", systemImage: "gearshape.2")
+      } description: {
+        Text("The workflow hasn’t uploaded any reports. Add it to the project in Settings (replace an older one), push it, and let it run.")
+      } actions: {
+        Button("Open Advanced Settings") { show(.advanced) }
+      }
+    case .done:
+      ContentUnavailableView {
+        Label("No CI Runs to Show", systemImage: "gearshape.2")
+      } description: {
+        Text("CI has uploaded reports, but none had a run JEVision can read.")
+      }
+    case .failed(let message):
+      ContentUnavailableView {
+        Label("Couldn’t Get CI Runs", systemImage: "exclamationmark.triangle")
+      } description: {
+        Text(message)
+      } actions: {
+        Button("Try Again") { project.ci.refresh() }
+      }
+    }
+  }
+
+  private func show(_ tab: SettingsTab) {
+    UserDefaults.standard.set(tab.rawValue, forKey: SettingsTab.key)
+    openSettings()
   }
 }
 
