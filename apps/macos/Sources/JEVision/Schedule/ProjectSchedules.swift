@@ -41,8 +41,6 @@ final class ProjectSchedules {
     do {
       all = try projectSchedules(project: path)
       problem = nil
-    } catch ScheduleError.Unreadable(let file, let reason) {
-      problem = String(localized: "\(file) can’t be read: \(reason)")
     } catch {
       problem = error.localizedDescription
     }
@@ -87,3 +85,7 @@ final class ProjectSchedules {
     scheduleNextRun(schedule: schedule, after: LocalMinute.of(now)).map { LocalMinute.date($0) }
   }
 }
+
+/// The core words a schedule error in the app's language; with this, `localizedDescription` says
+/// that sentence instead of the error's fields.
+extension ScheduleError: @retroactive CustomStringConvertible {}

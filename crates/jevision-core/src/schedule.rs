@@ -5,16 +5,16 @@
 //! Times are local wall-clock minutes since 1970-01-01 00:00: the caller adds the offset of
 //! its time zone, so "every day at 09:00" stays at nine o'clock across daylight saving time.
 
-use std::collections::BTreeSet;
-use std::fmt::Write as _;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::{self, Write as _};
 use std::path::Path;
 use std::{fs, io};
 
-use jevision_l10n::tr;
+use jevision_l10n::{language, tr_in};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::env::is_environment_name;
-use crate::issue::json_problem;
 
 /// Name of the schedule file in the project folder.
 pub const SCHEDULE_FILE: &str = "jevision.schedule.json";
@@ -128,26 +128,28 @@ impl TimeOfDay {
         (hour < 24 && minute < 60).then_some(Self { hour, minute })
     }
 
+    /// The time `HH:MM` names, if it is one.
+    pub fn parse(text: &str) -> Option<Self> {
+        let (hour, minute) = text.split_once(':')?;
+        let number = |part: &str| {
+            (part.len() == 2 && part.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| part.parse::<u8>().ok())
+                .flatten()
+        };
+        Self::new(number(hour)?, number(minute)?)
+    }
+
     fn minutes(self) -> i64 {
         i64::from(self.hour) * 60 + i64::from(self.minute)
     }
 }
 
 impl TryFrom<String> for TimeOfDay {
-    type Error = String;
+    type Error = ScheduleProblem;
 
-    fn try_from(text: String) -> Result<Self, String> {
-        let bad = || tr!("schedule.time.invalid", &text);
-        let (hour, minute) = text.split_once(':').ok_or_else(bad)?;
-        let number = |part: &str| {
-            (part.len() == 2 && part.bytes().all(|b| b.is_ascii_digit()))
-                .then(|| part.parse::<u8>().ok())
-                .flatten()
-        };
-        number(hour)
-            .zip(number(minute))
-            .and_then(|(hour, minute)| Self::new(hour, minute))
-            .ok_or_else(bad)
+    fn try_from(text: String) -> Result<Self, ScheduleProblem> {
+        Self::parse(&text)
+            .ok_or_else(|| ScheduleProblem::new("schedule.time.invalid").with("time", text))
     }
 }
 
@@ -156,6 +158,118 @@ impl From<TimeOfDay> for String {
         format!("{:02}:{:02}", time.hour, time.minute)
     }
 }
+
+/// What is wrong with schedules or their files: a key of the string catalog (`code`) and the
+/// values its text refers to, such as `schedule.everyHours` with the `name` of the schedule
+/// and the `hours` it asks for. A problem with the file itself also has the `file`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScheduleProblem {
+    pub code: String,
+    pub params: BTreeMap<String, String>,
+}
+
+impl ScheduleProblem {
+    fn new(code: &str) -> Self {
+        Self {
+            code: code.to_owned(),
+            params: BTreeMap::new(),
+        }
+    }
+
+    fn with(mut self, name: &str, value: impl ToString) -> Self {
+        self.params.insert(name.to_owned(), value.to_string());
+        self
+    }
+
+    /// A problem with the file `file`: it can't be read or saved, as the system says in `reason`.
+    fn io(code: &str, file: &str, reason: &io::Error) -> Self {
+        Self::new(code).with("file", file).with("reason", reason)
+    }
+
+    /// Value of the parameter called `name`, empty if the problem has none.
+    pub fn param(&self, name: &str) -> &str {
+        self.params.get(name).map_or("", String::as_str)
+    }
+
+    /// [`Self::describe_in`] in the process language.
+    pub fn describe(&self) -> String {
+        self.describe_in(&language())
+    }
+
+    /// The sentence for the problem in `lang`. Also words `schedule.hourMinute.invalid` (`time`)
+    /// and `schedule.day.invalid` (`day`), from surfaces that take hours and days as numbers.
+    pub fn describe_in(&self, lang: &str) -> String {
+        let p = |name: &str| self.param(name);
+        let number = |name: &str| p(name).parse::<u64>().unwrap_or_default();
+        let of_file = |text: String| tr_in!(lang, "project.file.unreadable", p("file"), text);
+        let of_schedule = |text: String| tr_in!(lang, "schedule.problem", p("name"), text);
+        match self.code.as_str() {
+            "project.file.unreadable" => {
+                tr_in!(lang, "project.file.unreadable", p("file"), p("reason"))
+            }
+            "project.file.unwritable" => {
+                tr_in!(lang, "project.file.unwritable", p("file"), p("reason"))
+            }
+            "flow.json.syntax" => of_file(tr_in!(lang, "flow.json.syntax", p("line"), p("column"))),
+            "project.format.tooNew" => of_file(tr_in!(
+                lang,
+                "project.format.tooNew",
+                number("found"),
+                number("supported")
+            )),
+            "project.format.invalid" => {
+                of_file(tr_in!(lang, "project.format.invalid", number("supported")))
+            }
+            "schedule.time.invalid" => of_file(tr_in!(lang, "schedule.time.invalid", p("time"))),
+            "schedule.name.missing" => tr_in!(lang, "schedule.name.missing"),
+            "schedule.name.invalid" => {
+                tr_in!(lang, "schedule.name.invalid", p("name"), number("max"))
+            }
+            "schedule.name.twice" => tr_in!(lang, "schedule.name.twice", p("name")),
+            "schedule.folder.invalid" => {
+                of_schedule(tr_in!(lang, "schedule.folder.invalid", p("folder")))
+            }
+            "schedule.files.empty" => of_schedule(tr_in!(lang, "schedule.files.empty")),
+            "schedule.file.invalid" => {
+                of_schedule(tr_in!(lang, "schedule.file.invalid", p("test")))
+            }
+            "schedule.files.twice" => of_schedule(tr_in!(lang, "schedule.files.twice")),
+            "schedule.days.empty" => of_schedule(tr_in!(lang, "schedule.days.empty")),
+            "schedule.days.twice" => of_schedule(tr_in!(lang, "schedule.days.twice")),
+            "schedule.day.invalid" => {
+                of_schedule(tr_in!(lang, "schedule.day.invalid", number("day")))
+            }
+            "schedule.hourMinute.invalid" => {
+                of_schedule(tr_in!(lang, "schedule.hourMinute.invalid", p("time")))
+            }
+            "schedule.everyHours" => {
+                let allowed: Vec<_> = EVERY_HOURS.iter().map(u8::to_string).collect();
+                of_schedule(tr_in!(
+                    lang,
+                    "schedule.everyHours",
+                    allowed.join(", "),
+                    number("hours")
+                ))
+            }
+            "env.name.invalid" => of_schedule(tr_in!(lang, "env.name.invalid", p("environment"))),
+            "schedule.video" => of_schedule(tr_in!(
+                lang,
+                "schedule.video",
+                SCHEDULE_VIDEO_MODES.join(", "),
+                p("video")
+            )),
+            _ => self.code.clone(),
+        }
+    }
+}
+
+impl fmt::Display for ScheduleProblem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.describe())
+    }
+}
+
+impl std::error::Error for ScheduleProblem {}
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -166,37 +280,41 @@ struct File {
 
 impl Schedule {
     /// What is wrong with the schedule, if anything.
-    pub fn problem(&self) -> Option<String> {
+    pub fn problem(&self) -> Option<ScheduleProblem> {
         let name = &self.name;
         if name.trim().is_empty() {
-            return Some(tr!("schedule.name.missing"));
+            return Some(ScheduleProblem::new("schedule.name.missing"));
         }
         if name.trim() != name
             || name.chars().count() > MAX_NAME_LEN
             || name.chars().any(char::is_control)
         {
-            return Some(tr!("schedule.name.invalid", name, MAX_NAME_LEN));
+            return Some(
+                ScheduleProblem::new("schedule.name.invalid")
+                    .with("name", name)
+                    .with("max", MAX_NAME_LEN),
+            );
         }
-        let problem = |what: String| Some(tr!("schedule.problem", name, what));
+        let problem = |code: &str| Some(ScheduleProblem::new(code).with("name", name));
         match &self.tests {
             ScheduleTests::All => {}
             ScheduleTests::Folder(folder) => {
                 if !is_relative_path(folder) {
-                    return problem(tr!("schedule.folder.invalid", folder));
+                    return problem("schedule.folder.invalid").map(|p| p.with("folder", folder));
                 }
             }
             ScheduleTests::Files(files) => {
                 if files.is_empty() {
-                    return problem(tr!("schedule.files.empty"));
+                    return problem("schedule.files.empty");
                 }
                 if let Some(file) = files
                     .iter()
                     .find(|f| !is_relative_path(f) || !f.ends_with(".flow.json"))
                 {
-                    return problem(tr!("schedule.file.invalid", file));
+                    return problem("schedule.file.invalid").map(|p| p.with("test", file));
                 }
                 if files.iter().collect::<BTreeSet<_>>().len() != files.len() {
-                    return problem(tr!("schedule.files.twice"));
+                    return problem("schedule.files.twice");
                 }
             }
         }
@@ -204,16 +322,15 @@ impl Schedule {
             Repeat::Daily => {}
             Repeat::Days(days) => {
                 if days.is_empty() {
-                    return problem(tr!("schedule.days.empty"));
+                    return problem("schedule.days.empty");
                 }
                 if days.iter().collect::<BTreeSet<_>>().len() != days.len() {
-                    return problem(tr!("schedule.days.twice"));
+                    return problem("schedule.days.twice");
                 }
             }
             Repeat::EveryHours(hours) => {
                 if !EVERY_HOURS.contains(hours) {
-                    let allowed: Vec<_> = EVERY_HOURS.iter().map(u8::to_string).collect();
-                    return problem(tr!("schedule.everyHours", allowed.join(", "), *hours));
+                    return problem("schedule.everyHours").map(|p| p.with("hours", hours));
                 }
             }
         }
@@ -222,18 +339,14 @@ impl Schedule {
             .as_deref()
             .filter(|e| !is_environment_name(e))
         {
-            return problem(tr!("env.name.invalid", environment));
+            return problem("env.name.invalid").map(|p| p.with("environment", environment));
         }
         if let Some(video) = self
             .video
             .as_deref()
             .filter(|v| !SCHEDULE_VIDEO_MODES.contains(v))
         {
-            return problem(tr!(
-                "schedule.video",
-                SCHEDULE_VIDEO_MODES.join(", "),
-                video
-            ));
+            return problem("schedule.video").map(|p| p.with("video", video));
         }
         None
     }
@@ -290,7 +403,7 @@ fn is_relative_path(path: &str) -> bool {
 }
 
 /// Problems shared by the schedules of a project: names must differ.
-fn check(schedules: &[Schedule]) -> Result<(), String> {
+fn check(schedules: &[Schedule]) -> Result<(), ScheduleProblem> {
     if let Some(problem) = schedules.iter().find_map(Schedule::problem) {
         return Err(problem);
     }
@@ -299,36 +412,62 @@ fn check(schedules: &[Schedule]) -> Result<(), String> {
         .iter()
         .find(|s| !names.insert(s.name.to_lowercase()))
     {
-        return Err(tr!("schedule.name.twice", &twice.name));
+        return Err(ScheduleProblem::new("schedule.name.twice").with("name", &twice.name));
     }
     Ok(())
 }
 
 /// Reads the text of a schedule file; `Err` says what is wrong with it.
-pub fn parse_schedules(text: &str) -> Result<Vec<Schedule>, String> {
-    let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
-    if file.format > SCHEDULE_FORMAT {
-        return Err(tr!("project.format.tooNew", file.format, SCHEDULE_FORMAT));
+pub fn parse_schedules(text: &str) -> Result<Vec<Schedule>, ScheduleProblem> {
+    let problem = |code: &str| ScheduleProblem::new(code).with("file", SCHEDULE_FILE);
+    let value: Value = serde_json::from_str(text).map_err(|e| {
+        problem("flow.json.syntax")
+            .with("line", e.line())
+            .with("column", e.column())
+    })?;
+    // Before the fields: a newer format may have fields this version doesn't know.
+    match value.get("format").and_then(Value::as_u64) {
+        Some(found) if found > u64::from(SCHEDULE_FORMAT) => {
+            return Err(problem("project.format.tooNew")
+                .with("found", found)
+                .with("supported", SCHEDULE_FORMAT));
+        }
+        Some(0) => return Err(problem("project.format.invalid").with("supported", SCHEDULE_FORMAT)),
+        _ => {}
     }
-    if file.format < 1 {
-        return Err(tr!("project.format.invalid", SCHEDULE_FORMAT));
+    // Named here: the JSON reader would put a time that is no time in its own words.
+    if let Some(time) = value
+        .get("schedules")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|schedule| schedule.get("at")?.as_str())
+        .find(|time| TimeOfDay::parse(time).is_none())
+    {
+        return Err(problem("schedule.time.invalid").with("time", time));
     }
+    let file: File = serde_json::from_str(text)
+        .map_err(|e| problem("project.file.unreadable").with("reason", e))?;
     check(&file.schedules)?;
     Ok(file.schedules)
 }
 
 /// The schedules of the project folder `project`; a project without a schedule file has none.
-pub fn load_schedules(project: &Path) -> Result<Vec<Schedule>, String> {
+pub fn load_schedules(project: &Path) -> Result<Vec<Schedule>, ScheduleProblem> {
     match fs::read_to_string(project.join(SCHEDULE_FILE)) {
         Ok(text) => parse_schedules(&text),
         Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(ScheduleProblem::io(
+            "project.file.unreadable",
+            SCHEDULE_FILE,
+            &e,
+        )),
     }
 }
 
 /// The schedule file for `schedules`: days in week order, two-space indentation and a
 /// trailing newline, so edits make small diffs.
-pub fn schedules_to_json(schedules: &[Schedule]) -> Result<String, String> {
+pub fn schedules_to_json(schedules: &[Schedule]) -> Result<String, ScheduleProblem> {
     check(schedules)?;
     let mut schedules = schedules.to_vec();
     for schedule in &mut schedules {
@@ -340,28 +479,31 @@ pub fn schedules_to_json(schedules: &[Schedule]) -> Result<String, String> {
         format: SCHEDULE_FORMAT,
         schedules,
     };
-    let mut text = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
+    let mut text = serde_json::to_string_pretty(&file).expect("schedules always serialize to JSON");
     text.push('\n');
     Ok(text)
 }
 
 /// Writes the schedule file of `project`; without schedules the file goes away.
-pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), String> {
+pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), ScheduleProblem> {
     let file = project.join(SCHEDULE_FILE);
     if schedules.is_empty() {
         return match fs::remove_file(&file) {
-            Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e.to_string()),
+            Err(e) if e.kind() != io::ErrorKind::NotFound => Err(ScheduleProblem::io(
+                "project.file.unwritable",
+                SCHEDULE_FILE,
+                &e,
+            )),
             _ => Ok(()),
         };
     }
     write_atomically(&file, &schedules_to_json(schedules)?)
+        .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_FILE, &e))
 }
 
-fn write_atomically(file: &Path, text: &str) -> Result<(), String> {
+fn write_atomically(file: &Path, text: &str) -> io::Result<()> {
     let temporary = file.with_extension("json.tmp");
-    fs::write(&temporary, text)
-        .and_then(|()| fs::rename(&temporary, file))
-        .map_err(|e| e.to_string())
+    fs::write(&temporary, text).and_then(|()| fs::rename(&temporary, file))
 }
 
 /// The schedules with a run in `(since, now]`, not counting runs later than
@@ -527,28 +669,32 @@ pub struct ScheduleHistory {
 impl ScheduleHistory {
     /// The history of `project`. It is only a record of this computer, so one that can't be
     /// read as JSON starts over instead of stopping the schedules.
-    pub fn load(project: &Path) -> Result<Self, String> {
+    pub fn load(project: &Path) -> Result<Self, ScheduleProblem> {
         match fs::read_to_string(project.join(SCHEDULE_HISTORY_FILE)) {
             Ok(text) => Ok(serde_json::from_str(&text).unwrap_or_default()),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(ScheduleProblem::io(
+                "project.file.unreadable",
+                SCHEDULE_HISTORY_FILE,
+                &e,
+            )),
         }
     }
 
-    pub fn save(&self, project: &Path) -> Result<(), String> {
+    pub fn save(&self, project: &Path) -> Result<(), ScheduleProblem> {
         let file = project.join(SCHEDULE_HISTORY_FILE);
-        if let Some(folder) = file.parent() {
-            fs::create_dir_all(folder).map_err(|e| e.to_string())?;
-        }
-        let text = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
-        write_atomically(&file, &text)
+        let text = serde_json::to_string_pretty(self).expect("a history always serializes to JSON");
+        file.parent()
+            .map_or(Ok(()), fs::create_dir_all)
+            .and_then(|()| write_atomically(&file, &text))
+            .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_HISTORY_FILE, &e))
     }
 }
 
 /// The schedules of `project` due at the local minute `now`, marking them as handled: the
 /// next check only finds runs after `now`. The first check looks a few minutes back, for the
 /// launchd job that started it.
-pub fn begin_schedule_check(project: &Path, now: i64) -> Result<Vec<Schedule>, String> {
+pub fn begin_schedule_check(project: &Path, now: i64) -> Result<Vec<Schedule>, ScheduleProblem> {
     let schedules = load_schedules(project)?;
     let mut history = ScheduleHistory::load(project)?;
     let since = history.checked_at.unwrap_or(now - 5).min(now);
@@ -559,7 +705,7 @@ pub fn begin_schedule_check(project: &Path, now: i64) -> Result<Vec<Schedule>, S
 
 /// Adds a scheduled run to the history of `project`, forgetting the oldest beyond
 /// [`SCHEDULE_HISTORY_KEPT`].
-pub fn record_scheduled_run(project: &Path, run: ScheduledRun) -> Result<(), String> {
+pub fn record_scheduled_run(project: &Path, run: ScheduledRun) -> Result<(), ScheduleProblem> {
     let mut history = ScheduleHistory::load(project)?;
     history.runs.push(run);
     let extra = history.runs.len().saturating_sub(SCHEDULE_HISTORY_KEPT);
@@ -659,7 +805,9 @@ mod tests {
     #[test]
     fn rejects_what_it_cannot_run() {
         let file = |schedule: &str| {
-            parse_schedules(&format!(r#"{{"format": 1, "schedules": [{schedule}]}}"#)).unwrap_err()
+            parse_schedules(&format!(r#"{{"format": 1, "schedules": [{schedule}]}}"#))
+                .unwrap_err()
+                .describe_in("en")
         };
         let base = r#""name": "A", "tests": "all", "repeat": "daily""#;
         assert!(file(&format!(r#"{{{base}, "at": "9:00"}}"#)).contains("HH:MM"));
@@ -699,8 +847,9 @@ mod tests {
         );
         assert!(file(&twice).contains("two schedules"));
         assert!(
-            parse_schedules(r#"{"format": 2, "schedules": []}"#)
+            parse_schedules(r#"{"format": 2, "schedules": [], "later": true}"#)
                 .unwrap_err()
+                .describe_in("en")
                 .contains("format 2")
         );
     }
@@ -868,22 +1017,54 @@ mod tests {
 
     #[test]
     fn problems_name_the_schedule_and_count_characters_in_words() {
+        let hours = parse_schedules(
+            r#"{"format":1,"schedules":[{"name":"A","tests":"all","repeat":{"everyHours":5},"at":"00:00"}]}"#,
+        )
+        .unwrap_err();
+        assert_eq!(hours.code, "schedule.everyHours");
+        assert_eq!(hours.param("name"), "A");
+        assert_eq!(hours.param("hours"), "5");
         assert_eq!(
-            parse_schedules(
-                r#"{"format":1,"schedules":[{"name":"A","tests":"all","repeat":{"everyHours":5},"at":"00:00"}]}"#
-            )
-            .unwrap_err(),
+            hours.describe_in("en"),
             "schedule “A”: “everyHours” must be one of 1, 2, 3, 4, 6, 8, 12, not 5"
         );
-        let name =
-            |lang: &str, n: usize| jevision_l10n::tr_in!(lang, "schedule.name.invalid", " x ", n);
         assert_eq!(
-            name("en", 1),
+            hours.describe_in("ru"),
+            "расписание «A»: «everyHours» должно быть одним из: 1, 2, 3, 4, 6, 8, 12, а не 5"
+        );
+
+        let syntax = parse_schedules("{\"format\": 1,\n").unwrap_err();
+        assert_eq!(syntax.code, "flow.json.syntax");
+        assert_eq!(
+            syntax.describe_in("en"),
+            "jevision.schedule.json can’t be read: The file isn’t valid JSON. Check line 2, column 0."
+        );
+        assert_eq!(
+            syntax.describe_in("ru"),
+            "не удаётся прочитать jevision.schedule.json: Файл не является корректным JSON. Проверьте строку 2, столбец 0."
+        );
+
+        let time = parse_schedules(
+            r#"{"format":1,"schedules":[{"name":"A","tests":"all","repeat":"daily","at":"9:00"}]}"#,
+        )
+        .unwrap_err();
+        assert_eq!(
+            time.describe_in("en"),
+            "jevision.schedule.json can’t be read: “9:00” isn’t a time of day; write it as HH:MM, such as 09:30"
+        );
+
+        let name = |n: usize| {
+            ScheduleProblem::new("schedule.name.invalid")
+                .with("name", " x ")
+                .with("max", n)
+        };
+        assert_eq!(
+            name(1).describe_in("en"),
             "“ x ” isn’t a valid schedule name; use up to 1 character without spaces around it"
         );
         for n in [2, 5] {
             assert_eq!(
-                name("en", n),
+                name(n).describe_in("en"),
                 format!(
                     "“ x ” isn’t a valid schedule name; use up to {n} characters without spaces around them"
                 )
@@ -894,17 +1075,8 @@ mod tests {
                 "« x » не подходит как имя расписания: используйте до {n} {chars} без пробелов по краям"
             )
         };
-        assert_eq!(name("ru", 1), ru(1, "символа"));
-        assert_eq!(name("ru", 2), ru(2, "символов"));
-        assert_eq!(name("ru", 5), ru(5, "символов"));
-        assert_eq!(
-            jevision_l10n::tr_in!(
-                "ru",
-                "schedule.problem",
-                "Ночь",
-                jevision_l10n::tr_in!("ru", "schedule.everyHours", "1, 2", 5)
-            ),
-            "расписание «Ночь»: «everyHours» должно быть одним из: 1, 2, а не 5"
-        );
+        assert_eq!(name(1).describe_in("ru"), ru(1, "символа"));
+        assert_eq!(name(2).describe_in("ru"), ru(2, "символов"));
+        assert_eq!(name(5).describe_in("ru"), ru(5, "символов"));
     }
 }
