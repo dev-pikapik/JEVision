@@ -12,8 +12,9 @@ use std::{fs, io};
 
 use jevision_core::{
     AiChoice, BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
-    DatabaseExpect, ELSE, ExpectStatus, FileState, Flow, PROJECT_FILE, Point, ProjectSettings,
-    Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant, else_if_edge,
+    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE, Point,
+    ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant,
+    else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -2344,16 +2345,23 @@ impl Exec<'_> {
                     out.push_str(value);
                 }
                 Some(("env", name)) => {
-                    let environment = self.environment.ok_or_else(|| {
-                        fail(Failure::new("run.env.notChosen").with("name", name))
-                    })?;
-                    let value = environment.values.get(name).ok_or_else(|| {
-                        fail(
-                            Failure::new("run.env.missing")
-                                .with("name", name)
-                                .with("environment", &environment.name),
-                        )
-                    })?;
+                    let own = self.environment.and_then(|e| e.values.get(name));
+                    let value = match (own, self.environment) {
+                        (Some(value), _) => value.as_str(),
+                        (None, environment) if name == ENVIRONMENT_NAME => {
+                            environment.map_or("", |e| e.name.as_str())
+                        }
+                        (None, None) => {
+                            return Err(fail(Failure::new("run.env.notChosen").with("name", name)));
+                        }
+                        (None, Some(environment)) => {
+                            return Err(fail(
+                                Failure::new("run.env.missing")
+                                    .with("name", name)
+                                    .with("environment", &environment.name),
+                            ));
+                        }
+                    };
                     out.push_str(value);
                 }
                 Some(("var", name)) => {
@@ -2418,6 +2426,7 @@ impl Exec<'_> {
             .map(|name| (format!("secret.{name}"), SECRET_MASK.to_owned()))
             .collect();
         if let Some(environment) = self.environment {
+            vars.insert(format!("env.{ENVIRONMENT_NAME}"), environment.name.clone());
             for (name, value) in &environment.values {
                 vars.insert(format!("env.{name}"), self.mask(value));
             }

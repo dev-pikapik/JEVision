@@ -220,6 +220,19 @@ pub struct LastRun {
 pub struct TestSummary {
     pub name: String,
     pub description: Option<String>,
+    /// The card fields as written in the test file: `critical`, `high`, `medium`, `low`.
+    /// Absent when the test has none and from Macs that don't send them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    /// `smoke`, `regression` or `acceptance`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_type: Option<String>,
+    /// `draft`, `ready` or `outdated`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    /// Who wrote the test or looks after it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
     /// Bundle id of the application under test.
     pub app: String,
     pub start: String,
@@ -292,6 +305,31 @@ pub struct RunStatus {
     pub attempt: u32,
     /// The block running or waiting.
     pub block: Option<String>,
+    /// Set while the run waits for its turn at the screen; a run that acts on the screen
+    /// while another has it. Absent otherwise and from Macs that don't send it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waiting: Option<ScreenWait>,
+}
+
+/// A run that waits for the screen. It goes to the phones as a new status of the run, which
+/// an older phone shows like any other.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenWait {
+    /// Who has the screen; absent while the lock does not say.
+    pub holder: Option<ScreenHolder>,
+}
+
+/// The run that has the screen: another JEVision window, the command line or the assistant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenHolder {
+    /// The program, such as `JEVision` or `jevision`.
+    pub process: String,
+    /// Name of the test that runs.
+    pub test: String,
+    /// When that run took the screen, in seconds since 1970.
+    pub since: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

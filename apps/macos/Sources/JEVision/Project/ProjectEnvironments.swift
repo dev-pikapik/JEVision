@@ -65,9 +65,34 @@ final class ProjectEnvironments {
     reload()
   }
 
-  /// Names of every value the environments have, for inserting into a test.
+  /// Sets the value `name` of `environment` in the project's environments file, adding it when
+  /// the environment lacks it.
+  func setValue(_ value: String, named name: String, in environment: String) throws {
+    guard let project else { return }
+    try setEnvironmentValue(project: project.path(percentEncoded: false), environment: environment, name: name, value: value)
+    reload()
+  }
+
+  /// Why a value couldn't be set, in words for the person.
+  static func describe(_ error: Error) -> String {
+    switch error {
+    case EnvironmentValueError.UnknownEnvironment(let name):
+      String(localized: "There’s no environment \(name).")
+    case EnvironmentValueError.InvalidValueName(let name):
+      String(localized: "“\(name)” can’t be a value name: use Latin letters, digits and _, not starting with a digit.")
+    case EnvironmentValueError.Unreadable(let file, let reason):
+      String(localized: "\(file) can’t be read: \(reason)")
+    case EnvironmentValueError.Unwritable(let file, let reason):
+      String(localized: "\(file) can’t be saved: \(reason)")
+    default:
+      error.localizedDescription
+    }
+  }
+
+  /// Names of every value the environments have, and the one every run has, for inserting into
+  /// a test.
   var valueNames: [String] {
-    Set(current.all.flatMap(\.values.keys)).sorted()
+    Set(current.all.flatMap(\.values.keys)).union([environmentNameValue()]).sorted()
   }
 
   static func file(in project: URL) -> URL {
@@ -121,5 +146,52 @@ struct MissingValues: Equatable {
     problem = needed.isEmpty ? nil : environments.problem
     values = needed.filter { selected?.values[$0] == nil }
     secrets = requiredSecrets(flow: flow).filter { !isSet($0, selected?.name) }
+  }
+}
+
+extension ProjectEnvironments.Snapshot {
+  /// What a block that reads `names` finds in the chosen environment, a line for each, for its
+  /// tooltip; `nil` when it reads none.
+  func help(reading names: [String]) -> String? {
+    guard !names.isEmpty else { return nil }
+    let builtin = environmentNameValue()
+    return names.map { name in
+      let own = selected?.values[name]
+      if let own { return String(localized: "\(name) = \(own)") }
+      guard let selected else { return String(localized: "\(name): no environment is chosen") }
+      if name == builtin { return String(localized: "\(name) = \(selected.name)") }
+      return String(localized: "\(name) isn’t set in \(selected.name)")
+    }
+    .joined(separator: "\n")
+  }
+}
+
+/// What the canvas shows of the environment a run of the test would use: its name and the
+/// values the test reads from it. Secrets aren't here; the canvas shows only whether they're set.
+struct EnvironmentReadout: Equatable {
+  struct Value: Equatable {
+    let name: String
+    /// `nil` when the environment has no such value.
+    let value: String?
+  }
+
+  /// The environment the run would use.
+  var environment: String?
+  var values: [Value]
+
+  init(for flow: Flow, in snapshot: ProjectEnvironments.Snapshot) {
+    environment = snapshot.selected?.name
+    values = requiredEnvValues(flow: flow).map { Value(name: $0, value: snapshot.selected?.values[$0]) }
+  }
+
+  var missing: [String] { values.filter { $0.value == nil }.map(\.name) }
+
+  /// The values on one line, such as `HOST s.example.com, USER`; the first `limit` of them, then
+  /// how many more there are.
+  func summary(limit: Int = 2) -> String? {
+    guard !values.isEmpty else { return nil }
+    let shown = values.prefix(limit).map { value in value.value.map { "\(value.name) \($0)" } ?? value.name }
+    let more = values.count - shown.count
+    return more > 0 ? (shown + [String(localized: "+\(more)")]).joined(separator: ", ") : shown.joined(separator: ", ")
   }
 }

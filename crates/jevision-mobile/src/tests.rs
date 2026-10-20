@@ -105,6 +105,7 @@ impl HostDelegate for Fake {
             verdict: None,
             attempt: 1,
             block: Some("open".into()),
+            waiting: None,
         };
         self.active.lock().unwrap().insert(LIVE_RUN.into(), status);
         Ok(LIVE_RUN.into())

@@ -45,8 +45,9 @@ pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
 pub use env::{
-    AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
-    required_env_values, validate_environment_values,
+    AddEnvironmentError, ENVIRONMENT_NAME, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT,
+    EnvironmentValues, Environments, SetValueError, env_reads, required_env_values,
+    validate_environment_values,
 };
 pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};

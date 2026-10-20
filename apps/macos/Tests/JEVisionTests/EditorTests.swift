@@ -298,6 +298,54 @@ struct FlowDocumentTests {
     return nil
   }
 
+  private static func run(of count: Int) -> String {
+    let ids = (0..<count).map { "b\($0)" }
+    let blocks = ids.enumerated().map { index, id in
+      let next = index + 1 < count ? #", "next": "\#(ids[index + 1])""# : ""
+      return #""\#(id)": {"type": "pressKeys", "keys": "a"\#(next)}"#
+    }
+    return #"{"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "b0", "blocks": {\#(blocks.joined(separator: ", "))}}"#
+  }
+
+  @Test func rowsKeepTheStepsAndUndo() throws {
+    for count in [1, 3, 4, 7] {
+      let document = FlowDocument(url: try file(Self.run(of: count)))
+      let undo = UndoManager()
+      undo.groupsByEvent = false
+      document.undoManager = undo
+      let steps = document.order
+
+      undo.beginUndoGrouping()
+      document.arrangeInRows()
+      undo.endUndoGrouping()
+      #expect(document.flow?.canvas.sections.count == (count + 2) / 3, "\(count) blocks")
+      #expect(document.order == steps, "step numbers read the same left to right, row by row")
+      let rects = document.layout.blocks.map(\.rect)
+      #expect(rects.count == count)
+      #expect(Set(rects.map(\.y)).count == (count + 2) / 3)
+
+      undo.undo()
+      #expect(document.flow?.canvas.sections.isEmpty == true)
+      #expect(document.flow?.canvas.positions.isEmpty == true)
+    }
+  }
+
+  @Test func aRecordingIntoAnEmptyTestIsLaidOutInRows() throws {
+    let empty = #"{"format": 1, "name": "T", "app": "", "start": "", "blocks": {}}"#
+    let document = FlowDocument(url: try file(empty))
+    let keys = (0..<4).map { BlockKind.pressKeys(keys: "\($0)", next: nil) }
+    document.insertRecorded(keys, files: [], at: nil, app: "com.apple.TextEdit")
+    #expect(document.flow?.blocks.count == 4)
+    #expect(document.flow?.canvas.sections.count == 2)
+
+    // Recording more into a test that has blocks leaves its layout alone.
+    let other = FlowDocument(url: try file(Self.chain))
+    other.insertRecorded(keys, files: [], at: Slot(from: "b", edge: "next"), app: "com.apple.TextEdit")
+    #expect(other.flow?.blocks.count == 6)
+    #expect(other.flow?.canvas.sections.isEmpty == true)
+    #expect(other.flow?.canvas.positions.isEmpty == true)
+  }
+
   @Test func insertsSavesAndUndoes() throws {
     let url = try file(Self.chain)
     let document = FlowDocument(url: url)

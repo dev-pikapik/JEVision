@@ -219,6 +219,14 @@ pub fn arrange_automatically(mut flow: Flow) -> Flow {
     flow
 }
 
+/// Lays the blocks out in rows of three, each row in a frame of its own, so the test reads like
+/// text from top to bottom. Frames and notes made by hand stay.
+#[uniffi::export]
+pub fn arrange_in_rows(mut flow: Flow) -> Flow {
+    flow.arrange_in_rows();
+    flow
+}
+
 /// Where a block added after block `id` goes: `then` of an `if`, `next` of any other block.
 /// `None` for an unknown block.
 #[uniffi::export]

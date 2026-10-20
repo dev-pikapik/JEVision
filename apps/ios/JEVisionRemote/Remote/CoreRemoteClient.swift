@@ -233,7 +233,7 @@ extension TestFlow {
       edges: test.edges.map {
         Edge(from: $0.from, edge: $0.edge, to: $0.to, points: $0.points.map { CGPoint(x: $0.x, y: $0.y) })
       },
-      rows: test.rows)
+      rows: test.rows, priority: test.priority, testType: test.testType, status: test.status, author: test.author)
   }
 }
 
@@ -247,7 +247,13 @@ extension RunStatus {
       }
     self.init(
       run: status.run, test: status.test, state: state, verdict: status.verdict.map(Verdict.init),
-      attempt: Int(status.attempt), block: status.block)
+      attempt: Int(status.attempt), block: status.block,
+      waiting: status.waiting.map { wait in
+        ScreenWait(
+          holder: wait.holder.map {
+            ScreenHolder(process: $0.process, test: $0.test, since: Date(timeIntervalSince1970: TimeInterval($0.since)))
+          })
+      })
   }
 }
 

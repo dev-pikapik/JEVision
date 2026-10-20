@@ -43,7 +43,8 @@ pub use pairing::{DeviceSigner, PairingOffer};
 pub use store::{Activity, ActivityKind, Device};
 pub use wire::{
     Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, PauseReason, Position, ProjectInfo,
-    RunEvent, RunList, RunState, RunStatus, RunSummary, RunUpdate, TestEntry, TestSummary,
+    RunEvent, RunList, RunState, RunStatus, RunSummary, RunUpdate, ScreenHolder, ScreenWait,
+    TestEntry, TestSummary,
 };
 
 /// The one protocol spoken between the Mac and the phone.

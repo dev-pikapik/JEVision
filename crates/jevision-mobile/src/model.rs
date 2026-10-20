@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub use jevision_remote::{
     Area, BlockSummary, EdgeSummary, FrameSummary, HostRecord, LastRun, Network, PairingOffer,
     PauseReason, Permission, Position, ProjectInfo, Relay, RunList, RunState, RunStatus,
-    RunSummary, StepStatus, TestEntry, TestSummary, Verdict,
+    RunSummary, ScreenHolder, ScreenWait, StepStatus, TestEntry, TestSummary, Verdict,
 };
 
 /// A paired Mac as the phone saves it, with [`crate::host_record_to_json`].
@@ -102,6 +102,14 @@ pub struct LastRun {
 pub struct TestSummary {
     pub name: String,
     pub description: Option<String>,
+    /// The card fields as the test file writes them: `critical`, `high`, `medium`, `low`.
+    pub priority: Option<String>,
+    /// `smoke`, `regression` or `acceptance`.
+    pub test_type: Option<String>,
+    /// `draft`, `ready` or `outdated`.
+    pub status: Option<String>,
+    /// Who wrote the test or looks after it.
+    pub author: Option<String>,
     /// Bundle id of the application under test.
     pub app: String,
     /// Id of the first block.
@@ -173,6 +181,26 @@ pub struct RunStatus {
     pub attempt: u32,
     /// The block running or waiting.
     pub block: Option<String>,
+    /// Set while the run waits for its turn at the screen.
+    pub waiting: Option<ScreenWait>,
+}
+
+/// A run that waits for the screen.
+#[uniffi::remote(Record)]
+pub struct ScreenWait {
+    /// Who has the screen; `nil` while the lock does not say.
+    pub holder: Option<ScreenHolder>,
+}
+
+/// The run that has the screen.
+#[uniffi::remote(Record)]
+pub struct ScreenHolder {
+    /// The program, such as `JEVision` or `jevision`.
+    pub process: String,
+    /// Name of the test that runs.
+    pub test: String,
+    /// When that run took the screen, in seconds since 1970.
+    pub since: u64,
 }
 
 #[uniffi::remote(Enum)]
