@@ -2674,6 +2674,28 @@ fn video_has_step_markers_and_is_kept_as_asked() {
 }
 
 #[test]
+fn a_test_that_leaves_the_screen_alone_records_no_video() {
+    // Commands and pauses show nothing on screen, even in a test that names an app.
+    let p = Project::new();
+    p.test(
+        r#""a":{"type":"command","command":"true","next":"b"},
+           "b":{"type":"pause","duration":"1ms"}"#,
+        "a",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(
+        &p,
+        &hands,
+        RunControl::new(),
+        &with_video(VideoMode::Always),
+    );
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(run.report.video, None);
+    assert!(!hands.log().iter().any(|l| l.starts_with("video")));
+}
+
+#[test]
 fn the_video_covers_what_the_project_hides() {
     let p = Project::new();
     p.write(
