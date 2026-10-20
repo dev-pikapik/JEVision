@@ -7839,6 +7839,16 @@
         }
       }
     },
+    "Health" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здоровье"
+          }
+        }
+      }
+    },
     "Height, px" : {
       "localizations" : {
         "ru" : {
@@ -8377,6 +8387,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Комментарием к задаче #%llu «%@»"
+          }
+        }
+      }
+    },
+    "It sometimes fails for reasons outside the app. The mark is saved in the test and shown in the sidebar and on the project map; to keep its failures from failing Run All, put it in quarantine." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Иногда падает по причинам вне приложения. Отметка сохраняется в тесте и видна в боковой панели и на карте проекта; чтобы его провалы не делали провальным «Запустить все», поместите тест в карантин."
           }
         }
       }
@@ -9210,6 +9230,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS забудет старый переключатель JEVision, затем откроется этот список в Системных настройках"
+          }
+        }
+      }
+    },
+    "Marked flaky in the test details." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отмечен нестабильным в карточке теста."
           }
         }
       }
@@ -10946,6 +10976,16 @@
         }
       }
     },
+    "Open the link in the browser" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть ссылку в браузере"
+          }
+        }
+      }
+    },
     "Open the report of the last run" : {
       "localizations" : {
         "ru" : {
@@ -11654,6 +11694,16 @@
         }
       }
     },
+    "Platform" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Платформа"
+          }
+        }
+      }
+    },
     "Point at %@" : {
       "localizations" : {
         "ru" : {
@@ -11710,6 +11760,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Писать в Telegram"
+          }
+        }
+      }
+    },
+    "Preconditions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предусловия"
           }
         }
       }
@@ -14952,16 +15012,6 @@
         }
       }
     },
-    "Shows the name, app, secrets and retries of the test." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Показывает название, приложение, секреты и повторы теста."
-          }
-        }
-      }
-    },
     "Shows the pull requests on GitHub." : {
       "localizations" : {
         "ru" : {
@@ -14988,6 +15038,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показывает шаги этой строки"
+          }
+        }
+      }
+    },
+    "Shows the test card: what it checks, who looks after it, its retries, flaky mark and secrets." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает карточку теста: что он проверяет, кто за него отвечает, повторы, отметку о нестабильности и секреты."
           }
         }
       }
@@ -16704,6 +16764,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задача создана"
+          }
+        }
+      }
+    },
+    "The issue or requirement the test covers." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задача или требование, которое проверяет тест."
           }
         }
       }
@@ -18834,6 +18904,16 @@
         }
       }
     },
+    "What must be true before it starts" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что должно быть верно до начала теста"
+          }
+        }
+      }
+    },
     "What the screen showed" : {
       "localizations" : {
         "ru" : {
@@ -19010,6 +19090,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Какую версию «%@» оставить"
+          }
+        }
+      }
+    },
+    "Who looks after the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кто отвечает за тест"
           }
         }
       }
@@ -20338,6 +20428,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a key combination. Record the keys again."
+          }
+        }
+      }
+    },
+    "flow.link.invalid" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Начните его с https://."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a web address. Start it with https://."
           }
         }
       }

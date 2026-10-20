@@ -141,6 +141,10 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't an app bundle identifier like com.apple.TextEdit.",
             p("value")
         ),
+        "flow.link.invalid" => format!(
+            "\"{}\" isn't a web address; start it with https://.",
+            p("value")
+        ),
         "flow.tags.duplicate" => format!("the tag \"{}\" is listed twice.", p("tag")),
         "flow.block.duplicateId" => "two blocks have this name.".to_owned(),
         "flow.block.invalidId" => {

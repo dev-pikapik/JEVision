@@ -2,7 +2,7 @@ import Foundation
 import JEVisionCore
 
 /// Finds test files in a project folder. What is inside a test is read by the core: here, only
-/// the words a search finds it by.
+/// the words a search finds it by and its flaky mark.
 enum ProjectScanner {
   static let testSuffix = ".flow.json"
 
@@ -48,10 +48,11 @@ enum ProjectScanner {
         folders.append(ProjectItem(
           id: id, name: name, url: url, kind: .folder, children: children, testCount: count, modified: nil))
       } else if values.isRegularFile == true, isTestFile(name) {
+        let summary = (try? String(contentsOf: url, encoding: .utf8)).map { testSummary(json: $0) }
         tests.append(ProjectItem(
           id: id, name: testName(name), url: url, kind: .test, children: [], testCount: 1,
           modified: values.contentModificationDate,
-          keywords: (try? String(contentsOf: url, encoding: .utf8)).map { testKeywords(json: $0) } ?? ""))
+          keywords: summary?.keywords ?? "", markedFlaky: summary?.flaky ?? false))
       }
     }
     let byName: (ProjectItem, ProjectItem) -> Bool = { $0.name.localizedStandardCompare($1.name) == .orderedAscending }

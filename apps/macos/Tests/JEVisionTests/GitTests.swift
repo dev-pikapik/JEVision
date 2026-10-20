@@ -30,7 +30,7 @@ struct FlowDiffTests {
       "swap":{"type":"pressKeys","keys":"a"}
       """#)
     let after = try Self.flow(
-      #""name":"B","description":"B","app":"com.example.B","testType":"smoke","priority":"high","status":"ready","tags":["b"],"retries":1"#,
+      #""name":"B","description":"B","app":"com.example.B","testType":"smoke","priority":"high","status":"ready","tags":["b"],"preconditions":"B","author":"B","platform":"B","link":"https://b.example","flaky":true,"retries":1"#,
       #"""
       "open":{"type":"openApp","app":"com.example.B","next":"file"},
       "file":{"type":"openFile","files":["b.txt"],"app":"com.example.B","newInstance":true,"next":"click"},
@@ -49,7 +49,7 @@ struct FlowDiffTests {
 
     let diff = diffFlows(before: before, after: after)
     let fields = Set(diff.blocks.flatMap(\.fields) + diff.testFields)
-    #expect(fields.count == 24)
+    #expect(fields.count == 29)
     for field in fields {
       #expect(FlowDiffView.fieldName(field) != field, "“\(field)” is shown by its name in the file")
     }

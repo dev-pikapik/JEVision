@@ -370,6 +370,13 @@ fn root(flow: &Flow, out: &mut Vec<Issue>) {
             out.push(Issue::error("flow.tags.duplicate").with("tag", tag));
         }
     }
+    if let Some(link) = flow.link.as_deref().filter(|l| !is_web_address(l)) {
+        out.push(
+            Issue::error("flow.link.invalid")
+                .with("field", "link")
+                .with("value", link),
+        );
+    }
     if flow.retries.is_some_and(|retries| retries > MAX_RETRIES) {
         out.push(range(None, "retries", 0, MAX_RETRIES));
     }

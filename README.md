@@ -176,10 +176,12 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   All three are allowed in the text of a `type` block.
 - **Arrows** are `next`, `then`/`elseIf1`…/`else` and `body`. A loop is only possible through the `body` of
   `repeat` or `useData`; any other cycle is an error.
-- **Optional metadata:** `description`, `testType` (`smoke`, `regression`, `acceptance`),
-  `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`, `outdated`),
-  `tags` and `retries` (how many more times to run the test when it fails; without it, the
-  project's default applies, see below).
+- **Optional metadata** (the test card): `description`, `testType` (`smoke`, `regression`,
+  `acceptance`), `priority` (`critical`, `high`, `medium`, `low`), `status` (`draft`, `ready`,
+  `outdated`), `tags`, `preconditions`, `author`, `platform`, `link` (web address of the issue
+  or requirement, starting with `https://`), `flaky` (`true` marks a test that sometimes fails
+  for reasons outside the app) and `retries` (how many more times to run the test when it fails;
+  without it, the project's default applies, see below).
 - **`canvas`** (optional) keeps how the test looks in the editor: `positions` of blocks moved by
   hand, `sections` (titled frames around a part of the test) and `notes` (text with its author,
   time and frame). It never changes how the test runs; without it the blocks are laid out
