@@ -269,6 +269,7 @@ final class RunCenter {
     input.ignoreInput(for: Self.handsOffTime)
     self.run = run
     running = request
+    AppLog.runStarted(request.document.url, project: request.project)
     result = nil
     state = RunState()
     stateURL = request.document.url
@@ -395,6 +396,7 @@ final class RunCenter {
 
   fileprivate func apply(_ event: RunEvent) {
     guard isRunning else { return }
+    if case .stepFinished(_, let step) = event { AppLog.step(step) }
     let wasPaused = state?.isPaused ?? false
     state?.apply(event)
     guard let state else { return }
@@ -405,6 +407,7 @@ final class RunCenter {
 
   fileprivate func finish(_ outcome: RunOutcome) {
     guard let request = running else { return }
+    AppLog.runEnded(request.document.url, project: request.project, outcome: outcome)
     input.stop()
     run = nil
     running = nil

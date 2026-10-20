@@ -249,6 +249,11 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .advanced, id: "continuousIntegration", title: String(localized: "Run tests on every pull request")),
         SettingsItem(tab: .advanced, id: "recordVideo", title: String(localized: "Record video")),
         SettingsItem(tab: .advanced, id: "keepVideos", title: String(localized: "Keep run videos for")),
+        SettingsItem(tab: .advanced, id: "logLevel", title: String(localized: "Log detail")),
+        SettingsItem(tab: .advanced, id: "showLogs", title: String(localized: "Logs")),
+        SettingsItem(tab: .advanced, id: "crashReports", title: String(localized: "Save crash reports")),
+        SettingsItem(tab: .advanced, id: "exampleProject", title: String(localized: "Open the example project")),
+        SettingsItem(tab: .advanced, id: "vmGuide", title: String(localized: "Run tests in a virtual machine")),
         SettingsItem(tab: .advanced, id: "resetAll", title: String(localized: "Reset all settings")),
       ]
   }

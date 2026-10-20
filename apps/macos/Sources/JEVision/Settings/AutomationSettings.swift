@@ -55,28 +55,33 @@ struct CommandLineSection: View {
 /// Settings → Advanced → Continuous Integration: a GitHub Actions workflow for the open project.
 struct ContinuousIntegrationSection: View {
   @Environment(ProjectStore.self) private var project
-  @State private var secrets: [String] = []
+  @State private var workflow: CiWorkflowFile?
   @State private var copied = false
+  @State private var adding = false
 
   var body: some View {
     Section {
-      if let root = project.rootURL {
-        let workflow = CIWorkflow.text(testsPath: CIWorkflow.testsPath(of: root), secrets: secrets)
+      if project.rootURL != nil {
         LabeledContent {
-          Button(copied ? "Copied" : "Copy Workflow", systemImage: copied ? "checkmark" : "doc.on.doc") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(workflow, forType: .string)
-            copied = true
+          HStack {
+            Button(copied ? "Copied" : "Copy Workflow", systemImage: copied ? "checkmark" : "doc.on.doc") {
+              guard let workflow else { return }
+              NSPasteboard.general.clearContents()
+              NSPasteboard.general.setString(workflow.text, forType: .string)
+              copied = true
+            }
+            Button("Add to Project…") { adding = true }
+              .disabled(workflow?.path == nil)
           }
         } label: {
           RowLabel(Text("Run tests on every pull request"), Text("GitHub Actions, on a Mac of your own"))
         }
         .settingAnchor("continuousIntegration")
-        Text(verbatim: workflow)
-          .font(.caption.monospaced())
-          .textSelection(.enabled)
-          .fixedSize(horizontal: false, vertical: true)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        if let workflow, workflow.path == nil {
+          Text("The project folder isn’t inside a git repository, so there is nowhere to add the workflow. Copy it to use it elsewhere.")
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       } else {
         Text("Open a project to get a workflow for it.")
           .foregroundStyle(.secondary)
@@ -85,16 +90,133 @@ struct ContinuousIntegrationSection: View {
       Text("Continuous Integration")
     } footer: {
       if project.rootURL != nil {
-        Text("Save it in the repository as .github/workflows/ui-tests.yml. GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names.")
+        Text("GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names.")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
     }
-    .task(id: project.items) {
-      copied = false
-      let tests = CIWorkflow.testFiles(in: project.items)
-      secrets = await Task.detached(priority: .utility) { CIWorkflow.secrets(of: tests) }.value
+    .task(id: project.items) { await load() }
+    .sheet(isPresented: $adding) {
+      if let workflow, let root = project.rootURL {
+        CIWorkflowSheet(workflow: workflow, project: root, tests: Self.testFiles(in: project.items)) {
+          Task { await load() }
+        }
+      }
+    }
+  }
+
+  private func load() async {
+    copied = false
+    guard let root = project.rootURL?.path(percentEncoded: false) else {
+      workflow = nil
+      return
+    }
+    let tests = Self.testFiles(in: project.items)
+    workflow = await Task.detached(priority: .utility) { ciWorkflow(project: root, tests: tests) }.value
+  }
+
+  /// Every test file of the project.
+  static func testFiles(in items: [ProjectItem]) -> [String] {
+    items.flatMap { $0.kind == .test ? [$0.url.path(percentEncoded: false)] : testFiles(in: $0.children) }
+  }
+}
+
+/// Shows the workflow file before it is written into the repository, and asks before it replaces
+/// one that is already there.
+private struct CIWorkflowSheet: View {
+  let workflow: CiWorkflowFile
+  let project: URL
+  let tests: [String]
+  let added: () -> Void
+  @Environment(\.dismiss) private var dismiss
+  @State private var written: String?
+  @State private var failure: String?
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(written == nil ? "Add the Workflow to the Project" : "Workflow Added")
+        .font(.title2.bold())
+        .accessibilityAddTraits(.isHeader)
+      if let written {
+        Label("The file is in your repository. Commit and push it, and GitHub runs the tests from then on.", systemImage: "checkmark.circle.fill")
+          .foregroundStyle(.green)
+          .fixedSize(horizontal: false, vertical: true)
+        Text(verbatim: written)
+          .font(.callout.monospaced())
+          .textSelection(.enabled)
+          .foregroundStyle(.secondary)
+      } else {
+        Text("JEVision creates this file in your repository. Nothing is committed or pushed.")
+          .fixedSize(horizontal: false, vertical: true)
+        if let path = workflow.path {
+          Text(verbatim: path)
+            .font(.callout.monospaced())
+            .textSelection(.enabled)
+            .foregroundStyle(.secondary)
+        }
+        if workflow.exists {
+          Label("This file is already there. Adding the workflow replaces it.", systemImage: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        ScrollView {
+          Text(verbatim: workflow.text)
+            .font(.caption.monospaced())
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+        }
+        .frame(height: 280)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+      }
+      Spacer(minLength: 0)
+      HStack {
+        if let written {
+          Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(filePath: written)]) }
+          Spacer()
+          Button("Done") { dismiss() }
+            .keyboardShortcut(.defaultAction)
+        } else {
+          Spacer()
+          Button("Cancel", role: .cancel) { dismiss() }
+          Button(workflow.exists ? "Replace" : "Add", role: workflow.exists ? .destructive : nil, action: write)
+            .keyboardShortcut(.defaultAction)
+        }
+      }
+    }
+    .padding(20)
+    .frame(width: 560, height: 520)
+    .alert(
+      "Couldn’t add the workflow",
+      isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
+      presenting: failure
+    ) { _ in
+      Button("OK") {}
+    } message: { Text($0) }
+  }
+
+  private func write() {
+    do {
+      written = try addCiWorkflow(project: project.path(percentEncoded: false), tests: tests, replace: workflow.exists)
+      AppLog.info("The CI workflow was added to the project", "project")
+      added()
+    } catch {
+      AppLog.error("The CI workflow couldn’t be added: \(error)", "project")
+      failure = Self.message(error)
+    }
+  }
+
+  static func message(_ error: any Error) -> String {
+    switch error {
+    case CiError.NotInRepository:
+      String(localized: "The project folder isn’t inside a git repository.")
+    case CiError.Exists:
+      String(localized: "The repository already has this workflow.")
+    case CiError.Unwritable(let reason):
+      String(localized: "The file can’t be written: \(reason)")
+    default:
+      error.localizedDescription
     }
   }
 }
@@ -128,71 +250,6 @@ struct ResetSettingsSection: View {
   private func reset() {
     SettingsReset.reset(.standard, domain: Bundle.main.bundleIdentifier ?? "")
     restartFailed = !Relaunch.now()
-  }
-}
-
-/// A GitHub Actions workflow that runs a project's tests on a self-hosted Mac runner.
-enum CIWorkflow {
-  /// The project folder relative to the root of its git repository: where CI finds it after checkout.
-  static func testsPath(of project: URL) -> String {
-    let project = project.standardizedFileURL.resolvingSymlinksInPath()
-    var folder = project
-    while true {
-      if FileManager.default.fileExists(atPath: folder.appending(path: ".git").path) {
-        let rest = project.pathComponents.dropFirst(folder.pathComponents.count)
-        return rest.isEmpty ? "." : rest.joined(separator: "/")
-      }
-      if folder.pathComponents.count <= 1 { return "." }
-      folder = folder.deletingLastPathComponent()
-    }
-  }
-
-  /// Every test file of the project.
-  static func testFiles(in items: [ProjectItem]) -> [URL] {
-    items.flatMap { $0.kind == .test ? [$0.url] : testFiles(in: $0.children) }
-  }
-
-  /// The secrets the tests read, each once, sorted. Files that can't be read are skipped.
-  static func secrets(of tests: [URL]) -> [String] {
-    var names = Set<String>()
-    for url in tests {
-      guard let text = try? String(contentsOf: url, encoding: .utf8), let flow = try? loadFlow(json: text) else { continue }
-      names.formUnion(requiredSecrets(flow: flow))
-    }
-    return names.sorted()
-  }
-
-  static func text(testsPath: String, secrets: [String]) -> String {
-    var lines = [
-      "name: UI tests",
-      "on:",
-      "  pull_request:",
-      "  workflow_dispatch:",
-      "jobs:",
-      "  ui-tests:",
-      "    runs-on: [self-hosted, macOS]",
-      "    steps:",
-      "      - uses: actions/checkout@v4",
-      "      - name: Run UI tests",
-    ]
-    if !secrets.isEmpty {
-      lines.append("        env:")
-      lines += secrets.map { "          \($0): ${{ secrets.\($0) }}" }
-    }
-    // A block scalar keeps any folder name out of YAML's way; the shell gets it quoted.
-    let path = testsPath.allSatisfy { $0.isLetter || $0.isNumber || "._-/".contains($0) } ? testsPath : CommandLineTool.quoted(testsPath)
-    lines += [
-      "        run: |",
-      "          jevision run \(path) --junit junit.xml --html reports",
-      "      - uses: actions/upload-artifact@v4",
-      "        if: always()",
-      "        with:",
-      "          name: ui-test-reports",
-      "          path: |",
-      "            junit.xml",
-      "            reports/",
-    ]
-    return lines.joined(separator: "\n") + "\n"
   }
 }
 

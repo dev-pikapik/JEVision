@@ -1649,6 +1649,16 @@
         }
       }
     },
+    "A copy of a ready test for TextEdit, in a folder you choose" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копия готового теста для TextEdit в выбранной вами папке"
+          }
+        }
+      }
+    },
     "A first value" : {
       "localizations" : {
         "ru" : {
@@ -1705,6 +1715,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В тёмном оформлении прогон сравнивает с тёмной картинкой, если она есть."
+          }
+        }
+      }
+    },
+    "A step-by-step guide, so your own screen stays free" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошаговая инструкция: ваш экран остаётся свободным"
           }
         }
       }
@@ -2411,6 +2431,16 @@
         }
       }
     },
+    "Add a Crash Report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить отчёт о сбое"
+          }
+        }
+      }
+    },
     "Add a Wait Before the Block" : {
       "localizations" : {
         "ru" : {
@@ -2531,6 +2561,16 @@
         }
       }
     },
+    "Add the Workflow to the Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить workflow в проект"
+          }
+        }
+      }
+    },
     "Add the first step of the test." : {
       "localizations" : {
         "ru" : {
@@ -2547,6 +2587,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить в .gitignore"
+          }
+        }
+      }
+    },
+    "Add to Project…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить в проект…"
           }
         }
       }
@@ -3751,6 +3801,16 @@
         }
       }
     },
+    "Can’t add the crash report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся добавить отчёт о сбое"
+          }
+        }
+      }
+    },
     "Can’t be read" : {
       "localizations" : {
         "en" : {
@@ -4549,6 +4609,16 @@
         }
       }
     },
+    "Choose where to put a copy of the example project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, куда положить копию примера проекта"
+          }
+        }
+      }
+    },
     "Choose which version to keep" : {
       "localizations" : {
         "ru" : {
@@ -4845,12 +4915,12 @@
         }
       }
     },
-    "Command line, CI, run videos and other settings most people never change." : {
+    "Command line, CI, run videos, logs and other settings most people never change." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Командная строка, CI, видео прогонов и другие настройки, которые почти никто не меняет."
+            "value" : "Командная строка, CI, видео прогонов, журнал и другие настройки, которые почти никто не меняет."
           }
         }
       }
@@ -5265,6 +5335,16 @@
         }
       }
     },
+    "Copy Here" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать сюда"
+          }
+        }
+      }
+    },
     "Copy Text" : {
       "localizations" : {
         "ru" : {
@@ -5291,6 +5371,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать заголовок и описание, чтобы сообщить об ошибке в другом месте"
+          }
+        }
+      }
+    },
+    "Couldn’t add the workflow" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось добавить workflow"
           }
         }
       }
@@ -5341,6 +5431,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось создать тест"
+          }
+        }
+      }
+    },
+    "Couldn’t open the example project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть пример проекта"
           }
         }
       }
@@ -5471,6 +5571,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрывается, прежде чем снимок экрана попадёт к ИИ-модели или в отчёт: имена, почта, номера карт."
+          }
+        }
+      }
+    },
+    "Crash Reports" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отчёты о сбоях"
           }
         }
       }
@@ -5927,6 +6037,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Описание"
+          }
+        }
+      }
+    },
+    "Detailed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подробно"
           }
         }
       }
@@ -6667,6 +6787,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Окружение: %@"
+          }
+        }
+      }
+    },
+    "Errors only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только ошибки"
           }
         }
       }
@@ -7773,6 +7903,16 @@
         }
       }
     },
+    "GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На Mac-раннерах самого GitHub никто не вошёл в систему, поэтому тесты идут на self-hosted-раннере — вашем Mac, на котором пользователь остаётся в системе. Секреты, которые используют тесты, добавьте в секреты репозитория под теми же именами."
+          }
+        }
+      }
+    },
     "Give the schedule a name." : {
       "localizations" : {
         "ru" : {
@@ -8071,6 +8211,16 @@
         }
       }
     },
+    "If JEVision crashes, macOS hands it a report the next time it starts, up to a day later, and JEVision saves the report on this Mac. Nothing is sent anywhere. You decide for each bug report whether to add one: the bug report window offers it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если JEVision аварийно завершится, macOS передаст ему отчёт при следующем запуске, до суток спустя, и JEVision сохранит его на этом Mac. Ничего никуда не отправляется. Добавлять ли отчёт, вы решаете для каждого сообщения об ошибке: окно сообщения предложит его."
+          }
+        }
+      }
+    },
     "If Terminal then says “command not found”, add that folder to the PATH:" : {
       "localizations" : {
         "ru" : {
@@ -8141,6 +8291,16 @@
         }
       }
     },
+    "In JEVision’s folder in Application Support" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В папке JEVision в Application Support"
+          }
+        }
+      }
+    },
     "In Slack, create an app at api.slack.com/apps, turn on Incoming Webhooks, add a webhook for the channel and copy its URL, which starts with https://hooks.slack.com/." : {
       "localizations" : {
         "ru" : {
@@ -8197,6 +8357,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В карантине: %@"
+          }
+        }
+      }
+    },
+    "In the Logs folder of your Library" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В папке Logs вашей Библиотеки"
           }
         }
       }
@@ -8514,6 +8684,16 @@
         }
       }
     },
+    "JEVision creates this file in your repository. Nothing is committed or pushed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision создаст этот файл в вашем репозитории. Ничего не коммитится и не отправляется."
+          }
+        }
+      }
+    },
     "JEVision is controlling this Mac" : {
       "localizations" : {
         "ru" : {
@@ -8580,6 +8760,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision следит за вашими действиями в приложении и превращает их в шаги теста."
+          }
+        }
+      }
+    },
+    "JEVision writes what it does to a log on this Mac, to read or to attach to a bug report. Normal notes when a project opens and when a run starts and ends; Detailed adds every step of a run. Secrets and typed text are never written, and old lines are deleted so the log stays small. Nothing is sent anywhere." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision записывает свои действия в журнал на этом Mac: его можно прочитать или приложить к сообщению об ошибке. «Обычно» отмечает открытие проекта, начало и конец прогона; «Подробно» добавляет каждый шаг прогона. Секреты и набранный текст в журнал не попадают, а старые строки удаляются, чтобы журнал оставался небольшим. Ничего никуда не отправляется."
           }
         }
       }
@@ -8804,6 +8994,16 @@
         }
       }
     },
+    "Learn" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Узнать больше"
+          }
+        }
+      }
+    },
     "Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check." : {
       "localizations" : {
         "ru" : {
@@ -8982,6 +9182,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Связь к шагу %lld, %@. Выберите другой блок стрелками, затем нажмите Return, чтобы связать, или Escape, чтобы отменить."
+          }
+        }
+      }
+    },
+    "Log detail" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подробность журнала"
+          }
+        }
+      }
+    },
+    "Logs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Журнал"
           }
         }
       }
@@ -10130,6 +10350,16 @@
         }
       }
     },
+    "Normal" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обычно"
+          }
+        }
+      }
+    },
     "Not Now" : {
       "localizations" : {
         "ru" : {
@@ -10334,6 +10564,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ничего не проверили: %lld"
+          }
+        }
+      }
+    },
+    "Nothing is added unless you choose a report. It goes into the description above, where you can read and change it before sending." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отчёт добавляется, только если вы его выбрали. Он попадает в описание выше, где его можно прочитать и изменить перед отправкой."
           }
         }
       }
@@ -10724,6 +10964,16 @@
         }
       }
     },
+    "Open Guide" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть инструкцию"
+          }
+        }
+      }
+    },
     "Open Issue" : {
       "localizations" : {
         "ru" : {
@@ -10926,6 +11176,16 @@
         }
       }
     },
+    "Open the example project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть пример проекта"
+          }
+        }
+      }
+    },
     "Open the folder with your tests to keep its screenshots on this Mac." : {
       "localizations" : {
         "ru" : {
@@ -11118,6 +11378,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает этот список в Системных настройках"
+          }
+        }
+      }
+    },
+    "Open…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть…"
           }
         }
       }
@@ -12850,6 +13120,16 @@
         }
       }
     },
+    "Replace" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить"
+          }
+        }
+      }
+    },
     "Replace Image" : {
       "localizations" : {
         "ru" : {
@@ -13520,6 +13800,16 @@
         }
       }
     },
+    "Run tests in a virtual machine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускать тесты в виртуальной машине"
+          }
+        }
+      }
+    },
     "Run tests on every pull request" : {
       "localizations" : {
         "ru" : {
@@ -13580,12 +13870,12 @@
         }
       }
     },
-    "Run videos are recorded only when a test fails and kept for 30 days. Retries and quarantine stay: they belong to the project." : {
+    "Run videos are recorded only when a test fails and kept for 30 days, the log says what JEVision does, and crash reports aren’t saved. Retries and quarantine stay: they belong to the project." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Видео прогонов будут записываться, только если тест провален, и храниться 30 дней. Повторы и карантин останутся: они принадлежат проекту."
+            "value" : "Видео прогонов будут записываться, только если тест провален, и храниться 30 дней, журнал будет описывать действия JEVision, а отчёты о сбоях сохраняться не будут. Повторы и карантин останутся: они принадлежат проекту."
           }
         }
       }
@@ -13976,12 +14266,12 @@
         }
       }
     },
-    "Save it in the repository as .github/workflows/ui-tests.yml. GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names." : {
+    "Save crash reports" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сохраните его в репозитории как .github/workflows/ui-tests.yml. На Mac-раннерах самого GitHub никто не вошёл в систему, поэтому тесты идут на self-hosted-раннере — вашем Mac, на котором пользователь остаётся в системе. Секреты, которые используют тесты, добавьте в секреты репозитория под теми же именами."
+            "value" : "Сохранять отчёты о сбоях"
           }
         }
       }
@@ -14012,6 +14302,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранённые значения"
+          }
+        }
+      }
+    },
+    "Saved crash reports" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранённые отчёты о сбоях"
           }
         }
       }
@@ -16688,6 +16988,16 @@
         }
       }
     },
+    "The file can’t be written: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся записать файл: %@"
+          }
+        }
+      }
+    },
     "The file changes" : {
       "localizations" : {
         "ru" : {
@@ -16714,6 +17024,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл исчезнет"
+          }
+        }
+      }
+    },
+    "The file has no crash in it, or it can’t be read." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле нет сбоя, или его не удаётся прочитать."
+          }
+        }
+      }
+    },
+    "The file is in your repository. Commit and push it, and GitHub runs the tests from then on." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл лежит в вашем репозитории. Закоммитьте и отправьте его, и GitHub будет запускать тесты."
           }
         }
       }
@@ -16858,6 +17188,26 @@
         }
       }
     },
+    "The project folder isn’t inside a git repository, so there is nowhere to add the workflow. Copy it to use it elsewhere." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка проекта не находится внутри git-репозитория, поэтому добавить workflow некуда. Скопируйте его, чтобы использовать в другом месте."
+          }
+        }
+      }
+    },
+    "The project folder isn’t inside a git repository." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка проекта не находится внутри git-репозитория."
+          }
+        }
+      }
+    },
     "The project has no folders with tests." : {
       "localizations" : {
         "ru" : {
@@ -16914,6 +17264,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Эталонное изображение, похоже, устарело"
+          }
+        }
+      }
+    },
+    "The repository already has this workflow." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В репозитории уже есть этот workflow."
           }
         }
       }
@@ -17640,6 +18000,16 @@
         }
       }
     },
+    "This copy of JEVision doesn’t include the example project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой копии JEVision нет примера проекта."
+          }
+        }
+      }
+    },
     "This failure is already reported in an open issue. Adding this run to it keeps the reports in one place." : {
       "localizations" : {
         "ru" : {
@@ -17676,6 +18046,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В файле изменения из двух мест, которые git не смог объединить."
+          }
+        }
+      }
+    },
+    "This file is already there. Adding the workflow replaces it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот файл уже существует. Если добавить workflow, он будет заменён."
           }
         }
       }
@@ -19180,6 +19560,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них macOS не даст JEVision видеть другие приложения и нажимать в них."
+          }
+        }
+      }
+    },
+    "Workflow Added" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workflow добавлен"
           }
         }
       }
