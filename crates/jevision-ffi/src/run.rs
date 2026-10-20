@@ -322,7 +322,7 @@ pub struct RunOptions {
     #[uniffi(default = false)]
     pub added_as_dependency: bool,
     /// Language code (`en`, `ru`) a date and time block writes month and day names in when it
-    /// names no language of its own; `None` is English.
+    /// names no language of its own; `None` is the current language.
     #[uniffi(default = None)]
     pub language: Option<String>,
 }

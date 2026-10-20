@@ -94,7 +94,7 @@ jevision --help</code></pre>
     <tr><td><a href="#validate"><code>jevision validate</code></a></td><td>Check tests for errors and warnings</td></tr>
     <tr><td><a href="#fmt"><code>jevision fmt</code></a></td><td>Rewrite tests in canonical form</td></tr>
     <tr><td><a href="#mcp"><code>jevision mcp</code></a></td><td>Let AI assistants read, edit and run tests</td></tr>
-    <tr><td><a href="#blocks"><code>jevision blocks</code></a></td><td>List, install, update and remove <a href="custom-blocks.html">blocks that other people shared</a></td></tr>
+    <tr><td><a href="#blocks"><code>jevision blocks</code></a></td><td>List, install, update, remove and restore <a href="custom-blocks.html">blocks that other people shared</a></td></tr>
     <tr><td><a href="#schedule"><code>jevision schedule run</code></a></td><td>Run the schedules of a project that are due now</td></tr>
     <tr><td><code>jevision --help</code>, <code>-h</code>, <code>help</code></td><td>Show help; <code>jevision help run</code> or <code>jevision run --help</code> for one command</td></tr>
     <tr><td><code>jevision --version</code>, <code>-V</code></td><td>Show the version</td></tr>
@@ -267,19 +267,21 @@ jevision mcp --forget <var>Mac</var></code></pre>
 </div>
 
 <h2 id="blocks"><code>jevision blocks</code></h2>
-<p>Lists, installs, updates and removes the <a href="custom-blocks.html">blocks that other people shared</a> in a project, as <strong>Install Block…</strong> and <strong>Custom Blocks…</strong> do in the app. Installed blocks are in the <code>blocks</code> folder of the project.</p>
+<p>Lists, installs, updates and removes the <a href="custom-blocks.html">blocks that other people shared</a> in a project, as <strong>Install Block…</strong> and <strong>Custom Blocks…</strong> do in the app, and installs the blocks of a project again from <code>jevision.blocks.json</code>. Installed blocks are in the <code>blocks</code> folder of the project.</p>
 <pre><code>jevision blocks list [--project <var>folder</var>]
-jevision blocks install <var>source</var> [--yes] [--force] [--project <var>folder</var>]
+jevision blocks install <var>source</var> [--only <var>id</var>,…] [--yes] [--force] [--project <var>folder</var>]
 jevision blocks update [<var>id</var>] [--yes] [--force] [--project <var>folder</var>]
-jevision blocks remove <var>id</var> [--force] [--project <var>folder</var>]</code></pre>
+jevision blocks remove <var>id</var> [--force] [--project <var>folder</var>]
+jevision blocks restore [--only <var>id</var>,…] [--yes] [--force] [--project <var>folder</var>]</code></pre>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
   <tbody>
     <tr><td><code>list</code></td><td>Print the installed blocks: id, version, name and author, and the address a block was installed from.</td></tr>
-    <tr><td><code>install <var>source</var></code></td><td>Read a block and print what it does. <var>source</var> is a block folder, a <code>.zip</code> file, or an <code>https</code> address of a GitHub repository, a GitHub release or a <code>.zip</code> file. <strong>Nothing is installed without <code>--yes</code>.</strong></td></tr>
+    <tr><td><code>install <var>source</var></code></td><td>Read a block and print what it does. <var>source</var> is a block folder, a <code>.zip</code> file, or an <code>https</code> address of a GitHub repository, a folder in one, a GitHub release or a <code>.zip</code> file. A source can hold <a href="custom-blocks.html#several">several blocks</a>; then all of them are read and installed. <strong>Nothing is installed without <code>--yes</code>.</strong></td></tr>
     <tr><td><code>update [<var>id</var>]</code></td><td>Fetch the address a block was installed from again, and print what changed. Without an id, every block that has an address. Installs the new version with <code>--yes</code>.</td></tr>
-    <tr><td><code>remove <var>id</var></code></td><td>Remove a block. A block that tests use is not removed unless you add <code>--force</code>; the message names the tests.</td></tr>
+    <tr><td><code>remove <var>id</var></code></td><td>Remove a block. A block that tests or other installed blocks use is not removed unless you add <code>--force</code>; the message names them.</td></tr>
+    <tr><td><code>restore</code></td><td>Install the blocks that <code>jevision.blocks.json</code> lists and the project doesn't have, or has in another version: see <a href="custom-blocks.html#restore">Installing a project's blocks again</a>. Prints the plan; installs it with <code>--yes</code>.</td></tr>
   </tbody>
 </table>
 </div>
@@ -288,19 +290,25 @@ jevision blocks remove <var>id</var> [--force] [--project <var>folder</var>]</co
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
     <tr><td><code>--project <var>folder</var></code></td><td>The project to work in. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder.</td></tr>
-    <tr><td><code>--yes</code></td><td>Install after printing what the block does. For people who have read it, and for scripts.</td></tr>
-    <tr><td><code>--force</code></td><td>Install the same version again, or an older one over a newer one; or remove a block that tests use.</td></tr>
+    <tr><td><code>--only <var>id</var>,…</code></td><td>With <code>install</code> and <code>restore</code>: work on these blocks only, with the blocks they need. Ids are separated by commas; an id the source or the list doesn't have is an error.</td></tr>
+    <tr><td><code>--yes</code></td><td>Install after printing what the blocks do. For people who have read it, and for scripts.</td></tr>
+    <tr><td><code>--force</code></td><td>Install the same version again, or an older one over a newer one; install a new version of a block that another installed block needs in another version; with <code>restore</code>, install a block whose version at its address isn't the one in <code>jevision.blocks.json</code>; or remove a block that tests or other blocks use.</td></tr>
   </tbody>
 </table>
 </div>
 <p>Without <code>--yes</code>, <code>install</code> prints the block's name, version, author and license, then <code>What it does:</code> with a numbered line for each step. Steps that run a script, send a request, read a database, open apps or files, type on the keyboard or use the clipboard are repeated under <code>Needs your attention:</code>, grouped by kind and with exactly what they do, such as the whole script. It ends with <code>Not installed: add --yes to install it.</code> and the exit status <code>1</code>.</p>
+<p>A source with several blocks prints each of them this way, in the order they would be installed: the blocks that others need come first. A block that needs one that is neither installed in a version that fits nor in the source stops the installation, with the command that installs it:</p>
+<pre><code>Package: com.acme.messages needs the block com.acme.sign-in ^1.2.0, which isn't installed; install it with `jevision blocks install https://github.com/acme/blocks/tree/main/blocks`.</code></pre>
+<p>Without <code>--yes</code>, <code>restore</code> prints, for each block to install again, what it found at the address (ready, another version, missing there, or the address can't be reached), and for the blocks it would install, <code>What it does:</code> as <code>install</code> does. It installs nothing, ends with <code>Not installed: add --yes to install it.</code> and the exit status <code>1</code>. With <code>--yes</code> it installs the blocks that are ready, the blocks they need first; a block in another version also needs <code>--force</code>. When the project has everything already, it prints <code>Everything in jevision.blocks.json is installed already.</code> with the exit status <code>0</code>.</p>
 <pre><code>jevision blocks install https://github.com/acme/sign-in-block
 jevision blocks install https://github.com/acme/sign-in-block --yes
 jevision blocks list
+jevision blocks install https://github.com/acme/blocks/tree/main/blocks
 jevision blocks update --yes
-jevision blocks remove com.acme.sign-in</code></pre>
+jevision blocks remove com.acme.sign-in
+jevision blocks restore --yes</code></pre>
 <p>A test that needs a block you haven't installed says so in <code>jevision validate</code> and <code>jevision run</code>, with the id and version the test was made with and the command that installs it, such as <code>needs the block com.acme.sign-in 1.2.0 … install it with `jevision blocks install https://github.com/acme/sign-in-block`</code>. A test that knows no address says <code>jevision blocks install &lt;folder, .zip file or https address&gt;</code>.</p>
-<p>Exit status: <code>0</code>, done (or nothing to do); <code>1</code>, the block wasn't installed because <code>--yes</code> is missing, <code>--force</code> is needed to go back to an older version, or the block has an error; a block that is installed already in the same version is left as it is, with status <code>0</code>; <code>2</code>, wrong arguments, a source that can't be read or downloaded, or a block that isn't installed.</p>
+<p>Exit status: <code>0</code>, done (or nothing to do); <code>1</code>, a block wasn't installed because <code>--yes</code> is missing, <code>--force</code> is needed (to go back to an older version, to update a block that another one needs in another version, or to restore a block whose version changed), a block it needs is missing, or the block has an error; a block that is installed already in the same version is left as it is, with status <code>0</code>; <code>2</code>, wrong arguments, a source that can't be read or downloaded, or a block that isn't installed.</p>
 
 <h2 id="schedule"><code>jevision schedule run</code></h2>
 <p>Runs the <a href="schedules.html">schedules</a> of a project that are due now. The app sets up macOS to start this command at the right times, so you don't need to run it yourself.</p>

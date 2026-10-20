@@ -12,12 +12,26 @@ enum RunText {
     return describeFailure(failure: failure)
   }
 
+  /// [`failure(_:)`] for a message shown beside its block: the block is named the way the canvas
+  /// names it, not by its id.
+  static func failure(_ failure: Failure, blockType: String) -> String {
+    var failure = failure
+    if failure.params["block"] != nil { failure.params["block"] = BlockInfo.title(blockType) }
+    return RunText.failure(failure)
+  }
+
   /// Who has the screen, for a run that waits for its turn: Screen busy: JEVision, test Sign in, since 12:03.
   static func screenBusy(_ holder: ScreenHolder?) -> String {
     guard let holder else {
       return String(localized: "screen.busy.unknown", defaultValue: "Screen busy: another run is using it.", bundle: .app, locale: .app)
     }
     let since = Date(timeIntervalSince1970: TimeInterval(holder.since)).formatted(date: .omitted, time: .shortened)
+    // The command-line tool is `jevision`: to someone who never opens a terminal that is only a word.
+    if holder.process == "jevision" {
+      return String(
+        localized: "screen.busy.terminal", defaultValue: "Screen busy: JEVision in a terminal, test \(holder.test), since \(since)", bundle: .app,
+        locale: .app)
+    }
     return String(
       localized: "screen.busy", defaultValue: "Screen busy: \(holder.process), test \(holder.test), since \(since)", bundle: .app, locale: .app)
   }

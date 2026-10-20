@@ -8,7 +8,7 @@
 //! remembers where a package came from. The files and folders are in [`crate::package_files`].
 
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
@@ -21,6 +21,8 @@ use crate::issue::{Issue, ParseError, describe, json_problem};
 use crate::model::{
     BlockKind, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
 };
+use crate::package_files::package_flow_path;
+use crate::resolve_test;
 use crate::validate::{
     is_identifier, is_relative_path, is_web_address, required_inputs, validate_in,
 };
@@ -43,6 +45,7 @@ const MAX_TEXT_LEN: usize = 500;
 const MAX_SHORT_LEN: usize = 100;
 const MAX_ICON_LEN: usize = 64;
 const MAX_INPUTS: usize = 50;
+const MAX_DEPENDENCIES: usize = 50;
 
 /// A semantic version, `MAJOR.MINOR.PATCH` with an optional `-pre.release` part: `1.2.0` is newer
 /// than `1.2.0-beta.2` and older than `1.10.0`. A `+build` part is accepted and ignored.
@@ -74,12 +77,7 @@ impl FromStr for Version {
             Some((numbers, pre)) => (numbers, Some(pre)),
             None => (text, None),
         };
-        let number = |part: &str| {
-            let plain = !part.is_empty()
-                && part.bytes().all(|b| b.is_ascii_digit())
-                && (part == "0" || !part.starts_with('0'));
-            plain.then(|| part.parse::<u64>().ok()).flatten().ok_or(())
-        };
+        let number = |part: &str| number(part).ok_or(());
         let mut parts = numbers.split('.');
         let (Some(major), Some(minor), Some(patch), None) =
             (parts.next(), parts.next(), parts.next(), parts.next())
@@ -162,6 +160,179 @@ fn compare_pre(a: &[String], b: &[String]) -> Ordering {
     a.len().cmp(&b.len())
 }
 
+/// One number of a version: digits, without a leading zero.
+fn number(part: &str) -> Option<u64> {
+    let plain = !part.is_empty()
+        && part.bytes().all(|b| b.is_ascii_digit())
+        && (part == "0" || !part.starts_with('0'));
+    plain.then(|| part.parse().ok()).flatten()
+}
+
+/// The versions of another package that a package works with, as `block.json` writes them: `*`
+/// for any; `1.2.3` or `=1.2.3` for that one; `^1.2.3` up to the next major version (the next
+/// minor one for `0.x`, the next patch for `0.0.x`); `~1.2.3` up to the next minor version;
+/// `>=`, `>`, `<` and `<=` against a version; `1.x` or `1.2.x` for a series, and a version with
+/// parts left out, like `>1`, the same way. Comparisons separated by spaces or commas must all
+/// hold. A pre-release only fits a range that names a pre-release of the same version, so
+/// `^1.2.0` never picks `2.0.0-beta`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VersionReq {
+    text: String,
+    bounds: Vec<(Bound, Version)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Bound {
+    Exactly,
+    Above,
+    AtLeast,
+    Below,
+    AtMost,
+}
+
+impl VersionReq {
+    /// `*`: any version.
+    pub fn any() -> Self {
+        Self {
+            text: "*".to_owned(),
+            bounds: Vec::new(),
+        }
+    }
+
+    pub fn matches(&self, version: &Version) -> bool {
+        let core = |v: &Version| (v.major, v.minor, v.patch);
+        self.bounds.iter().all(|(bound, v)| match bound {
+            Bound::Exactly => version == v,
+            Bound::Above => version > v,
+            Bound::AtLeast => version >= v,
+            Bound::Below => version < v,
+            Bound::AtMost => version <= v,
+        }) && (version.pre.is_empty()
+            || self
+                .bounds
+                .iter()
+                .any(|(_, v)| !v.pre.is_empty() && core(v) == core(version)))
+    }
+}
+
+impl FromStr for VersionReq {
+    type Err = String;
+
+    /// Fails with what is wrong, as the end of a sentence in the process language.
+    fn from_str(text: &str) -> Result<Self, String> {
+        Self::read(text).map_err(|bad| range_problem_in(&language(), &bad))
+    }
+}
+
+/// Why a version range can't be read, in `lang`, as the end of a sentence: `bad` is the
+/// comparison that isn't one, empty when the range is.
+pub(crate) fn range_problem_in(lang: &str, bad: &str) -> String {
+    if bad.is_empty() {
+        tr_in!(lang, "package.range.empty")
+    } else {
+        tr_in!(lang, "package.range.invalid", bad)
+    }
+}
+
+impl VersionReq {
+    /// Reads a range; fails with the comparison that isn't one, empty when the range is.
+    fn read(text: &str) -> Result<Self, String> {
+        let text = text.trim();
+        let mut words = text
+            .split(|c: char| c.is_whitespace() || c == ',')
+            .filter(|w| !w.is_empty());
+        let mut bounds = Vec::new();
+        while let Some(word) = words.next() {
+            let split = word
+                .find(|c: char| !"^~=<>".contains(c))
+                .unwrap_or(word.len());
+            let (op, version) = word.split_at(split);
+            // `>= 1.2.0`: the version is the next word.
+            let next = if !op.is_empty() && version.is_empty() {
+                words.next()
+            } else {
+                None
+            };
+            let (shown, version) = match next {
+                Some(next) => (format!("{word} {next}"), next),
+                None => (word.to_owned(), version),
+            };
+            bounds.extend(comparison(op, version).ok_or(shown)?);
+        }
+        if text.is_empty() {
+            return Err(String::new());
+        }
+        Ok(Self {
+            text: text.to_owned(),
+            bounds,
+        })
+    }
+}
+
+/// The bounds that the comparison `op` with the version `text`, written in full or in part,
+/// stands for; `None` when it isn't one.
+fn comparison(op: &str, text: &str) -> Option<Vec<(Bound, Version)>> {
+    use Bound::*;
+    let open = |part: &str| ["x", "X", "*"].contains(&part);
+    let (exact, major, minor) = match text.parse::<Version>() {
+        Ok(v) => (Some(v.clone()), v.major, Some(v.minor)),
+        Err(()) => {
+            let parts: Vec<&str> = text.split('.').collect();
+            if parts.len() > 3 || parts.iter().skip_while(|p| !open(p)).any(|p| !open(p)) {
+                return None;
+            }
+            let given: Vec<u64> = (parts.iter().take_while(|p| !open(p)))
+                .map(|p| number(p))
+                .collect::<Option<_>>()?;
+            match given[..] {
+                [] => return (op.is_empty() || op == "=").then(Vec::new),
+                [major] => (None, major, None),
+                [major, minor] => (None, major, Some(minor)),
+                _ => return None,
+            }
+        }
+    };
+    let lowest = Version::new(major, minor.unwrap_or(0), 0);
+    // The first version after all those that `text` names.
+    let after = match minor {
+        Some(minor) => Version::new(major, minor.checked_add(1)?, 0),
+        None => Version::new(major.checked_add(1)?, 0, 0),
+    };
+    Some(match (op, exact.clone()) {
+        ("" | "=", Some(v)) => vec![(Exactly, v)],
+        (">", Some(v)) => vec![(Above, v)],
+        (">=", Some(v)) => vec![(AtLeast, v)],
+        ("<", Some(v)) => vec![(Below, v)],
+        ("<=", Some(v)) => vec![(AtMost, v)],
+        ("" | "=" | "~", _) => vec![(AtLeast, exact.unwrap_or(lowest)), (Below, after)],
+        (">", None) => vec![(AtLeast, after)],
+        (">=", None) => vec![(AtLeast, lowest)],
+        ("<", None) => vec![(Below, lowest)],
+        ("<=", None) => vec![(Below, after)],
+        ("^", _) => {
+            let next = match (major, minor, &exact) {
+                (0, Some(0), Some(v)) => Version::new(0, 0, v.patch.checked_add(1)?),
+                (0, Some(minor), _) => Version::new(0, minor.checked_add(1)?, 0),
+                _ => Version::new(major.checked_add(1)?, 0, 0),
+            };
+            vec![(AtLeast, exact.unwrap_or(lowest)), (Below, next)]
+        }
+        _ => return None,
+    })
+}
+
+impl fmt::Display for VersionReq {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.text)
+    }
+}
+
+impl Serialize for VersionReq {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(self)
+    }
+}
+
 /// The version of this build of JEVision.
 pub fn app_version() -> Version {
     env!("CARGO_PKG_VERSION")
@@ -203,6 +374,20 @@ pub struct BlockManifest {
     pub min_version: Option<Version>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<PackageInput>,
+    /// Other packages the steps run, which must be installed beside this one.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<Dependency>,
+}
+
+/// A package that another one runs: its steps call `../ID.jevblock/flow.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Dependency {
+    pub id: String,
+    /// The versions that work; `*` when `block.json` doesn't say.
+    pub version: VersionReq,
+    /// An https address to install it from when it is missing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 impl BlockManifest {
@@ -376,6 +561,7 @@ pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
     let license = reader.text("license", MAX_SHORT_LEN, true);
     let min_version = reader.version("minVersion", false);
     let inputs = reader.inputs();
+    let dependencies = reader.dependencies(id.as_deref());
     for key in object.keys() {
         if !KEYS.contains(&key.as_str()) {
             reader
@@ -407,6 +593,7 @@ pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
                 license,
                 min_version,
                 inputs,
+                dependencies,
             })
         }
         _ => Err(PackageError {
@@ -415,7 +602,7 @@ pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
     }
 }
 
-const KEYS: [&str; 10] = [
+const KEYS: [&str; 11] = [
     "format",
     "id",
     "name",
@@ -426,6 +613,7 @@ const KEYS: [&str; 10] = [
     "license",
     "minVersion",
     "inputs",
+    "dependencies",
 ];
 
 struct Reader<'a> {
@@ -433,7 +621,7 @@ struct Reader<'a> {
     issues: Vec<Issue>,
 }
 
-impl Reader<'_> {
+impl<'a> Reader<'a> {
     fn format(&mut self) {
         match self.object.get("format") {
             None => self
@@ -499,26 +687,9 @@ impl Reader<'_> {
 
     fn inputs(&mut self) -> Vec<PackageInput> {
         let mut inputs: Vec<PackageInput> = Vec::new();
-        let list = match self.object.get("inputs") {
-            None => return inputs,
-            Some(Value::Array(list)) => list,
-            Some(_) => {
-                self.issues.push(
-                    Issue::error("block.field.type")
-                        .with("field", "inputs")
-                        .with("expected", "a list"),
-                );
-                return inputs;
-            }
-        };
-        if list.len() > MAX_INPUTS {
-            self.issues.push(
-                Issue::error("block.field.tooLong")
-                    .with("field", "inputs")
-                    .with("max", MAX_INPUTS),
-            );
+        let Some(list) = self.list("inputs", MAX_INPUTS) else {
             return inputs;
-        }
+        };
         for (i, item) in list.iter().enumerate() {
             let field = format!("inputs.{i}");
             let Some(entry) = item.as_object() else {
@@ -576,6 +747,92 @@ impl Reader<'_> {
         }
         inputs
     }
+
+    /// The list `dependencies` of the package `own`.
+    fn dependencies(&mut self, own: Option<&str>) -> Vec<Dependency> {
+        let mut found: Vec<Dependency> = Vec::new();
+        let Some(list) = self.list("dependencies", MAX_DEPENDENCIES) else {
+            return found;
+        };
+        for (i, item) in list.iter().enumerate() {
+            let field = format!("dependencies.{i}");
+            let Some(entry) = item.as_object() else {
+                self.issues.push(
+                    Issue::error("block.field.type")
+                        .with("field", &field)
+                        .with("expected", "an object"),
+                );
+                continue;
+            };
+            let mut reader = Reader {
+                object: entry,
+                issues: Vec::new(),
+            };
+            let id = reader.text("id", MAX_ID_LEN, true);
+            let range = reader.text("version", MAX_SHORT_LEN, false);
+            let source = reader.text("source", MAX_TEXT_LEN, false);
+            for key in entry
+                .keys()
+                .filter(|k| !["id", "version", "source"].contains(&k.as_str()))
+            {
+                reader
+                    .issues
+                    .push(Issue::error("block.field.unknown").with("field", key));
+            }
+            for mut issue in reader.issues {
+                issue.params.retain(|p| p.name != "field");
+                self.issues.push(issue.with("field", &field));
+            }
+            let Some(id) = id else { continue };
+            let problem = |code: &str| Issue::error(code).with("field", &field).with("id", &id);
+            let invalid = |what: &str| problem("block.dependency.invalid").with("problem", what);
+            let https = |s: &str| s.starts_with("https://") && is_web_address(s);
+            let issue = match range
+                .as_deref()
+                .map_or(Ok(VersionReq::any()), VersionReq::read)
+            {
+                _ if !is_package_id(&id) => invalid("id"),
+                Err(bad) => invalid("range").with("value", bad),
+                Ok(_) if !source.as_deref().is_none_or(https) => invalid("source"),
+                Ok(_) if own == Some(id.as_str()) => problem("block.dependency.self"),
+                Ok(_) if found.iter().any(|d| d.id == id) => problem("block.dependency.duplicate"),
+                Ok(version) => {
+                    found.push(Dependency {
+                        id,
+                        version,
+                        source,
+                    });
+                    continue;
+                }
+            };
+            self.issues.push(issue);
+        }
+        found
+    }
+
+    /// The list `key`, if it is one and not longer than `max`; the reason kept if not.
+    fn list(&mut self, key: &str, max: usize) -> Option<&'a Vec<Value>> {
+        let list = match self.object.get(key)? {
+            Value::Array(list) => list,
+            _ => {
+                self.issues.push(
+                    Issue::error("block.field.type")
+                        .with("field", key)
+                        .with("expected", "a list"),
+                );
+                return None;
+            }
+        };
+        if list.len() > max {
+            self.issues.push(
+                Issue::error("block.field.tooLong")
+                    .with("field", key)
+                    .with("max", max),
+            );
+            return None;
+        }
+        Some(list)
+    }
 }
 
 /// Everything wrong with the package whose block.json is `manifest` and whose steps are `flow`,
@@ -594,12 +851,24 @@ pub fn check_package(manifest: &BlockManifest, flow: &Flow, dir: &Path) -> Vec<I
                 .with("have", app_version()),
         );
     }
-    // Blocks rarely check the screen themselves; the tests that run them do.
-    out.extend(
-        validate_in(flow, dir)
-            .into_iter()
-            .filter(|i| i.code != "flow.noCheck"),
-    );
+    // The package the step `path` runs, when it leaves this one for another installed beside it.
+    let home = package_flow_path(&manifest.id);
+    let runs = |path: &str| {
+        let to = resolve_test(&home, path).filter(|_| path.split('/').any(|p| p == ".."))?;
+        package_of_path(&to)
+            .filter(|id| *id != manifest.id && package_flow_path(id) == to)
+            .map(str::to_owned)
+    };
+    let declared = |id: &str| manifest.dependencies.iter().any(|d| d.id == id);
+    // Blocks rarely check the screen themselves; the tests that run them do. Whether the
+    // packages it runs are installed is a question for the project it goes into; that it
+    // declares them is checked below.
+    out.extend(validate_in(flow, dir).into_iter().filter(|i| {
+        let needed = ["flow.block.notInstalled", "flow.block.dependencyUnmet"]
+            .contains(&i.code.as_str())
+            && runs(i.param("path").unwrap_or_default()).is_some();
+        i.code != "flow.noCheck" && !needed
+    }));
     let read = required_inputs(flow);
     for name in &read {
         if !manifest.inputs.iter().any(|i| &i.name == name) {
@@ -609,24 +878,134 @@ pub fn check_package(manifest: &BlockManifest, flow: &Flow, dir: &Path) -> Vec<I
     for input in manifest.inputs.iter().filter(|i| !read.contains(&i.name)) {
         out.push(Issue::warning("block.input.unused").with("name", &input.name));
     }
-    let mut paths: Vec<(String, String)> = flow
+    let mut paths: Vec<(String, String, bool)> = flow
         .blocks
         .iter()
-        .flat_map(|b| other_paths(&b.kind).into_iter().map(|p| (b.id.clone(), p)))
+        .flat_map(|b| {
+            let step = matches!(b.kind, BlockKind::RunTest { .. });
+            (other_paths(&b.kind).into_iter()).map(move |p| (b.id.clone(), p, step))
+        })
         .collect();
     visit_images(&mut flow.clone(), |block, path| {
-        paths.push((block.to_owned(), path.clone()));
+        paths.push((block.to_owned(), path.clone(), false));
     });
-    for (block, path) in paths {
-        if is_relative_path(&path) && path.split('/').any(|part| part == "..") {
-            out.push(
-                Issue::error("block.path.outside")
-                    .with("block", block)
-                    .with("path", path),
-            );
+    for (block, path, step) in paths {
+        if !is_relative_path(&path) || !path.split('/').any(|part| part == "..") {
+            continue;
         }
+        let issue = match runs(&path).filter(|_| step) {
+            Some(id) if declared(&id) => continue,
+            Some(id) => Issue::error("block.dependency.undeclared").with("id", id),
+            None => Issue::error("block.path.outside"),
+        };
+        out.push(issue.with("block", block).with("path", path));
     }
     out
+}
+
+/// The order to install the packages of `set` in, dependencies first and otherwise by id, when
+/// nothing stops it: two packages with one id; a dependency that neither the set nor
+/// `installed` has in a version that fits (the address to get it from is kept, when the package
+/// that needs it gives one); packages that need each other in a circle; and, unless `force`, an
+/// installed package that needs another version of one the set replaces.
+pub fn install_order(
+    installed: &[BlockManifest],
+    set: &[BlockManifest],
+    force: bool,
+) -> Result<Vec<String>, PackageError> {
+    fn visit<'a>(
+        id: &'a str,
+        all: &BTreeMap<&'a str, &'a BlockManifest>,
+        path: &mut Vec<&'a str>,
+        done: &mut Vec<&'a str>,
+        issues: &mut Vec<Issue>,
+    ) {
+        if done.contains(&id) {
+            return;
+        }
+        if let Some(at) = path.iter().position(|p| *p == id) {
+            let chain = [&path[at..], &[id]].concat().join(" → ");
+            issues.push(Issue::error("block.dependency.cycle").with("chain", chain));
+            return;
+        }
+        let Some(manifest) = all.get(id) else { return };
+        path.push(id);
+        for d in &manifest.dependencies {
+            visit(&d.id, all, path, done, issues);
+        }
+        path.pop();
+        done.push(id);
+    }
+
+    let mut issues = Vec::new();
+    let mut coming: BTreeMap<&str, &BlockManifest> = BTreeMap::new();
+    let mut twice = BTreeSet::new();
+    for m in set {
+        if coming.insert(&m.id, m).is_some() {
+            twice.insert(&m.id);
+        }
+    }
+    issues.extend(
+        twice
+            .iter()
+            .map(|id| Issue::error("block.set.duplicate").with("id", id)),
+    );
+    let mut all: BTreeMap<&str, &BlockManifest> =
+        installed.iter().map(|m| (m.id.as_str(), m)).collect();
+    all.extend(&coming);
+    for m in coming.values() {
+        for d in &m.dependencies {
+            let found = all.get(d.id.as_str()).map(|f| &f.version);
+            issues.extend(unmet(d, found, &m.id));
+        }
+    }
+    for m in installed.iter().filter(|_| !force) {
+        for d in &m.dependencies {
+            if let Some(new) = (coming.get(d.id.as_str())).filter(|new| {
+                !coming.contains_key(m.id.as_str()) && !d.version.matches(&new.version)
+            }) {
+                issues.push(
+                    Issue::error("block.dependency.breaks")
+                        .with("id", &m.id)
+                        .with("dependency", &d.id)
+                        .with("range", &d.version)
+                        .with("found", &new.version),
+                );
+            }
+        }
+    }
+    let mut done = Vec::new();
+    for id in coming.keys() {
+        visit(id, &all, &mut Vec::new(), &mut done, &mut issues);
+    }
+    if !issues.is_empty() {
+        return Err(PackageError { issues });
+    }
+    Ok(done
+        .into_iter()
+        .filter(|id| coming.contains_key(id))
+        .map(str::to_owned)
+        .collect())
+}
+
+/// `block.dependency.missing` or `block.dependency.unmet` when the package `by` needs `d` and
+/// `found`, the version there is, doesn't fit; the address to get it from goes along.
+pub(crate) fn unmet(d: &Dependency, found: Option<&Version>, by: &str) -> Option<Issue> {
+    let issue = match found {
+        None => Issue::error("block.dependency.missing"),
+        Some(v) if !d.version.matches(v) => {
+            Issue::error("block.dependency.unmet").with("installed", v)
+        }
+        Some(_) => return None,
+    };
+    let issue = issue
+        .with("id", &d.id)
+        .with("range", &d.version)
+        .with("by", by);
+    Some(match &d.source {
+        Some(source) => issue.with("source", source),
+        None => issue,
+    })
 }
 
 /// Paths the steps of a block read, other than the images: files to open, data tables, and the
@@ -820,30 +1199,46 @@ pub fn risky_steps(flow: &Flow) -> Vec<RiskyStep> {
 }
 
 /// Where each installed package came from, kept in [`PACKAGE_LOCK_FILE`]: the address a package
-/// was installed from, by id. A package installed from a file has no address.
+/// was installed from, by id, and the version it had. A package installed from a file has no
+/// address; a lock written before versions were kept has none.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackageLock {
     pub sources: BTreeMap<String, String>,
+    pub versions: BTreeMap<String, Version>,
 }
 
 impl PackageLock {
     /// Reads the text of the lock file.
     pub fn parse(text: &str) -> Result<Self, String> {
         let value: Value = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
-        let sources = match value.get("sources") {
-            None => BTreeMap::new(),
+        let map = |key: &str| match value.get(key) {
+            None => Ok(Vec::new()),
             Some(Value::Object(map)) => map
                 .iter()
-                .map(|(id, source)| {
-                    source
-                        .as_str()
-                        .map(|s| (id.clone(), s.to_owned()))
-                        .ok_or_else(|| tr!("package.lock.sourceType", id))
+                .map(|(id, v)| {
+                    v.as_str()
+                        .map(|v| (id.clone(), v))
+                        .ok_or_else(|| match key {
+                            "sources" => tr!("package.lock.sourceType", id),
+                            _ => tr!("package.lock.versionType", id),
+                        })
                 })
-                .collect::<Result<_, _>>()?,
-            Some(_) => return Err(tr!("package.lock.sources")),
+                .collect(),
+            Some(_) => Err(match key {
+                "sources" => tr!("package.lock.sources"),
+                _ => tr!("package.lock.versions"),
+            }),
         };
-        Ok(Self { sources })
+        let sources = (map("sources")?.into_iter())
+            .map(|(id, source)| (id, source.to_owned()))
+            .collect();
+        let versions = (map("versions")?.into_iter())
+            .map(|(id, version)| {
+                (version.parse().map(|v| (id.clone(), v)))
+                    .map_err(|()| tr!("package.lock.version", id))
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self { sources, versions })
     }
 
     /// The lock file: ids in alphabetical order so that git shows clean differences.
@@ -852,10 +1247,13 @@ impl PackageLock {
         struct File<'a> {
             format: u32,
             sources: &'a BTreeMap<String, String>,
+            #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+            versions: &'a BTreeMap<String, Version>,
         }
         let mut text = serde_json::to_string_pretty(&File {
             format: PACKAGE_FORMAT,
             sources: &self.sources,
+            versions: &self.versions,
         })
         .expect("a lock always serializes to JSON");
         text.push('\n');
@@ -881,6 +1279,9 @@ mod tests {
   "inputs": [
     { "name": "email", "label": "E-mail", "default": "me@example.com" },
     { "name": "password" }
+  ],
+  "dependencies": [
+    { "id": "com.acme.open-app", "version": "^1.0.0", "source": "https://github.com/acme/open-app" }
   ]
 }"#;
 
@@ -955,7 +1356,8 @@ mod tests {
                 "author",
                 "license",
                 "minVersion",
-                "inputs"
+                "inputs",
+                "dependencies"
             ]
         );
     }
@@ -1197,6 +1599,10 @@ mod tests {
             assert!(parse_manifest(&longest.to_string()).is_err(), "{key}");
         }
         assert_eq!(schema["properties"]["inputs"]["maxItems"], MAX_INPUTS);
+        assert_eq!(
+            schema["properties"]["dependencies"]["maxItems"],
+            MAX_DEPENDENCIES
+        );
         assert_eq!(schema["properties"]["id"]["maxLength"], MAX_ID_LEN);
         assert_eq!(schema["properties"]["icon"]["maxLength"], MAX_ICON_LEN);
     }

@@ -80,6 +80,8 @@ struct CustomBlocksSheet: View {
   @State private var model: CustomBlocksModel?
   @State private var installing: BlockInstallModel?
   @State private var sharing: LibraryEntry?
+  @State private var owning: OwnBlockModel?
+  @State private var showsOwning = false
 
   private var community: [LibraryEntry] { project.library.blocks.filter { $0.package != nil } }
   private var own: [LibraryEntry] { project.library.blocks.filter { $0.package == nil } }
@@ -129,6 +131,10 @@ struct CustomBlocksSheet: View {
     .sheet(item: $sharing) { entry in
       if let root = project.rootURL { ShareBlockSheet(entry: entry, project: root) }
     }
+    // The copy opens in the editor once it is made.
+    .sheet(isPresented: $showsOwning, onDismiss: { if owning?.made != nil { dismiss() } }) {
+      if let owning { OwnBlockSheet(model: owning) }
+    }
     .alert(
       Text("Remove “\(model?.removal?.entry.name ?? "")”?"),
       isPresented: Binding(get: { model?.removal != nil }, set: { if !$0 { model?.removal = nil } }),
@@ -168,6 +174,22 @@ struct CustomBlocksSheet: View {
         }
       }
       Spacer()
+      if let url = entry.url, let root = project.rootURL {
+        Button("Open") {
+          project.selection = RelativePath.from(root, to: url)
+          dismiss()
+        }
+        .help("Shows its steps. To change them, make a copy.")
+        .accessibilityLabel(Text("Open \(entry.name)"))
+      }
+      if let id = entry.package?.id {
+        Button("Make a Copy…") {
+          owning = project.makeOwnBlockModel(of: id)
+          showsOwning = owning != nil
+        }
+        .help("Makes a copy among the project’s own blocks, which you can change. The installed block stays.")
+        .accessibilityLabel(Text("Make a copy of \(entry.name)"))
+      }
       if let id = entry.package?.id, entry.package?.source != nil {
         Button("Update") { installing = project.makeBlockInstaller(updating: id) }
           .accessibilityLabel(Text("Update \(entry.name)"))

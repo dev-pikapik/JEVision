@@ -94,6 +94,11 @@ pub fn sentence(issue: &Issue) -> String {
 /// block or field it concerns.
 pub fn sentence_in(lang: &str, issue: &Issue) -> String {
     let p = |name: &str| issue.param(name).unwrap_or_default();
+    // `com.acme.helper ^1.2.0`, or the id alone when any version does.
+    let needed = |id: &str| match p("range") {
+        "" | "*" => id.to_owned(),
+        range => format!("{id} {range}"),
+    };
     match issue.code.as_str() {
         "flow.json.syntax" => tr_in!(lang, "flow.json.syntax", p("line"), p("column")),
         "flow.json.notObject" => tr_in!(lang, "flow.json.notObject"),
@@ -253,6 +258,20 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
             crate::block_with_version(p("id"), p("version")),
             crate::install_command_in(lang, p("source"))
         ),
+        "flow.block.dependencyUnmet" if p("installed").is_empty() => tr_in!(
+            lang,
+            "flow.block.dependencyUnmet",
+            p("by"),
+            needed(p("dependency"))
+        ),
+        "flow.block.dependencyUnmet" => tr_in!(
+            lang,
+            "flow.block.dependencyUnmet.installed",
+            p("by"),
+            needed(p("dependency")),
+            p("dependency"),
+            p("installed")
+        ),
         "flow.package.version" => tr_in!(lang, "flow.package.version"),
         "flow.package.source" => tr_in!(lang, "flow.package.source"),
         "block.json.syntax" => tr_in!(lang, "block.json.syntax", p("line"), p("column")),
@@ -310,12 +329,60 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         ),
         "block.archive.invalid" => tr_in!(lang, "block.archive.invalid", p("reason")),
         "block.archive.empty" => tr_in!(lang, "block.archive.empty"),
-        "block.archive.several" => tr_in!(lang, "block.archive.several", p("ids")),
         "block.lock.invalid" => tr_in!(lang, "block.lock.invalid", p("reason")),
         "block.export.nested" => tr_in!(lang, "block.export.nested", p("test")),
         "block.export.failed" => tr_in!(lang, "block.export.failed", p("reason")),
         "block.export.notBlock" => tr_in!(lang, "block.export.notBlock", p("path")),
         "block.export.skipped" => tr_in!(lang, "block.export.skipped", p("path")),
+        "block.dependency.invalid" => {
+            let reason = match p("problem") {
+                "id" => tr_in!(lang, "package.dependency.badId"),
+                "source" => tr_in!(lang, "package.dependency.badSource"),
+                _ => crate::package::range_problem_in(lang, p("value")),
+            };
+            tr_in!(lang, "block.dependency.invalid", p("id"), reason)
+        }
+        "block.dependency.duplicate" => tr_in!(lang, "block.dependency.duplicate", p("id")),
+        "block.dependency.self" => tr_in!(lang, "block.dependency.self", p("id")),
+        "block.dependency.undeclared" => {
+            tr_in!(lang, "block.dependency.undeclared", p("path"), p("id"))
+        }
+        "block.dependency.missing" if p("source").is_empty() => tr_in!(
+            lang,
+            "block.dependency.missing.noSource",
+            p("by"),
+            needed(p("id"))
+        ),
+        "block.dependency.missing" => tr_in!(
+            lang,
+            "block.dependency.missing",
+            p("by"),
+            needed(p("id")),
+            p("source")
+        ),
+        "block.dependency.unmet" => tr_in!(
+            lang,
+            "block.dependency.unmet",
+            p("by"),
+            needed(p("id")),
+            p("id"),
+            p("installed")
+        ),
+        "block.dependency.cycle" => tr_in!(lang, "block.dependency.cycle", p("chain")),
+        "block.dependency.breaks" => tr_in!(
+            lang,
+            "block.dependency.breaks",
+            p("id"),
+            needed(p("dependency")),
+            p("dependency"),
+            p("found"),
+            p("id")
+        ),
+        "block.set.duplicate" => tr_in!(lang, "block.set.duplicate", p("id")),
+        "block.set.tooMany" => tr_in!(lang, "block.set.tooMany", p("max")),
+        "block.update.missing" => tr_in!(lang, "block.update.missing", p("id"), p("found")),
+        "block.copy.nested" => tr_in!(lang, "block.copy.nested", p("test")),
+        "block.copy.failed" => tr_in!(lang, "block.copy.failed", p("id"), p("reason")),
         _ => {
             let params: Vec<String> = issue
                 .params
@@ -502,6 +569,72 @@ mod tests {
         assert!(
             describe_in("ru", &missing)
                 .contains("`jevision blocks install <папка, файл .zip или адрес https>`")
+        );
+    }
+
+    #[test]
+    fn dependency_problems_read_in_russian_and_english() {
+        let bad_range = Issue::error("block.dependency.invalid")
+            .with("id", "com.acme.a")
+            .with("problem", "range")
+            .with("value", "^x");
+        assert_eq!(
+            sentence_in("en", &bad_range),
+            "The dependency com.acme.a can’t be used: “^x” isn’t a version range; write one like \
+             ^1.2.0, >=1.2.0 <2.0.0 or 1.x."
+        );
+        assert_eq!(
+            sentence_in("ru", &bad_range),
+            "Зависимость com.acme.a нельзя использовать: «^x» — не диапазон версий; напишите, \
+             например, ^1.2.0, >=1.2.0 <2.0.0 или 1.x."
+        );
+        let empty = Issue::error("block.dependency.invalid")
+            .with("id", "com.acme.a")
+            .with("problem", "range");
+        assert!(sentence_in("en", &empty).ends_with("write * for any version."));
+        let bad_source = Issue::error("block.dependency.invalid")
+            .with("id", "com.acme.b")
+            .with("problem", "source");
+        assert_eq!(
+            sentence_in("ru", &bad_source),
+            "Зависимость com.acme.b нельзя использовать: его источник должен быть адресом https."
+        );
+
+        let missing = Issue::error("block.dependency.missing")
+            .with("by", "com.acme.app")
+            .with("id", "com.acme.gone")
+            .with("range", "^2.0.0");
+        assert_eq!(
+            sentence_in("en", &missing),
+            "com.acme.app needs the block com.acme.gone ^2.0.0, which isn’t installed. Install it \
+             first."
+        );
+        assert_eq!(
+            sentence_in(
+                "ru",
+                &missing
+                    .clone()
+                    .with("source", "https://github.com/acme/gone")
+            ),
+            "Блоку com.acme.app нужен блок com.acme.gone ^2.0.0, но он не установлен. Установите \
+             его с адреса https://github.com/acme/gone."
+        );
+
+        let unmet = Issue::error("flow.block.dependencyUnmet")
+            .with("block", "a")
+            .with("field", "test")
+            .with("by", "com.acme.app")
+            .with("dependency", "com.acme.helper")
+            .with("range", "*");
+        assert_eq!(
+            describe_in("en", &unmet),
+            "Block “a”, field “test”: The block com.acme.app needs the block com.acme.helper, \
+             which isn’t installed. Install it, or remove the step."
+        );
+        assert_eq!(
+            describe_in("ru", &unmet.with("installed", "0.5.0")),
+            "Блок «a», поле «test»: Блоку com.acme.app нужен блок com.acme.helper, а установлен \
+             com.acme.helper 0.5.0. Установите подходящую версию."
         );
     }
 

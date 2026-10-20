@@ -46,7 +46,7 @@ struct PaletteEntry: Identifiable, Hashable {
 /// What can be done right now, as the command palette sees it.
 struct PaletteState {
   var hasProject = false
-  /// A test is open in the editor.
+  /// A test that can be changed is open in the editor.
   var hasTest = false
   /// Runs and recordings can start: nothing runs or records and a test is open.
   var canRun = false
@@ -118,7 +118,7 @@ enum CommandPalette {
       shortcut: Shortcuts.run, keywords: String(localized: "start play test"), if: state.canRun)
     add(
       .record, String(localized: "Record"), String(localized: "Records steps by using the app."),
-      symbol: "record.circle", shortcut: Shortcuts.record, if: state.canRun)
+      symbol: "record.circle", shortcut: Shortcuts.record, if: state.canRun && state.hasTest)
     add(
       .addCondition, state.selectionIsIf ? String(localized: "Add Condition") : String(localized: "Add If"),
       state.selectionIsIf

@@ -11,10 +11,11 @@ struct InstallBlockSheet: View {
     VStack(alignment: .leading, spacing: 16) {
       switch model.phase {
       case .choosing: choosing
-      case .reading(let source): busy(Text("Reading the block…"), detail: source)
+      case .reading(let source):
+        busy(model.isRestoring ? Text("Fetching the saved blocks…") : Text("Reading the block…"), detail: source)
       case .review: review
-      case .installing: busy(Text("Installing…"), detail: model.preview?.manifest.name ?? "")
-      case .installed(let block): installed(block)
+      case .installing: busy(Text("Installing…"), detail: model.selectedNames.joined(separator: ", "))
+      case .installed(let blocks): installed(blocks)
       case .failed(let message): failed(message)
       }
     }
@@ -96,50 +97,223 @@ struct InstallBlockSheet: View {
 
   @ViewBuilder
   private var review: some View {
-    if let preview = model.preview {
-      let manifest = preview.manifest
-      HStack(alignment: .top, spacing: 12) {
-        Image(systemName: manifest.icon ?? ProjectLibrary.defaultBlockSymbol)
-          .font(.title)
-          .foregroundStyle(.indigo)
-          .frame(width: 40)
-          .accessibilityHidden(true)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(manifest.name)
-            .font(.title2.bold())
-            .accessibilityAddTraits(.isHeader)
-          Text("Version \(manifest.version) · by \(manifest.author) · \(manifest.license)")
-            .foregroundStyle(.secondary)
-          Text(manifest.id)
-            .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
-            .textSelection(.enabled)
-        }
-      }
-      .accessibilityElement(children: .combine)
-      if let description = manifest.description, !description.isEmpty {
+    if model.usesList {
+      list
+    } else if let preview = model.preview {
+      header(preview.manifest)
+      if let description = preview.manifest.description, !description.isEmpty {
         Text(description)
           .fixedSize(horizontal: false, vertical: true)
       }
-      ScrollView {
-        VStack(alignment: .leading, spacing: 16) {
-          if let mismatch = model.needMismatch { mismatchBanner(mismatch) }
-          if let conflict = model.conflict { conflictBanner(conflict) }
-          ForEach(model.errors, id: \.self) { message in
-            note(message, symbol: "xmark.octagon.fill", color: .red, label: Text("Problem"))
-          }
-          ForEach(model.warnings, id: \.self) { message in
-            note(message, symbol: "exclamationmark.triangle.fill", color: .orange, label: Text("Warning"))
-          }
-          if !model.riskGroups.isEmpty { attention }
-          stepList
-          if !manifest.inputs.isEmpty { inputList(manifest.inputs) }
-          facts(preview)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+      ScrollView { details(preview) }
+        .frame(maxHeight: 360)
+      reviewButtons(preview.manifest)
+    }
+  }
+
+  private func header(_ manifest: BlockManifestInfo) -> some View {
+    HStack(alignment: .top, spacing: 12) {
+      Image(systemName: manifest.icon ?? ProjectLibrary.defaultBlockSymbol)
+        .font(.title)
+        .foregroundStyle(.indigo)
+        .frame(width: 40)
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(manifest.name)
+          .font(.title2.bold())
+          .accessibilityAddTraits(.isHeader)
+        Text("Version \(manifest.version) · by \(manifest.author) · \(manifest.license)")
+          .foregroundStyle(.secondary)
+        Text(manifest.id)
+          .font(.caption.monospaced())
+          .foregroundStyle(.secondary)
+          .textSelection(.enabled)
       }
-      .frame(maxHeight: 360)
-      reviewButtons(manifest)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  /// What the package shown does: its problems, the steps worth attention, every step and what it asks for.
+  private func details(_ preview: BlockPreview) -> some View {
+    VStack(alignment: .leading, spacing: 16) {
+      if !model.usesList, let mismatch = model.needMismatch { mismatchBanner(mismatch) }
+      if let conflict = model.conflict { conflictBanner(conflict) }
+      if model.usesList {
+        ForEach(model.errors, id: \.self) { message in
+          note(message, symbol: "xmark.octagon.fill", color: .red, label: Text("Problem"))
+        }
+      } else if let entry = model.focused {
+        // One block alone has no row: what stops it, or what it changes for installed blocks, shows here.
+        ForEach(model.notes(for: entry), id: \.self) { found in
+          note(
+            found.text, symbol: Self.symbol(found.kind), color: Self.color(found.kind),
+            label: found.kind == .problem ? Text("Problem") : Text("Warning"))
+        }
+      }
+      ForEach(model.warnings, id: \.self) { message in
+        note(message, symbol: "exclamationmark.triangle.fill", color: .orange, label: Text("Warning"))
+      }
+      if !model.riskGroups.isEmpty { attention }
+      stepList
+      if !preview.manifest.inputs.isEmpty { inputList(preview.manifest.inputs) }
+      facts(preview)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  // MARK: Several blocks
+
+  /// The packages to tick on top, what the one picked does below.
+  @ViewBuilder
+  private var list: some View {
+    title(model.isRestoring ? "Restore Blocks" : "Install Blocks")
+    if model.isRestoring {
+      Text("jevision.blocks.json lists the blocks this project uses and where each comes from. These aren’t installed on this Mac yet.")
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    if let mismatch = model.needMismatch { mismatchBanner(mismatch) }
+    ForEach(model.generalProblems, id: \.self) { message in
+      note(message, symbol: "xmark.octagon.fill", color: .red, label: Text("Problem"))
+    }
+    if model.entries.isEmpty {
+      Text("Everything in jevision.blocks.json is installed already.")
+        .fixedSize(horizontal: false, vertical: true)
+    } else {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(model.entries) { row($0) }
+        }
+      }
+      .frame(maxHeight: 200)
+      .fixedSize(horizontal: false, vertical: true)
+      if let preview = model.preview {
+        Divider()
+        ScrollView {
+          VStack(alignment: .leading, spacing: 16) {
+            header(preview.manifest)
+            if let description = preview.manifest.description, !description.isEmpty {
+              Text(description)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            details(preview)
+          }
+        }
+        .frame(maxHeight: 280)
+      }
+    }
+    listButtons
+  }
+
+  private func row(_ entry: BlockInstallEntry) -> some View {
+    let selected = model.selection.contains(entry.id)
+    let manifest = entry.preview?.manifest
+    let badge = BlockInstallModel.badge(entry)
+    let notes = model.notes(for: entry)
+    return HStack(alignment: .top, spacing: 10) {
+      Toggle(isOn: Binding(get: { selected }, set: { _ in model.toggle(entry) })) { Text(entry.name) }
+        .toggleStyle(.checkbox)
+        .labelsHidden()
+        .disabled(!model.canToggle(entry) || model.isBusy)
+      Image(systemName: manifest?.icon ?? ProjectLibrary.defaultBlockSymbol)
+        .foregroundStyle(.indigo)
+        .frame(width: 22)
+      VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+          Text(entry.name).fontWeight(.semibold)
+          if let manifest {
+            Text(verbatim: "\(manifest.version) · \(manifest.author)").foregroundStyle(.secondary)
+          }
+          Spacer(minLength: 0)
+          if let badge {
+            Text(badge)
+              .font(.caption)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 1)
+              .background(.quaternary, in: .capsule)
+          }
+        }
+        if let description = manifest?.description, !description.isEmpty {
+          Text(description)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+        ForEach(notes, id: \.self) { note in
+          Label {
+            Text(note.text).fixedSize(horizontal: false, vertical: true)
+          } icon: {
+            Image(systemName: Self.symbol(note.kind)).foregroundStyle(Self.color(note.kind))
+          }
+          .font(.caption)
+        }
+      }
+    }
+    .padding(8)
+    .background(model.focus == entry.id ? Color.accentColor.opacity(0.12) : .clear, in: .rect(cornerRadius: 8))
+    .contentShape(.rect)
+    .onTapGesture { model.focus = entry.id }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(Text(Self.label(entry, badge: badge)))
+    .accessibilityValue(selected ? Text("Selected") : Text("Not selected"))
+    .accessibilityHint(Text(hint(entry, selected: selected, notes: notes)))
+    .accessibilityAddTraits(model.focus == entry.id ? .isSelected : [])
+    .accessibilityAction { model.toggle(entry) }
+    .accessibilityAction(named: Text("Show What It Does")) { model.focus = entry.id }
+  }
+
+  private static func label(_ entry: BlockInstallEntry, badge: String?) -> String {
+    let words = entry.preview.map {
+      String(localized: "\(entry.name), version \($0.manifest.version), by \($0.manifest.author)")
+    } ?? entry.name
+    return [words, badge].compactMap(\.self).joined(separator: ", ")
+  }
+
+  /// Why the checkbox can't be changed, then what the notes under the row say.
+  private func hint(_ entry: BlockInstallEntry, selected: Bool, notes: [BlockInstallNote]) -> String {
+    var parts: [String] = []
+    if !model.canToggle(entry) {
+      parts.append(
+        selected
+          ? String(localized: "Stays selected because another selected block needs it.")
+          : String(localized: "Can’t be selected."))
+    }
+    return (parts + notes.map(\.text)).joined(separator: " ")
+  }
+
+  private static func symbol(_ kind: BlockInstallNote.Kind) -> String {
+    switch kind {
+    case .info: "info.circle"
+    case .warning: "exclamationmark.triangle.fill"
+    case .problem: "xmark.octagon.fill"
+    }
+  }
+
+  private static func color(_ kind: BlockInstallNote.Kind) -> Color {
+    switch kind {
+    case .info: .secondary
+    case .warning: .orange
+    case .problem: .red
+    }
+  }
+
+  private var listButtons: some View {
+    HStack {
+      if !model.isRestoring {
+        Button("Choose Another") { model.startOver() }
+          .disabled(model.isBusy)
+      }
+      Spacer()
+      Button("Cancel", role: .cancel) { dismiss() }
+        .keyboardShortcut(.cancelAction)
+      if !model.entries.isEmpty {
+        let count = model.selection.count
+        if model.isRestoring {
+          install(count > 1 ? Text("Restore \(count) Blocks") : Text("Restore"))
+        } else {
+          install(count > 1 ? Text("Install \(count) Blocks") : Text("Install"))
+        }
+      }
     }
   }
 
@@ -335,16 +509,31 @@ struct InstallBlockSheet: View {
 
   // MARK: The end
 
-  private func installed(_ block: InstalledBlock) -> some View {
+  private func installed(_ blocks: [InstalledBlock]) -> some View {
     VStack(alignment: .leading, spacing: 16) {
       Label {
-        Text("“\(block.manifest.name)” is installed")
-          .font(.title2.bold())
+        Group {
+          if let block = blocks.first, blocks.count == 1 {
+            Text("“\(block.manifest.name)” is installed")
+          } else {
+            Text("\(blocks.count) blocks are installed")
+          }
+        }
+        .font(.title2.bold())
       } icon: {
         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
       }
       .accessibilityAddTraits(.isHeader)
-      Text("Find it under Community when you add a block to a test.")
+      if blocks.count > 1 {
+        VStack(alignment: .leading, spacing: 4) {
+          ForEach(blocks, id: \.folder) { block in
+            Text(verbatim: "\(block.manifest.name) \(block.manifest.version)")
+          }
+        }
+      }
+      (blocks.count == 1
+        ? Text("Find it under Community when you add a block to a test.")
+        : Text("Find them under Community when you add a block to a test."))
         .foregroundStyle(.secondary)
       HStack {
         Spacer()
@@ -380,6 +569,36 @@ struct InstallBlockSheet: View {
     Text(key)
       .font(.title2.bold())
       .accessibilityAddTraits(.isHeader)
+  }
+}
+
+/// Offers to install the blocks jevision.blocks.json names and this Mac hasn't got, at the top of the window.
+struct BlockRestoreBar: View {
+  let count: Int
+  let review: @MainActor () -> Void
+  let notNow: @MainActor () -> Void
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "shippingbox")
+        .foregroundStyle(.secondary)
+        .font(.title3)
+        .accessibilityHidden(true)
+      Text("\(count) blocks from jevision.blocks.json aren’t installed on this Mac")
+        .fixedSize(horizontal: false, vertical: true)
+      Spacer(minLength: 12)
+      Button("Not Now", action: notNow)
+        .buttonStyle(.glass)
+      Button("Review and Install…", action: review)
+        .buttonStyle(.glassProminent)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .frame(maxWidth: 720)
+    .adaptiveGlass(in: .rect(cornerRadius: 18))
+    .padding()
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text("Blocks to install"))
   }
 }
 

@@ -52,7 +52,7 @@ final class RecordCenter {
 
   /// Records into `document` after its selected block, or asks for what's missing first.
   func record(_ document: FlowDocument) {
-    guard !isRecording, document.flow != nil else { return }
+    guard !isRecording, document.flow != nil, !document.isReadOnly else { return }
     let request = Request(document: document, slot: document.slotAfterSelection)
     if let app = Self.app(of: request), AppCatalog.shared.isInstalled(app), Self.missingPermissions().isEmpty {
       start(request, app: app)

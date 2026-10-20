@@ -103,7 +103,8 @@ pub struct RunOptions {
     /// server meet.
     pub screen_lock: Option<PathBuf>,
     /// Language of the app that started the run (`en`, `ru`): what a `dateTime` block writes
-    /// month and day names in when it names no language of its own. `None` is English.
+    /// month and day names in when it names no language of its own. `None` is the language set
+    /// with `jevision_l10n::set_language`.
     pub language: Option<String>,
 }
 
@@ -1769,12 +1770,13 @@ impl Exec<'_> {
                 shift,
                 next,
             } => {
-                // The block's own language, then the app's; English when neither is known.
+                // The block's own language, then the app's, then the process's.
+                let process = jevision_l10n::language();
                 let language = system::DateLanguage::from_code(
                     language
                         .as_deref()
                         .or(self.options.language.as_deref())
-                        .unwrap_or_default(),
+                        .unwrap_or(&process),
                 );
                 let text = system::date_time_in(
                     chrono::Utc::now(),

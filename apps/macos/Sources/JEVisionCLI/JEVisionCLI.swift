@@ -242,7 +242,7 @@ enum Command: Equatable {
       }
       return .scheduleRun(project: options.paths[1])
     case "blocks":
-      let options = try Options.parse(rest, command: name, flags: ["--yes", "--force"], values: ["--project"])
+      let options = try Options.parse(rest, command: name, flags: ["--yes", "--force"], values: ["--project", "--only"])
       if options.wantsHelp || options.paths.isEmpty { return .help(name) }
       return .blocks(try blocksRequest(options))
     case "issue":
@@ -274,7 +274,7 @@ enum Command: Equatable {
 }
 
 extension Command {
-  /// `blocks list|install <source>|update [id]|remove <id>`.
+  /// `blocks list|install <source>|update [id]|remove <id>|restore`.
   private static func blocksRequest(_ options: Options) throws(UsageError) -> BlocksRequest {
     let name = "blocks"
     let (action, arguments) = (options.paths[0], Array(options.paths.dropFirst()))
@@ -292,13 +292,23 @@ extension Command {
     case "update":
       guard arguments.count <= 1 else { throw UsageError(message: words("cli.error.oneBlockIdOrNone"), command: name) }
       blocks = .update(id: arguments.first)
+    case "restore":
+      guard arguments.isEmpty else { throw UsageError(message: words("cli.error.restoreNoArguments"), command: name) }
+      blocks = .restore
     default:
       throw UsageError(message: words("cli.error.noBlocksCommand", action), command: name)
     }
     var request = BlocksRequest(action: blocks, project: options.values["--project"])
     request.yes = options.flags.contains("--yes")
     request.force = options.flags.contains("--force")
-    if request.yes, !["install", "update"].contains(action) {
+    if let only = options.values["--only"] {
+      request.only = only.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+      guard !request.only.isEmpty else { throw UsageError(message: words("cli.error.onlyNeedsIds"), command: name) }
+      guard ["install", "restore"].contains(action) else {
+        throw UsageError(message: words("cli.error.onlyBelongs"), command: name)
+      }
+    }
+    if request.yes, !["install", "update", "restore"].contains(action) {
       throw UsageError(message: words("cli.error.yesBelongs"), command: name)
     }
     if request.force, action == "list" {

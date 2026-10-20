@@ -152,7 +152,7 @@ struct CommandPaletteView: View {
     let selection = flow == nil ? nil : document?.selection
     var state = PaletteState()
     state.hasProject = project.status == .ready
-    state.hasTest = flow != nil
+    state.hasTest = flow != nil && document?.isReadOnly != true
     state.canRun = !runs.isRunning && !records.isRecording && project.rootURL != nil && flow != nil
       && document?.beforeDraft == nil
     state.selection = selection
@@ -208,7 +208,7 @@ struct CommandPaletteView: View {
     switch action {
     case .newTest: project.isCreatingTest = true
     case .describeTest:
-      if let document, document.flow != nil {
+      if let document, document.flow != nil, !document.isReadOnly {
         if document.drafter == nil { document.drafter = TestDrafter() }
       } else {
         project.isCreatingTest = true

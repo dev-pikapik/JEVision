@@ -3619,7 +3619,8 @@ fn the_date_names_follow_the_language_and_the_time_zone() {
     assert_eq!(out("east"), "+1400");
     assert_eq!(out("west"), "-1100 SST");
 
-    // Without a language of the run the names are English.
+    // Without a language of the run the names follow the process language, English unless a host
+    // set another (no test here does: the setting is shared by every test of the process).
     let report = run(&p, &hands).report;
     assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
     let app = &last_steps(&report)[2].outputs["app"];

@@ -120,9 +120,9 @@ struct RunHUD: View {
     let document = center.running?.document
     let (step, total) = Self.step(of: state, in: document)
     HStack(spacing: 8) {
-      Image(systemName: state.isPaused ? "pause.circle.fill" : "play.circle.fill")
+      Image(systemName: state.isWaitingForScreen ? "hourglass.circle.fill" : state.isPaused ? "pause.circle.fill" : "play.circle.fill")
         .font(.title2)
-        .foregroundStyle(state.isPaused ? .orange : .green)
+        .foregroundStyle(state.isWaitingForScreen || state.isPaused ? .orange : .green)
         .contentTransition(.symbolEffect(.replace))
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 0) {

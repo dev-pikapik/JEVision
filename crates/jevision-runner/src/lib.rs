@@ -42,7 +42,7 @@ pub use jevision_vision::{
     Provider, Question, Search, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
     video_mask,
 };
-pub use packages::{Staged, discard_staged, stage_source, zip_package};
+pub use packages::{StagedSet, discard_staged, stage_source_set, zip_package};
 pub use report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
     UsedPackage, Verdict, VisionAnswer, branch_text, branch_text_in, html, html_in, junit_xml,

@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "id": "org.jevision.add-date",
+  "name": "Add today's date",
+  "description": "Types today's date as a line at the end of the document in front, in TextEdit, with the block Add a line.",
+  "icon": "calendar.badge.plus",
+  "version": "1.0.0",
+  "author": "JEVision",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "id": "org.jevision.add-line",
+      "version": "^1.0.0",
+      "source": "https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit/blocks"
+    }
+  ]
+}

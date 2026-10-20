@@ -35,6 +35,12 @@ final class ProjectStore {
   var isCreatingTest = false
   /// The block the Install Block sheet is reading or installing; set to show the sheet.
   var installingBlock: BlockInstallModel?
+  /// The installed block being copied among the project's own blocks; set to show the sheet.
+  var owningBlock: OwnBlockModel?
+  /// The blocks jevision.blocks.json names that aren't installed on this Mac.
+  private(set) var unrestored: [UnrestoredBlock] = []
+  /// The person said Not Now to installing them; the offer comes back when the project opens again.
+  var restoreDeclined = false
   /// The Custom Blocks sheet is shown.
   var showsCustomBlocks = false
   /// The command palette (⌘K) is shown.
@@ -132,13 +138,22 @@ final class ProjectStore {
     installingBlock?.need = need
   }
 
-  /// A sheet model that installs blocks into this project: it reads `source` at once, or the
-  /// update of the installed block `id`, when one is given.
-  func makeBlockInstaller(source: String? = nil, updating id: String? = nil) -> BlockInstallModel? {
+  /// Shows the Install Block sheet with the blocks jevision.blocks.json names and this Mac hasn't got.
+  func restoreBlocks() {
+    installingBlock = makeBlockInstaller(restoring: true)
+  }
+
+  /// A sheet model that installs blocks into this project: it reads `source` at once, the update of
+  /// the installed block `id`, or the blocks to restore, when one is given.
+  func makeBlockInstaller(
+    source: String? = nil, updating id: String? = nil, restoring: Bool = false
+  ) -> BlockInstallModel? {
     guard let rootURL else { return nil }
     let model = BlockInstallModel(project: rootURL)
     model.onInstalled = { [weak self] _ in self?.blocksChanged() }
-    if let id {
+    if restoring {
+      Task { await model.restore() }
+    } else if let id {
       Task { await model.readUpdate(of: id) }
     } else if let source {
       Task { await model.read(source) }
@@ -153,10 +168,27 @@ final class ProjectStore {
     return model
   }
 
+  /// A sheet model that copies the installed block `id` among the project's own blocks and opens the copy.
+  func makeOwnBlockModel(of id: String) -> OwnBlockModel? {
+    guard let rootURL else { return nil }
+    let name = library.entries.first { $0.package?.id == id }?.name ?? id
+    let model = OwnBlockModel(project: rootURL, id: id, name: name)
+    model.onMade = { [weak self] file in
+      self?.blocksChanged()
+      self?.selection = file
+    }
+    return model
+  }
+
   /// The blocks of the project changed: the library shows them, and the open test is checked again.
   private func blocksChanged() {
     library.reload()
+    reloadUnrestored()
     document?.revalidate()
+  }
+
+  private func reloadUnrestored() {
+    unrestored = rootURL.flatMap { try? unrestoredBlocks(project: $0.path) } ?? []
   }
 
   func reveal(_ item: ProjectItem) {
@@ -173,6 +205,7 @@ final class ProjectStore {
   private func openSelection() {
     guard let rootURL, let selection,
       ProjectScanner.isTestFile(selection) || selection.lowercased().hasSuffix(ProjectLibrary.blockSuffix)
+        || blockPackageId(path: selection) != nil
     else {
       document = nil
       return
@@ -516,6 +549,7 @@ final class ProjectStore {
     runSource = nil
     sidebar = .tests
     status = .loading
+    restoreDeclined = false
     watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
     git.open(url)
     environments.open(url)
@@ -532,6 +566,7 @@ final class ProjectStore {
     boards.reload()
     schedules.reload()
     library.reload()
+    reloadUnrestored()
     reloadSettings()
     document?.revalidate()
     scanTask?.cancel()

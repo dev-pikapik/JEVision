@@ -54,7 +54,7 @@ struct FlowCanvas: View {
     }
     .coordinateSpace(.named(Self.space))
     .dropDestination(for: BlockDrag.self) { drags, location in
-      guard let type = drags.first?.type else { return false }
+      guard !document.isReadOnly, let type = drags.first?.type else { return false }
       drop(type, at: onCanvas(location))
       return true
     }
@@ -108,8 +108,10 @@ struct FlowCanvas: View {
       noteLinks(canvas?.notes ?? [], layout)
       blocks(layout)
       notes(canvas?.notes ?? [])
-      ports(layout)
-      handles(canvas)
+      if !document.isReadOnly {
+        ports(layout)
+        handles(canvas)
+      }
       dragFeedback
     }
     .frame(width: layout.width, height: layout.height, alignment: .topLeading)
@@ -131,10 +133,12 @@ struct FlowCanvas: View {
       )
       .modifier(CanvasItemGestures(
         item: item, isEditing: editing == item, move: moveGesture(item), pick: { pick(item) },
-        edit: { editing = item }))
+        edit: { edit(item) }))
       .contextMenu {
-        Button("Rename", systemImage: "pencil") { editing = item }
-        Divider()
+        if !document.isReadOnly {
+          Button("Rename", systemImage: "pencil") { editing = item }
+          Divider()
+        }
         ItemMenu(actions: actions(for: item))
       }
       .accessibilityElement(children: .ignore)
@@ -142,8 +146,12 @@ struct FlowCanvas: View {
       .accessibilityValue(Text(verbatim: section.title))
       .accessibilityAddTraits(document.picked.contains(item) ? [.isButton, .isSelected] : .isButton)
       .accessibilityAction(.default) { pick(item) }
-      .accessibilityAction(named: Text("Rename")) { editing = item }
-      .accessibilityAction(named: Text("Delete")) { actions(for: item).delete() }
+      .accessibilityActions {
+        if !document.isReadOnly {
+          Button("Rename") { editing = item }
+          Button("Delete") { actions(for: item).delete() }
+        }
+      }
       .offset(x: section.rect.x, y: section.rect.y)
     }
   }
@@ -162,7 +170,7 @@ struct FlowCanvas: View {
             ? Text("Taken in the last run") : decided.contains(edge.from) ? Text("Not taken in the last run") : nil,
           isPicked: document.pickedLinks.contains(slot),
           pick: { pickLink(slot) },
-          delete: { document.unlink([slot]) })
+          delete: document.isReadOnly ? nil : { document.unlink([slot]) })
       }
       ForEach(layout.frames, id: \.block) { frame in
         RoundedRectangle(cornerRadius: 16)
@@ -259,15 +267,17 @@ struct FlowCanvas: View {
       .frame(width: note.rect.width, height: note.rect.height)
       .modifier(CanvasItemGestures(
         item: item, isEditing: editing == item, move: moveGesture(item), pick: { pick(item) },
-        edit: { editing = item }))
+        edit: { edit(item) }))
       .contextMenu {
-        Button("Edit Text", systemImage: "pencil") { editing = item }
-        if note.resolved == nil {
-          Button("Resolve", systemImage: "checkmark.circle") { document.resolve(note.id, by: document.signature) }
-        } else {
-          Button("Reopen", systemImage: "arrow.uturn.backward.circle") { document.reopen(note.id) }
+        if !document.isReadOnly {
+          Button("Edit Text", systemImage: "pencil") { editing = item }
+          if note.resolved == nil {
+            Button("Resolve", systemImage: "checkmark.circle") { document.resolve(note.id, by: document.signature) }
+          } else {
+            Button("Reopen", systemImage: "arrow.uturn.backward.circle") { document.reopen(note.id) }
+          }
+          Divider()
         }
-        Divider()
         ItemMenu(actions: actions(for: item))
       }
       .accessibilityElement(children: .ignore)
@@ -275,8 +285,12 @@ struct FlowCanvas: View {
       .accessibilityValue(Text(verbatim: noteDescription(note)))
       .accessibilityAddTraits(document.picked.contains(item) ? [.isButton, .isSelected] : .isButton)
       .accessibilityAction(.default) { pick(item) }
-      .accessibilityAction(named: Text("Edit Text")) { editing = item }
-      .accessibilityAction(named: Text("Delete")) { actions(for: item).delete() }
+      .accessibilityActions {
+        if !document.isReadOnly {
+          Button("Edit Text") { editing = item }
+          Button("Delete") { actions(for: item).delete() }
+        }
+      }
       .offset(x: note.rect.x, y: note.rect.y)
     }
   }
@@ -372,6 +386,11 @@ struct FlowCanvas: View {
     document.pickLinks(adding ? document.pickedLinks.symmetricDifference([slot]) : [slot])
   }
 
+  /// Starts editing the title of a frame or the text of a note, unless the test can't be changed.
+  private func edit(_ item: CanvasItem) {
+    if !document.isReadOnly { editing = item }
+  }
+
   private func endEditing(_ item: CanvasItem) {
     guard editing == item else { return }
     editing = nil
@@ -400,7 +419,7 @@ struct FlowCanvas: View {
     DragGesture(minimumDistance: 3, coordinateSpace: .named(Self.space))
       .onChanged { value in
         if !document.picked.contains(item) { onPick([item], item.blockID) }
-        guard let flow = document.flow,
+        guard !document.isReadOnly, let flow = document.flow,
           let moved = moveOnCanvas(
             flow: flow, items: dragged(item), dx: value.translation.width, dy: value.translation.height,
             snap: snapping)
@@ -501,6 +520,7 @@ struct FlowCanvas: View {
       if !document.picked.contains(item) { onPick([item], item.blockID) }
     }
     return ItemActions(
+      canEdit: !document.isReadOnly,
       copy: {
         only()
         CanvasClipboard.copy(document)
@@ -713,7 +733,8 @@ private struct EdgeHit: View {
   let value: Text?
   let isPicked: Bool
   let pick: () -> Void
-  let delete: () -> Void
+  /// `nil` when the test can't be changed.
+  let delete: (() -> Void)?
 
   var body: some View {
     let reach = 6.0
@@ -725,14 +746,16 @@ private struct EdgeHit: View {
       .contentShape(line.strokedPath(StrokeStyle(lineWidth: 2 * reach, lineCap: .round, lineJoin: .round)))
       .onTapGesture(perform: pick)
       .contextMenu {
-        Button("Delete Link", systemImage: "trash", role: .destructive, action: delete)
+        if let delete { Button("Delete Link", systemImage: "trash", role: .destructive, action: delete) }
       }
       .accessibilityElement()
       .accessibilityLabel(label)
       .accessibilityValue(value ?? Text(verbatim: ""))
       .accessibilityAddTraits(isPicked ? [.isButton, .isSelected] : .isButton)
       .accessibilityAction(.default, pick)
-      .accessibilityAction(named: Text("Delete Link"), delete)
+      .accessibilityActions {
+        if let delete { Button("Delete Link", action: delete) }
+      }
       .offset(x: bounds.minX, y: bounds.minY)
   }
 }
@@ -773,6 +796,8 @@ private struct CanvasItemGestures<Move: Gesture>: ViewModifier {
 }
 
 private struct ItemActions {
+  /// Whether the test can be changed: without it only copying and saving to the library are offered.
+  let canEdit: Bool
   let copy: () -> Void
   let duplicate: () -> Void
   let delete: () -> Void
@@ -789,18 +814,22 @@ private struct ItemMenu: View {
 
   var body: some View {
     Button("Copy", systemImage: "doc.on.doc", action: actions.copy)
-    if let paste = actions.paste {
-      Button("Paste After", systemImage: "doc.on.clipboard", action: paste)
-    }
-    Button("Duplicate", systemImage: "plus.square.on.square", action: actions.duplicate)
-    if let addNote = actions.addNote {
-      Button("Add Note to Block", systemImage: "note.text.badge.plus", action: addNote)
+    if actions.canEdit {
+      if let paste = actions.paste {
+        Button("Paste After", systemImage: "doc.on.clipboard", action: paste)
+      }
+      Button("Duplicate", systemImage: "plus.square.on.square", action: actions.duplicate)
+      if let addNote = actions.addNote {
+        Button("Add Note to Block", systemImage: "note.text.badge.plus", action: addNote)
+      }
     }
     Divider()
     Button("Save as Template…", systemImage: ProjectLibrary.templateSymbol) { actions.saveToLibrary(.template) }
     Button("Make Block…", systemImage: ProjectLibrary.defaultBlockSymbol) { actions.saveToLibrary(.block) }
-    Divider()
-    Button("Delete", systemImage: "trash", role: .destructive, action: actions.delete)
+    if actions.canEdit {
+      Divider()
+      Button("Delete", systemImage: "trash", role: .destructive, action: actions.delete)
+    }
   }
 }
 
@@ -910,12 +939,14 @@ private struct BlockNode: View {
         .disabled(runFromHere == nil)
       Toggle("Pause Here", systemImage: "pause", isOn: Binding(get: { hasBreakpoint }, set: { _ in toggleBreakpoint() }))
       Divider()
-      Button(action: addCondition) {
-        Label { addConditionTitle } icon: { Image(systemName: "arrow.triangle.branch") }
+      if actions.canEdit {
+        Button(action: addCondition) {
+          Label { addConditionTitle } icon: { Image(systemName: "arrow.triangle.branch") }
+        }
+        Button("Disconnect", systemImage: "scissors", action: { disconnect?() })
+          .disabled(disconnect == nil)
+        Divider()
       }
-      Button("Disconnect", systemImage: "scissors", action: { disconnect?() })
-        .disabled(disconnect == nil)
-      Divider()
       ItemMenu(actions: actions)
     }
     .accessibilityElement(children: .ignore)
@@ -925,15 +956,19 @@ private struct BlockNode: View {
         + issues.map(IssueText.line)).joined(separator: ". ")))
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction(.default, select)
-    .accessibilityAction(named: Text("Link to Another Block"), startLink)
+    .accessibilityActions {
+      if actions.canEdit { Button("Link to Another Block", action: startLink) }
+    }
     .accessibilityAction(named: Text("Run from Here")) { runFromHere?() }
     .accessibilityAction(named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint)
-    .accessibilityAction(named: addConditionTitle, addCondition)
     .accessibilityActions {
-      if let disconnect { Button("Disconnect", action: disconnect) }
+      if actions.canEdit {
+        Button(action: addCondition) { addConditionTitle }
+        if let disconnect { Button("Disconnect", action: disconnect) }
+        Button("Duplicate", action: actions.duplicate)
+        Button("Delete", action: actions.delete)
+      }
     }
-    .accessibilityAction(named: Text("Duplicate"), actions.duplicate)
-    .accessibilityAction(named: Text("Delete"), actions.delete)
   }
 
   private var addConditionTitle: Text { type == "if" ? Text("Add Condition") : Text("Add If After") }
