@@ -807,6 +807,7 @@ private struct BlockNode: View {
         Text(title)
           .font(.headline)
           .lineLimit(1)
+          .minimumScaleFactor(0.8)
         Text(summary)
           .font(.subheadline)
           .foregroundStyle(.secondary)
@@ -880,15 +881,21 @@ private struct BlockNode: View {
 
   private var addConditionTitle: Text { type == "if" ? Text("Add Condition") : Text("Add If After") }
 
+  /// How the block ended in the run shown, or that it runs now: a shape as well as a color.
   @ViewBuilder
   private var badge: some View {
-    if !isCurrent, let mark {
-      let look: (symbol: String, color: Color) =
+    let look: (symbol: String, color: Color)? =
+      if isCurrent {
+        ("play.circle.fill", .orange)
+      } else {
         switch mark {
         case .passed: ("checkmark.circle.fill", .green)
         case .failed: ("xmark.square.fill", .red)
         case .skipped: ("minus.circle.fill", .gray)
+        case nil: nil
         }
+      }
+    if let look {
       Image(systemName: look.symbol)
         .font(.system(size: 16))
         .symbolRenderingMode(.palette)

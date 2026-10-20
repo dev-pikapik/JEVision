@@ -2,6 +2,8 @@ import JEVisionCore
 import SwiftUI
 
 struct ProjectView: View {
+  /// Starts the New Test sheet to record into the test it creates; for the empty project.
+  let recordFirstTest: () -> Void
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
@@ -29,16 +31,14 @@ struct ProjectView: View {
       }
       // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
       .safeAreaBar(edge: .top, spacing: 0) {
-        if !project.runs.isEmpty || project.sidebar == .runs {
-          Picker("Show", selection: $project.sidebar) {
-            Text("Tests").tag(ProjectStore.Sidebar.tests)
-            Text("Runs").tag(ProjectStore.Sidebar.runs)
-          }
-          .pickerStyle(.segmented)
-          .labelsHidden()
-          .padding(.horizontal, 10)
-          .padding(.bottom, 6)
+        Picker("Show", selection: $project.sidebar) {
+          Text("Tests").tag(ProjectStore.Sidebar.tests)
+          Text("Runs").tag(ProjectStore.Sidebar.runs)
         }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
       }
       .safeAreaBar(edge: .bottom, spacing: 0) {
         VStack(spacing: 0) {
@@ -102,11 +102,22 @@ struct ProjectView: View {
       if let dir = project.selectedRun {
         RunReportView(dir: dir)
           .id(dir)
+      } else if project.runs.isEmpty {
+        ContentUnavailableView(
+          "Nothing to show yet", systemImage: "clock.arrow.circlepath",
+          description: Text("Run a test, and its report shows every step, with screenshots."))
       } else {
         ContentUnavailableView(
           "Select a run", systemImage: "clock.arrow.circlepath",
           description: Text("Its report shows every step, with screenshots."))
       }
+    } else if project.items.isEmpty {
+      EmptyStateView(
+        symbol: "record.circle",
+        title: Text("No tests yet"),
+        message: Text("Record what you do in an app — JEVision turns every step into a block. Or start with an empty test and add the steps yourself."),
+        action: Text("Record First Test…"), perform: recordFirstTest,
+        secondAction: Text("New Test…"), performSecond: { project.isCreatingTest = true })
     } else if project.showsBoard {
       BoardView()
     } else if let document = project.document {
@@ -135,20 +146,22 @@ struct ProjectView: View {
         if isSearching {
           ForEach(found) { row($0, showsPath: true) }
         } else {
-          Section {
-            ForEach(project.boards.names, id: \.self) { boardRow($0) }
-          } header: {
-            HStack {
-              Text("Boards")
-              Spacer()
-              Button("New Board", systemImage: "plus") { newBoard() }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .help(Text("Make a new board"))
+          if !project.items.isEmpty {
+            Section {
+              ForEach(project.boards.names, id: \.self) { boardRow($0) }
+            } header: {
+              HStack {
+                Text("Boards")
+                Spacer()
+                Button("New Board", systemImage: "plus") { newBoard() }
+                  .labelStyle(.iconOnly)
+                  .buttonStyle(.borderless)
+                  .help(Text("Make a new board"))
+              }
             }
-          }
-          Section("Tests") {
-            ForEach(project.items) { tree($0) }
+            Section("Tests") {
+              ForEach(project.items) { tree($0) }
+            }
           }
         }
       }
@@ -346,7 +359,7 @@ private struct RunOnHover: ViewModifier {
         Spacer(minLength: 0)
         Button(action: run) {
           Image(systemName: "play.fill")
-            .font(.system(size: 9))
+            .font(.caption2)
             .frame(width: 18, height: 18)
             .contentShape(.rect)
         }
@@ -407,19 +420,21 @@ private struct SidebarRow: View {
           }
           if let quarantine {
             QuarantineMark(entry: quarantine)
-              .font(.system(size: 9))
+              .font(.caption2)
               .accessibilityHidden(true)
           }
           if let flakyHelp, status != .flaky {
             Image(systemName: RunStatus.flaky.dot)
-              .font(.system(size: 7))
+              .font(.caption2)
+              .imageScale(.small)
               .foregroundStyle(RunStatus.flaky.color)
               .help(Text(flakyHelp))
               .accessibilityHidden(true)
           }
           if let status {
             Image(systemName: status.dot)
-              .font(.system(size: 7))
+              .font(.caption2)
+              .imageScale(.small)
               .foregroundStyle(status.color)
               .help(Text("Last run: \(status.title)"))
               .accessibilityHidden(true)

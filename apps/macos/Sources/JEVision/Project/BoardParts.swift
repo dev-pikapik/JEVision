@@ -102,7 +102,7 @@ struct BoardOverview: View {
           }
           if scale >= 0.2 {
             context.draw(
-              Text(verbatim: glance.title).font(.system(size: 11)),
+              Text(verbatim: glance.title).font(.subheadline),
               in: rect.insetBy(dx: max(4, 8 * scale), dy: max(2, 6 * scale)))
           }
         }

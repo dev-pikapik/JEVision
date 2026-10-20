@@ -3,7 +3,7 @@ import JEVisionCore
 import SwiftUI
 
 /// How a saved run ended, as the sidebar and the report show it: by shape and colour.
-enum RunStatus: Equatable {
+enum RunStatus: Equatable, CaseIterable {
   /// `quarantined`: failed while the test was in quarantine, so it didn't fail Run All.
   /// `unchecked`: finished without any block looking at the screen, so it proves nothing.
   /// `blocked`: didn't run because a test it depends on didn't pass.
@@ -68,6 +68,17 @@ enum RunStatus: Equatable {
     case .unchecked: String(localized: "Nothing Checked")
     case .blocked: String(localized: "Blocked")
     case .unknown: String(localized: "Unknown Status")
+    }
+  }
+}
+
+extension HealthMark {
+  /// The status the mark stands for, to draw it with the shape and color of that status.
+  var status: RunStatus {
+    switch self {
+    case .passed: .passed
+    case .flaky: .flaky
+    case .failed: .failed
     }
   }
 }

@@ -181,7 +181,7 @@ enum BlockSummary {
       }
       short = head.trimmingCharacters(in: .whitespaces) + "…"
     }
-    let language = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+    let language = AppLanguage.shared.locale
     return (language.quotationBeginDelimiter ?? "“") + short + (language.quotationEndDelimiter ?? "”")
   }
 

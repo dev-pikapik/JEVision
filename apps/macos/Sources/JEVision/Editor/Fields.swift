@@ -231,7 +231,7 @@ struct PlaceholderTextField: View {
       }
       .fixedSize()
     } label: {
-      Text("Insert a value that isn’t in the file")
+      Text("A secret or a value kept outside the test")
         .foregroundStyle(.secondary)
     }
     .alert("New Secret", isPresented: $isNamingSecret) {

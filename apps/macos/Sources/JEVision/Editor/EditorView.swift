@@ -24,6 +24,7 @@ struct EditorView: View {
   @State private var viewport = CGSize.zero
   /// The pointer over the canvas, in the visible part of it; zooming keeps the spot under it in place.
   @State private var pointer: CGPoint?
+  @Environment(\.layoutDirection) private var layoutDirection
   @FocusState private var canvasFocused: Bool
   private let apps = AppCatalog.shared
 
@@ -59,6 +60,7 @@ struct EditorView: View {
         file: RelativePath.from($0, to: document.url), flow: flow, runs: project.runs, pinned: document.reportRun)
     }
     return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
+      .unmirrored()
       .overlay(alignment: .topLeading) {
         if let target = palette {
           GeometryReader { box in
@@ -80,8 +82,10 @@ struct EditorView: View {
               palette = nil
               canvasFocused = true
             }
+            .environment(\.layoutDirection, layoutDirection)
             .offset(paletteOffset(target, in: box.size))
           }
+          .unmirrored()
           .transition(reduceMotion ? .opacity : .scale(scale: 0.96).combined(with: .opacity))
         }
       }
@@ -94,8 +98,11 @@ struct EditorView: View {
       .overlay(alignment: .bottom) {
         VStack(spacing: 0) {
           if !document.layout.blocks.isEmpty {
-            ZoomBar(zoom: canvasZoom)
-              .padding(.bottom, 12)
+            HStack(spacing: 8) {
+              ZoomBar(zoom: canvasZoom)
+              if document.layout.blocks.count <= 2 { AddBlockHint(open: openPalette) }
+            }
+            .padding(.bottom, 12)
           }
           if let result = runs.result, result.test == document.url {
             RunResultBar(
@@ -144,6 +151,8 @@ struct EditorView: View {
           }
         }
         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
+        // Esc hands the keyboard back to the canvas, where ⌫ deletes the selected block.
+        .onExitCommand { canvasFocused = true }
       }
       .toolbar {
         ToolbarItem(placement: .navigation) {
@@ -186,9 +195,11 @@ struct EditorView: View {
             run()
           }
           .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
+          .labelStyle(.titleAndIcon)
           .help(Text("Run the test (⌘R)"))
           Button("Record", systemImage: "record.circle") { records.record(document) }
             .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
+            .labelStyle(.titleAndIcon)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
         ToolbarItemGroup(placement: .primaryAction) {
@@ -204,6 +215,7 @@ struct EditorView: View {
           } primaryAction: {
             openPalette()
           }
+          .labelStyle(.titleAndIcon)
           .help(Text("Add a block after the selected one (Space or ⌘B)"))
           let growsIf = document.selection.flatMap(document.block)?.kind.typeName == "if"
           Button {
@@ -609,6 +621,31 @@ struct CanvasZoom {
   let fit: () -> Void
   /// How far it zooms out and in.
   var range = Zoom.range
+}
+
+/// Tells a new test's author how to add the next block: a click, or Space on the canvas.
+private struct AddBlockHint: View {
+  let open: () -> Void
+
+  var body: some View {
+    Button(action: open) {
+      HStack(spacing: 6) {
+        Label("Add Block", systemImage: "plus")
+        Text(verbatim: "·").foregroundStyle(.secondary).accessibilityHidden(true)
+        Text("Space")
+          .font(.caption.monospaced())
+          .padding(.horizontal, 5)
+          .background(.quaternary, in: .rect(cornerRadius: 4))
+          .accessibilityHidden(true)
+      }
+    }
+    .buttonStyle(.borderless)
+    .controlSize(.small)
+    .padding(.horizontal, 10)
+    .padding(.vertical, 4)
+    .adaptiveGlass(in: .capsule)
+    .help(Text("Add a block after the selected one (Space or ⌘B)"))
+  }
 }
 
 /// Zoom out, the zoom (a click goes to actual size), zoom in and fit, at the bottom of the canvas.

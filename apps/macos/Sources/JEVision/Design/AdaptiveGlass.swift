@@ -26,11 +26,15 @@ private struct AdaptiveGlass<S: InsettableShape>: ViewModifier {
       }
     }
     .overlay {
-      if contrast == .increased {
-        shape.strokeBorder(.primary.opacity(0.6), lineWidth: 1)
-      } else if reduceTransparency {
-        shape.strokeBorder(.separator, lineWidth: 1)
+      // The border is only drawn: clicks go to the buttons under it.
+      Group {
+        if contrast == .increased {
+          shape.strokeBorder(.primary.opacity(0.6), lineWidth: 1)
+        } else if reduceTransparency {
+          shape.strokeBorder(.separator, lineWidth: 1)
+        }
       }
+      .allowsHitTesting(false)
     }
   }
 }

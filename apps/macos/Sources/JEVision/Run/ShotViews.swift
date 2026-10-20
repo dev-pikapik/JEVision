@@ -118,6 +118,7 @@ struct ShotImage: View {
                     .offset(x: r.x * g.size.width, y: r.y * g.size.height)
                 }
               }
+              .unmirrored()
             }
         }
       }

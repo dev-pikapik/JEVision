@@ -288,10 +288,10 @@ struct InspectorView: View {
         Picker(selection: bind("direction", direction) {
           .scroll(direction: $0, amount: amount, unit: unit, at: at, waitForChange: waitForChange, next: next)
         }) {
-          Text(String(localized: "scroll.down", defaultValue: "Down")).tag(ScrollDirection.down)
-          Text(String(localized: "scroll.up", defaultValue: "Up")).tag(ScrollDirection.up)
-          Text(String(localized: "scroll.left", defaultValue: "Left")).tag(ScrollDirection.left)
-          Text(String(localized: "scroll.right", defaultValue: "Right")).tag(ScrollDirection.right)
+          Text(String(localized: "scroll.down", defaultValue: "Down", bundle: .app, locale: .app)).tag(ScrollDirection.down)
+          Text(String(localized: "scroll.up", defaultValue: "Up", bundle: .app, locale: .app)).tag(ScrollDirection.up)
+          Text(String(localized: "scroll.left", defaultValue: "Left", bundle: .app, locale: .app)).tag(ScrollDirection.left)
+          Text(String(localized: "scroll.right", defaultValue: "Right", bundle: .app, locale: .app)).tag(ScrollDirection.right)
         } label: {
           Text("Direction")
         }

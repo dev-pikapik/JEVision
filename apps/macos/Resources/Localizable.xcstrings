@@ -189,6 +189,16 @@
         }
       }
     },
+    "%@ is running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запущено: %@"
+          }
+        }
+      }
+    },
     "%@ is version %@ from another copy of JEVision" : {
       "localizations" : {
         "ru" : {
@@ -205,6 +215,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ не установлено на этом Mac."
+          }
+        }
+      }
+    },
+    "%@ isn’t running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не запущено: %@"
           }
         }
       }
@@ -1779,6 +1799,16 @@
         }
       }
     },
+    "A secret or a value kept outside the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секрет или значение, которое хранится вне теста"
+          }
+        }
+      }
+    },
     "A sticky note for whoever reads the test" : {
       "localizations" : {
         "ru" : {
@@ -2773,6 +2803,16 @@
         }
       }
     },
+    "All Documentation" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вся документация"
+          }
+        }
+      }
+    },
     "All Rows" : {
       "localizations" : {
         "ru" : {
@@ -3035,6 +3075,16 @@
         }
       }
     },
+    "Another AI service" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другой ИИ-сервис"
+          }
+        }
+      }
+    },
     "Another schedule has this name." : {
       "localizations" : {
         "ru" : {
@@ -3061,6 +3111,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вместо основного ответил %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "Anthropic, OpenAI or Google, with your own key." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthropic, OpenAI или Google, с вашим ключом."
           }
         }
       }
@@ -6201,6 +6261,16 @@
         }
       }
     },
+    "Don’t Use AI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не использовать ИИ"
+          }
+        }
+      }
+    },
     "Double-click" : {
       "localizations" : {
         "ru" : {
@@ -6887,6 +6957,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Каждый пиксель должен совпасть точно. Выберите «Похоже» в инспекторе, чтобы пропускать мелкие отличия."
+          }
+        }
+      }
+    },
+    "Every run of a test is kept here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь хранится каждый прогон теста."
           }
         }
       }
@@ -7803,6 +7883,16 @@
         }
       }
     },
+    "Getting Started" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начало работы"
+          }
+        }
+      }
+    },
     "Git and GitHub" : {
       "localizations" : {
         "ru" : {
@@ -8451,16 +8541,6 @@
         }
       }
     },
-    "Insert a value that isn’t in the file" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Значение, которого нет в файле"
-          }
-        }
-      }
-    },
     "Install Command Line Tool…" : {
       "localizations" : {
         "ru" : {
@@ -8834,6 +8914,16 @@
         }
       }
     },
+    "Keys are kept in the Keychain on this Mac. They never get into tests, logs, reports or git." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключи хранятся в Связке ключей на этом Mac. В тесты, журналы, отчёты и git они не попадают."
+          }
+        }
+      }
+    },
     "Kind of Value" : {
       "localizations" : {
         "ru" : {
@@ -9152,6 +9242,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поиск приложений"
+          }
+        }
+      }
+    },
+    "Looking for models on this Mac…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищем модели на этом Mac…"
           }
         }
       }
@@ -9656,6 +9756,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название столбца %lld"
+          }
+        }
+      }
+    },
+    "Names that macOS draws itself, like File and Edit in the menu bar, change the next time JEVision opens." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Названия, которые рисует сама macOS, например «Файл» и «Правка» в строке меню, сменятся при следующем запуске JEVision."
           }
         }
       }
@@ -10548,6 +10658,16 @@
         }
       }
     },
+    "Nothing to show yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока нечего показывать"
+          }
+        }
+      }
+    },
     "Nothing yet" : {
       "localizations" : {
         "ru" : {
@@ -10634,6 +10754,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Старые слева. Нажмите на запуск, чтобы открыть его отчёт."
+          }
+        }
+      }
+    },
+    "Ollama or LM Studio. Screenshots never leave this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ollama или LM Studio. Скриншоты не покидают этот Mac."
           }
         }
       }
@@ -12094,6 +12224,16 @@
         }
       }
     },
+    "Program" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Программа"
+          }
+        }
+      }
+    },
     "Project Default (%u)" : {
       "localizations" : {
         "ru" : {
@@ -12382,22 +12522,22 @@
         }
       }
     },
+    "Questions and Answers" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вопросы и ответы"
+          }
+        }
+      }
+    },
     "Quick Look" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Быстрый просмотр"
-          }
-        }
-      }
-    },
-    "Quit JEVision and open it again to switch the language." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Закройте JEVision и откройте снова, чтобы сменить язык."
           }
         }
       }
@@ -12464,6 +12604,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Последние прогоны"
+          }
+        }
+      }
+    },
+    "Recommended" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рекомендуем"
           }
         }
       }
@@ -13160,46 +13310,6 @@
         }
       }
     },
-    "Restart" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перезапустить"
-          }
-        }
-      }
-    },
-    "Restart JEVision now?" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перезапустить JEVision сейчас?"
-          }
-        }
-      }
-    },
-    "Restart JEVision to switch the language" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перезапустите JEVision, чтобы сменить язык"
-          }
-        }
-      }
-    },
-    "Restart Now" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перезапустить"
-          }
-        }
-      }
-    },
     "Restore Defaults" : {
       "localizations" : {
         "ru" : {
@@ -13620,6 +13730,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запустить тесты в рамке"
+          }
+        }
+      }
+    },
+    "Run a test, and its report shows every step, with screenshots." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустите тест, и его отчёт покажет каждый шаг со скриншотами."
           }
         }
       }
@@ -14848,6 +14968,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправлено. Проверьте %@."
+          }
+        }
+      }
+    },
+    "Service" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервис"
           }
         }
       }
@@ -17068,16 +17198,6 @@
         }
       }
     },
-    "The new language appears after JEVision opens again." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Новый язык появится, когда JEVision откроется снова."
-          }
-        }
-      }
-    },
     "The next device can" : {
       "localizations" : {
         "ru" : {
@@ -18510,6 +18630,16 @@
         }
       }
     },
+    "Understands screenshots and finds what you describe in words, like “the blue Save button”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понимает скриншоты и находит то, что вы описали словами, например «синюю кнопку Сохранить»."
+          }
+        }
+      }
+    },
     "Undo" : {
       "localizations" : {
         "ru" : {
@@ -19506,6 +19636,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пишет заметку на доске."
+          }
+        }
+      }
+    },
+    "Writing Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как писать тесты"
           }
         }
       }

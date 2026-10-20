@@ -239,7 +239,8 @@ private struct ReportHeader: View {
     let headline = report.verdict == .passed ? verdict ?? RunText.outcome(report) : RunText.outcome(report)
     HStack(alignment: .top, spacing: 14) {
       Image(systemName: status.symbol)
-        .font(.system(size: 34))
+        .font(.largeTitle)
+        .imageScale(.large)
         .foregroundStyle(status.color)
         .accessibilityLabel(Text(status.title))
       VStack(alignment: .leading, spacing: 6) {
@@ -265,8 +266,12 @@ private struct ReportHeader: View {
           .textSelection(.enabled)
         }
         if report.addedAsDependency {
-          Label("Added to the run because other tests in it depend on this one", systemImage: "arrow.turn.down.right")
-            .foregroundStyle(.secondary)
+          Label {
+            Text("Added to the run because other tests in it depend on this one")
+          } icon: {
+            Image(systemName: "arrow.turn.down.right").flipsForRightToLeftLayoutDirection(true)
+          }
+          .foregroundStyle(.secondary)
         }
         HStack(spacing: 8) {
           if let failed {
@@ -321,7 +326,7 @@ extension RunReport {
   var machine: [String] {
     let computer = virtualMachine.map { $0 ? String(localized: "Virtual machine") : String(localized: "Physical Mac") }
     let display = displayScale.map { scale in
-      let times = scale.formatted()
+      let times = scale.formatted(.number)
       return scale >= 2 ? String(localized: "Retina display (\(times)×)") : String(localized: "Standard display (\(times)×)")
     }
     return [computer, display].compactMap(\.self)
@@ -466,7 +471,7 @@ private struct StepRow: View {
       Image(systemName: status.symbol)
         .foregroundStyle(status.color)
         .help(Text(status.title))
-      Image(systemName: "chevron.right")
+      Image(systemName: "chevron.forward")
         .font(.caption.weight(.semibold))
         .foregroundStyle(.tertiary)
         .rotationEffect(.degrees(isExpanded ? 90 : 0))
