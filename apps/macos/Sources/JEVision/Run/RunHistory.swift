@@ -7,7 +7,7 @@ enum RunStatus: Equatable {
   /// `quarantined`: failed while the test was in quarantine, so it didn't fail Run All.
   /// `unchecked`: finished without any block looking at the screen, so it proves nothing.
   /// `blocked`: didn't run because a test it depends on didn't pass.
-  case passed, failed, flaky, quarantined, cancelled, unchecked, blocked
+  case passed, failed, flaky, quarantined, cancelled, unchecked, blocked, unknown
 
   init(_ report: RunReport) {
     switch report.verdict {
@@ -16,6 +16,7 @@ enum RunStatus: Equatable {
     case .failed: self = report.quarantined ? .quarantined : .failed
     case .cancelled: self = .cancelled
     case .blocked: self = .blocked
+    case .unknown: self = .unknown
     }
   }
 
@@ -29,6 +30,7 @@ enum RunStatus: Equatable {
     case .cancelled: "circle.dotted"
     case .unchecked: "circle.dashed"
     case .blocked: "minus.circle.fill"
+    case .unknown: "questionmark.circle"
     }
   }
 
@@ -41,6 +43,7 @@ enum RunStatus: Equatable {
     case .cancelled: "stop.circle.fill"
     case .unchecked: "eye.slash.circle.fill"
     case .blocked: "minus.circle.fill"
+    case .unknown: "questionmark.circle.fill"
     }
   }
 
@@ -50,7 +53,7 @@ enum RunStatus: Equatable {
     case .failed: .red
     case .flaky: .orange
     case .quarantined: .indigo
-    case .cancelled, .unchecked: .secondary
+    case .cancelled, .unchecked, .unknown: .secondary
     case .blocked: .yellow
     }
   }
@@ -64,6 +67,7 @@ enum RunStatus: Equatable {
     case .cancelled: String(localized: "Stopped")
     case .unchecked: String(localized: "Nothing Checked")
     case .blocked: String(localized: "Blocked")
+    case .unknown: String(localized: "Unknown Status")
     }
   }
 }

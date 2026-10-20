@@ -104,6 +104,9 @@ struct LiveRunView: View {
     if progress.isFinished {
       if progress.verdict == .failed, let failure = progress.failure { return RunText.failure(failure) }
       if progress.verdict == .cancelled { return String(localized: "The run was stopped.") }
+      if progress.verdict == .unknown {
+        return String(localized: "The Mac reported a result this version of the app doesn’t know. Update the app to see it.")
+      }
       return nil
     }
     if let current = progress.current, let block = flow?.blocks.first(where: { $0.id == current }) {

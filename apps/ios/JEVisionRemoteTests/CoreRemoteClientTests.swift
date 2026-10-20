@@ -54,6 +54,34 @@ struct CoreMappingTests {
     let attemptEnd = JEVisionMobile.RunUpdate.event(event: .attemptFinished(attempt: 1, verdict: .failed, failure: nil))
     #expect(JEVisionRemote.RunUpdate(attemptEnd) == nil)
   }
+
+  /// A newer Mac may send a verdict or a step status this version doesn't know; the core reads
+  /// it as unknown and the screens show it as such instead of failing.
+  @Test func unknownResultsFromANewerMacShowAsUnknown() {
+    let step = JEVisionMobile.RunUpdate.event(
+      event: .blockFinished(
+        attempt: 1, seq: 1, test: "a.flow.json", block: "open", status: .unknown, durationMs: 5, failure: nil,
+        branch: nil, branches: nil, branchCondition: nil))
+    #expect(
+      JEVisionRemote.RunUpdate(step) == .event(.blockFinished(test: "a.flow.json", block: "open", status: .unknown, failure: nil)))
+    let end = JEVisionMobile.RunUpdate.event(event: .finished(verdict: .unknown, flaky: false))
+    #expect(JEVisionRemote.RunUpdate(end) == .event(.finished(verdict: .unknown, flaky: false)))
+    #expect(VerdictStyle(.unknown).title == String(localized: "Unknown status"))
+    #expect(VerdictStyle(StepStatus.unknown).title == String(localized: "Unknown status"))
+  }
+
+  /// A test that didn't run because a test it depends on failed reads as blocked and names it.
+  @Test func aBlockedRunNamesTheTestItDependsOn() throws {
+    let report = try RunReport(
+      JEVisionMobile.RunReport(
+        test: "Checkout", file: "checkout.flow.json", app: "com.example.shop", startedAt: "2026-10-17T11:00:00.000Z",
+        durationMs: 0, verdict: .blocked, flaky: false, baselinesCreated: [], attempts: [], requestedBy: nil,
+        blockedBy: "Sign in"))
+    #expect(report.verdict == .blocked)
+    #expect(report.blockedBy == "Sign in")
+    #expect(VerdictStyle(report.verdict).title == String(localized: "Blocked"))
+    #expect(RunText.outcome(report) == String(localized: "Blocked: \("Sign in") didn’t pass. The test didn’t run."))
+  }
 }
 
 /// Talks to a real Mac. Turn on pairing in JEVision on the Mac, copy the pairing link and run

@@ -49,7 +49,7 @@ pub fn block_results(flow: Flow, file: String, report: RunReport) -> Vec<BlockRe
         let outcome = match step.status {
             StepStatus::Passed | StepStatus::BaselineCreated => BlockOutcome::Passed,
             StepStatus::Failed => BlockOutcome::Failed,
-            StepStatus::Cancelled => BlockOutcome::Skipped,
+            StepStatus::Cancelled | StepStatus::Unknown => BlockOutcome::Skipped,
         };
         if outcome != BlockOutcome::Passed {
             stops.push((&step.block, step.branch.as_deref()));

@@ -184,6 +184,7 @@ extension Verdict {
     case .failed: self = .failed
     case .cancelled: self = .cancelled
     case .blocked: self = .blocked
+    case .unknown: self = .unknown
     }
   }
 }
@@ -195,6 +196,7 @@ extension StepStatus {
     case .failed: self = .failed
     case .baselineCreated: self = .baselineCreated
     case .cancelled: self = .cancelled
+    case .unknown: self = .unknown
     }
   }
 }
