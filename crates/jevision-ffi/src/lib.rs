@@ -17,6 +17,7 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod ai;
 mod batch;
 mod board;
 mod bug;
@@ -35,6 +36,7 @@ mod signin;
 mod stats;
 mod vision;
 
+pub use ai::*;
 pub use batch::*;
 pub use board::*;
 pub use bug::*;

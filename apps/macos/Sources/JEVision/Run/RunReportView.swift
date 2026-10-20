@@ -80,6 +80,13 @@ struct RunReportView: View {
           runAgain: { runAgain(report) },
           reportBug: { project.bugReportRun = run.dir },
           export: { export(run, as: $0) })
+        if report.verdict == .failed {
+          FailureAnalysisCard(
+            run: run, runAgain: { runAgain(report) },
+            openFailedBlock: { step in project.showBlock(step.block, in: step.test, from: run.id) }
+          )
+          .id(run.id)
+        }
         if let player {
           RunVideoView(player: player, steps: steps)
         }

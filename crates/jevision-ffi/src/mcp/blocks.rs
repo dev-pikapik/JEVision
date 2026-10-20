@@ -178,7 +178,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
 }
 
 /// The whole format guide.
-pub(super) fn guide() -> Value {
+pub(crate) fn guide() -> Value {
     let blocks: Vec<Value> = catalog()
         .into_iter()
         .map(|spec| {

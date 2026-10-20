@@ -3,7 +3,7 @@ import SwiftUI
 
 /// What the command palette does when an entry is chosen.
 enum PaletteAction: Hashable {
-  case newTest, openProject, settings
+  case newTest, describeTest, openProject, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
   case addBlock(String), addCondition, arrange, disconnect
   /// Adds a template or a custom block of the project.
@@ -164,6 +164,12 @@ enum CommandPalette {
     add(
       .newTest, String(localized: "New Test…"), String(localized: "Creates an empty test or one to record."),
       symbol: "plus.rectangle.on.rectangle", shortcut: Shortcuts.newTest, if: state.hasProject)
+    add(
+      .describeTest, String(localized: "Describe a Test…"),
+      state.hasTest
+        ? String(localized: "The AI rewrites the open test from what you describe in words.")
+        : String(localized: "The AI writes a new test from what you describe in words."),
+      symbol: "sparkles", keywords: String(localized: "ai write generate draft words text"), if: state.hasProject)
     add(
       .runAll, String(localized: "Run All Tests"), String(localized: "Runs every test of the project in turn."),
       symbol: "play.square.stack", shortcut: Shortcuts.runAll, if: state.hasProject && state.hasTests)

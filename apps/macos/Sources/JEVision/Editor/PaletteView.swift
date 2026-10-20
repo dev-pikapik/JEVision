@@ -9,6 +9,8 @@ enum PaletteChoice: Hashable {
   case frame
   /// A template or a custom block of the project.
   case library(LibraryEntry)
+  /// Not a block: the AI writes the whole test from a description.
+  case describe
 
   var title: String {
     switch self {
@@ -16,6 +18,7 @@ enum PaletteChoice: Hashable {
     case .note: String(localized: "Note")
     case .frame: String(localized: "Frame")
     case .library(let entry): entry.name
+    case .describe: String(localized: "Describe the Test")
     }
   }
 
@@ -29,6 +32,7 @@ enum PaletteChoice: Hashable {
       entry.kind == .template
         ? String(localized: "Template: adds its blocks to the test")
         : String(localized: "Custom block: runs its steps as one")
+    case .describe: String(localized: "The AI writes the blocks from what you describe in words")
     }
   }
 
@@ -38,6 +42,7 @@ enum PaletteChoice: Hashable {
     case .note: "note.text"
     case .frame: "rectangle.dashed"
     case .library(let entry): entry.symbol
+    case .describe: "sparkles"
     }
   }
 
@@ -47,6 +52,7 @@ enum PaletteChoice: Hashable {
     case .note: .yellow
     case .frame: .gray
     case .library(let entry): entry.kind == .template ? .teal : .indigo
+    case .describe: .purple
     }
   }
 
@@ -56,11 +62,12 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.catalog.first { $0.typeName == type }.map { BlockInfo.groupTitle($0.group) } ?? ""
     case .note, .frame: String(localized: "Canvas")
     case .library: String(localized: "Library")
+    case .describe: String(localized: "AI")
     }
   }
 
-  /// Every block type in palette order, then a note and a frame.
-  static let all: [PaletteChoice] = BlockInfo.catalog.map { .block($0.typeName) } + [.note, .frame]
+  /// Every block type in palette order, then a note, a frame and a test from a description.
+  static let all: [PaletteChoice] = BlockInfo.catalog.map { .block($0.typeName) } + [.note, .frame, .describe]
 
   /// `all`, then the project's templates and custom blocks.
   static func all(with library: [LibraryEntry]) -> [PaletteChoice] {
@@ -74,6 +81,7 @@ enum PaletteChoice: Hashable {
       switch choice {
       case .block(let type): keywords += [BlockInfo.explanation(type), type]
       case .library(let entry): keywords += [entry.detail, String(localized: "template block library")]
+      case .describe: keywords.append(String(localized: "ai write generate draft words text"))
       case .note, .frame: break
       }
       return SearchCandidate(title: choice.title, keywords: keywords.joined(separator: " "))
