@@ -71,6 +71,7 @@
     <li><a href="#accept">When the app changed on purpose</a></li>
     <li><a href="#meaning">Checks by meaning</a></li>
     <li><a href="#models">AI models</a></li>
+    <li><a href="#which-ai">Which AI answers</a></li>
     <li><a href="#targets">Pictures of buttons and fields</a></li>
   </ul>
 </nav>
@@ -148,7 +149,7 @@
 </ul>
 
 <h2 id="models">AI models</h2>
-<p>Checks by meaning use the model chosen in <strong>Settings → AI</strong>. Without one, JEVision compares pictures only and sends nothing anywhere. Finding an element by its <a href="writing-tests.html#target">description in words</a> always uses JEV, whichever model checks by meaning.</p>
+<p>Checks by meaning use the model chosen in <strong>Settings → AI</strong>, unless the project or the block names another (see <a href="#which-ai">Which AI answers</a>). Without any, JEVision compares pictures only and sends nothing anywhere. Finding an element by its <a href="writing-tests.html#target">description in words</a> always uses JEV, whichever model checks by meaning.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Provider</th><th scope="col">Runs</th><th scope="col">API key</th><th scope="col">Id for <code>--provider</code></th></tr></thead>
@@ -168,7 +169,21 @@
   <li><strong>API keys</strong> come from the environment variable in the table or from the Keychain, where Settings → AI saves them. They are never shown, logged or written to reports.</li>
   <li><strong>Only models on this Mac.</strong> With this setting on, screenshots never go to a cloud service: a check that would need one, or a block that finds an element by its description, stops with a message.</li>
   <li><strong>Test Connection</strong> in Settings asks the model about a small built-in picture, to check the address, key and model in one go.</li>
-  <li>On the command line, <code>--provider</code> and <code>--model</code> choose another model for one run. See <a href="cli.html#run">jevision run</a>.</li>
+  <li>On the command line, <code>--provider</code> and <code>--model</code> choose another model than the one in Settings for one run. The project's own choice, if it has one, still comes first. See <a href="cli.html#run">jevision run</a>.</li>
+</ul>
+
+<h3 id="which-ai">Which AI answers</h3>
+<p>There are two jobs: <strong>checks by meaning</strong>, and <strong>writing and failure analysis</strong> (the app drafting a test from a description, and explaining why a run failed). For each, the most specific choice wins:</p>
+<ol>
+  <li><strong>The block.</strong> A check by meaning can name a <code>provider</code> and a <code>model</code> of its own. A <code>model</code> without a <code>provider</code> is for the provider that is in force.</li>
+  <li><strong>The project.</strong> <strong>Settings → AI → AI for this project</strong> saves a provider and a model in <a href="file-formats.html#project"><code>jevision.project.json</code></a>, so everyone who runs the project's tests gets them. A project can choose a different AI for each job; leave it out to follow Settings. JEV can't write tests or explain failures, so it can't be chosen for that job.</li>
+  <li><strong>Settings → AI</strong> on each Mac.</li>
+</ol>
+<p>Only the names of the provider and the model are saved in the project. API keys stay in the environment or the Keychain of each Mac, and never reach a test, the project file, a report or git.</p>
+<ul>
+  <li><strong>Fallback Provider.</strong> When the main provider can't be reached, times out, answers with a server error, is rate limited or has reached its spending limit, JEVision asks the fallback provider you chose in Settings → AI instead, and the report names who answered and why. Problems with the setup, such as a wrong key or an unknown model, are not covered up. A fallback is never used when it is the provider that just failed, and never breaks <strong>Only models on this Mac</strong>.</li>
+  <li><strong>Spending.</strong> Every call is written to the spending journal, and counts toward the daily and monthly limits of its provider in Settings → AI: checks by meaning, drafting and failure analysis, and finding an element by its description, which asks JEV. A search that finds nothing costs tokens too and is counted. A provider at its limit stops the check or the search with a message.</li>
+  <li>Finding an element by its description always asks JEV: it is the only provider that returns where an element is.</li>
 </ul>
 
 <h2 id="targets">Pictures of buttons and fields</h2>
