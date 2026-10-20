@@ -98,6 +98,8 @@ public enum RecordedStep: Sendable {
   /// The whole window, as it looked when the next step began.
   case waitFor(Picture)
   case check(Picture, area: Rect)
+  /// A pause the person asked for by pressing the button: the test stops here for a fixed time.
+  case wait
 }
 
 /// Turns what a person does in the app under test into the steps of a test: clicks with a picture
@@ -108,6 +110,8 @@ public struct Recording: Sendable {
   public static let minSimilarity = 0.95
   /// How long a recorded wait lasts at most.
   public static let waitTimeoutMs: UInt64 = 10_000
+  /// How long a wait the person adds by hand lasts, in milliseconds.
+  public static let manualWaitMs: UInt64 = 2_000
   /// Share of a window that must change for the next step to wait for the new look.
   static let changedShare = 0.2
   /// The most a scroll block turns, as the format allows.
@@ -338,6 +342,14 @@ public struct Recording: Sendable {
     return true
   }
 
+  /// A wait of `manualWaitMs` after the last step, for an app that needs a moment there.
+  public mutating func wait() {
+    steps.append(.wait)
+    typing = false
+    clickedField = false
+    escapeStep = nil
+  }
+
   /// Takes back the last step, and the wait that came with it.
   public mutating func undoLastStep() {
     guard let last = steps.last else { return }
@@ -351,7 +363,8 @@ public struct Recording: Sendable {
   }
 
   private mutating func dropLast() {
-    steps.removeLast()
+    let dropped = steps.removeLast()
+    if case .wait = dropped { return }
     if case .waitFor = steps.last { steps.removeLast() }
   }
 
@@ -577,6 +590,7 @@ extension Recording {
     case .pressKeys(let keys): .pressKeys(keys: keys, next: nil)
     case .waitFor(let picture): .waitFor(until: .appears(try reference(picture)), timeoutMs: waitTimeoutMs, next: nil)
     case .check(let picture, let area): .check(reference: try reference(picture, area: area), next: nil)
+    case .wait: .pause(durationMs: manualWaitMs, next: nil)
     }
   }
 }

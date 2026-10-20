@@ -1127,6 +1127,16 @@
         }
       }
     },
+    "%lld passed, %lld failed, %lld to go" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройдено: %1$lld, с ошибкой: %2$lld, впереди: %3$lld"
+          }
+        }
+      }
+    },
     "%lld px" : {
       "localizations" : {
         "ru" : {
@@ -1237,6 +1247,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld s left" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "осталось %lld с"
           }
         }
       }
@@ -1699,6 +1719,16 @@
         }
       }
     },
+    "A change counts at once, even for a test that is running." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменение действует сразу, даже для теста, который уже идёт."
+          }
+        }
+      }
+    },
     "A copy of a ready test for TextEdit, in a folder you choose" : {
       "localizations" : {
         "ru" : {
@@ -1875,6 +1905,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест берёт значение как ${env.NAME}. Значения хранятся в файле %@ в папке проекта и попадают в git вместе с тестами, поэтому паролям здесь не место: задайте их как секреты."
+          }
+        }
+      }
+    },
+    "A test uses the mouse and keyboard, so your own hands would spoil it. It waits until you press Resume." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест сам управляет мышью и клавиатурой, поэтому ваши движения ему мешают. Он ждёт, пока вы не нажмёте «Продолжить»."
           }
         }
       }
@@ -3235,12 +3275,12 @@
         }
       }
     },
-    "Appearance and language follow the system again." : {
+    "Appearance and language follow the system again. The options for running tests and for the canvas go back to how they came." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оформление и язык снова будут как в системе."
+            "value" : "Оформление и язык снова следуют системе. Параметры запуска тестов и холста возвращаются к исходным."
           }
         }
       }
@@ -4545,6 +4585,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверяем аккаунт GitHub"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверяем…"
           }
         }
       }
@@ -7895,6 +7945,16 @@
         }
       }
     },
+    "For some features" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для отдельных возможностей"
+          }
+        }
+      }
+    },
     "Forever" : {
       "localizations" : {
         "ru" : {
@@ -8481,12 +8541,12 @@
         }
       }
     },
-    "How JEVision looks and which language it speaks." : {
+    "How JEVision looks, which language it speaks and what it does while a test runs." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Как JEVision выглядит и на каком языке говорит."
+            "value" : "Как выглядит JEVision, на каком языке он говорит и что делает, пока идёт тест."
           }
         }
       }
@@ -9044,6 +9104,16 @@
         }
       }
     },
+    "JEVision hides and leaves a small panel, so the app you test is in view." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision прячется и оставляет небольшую панель, чтобы проверяемое приложение было на виду."
+          }
+        }
+      }
+    },
     "JEVision is controlling this Mac" : {
       "localizations" : {
         "ru" : {
@@ -9566,6 +9636,16 @@
         }
       }
     },
+    "Local Network" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Локальная сеть"
+          }
+        }
+      }
+    },
     "Log detail" : {
       "localizations" : {
         "ru" : {
@@ -9802,6 +9882,16 @@
         }
       }
     },
+    "Make the test wait here for a moment, for an app that needs time" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заставить тест здесь немного подождать, если приложению нужно время"
+          }
+        }
+      }
+    },
     "Make this screenshot the reference?" : {
       "localizations" : {
         "ru" : {
@@ -9860,6 +9950,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS забудет старый переключатель JEVision, затем откроется этот список в Системных настройках"
+          }
+        }
+      }
+    },
+    "Map of the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карта теста"
           }
         }
       }
@@ -10106,6 +10206,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наводит указатель на элемент и оставляет его там — чтобы показать подсказку или меню, которое открывается при наведении."
+          }
+        }
+      }
+    },
+    "Moving the mouse pauses the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение мышью ставит тест на паузу."
           }
         }
       }
@@ -10846,6 +10956,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не разрешено"
+          }
+        }
+      }
+    },
+    "Not asked yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не спрашивали"
           }
         }
       }
@@ -12244,6 +12364,16 @@
         }
       }
     },
+    "Passwords are saved as secrets" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароли сохраняются как секреты"
+          }
+        }
+      }
+    },
     "Paste" : {
       "localizations" : {
         "ru" : {
@@ -12280,6 +12410,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пауза здесь"
+          }
+        }
+      }
+    },
+    "Pause when you move the mouse" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза при движении мышью"
           }
         }
       }
@@ -12554,12 +12694,12 @@
         }
       }
     },
-    "Press Escape twice to stop from any app. Moving the mouse pauses the test." : {
+    "Press Escape twice to stop from any app." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Дважды нажмите Escape, чтобы остановить тест из любого приложения. Движение мыши ставит тест на паузу."
+            "value" : "Дважды нажмите Esc, чтобы остановить тест из любого приложения."
           }
         }
       }
@@ -12620,6 +12760,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нажимает одно сочетание клавиш."
+          }
+        }
+      }
+    },
+    "Pressing Escape twice, in any app, stops the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Двойное нажатие Esc в любом приложении останавливает тест."
           }
         }
       }
@@ -13184,6 +13334,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запишите, что вы делаете в приложении, — JEVision превратит каждый шаг в блок. Или начните с пустого теста и добавьте шаги сами."
+          }
+        }
+      }
+    },
+    "Recorded steps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записанные шаги"
           }
         }
       }
@@ -16288,6 +16448,16 @@
         }
       }
     },
+    "Snap to grid" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привязка к сетке"
+          }
+        }
+      }
+    },
     "Snap what you move to the grid; hold ⌘ while moving to do the opposite" : {
       "localizations" : {
         "en" : {
@@ -16642,6 +16812,16 @@
         }
       }
     },
+    "Step aside while a test runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уходить в сторону во время теста"
+          }
+        }
+      }
+    },
     "Steps" : {
       "localizations" : {
         "ru" : {
@@ -16688,6 +16868,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Остановить запись и добавить шаги в тест"
+          }
+        }
+      }
+    },
+    "Stop with Esc Esc" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановка двойным Esc"
           }
         }
       }
@@ -18508,6 +18698,16 @@
         }
       }
     },
+    "These are up to you: without them JEVision works, only the feature named next to each doesn’t." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Решать вам: без них JEVision работает, не действует только возможность, названная рядом с каждым пунктом."
+          }
+        }
+      }
+    },
     "These schedules don’t run on this Mac yet." : {
       "localizations" : {
         "ru" : {
@@ -18980,12 +19180,32 @@
         }
       }
     },
+    "To let the iPhone app find this Mac on the same Wi-Fi" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы приложение на iPhone находило этот Mac в той же сети Wi-Fi"
+          }
+        }
+      }
+    },
     "To take screenshots of the app you test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы делать скриншоты тестируемого приложения"
+          }
+        }
+      }
+    },
+    "To tell you when a scheduled test fails or is skipped" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы сообщать, когда тест по расписанию не прошёл или был пропущен"
           }
         }
       }
@@ -19086,16 +19306,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попытка %lld"
-          }
-        }
-      }
-    },
-    "Try %u of %u" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Попытка %1$u из %2$u"
           }
         }
       }
@@ -19708,16 +19918,6 @@
         }
       }
     },
-    "Variables" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переменные"
-          }
-        }
-      }
-    },
     "Version" : {
       "localizations" : {
         "ru" : {
@@ -19764,6 +19964,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Виртуальная машина"
+          }
+        }
+      }
+    },
+    "Wait %llu s" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать %llu с"
           }
         }
       }
@@ -19924,6 +20134,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждёт, пока что-то появится или исчезнет или пока экран не перестанет меняться."
+          }
+        }
+      }
+    },
+    "Waits up to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт до %@"
           }
         }
       }
@@ -20104,6 +20324,16 @@
         }
       }
     },
+    "What you move on a canvas lands on the grid. Hold ⌘ while moving to do the opposite." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё, что вы двигаете на холсте, встаёт по сетке. Удерживайте ⌘ при перемещении, чтобы сделать наоборот."
+          }
+        }
+      }
+    },
     "When 80 percent of a limit is used, run reports warn. At the limit, AI checks with that provider stop with a message, or go to the fallback provider. Leave empty for no limit." : {
       "localizations" : {
         "ru" : {
@@ -20210,6 +20440,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Какую версию «%@» оставить"
+          }
+        }
+      }
+    },
+    "While a test runs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока идёт тест"
           }
         }
       }
@@ -22258,6 +22498,16 @@
         }
       }
     },
+    "move the mouse to pause" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "двиньте мышь для паузы"
+          }
+        }
+      }
+    },
     "needs it to pass first" : {
       "localizations" : {
         "ru" : {
@@ -23036,6 +23286,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "результат ошибка снимок эталон"
+          }
+        }
+      }
+    },
+    "retry %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "повтор %1$lld из %2$lld"
           }
         }
       }
@@ -24502,12 +24762,12 @@
         }
       }
     },
-    "stop from anywhere · move the mouse to pause" : {
+    "stop from anywhere" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "стоп откуда угодно · двиньте мышь — пауза"
+            "value" : "остановка из любого места"
           }
         }
       }

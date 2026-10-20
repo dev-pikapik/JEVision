@@ -92,6 +92,14 @@ public final class Recorder: @unchecked Sendable {
     }
   }
 
+  /// Adds a wait of a fixed time after the last step.
+  public func addWait() {
+    queue.async { [self] in
+      recording.wait()
+      publish(nil)
+    }
+  }
+
   /// Adds a check that `area` (global points, top-left origin) looks as it does now.
   public func addCheck(area: CGRect) {
     queue.async { [self] in

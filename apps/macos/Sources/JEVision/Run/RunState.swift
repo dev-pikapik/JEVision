@@ -1,3 +1,4 @@
+import Foundation
 import JEVisionCore
 
 /// What a run is doing, built from its events: what the HUD shows and the canvas marks.
@@ -36,6 +37,12 @@ struct RunState: Equatable {
   /// Values the block about to run sees, by name, secrets masked.
   private(set) var variables: [String: String] = [:]
 
+  /// How long the block that runs now waits at most, in seconds; `nil` when it doesn't wait.
+  private(set) var waitLimit: TimeInterval?
+  /// When that wait runs out; moved on by the time the run spends paused.
+  private var waitEnds: Date?
+  private var pausedAt: Date?
+
   /// Steps started and not yet finished, innermost last: a loop or a run of another test.
   private var open: [OpenStep] = []
 
@@ -50,7 +57,14 @@ struct RunState: Equatable {
   /// Blocks of this test done so far in this attempt, counting each once.
   var done: Int { marks.count }
 
-  mutating func apply(_ event: RunEvent) {
+  /// Seconds left of the wait of the block that runs now, as of `now`; it stands still while the
+  /// run is paused. `nil` when the block doesn't wait.
+  func remaining(at now: Date) -> TimeInterval? {
+    waitEnds.map { max(0, $0.timeIntervalSince(pausedAt ?? now)) }
+  }
+
+  /// `now` is when the event came: the runner says how long a block waits, not when it ends.
+  mutating func apply(_ event: RunEvent, at now: Date = .now) {
     switch event {
     case .runStarted(let test, let file, _, let maxAttempts):
       self.file = file
@@ -69,9 +83,13 @@ struct RunState: Equatable {
       current = nil
       currentType = nil
       variables = [:]
+      endWait()
       phase = .running
-    case .stepStarted(_, _, let test, let block, let blockType, let variables):
+    case .stepStarted(_, _, let test, let block, let blockType, let variables, let timeoutMs):
       self.variables = variables
+      endWait()
+      waitLimit = timeoutMs.map { TimeInterval($0) / 1000 }
+      waitEnds = waitLimit.map { now.addingTimeInterval($0) }
       open.append(OpenStep(test: test, block: block, type: blockType))
       current = test == file ? block : nil
       currentType = blockType
@@ -93,6 +111,7 @@ struct RunState: Equatable {
       }
       current = open.last.flatMap { $0.test == file ? $0.block : nil }
       currentType = open.last?.type
+      endWait()
     case .paused(let block, let reason, let variables):
       self.variables = variables
       // A pause comes before its block starts, so the block belongs to the innermost open step's
@@ -102,7 +121,10 @@ struct RunState: Equatable {
         current = block
       }
       phase = .paused(reason)
+      pausedAt = pausedAt ?? now
     case .resumed:
+      if let pausedAt { waitEnds = waitEnds?.addingTimeInterval(now.timeIntervalSince(pausedAt)) }
+      pausedAt = nil
       phase = .running
     case .attemptFinished(_, _, let failure):
       self.failure = failure
@@ -110,6 +132,12 @@ struct RunState: Equatable {
       self.flaky = flaky
       phase = .finished(verdict)
     }
+  }
+
+  private mutating func endWait() {
+    waitLimit = nil
+    waitEnds = nil
+    pausedAt = nil
   }
 
   private var isInThisTest: Bool {

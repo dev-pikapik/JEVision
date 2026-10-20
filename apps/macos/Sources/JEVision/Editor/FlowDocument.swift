@@ -2,6 +2,12 @@ import Foundation
 import JEVisionCore
 import Observation
 
+/// Where the setting that makes what the person moves land on the grid is kept; the board and
+/// the test canvas read the same one.
+enum GridSnap {
+  static let key = "boardSnapsToGrid"
+}
+
 /// One open test: the flow, its problems and layout, the selected block. Every change is saved
 /// to the file right away and can be undone.
 @MainActor
@@ -257,14 +263,14 @@ final class FlowDocument {
       + picked.filter { $0.blockID == nil }.sorted { "\($0)" < "\($1)" }
   }
 
-  /// Moves `items` by `dx`, `dy`, snapping the first of them to the grid.
-  func move(_ items: [CanvasItem], dx: Double, dy: Double) {
-    guard let flow, let moved = moveOnCanvas(flow: flow, items: items, dx: dx, dy: dy) else { return }
+  /// Moves `items` by `dx`, `dy`, snapping the first of them to the grid when `snap` is on.
+  func move(_ items: [CanvasItem], dx: Double, dy: Double, snap: Bool = true) {
+    guard let flow, let moved = moveOnCanvas(flow: flow, items: items, dx: dx, dy: dy, snap: snap) else { return }
     apply(moved, select: selection, action: String(localized: "Move"))
   }
 
-  func resize(_ item: CanvasItem, to rect: Rect) {
-    guard let flow, let resized = resizeOnCanvas(flow: flow, item: item, rect: rect) else { return }
+  func resize(_ item: CanvasItem, to rect: Rect, snap: Bool = true) {
+    guard let flow, let resized = resizeOnCanvas(flow: flow, item: item, rect: rect, snap: snap) else { return }
     apply(resized, select: selection, action: String(localized: "Resize"))
   }
 

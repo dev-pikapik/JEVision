@@ -5,8 +5,10 @@ import Testing
 @testable import JEVision
 
 struct RunStateTests {
-  private func started(_ block: String, type: String = "click", in test: String = "a.flow.json") -> RunEvent {
-    .stepStarted(attempt: 1, seq: 0, test: test, block: block, blockType: type, variables: [:])
+  private func started(
+    _ block: String, type: String = "click", in test: String = "a.flow.json", timeoutMs: UInt64? = nil
+  ) -> RunEvent {
+    .stepStarted(attempt: 1, seq: 0, test: test, block: block, blockType: type, variables: [:], timeoutMs: timeoutMs)
   }
 
   private func finished(_ block: String, _ status: StepStatus, in test: String = "a.flow.json") -> RunEvent {
@@ -88,13 +90,91 @@ struct RunStateTests {
 
   @Test func keepsTheVariablesOfTheBlockAhead() {
     var state = run([
-      .stepStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "a", blockType: "type", variables: ["data.email": "a@x.io"])
+      .stepStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "a", blockType: "type", variables: ["data.email": "a@x.io"], timeoutMs: nil)
     ])
     #expect(state.variables == ["data.email": "a@x.io"])
     state.apply(.paused(block: "b", reason: .breakpoint, variables: ["data.email": "b@x.io", "secret.PASSWORD": "••••"]))
     #expect(state.variables == ["data.email": "b@x.io", "secret.PASSWORD": "••••"])
     state.apply(.attemptStarted(attempt: 2))
     #expect(state.variables.isEmpty)
+  }
+
+  @Test func countsDownTheWaitOfTheBlockThatRunsAndStopsWhilePaused() {
+    let start = Date(timeIntervalSince1970: 1_000)
+    var state = run([])
+    state.apply(started("w", type: "waitFor", timeoutMs: 6000), at: start)
+    #expect(state.waitLimit == 6)
+    #expect(state.remaining(at: start.addingTimeInterval(2)) == 4)
+    state.apply(.paused(block: "w", reason: .requested, variables: [:]), at: start.addingTimeInterval(2))
+    #expect(state.remaining(at: start.addingTimeInterval(50)) == 4)
+    // The run was paused for 50 seconds: the block gets its time back.
+    state.apply(.resumed, at: start.addingTimeInterval(52))
+    #expect(state.remaining(at: start.addingTimeInterval(53)) == 3)
+    #expect(state.remaining(at: start.addingTimeInterval(100)) == 0)
+    state.apply(finished("w", .passed), at: start.addingTimeInterval(54))
+    #expect(state.remaining(at: start) == nil)
+    #expect(state.waitLimit == nil)
+  }
+
+  @Test func aBlockThatDoesNotWaitHasNoCountdown() {
+    var state = run([started("c", timeoutMs: nil)])
+    #expect(state.remaining(at: .now) == nil)
+    state.apply(started("w", type: "pause", timeoutMs: 2000))
+    state.apply(.attemptStarted(attempt: 2))
+    #expect(state.remaining(at: .now) == nil)
+    #expect(state.waitLimit == nil)
+  }
+
+  @MainActor @Test func theHUDSaysHowLongIsLeftAndWhichRetryThisIs() {
+    let start = Date(timeIntervalSince1970: 1_000)
+    var state = run([])
+    state.apply(started("w", type: "waitFor", timeoutMs: 6000), at: start)
+    #expect(RunHUD.live(of: state, at: start.addingTimeInterval(0.2)) == "6 s left")
+    #expect(RunHUD.live(of: state, at: start.addingTimeInterval(2.5)) == "4 s left")
+    state.apply(.attemptStarted(attempt: 2))
+    #expect(RunHUD.live(of: state, at: start) == "Retry 1 of 1")
+    state.apply(started("w", type: "waitFor", timeoutMs: 6000), at: start)
+    #expect(RunHUD.live(of: state, at: start) == "6 s left · retry 1 of 1")
+    #expect(RunHUD.liveDescription(of: state).hasSuffix("retry 1 of 1"))
+  }
+
+  @MainActor @Test func aSecretIsOnlySaidToBeSet() {
+    #expect(RunHUD.shown("secret.PASSWORD", "••••") == "Set")
+    #expect(RunHUD.shown("secret.PASSWORD", "hunter2") == "Set")
+    #expect(RunHUD.shown("data.email", "a@x.io") == "a@x.io")
+    #expect(RunHUD.shown("var.name", "") == "\u{201C}\u{201D}")
+  }
+
+  @Test func theMiniMapMarksWhatPassedFailedAndRunsNow() {
+    let blocks = (0..<4).map { LaidBlock(id: "b\($0)", rect: Rect(x: 0, y: Double($0) * 100, width: 100, height: 50)) }
+    let edges = (0..<3).map {
+      LaidEdge(from: "b\($0)", edge: "next", to: "b\($0 + 1)", points: [Point(x: 50, y: Double($0) * 100 + 50), Point(x: 50, y: Double($0 + 1) * 100)])
+    }
+    let layout = FlowLayout(width: 100, height: 350, blocks: blocks, frames: [], edges: edges, slots: [], ports: [])
+    let state = run([
+      started("b0"), finished("b0", .passed), started("b1"), finished("b1", .failed), started("b2"),
+    ])
+    let map = RunMiniMap(layout: layout, state: state, in: CGSize(width: 300, height: 84))
+    #expect(map.nodes.map(\.status) == [.passed, .failed, .current(paused: false), .pending])
+    // The run got as far as b2; b3 is still ahead.
+    #expect(map.links.map(\.reached) == [true, true, false])
+    // It all fits, so nothing is cut: top to bottom, in the box.
+    #expect(map.nodes.allSatisfy { (0...84).contains($0.at.y) && (0...300).contains($0.at.x) })
+    #expect(map.nodes.map(\.at.y) == map.nodes.map(\.at.y).sorted())
+    #expect(RunMiniMap.summary(of: layout, state: state) == "1 passed, 1 failed, 2 to go")
+  }
+
+  @Test func aLongTestShowsThePartAroundTheBlockThatRuns() {
+    let blocks = (0..<50).map { LaidBlock(id: "b\($0)", rect: Rect(x: 0, y: Double($0) * 100, width: 100, height: 50)) }
+    let layout = FlowLayout(width: 100, height: 5000, blocks: blocks, frames: [], edges: [], slots: [], ports: [])
+    let size = CGSize(width: 300, height: 84)
+    let middle = RunMiniMap(layout: layout, state: run([started("b25")]), in: size)
+    #expect(abs(middle.nodes[25].at.y - 42) < 0.001)
+    // At either end the map stops at the end of the test instead of showing empty space.
+    let first = RunMiniMap(layout: layout, state: run([started("b0")]), in: size)
+    #expect(first.nodes[0].at.y == 2.5)
+    let last = RunMiniMap(layout: layout, state: run([started("b49")]), in: size)
+    #expect(abs(last.nodes[49].at.y - (84 - (5000 - 4925) * RunMiniMap.smallest)) < 0.001)
   }
 
   @Test func blocksOfAnotherTestDontMarkThisOne() {

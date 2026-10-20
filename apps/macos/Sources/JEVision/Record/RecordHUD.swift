@@ -6,21 +6,26 @@ import SwiftUI
 /// The glass panel shown while recording: what has been recorded so far and the controls.
 struct RecordHUD: View {
   static let width = 336.0
+  /// Steps the feed shows; the panel is sized once, so the feed keeps its height with fewer.
+  static let feedRows = 4
+  private static let rowHeight = 24.0
+  private static let feedSpacing = 2.0
+  private static let feedHeight = Double(feedRows) * rowHeight + Double(feedRows - 1) * feedSpacing
   let center: RecordCenter
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       header
-      lastStep
-        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44, alignment: .leading)
+      feed
+        .frame(maxWidth: .infinity, minHeight: Self.feedHeight, maxHeight: Self.feedHeight, alignment: .topLeading)
       VStack(spacing: 8) {
         HStack(spacing: 8) {
           Button("Add Check", systemImage: "viewfinder", action: center.addCheck)
             .help(Text("Drag a frame around the part of the screen the test should check"))
+          Button("Wait \(Recording.manualWaitMs / 1000) s", systemImage: "timer", action: center.addWait)
+            .disabled(center.isPaused)
+            .help(Text("Make the test wait here for a moment, for an app that needs time"))
           Spacer(minLength: 0)
-          Button("Done", systemImage: "checkmark", action: center.done)
-            .buttonStyle(.glassProminent)
-            .help(Text("Stop recording and add the steps to the test"))
         }
         HStack(spacing: 8) {
           Button("Undo Last Step", systemImage: "arrow.uturn.backward", action: center.undoLastStep)
@@ -33,21 +38,28 @@ struct RecordHUD: View {
               .help(Text("What you do while paused isn’t recorded"))
           }
         }
+        Button("Done", systemImage: "checkmark", action: center.done)
+          .buttonStyle(.glassProminent)
+          .frame(maxWidth: .infinity)
+          .help(Text("Stop recording and add the steps to the test"))
       }
       .buttonStyle(.glass)
       .labelStyle(.titleAndIcon)
 
-      HStack(spacing: 4) {
-        Text(verbatim: "esc esc")
-          .font(.caption2.monospaced().weight(.semibold))
-          .padding(.horizontal, 4)
-          .background(.quaternary, in: .rect(cornerRadius: 4))
-        Text("finish from any app")
+      VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 4) {
+          Text(verbatim: "esc esc")
+            .font(.caption2.monospaced().weight(.semibold))
+            .padding(.horizontal, 4)
+            .background(.quaternary, in: .rect(cornerRadius: 4))
+          Text("finish from any app")
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Press Escape twice in any app to finish. Clicks on this panel aren’t recorded."))
+        Label("Passwords are saved as secrets", systemImage: "lock.fill")
       }
       .font(.caption2)
       .foregroundStyle(.secondary)
-      .accessibilityElement(children: .ignore)
-      .accessibilityLabel(Text("Press Escape twice in any app to finish. Clicks on this panel aren’t recorded."))
     }
     .padding(16)
     .frame(width: Self.width - 16, alignment: .leading)
@@ -80,38 +92,51 @@ struct RecordHUD: View {
     }
   }
 
+  /// The last steps, the newest at the bottom and marked, or what went wrong with the last action.
   @ViewBuilder
-  private var lastStep: some View {
+  private var feed: some View {
     if let notice = center.notice {
       Label {
         Text(Self.text(of: notice))
-          .lineLimit(2)
+          .lineLimit(3)
       } icon: {
         Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
       }
       .font(.callout)
-    } else if let step = center.steps.last {
-      let kind = Recording.preview(step)
-      HStack(spacing: 10) {
-        IconTile(symbol: BlockInfo.symbol(kind.typeName), color: BlockInfo.color(ofType: kind.typeName), size: 30)
-        VStack(alignment: .leading, spacing: 1) {
-          Text(BlockInfo.title(kind.typeName))
-            .font(.callout.weight(.semibold))
-          Text(Self.text(of: step, appName: center.appName))
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-        }
-      }
-      .accessibilityElement(children: .combine)
-      .accessibilityLabel(Text("Last step: \(Self.text(of: step, appName: center.appName))"))
-    } else {
+    } else if center.steps.isEmpty {
       Text("Click, drag, scroll, type and press keys in \(center.appName). Each action becomes a step.")
         .font(.callout)
         .foregroundStyle(.secondary)
-        .lineLimit(2)
+        .lineLimit(3)
+    } else {
+      let shown = Array(center.steps.enumerated().suffix(Self.feedRows))
+      VStack(alignment: .leading, spacing: Self.feedSpacing) {
+        ForEach(shown, id: \.offset) { index, step in
+          row(step, isNewest: index == center.steps.count - 1)
+        }
+      }
+      .accessibilityElement(children: .contain)
+      .accessibilityLabel(Text("Recorded steps"))
     }
+  }
+
+  private func row(_ step: RecordedStep, isNewest: Bool) -> some View {
+    let kind = Recording.preview(step)
+    let text = Self.text(of: step, appName: center.appName)
+    return HStack(spacing: 8) {
+      IconTile(symbol: BlockInfo.symbol(kind.typeName), color: BlockInfo.color(ofType: kind.typeName), size: 20)
+      Text(text)
+        .font(.callout.weight(isNewest ? .semibold : .regular))
+        .foregroundStyle(isNewest ? .primary : .secondary)
+        .lineLimit(1)
+        .truncationMode(.middle)
+      Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 4)
+    .frame(height: Self.rowHeight)
+    .background(.tint.opacity(isNewest ? 0.18 : 0), in: .rect(cornerRadius: 8))
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(Text(isNewest ? String(localized: "Last step: \(text)") : text))
   }
 
   /// A recorded step in a few words, the way the canvas puts it.
