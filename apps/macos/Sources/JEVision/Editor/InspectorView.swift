@@ -605,12 +605,12 @@ struct InspectorView: View {
             TextField(
               text: bind("inputs", inputs[name] ?? "") { value in
                 var all = inputs
-                all[name] = value
+                all[name] = value.isEmpty && block.defaults[name] != nil ? nil : value
                 return make(test, all)
               },
-              prompt: Text("Value")
+              prompt: block.defaults[name].map { Text(verbatim: $0) } ?? Text("Value")
             ) {
-              Text(verbatim: name)
+              Text(verbatim: block.labels[name] ?? name)
             }
             IssueList(issues: context.issues("inputs.\(name)"))
           }

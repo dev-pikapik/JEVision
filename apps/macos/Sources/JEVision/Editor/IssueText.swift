@@ -148,7 +148,7 @@ enum IssueText {
         localized: "flow.dateTime.format",
         defaultValue: "“\(p("value"))” isn’t a date format. Write it like \("%Y-%m-%d %H:%M"): a letter after a percent sign stands for a part of the date.", bundle: .app, locale: .app)
     default:
-      return String(localized: "Unknown problem: \(issue.code)")
+      return BlockPackageText.message(issue) ?? String(localized: "Unknown problem: \(issue.code)")
     }
   }
 

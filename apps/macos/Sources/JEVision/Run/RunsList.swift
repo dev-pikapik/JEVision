@@ -300,7 +300,7 @@ struct HealthView: View {
     var text = BlockInfo.title(point.blockType)
     if let block { text += " · " + BlockSummary.text(block.kind, appName: AppCatalog.shared.name(of:)) }
     if point.test != test {
-      text += " · " + String(localized: "in \(ProjectScanner.testName((point.test as NSString).lastPathComponent))")
+      text += " · " + String(localized: "in \(ProjectScanner.testName(path: point.test))")
     }
     return text
   }

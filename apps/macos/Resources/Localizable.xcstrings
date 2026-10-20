@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
     "%@ To put a test in quarantine, choose Quarantine… in its menu in the sidebar. The settings are saved in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -919,6 +929,16 @@
         }
       }
     },
+    "%lld files · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлов: %1$lld · %2$@"
+          }
+        }
+      }
+    },
     "%lld items" : {
       "localizations" : {
         "en" : {
@@ -1485,6 +1505,16 @@
         }
       }
     },
+    "%lld." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld."
+          }
+        }
+      }
+    },
     "%lld× %@" : {
       "localizations" : {
         "ru" : {
@@ -1751,6 +1781,16 @@
         }
       }
     },
+    "A block is a set of steps someone shared, ready to use in your tests. Choose its folder or .zip file, drop it here, or paste an address: a GitHub repository, a GitHub release or a link to a .zip file." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок — это набор шагов, которым с вами поделились, готовый для ваших тестов. Выберите его папку или файл .zip, перетащите сюда или вставьте адрес: репозиторий GitHub, релиз GitHub или ссылку на файл .zip."
+          }
+        }
+      }
+    },
     "A board of all tests appears once the project has a test. Make your own with the + button next to Boards." : {
       "localizations" : {
         "en" : {
@@ -1813,6 +1853,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Фиксированные размер и положение делают картинки окна одинаковыми при каждом прогоне."
+          }
+        }
+      }
+    },
+    "A folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка"
           }
         }
       }
@@ -1927,6 +1977,16 @@
         }
       }
     },
+    "A script can do anything you can do on your Mac, including changing or deleting files." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрипт может сделать на вашем Mac всё, что можете вы, в том числе изменить или удалить файлы."
+          }
+        }
+      }
+    },
     "A secret or a value kept outside the test" : {
       "localizations" : {
         "ru" : {
@@ -1993,6 +2053,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На видео — только тестируемое приложение, а в отчёте на нём отмечен каждый шаг. Видео хранятся вместе с отчётами прогонов в папке .jevision проекта; более старые удаляются после следующего прогона."
+          }
+        }
+      }
+    },
+    "A zip file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл .zip"
           }
         }
       }
@@ -2963,6 +3033,26 @@
         }
       }
     },
+    "Address or path" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес или путь"
+          }
+        }
+      }
+    },
+    "Adds a block someone shared: from a folder, a .zip file or a GitHub address." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавляет блок, которым с вами поделились: из папки, файла .zip или адреса GitHub."
+          }
+        }
+      }
+    },
     "Adds an If after the selected block, so the test can take different paths." : {
       "localizations" : {
         "ru" : {
@@ -3243,6 +3333,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Already installed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже установлен"
           }
         }
       }
@@ -3657,6 +3757,16 @@
         }
       }
     },
+    "Asks for" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрашивает"
+          }
+        }
+      }
+    },
     "Asks the model about a small picture" : {
       "localizations" : {
         "ru" : {
@@ -3835,6 +3945,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок"
+          }
+        }
+      }
+    },
+    "Block id" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идентификатор блока"
           }
         }
       }
@@ -4937,12 +5057,42 @@
         }
       }
     },
+    "Choose" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать"
+          }
+        }
+      }
+    },
+    "Choose Another" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать другой"
+          }
+        }
+      }
+    },
     "Choose App" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выбрать приложение"
+          }
+        }
+      }
+    },
+    "Choose File or Folder…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать файл или папку…"
           }
         }
       }
@@ -4983,6 +5133,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите тест"
+          }
+        }
+      }
+    },
+    "Choose a block folder or a .zip file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку блока или файл .zip"
           }
         }
       }
@@ -5127,6 +5287,16 @@
         }
       }
     },
+    "Choose the folder to put the block in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку, в которую положить блок"
+          }
+        }
+      }
+    },
     "Choose the pictures to put on the board" : {
       "localizations" : {
         "en" : {
@@ -5199,6 +5369,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите, куда положить копию примера проекта"
+          }
+        }
+      }
+    },
+    "Choose where to save the block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, куда сохранить блок"
           }
         }
       }
@@ -5705,6 +5885,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Коммит…"
+          }
+        }
+      }
+    },
+    "Community" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщество"
+          }
+        }
+      }
+    },
+    "Community block by %@, version %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок сообщества, автор %1$@, версия %2$@"
+          }
+        }
+      }
+    },
+    "Community blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки сообщества"
           }
         }
       }
@@ -6331,6 +6541,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Свои блоки"
+          }
+        }
+      }
+    },
+    "Custom Blocks…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свои блоки…"
           }
         }
       }
@@ -7273,6 +7493,16 @@
         }
       }
     },
+    "Each test that uses the block fills these in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый тест, который использует блок, заполняет это."
+          }
+        }
+      }
+    },
     "Edit Areas Always Hidden" : {
       "localizations" : {
         "ru" : {
@@ -8135,6 +8365,16 @@
         }
       }
     },
+    "Find it under Community when you add a block to a test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищите его в группе «Сообщество», когда добавляете блок в тест."
+          }
+        }
+      }
+    },
     "Finding an element by its description needs JEV (TypeSafe AI) and its API key." : {
       "localizations" : {
         "ru" : {
@@ -8583,6 +8823,16 @@
         }
       }
     },
+    "From %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник: %@"
+          }
+        }
+      }
+    },
     "From Left" : {
       "localizations" : {
         "ru" : {
@@ -8829,6 +9079,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дайте расписанию название."
+          }
+        }
+      }
+    },
+    "Go Back to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуться к %@"
           }
         }
       }
@@ -9487,6 +9747,26 @@
         }
       }
     },
+    "Install" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить"
+          }
+        }
+      }
+    },
+    "Install Block…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить блок…"
+          }
+        }
+      }
+    },
     "Install Command Line Tool…" : {
       "localizations" : {
         "ru" : {
@@ -9503,6 +9783,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Установить только для меня"
+          }
+        }
+      }
+    },
+    "Install a Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установка блока"
+          }
+        }
+      }
+    },
+    "Install a block only from people you trust. These steps do more than click and type in the app under test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устанавливайте блоки только от тех, кому доверяете. Эти шаги делают больше, чем нажимают и вводят текст в проверяемом приложении."
+          }
+        }
+      }
+    },
+    "Installed from a file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлен из файла"
           }
         }
       }
@@ -9537,6 +9847,16 @@
         }
       }
     },
+    "Installing…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устанавливаю…"
+          }
+        }
+      }
+    },
     "Install…" : {
       "localizations" : {
         "ru" : {
@@ -9567,12 +9887,42 @@
         }
       }
     },
+    "It opens a database file on your Mac and can read or change what is stored in it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Он открывает файл базы данных на вашем Mac и может читать или менять то, что в нём хранится."
+          }
+        }
+      }
+    },
+    "It replaces or reads what you copied last." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Он заменяет или читает то, что вы скопировали последним."
+          }
+        }
+      }
+    },
     "It sometimes fails for reasons outside the app. The mark is saved in the test and shown in the sidebar and on the project map; to keep its failures from failing Run All, put it in quarantine." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Иногда падает по причинам вне приложения. Отметка сохраняется в тесте и видна в боковой панели и на карте проекта; чтобы его провалы не делали провальным «Запустить все», поместите тест в карантин."
+          }
+        }
+      }
+    },
+    "It starts other apps or opens files and addresses outside the app under test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Он запускает другие приложения или открывает файлы и адреса вне проверяемого приложения."
           }
         }
       }
@@ -9836,6 +10186,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить правку"
+          }
+        }
+      }
+    },
+    "Keep Version %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить версию %@"
           }
         }
       }
@@ -10116,6 +10476,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Библиотека"
+          }
+        }
+      }
+    },
+    "License" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лицензия"
           }
         }
       }
@@ -10544,6 +10914,16 @@
         }
       }
     },
+    "Makes a package of this block that anyone can install in their JEVision. Only the block’s own steps and pictures go in; nothing else from your project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собирает из этого блока пакет, который любой может установить в свой JEVision. В него попадают только шаги блока и его картинки, больше ничего из вашего проекта."
+          }
+        }
+      }
+    },
     "Makes an empty board to lay tests and notes out on." : {
       "localizations" : {
         "en" : {
@@ -10846,6 +11226,16 @@
         }
       }
     },
+    "My blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мои блоки"
+          }
+        }
+      }
+    },
     "My own" : {
       "localizations" : {
         "ru" : {
@@ -10892,6 +11282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Названия, которые рисует сама macOS, например «Файл» и «Правка» в строке меню, сменятся при следующем запуске JEVision."
+          }
+        }
+      }
+    },
+    "Needs your attention" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Требует вашего внимания"
           }
         }
       }
@@ -11276,6 +11676,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ни один ассистент ещё не подключался. Когда вы добавите JEVision в ассистента, он появится здесь."
+          }
+        }
+      }
+    },
+    "No blocks from the community yet. Install one from a folder, a .zip file or an address." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоков от сообщества пока нет. Установите один из папки, файла .zip или по адресу."
           }
         }
       }
@@ -11850,6 +12260,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отчёт добавляется, только если вы его выбрали. Он попадает в описание выше, где его можно прочитать и изменить перед отправкой."
+          }
+        }
+      }
+    },
+    "Nothing is installed yet: you read what the block does first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока ничего не установлено: сначала вы прочитаете, что делает блок."
           }
         }
       }
@@ -12678,6 +13098,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает файл или веб-страницу"
+          }
+        }
+      }
+    },
+    "Opens apps, files or web pages" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает приложения, файлы или веб-страницы"
           }
         }
       }
@@ -13654,6 +14084,16 @@
         }
       }
     },
+    "Problem" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проблема"
+          }
+        }
+      }
+    },
     "Program" : {
       "localizations" : {
         "ru" : {
@@ -14088,6 +14528,16 @@
         }
       }
     },
+    "Read the Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать блок"
+          }
+        }
+      }
+    },
     "Read the Clipboard" : {
       "localizations" : {
         "ru" : {
@@ -14118,6 +14568,16 @@
         }
       }
     },
+    "Reading the block…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читаю блок…"
+          }
+        }
+      }
+    },
     "Reads an SQLite database" : {
       "localizations" : {
         "ru" : {
@@ -14134,6 +14594,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Читает базу SQLite запросом, проверяет результат и сохраняет его для следующих блоков."
+          }
+        }
+      }
+    },
+    "Reads or changes a database" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читает или меняет базу данных"
           }
         }
       }
@@ -14420,6 +14890,16 @@
         }
       }
     },
+    "Reinstall" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установить заново"
+          }
+        }
+      }
+    },
     "Reinstall…" : {
       "localizations" : {
         "ru" : {
@@ -14572,6 +15052,16 @@
         }
       }
     },
+    "Remove Anyway" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё равно удалить"
+          }
+        }
+      }
+    },
     "Remove Arrow" : {
       "localizations" : {
         "en" : {
@@ -14650,6 +15140,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать это значение"
+          }
+        }
+      }
+    },
+    "Remove “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить «%@»?"
           }
         }
       }
@@ -15668,6 +16168,16 @@
         }
       }
     },
+    "Runs a script on your Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает скрипт на вашем Mac"
+          }
+        }
+      }
+    },
     "Runs a short program" : {
       "localizations" : {
         "ru" : {
@@ -16610,6 +17120,16 @@
         }
       }
     },
+    "Send it to someone, or put it in a GitHub repository or release. They install it with File → Install Block… or with “jevision blocks install”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправьте его кому-нибудь или выложите в репозиторий или релиз на GitHub. Установить его можно через Файл → Установить блок… или командой «jevision blocks install»."
+          }
+        }
+      }
+    },
     "Send to" : {
       "localizations" : {
         "ru" : {
@@ -16656,6 +17176,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправляет запрос веб-сервису"
+          }
+        }
+      }
+    },
+    "Sends requests over the network" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляет запросы по сети"
           }
         }
       }
@@ -16856,6 +17386,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поделиться"
+          }
+        }
+      }
+    },
+    "Share %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться «%@»"
+          }
+        }
+      }
+    },
+    "Share “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться «%@»"
+          }
+        }
+      }
+    },
+    "Share…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться…"
           }
         }
       }
@@ -17872,6 +18432,26 @@
         }
       }
     },
+    "Step %lld: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "Step %lld: %@. %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %1$lld: %2$@. %3$@"
+          }
+        }
+      }
+    },
     "Step %u, %@: %@" : {
       "localizations" : {
         "ru" : {
@@ -18706,6 +19286,26 @@
         }
       }
     },
+    "The block is ready to share" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок готов к отправке"
+          }
+        }
+      }
+    },
+    "The block wasn’t installed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок не установлен"
+          }
+        }
+      }
+    },
     "The blue Save button" : {
       "localizations" : {
         "ru" : {
@@ -19074,6 +19674,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ключ хранится в Связке ключей на этом Mac и отправляется только в %@. JEVision никогда его не показывает."
+          }
+        }
+      }
+    },
+    "The keys go to whatever app has the focus, not only to the app under test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши уходят в то приложение, где сейчас фокус, а не только в проверяемое."
           }
         }
       }
@@ -19838,6 +20448,16 @@
         }
       }
     },
+    "These tests use it: %@. They will stop with a message that the block is missing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Их используют тесты: %@. Они остановятся с сообщением, что блока нет."
+          }
+        }
+      }
+    },
     "They run while you’re logged in and the Mac is awake. A run is skipped while the screen is locked; for runs nobody watches, turn off the automatic screen lock." : {
       "localizations" : {
         "ru" : {
@@ -20456,6 +21076,16 @@
         }
       }
     },
+    "Try Another" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попробовать другой"
+          }
+        }
+      }
+    },
     "Turn Off" : {
       "localizations" : {
         "ru" : {
@@ -20602,6 +21232,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вводит почту и пароль и проверяет экран после входа."
+          }
+        }
+      }
+    },
+    "Types on the keyboard" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вводит текст с клавиатуры"
           }
         }
       }
@@ -20926,12 +21566,52 @@
         }
       }
     },
+    "Update" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить"
+          }
+        }
+      }
+    },
+    "Update %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить «%@»"
+          }
+        }
+      }
+    },
+    "Update to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить до %@"
+          }
+        }
+      }
+    },
     "Updates" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обновления"
+          }
+        }
+      }
+    },
+    "Updates or removes installed blocks and shares your own." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновляет и удаляет установленные блоки и делится вашими."
           }
         }
       }
@@ -21036,6 +21716,16 @@
         }
       }
     },
+    "Uses the clipboard" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использует буфер обмена"
+          }
+        }
+      }
+    },
     "Value" : {
       "localizations" : {
         "ru" : {
@@ -21122,6 +21812,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Версия %@"
+          }
+        }
+      }
+    },
+    "Version %@ is installed. This is the newer version %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлена версия %1$@. Это более новая версия %2$@."
+          }
+        }
+      }
+    },
+    "Version %@ is installed. This is the older version %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлена версия %1$@. Это более старая версия %2$@."
+          }
+        }
+      }
+    },
+    "Version %@ of this block is installed already." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %@ этого блока уже установлена."
+          }
+        }
+      }
+    },
+    "Version %@ · by %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %1$@ · автор %2$@"
+          }
+        }
+      }
+    },
+    "Version %@ · by %@ · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %1$@ · автор %2$@ · %3$@"
           }
         }
       }
@@ -21362,6 +22102,16 @@
         }
       }
     },
+    "Warning" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предупреждение"
+          }
+        }
+      }
+    },
     "Was %@" : {
       "localizations" : {
         "ru" : {
@@ -21448,6 +22198,26 @@
         }
       }
     },
+    "What it asks for" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что он запрашивает"
+          }
+        }
+      }
+    },
+    "What it does, in a sentence" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что он делает, одним предложением"
+          }
+        }
+      }
+    },
     "What must be true before it starts" : {
       "localizations" : {
         "ru" : {
@@ -21488,12 +22258,32 @@
         }
       }
     },
+    "What the test knows can leave your Mac, and answers from the internet come in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё, что знает тест, может уйти с вашего Mac, а ответы из интернета придут внутрь."
+          }
+        }
+      }
+    },
     "What the tool gets" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Что получит инструмент"
+          }
+        }
+      }
+    },
+    "What this block does" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что делает этот блок"
           }
         }
       }
@@ -21828,12 +22618,32 @@
         }
       }
     },
+    "Write it as" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать как"
+          }
+        }
+      }
+    },
     "Write the path of a PNG file." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Напишите путь к PNG-файлу."
+          }
+        }
+      }
+    },
+    "Write three or more parts of lowercase letters, digits and - joined by dots, like com.acme.sign-in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Напишите три или больше частей из строчных латинских букв, цифр и «-», разделённых точками, например com.acme.sign-in."
           }
         }
       }
@@ -22200,6 +23010,16 @@
         }
       }
     },
+    "and %lld more" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "и ещё %lld"
+          }
+        }
+      }
+    },
     "and %lld more waiting" : {
       "localizations" : {
         "ru" : {
@@ -22216,6 +23036,710 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "точке %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "block.archive.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The archive has no block: no folder with block.json and flow.json."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В архиве нет блока: нет папки с block.json и flow.json."
+          }
+        }
+      }
+    },
+    "block.archive.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The archive can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Архив не читается: %@."
+          }
+        }
+      }
+    },
+    "block.archive.several" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The archive has several blocks (%@). Install them one by one."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В архиве несколько блоков (%@). Устанавливайте их по одному."
+          }
+        }
+      }
+    },
+    "block.download.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t download %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось скачать %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "block.download.notHttps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only https addresses can be downloaded, and “%@” isn’t one."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скачать можно только адреса https, а «%@» таким не является."
+          }
+        }
+      }
+    },
+    "block.download.tooLarge" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is larger than %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ больше, чем %2$@."
+          }
+        }
+      }
+    },
+    "block.export.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t write the block: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось записать блок: %@."
+          }
+        }
+      }
+    },
+    "block.export.nested" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This block runs “%@”, and a block can’t hold other blocks yet. Put the steps of that block into this one."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот блок запускает «%@», а блок пока не может содержать другие блоки. Перенесите шаги того блока в этот."
+          }
+        }
+      }
+    },
+    "block.export.notBlock" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t one of this project’s own blocks."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не один из собственных блоков этого проекта."
+          }
+        }
+      }
+    },
+    "block.export.skipped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a file a block can hold, so it was left out."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не файл, который может входить в блок, поэтому он не попал в пакет."
+          }
+        }
+      }
+    },
+    "block.field.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be empty."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поле «%@» не может быть пустым."
+          }
+        }
+      }
+    },
+    "block.field.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is required, but missing."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поле «%@» обязательно, но его нет."
+          }
+        }
+      }
+    },
+    "block.field.tooLong" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is too long. The most is %@ characters."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поле «%1$@» слишком длинное. Допустимо не больше %2$@ символов."
+          }
+        }
+      }
+    },
+    "block.field.type.list" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” has the wrong kind of value. It must be a list."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У поля «%@» неверный вид значения. Нужен список."
+          }
+        }
+      }
+    },
+    "block.field.type.object" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” has the wrong kind of value. It must be an object."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У поля «%@» неверный вид значения. Нужен объект."
+          }
+        }
+      }
+    },
+    "block.field.type.text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” has the wrong kind of value. It must be text."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У поля «%@» неверный вид значения. Нужен текст."
+          }
+        }
+      }
+    },
+    "block.field.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a field of block.json."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не поле block.json."
+          }
+        }
+      }
+    },
+    "block.file.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The block has no %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В блоке нет файла %@."
+          }
+        }
+      }
+    },
+    "block.file.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл %1$@ не читается: %2$@."
+          }
+        }
+      }
+    },
+    "block.folder.notPackage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a block: it has no block.json and flow.json."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не блок: в нём нет block.json и flow.json."
+          }
+        }
+      }
+    },
+    "block.format.unsupported" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json uses format %@, and this version reads format %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json написан в формате %1$@, а эта версия читает формат %2$@."
+          }
+        }
+      }
+    },
+    "block.icon.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t the name of an SF Symbol. Write lowercase letters, digits and dots, like person.badge.key."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не название символа SF. Напишите строчные латинские буквы, цифры и точки, например person.badge.key."
+          }
+        }
+      }
+    },
+    "block.id.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be a block id. Write three or more parts of lowercase letters, digits and - joined by dots, like com.acme.sign-in."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не может быть идентификатором блока. Напишите три или больше частей из строчных латинских букв, цифр и «-», разделённых точками, например com.acme.sign-in."
+          }
+        }
+      }
+    },
+    "block.input.duplicate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The input “%@” is listed twice."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход «%@» указан дважды."
+          }
+        }
+      }
+    },
+    "block.input.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t be an input name. Start with a letter or _, then use letters, digits and _."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не может быть именем входа. Начните с буквы или _, затем используйте буквы, цифры и _."
+          }
+        }
+      }
+    },
+    "block.input.undeclared" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The steps read the input “%@”, but block.json doesn’t list it under inputs."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаги читают вход «%@», но в block.json его нет в списке входов."
+          }
+        }
+      }
+    },
+    "block.input.unused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json lists the input “%@”, but no step reads it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В block.json указан вход «%@», но ни один шаг его не читает."
+          }
+        }
+      }
+    },
+    "block.install.exists" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ %@ is already installed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@ уже установлен."
+          }
+        }
+      }
+    },
+    "block.install.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t install %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось установить %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "block.json.notObject" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json doesn’t describe a block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json не описывает блок."
+          }
+        }
+      }
+    },
+    "block.json.syntax" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json isn’t valid JSON. Check line %@, column %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "block.json — не корректный JSON. Проверьте строку %1$@, столбец %2$@."
+          }
+        }
+      }
+    },
+    "block.lock.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "jevision.blocks.json can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "jevision.blocks.json не читается: %@."
+          }
+        }
+      }
+    },
+    "block.notInstalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The block “%@” isn’t installed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@» не установлен."
+          }
+        }
+      }
+    },
+    "block.package.tooLarge" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The block is larger than %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок больше, чем %@."
+          }
+        }
+      }
+    },
+    "block.package.tooManyFiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The block has more than %@ files."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В блоке больше %@ файлов."
+          }
+        }
+      }
+    },
+    "block.path.outside" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” leads out of the block’s folder. A block can only use files inside it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» ведёт за пределы папки блока. Блок может использовать только файлы внутри неё."
+          }
+        }
+      }
+    },
+    "block.path.unsafe" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” would end up outside the block’s folder, so the archive was refused."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» оказался бы за пределами папки блока, поэтому архив отклонён."
+          }
+        }
+      }
+    },
+    "block.remove.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t remove %@: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось удалить %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "block.source.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не существует."
+          }
+        }
+      }
+    },
+    "block.source.none" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” wasn’t installed from an address, so there’s nothing to update it from."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» установлен не по адресу, поэтому обновлять его неоткуда."
+          }
+        }
+      }
+    },
+    "block.source.unsupported" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a block folder, a .zip file or an https address. GitHub repositories and releases work too."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не папка блока, не файл .zip и не адрес https. Репозитории и релизы GitHub тоже подходят."
+          }
+        }
+      }
+    },
+    "block.update.otherId" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The address of “%@” now holds a different block, “%@”, so it isn’t an update."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По адресу блока «%1$@» теперь лежит другой блок, «%2$@», так что это не обновление."
+          }
+        }
+      }
+    },
+    "block.version.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a version. Write three numbers like 1.2.0."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не версия. Напишите три числа, например 1.2.0."
+          }
+        }
+      }
+    },
+    "block.version.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This block needs JEVision %@ or newer, and this is %@. Update JEVision to use it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому блоку нужен JEVision %1$@ или новее, а сейчас %2$@. Обновите JEVision, чтобы им пользоваться."
           }
         }
       }
@@ -22380,6 +23904,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "проверил тест"
+          }
+        }
+      }
+    },
+    "com.author.name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "com.автор.имя"
+          }
+        }
+      }
+    },
+    "community custom block package download import" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сообщество свой блок пакет скачать импорт установить"
+          }
+        }
+      }
+    },
+    "community library share update remove" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сообщество библиотека поделиться обновить удалить"
           }
         }
       }
@@ -22638,6 +24192,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” can’t be a block name: use only letters, digits, - and _."
+          }
+        }
+      }
+    },
+    "flow.block.notInstalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This step needs the block “%@”, which isn’t installed in this project. Install it, or remove the step."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому шагу нужен блок «%@», но он не установлен в этом проекте. Установите его или уберите шаг."
           }
         }
       }
@@ -23600,6 +25170,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "git загрузить отправить"
+          }
+        }
+      }
+    },
+    "https://github.com/author/block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "https://github.com/автор/блок"
           }
         }
       }
@@ -24722,6 +26302,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: экран не изменился за %2$@ с после этого шага."
+          }
+        }
+      }
+    },
+    "run.block.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the community block %@ needs JEVision %@ or newer, and this is %@. Update JEVision to run it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: блоку сообщества %2$@ нужен JEVision %3$@ или новее, а сейчас %4$@. Обновите JEVision, чтобы его запустить."
+          }
+        }
+      }
+    },
+    "run.block.notInstalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the community block %@ isn’t installed. Install it from File → Install Block…, then run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: блок сообщества %2$@ не установлен. Установите его через Файл → Установить блок…, затем запустите тест ещё раз."
           }
         }
       }
@@ -26540,6 +28152,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписание «%@»: тесты не прошли"
+          }
+        }
+      }
+    },
+    "“%@” is installed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» установлен"
           }
         }
       }

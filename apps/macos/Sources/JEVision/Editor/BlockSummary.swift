@@ -113,12 +113,8 @@ enum BlockSummary {
         : String(localized: "For each row of \((file as NSString).lastPathComponent)")
     case .runTest(let test, let inputs, _):
       if test.isEmpty { return String(localized: "Choose a test") }
-      let file = (test as NSString).lastPathComponent
-      guard file.lowercased().hasSuffix(ProjectLibrary.blockSuffix) else {
-        return String(localized: "Runs \(quoted(ProjectScanner.testName(file)))")
-      }
-      guard !inputs.isEmpty else {
-        return String(localized: "Runs \(quoted(ProjectScanner.testName(file)))")
+      guard isBlockPath(path: test), !inputs.isEmpty else {
+        return String(localized: "Runs \(quoted(ProjectScanner.testName(path: test)))")
       }
       return inputs.sorted { $0.key < $1.key }
         .map { "\($0.key): \(secretName($0.value).map { String(localized: "secret \($0)") } ?? quoted($0.value, limit: 24))" }

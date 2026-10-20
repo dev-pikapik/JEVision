@@ -87,6 +87,7 @@ struct RunReportView: View {
           )
           .id(run.id)
         }
+        if !report.packages.isEmpty { UsedPackagesView(packages: report.packages) }
         if let player {
           RunVideoView(player: player, steps: steps)
         }
@@ -395,7 +396,8 @@ private struct StepRow: View {
       text += " · " + branch
     }
     if step.test != run.report.file {
-      text += " · " + String(localized: "in \(ProjectScanner.testName((step.test as NSString).lastPathComponent))")
+      let package = run.report.packages.first { $0.file == step.test }
+      text += " · " + String(localized: "in \(package.map { "\($0.name) \($0.version)" } ?? ProjectScanner.testName(path: step.test))")
     }
     return text
   }

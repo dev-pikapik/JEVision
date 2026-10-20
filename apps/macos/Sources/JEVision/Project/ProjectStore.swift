@@ -33,6 +33,10 @@ final class ProjectStore {
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
   var isCreatingTest = false
+  /// The block the Install Block sheet is reading or installing; set to show the sheet.
+  var installingBlock: BlockInstallModel?
+  /// The Custom Blocks sheet is shown.
+  var showsCustomBlocks = false
   /// The command palette (⌘K) is shown.
   var showsCommandPalette = false
   /// Saved runs, newest first.
@@ -111,6 +115,33 @@ final class ProjectStore {
     guard panel.runModal() == .OK, let url = panel.url else { return }
     save(url)
     open(url)
+  }
+
+  /// Shows the Install Block sheet, reading the block at `source` (a folder, a .zip file or an
+  /// address) at once when one is given.
+  func installBlock(from source: String? = nil) {
+    installingBlock = makeBlockInstaller(source: source)
+  }
+
+  /// A sheet model that installs blocks into this project: it reads `source` at once, or the
+  /// update of the installed block `id`, when one is given.
+  func makeBlockInstaller(source: String? = nil, updating id: String? = nil) -> BlockInstallModel? {
+    guard let rootURL else { return nil }
+    let model = BlockInstallModel(project: rootURL)
+    model.onInstalled = { [weak self] _ in self?.library.reload() }
+    if let id {
+      Task { await model.readUpdate(of: id) }
+    } else if let source {
+      Task { await model.read(source) }
+    }
+    return model
+  }
+
+  func makeCustomBlocks() -> CustomBlocksModel? {
+    guard let rootURL else { return nil }
+    let model = CustomBlocksModel(project: rootURL)
+    model.onChange = { [weak self] in self?.library.reload() }
+    return model
   }
 
   func reveal(_ item: ProjectItem) {

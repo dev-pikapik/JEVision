@@ -1,0 +1,249 @@
+import Foundation
+import JEVisionCore
+import Testing
+
+@testable import JEVision
+
+@MainActor
+struct CommunityBlocksTests {
+  private static let block = """
+    {"format": 1, "name": "Sign in", "icon": "person", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+      "a": {"type": "type", "text": "${input.email}", "next": "b"},
+      "b": {"type": "command", "command": "say hello"}}}
+    """
+  private static let blockFile = "blocks/Sign in.block.json"
+
+  private func folder() throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: url.appending(path: "blocks"), withIntermediateDirectories: true)
+    return url
+  }
+
+  /// A project with its own block, and a project to install it in.
+  private func projects() throws -> (mine: URL, theirs: URL) {
+    let mine = try folder()
+    try Self.block.write(to: mine.appending(path: Self.blockFile), atomically: true, encoding: .utf8)
+    return (mine, try folder())
+  }
+
+  private func share(_ version: String) -> BlockShare {
+    BlockShare(
+      id: "com.anna.sign-in", name: "", description: "Types an email", author: "Anna", version: version,
+      license: "MIT", inputs: [BlockPackageInput(name: "email", label: "Email", defaultValue: nil)])
+  }
+
+  private func zip(_ version: String, from mine: URL) throws -> String {
+    let file = mine.appending(path: "sign-in-\(version).zip").path
+    _ = try exportBlockPackage(
+      project: mine.path, blockFile: Self.blockFile, share: share(version), destination: file, asZip: true)
+    return file
+  }
+
+  private func isReview(_ phase: BlockInstallModel.Phase) -> Bool {
+    if case .review = phase { true } else { false }
+  }
+
+  @Test func readingABlockShowsWhatItDoesAndInstallsNothing() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    await model.read(try zip("1.0.0", from: mine))
+
+    #expect(isReview(model.phase))
+    #expect(model.errors.isEmpty)
+    #expect(model.canInstall)
+    #expect(model.conflict == nil)
+    #expect(model.steps.map(\.number) == [1, 2])
+    #expect(model.steps.map(\.id) == ["a", "b"])
+    #expect(model.steps[1].summary.contains("say hello"))
+    #expect(model.riskGroups.map(\.risk) == [.script, .keyboard], "The most worrying kind comes first")
+    #expect(model.riskGroups[0].steps.first?.detail == "say hello")
+    #expect(model.riskGroups.allSatisfy { $0.isSerious })
+    #expect(listCommunityBlocks(project: theirs.path).isEmpty, "Reading doesn't install")
+  }
+
+  @Test func installsTheBlockIntoTheLibraryAsCommunity() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    var installed: String?
+    model.onInstalled = { installed = $0.manifest.id }
+    await model.read(try zip("1.0.0", from: mine))
+    let staged = try #require(model.preview).folder
+    await model.install()
+
+    #expect(installed == "com.anna.sign-in")
+    guard case .installed(let block) = model.phase else {
+      Issue.record("Expected the block to be installed, got \(model.phase)")
+      return
+    }
+    #expect(block.manifest.version == "1.0.0")
+    #expect(!FileManager.default.fileExists(atPath: staged), "What was unpacked for reading is gone")
+
+    let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
+    #expect(entry.name == "Sign in")
+    #expect(entry.inputs == ["email"])
+    #expect(entry.package?.author == "Anna")
+    #expect(entry.package?.version == "1.0.0")
+    #expect(entry.package?.source == nil, "A file has no address to update from")
+    #expect(entry.url?.lastPathComponent == "flow.json")
+    #expect(PaletteChoice.library(entry).groupTitle == "Community")
+    #expect(PaletteChoice.library(entry).tagline.contains("Anna"))
+    #expect(ProjectLibrary.read(theirs).last == entry, "Community blocks come after the project's own")
+  }
+
+  @Test func theLabelsAndDefaultsOfInputsReachTheLibrary() async throws {
+    let (mine, theirs) = try projects()
+    var share = share("1.0.0")
+    share.inputs = [BlockPackageInput(name: "email", label: "Email address", defaultValue: "anna@example.com")]
+    let file = mine.appending(path: "labelled.zip").path
+    _ = try exportBlockPackage(project: mine.path, blockFile: Self.blockFile, share: share, destination: file, asZip: true)
+    let model = BlockInstallModel(project: theirs)
+    await model.read(file)
+    await model.install()
+
+    let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
+    #expect(entry.labels == ["email": "Email address"])
+    #expect(entry.defaults == ["email": "anna@example.com"])
+  }
+
+  @Test func asksWhatToDoWithAnInstalledBlockOfAnotherVersion() async throws {
+    let (mine, theirs) = try projects()
+    let (old, new) = (try zip("1.0.0", from: mine), try zip("1.1.0", from: mine))
+    let model = BlockInstallModel(project: theirs)
+    await model.read(old)
+    await model.install()
+
+    await model.read(old)
+    #expect(model.conflict == .same(version: "1.0.0"))
+    await model.read(new)
+    #expect(model.conflict == .update(from: "1.0.0", to: "1.1.0"))
+    await model.install()
+    #expect(listCommunityBlocks(project: theirs.path).map(\.manifest.version) == ["1.1.0"])
+
+    await model.read(old)
+    #expect(model.conflict == .downgrade(from: "1.1.0", to: "1.0.0"))
+    model.startOver()
+    #expect(listCommunityBlocks(project: theirs.path).map(\.manifest.version) == ["1.1.0"], "Nothing changed")
+  }
+
+  @Test func startingOverThrowsAwayWhatWasUnpacked() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    await model.read(try zip("1.0.0", from: mine))
+    let preview = try #require(model.preview)
+    #expect(preview.temporary)
+    #expect(FileManager.default.fileExists(atPath: preview.folder))
+    model.startOver()
+    #expect(!FileManager.default.fileExists(atPath: preview.folder))
+    if case .choosing = model.phase {} else { Issue.record("Expected to be choosing again") }
+  }
+
+  @Test func saysInWordsWhyABlockCantBeRead() async throws {
+    let theirs = try folder()
+    let model = BlockInstallModel(project: theirs)
+    await model.read("http://example.com/block.zip")
+    guard case .failed(let message) = model.phase else {
+      Issue.record("Expected a failure, got \(model.phase)")
+      return
+    }
+    #expect(message.contains("https"))
+    #expect(message.contains("http://example.com/block.zip"))
+
+    await model.read(theirs.appending(path: "nothing.zip").path)
+    if case .failed = model.phase {} else { Issue.record("A file that isn't there can't be read") }
+    await model.read("   ")
+    if case .failed = model.phase {} else { Issue.record("An empty address changes nothing") }
+  }
+
+  @Test func readsOnlyWhatLooksLikeABlockWhenDropped() throws {
+    let (mine, _) = try projects()
+    let archive = try zip("1.0.0", from: mine)
+    #expect(BlockInstallModel.source(of: URL(fileURLWithPath: archive)) == archive)
+    #expect(BlockInstallModel.source(of: URL(string: "https://github.com/anna/sign-in")!) == "https://github.com/anna/sign-in")
+    #expect(BlockInstallModel.source(of: URL(string: "http://github.com/anna/sign-in")!) == nil)
+    #expect(BlockInstallModel.source(of: mine) == nil, "A project folder isn't a block")
+    #expect(BlockInstallModel.source(of: mine.appending(path: Self.blockFile)) == nil)
+
+    let package = try folder()
+    try "{}".write(to: package.appending(path: "block.json"), atomically: true, encoding: .utf8)
+    #expect(BlockInstallModel.source(of: package) == package.path)
+  }
+
+  @Test func asksBeforeRemovingABlockThatTestsUse() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    await model.read(try zip("1.0.0", from: mine))
+    await model.install()
+    let user = """
+      {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "runTest", "test": "blocks/com.anna.sign-in.jevblock/flow.json", "inputs": {"email": "a@b.c"}}}}
+      """
+    try user.write(to: theirs.appending(path: "t.flow.json"), atomically: true, encoding: .utf8)
+    let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
+
+    let blocks = CustomBlocksModel(project: theirs)
+    var changes = 0
+    blocks.onChange = { changes += 1 }
+    blocks.remove(entry)
+    #expect(blocks.removal?.tests == ["t.flow.json"], "The tests that use it are named")
+    #expect(listCommunityBlocks(project: theirs.path).count == 1, "It isn't removed behind anyone's back")
+    #expect(CustomBlocksSheet.list(["a/Login.flow.json", "t.flow.json"]) == "Login, t")
+
+    blocks.confirmRemoval()
+    #expect(blocks.removal == nil)
+    #expect(listCommunityBlocks(project: theirs.path).isEmpty)
+    #expect(changes == 1)
+  }
+
+  @Test func removesAnUnusedBlockAtOnce() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    await model.read(try zip("1.0.0", from: mine))
+    await model.install()
+    let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
+
+    let blocks = CustomBlocksModel(project: theirs)
+    blocks.remove(entry)
+    #expect(blocks.removal == nil)
+    #expect(blocks.error == nil)
+    #expect(listCommunityBlocks(project: theirs.path).isEmpty)
+
+    blocks.remove(entry)
+    #expect(blocks.error?.contains("com.anna.sign-in") == true, "Removing it twice says it isn't installed")
+  }
+
+  @Test func namesBlocksOfCommunityByTheirIdInSummaries() {
+    let path = "blocks/com.anna.sign-in.jevblock/flow.json"
+    #expect(ProjectScanner.testName(path: path) == "com.anna.sign-in")
+    #expect(ProjectScanner.testName(path: "Login/Sign In.flow.json") == "Sign In")
+    #expect(ProjectScanner.testName(path: "blocks/Sign in.block.json") == "Sign in")
+    let summary = BlockSummary.text(.runTest(test: path, inputs: [:], next: nil), appName: { $0 })
+    #expect(summary.contains("com.anna.sign-in"))
+  }
+
+  @Test func sharingStartsFromTheBlockAndChecksTheId() {
+    let entry = LibraryEntry(
+      kind: .block, id: Self.blockFile, name: "Sign in", detail: "Types an email", symbol: "person", text: nil,
+      url: nil, inputs: ["email"])
+    var draft = ShareBlockDraft(entry: entry)
+    #expect(!draft.canShare, "An author is needed")
+    draft.author = "Anna Smith"
+    #expect(draft.id == "com.anna-smith.sign-in")
+    #expect(draft.canShare)
+    #expect(draft.archiveName == "com.anna-smith.sign-in-1.0.0.zip")
+    #expect(draft.share.inputs.map(\.name) == ["email"])
+    #expect(draft.share.description == "Types an email")
+
+    draft.customId = "sign-in"
+    #expect(!draft.hasValidId)
+    #expect(!draft.canShare)
+  }
+
+  @Test func offersToInstallBlocksOnlyInAProject() {
+    var state = PaletteState()
+    #expect(!CommandPalette.entries(state).map(\.action).contains(.installBlock))
+    state.hasProject = true
+    let found = CommandPalette.search("community", in: CommandPalette.entries(state)).map(\.action)
+    #expect(found.contains(.installBlock))
+    #expect(found.contains(.customBlocks))
+  }
+}
