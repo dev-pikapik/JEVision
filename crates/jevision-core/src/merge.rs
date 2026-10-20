@@ -343,6 +343,19 @@ impl Merger<'_> {
                 keys.iter().map(|k| o.get(*k).cloned()).collect()
             };
             let (vb, vm, vt) = (values(b), values(m), values(t));
+            if part == ConflictPart::Note && vm != vt && vb != vt && vb != vm {
+                match discussion(group, &vb[0], &vm[0], &vt[0]) {
+                    Some(Some(value)) => {
+                        out.insert(group.to_owned(), value);
+                        continue;
+                    }
+                    Some(None) => {
+                        out.remove(group);
+                        continue;
+                    }
+                    None => {}
+                }
+            }
             let theirs = if vm == vt || vb == vt {
                 false
             } else if vb == vm {
@@ -400,6 +413,84 @@ fn group(part: ConflictPart, key: &str) -> &str {
         (ConflictPart::Note, "time") => "text",
         _ => key,
     }
+}
+
+/// What both sides did to the replies and files of a note, or to who settled it, put together:
+/// `Some(Some(value))` to set, `Some(None)` to leave the setting out, `None` for a change only a
+/// person can settle. Replies and files are lists: what one side added, the other keeps, and what
+/// one side removed and the other left alone is gone; two replies added under one name stay
+/// both, theirs under a new name.
+fn discussion(
+    group: &str,
+    b: &Option<Value>,
+    m: &Option<Value>,
+    t: &Option<Value>,
+) -> Option<Option<Value>> {
+    let list = |v: &Option<Value>| {
+        v.as_ref()
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+    };
+    let identity = |v: &Value| match group {
+        "replies" => v
+            .get("id")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        _ => v.to_string(),
+    };
+    match group {
+        "resolved" => return (m.is_some() && t.is_some()).then(|| m.clone()),
+        "replies" | "attachments" => {}
+        _ => return None,
+    }
+    let (b, m, t) = (list(b), list(m), list(t));
+    let find = |items: &[Value], id: &str| items.iter().find(|v| identity(v) == id).cloned();
+    let mut taken: HashSet<String> = [&b, &m, &t].into_iter().flatten().map(&identity).collect();
+    let mut out = Vec::new();
+    for mine in &m {
+        let id = identity(mine);
+        match (find(&b, &id), find(&t, &id)) {
+            // They removed it: gone, unless I changed it meanwhile.
+            (Some(was), None) if &was == mine => {}
+            (Some(was), Some(theirs)) if &theirs != mine => {
+                if was == *mine {
+                    out.push(theirs);
+                } else if was == theirs {
+                    out.push(mine.clone());
+                } else {
+                    return None;
+                }
+            }
+            _ => out.push(mine.clone()),
+        }
+    }
+    for theirs in &t {
+        let id = identity(theirs);
+        match (find(&b, &id), find(&m, &id)) {
+            // Already there, or taken care of above.
+            (_, Some(mine)) if &mine == theirs || find(&b, &id).is_some() => {}
+            // I removed it: gone, unless they changed it meanwhile.
+            (Some(was), None) if &was == theirs => {}
+            (_, None) => out.push(theirs.clone()),
+            // Two replies added under one name.
+            (None, Some(_)) => {
+                let base = id.trim_end_matches(|c: char| c.is_ascii_digit());
+                let base = if base.is_empty() { id.as_str() } else { base };
+                let new_id = (2..)
+                    .map(|n| format!("{base}{n}"))
+                    .find(|c| !taken.contains(c))
+                    .expect("an unused id always exists");
+                taken.insert(new_id.clone());
+                let mut renamed = theirs.clone();
+                renamed["id"] = Value::String(new_id);
+                out.push(renamed);
+            }
+            (Some(_), Some(_)) => {}
+        }
+    }
+    Some((!out.is_empty()).then_some(Value::Array(out)))
 }
 
 /// Both added items with the same id, side by side: theirs under a new id. Steps are kept both
@@ -857,6 +948,87 @@ mod tests {
             ("Theirs", 10.0)
         );
         assert_eq!(flow.canvas.positions["open"].x, 10.0);
+    }
+
+    #[test]
+    fn replies_and_files_of_a_note_are_put_together_without_asking() {
+        let with = |extra: &str| {
+            parse(&format!(
+                r#"{{"format":1,"name":"Sign in","app":"com.example.Mail","start":"open","blocks":{{{OPEN},{CLICK}}},
+                "canvas":{{"notes":{{"n":{{"text":"Hi"{extra},"frame":{{"x":0,"y":0,"width":200,"height":80}}}}}}}}}}"#
+            ))
+            .unwrap()
+        };
+        let reply = |id: &str, text: &str| format!(r#"{{"id":"{id}","text":"{text}"}}"#);
+        let replies = |list: &[String]| format!(r#","replies":[{}]"#, list.join(","));
+        let file = |name: &str| format!(r#"{{"file":"{name}"}}"#);
+        let files = |list: &[String]| format!(r#","attachments":[{}]"#, list.join(","));
+
+        let base = with(&format!(
+            "{}{}",
+            replies(&[reply("reply", "One"), reply("reply2", "Two")]),
+            files(&[file("a.png")])
+        ));
+        // Mine answers, drops the first reply and adds a file; theirs answers under the same
+        // name, edits the second reply, removes the old file and adds another.
+        let mine = with(&format!(
+            "{}{}",
+            replies(&[reply("reply2", "Two"), reply("reply3", "Mine")]),
+            files(&[file("a.png"), file("mine.png")])
+        ));
+        let theirs = with(&format!(
+            "{}{}",
+            replies(&[
+                reply("reply", "One"),
+                reply("reply2", "Two!"),
+                reply("reply3", "Theirs")
+            ]),
+            files(&[file("theirs.png")])
+        ));
+        assert!(merge_conflicts(Some(&base), &mine, &theirs).is_empty());
+        let flow = merged(&base, &mine, &theirs, &[]);
+        let n = &flow.canvas.notes[0];
+        let texts: Vec<(&str, &str)> = n
+            .replies
+            .iter()
+            .map(|r| (r.id.as_str(), r.text.as_str()))
+            .collect();
+        assert_eq!(
+            texts,
+            [("reply2", "Two!"), ("reply3", "Mine"), ("reply4", "Theirs")]
+        );
+        let names: Vec<&str> = n.attachments.iter().map(|a| a.value.as_str()).collect();
+        assert_eq!(names, ["mine.png", "theirs.png"]);
+
+        // The same reply edited two ways is for a person to settle.
+        let edited = |text: &str| with(&replies(&[reply("reply", text), reply("reply2", "Two")]));
+        let (base, mine, theirs) = (
+            with(&replies(&[reply("reply", "One"), reply("reply2", "Two")])),
+            edited("Mine"),
+            edited("Theirs"),
+        );
+        assert_eq!(
+            merge_conflicts(Some(&base), &mine, &theirs),
+            [conflict(
+                ConflictPart::Note,
+                "n",
+                Some("replies"),
+                ConflictKind::Changed,
+                false
+            )]
+        );
+        let flow = merged(&base, &mine, &theirs, &[MergeChoice::Theirs]);
+        assert_eq!(flow.canvas.notes[0].replies[0].text, "Theirs");
+
+        // Both settling one discussion is not a disagreement; one reopening it is theirs to win
+        // only when mine left it alone.
+        let resolved = |by: &str| format!(r#","resolved":{{"by":"{by}"}}"#);
+        let (base, mine, theirs) = (with(""), with(&resolved("Anna")), with(&resolved("Bob")));
+        assert!(merge_conflicts(Some(&base), &mine, &theirs).is_empty());
+        let flow = merged(&base, &mine, &theirs, &[]);
+        assert_eq!(flow.canvas.notes[0].resolved.as_ref().unwrap().by, "Anna");
+        let flow = merged(&mine, &mine, &with(""), &[]);
+        assert!(flow.canvas.notes[0].resolved.is_none());
     }
 
     #[test]

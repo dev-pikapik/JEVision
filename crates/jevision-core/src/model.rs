@@ -73,12 +73,70 @@ pub struct CanvasSection {
 pub struct Note {
     /// Unique among the notes of the test.
     pub id: String,
+    /// Markdown.
     pub text: String,
-    /// Who last wrote the note; empty when unknown.
+    /// Who wrote the note; empty when unknown.
     pub author: String,
-    /// When the note was last written, as an RFC 3339 timestamp; empty when unknown.
+    /// When the note was written, as an RFC 3339 timestamp; empty when unknown.
     pub time: String,
+    /// What the note is about; a block's note moves with the block.
+    pub anchor: NoteAnchor,
+    /// Files and links that come with the note.
+    pub attachments: Vec<Attachment>,
+    /// The discussion under the note, oldest first.
+    pub replies: Vec<Reply>,
+    /// Set when the discussion is settled.
+    pub resolved: Option<Resolved>,
     pub rect: Rect,
+}
+
+/// What a note is about.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum NoteAnchor {
+    /// The whole test; what notes without an anchor in older files are about.
+    #[default]
+    Test,
+    /// One block of the test.
+    Block { id: String },
+    /// The folder the test is in, and so all tests in it.
+    Folder,
+}
+
+/// What an attachment is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttachmentKind {
+    /// A file saved next to the test, see [`crate::note_file_path`]; its value is the file name.
+    File,
+    /// A web address, such as a page or a GitHub issue; its value is the address.
+    Link,
+}
+
+/// A file or link that comes with a note.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attachment {
+    pub kind: AttachmentKind,
+    /// The file name for a file, the address for a link. Unique among the attachments of a note.
+    pub value: String,
+}
+
+/// One message in the discussion under a note.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reply {
+    /// Unique among the replies of the note.
+    pub id: String,
+    /// Who wrote it; empty when unknown.
+    pub author: String,
+    /// When it was written, as an RFC 3339 timestamp; empty when unknown.
+    pub time: String,
+    pub text: String,
+}
+
+/// Who settled the discussion under a note, and when.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Resolved {
+    pub by: String,
+    /// An RFC 3339 timestamp; empty when unknown.
+    pub time: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -1190,7 +1248,72 @@ impl Serialize for Note {
         if !self.time.is_empty() {
             map.serialize_entry("time", &self.time)?;
         }
+        if self.anchor != NoteAnchor::Test {
+            map.serialize_entry("anchor", &self.anchor)?;
+        }
+        if !self.attachments.is_empty() {
+            map.serialize_entry("attachments", &self.attachments)?;
+        }
+        if !self.replies.is_empty() {
+            map.serialize_entry("replies", &self.replies)?;
+        }
+        if let Some(resolved) = &self.resolved {
+            map.serialize_entry("resolved", resolved)?;
+        }
         map.serialize_entry("frame", &Coords::of(&self.rect))?;
+        map.end()
+    }
+}
+
+impl Serialize for NoteAnchor {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(None)?;
+        match self {
+            Self::Test => map.serialize_entry("type", "test")?,
+            Self::Block { id } => {
+                map.serialize_entry("type", "block")?;
+                map.serialize_entry("block", id)?;
+            }
+            Self::Folder => map.serialize_entry("type", "folder")?,
+        }
+        map.end()
+    }
+}
+
+impl Serialize for Attachment {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(Some(1))?;
+        let key = match self.kind {
+            AttachmentKind::File => "file",
+            AttachmentKind::Link => "link",
+        };
+        map.serialize_entry(key, &self.value)?;
+        map.end()
+    }
+}
+
+impl Serialize for Reply {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(None)?;
+        map.serialize_entry("id", &self.id)?;
+        if !self.author.is_empty() {
+            map.serialize_entry("author", &self.author)?;
+        }
+        if !self.time.is_empty() {
+            map.serialize_entry("time", &self.time)?;
+        }
+        map.serialize_entry("text", &self.text)?;
+        map.end()
+    }
+}
+
+impl Serialize for Resolved {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let mut map = s.serialize_map(None)?;
+        map.serialize_entry("by", &self.by)?;
+        if !self.time.is_empty() {
+            map.serialize_entry("time", &self.time)?;
+        }
         map.end()
     }
 }

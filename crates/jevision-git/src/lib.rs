@@ -10,13 +10,14 @@ use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 mod github;
+mod notes;
 mod signin;
 #[cfg(test)]
 mod tests;
 
 pub use github::{
-    API, ATTACHMENTS_BRANCH, Artifact, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, PullRequest,
-    PullRequestChanges, PullRequestDraft,
+    API, ATTACHMENTS_BRANCH, Artifact, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, IssueState,
+    IssueStatus, PullRequest, PullRequestChanges, PullRequestDraft,
 };
 pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, forget_token, save_token};
 

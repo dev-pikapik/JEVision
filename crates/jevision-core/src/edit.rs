@@ -553,8 +553,21 @@ impl Flow {
     /// after it. A loop leaves its body in its place; an `if` keeps its first branch that leads
     /// anywhere, and the blocks that only its other branches reached go too. Returns the block to select next, or
     /// `None` when nothing is left to select or there is no such block.
+    ///
+    /// Notes about the removed blocks stay on the canvas as notes about the test, see
+    /// [`Flow::remove_block_with_notes`] to remove them too.
     pub fn remove_block(&mut self, id: &str) -> Option<String> {
+        self.remove_block_and(id, false)
+    }
+
+    /// Like [`Flow::remove_block`], but the notes about the removed blocks go with them.
+    pub fn remove_block_with_notes(&mut self, id: &str) -> Option<String> {
+        self.remove_block_and(id, true)
+    }
+
+    pub(crate) fn remove_block_and(&mut self, id: &str, with_notes: bool) -> Option<String> {
         let i = self.position(id)?;
+        let present: HashSet<String> = self.blocks.iter().map(|b| b.id.clone()).collect();
         let before = self.reachable(&self.start);
         let removed = self.blocks.remove(i);
         // `outer` replaces the block for edges from outside, `inner` for a loop body's way back.
@@ -616,6 +629,11 @@ impl Flow {
         self.canvas
             .positions
             .retain(|id, _| kept.contains(id.as_str()));
+        let gone: HashSet<String> = present
+            .into_iter()
+            .filter(|id| !kept.contains(id.as_str()))
+            .collect();
+        self.let_go_of_notes(&gone, with_notes);
         [outer, predecessor]
             .into_iter()
             .flatten()

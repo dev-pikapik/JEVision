@@ -6,10 +6,11 @@ use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
-    AI_PROVIDERS, BLOCK_SUFFIX, BODY, Block, BlockKind, ClipboardAction, Compare, Condition,
-    DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, Point, Rect, Reference, ScriptInput,
-    TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
+    AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, ClipboardAction, Compare,
+    Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, NoteAnchor, Point, Rect,
+    Reference, ScriptInput, TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
 };
+use crate::notes::is_safe_name;
 
 pub const MAX_RETRIES: u32 = 10;
 pub const MAX_REPEAT: u32 = 10_000;
@@ -47,6 +48,7 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
     graph(flow, &blocks, &mut out);
     unknown_variables(flow, &blocks, &mut out);
     script_input_kinds(flow, &blocks, &mut out);
+    notes(flow, &seen, &mut out);
     // A test that runs another one may check the screen there.
     if !flow
         .blocks
@@ -56,6 +58,45 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
         out.push(Issue::warning("flow.noCheck"));
     }
     out
+}
+
+/// Checks what the notes carry: files and links that can be opened safely, one name for each
+/// reply, a block for the note to be about.
+fn notes(flow: &Flow, blocks: &HashSet<&str>, out: &mut Vec<Issue>) {
+    for note in &flow.canvas.notes {
+        if let NoteAnchor::Block { id } = &note.anchor {
+            if !blocks.contains(id.as_str()) {
+                out.push(
+                    Issue::warning("flow.note.unknownBlock")
+                        .with("note", &note.id)
+                        .with("block", id),
+                );
+            }
+        }
+        for a in &note.attachments {
+            let fine = match a.kind {
+                AttachmentKind::File => is_safe_name(&a.value) && is_safe_name(&note.id),
+                AttachmentKind::Link => is_web_address(&a.value),
+            };
+            if !fine {
+                out.push(
+                    Issue::error("flow.note.attachment.invalid")
+                        .with("note", &note.id)
+                        .with("value", &a.value),
+                );
+            }
+        }
+        let mut seen = HashSet::new();
+        for r in &note.replies {
+            if !seen.insert(r.id.as_str()) {
+                out.push(
+                    Issue::error("flow.note.reply.duplicateId")
+                        .with("note", &note.id)
+                        .with("reply", &r.id),
+                );
+            }
+        }
+    }
 }
 
 /// Warns about `${var.NAME}` that no block of the test saves. A test it runs may save it, so

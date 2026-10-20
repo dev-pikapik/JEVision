@@ -19,6 +19,7 @@ mod issue;
 mod layout;
 mod merge;
 mod model;
+mod notes;
 mod project;
 mod references;
 mod route;
@@ -60,6 +61,12 @@ pub use merge::{
     ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
+pub use notes::{
+    IssueRef, MENTION_SCHEME, NOTE_ASSETS_SUFFIX, NoteEvent, NoteEventKind, NoteVersion,
+    assets_folder, attachment_file_name, complete_mention, github_issue_ref, is_safe_name,
+    is_web_address, mention_suggestions, mentions_as_links, note_file_path, note_files_folder,
+    note_timeline,
+};
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
     PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,

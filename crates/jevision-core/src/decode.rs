@@ -9,12 +9,12 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction, Compare, Condition,
-    DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod,
-    Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference, SavedValue,
-    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
-    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition,
-    WindowSize, parse_duration,
+    Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction,
+    Compare, Condition, DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow,
+    HttpMethod, Modifiers, MouseButton, NamedValue, Note, NoteAnchor, Point, Priority, Rect,
+    Reference, Reply, Resolved, SavedValue, ScriptInput, ScriptLanguage, ScriptOutput,
+    ScrollDirection, ScrollUnit, Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck,
+    ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -527,6 +527,13 @@ fn canvas(mut o: Obj<'_>, out: &mut Out) -> CanvasContent {
             let text = n.string("text", out);
             let author = n.opt_string("author", out).unwrap_or_default();
             let time = n.opt_string("time", out).unwrap_or_default();
+            let anchor = n
+                .opt_object("anchor", out)
+                .and_then(|a| note_anchor(a, out))
+                .unwrap_or_default();
+            let attachments = entries(&mut n, "attachments", out, attachment).unwrap_or_default();
+            let replies = entries(&mut n, "replies", out, reply).unwrap_or_default();
+            let resolved = n.opt_object("resolved", out).and_then(|r| resolved(r, out));
             let rect = n.object("frame", out).and_then(|f| rect(f, out));
             n.finish(out);
             if let (Some(text), Some(rect)) = (text, rect) {
@@ -535,6 +542,10 @@ fn canvas(mut o: Obj<'_>, out: &mut Out) -> CanvasContent {
                     text,
                     author,
                     time,
+                    anchor,
+                    attachments,
+                    replies,
+                    resolved,
                     rect,
                 });
             }
@@ -542,6 +553,72 @@ fn canvas(mut o: Obj<'_>, out: &mut Out) -> CanvasContent {
     }
     o.finish(out);
     canvas
+}
+
+#[derive(Clone, Copy)]
+enum AnchorKind {
+    Test,
+    Block,
+    Folder,
+}
+
+const ANCHOR_KINDS: &[(&str, AnchorKind)] = &[
+    ("test", AnchorKind::Test),
+    ("block", AnchorKind::Block),
+    ("folder", AnchorKind::Folder),
+];
+
+fn note_anchor(mut o: Obj<'_>, out: &mut Out) -> Option<NoteAnchor> {
+    let kind = o.opt_choice("type", ANCHOR_KINDS, out);
+    let anchor = match kind {
+        Some(AnchorKind::Test) => Some(NoteAnchor::Test),
+        Some(AnchorKind::Folder) => Some(NoteAnchor::Folder),
+        Some(AnchorKind::Block) => o.string("block", out).map(|id| NoteAnchor::Block { id }),
+        None => {
+            o.require("type", None::<()>, out);
+            None
+        }
+    };
+    o.finish(out);
+    anchor
+}
+
+fn attachment(mut o: Obj<'_>, out: &mut Out) -> Option<Attachment> {
+    let kind = o.one_of(&["file", "link"], out);
+    let value = match kind {
+        Some(key) => o.string(key, out),
+        None => None,
+    };
+    o.finish(out);
+    let kind = match kind? {
+        "file" => AttachmentKind::File,
+        _ => AttachmentKind::Link,
+    };
+    Some(Attachment {
+        kind,
+        value: value?,
+    })
+}
+
+fn reply(mut o: Obj<'_>, out: &mut Out) -> Option<Reply> {
+    let id = o.string("id", out);
+    let author = o.opt_string("author", out).unwrap_or_default();
+    let time = o.opt_string("time", out).unwrap_or_default();
+    let text = o.string("text", out);
+    o.finish(out);
+    Some(Reply {
+        id: id?,
+        author,
+        time,
+        text: text?,
+    })
+}
+
+fn resolved(mut o: Obj<'_>, out: &mut Out) -> Option<Resolved> {
+    let by = o.string("by", out);
+    let time = o.opt_string("time", out).unwrap_or_default();
+    o.finish(out);
+    Some(Resolved { by: by?, time })
 }
 
 fn blocks(o: Obj<'_>, out: &mut Out) -> Vec<Block> {

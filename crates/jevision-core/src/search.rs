@@ -130,7 +130,10 @@ pub fn test_keywords(flow: &Flow) -> String {
             BlockKind::DateTime { .. } => {}
         }
     }
-    words.extend(flow.canvas.notes.iter().map(|n| n.text.as_str()));
+    for note in &flow.canvas.notes {
+        words.push(&note.text);
+        words.extend(note.replies.iter().map(|r| r.text.as_str()));
+    }
     words.extend(flow.canvas.sections.iter().map(|s| s.title.as_str()));
     words.retain(|w| !w.is_empty());
     words.join(" ")
