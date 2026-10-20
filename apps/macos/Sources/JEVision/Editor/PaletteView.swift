@@ -29,9 +29,13 @@ enum PaletteChoice: Hashable {
     case .note: String(localized: "A sticky note for whoever reads the test")
     case .frame: String(localized: "Groups blocks into a section with a title")
     case .library(let entry):
-      entry.kind == .template
-        ? String(localized: "Template: adds its blocks to the test")
-        : String(localized: "Custom block: runs its steps as one")
+      if let package = entry.package {
+        String(localized: "Community block by \(package.author), version \(package.version)")
+      } else {
+        entry.kind == .template
+          ? String(localized: "Template: adds its blocks to the test")
+          : String(localized: "Custom block: runs its steps as one")
+      }
     case .describe: String(localized: "The AI writes the blocks from what you describe in words")
     }
   }
@@ -61,7 +65,7 @@ enum PaletteChoice: Hashable {
     switch self {
     case .block(let type): BlockInfo.catalog.first { $0.typeName == type }.map { BlockInfo.groupTitle($0.group) } ?? ""
     case .note, .frame: String(localized: "Canvas")
-    case .library: String(localized: "Library")
+    case .library(let entry): entry.package == nil ? String(localized: "Library") : String(localized: "Community")
     case .describe: String(localized: "AI")
     }
   }

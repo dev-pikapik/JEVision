@@ -84,7 +84,7 @@ struct BoardBlockTile: Identifiable, Equatable {
       guard let block = document.block(laid.id) else { return nil }
       let type = block.kind.typeName
       var entry: LibraryEntry?
-      if case .runTest(let test, _, _) = block.kind, test.lowercased().hasSuffix(ProjectLibrary.blockSuffix) {
+      if case .runTest(let test, _, _, _) = block.kind, isBlockPath(path: test) {
         entry = byFile[folder.appending(path: test).standardizedFileURL]
       }
       let issues = document.issues(of: laid.id)

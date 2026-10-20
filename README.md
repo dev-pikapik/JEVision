@@ -99,7 +99,7 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 
 Also: the [`jevision` command line](#command-line) for Terminal and CI,
 [AI assistants over MCP](#assistants-mcp), [data-driven tests](#data-driven-tests) from CSV files,
-[environments](#environments) and runs [in a virtual machine](#in-a-virtual-machine).
+[environments](#environments), [custom blocks](#custom-blocks) to share and install, and runs [in a virtual machine](#in-a-virtual-machine).
 
 ## First steps
 
@@ -347,7 +347,7 @@ readable diff.
 | `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning |
 | `if` | logic | Goes to `then`, to the first matching `elseIf` condition, or to `else`, depending on what is on screen |
 | `repeat` | logic | Runs its `body` a given number of times |
-| `runTest` | logic | Runs another test file as a step |
+| `runTest` | logic | Runs another test file or a [custom block](#custom-blocks) as a step; its `inputs` give values to `${input.NAME}` in that test |
 | `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |
 | `script` | data and system | Runs a `sh`, `zsh`, Python 3, Node or AppleScript script; its `inputs` are text, number, boolean, image (a PNG file) or area (`x,y,width,height` in fractions of the window), and its `outputs` become `${var.NAME}` of the same types; a value that doesn't fit its type is reported while editing |
 | `clipboard` | data and system | Puts text on the clipboard (`put`), keeps the clipboard text as a variable (`read`) or waits until it equals, contains or compares with a value (`check`); a test with it doesn't run beside another that uses the screen |
@@ -365,6 +365,43 @@ With `"compare": "meaning"`, an AI model looks at the screen and decides whether
 `expect` says, in plain words: `{ "compare": "meaning", "expect": "The cart shows 2 items" }`.
 The reference image is optional; with one, the model compares the screen with it. `check`,
 `waitFor` and `if` all accept such a reference.
+
+</details>
+
+<a id="custom-blocks"></a>
+<details>
+<summary><b>Custom blocks</b></summary>
+
+A custom block is a test that other tests run with `runTest`. Values come in through `inputs` and
+the block reads them as `${input.NAME}`. Select blocks on the canvas and choose **Make Block…** to
+make one; it lives in `blocks/` of the project and joins the block library.
+
+To share one, choose **File → Custom Blocks…**, then **Share…** next to the block. JEVision writes a
+package: a folder `com.author.name.jevblock/` with a `block.json` (id, name, description, icon,
+version, author, license, the inputs it asks for) and a `flow.json` with the steps, and the pictures
+they use, as a folder or a .zip file. Put it in a GitHub repository or release for others.
+
+To use one, choose **File → Install Block…**, drop a folder or a .zip file on the window, or paste an
+https address. Before anything is installed, a sheet says what the block does in plain words, and
+marks scripts, network requests, database queries, opened applications and typed keys, so you know
+what you let into your project. Installed blocks appear in the library under **Community** with
+their author and version, and reports name the package and its version. **Update** fetches the
+newest version of a block installed from an address, and **Remove** names the tests that still use a
+block instead of removing it behind their back. A test that uses a block you haven't installed names
+it with its version and offers **Install…** right in the error; `jevision validate` and `jevision run`
+print the same message with the `jevision blocks install` command.
+
+```sh
+jevision blocks list                      # the blocks installed in the project
+jevision blocks install ./sign-in.zip     # show what the block does; add --yes to install it
+jevision blocks install https://github.com/acme/sign-in --yes
+jevision blocks update                    # newest version of every block installed from an address
+jevision blocks remove com.acme.sign-in   # --force when tests use it
+```
+
+Installing never runs anything and unpacking never leaves the project's folder. The format is in
+[docs/custom-blocks.html](docs/custom-blocks.html); an example package is in
+[examples/textedit/blocks](examples/textedit/blocks).
 
 </details>
 
@@ -435,6 +472,7 @@ jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning 
 jevision run tests/ --json                # print results as JSON; progress goes to standard error
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
+jevision blocks list                      # the custom blocks installed in the project (install, update, remove too)
 jevision schedule run ~/Projects/AcmeMail # run the schedules of a project that are due now
 jevision --version                        # print the version (-V for short)
 ```

@@ -26,7 +26,7 @@ struct BlockSummaryTests {
         == "Choose what to click")
     #expect(summary(.pressKeys(keys: "cmd+shift+s", next: nil)) == "Press ⇧⌘S")
     #expect(summary(.openFile(files: ["docs/a.txt", "b.txt", "c.txt"], app: nil, newInstance: false, closeAfter: false, next: nil)) == "a.txt and 2 more")
-    #expect(summary(.runTest(test: "shared/sign-in.flow.json", inputs: [:], next: nil)) == "Runs “sign-in”")
+    #expect(summary(.runTest(test: "shared/sign-in.flow.json", package: nil, inputs: [:], next: nil)) == "Runs “sign-in”")
   }
 
   @Test func neverSplitsADataToken() {

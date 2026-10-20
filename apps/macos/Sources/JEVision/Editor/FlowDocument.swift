@@ -144,10 +144,12 @@ final class FlowDocument {
   }
 
   /// Adds a step that runs the custom block `file`, relative to this test, on `slot`; with
-  /// `point`, puts it there on the canvas.
-  func insertCustomBlock(_ file: String, at slot: Slot?, placedAt point: Point? = nil) {
+  /// `point`, puts it there on the canvas. `package` is what the step keeps about a block from the
+  /// community, so a project without it can say which one to install.
+  func insertCustomBlock(_ file: String, package: PackageNeed? = nil, at slot: Slot?, placedAt point: Point? = nil) {
     guard let flow else { return }
-    place(insertBlocks(flow: flow, blocks: [.runTest(test: file, inputs: [:], next: nil)], slot: slot), at: point)
+    let step = BlockKind.runTest(test: file, package: package, inputs: [:], next: nil)
+    place(insertBlocks(flow: flow, blocks: [step], slot: slot), at: point)
   }
 
   /// Adds `entry` from the library on `slot`: the blocks of a template, or a step that runs a
@@ -156,7 +158,9 @@ final class FlowDocument {
     if let text = entry.text {
       insertTemplate(text, at: slot)
     } else if let file = entry.url {
-      insertCustomBlock(RelativePath.from(url.deletingLastPathComponent(), to: file), at: slot, placedAt: point)
+      insertCustomBlock(
+        RelativePath.from(url.deletingLastPathComponent(), to: file), package: entry.package?.need, at: slot,
+        placedAt: point)
     }
   }
 
@@ -544,8 +548,11 @@ final class FlowDocument {
 
   private func check(_ flow: Flow) -> [Issue] {
     let folder = url.deletingLastPathComponent().path(percentEncoded: false)
-    // Of the checks against the disk, only the custom blocks' inputs aren't shown next to their fields.
-    let inputs = validateFlowIn(flow: flow, folder: folder).filter { $0.code == "flow.input.missing" }
+    // Of the checks against the disk, only the custom blocks' inputs and the blocks that aren't installed
+    // aren't shown next to their fields.
+    let inputs = validateFlowIn(flow: flow, folder: folder).filter {
+      $0.code == "flow.input.missing" || $0.code == "flow.block.notInstalled"
+    }
     var issues = validateFlow(flow: flow) + inputs + environmentIssues(flow: flow, folder: folder)
       + dataIssues(flow: flow, folder: folder)
     if let project, RelativePath.isInside(url, folder: project) {

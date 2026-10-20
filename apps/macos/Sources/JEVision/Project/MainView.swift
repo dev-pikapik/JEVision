@@ -51,6 +51,13 @@ struct MainView: View {
     .sheet(isPresented: Binding(get: { project.bugReportRun != nil }, set: { if !$0 { project.bugReportRun = nil } })) {
       if let dir = project.bugReportRun { BugReportSheet(dir: dir) }
     }
+    .sheet(item: $project.installingBlock) { InstallBlockSheet(model: $0) }
+    .sheet(isPresented: $project.showsCustomBlocks) { CustomBlocksSheet() }
+    .dropDestination(for: URL.self) { urls, _ in
+      guard project.status == .ready, let source = urls.lazy.compactMap(BlockInstallModel.source).first else { return false }
+      project.installBlock(from: source)
+      return true
+    }
     .sheet(item: $project.referenceWizard) { ReferenceWizardView(wizard: $0, undoManager: undoManager) }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
     .sheet(isPresented: $git.isComposingPullRequest) { NewPullRequestView() }

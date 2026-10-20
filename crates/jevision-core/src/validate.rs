@@ -11,6 +11,7 @@ use crate::model::{
     Reference, ScriptInput, TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
 };
 use crate::notes::is_safe_name;
+use crate::package::{Version, is_block_path, package_of_path};
 
 pub const MAX_RETRIES: u32 = 10;
 pub const MAX_REPEAT: u32 = 10_000;
@@ -215,6 +216,25 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             && !saved_by_check.contains(path)
             && !dir.join(path).exists()
         {
+            if let Some(package) = package_of_path(path).filter(|_| field == "test") {
+                let mut issue = Issue::error("flow.block.notInstalled")
+                    .with("block", block)
+                    .with("field", field)
+                    .with("id", package)
+                    .with("path", path);
+                let need = blocks.iter().find_map(|b| match &b.kind {
+                    BlockKind::RunTest { package, .. } if b.id == *block => package.as_ref(),
+                    _ => None,
+                });
+                if let Some(need) = need {
+                    issue = issue.with("version", &need.version);
+                    if let Some(source) = &need.source {
+                        issue = issue.with("source", source);
+                    }
+                }
+                out.push(issue);
+                continue;
+            }
             out.push(
                 Issue::warning("flow.file.missing")
                     .with("block", block)
@@ -243,16 +263,21 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     out
 }
 
-/// Inputs the custom block in `path`, relative to `dir`, reads; none for a test or a file that
-/// can't be read.
+/// Inputs the custom block in `path`, relative to `dir`, reads and has no default for; none for a
+/// test or a file that can't be read.
 fn block_inputs(dir: &Path, path: &str) -> Vec<String> {
-    if !path.ends_with(BLOCK_SUFFIX) || !is_relative_path(path) || !placeholders(path).is_empty() {
+    if !is_block_path(path) || !is_relative_path(path) || !placeholders(path).is_empty() {
         return Vec::new();
     }
+    let defaults = crate::input_defaults(&dir.join(path));
     std::fs::read_to_string(dir.join(path))
         .ok()
         .and_then(|text| crate::parse(&text).ok())
-        .map(|flow| required_inputs(&flow))
+        .map(|flow| {
+            let mut names = required_inputs(&flow);
+            names.retain(|name| !defaults.contains_key(name));
+            names
+        })
         .unwrap_or_default()
 }
 
@@ -699,13 +724,34 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             path_with_extension(id, "file", file, ".csv", out);
             loop_body(id, body, out);
         }
-        BlockKind::RunTest { test, inputs, .. } => {
-            let ext = if test.ends_with(BLOCK_SUFFIX) {
-                BLOCK_SUFFIX
+        BlockKind::RunTest {
+            test,
+            package,
+            inputs,
+            ..
+        } => {
+            if let Some(need) = package {
+                if need.version.parse::<Version>().is_err() {
+                    out.push(err("flow.package.version", "package.version"));
+                }
+                if need
+                    .source
+                    .as_ref()
+                    .is_some_and(|s| !s.starts_with("https://"))
+                {
+                    out.push(err("flow.package.source", "package.source"));
+                }
+            }
+            if package_of_path(test).is_some() {
+                relative_path(id, "test", test, out);
             } else {
-                TEST_SUFFIX
-            };
-            path_with_extension(id, "test", test, ext, out);
+                let ext = if test.ends_with(BLOCK_SUFFIX) {
+                    BLOCK_SUFFIX
+                } else {
+                    TEST_SUFFIX
+                };
+                path_with_extension(id, "test", test, ext, out);
+            }
             let mut names: Vec<&String> = inputs.keys().collect();
             names.sort();
             for name in names.into_iter().filter(|n| !is_identifier(n)) {
@@ -1276,7 +1322,7 @@ fn is_bundle_id(s: &str) -> bool {
             .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
 }
 
-fn is_web_address(s: &str) -> bool {
+pub(crate) fn is_web_address(s: &str) -> bool {
     ["http://", "https://"]
         .iter()
         .any(|scheme| s.len() > scheme.len() && s.starts_with(scheme))

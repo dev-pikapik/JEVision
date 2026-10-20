@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom blocks — JEVision</title>
+<meta name="description" content="Reuse steps as your own blocks, share them with other people, and install blocks that others made, after reading what they do.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+    <li><a href="custom-blocks.html" aria-current="page">Custom blocks</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Custom blocks</h1>
+<p class="lead">A custom block is a few steps with a name, ready to use in any test, such as “Sign in”. Make your own, hand them to a colleague, or install blocks that other people shared.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#what">What a custom block is</a></li>
+    <li><a href="#use">Using a block in a test</a></li>
+    <li><a href="#make">Making your own block</a></li>
+    <li><a href="#share">Sharing a block</a></li>
+    <li><a href="#install">Installing a block</a></li>
+    <li><a href="#safety">What you see before you install</a></li>
+    <li><a href="#manage">Updating and removing blocks</a></li>
+    <li><a href="#reports">Runs and reports</a></li>
+    <li><a href="#package">The package format</a></li>
+    <li><a href="#publish">Publishing on GitHub</a></li>
+    <li><a href="#limits">How packages are kept safe</a></li>
+  </ul>
+</nav>
+
+<h2 id="what">What a custom block is</h2>
+<p>A custom block is a test that other tests run as one step, with the <a href="writing-tests.html#runTest"><code>runTest</code></a> block. It can ask for values, so one block serves many tests: the sign-in block asks for an email and a password, and each test says which.</p>
+<p>There are two kinds, and both show up in the block library and in the <strong>Test</strong> menu of a <code>runTest</code> block:</p>
+<ul>
+  <li><strong>Your blocks</strong> are files in the <code>blocks</code> folder of your project, such as <code>blocks/Sign in.block.json</code>. You made them.</li>
+  <li><strong>Blocks from the community</strong> are packages other people made, installed into the <code>blocks</code> folder of your project. The library lists them in the group <strong>Community</strong>, with their author and version.</li>
+</ul>
+
+<h2 id="use">Using a block in a test</h2>
+<p>Add a block from the library (<kbd>Space</kbd> on the canvas, or <kbd>⌘K</kbd>), or add a <code>runTest</code> block and choose the custom block as its test. Fill in the values it asks for. A value may hold <code>${env.NAME}</code>, <code>${secret.NAME}</code> and <code>${data.COLUMN}</code> of the test that uses the block.</p>
+<pre><code>{
+  "type": "runTest",
+  "test": "blocks/com.acme.sign-in.jevblock/flow.json",
+  "package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in" },
+  "inputs": { "email": "anna@example.com", "password": "${secret.password}" },
+  "next": "inbox"
+}</code></pre>
+<ul>
+  <li><code>package</code> is the version of the block the test was made with and, when it came from a web address, that address. JEVision fills it in when you add a block from the library. A test without it still works.</li>
+  <li>Inside the block, a step reads a value as <code>${input.NAME}</code>, such as <code>${input.email}</code> in the text of a <code>type</code> block.</li>
+  <li>A value the test leaves out gets a warning while you edit, and stops the run with a message that names the missing value, unless the block gives that value a <code>default</code>.</li>
+  <li>The block acts on its own application (the <code>app</code> of its file), uses the same environment as the test, and a failure inside it fails the test. A block can't run itself, directly or through other blocks.</li>
+</ul>
+
+<h2 id="make">Making your own block</h2>
+<p>Select the blocks on the canvas that belong together and choose <strong>Make Block…</strong> (right-click, or <kbd>⌘K</kbd>). Give it a name, and JEVision saves them as <code>blocks/NAME.block.json</code>. Wherever the blocks use <code>${input.NAME}</code>, the new block asks for NAME.</p>
+<p>Changing a block changes every test that uses it. <strong>Edit Block</strong> in the inspector of a <code>runTest</code> block opens it.</p>
+
+<h2 id="share">Sharing a block</h2>
+<p>Choose <strong>File → Custom Blocks…</strong>, find the block under <strong>My blocks</strong> and click <strong>Share…</strong>. Fill in who made it, its version and its license, and choose a zip file or a folder.</p>
+<ul>
+  <li>The <strong>block id</strong> is suggested from your name and the block's name, like <code>com.anna-smith.sign-in</code>. Change it to one you own, such as one starting with a domain name written backwards.</li>
+  <li>Only the steps of the block and the pictures they use go in the package. Nothing else of your project does.</li>
+  <li>The window lists what it left out or what looks wrong, such as a picture that is missing.</li>
+</ul>
+<p>Send the file to a colleague, or <a href="#publish">publish it on GitHub</a>. Packages are plain files, so you can also write one by hand: see <a href="#package">The package format</a>.</p>
+
+<h2 id="install">Installing a block</h2>
+<p>Choose <strong>File → Install Block…</strong> (or <kbd>⌘K</kbd> and type “install block”), then do one of these:</p>
+<ul>
+  <li>Choose a block <strong>folder</strong> or a <strong>.zip file</strong> with <strong>Choose File or Folder…</strong>.</li>
+  <li><strong>Drop</strong> a folder or a .zip file onto the JEVision window, or a link to one.</li>
+  <li>Paste an <strong>address</strong>: a GitHub repository, a GitHub release or a link to a .zip file. Only <code>https</code> addresses work.</li>
+</ul>
+<p>Nothing is installed at this point. JEVision reads the block and shows <a href="#safety">what it does</a>; you choose <strong>Install</strong> after reading. The block goes into the <code>blocks</code> folder of the open project, so tests of this project can run it. Commit that folder and <code>jevision.blocks.json</code> to git, and the whole team has the block.</p>
+<p>If a block with the same id is installed already, the window says which version it is and offers:</p>
+<ul>
+  <li><strong>Update to…</strong> when the new version is newer.</li>
+  <li><strong>Go Back to…</strong> when it is older.</li>
+  <li><strong>Reinstall</strong> when it is the same version.</li>
+  <li><strong>Keep Version…</strong> or <strong>Cancel</strong> to change nothing.</li>
+</ul>
+<p>A block that needs a newer JEVision than yours (its <code>minVersion</code>), has a file that is broken, or asks for a value its steps never use, says so, and a block with an error can't be installed.</p>
+
+<h2 id="safety">What you see before you install</h2>
+<p>A block can do more than click and type in the app under test. So the window first tells you, step by step and in plain words, <strong>what this block does</strong>, such as the text it types or the keys it presses. Below it, <strong>Needs your attention</strong> lists the steps that reach beyond the app under test, each with exactly what it does:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Shown as</th><th scope="col">Steps</th><th scope="col">What you see of the step</th></tr></thead>
+  <tbody>
+    <tr><td>Runs a script on your Mac</td><td><code>script</code>, <code>command</code></td><td>The whole code or command</td></tr>
+    <tr><td>Sends requests over the network</td><td><code>http</code></td><td>The method, the address and the body</td></tr>
+    <tr><td>Reads or changes a database</td><td><code>database</code></td><td>The file and the query</td></tr>
+    <tr><td>Opens apps, files or web pages</td><td><code>openApp</code>, <code>openFile</code></td><td>The app, the files and the addresses</td></tr>
+    <tr><td>Types on the keyboard</td><td><code>type</code>, <code>pressKeys</code></td><td>The text or the keys</td></tr>
+    <tr><td>Uses the clipboard</td><td><code>clipboard</code></td><td>The text or the variable</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The most worrying kinds come first, and the clipboard is listed more quietly than the rest. <strong>Install a block only from people you trust.</strong> A script in a block can do anything you can do on your Mac.</p>
+<p>Installing only copies files. JEVision doesn't run anything from a package until a test that uses the block runs, and then only the steps you were shown.</p>
+
+<h2 id="manage">Updating and removing blocks</h2>
+<p><strong>File → Custom Blocks…</strong> lists the blocks from the community with their version, author and where they came from.</p>
+<ul>
+  <li><strong>Update</strong> appears for a block installed from an address. It fetches the address again and shows what changed before it replaces anything, as an installation does. Blocks installed from a file have no address to update from.</li>
+  <li><strong>Remove</strong> deletes the block. If tests use it, the window names them and asks first, because they would stop with a message that the block is missing. A block is never removed behind your back.</li>
+</ul>
+
+<h2 id="reports">Runs and reports</h2>
+<ul>
+  <li>The steps of a package are reported under the name and version of the package, such as “in Sign in 1.2.0”, and the report lists the packages a run used with their authors. Statistics and the run list name a package by its id.</li>
+  <li>A test that uses a block that isn't installed is marked while you edit and when you validate, and a run of it stops with “the block is not installed” before anything happens on screen. The error names the block and its version, such as “needs the block com.acme.sign-in 1.2.0”. <strong>Install…</strong> in the editor and in the report opens the Install Block sheet: it reads the block from the address the test knows, or asks for a file or an address when it doesn't know one. <code>jevision validate</code> and <code>jevision run</code> print the same message with the command to run, such as <code>jevision blocks install https://github.com/acme/sign-in</code>.</li>
+  <li>A block that needs a newer JEVision stops a run with a message that says which version it needs.</li>
+</ul>
+
+<h2 id="package">The package format</h2>
+<p>A package is a folder named after the id of the block, with <code>.jevblock</code> at the end:</p>
+<pre><code>com.acme.sign-in.jevblock/
+  block.json       who made the block, which version it is, what it asks for
+  flow.json        the steps: a test like any other
+  images/          the pictures the steps use (any folders and names)</code></pre>
+<p>Inside a project it sits in <code>blocks/</code>. Shared as a file, it is that folder, or a .zip file with the folder inside it. Hidden files and links are left out.</p>
+
+<h3 id="manifest">block.json</h3>
+<pre><code>{
+  "format": 1,
+  "id": "com.acme.sign-in",
+  "name": "Sign in",
+  "description": "Signs in to AcmeMail with an email and a password.",
+  "icon": "person.badge.key",
+  "version": "1.2.0",
+  "author": "Acme QA",
+  "license": "MIT",
+  "minVersion": "0.1.0",
+  "inputs": [
+    { "name": "email", "label": "Email address", "default": "qa@example.com" },
+    { "name": "password" }
+  ]
+}</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>format</code></td><td>Yes</td><td>Always <code>1</code>.</td></tr>
+    <tr><td><code>id</code></td><td>Yes</td><td>Three or more parts of lowercase letters, digits and <code>-</code>, joined by dots, such as <code>com.acme.sign-in</code>; up to 100 characters. The installed folder is named after it, and a project can hold one version of an id.</td></tr>
+    <tr><td><code>name</code></td><td>Yes</td><td>What the library calls the block; up to 60 characters.</td></tr>
+    <tr><td><code>description</code></td><td>No</td><td>What the block does, in a sentence or two; up to 500 characters.</td></tr>
+    <tr><td><code>icon</code></td><td>No</td><td>Name of an <a href="https://developer.apple.com/sf-symbols/">SF Symbol</a>, such as <code>person.badge.key</code>.</td></tr>
+    <tr><td><code>version</code></td><td>Yes</td><td>A <a href="https://semver.org">semantic version</a>: <code>MAJOR.MINOR.PATCH</code>, optionally followed by <code>-beta.2</code> and the like. <code>1.2.0</code> is newer than <code>1.2.0-beta.2</code> and older than <code>1.10.0</code>.</td></tr>
+    <tr><td><code>author</code></td><td>Yes</td><td>Who made the block; up to 100 characters.</td></tr>
+    <tr><td><code>license</code></td><td>Yes</td><td>The name of its license, such as <code>MIT</code>.</td></tr>
+    <tr><td><code>minVersion</code></td><td>No</td><td>The oldest JEVision that can run the block. An older JEVision refuses to install or run it.</td></tr>
+    <tr><td><code>inputs</code></td><td>No</td><td>What a test gives the block, up to 50 entries. Each has a <code>name</code> (letters, digits and underscores, not starting with a digit), an optional <code>label</code> to show in the editor instead of the name, and an optional <code>default</code>, the value for a test that leaves it out.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Unknown fields are errors, so a misspelled name isn't ignored. The same rules are in a <a href="schemas/block.schema.json">JSON Schema</a> that editors can use for completion and checks.</p>
+
+<h3 id="flow">flow.json</h3>
+<p>The steps are a test file as in <a href="file-formats.html#test">Test files</a>, with these rules:</p>
+<ul>
+  <li>Every <code>${input.NAME}</code> the steps read is listed in <code>inputs</code>. An input that no step reads is a warning.</li>
+  <li>Pictures and files are named relative to <code>flow.json</code> and stay inside the package folder: a path with <code>..</code> is an error.</li>
+  <li>The <code>app</code> is the application the steps act on. A block rarely has a <code>check</code>; the tests that use it do.</li>
+</ul>
+
+<h3 id="lock">jevision.blocks.json</h3>
+<p>The project keeps where each package came from in <code>jevision.blocks.json</code>, in the project folder, so the team can update them:</p>
+<pre><code>{ "sources": { "com.acme.sign-in": "https://github.com/acme/sign-in-block" } }</code></pre>
+<p>Packages installed from a file or folder have no entry.</p>
+
+<h3 id="example">An example</h3>
+<p>The <a href="https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit/blocks/org.jevision.add-line.jevblock">example package</a> in the repository types a line into TextEdit. The test <code>add-a-line-with-a-block.flow.json</code> next to it uses it. Copy the <code>.jevblock</code> folder anywhere and install it from there.</p>
+
+<h2 id="publish">Publishing on GitHub</h2>
+<p>People install from a repository or a release by pasting its address into <strong>Install Block…</strong> or giving it to <code>jevision blocks install</code>:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Address</th><th scope="col">What is installed</th></tr></thead>
+  <tbody>
+    <tr><td><code>https://github.com/OWNER/REPO</code>, <code>…/releases</code>, <code>…/releases/latest</code></td><td>The latest release: its file ending in <code>.jevblock.zip</code> if it has one, otherwise the code of the release. A repository with no release gives its main branch.</td></tr>
+    <tr><td><code>https://github.com/OWNER/REPO/releases/tag/TAG</code></td><td>That release, in the same way.</td></tr>
+    <tr><td><code>https://github.com/OWNER/REPO/tree/BRANCH</code></td><td>The code of that branch or tag.</td></tr>
+    <tr><td><code>https://…/NAME.zip</code></td><td>That zip file, on GitHub or anywhere else.</td></tr>
+  </tbody>
+</table>
+</div>
+<p><code>github.com/OWNER/REPO</code> works too. The package is found where <code>block.json</code> is: at the top of the repository, or in a folder up to three levels down, as long as there is one package. A repository with several packages needs a zip file of one of them, such as a release file. To publish: put the <code>.jevblock</code> folder (or its contents) in a repository, and attach <code>com.acme.sign-in.jevblock.zip</code> to each release. Raise <code>version</code> for each release so that <strong>Update</strong> can tell.</p>
+
+<h2 id="limits">How packages are kept safe</h2>
+<ul>
+  <li>Nothing in a package runs while it is read or installed. Files are copied one by one, without permission to run, and every path is checked first.</li>
+  <li>A zip file can't write outside its own folder: one with a name that has <code>..</code> in it or starts with <code>/</code> is refused as a whole, and links in it are left out.</li>
+  <li>A download is at most 64 MB, a zip unpacks to at most 256 MB and 20,000 entries, and a package holds at most 1,000 files and 64 MB. A download that takes longer than two minutes stops.</li>
+  <li>Addresses must be <code>https</code>, and so must every redirect they lead to.</li>
+  <li>An address that isn't a GitHub repository, release, branch or a link to a .zip file is refused rather than guessed at.</li>
+</ul>
+<p>The command line does the same as the app: see <a href="cli.html#blocks"><code>jevision blocks</code></a>.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

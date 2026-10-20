@@ -12,15 +12,15 @@ use std::{fs, io};
 
 use jevision_core::{
     AiChoice, BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
-    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE, Point,
-    ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant,
-    else_if_edge,
+    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE,
+    PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind,
+    WaitUntil, dark_variant, else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
 use crate::report::{
-    Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
-    percent, summarize,
+    Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, UsedPackage, Verdict,
+    VisionAnswer, percent, summarize,
 };
 use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
@@ -222,6 +222,7 @@ impl Run {
             blocked: Some(blocker),
             added_as_dependency: options.added_as_dependency,
             nothing_checked: false,
+            packages: Vec::new(),
             attempts: Vec::new(),
         };
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
@@ -304,6 +305,7 @@ impl Runner<'_> {
             display_scale: None,
             blocked: None,
             added_as_dependency: options.added_as_dependency,
+            packages: Vec::new(),
             attempts: Vec::new(),
         };
         let display_scale = Cell::new(None);
@@ -484,6 +486,7 @@ impl Runner<'_> {
         drop(screen);
         (report.verdict, report.flaky) = summarize(&report.attempts);
         report.nothing_checked &= report.verdict == Verdict::Passed;
+        report.packages = used_packages(&project, &report.attempts);
         report.duration_ms = millis(clock.elapsed());
         report.display_scale = display_scale.get();
         let path = dir.join("report.json");
@@ -721,6 +724,21 @@ struct TestFile {
     flow: Flow,
 }
 
+/// Adds the version and address the block names for its package to the failure that it isn't
+/// installed, for the person who has to install it.
+fn with_package(failure: Failure, package: Option<&PackageNeed>) -> Failure {
+    match package {
+        Some(need) if failure.code == "run.block.notInstalled" => {
+            let failure = failure.with("version", &need.version);
+            match &need.source {
+                Some(source) => failure.with("source", source),
+                None => failure,
+            }
+        }
+        _ => failure,
+    }
+}
+
 fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
     let file = relative(project, path);
     let unreadable = |reason: String| {
@@ -728,7 +746,25 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
             .with("test", &file)
             .with("reason", reason)
     };
-    let text = fs::read_to_string(path).map_err(|e| unreadable(e.to_string()))?;
+    let package = jevision_core::package_of_path(&file);
+    let text = fs::read_to_string(path).map_err(|e| match package {
+        Some(id) if e.kind() == std::io::ErrorKind::NotFound => {
+            Failure::new("run.block.notInstalled").with("package", id)
+        }
+        _ => unreadable(e.to_string()),
+    })?;
+    if let Some(id) = package {
+        let manifest = read_manifest(path).map_err(unreadable)?;
+        if let Some(needs) = manifest
+            .min_version
+            .filter(|v| *v > jevision_core::app_version())
+        {
+            return Err(Failure::new("run.block.needsNewer")
+                .with("package", id)
+                .with("needs", needs)
+                .with("have", jevision_core::app_version()));
+        }
+    }
     let flow = jevision_core::parse(&text).map_err(|e| unreadable(e.to_string()))?;
     let errors = jevision_core::validate(&flow)
         .iter()
@@ -745,6 +781,37 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
         file,
         flow,
     })
+}
+
+/// The packages whose steps ran in `attempts`, each once.
+fn used_packages(project: &Path, attempts: &[Attempt]) -> Vec<UsedPackage> {
+    let mut used: Vec<UsedPackage> = Vec::new();
+    for step in attempts.iter().flat_map(|a| &a.steps) {
+        let Some(id) = jevision_core::package_of_path(&step.test) else {
+            continue;
+        };
+        if used.iter().any(|p| p.file == step.test) {
+            continue;
+        }
+        if let Ok(manifest) = read_manifest(&project.join(&step.test)) {
+            used.push(UsedPackage {
+                id: id.to_owned(),
+                name: manifest.name,
+                version: manifest.version.to_string(),
+                author: manifest.author,
+                file: step.test.clone(),
+            });
+        }
+    }
+    used
+}
+
+/// The `block.json` beside the steps of a package.
+fn read_manifest(flow_file: &Path) -> Result<jevision_core::BlockManifest, String> {
+    let file = flow_file.with_file_name(jevision_core::MANIFEST_FILE);
+    let text =
+        fs::read_to_string(&file).map_err(|e| format!("{}: {e}", jevision_core::MANIFEST_FILE))?;
+    jevision_core::parse_manifest(&text).map_err(|e| e.to_string())
 }
 
 fn fetch_secrets(
@@ -1655,11 +1722,19 @@ impl Exec<'_> {
                 self.save(step, save_as, text);
                 Ok(next.clone())
             }
-            BlockKind::RunTest { test, inputs, next } => {
+            BlockKind::RunTest {
+                test,
+                package,
+                inputs,
+                next,
+            } => {
                 let path = self.resolve_filled(t, id, test)?;
                 let mut given = HashMap::with_capacity(inputs.len());
                 for (name, value) in inputs {
                     given.insert(name.clone(), self.substitute(id, value)?);
+                }
+                for (name, value) in jevision_core::input_defaults(&path) {
+                    given.entry(name).or_insert(value);
                 }
                 if self.tests.contains(&path) {
                     return Err(fail(
@@ -1674,7 +1749,7 @@ impl Exec<'_> {
                         fetch_secrets(&sub.flow, self.runner.secrets, self.secrets)?;
                         Ok(sub)
                     })
-                    .map_err(|f| fail(f.with("block", id)))?;
+                    .map_err(|f| fail(with_package(f, package.as_ref()).with("block", id)))?;
                 self.tests.push(path);
                 self.apps.push(sub.flow.app.clone());
                 self.inputs.push(given);

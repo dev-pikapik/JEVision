@@ -295,7 +295,7 @@ private struct TestStatisticsView: View {
   private func place(_ block: BlockFailures) -> String {
     var text = "\(BlockInfo.title(block.blockType)) “\(block.block)”"
     if block.test != project.statisticsTest {
-      text += " · " + String(localized: "in \(ProjectScanner.testName((block.test as NSString).lastPathComponent))")
+      text += " · " + String(localized: "in \(ProjectScanner.testName(path: block.test))")
     }
     return text
   }

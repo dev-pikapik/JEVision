@@ -71,7 +71,7 @@ struct LibraryTests {
     document.add(try #require(library.blocks.first), at: Slot(from: "b", edge: "next"))
     undo.endUndoGrouping()
     let added = try #require(document.selection.flatMap(document.block))
-    #expect(added.kind == .runTest(test: "blocks/sign-in.block.json", inputs: [:], next: nil))
+    #expect(added.kind == .runTest(test: "blocks/sign-in.block.json", package: nil, inputs: [:], next: nil))
     #expect(document.issues(of: added.id).contains { $0.code == "flow.input.missing" })
   }
 
@@ -95,9 +95,9 @@ struct LibraryTests {
   @Test func describesPausesAndCustomBlocks() {
     let summary = { (kind: BlockKind) in BlockSummary.text(kind, appName: { $0 }) }
     #expect(summary(.pause(durationMs: 2000, next: nil)) == BlockSummary.duration(2000))
-    #expect(summary(.runTest(test: "blocks/sign-in.block.json", inputs: [:], next: nil)) == "Runs “sign-in”")
+    #expect(summary(.runTest(test: "blocks/sign-in.block.json", package: nil, inputs: [:], next: nil)) == "Runs “sign-in”")
     #expect(
-      summary(.runTest(test: "blocks/sign-in.block.json", inputs: ["pass": "${secret.P}", "email": "me@x.io"], next: nil))
+      summary(.runTest(test: "blocks/sign-in.block.json", package: nil, inputs: ["pass": "${secret.P}", "email": "me@x.io"], next: nil))
         == "email: “me@x.io” · pass: secret P")
     #expect(ProjectScanner.testName("sign-in.block.json") == "sign-in")
     #expect(ProjectScanner.testName("Login.flow.json") == "Login")
