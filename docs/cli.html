@@ -245,6 +245,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
             junit.xml
             reports/</code></pre>
 <p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
+<p>The app can write the workflow for you: <strong>Settings → Advanced → Continuous Integration → Add to Project…</strong>. It shows the file first, with the secrets your tests use, and saves it as <code>.github/workflows/jevision.yml</code> at the top of the git repository your project is in. It replaces an existing file only after you confirm, and it doesn't commit or push anything.</p>
 </main>
 </div>
 <footer class="site-footer">

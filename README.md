@@ -471,6 +471,12 @@ jobs:
             reports/
 ```
 
+You don't have to type it: **Settings › Advanced › Continuous Integration › Add to Project…**
+shows this file for the open project, with the secrets your tests use, and writes it as
+`.github/workflows/jevision.yml` at the top of the git repository the project is in. The preview
+comes first, and an existing file is replaced only after you confirm. Nothing is committed or
+pushed.
+
 </details>
 
 <a id="on-a-schedule"></a>
@@ -550,7 +556,29 @@ display, such as "Standard display (1×)", and `report.json` has `virtualMachine
 `displayScale`.
 
 The step-by-step guide, with SSH, CI and limits such as Apple's two virtual machines per Mac:
-[docs/vm.html](docs/vm.html).
+[docs/vm.html](docs/vm.html). It opens from the app too: **Settings › Advanced › Learn**.
+
+</details>
+
+<a id="logs-crash-reports-and-the-example"></a>
+<details>
+<summary><b>Logs, crash reports and the example project</b></summary>
+
+All of it is under **Settings › Advanced** and stays on your Mac. Nothing is sent anywhere.
+
+- **Logs.** JEVision writes what it does to `~/Library/Logs/JEVision`: the project opened, a
+  run started and how it ended, and what went wrong. **Log detail** chooses *Errors only*,
+  *Normal* (the default) or *Detailed*, which adds every step of a run. The log rotates: it is
+  never larger than about 2 MB, and the oldest lines are deleted. Secrets and typed text are not
+  written, and anything that looks like a key, a token or a password is hidden. **Show in
+  Finder** opens the folder.
+- **Crash reports.** Off until you turn on **Save crash reports**. If JEVision crashes, macOS
+  hands it a report the next time it starts (MetricKit, up to a day later), and JEVision keeps
+  the last 20 in `~/Library/Application Support/JEVision/Crash Reports`. A report leaves your Mac
+  only when you choose it in a bug report: **Add a Crash Report** puts its summary into the
+  description, where you can read and change it before sending.
+- **Example project.** **Open the example project** copies a ready test for TextEdit into a
+  folder you choose and opens the copy. The example inside the app is never changed.
 
 </details>
 
