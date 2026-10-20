@@ -7,9 +7,9 @@ use std::time::{Duration, Instant, SystemTime};
 use jevision_runner::{
     DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
     MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
-    RunOptions, RunReport, Runner, Screenshot, ScrollDirection, ScrollUnit, StepStatus, Usage,
-    UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe,
-    html, junit_xml, prune_videos,
+    RunOptions, RunReport, Runner, Screenshot, ScrollDirection, ScrollUnit, Search, StepStatus,
+    Usage, UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge,
+    describe, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -2319,6 +2319,154 @@ fn a_check_naming_a_provider_is_judged_by_that_provider() {
     assert_eq!(failure.param("provider"), "Google Gemini");
 }
 
+fn named_judge(name: &'static str, id: &'static str, local: bool, passed: bool) -> Judge {
+    Judge {
+        name,
+        id,
+        local,
+        ..Judge::says(passed)
+    }
+}
+
+#[test]
+fn the_project_chooses_the_ai_for_checks_between_the_block_and_the_app() {
+    let p = Project::new();
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"ai":{"screen":{"provider":"ollama","model":"llava-project"}}}"#,
+    );
+    let hands = Fake::new(solid([0, 200, 0]));
+    let app = Judge::says(false);
+    let ollama = named_judge("Ollama", "ollama", true, true);
+    let openai = named_judge("OpenAI", "openai", false, true);
+    let providers: [&dyn VisionJudge; 2] = [&openai, &ollama];
+    let run = |p: &Project| {
+        run_with_providers(p, &hands, Some(&app), None, &providers, None, false).report
+    };
+    let asked = |j: &Judge| {
+        j.asked
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|a| a.model.clone())
+            .collect::<Vec<_>>()
+    };
+
+    // The block says nothing: the project's provider and model, not the app's.
+    meaning_check(&p, "");
+    let report = run(&p);
+    assert_eq!(report.verdict, Verdict::Passed);
+    let answer = report.attempts[0].steps[0].vision.clone().unwrap();
+    assert_eq!(
+        (answer.provider.as_str(), answer.model.as_str()),
+        ("Ollama", "llava-project")
+    );
+    assert_eq!(asked(&ollama), ["llava-project"]);
+    assert!(app.asked.lock().unwrap().is_empty());
+
+    // A model of the block's own goes to the provider in force.
+    meaning_check(&p, r#","model":"llava-block""#);
+    assert_eq!(run(&p).verdict, Verdict::Passed);
+    assert_eq!(asked(&ollama), ["llava-project", "llava-block"]);
+
+    // A provider of the block's own beats the project, and takes none of its model.
+    meaning_check(&p, r#","provider":"openai""#);
+    assert_eq!(run(&p).verdict, Verdict::Passed);
+    assert_eq!(asked(&openai), [""]);
+    assert_eq!(asked(&ollama).len(), 2);
+
+    // The project's choice holds for a project without one: the app's.
+    let plain = Project::new();
+    meaning_check(&plain, "");
+    assert_eq!(run(&plain).verdict, Verdict::Failed);
+    assert_eq!(app.asked.lock().unwrap().len(), 1);
+
+    // Only models on this Mac holds for the project's choice too.
+    meaning_check(&p, "");
+    let report = run_with_providers(&p, &hands, Some(&app), None, &providers, None, true).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"ai":{"screen":{"provider":"openai"}}}"#,
+    );
+    let report = run_with_providers(&p, &hands, Some(&app), None, &providers, None, true).report;
+    assert_eq!(failure_code(&report), "run.vision.cloudBlocked");
+
+    // The project may name a provider that isn't set up on this Mac: it fails naming it.
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"ai":{"screen":{"provider":"gemini"}}}"#,
+    );
+    let report = run(&p);
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.vision.noKey");
+    assert_eq!(failure.param("provider"), "Google Gemini");
+}
+
+#[test]
+fn a_fallback_that_is_the_provider_in_force_is_not_asked_again() {
+    let p = Project::new();
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"ai":{"screen":{"provider":"ollama"}}}"#,
+    );
+    meaning_check(&p, "");
+    let hands = Fake::new(solid([0, 200, 0]));
+    let down = || {
+        Err(VisionError::Unreachable {
+            address: "http://127.0.0.1:11434".into(),
+        })
+    };
+    let ollama = Judge {
+        name: "Ollama",
+        id: "ollama",
+        local: true,
+        ..Judge::new(true, down())
+    };
+    // The app's fallback is the project's provider: asking it again can't help.
+    let fallback = Judge {
+        name: "Ollama",
+        id: "ollama",
+        local: true,
+        ..Judge::says(true)
+    };
+    let providers: [&dyn VisionJudge; 1] = [&ollama];
+    let app = Judge::says(true);
+    let report = run_with_providers(
+        &p,
+        &hands,
+        Some(&app),
+        Some(&fallback),
+        &providers,
+        None,
+        false,
+    )
+    .report;
+    assert_eq!(failure_code(&report), "run.vision.unreachable");
+    assert_eq!(ollama.asked.lock().unwrap().len(), 1);
+    assert!(fallback.asked.lock().unwrap().is_empty());
+
+    // Another provider does answer in its place.
+    let other = named_judge("OpenAI", "openai", false, true);
+    let report = run_with_providers(
+        &p,
+        &hands,
+        Some(&app),
+        Some(&other),
+        &providers,
+        None,
+        false,
+    )
+    .report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let answer = report.attempts[0].steps[0].vision.clone().unwrap();
+    assert_eq!(answer.provider, "OpenAI");
+    assert_eq!(
+        answer.fallback_reason.unwrap().code,
+        "run.vision.unreachable"
+    );
+}
+
 #[test]
 fn the_fallback_provider_answers_when_the_main_one_is_down_or_out_of_money() {
     let p = Project::new();
@@ -2822,19 +2970,34 @@ impl VisionJudge for Locator {
     fn judge(&self, _: &Question<'_>) -> Result<Judgement, VisionError> {
         unreachable!("a locator only finds")
     }
-    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Option<Located>, VisionError> {
+    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Search, VisionError> {
         self.asked
             .lock()
             .unwrap()
             .push((what.to_owned(), screenshot.png().to_vec()));
-        Ok(self.found.map(|area| Located {
-            area,
-            confidence: 0.9,
-        }))
+        Ok(Search {
+            found: self.found.map(|area| Located {
+                area,
+                confidence: 0.9,
+            }),
+            usage: Usage {
+                input_tokens: 3000,
+                output_tokens: 10,
+            },
+        })
     }
 }
 
 fn run_located(project: &Project, hands: &Fake, locator: Option<&dyn VisionJudge>) -> Run {
+    run_located_logged(project, hands, locator, None)
+}
+
+fn run_located_logged(
+    project: &Project,
+    hands: &Fake,
+    locator: Option<&dyn VisionJudge>,
+    usage: Option<&UsageBook>,
+) -> Run {
     let secrets = secrets();
     let runner = Runner {
         hands,
@@ -2844,7 +3007,7 @@ fn run_located(project: &Project, hands: &Fake, locator: Option<&dyn VisionJudge
         vision: None,
         fallback: None,
         providers: &[],
-        usage: None,
+        usage,
         locator,
     };
     runner
@@ -2943,6 +3106,75 @@ fn a_described_element_that_is_not_on_screen_fails_with_its_description() {
     );
     assert!(report.attempts[0].steps[0].before.is_some());
     assert!(hands.log().is_empty());
+}
+
+#[test]
+fn finding_by_description_is_logged_priced_and_held_to_the_limits() {
+    let p = Project::new();
+    p.test(DESCRIBED, "save", 0);
+    let hands = Fake::new(png(40, 20, |_, _| [0, 200, 0]));
+    let locator = Locator::new(Some(jevision_core::Rect {
+        x: 0.5,
+        y: 0.25,
+        width: 0.2,
+        height: 0.5,
+    }));
+    // Each search costs $0.0031 of $0.005 a day.
+    let book = UsageBook {
+        journal: p.0.join("ai-usage.jsonl"),
+        prices: vec![Price {
+            provider: "test-finder".into(),
+            model: "finder".into(),
+            input: 1.0,
+            output: 10.0,
+        }],
+        limits: vec![Limit {
+            provider: "test-finder".into(),
+            daily: Some(0.005),
+            monthly: None,
+        }],
+    };
+
+    // The click and the typing each search for their element: two entries in the journal.
+    let report = run_located_logged(&p, &hands, Some(&locator), Some(&book)).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let records = book.records().unwrap();
+    assert_eq!(records.len(), 2);
+    assert_eq!(
+        (
+            records[0].provider.as_str(),
+            records[0].model.as_str(),
+            records[0].test.as_str(),
+            records[0].block.as_str(),
+            records[0].input_tokens,
+            records[0].output_tokens
+        ),
+        ("test-finder", "finder-1", "t.flow.json", "save", 3000, 10)
+    );
+    assert_eq!(records[1].block, "name");
+    let warning = report.attempts[0].steps[1].vision.clone();
+    assert!(warning.is_none(), "a search is not a check by meaning");
+
+    // The limit is used up: the next search is not made, and the run says which limit.
+    let asked = locator.asked.lock().unwrap().len();
+    let report = run_located_logged(&p, &hands, Some(&locator), Some(&book)).report;
+    assert_eq!(failure_code(&report), "run.vision.limitReached");
+    let failure = report.attempts[0].steps[0].failure.clone().unwrap();
+    assert_eq!(failure.param("block"), "save");
+    assert_eq!(failure.param("period"), "day");
+    assert_eq!(locator.asked.lock().unwrap().len(), asked);
+
+    // A search that finds nothing cost tokens too.
+    let q = Project::new();
+    q.test(DESCRIBED, "save", 0);
+    let empty = UsageBook {
+        journal: q.0.join("ai-usage.jsonl"),
+        ..book
+    };
+    let nothing = Locator::new(None);
+    let report = run_located_logged(&q, &hands, Some(&nothing), Some(&empty)).report;
+    assert_eq!(failure_code(&report), "run.target.descriptionNotFound");
+    assert_eq!(empty.records().unwrap().len(), 1);
 }
 
 #[test]

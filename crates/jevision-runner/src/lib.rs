@@ -27,7 +27,7 @@ pub use jevision_core::{Modifiers, MouseButton, Point, ScrollDirection, ScrollUn
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Located, MaskedImage, PixelArea,
-    Provider, Question, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
+    Provider, Question, Search, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
     video_mask,
 };
 pub use report::{

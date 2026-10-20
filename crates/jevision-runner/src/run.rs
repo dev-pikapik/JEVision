@@ -11,7 +11,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
+    AiChoice, BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
     DatabaseExpect, ELSE, ExpectStatus, FileState, Flow, PROJECT_FILE, Point, ProjectSettings,
     Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant, else_if_edge,
 };
@@ -22,7 +22,7 @@ use crate::report::{
     percent, summarize,
 };
 use crate::system::{self, ProcessError};
-use crate::usage::{LimitState, UsageBook, UsageRecord, price_of};
+use crate::usage::{LimitState, UsageBook, price_of};
 use crate::{
     Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
     SecretSource, VisionError, VisionJudge,
@@ -294,9 +294,9 @@ impl Runner<'_> {
             attempts: Vec::new(),
         };
         let display_scale = Cell::new(None);
-        let (local_only, hide) = settings
+        let (local_only, hide, ai_screen) = settings
             .as_ref()
-            .map(|s| (s.local_only, s.hide.clone()))
+            .map(|s| (s.local_only, s.hide.clone(), s.ai_screen.clone()))
             .unwrap_or_default();
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
@@ -410,6 +410,7 @@ impl Runner<'_> {
                             checked: false,
                             video,
                             local_only,
+                            ai_screen: ai_screen.as_ref(),
                             hide: &hide,
                             display_scale: &display_scale,
                             vars: BTreeMap::new(),
@@ -752,25 +753,6 @@ enum Unanswered {
     Failed(Failure),
 }
 
-/// The provider is down or busy for now, rather than set up wrong.
-fn unavailable(e: &VisionError) -> bool {
-    match e {
-        VisionError::Unreachable { .. }
-        | VisionError::Timeout { .. }
-        | VisionError::RateLimited { .. } => true,
-        VisionError::Service { status, .. } => *status >= 500,
-        _ => false,
-    }
-}
-
-/// The usage journal couldn't be read or written, so spending can't be kept to its limits.
-fn journal_failure(id: &str, book: &UsageBook, e: &io::Error) -> Failure {
-    Failure::new("run.vision.journalFailed")
-        .with("block", id)
-        .with("path", book.journal.display())
-        .with("reason", e.to_string())
-}
-
 /// One attempt of a run.
 struct Exec<'r> {
     runner: &'r Runner<'r>,
@@ -805,6 +787,8 @@ struct Exec<'r> {
     video: Option<Instant>,
     /// The project allows only AI models on this computer.
     local_only: bool,
+    /// The AI the project chose for checks by meaning.
+    ai_screen: Option<&'r AiChoice>,
     /// Areas the project covers in every screenshot.
     hide: &'r [Rect],
     /// Scale of the first screenshot of the run, for its report.
@@ -1812,6 +1796,15 @@ impl Exec<'_> {
             } => (expect.trim(), model.trim(), provider.as_str()),
             _ => ("", "", ""),
         };
+        // The block's own choice, then the project's, then the app's, which empty stands for.
+        let chosen = AiChoice::resolve(
+            &AiChoice {
+                provider: provider.to_owned(),
+                model: model.to_owned(),
+            },
+            self.ai_screen,
+        );
+        let (provider, model) = (chosen.provider.as_str(), chosen.model.trim());
         let judge = if provider.is_empty() {
             self.runner.vision.ok_or_else(|| {
                 fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
@@ -1859,7 +1852,10 @@ impl Exec<'_> {
             reference: reference_picture.as_ref(),
             model,
         };
-        let fallback = self.runner.fallback.filter(|f| !local_only || f.is_local());
+        let fallback = self
+            .runner
+            .fallback
+            .filter(|f| (!local_only || f.is_local()) && f.provider_id() != judge.provider_id());
         let (answer, fallback_reason) = match (self.ask(t, id, judge, &question), fallback) {
             (Ok(answer), _) => (answer, None),
             (Err(Unanswered::Unavailable(reason)), Some(fallback)) => {
@@ -1905,19 +1901,12 @@ impl Exec<'_> {
         judge: &dyn VisionJudge,
         question: &Question<'_>,
     ) -> Result<Answer, Unanswered> {
-        let book = self.runner.usage;
-        let state = |book: &UsageBook| {
-            book.limit_state(judge.provider_id(), judge.provider(), SystemTime::now())
-                .map_err(|e| Unanswered::Failed(journal_failure(id, book, &e)))
-        };
-        if let Some(book) = book
-            && let LimitState::Reached(f) = state(book)?
-        {
+        if let LimitState::Reached(f) = self.limit_state(id, judge)? {
             return Err(Unanswered::Unavailable(f.with("block", id)));
         }
         let judgement = judge.judge(question).map_err(|e| {
             let failure = vision_failure(judge, &e).with("block", id);
-            if unavailable(&e) {
+            if e.unavailable() {
                 Unanswered::Unavailable(failure)
             } else {
                 Unanswered::Failed(failure)
@@ -1928,34 +1917,47 @@ impl Exec<'_> {
             model => model,
         }
         .to_owned();
-        let mut answer = Answer {
+        let (cost, warning) = self.log_call(t, id, judge, &model, judgement.usage)?;
+        Ok(Answer {
             provider: judge.provider().to_owned(),
             model,
             judgement,
-            cost: None,
-            warning: None,
+            cost,
+            warning,
+        })
+    }
+
+    /// Where `judge`'s provider stands against its limits; within them when nothing is logged.
+    fn limit_state(&self, id: &str, judge: &dyn VisionJudge) -> Result<LimitState, Unanswered> {
+        let Some(book) = self.runner.usage else {
+            return Ok(LimitState::Within);
         };
-        if let Some(book) = book {
-            let usage = answer.judgement.usage;
-            let record = UsageRecord {
-                time: rfc3339(SystemTime::now()),
-                provider: judge.provider_id().to_owned(),
-                model: answer.model.clone(),
-                test: t.file.clone(),
-                block: id.to_owned(),
-                input_tokens: usage.input_tokens,
-                output_tokens: usage.output_tokens,
-            };
-            book.record(&record)
-                .map_err(|e| Unanswered::Failed(journal_failure(id, book, &e)))?;
-            answer.cost = price_of(&book.prices, judge.provider_id(), &answer.model)
-                .map(|p| p.cost(usage.input_tokens, usage.output_tokens));
-            answer.warning = match state(book)? {
-                LimitState::Near(f) | LimitState::Reached(f) => Some(f),
-                LimitState::Within => None,
-            };
-        }
-        Ok(answer)
+        book.limit_state(judge.provider_id(), judge.provider(), SystemTime::now())
+            .map_err(|e| Unanswered::Failed(book.journal_failure(&e).with("block", id)))
+    }
+
+    /// Logs a call of `judge` that used `usage`; returns what it cost, when the price is known,
+    /// and a warning when a limit is close or used up now.
+    fn log_call(
+        &self,
+        t: &TestFile,
+        id: &str,
+        judge: &dyn VisionJudge,
+        model: &str,
+        usage: crate::Usage,
+    ) -> Result<(Option<f64>, Option<Failure>), Unanswered> {
+        let Some(book) = self.runner.usage else {
+            return Ok((None, None));
+        };
+        book.log(judge.provider_id(), model, &t.file, id, usage)
+            .map_err(|e| Unanswered::Failed(book.journal_failure(&e).with("block", id)))?;
+        let cost = price_of(&book.prices, judge.provider_id(), model)
+            .map(|p| p.cost(usage.input_tokens, usage.output_tokens));
+        let warning = match self.limit_state(id, judge)? {
+            LimitState::Near(f) | LimitState::Reached(f) => Some(f),
+            LimitState::Within => None,
+        };
+        Ok((cost, warning))
     }
 
     /// Stops when only models on this computer are allowed and `judge` is not one of them.
@@ -2082,7 +2084,7 @@ impl Exec<'_> {
                 let at = match target {
                     Target::Point(p) => *p,
                     Target::Description(what) => {
-                        self.find_described(id, what, shot, &window, step)?
+                        self.find_described(t, id, what, shot, &window, step)?
                     }
                     Target::Image(_) => unreachable!("handled above"),
                 };
@@ -2121,6 +2123,7 @@ impl Exec<'_> {
     /// returns the centre of it in fractions of the window.
     fn find_described(
         &self,
+        t: &TestFile,
         id: &str,
         what: &str,
         shot: &Screenshot,
@@ -2132,13 +2135,22 @@ impl Exec<'_> {
             .locator
             .ok_or_else(|| fail(Failure::new("run.target.noLocator").with("block", id)))?;
         self.allow(id, locator)?;
+        let stopped = |u: Unanswered| match u {
+            Unanswered::Unavailable(f) | Unanswered::Failed(f) => fail(f),
+        };
+        if let LimitState::Reached(f) = self.limit_state(id, locator).map_err(stopped)? {
+            return Err(fail(f.with("block", id)));
+        }
         let private = self.private_areas(shot, &[]);
         let sent = masked(id, window, &private, None)?;
-        let found = locator
+        let search = locator
             .locate(&sent, what)
             .map_err(|e| fail(vision_failure(locator, &e).with("block", id)))?;
+        // The search cost tokens whether or not the element is there.
+        self.log_call(t, id, locator, locator.model(), search.usage)
+            .map_err(stopped)?;
         self.record_sent(step, &sent)?;
-        let area = found.map(|f| f.area).ok_or_else(|| {
+        let area = search.found.map(|f| f.area).ok_or_else(|| {
             fail(
                 Failure::new("run.target.descriptionNotFound")
                     .with("block", id)
