@@ -65,17 +65,17 @@ struct CommunityBlocksTests {
     let (mine, theirs) = try projects()
     let model = BlockInstallModel(project: theirs)
     var installed: String?
-    model.onInstalled = { installed = $0.manifest.id }
+    model.onInstalled = { installed = $0.first?.manifest.id }
     await model.read(try zip("1.0.0", from: mine))
     let staged = try #require(model.preview).folder
     await model.install()
 
     #expect(installed == "com.anna.sign-in")
-    guard case .installed(let block) = model.phase else {
+    guard case .installed(let blocks) = model.phase else {
       Issue.record("Expected the block to be installed, got \(model.phase)")
       return
     }
-    #expect(block.manifest.version == "1.0.0")
+    #expect(blocks.map(\.manifest.version) == ["1.0.0"])
     #expect(!FileManager.default.fileExists(atPath: staged), "What was unpacked for reading is gone")
 
     let entry = try #require(ProjectLibrary.communityEntries(theirs).first)

@@ -237,7 +237,7 @@ enum Command: Equatable {
       }
       return .scheduleRun(project: options.paths[1])
     case "blocks":
-      let options = try Options.parse(rest, command: name, flags: ["--yes", "--force"], values: ["--project"])
+      let options = try Options.parse(rest, command: name, flags: ["--yes", "--force"], values: ["--project", "--only"])
       if options.wantsHelp || options.paths.isEmpty { return .help(name) }
       return .blocks(try blocksRequest(options))
     case "issue":
@@ -270,7 +270,7 @@ enum Command: Equatable {
 }
 
 extension Command {
-  /// `blocks list|install <source>|update [id]|remove <id>`.
+  /// `blocks list|install <source>|update [id]|remove <id>|restore`.
   private static func blocksRequest(_ options: Options) throws(UsageError) -> BlocksRequest {
     let name = "blocks"
     let (action, arguments) = (options.paths[0], Array(options.paths.dropFirst()))
@@ -288,17 +288,27 @@ extension Command {
     case "update":
       guard arguments.count <= 1 else { throw UsageError(message: "name one block id, or none for all", command: name) }
       blocks = .update(id: arguments.first)
+    case "restore":
+      guard arguments.isEmpty else { throw UsageError(message: "blocks restore takes no arguments", command: name) }
+      blocks = .restore
     default:
       throw UsageError(message: "there is no blocks command “\(action)”", command: name)
     }
     var request = BlocksRequest(action: blocks, project: options.values["--project"])
     request.yes = options.flags.contains("--yes")
     request.force = options.flags.contains("--force")
-    if request.yes, !["install", "update"].contains(action) {
-      throw UsageError(message: "--yes belongs to install and update", command: name)
+    if let only = options.values["--only"] {
+      request.only = only.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+      guard !request.only.isEmpty else { throw UsageError(message: "--only needs block ids, such as com.acme.sign-in", command: name) }
+      guard ["install", "restore"].contains(action) else {
+        throw UsageError(message: "--only belongs to install and restore", command: name)
+      }
+    }
+    if request.yes, !["install", "update", "restore"].contains(action) {
+      throw UsageError(message: "--yes belongs to install, update and restore", command: name)
     }
     if request.force, action == "list" {
-      throw UsageError(message: "--force belongs to install, update and remove", command: name)
+      throw UsageError(message: "--force belongs to install, update, remove and restore", command: name)
     }
     return request
   }
@@ -378,7 +388,8 @@ enum Help {
     case "issue": "Usage: jevision issue [<test or run>] [--send] [options]"
     case "mcp": "Usage: jevision mcp [--project <folder>]\n       jevision mcp --pair <code>\n       jevision mcp --remote <Mac> [--project <name>]\n       jevision mcp --forget <Mac>"
     case "schedule": "Usage: jevision schedule run <project>"
-    case "blocks": "Usage: jevision blocks list | install <folder, .zip or https address> | update [<id>] | remove <id> [options]"
+    case "blocks":
+      "Usage: jevision blocks list | install <folder, .zip or https address> | update [<id>] | remove <id> | restore [options]"
     default: "Usage: jevision <command> [options]"
     }
   }
@@ -581,32 +592,42 @@ enum Help {
       Lists, installs, updates and removes the blocks others shared: a block is a set of
       steps in a folder (ID.jevblock) or a .zip file, which tests run as one step. Blocks
       live in the project, in blocks/, and the address each came from is kept in
-      jevision.blocks.json so it can be updated.
+      jevision.blocks.json so it can be updated and installed again on another Mac.
 
       \(usage(command))
 
       Commands:
         list                      Show the installed blocks
-        install <source>          Show what a block does; install it with --yes. The source
-                                  is a block folder, a .zip file, or an https address of a
-                                  .zip file, a GitHub repository or a GitHub release
+        install <source>          Show what the blocks at the source do; install them with
+                                  --yes. The source is a block folder, a folder or .zip file
+                                  of several blocks, or an https address of a .zip file, a
+                                  GitHub repository or a GitHub release
         update [<id>]             Fetch the newest version of a block installed from an
                                   address, or of all of them; install it with --yes
         remove <id>               Remove a block
+        restore                   Fetch the blocks jevision.blocks.json names that aren't
+                                  installed, from the address of each; install them with --yes
 
       Options:
         --project <folder>        Project folder. Default: the nearest folder at or above
                                   the current one that has a .jevision folder, otherwise
                                   the current folder
-        --yes                     Install or update after showing what the block does
-        --force                   Remove a block that tests use, install the version that
-                                  is installed again, or go back to an older version
+        --yes                     Install, update or restore after showing what the blocks do
+        --only <id>[,<id>…]       Install or restore only these blocks, and the blocks they
+                                  need
+        --force                   Remove a block that tests or other blocks use, install the
+                                  version that is installed again, go back to an older
+                                  version, install a block that an installed block needs in
+                                  another version, or restore a block whose address now has
+                                  another version than jevision.blocks.json keeps
         -h, --help                Show this help
 
       Installing shows the steps in plain words and, apart, the steps that run a script,
       send network requests, use a database, open apps, type on the keyboard or use the
-      clipboard. Nothing is installed without --yes, and nothing in a block runs while it
-      is installed. Only https addresses are downloaded.
+      clipboard. A block that needs other blocks names them, with the versions that fit
+      and where to get them: the ones that aren't installed are fetched and shown too, and
+      installed first. Nothing is installed without --yes, and nothing in a block runs
+      while it is installed. Only https addresses are downloaded.
 
       Exit status: 0 — done, 1 — nothing was installed or removed because of what the
       block or the project says, or because --yes or --force is missing, 2 — the project,
@@ -651,7 +672,7 @@ enum Help {
         issue      Report a failed run as a GitHub issue
         mcp        Let AI assistants read, edit and run tests (MCP server)
         schedule   Run the schedules of a project that are due now
-        blocks     Install, update and remove blocks others shared
+        blocks     Install, update, remove and restore blocks others shared
 
       Options:
         -h, --help     Show this help

@@ -66,6 +66,15 @@ struct ProjectView: View {
           }
         }
         .animation(reduceMotion ? nil : .snappy, value: runs.batchResult)
+        .overlay(alignment: .top) {
+          if !project.unrestored.isEmpty, !project.restoreDeclined {
+            BlockRestoreBar(count: project.unrestored.count, review: project.restoreBlocks) {
+              project.restoreDeclined = true
+            }
+            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+          }
+        }
+        .animation(reduceMotion ? nil : .snappy, value: project.unrestored.isEmpty || project.restoreDeclined)
     }
     .onChange(of: runs.result) { _, result in
       // Run Again from a report: the new run's report takes its place.

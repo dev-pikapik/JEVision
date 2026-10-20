@@ -6,10 +6,17 @@ enum BlockPackageText {
   /// The sentence for `issue`, or `nil` when it isn't about a block package.
   static func message(_ issue: Issue) -> String? {
     let p = { (name: String) in issue.param(name) ?? "" }
+    /// The block `id` with the versions that fit, unless any does.
+    let needed = { (id: String) in ["", "*"].contains(p("range")) ? id : "\(id) \(p("range"))" }
     switch issue.code {
     case "flow.block.notInstalled":
       let block = BlockNeed(issue)?.label ?? p("id")
       return String(localized: "flow.block.notInstalled", defaultValue: "This step needs the block “\(block)”, which isn’t installed in this project. Install it, or remove the step.", bundle: .app, locale: .app)
+    case "flow.block.dependencyUnmet":
+      guard let installed = issue.param("installed") else {
+        return String(localized: "flow.block.dependencyUnmet", defaultValue: "The block \(p("by")) needs the block \(needed(p("dependency"))), which isn’t installed. Install it, or remove the step.", bundle: .app, locale: .app)
+      }
+      return String(localized: "flow.block.dependencyUnmet.installed", defaultValue: "The block \(p("by")) needs the block \(needed(p("dependency"))), but \(p("dependency")) \(installed) is installed. Install a version that fits.", bundle: .app, locale: .app)
     case "block.json.syntax":
       return String(localized: "block.json.syntax", defaultValue: "block.json isn’t valid JSON. Check line \(p("line")), column \(p("column")).", bundle: .app, locale: .app)
     case "block.json.notObject":
@@ -79,6 +86,35 @@ enum BlockPackageText {
       return String(localized: "block.source.none", defaultValue: "“\(p("id"))” wasn’t installed from an address, so there’s nothing to update it from.", bundle: .app, locale: .app)
     case "block.update.otherId":
       return String(localized: "block.update.otherId", defaultValue: "The address of “\(p("id"))” now holds a different block, “\(p("found"))”, so it isn’t an update.", bundle: .app, locale: .app)
+    case "block.dependency.invalid":
+      return String(localized: "block.dependency.invalid", defaultValue: "The dependency \(p("id")) can’t be used: \(p("reason")).", bundle: .app, locale: .app)
+    case "block.dependency.duplicate":
+      return String(localized: "block.dependency.duplicate", defaultValue: "The dependency \(p("id")) is listed twice.", bundle: .app, locale: .app)
+    case "block.dependency.self":
+      return String(localized: "block.dependency.self", defaultValue: "\(p("id")) is this block itself. A block can’t need itself.", bundle: .app, locale: .app)
+    case "block.dependency.undeclared":
+      return String(localized: "block.dependency.undeclared", defaultValue: "A step runs \(p("path")), the block \(p("id")), which block.json doesn’t list under dependencies. Add it there.", bundle: .app, locale: .app)
+    case "block.dependency.missing":
+      guard let source = issue.param("source"), !source.isEmpty else {
+        return String(localized: "block.dependency.missing.noSource", defaultValue: "\(p("by")) needs the block \(needed(p("id"))), which isn’t installed. Install it first.", bundle: .app, locale: .app)
+      }
+      return String(localized: "block.dependency.missing", defaultValue: "\(p("by")) needs the block \(needed(p("id"))), which isn’t installed. Install it from \(source).", bundle: .app, locale: .app)
+    case "block.dependency.unmet":
+      return String(localized: "block.dependency.unmet", defaultValue: "\(p("by")) needs the block \(needed(p("id"))), but \(p("id")) \(p("installed")) is installed. Install a version that fits.", bundle: .app, locale: .app)
+    case "block.dependency.cycle":
+      return String(localized: "block.dependency.cycle", defaultValue: "The blocks need each other in a circle: \(p("chain")). Remove one of these dependencies.", bundle: .app, locale: .app)
+    case "block.dependency.breaks":
+      return String(localized: "block.dependency.breaks", defaultValue: "\(p("id")) needs the block \(needed(p("dependency"))), and this brings \(p("dependency")) \(p("found")). Update \(p("id")) as well, or go ahead knowing it may stop working.", bundle: .app, locale: .app)
+    case "block.set.duplicate":
+      return String(localized: "block.set.duplicate", defaultValue: "Two of the blocks to install have the id \(p("id")). Only one of them can be installed.", bundle: .app, locale: .app)
+    case "block.set.tooMany":
+      return String(localized: "block.set.tooMany", defaultValue: "There are more than \(p("max")) blocks here. Choose the folder of the ones you need.", bundle: .app, locale: .app)
+    case "block.update.missing":
+      return String(localized: "block.update.missing", defaultValue: "The address \(p("id")) came from no longer has it. It has \(p("found")).", bundle: .app, locale: .app)
+    case "block.copy.nested":
+      return String(localized: "block.copy.nested", defaultValue: "This block runs “\(p("test"))”, a file inside its package, so it can’t be copied into the project’s own blocks.", bundle: .app, locale: .app)
+    case "block.copy.failed":
+      return String(localized: "block.copy.failed", defaultValue: "Couldn’t copy \(p("id")) into the project’s own blocks: \(p("reason")).", bundle: .app, locale: .app)
     case "block.download.notHttps":
       return String(localized: "block.download.notHttps", defaultValue: "Only https addresses can be downloaded, and “\(p("url"))” isn’t one.", bundle: .app, locale: .app)
     case "block.download.failed":
@@ -89,12 +125,10 @@ enum BlockPackageText {
       return String(localized: "block.archive.invalid", defaultValue: "The archive can’t be read: \(p("reason")).", bundle: .app, locale: .app)
     case "block.archive.empty":
       return String(localized: "block.archive.empty", defaultValue: "The archive has no block: no folder with block.json and flow.json.", bundle: .app, locale: .app)
-    case "block.archive.several":
-      return String(localized: "block.archive.several", defaultValue: "The archive has several blocks (\(p("ids"))). Install them one by one.", bundle: .app, locale: .app)
     case "block.lock.invalid":
       return String(localized: "block.lock.invalid", defaultValue: "jevision.blocks.json can’t be read: \(p("reason")).", bundle: .app, locale: .app)
     case "block.export.nested":
-      return String(localized: "block.export.nested", defaultValue: "This block runs “\(p("test"))”, and a block can’t hold other blocks yet. Put the steps of that block into this one.", bundle: .app, locale: .app)
+      return String(localized: "block.export.nested", defaultValue: "This block runs “\(p("test"))”, and only steps that run an installed community block can go into a package. Copy the steps of that block into this one instead.", bundle: .app, locale: .app)
     case "block.export.failed":
       return String(localized: "block.export.failed", defaultValue: "Couldn’t write the block: \(p("reason")).", bundle: .app, locale: .app)
     case "block.export.notBlock":

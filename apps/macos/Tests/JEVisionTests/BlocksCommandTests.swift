@@ -44,12 +44,32 @@ struct BlocksCommandTests {
     return file
   }
 
+  /// Writes the package `id` into the folder `shelf`, needing `needs` (id, versions).
+  private func package(_ id: String, _ version: String = "1.0.0", in shelf: String, needs: [(String, String)] = []) throws {
+    let dir = URL(fileURLWithPath: shelf).appending(path: "\(id).jevblock")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let dependencies = needs.map { #"{"id": "\#($0.0)", "version": "\#($0.1)"}"# }.joined(separator: ", ")
+    try """
+      {"format": 1, "id": "\(id)", "name": "\(id)", "version": "\(version)", "author": "Acme", "license": "MIT",
+       "dependencies": [\(dependencies)]}
+      """.write(to: dir.appending(path: "block.json"), atomically: true, encoding: .utf8)
+    try """
+      {"format": 1, "name": "\(id)", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "pressKeys", "keys": "cmd+s"}}}
+      """.write(to: dir.appending(path: "flow.json"), atomically: true, encoding: .utf8)
+  }
+
+  private func installed(_ project: String) -> Set<String> {
+    Set(listCommunityBlocks(project: project).map(\.manifest.id))
+  }
+
   private func run(
-    _ action: BlocksRequest.Action, in project: String, yes: Bool = false, force: Bool = false
+    _ action: BlocksRequest.Action, in project: String, yes: Bool = false, force: Bool = false, only: [String] = []
   ) -> (status: Int32, out: String, err: String) {
     var request = BlocksRequest(action: action, project: project)
     request.yes = yes
     request.force = force
+    request.only = only
     var command = BlocksCommand(request: request)
     let (out, err) = (Printed(), Printed())
     command.output = Console(write: { out.append($0) })
@@ -77,6 +97,91 @@ struct BlocksCommandTests {
     #expect(throws: UsageError.self) { try Command.parse(["blocks", "list", "--yes"]) }
     #expect(throws: UsageError.self) { try Command.parse(["blocks", "remove", "x", "--yes"]) }
     #expect(throws: UsageError.self) { try Command.parse(["blocks", "list", "--force"]) }
+
+    var restore = BlocksRequest(action: .restore)
+    (restore.yes, restore.force, restore.only) = (true, true, ["com.a.b", "com.c.d"])
+    #expect(try Command.parse(["blocks", "restore", "--yes", "--force", "--only", "com.a.b, com.c.d"]) == .blocks(restore))
+    var only = BlocksRequest(action: .install(source: "shelf"))
+    only.only = ["com.a.b"]
+    #expect(try Command.parse(["blocks", "install", "shelf", "--only=com.a.b"]) == .blocks(only))
+    #expect(throws: UsageError.self) { try Command.parse(["blocks", "restore", "x"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["blocks", "remove", "x", "--only", "y"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["blocks", "install", "x", "--only", ","]) }
+  }
+
+  @Test func restoresWhatJevisionBlocksJsonNamesOnlyWithYes() throws {
+    let (shelf, project) = (try folder(), try folder())
+    try package("com.acme.a", in: shelf)
+    try package("com.acme.b", "2.0.0", in: shelf)
+    try """
+      {"format": 1, "sources": {"com.acme.a": "\(shelf)", "com.acme.b": "\(shelf)"},
+       "versions": {"com.acme.a": "1.0.0", "com.acme.b": "1.5.0"}}
+      """.write(toFile: project + "/jevision.blocks.json", atomically: true, encoding: .utf8)
+
+    let plan = run(.restore, in: project)
+    #expect(plan.status == Exit.problems)
+    #expect(plan.out.contains("2 blocks of jevision.blocks.json aren't installed."))
+    #expect(plan.out.contains("com.acme.a 1.0.0 by Acme (MIT)"))
+    #expect(plan.out.contains("Not installed: add --yes to install it."))
+    #expect(plan.err.contains("keeps com.acme.b 1.5.0"))
+    #expect(plan.err.contains("now has 2.0.0"))
+    #expect(installed(project).isEmpty, "Nothing is installed without --yes")
+
+    let yes = run(.restore, in: project, yes: true)
+    #expect(yes.status == Exit.problems, "The block whose address changed is skipped")
+    #expect(yes.out.contains("Installed com.acme.a 1.0.0 (com.acme.a)."))
+    #expect(installed(project) == ["com.acme.a"])
+
+    let forced = run(.restore, in: project, yes: true, force: true)
+    #expect(forced.status == Exit.ok)
+    #expect(installed(project) == ["com.acme.a", "com.acme.b"])
+    let done = run(.restore, in: project)
+    #expect(done.status == Exit.ok)
+    #expect(done.out.contains("Everything in jevision.blocks.json is installed already."))
+  }
+
+  @Test func installsASetOrOnlyTheBlocksNamedWithWhatTheyNeed() throws {
+    let (shelf, project) = (try folder(), try folder())
+    try package("com.acme.base", in: shelf)
+    try package("com.acme.app", in: shelf, needs: [("com.acme.base", "^1.0.0")])
+    try package("com.acme.extra", in: shelf)
+    try package("com.acme.lonely", in: shelf, needs: [("com.acme.nowhere", "*")])
+
+    let unknown = run(.install(source: shelf), in: project, yes: true, only: ["com.acme.nope"])
+    #expect(unknown.status == Exit.problems)
+    #expect(unknown.err.contains("no block com.acme.nope"))
+
+    let shown = run(.install(source: shelf), in: project, only: ["com.acme.app"])
+    #expect(shown.out.contains("4 blocks in \(shelf)"))
+    #expect(shown.out.contains("  Needs: com.acme.base ^1.0.0"))
+    #expect(!shown.out.contains("com.acme.extra 1.0.0"), "Only the blocks named are shown")
+    #expect(shown.status == Exit.problems)
+
+    let only = run(.install(source: shelf), in: project, yes: true, only: ["com.acme.app"])
+    #expect(only.status == Exit.ok)
+    #expect(only.out.contains("Installed com.acme.base 1.0.0 (com.acme.base).\nInstalled com.acme.app"), "What a block needs goes in first")
+    #expect(installed(project) == ["com.acme.base", "com.acme.app"])
+
+    let all = run(.install(source: shelf), in: project, yes: true)
+    #expect(all.status == Exit.problems)
+    #expect(all.err.contains("com.acme.nowhere"))
+    #expect(installed(project) == ["com.acme.base", "com.acme.app"], "Nothing more goes in while one can't")
+  }
+
+  @Test func namesTheBlocksThatNeedABlockBeforeRemovingIt() throws {
+    let (shelf, project) = (try folder(), try folder())
+    try package("com.acme.base", in: shelf)
+    try package("com.acme.app", in: shelf, needs: [("com.acme.base", "^1.0.0")])
+    #expect(run(.install(source: shelf), in: project, yes: true).status == Exit.ok)
+    #expect(run(.list, in: project).out.contains("needs com.acme.base ^1.0.0"))
+
+    let refused = run(.remove(id: "com.acme.base"), in: project)
+    #expect(refused.status == Exit.problems)
+    #expect(refused.err.contains("needed by the installed blocks com.acme.app"))
+    #expect(refused.err.contains("--force"))
+    #expect(installed(project) == ["com.acme.base", "com.acme.app"])
+    #expect(run(.remove(id: "com.acme.base"), in: project, force: true).status == Exit.ok)
+    #expect(installed(project) == ["com.acme.app"])
   }
 
   @Test func installingShowsWhatTheBlockDoesAndInstallsNothingWithoutYes() throws {
