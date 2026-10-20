@@ -299,6 +299,8 @@ struct Program {
     stdin: Option<ChildStdin>,
     lines: Receiver<String>,
     errors: Arc<Mutex<String>>,
+    /// Disconnects once the whole error output has been read.
+    errors_read: Receiver<()>,
     timeout: Duration,
 }
 
@@ -335,6 +337,7 @@ impl Program {
         });
         let errors = Arc::new(Mutex::new(String::new()));
         let kept = errors.clone();
+        let (read_all, errors_read) = mpsc::channel::<()>();
         thread::spawn(move || {
             let mut stderr = stderr;
             let mut chunk = [0; 1024];
@@ -349,12 +352,14 @@ impl Program {
                     kept.drain(..cut);
                 }
             }
+            drop(read_all);
         });
         Ok(Self {
             stdin: child.stdin.take(),
             child,
             lines,
             errors,
+            errors_read,
             timeout,
         })
     }
@@ -401,9 +406,10 @@ impl Program {
 
     /// The program ended: its last words.
     fn stopped(&mut self) -> McpError {
-        // The error output may still be on its way.
+        // The error output may still be on its way. Something the program started can keep it
+        // open after the program is gone: wait for the end of it, but not for long.
         let _ = self.child.wait();
-        thread::sleep(Duration::from_millis(50));
+        let _ = self.errors_read.recv_timeout(Duration::from_secs(2));
         let output = self
             .errors
             .lock()
@@ -602,6 +608,21 @@ fn events(stream: &str) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_last_words_are_read_even_when_they_come_after_the_program_ended() {
+        // The shell is gone at once; what it started writes to the error output a moment later.
+        let mut program = Program::start(
+            "(sleep 0.2; echo late words >&2) >/dev/null & exit 3",
+            Duration::from_secs(30),
+        )
+        .unwrap();
+        let ping = json!({ "jsonrpc": "2.0", "id": 1, "method": "ping" });
+        match program.request(&ping, 1) {
+            Err(McpError::Stopped { output }) => assert_eq!(output, "late words"),
+            other => panic!("expected the program to have stopped, got {other:?}"),
+        }
+    }
 
     #[test]
     fn events_are_read_from_a_stream() {
