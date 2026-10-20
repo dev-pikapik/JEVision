@@ -750,6 +750,10 @@ mod tests {
 
     use super::*;
     use crate::mcp::network::{pair, serve};
+
+    /// How long a test waits for what another thread does before it calls the thing hung. A test
+    /// that sees it happen goes on at once, however busy the machine is: only a hang waits it out.
+    const HANG_GUARD: Duration = Duration::from_secs(60);
     use crate::mcp::tests::{Host, Project, app_answers, sign_in};
     use crate::mcp::{
         AssistantKey, AssistantPermissions, AssistantServerError, Backend, Server,
@@ -934,7 +938,7 @@ mod tests {
                 "t.flow.json".to_owned()
             )]
         );
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + HANG_GUARD;
         while !app.run().is_paused() {
             assert!(Instant::now() < deadline, "the run never paused");
             std::thread::sleep(Duration::from_millis(10));
@@ -1013,7 +1017,7 @@ mod tests {
         let watch = phone
             .block_on(client.watch("Demo".into(), run.clone()))
             .unwrap();
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + HANG_GUARD;
         while !app.run().is_paused() {
             assert!(Instant::now() < deadline, "the run never paused");
             std::thread::sleep(Duration::from_millis(10));
@@ -1290,7 +1294,7 @@ mod tests {
     }
 
     fn eventually(what: &str, mut done: impl FnMut() -> bool) {
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + HANG_GUARD;
         while !done() {
             assert!(Instant::now() < deadline, "{what}");
             std::thread::sleep(Duration::from_millis(20));

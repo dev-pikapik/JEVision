@@ -40,6 +40,19 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+  timing:
+    name: Core speed
+    # Time is for a quiet machine to say, so the tests that hold the core to its time limits run
+    # alone, on main and on demand, and not beside the rest of a pull request's checks.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Large project stays fast
+        run: cargo test -p jevision-ffi --test large_project --locked -- --ignored a_large_project_stays_fast
+
   core-swift:
     name: Core for Swift
     runs-on: macos-latest

@@ -9,8 +9,8 @@ use jevision_core::{
 use serde_json::{Value, json};
 
 use super::{
-    AssistantHost, AssistantPermissions, AssistantRequest, Server, answer_assistant_request,
-    connected_assistants, forget_assistants, pending_assistant_requests,
+    AssistantHost, AssistantPermissions, AssistantRequest, ConnectedAssistant, Server,
+    answer_assistant_request, connected_assistants, forget_assistants, pending_assistant_requests,
 };
 use crate::{Hands, HandsError, Openable, RunOptions, SecretSource, TestRun};
 use jevision_core::{WindowPosition, WindowSize};
@@ -955,8 +955,11 @@ fn hello(server: &Server, name: &str, title: Option<&str>) {
         "params": { "protocolVersion": "2025-06-18", "clientInfo": info },
     });
     server.handle(&request.to_string()).unwrap();
-    // A connection's file is named after the millisecond it began.
-    std::thread::sleep(Duration::from_millis(2));
+}
+
+/// One assistant by name, whatever place it holds in the list.
+fn assistant<'a>(listed: &'a [ConnectedAssistant], name: &str) -> &'a ConnectedAssistant {
+    listed.iter().find(|a| a.name == name).unwrap()
 }
 
 #[test]
@@ -975,12 +978,11 @@ fn connected_assistants_are_listed_with_their_last_call() {
     let other = Server::new(&_project.0, host.clone()).unwrap();
     hello(&other, "cursor", None);
 
+    // Two connections that fall in different seconds list in the other order: the order has its
+    // own test, with the seconds written down.
     let listed = connected_assistants(folder.clone());
-    assert_eq!(
-        listed.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(),
-        ["claude-code", "cursor"]
-    );
-    let claude = &listed[0];
+    assert_eq!(listed.len(), 2);
+    let claude = assistant(&listed, "claude-code");
     assert_eq!(
         (claude.title.as_str(), claude.version.as_str(), claude.calls),
         ("Claude Code", "2.1", 2)
@@ -989,8 +991,9 @@ fn connected_assistants_are_listed_with_their_last_call() {
     assert_eq!(claude.last_call.as_ref().unwrap().tool, "validate_test");
     assert!(claude.first_connected_at > 1_700_000_000);
     // Without a title the name is shown; without a call, none is shown.
-    assert_eq!(listed[1].title, "cursor");
-    assert_eq!(listed[1].last_call, None);
+    let cursor = assistant(&listed, "cursor");
+    assert_eq!(cursor.title, "cursor");
+    assert_eq!(cursor.last_call, None);
 
     // The same assistant connecting again is one entry with both connections' calls.
     let again = Server::new(&_project.0, host.clone()).unwrap();
@@ -998,7 +1001,7 @@ fn connected_assistants_are_listed_with_their_last_call() {
     call(&again, "list_tests", json!({}));
     let listed = connected_assistants(folder.clone());
     assert_eq!(listed.len(), 2);
-    let claude = listed.iter().find(|a| a.name == "claude-code").unwrap();
+    let claude = assistant(&listed, "claude-code");
     assert_eq!(claude.calls, 3);
     assert_eq!(claude.last_call.as_ref().unwrap().tool, "list_tests");
 
@@ -1016,11 +1019,8 @@ fn connected_assistants_are_listed_with_their_last_call() {
         .set_modified(std::time::SystemTime::now() - Duration::from_secs(120))
         .unwrap();
     let listed = connected_assistants(folder.clone());
-    let state: Vec<_> = listed
-        .iter()
-        .map(|a| (a.name.as_str(), a.connected))
-        .collect();
-    assert_eq!(state, [("claude-code", true), ("cursor", false)]);
+    assert!(assistant(&listed, "claude-code").connected);
+    assert!(!assistant(&listed, "cursor").connected);
     server.agents.end();
     again.agents.end();
     assert!(
@@ -1030,6 +1030,40 @@ fn connected_assistants_are_listed_with_their_last_call() {
     );
     forget_assistants(folder.clone());
     assert!(connected_assistants(folder).is_empty());
+}
+
+/// Connected ones first, then the one that connected last, then by name: a tie in the second
+/// goes to the name, and not to which of two threads wrote its file first.
+#[test]
+fn assistants_are_listed_connected_first_then_latest_then_by_name() {
+    let (_project, host, _server) = setup();
+    let sessions = host.shared.0.join("sessions");
+    std::fs::create_dir_all(&sessions).unwrap();
+    for (file, name, started, ended) in [
+        ("1.json", "zed", 1_700_000_300_i64, json!(null)),
+        ("2.json", "claude-code", 1_700_000_300, json!(null)),
+        ("3.json", "cursor", 1_700_000_100, json!(null)),
+        ("4.json", "gone", 1_700_000_500, json!(1_700_000_600)),
+    ] {
+        let record = json!({
+            "name": name, "title": name, "version": "1", "remote": null,
+            "started": started, "calls": 0, "lastCall": null, "ended": ended,
+        });
+        std::fs::write(sessions.join(file), record.to_string()).unwrap();
+    }
+    let listed = connected_assistants(host.shared_folder());
+    assert_eq!(
+        listed
+            .iter()
+            .map(|a| (a.name.as_str(), a.connected))
+            .collect::<Vec<_>>(),
+        [
+            ("claude-code", true),
+            ("zed", true),
+            ("cursor", true),
+            ("gone", false)
+        ]
+    );
 }
 
 /// What the app does: polls for questions, keeps what it saw, and answers.
