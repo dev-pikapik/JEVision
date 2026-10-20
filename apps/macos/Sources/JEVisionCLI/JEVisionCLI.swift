@@ -357,8 +357,8 @@ enum Help {
         --json      Print the result as JSON
         -h, --help  Show this help
 
-      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments or a file could
-      not be read.
+      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments, a folder with
+      no tests, or a file that could not be read.
 
       """
     case "fmt":
@@ -377,7 +377,8 @@ enum Help {
         -h, --help  Show this help
 
       Exit status: 0 — all good, 1 — a file is not in canonical form or can't be read as
-      a test, 2 — wrong arguments or a file could not be read or written.
+      a test, 2 — wrong arguments, a folder with no tests, or a file that could not be
+      read or written.
 
       """
     case "issue":
