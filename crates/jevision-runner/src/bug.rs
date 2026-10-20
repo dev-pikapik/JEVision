@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use jevision_core::{
-    BlockKind, ClipboardAction, Compare, Condition, FileState, Flow, Modifiers, Reference,
-    ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration, is_block_path,
+    BlockKind, ClipboardAction, ClipboardContent, Compare, Condition, FileState, Flow, Modifiers,
+    Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
+    is_block_path,
 };
 use jevision_l10n::{text_in, tr_in};
 use sha2::{Digest, Sha256};
@@ -343,6 +344,7 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
             percent(lang, p.y)
         ),
         Target::Description(what) => tr_in!(lang, "bug.target.description", what.trim()),
+        Target::Area(area) => tr_in!(lang, "bug.target.area", area.to_string()),
     };
     match kind {
         BlockKind::OpenApp { app: other, .. } => {
@@ -357,21 +359,21 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
             ..
         } => {
             let at = target(t);
-            let held = holding(modifiers);
-            match (button, double, held.as_deref()) {
-                (jevision_core::MouseButton::Right, _, None) => {
-                    tr_in!(lang, "bug.block.rightClick", at)
+            let text = match (button, double) {
+                (jevision_core::MouseButton::Right, _) => tr_in!(lang, "bug.block.rightClick", at),
+                (jevision_core::MouseButton::Middle, _) => {
+                    tr_in!(lang, "bug.block.middleClick", at)
                 }
-                (jevision_core::MouseButton::Right, _, Some(keys)) => {
-                    tr_in!(lang, "bug.block.rightClickHolding", at, keys)
-                }
-                (_, true, None) => tr_in!(lang, "bug.block.doubleClick", at),
-                (_, true, Some(keys)) => tr_in!(lang, "bug.block.doubleClickHolding", at, keys),
-                (_, false, None) => tr_in!(lang, "bug.block.click", at),
-                (_, false, Some(keys)) => tr_in!(lang, "bug.block.clickHolding", at, keys),
-            }
+                (_, true) => tr_in!(lang, "bug.block.doubleClick", at),
+                _ => tr_in!(lang, "bug.block.click", at),
+            };
+            text + &holding(lang, modifiers)
         }
-        BlockKind::Hover { target: t, .. } => tr_in!(lang, "bug.block.hover", target(t)),
+        BlockKind::Hover {
+            target: t,
+            modifiers,
+            ..
+        } => tr_in!(lang, "bug.block.hover", target(t)) + &holding(lang, modifiers),
         BlockKind::Drag {
             from,
             to,
@@ -380,21 +382,21 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
             ..
         } => {
             let (from, to) = (target(from), target(to));
-            let held = holding(modifiers);
-            match (button.is_left(), held.as_deref()) {
-                (true, None) => tr_in!(lang, "bug.block.drag", from, to),
-                (true, Some(keys)) => tr_in!(lang, "bug.block.dragHolding", from, to, keys),
-                (false, None) => tr_in!(lang, "bug.block.dragRight", from, to),
-                (false, Some(keys)) => {
-                    tr_in!(lang, "bug.block.dragRightHolding", from, to, keys)
+            let text = match button {
+                jevision_core::MouseButton::Left => tr_in!(lang, "bug.block.drag", from, to),
+                jevision_core::MouseButton::Right => tr_in!(lang, "bug.block.dragRight", from, to),
+                jevision_core::MouseButton::Middle => {
+                    tr_in!(lang, "bug.block.dragMiddle", from, to)
                 }
-            }
+            };
+            text + &holding(lang, modifiers)
         }
         BlockKind::Scroll {
             direction,
             amount,
             unit,
             at,
+            modifiers,
             ..
         } => {
             let direction = match direction {
@@ -406,14 +408,15 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
             let place = at
                 .as_ref()
                 .map_or_else(|| text_in(lang, "bug.place.window", &[]), target);
-            match unit {
+            let text = match unit {
                 jevision_core::ScrollUnit::Lines => {
                     tr_in!(lang, "bug.block.scrollLines", *amount, direction, place)
                 }
                 jevision_core::ScrollUnit::Pixels => {
                     tr_in!(lang, "bug.block.scrollPoints", *amount, direction, place)
                 }
-            }
+            };
+            text + &holding(lang, modifiers)
         }
         BlockKind::Type { text, into, .. } => match into {
             Some(t) => tr_in!(lang, "bug.block.typeInto", text, target(t)),
@@ -480,7 +483,14 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
         BlockKind::Database { file, query, .. } => tr_in!(lang, "bug.block.database", file, query),
         BlockKind::Clipboard { action, .. } => match action {
             ClipboardAction::Put { text } => tr_in!(lang, "bug.block.clipboardPut", text),
-            ClipboardAction::Read { save_as } => tr_in!(lang, "bug.block.clipboardRead", save_as),
+            ClipboardAction::PutImage { image } => {
+                tr_in!(lang, "bug.block.clipboardPutImage", image)
+            }
+            ClipboardAction::Read { save_as, content } => match content {
+                ClipboardContent::Text => tr_in!(lang, "bug.block.clipboardRead", save_as),
+                ClipboardContent::Image => tr_in!(lang, "bug.block.clipboardReadImage", save_as),
+                ClipboardContent::Files => tr_in!(lang, "bug.block.clipboardReadFiles", save_as),
+            },
             ClipboardAction::Check { is, to, .. } => match is {
                 ValueTest::Equals => tr_in!(lang, "bug.block.clipboardIs", to),
                 ValueTest::NotEquals => tr_in!(lang, "bug.block.clipboardIsNot", to),
@@ -492,30 +502,48 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
         BlockKind::DateTime {
             save_as,
             format,
+            language,
+            time_zone,
             shift,
             ..
-        } => match shift {
-            Some(s) => {
-                let (count, minus) = (s.amount.unsigned_abs(), if s.amount < 0 { "-" } else { "" });
-                let moved = match s.unit {
-                    TimeUnit::Seconds => tr_in!(lang, "bug.shift.seconds", count, minus),
-                    TimeUnit::Minutes => tr_in!(lang, "bug.shift.minutes", count, minus),
-                    TimeUnit::Hours => tr_in!(lang, "bug.shift.hours", count, minus),
-                    TimeUnit::Days => tr_in!(lang, "bug.shift.days", count, minus),
-                    TimeUnit::Weeks => tr_in!(lang, "bug.shift.weeks", count, minus),
-                    TimeUnit::Months => tr_in!(lang, "bug.shift.months", count, minus),
-                    TimeUnit::Years => tr_in!(lang, "bug.shift.years", count, minus),
-                };
-                tr_in!(lang, "bug.block.dateTimeShifted", save_as, format, moved)
-            }
-            None => tr_in!(lang, "bug.block.dateTime", save_as, format),
-        },
+        } => {
+            let moved = match shift {
+                Some(s) => {
+                    let (count, minus) =
+                        (s.amount.unsigned_abs(), if s.amount < 0 { "-" } else { "" });
+                    let moved = match s.unit {
+                        TimeUnit::Seconds => tr_in!(lang, "bug.shift.seconds", count, minus),
+                        TimeUnit::Minutes => tr_in!(lang, "bug.shift.minutes", count, minus),
+                        TimeUnit::Hours => tr_in!(lang, "bug.shift.hours", count, minus),
+                        TimeUnit::Days => tr_in!(lang, "bug.shift.days", count, minus),
+                        TimeUnit::Weeks => tr_in!(lang, "bug.shift.weeks", count, minus),
+                        TimeUnit::Months => tr_in!(lang, "bug.shift.months", count, minus),
+                        TimeUnit::Years => tr_in!(lang, "bug.shift.years", count, minus),
+                    };
+                    tr_in!(lang, "bug.dateTime.moved", moved)
+                }
+                None => String::new(),
+            };
+            tr_in!(lang, "bug.block.dateTime", save_as, format)
+                + &language
+                    .as_ref()
+                    .map_or_else(String::new, |l| tr_in!(lang, "bug.dateTime.language", l))
+                + &time_zone
+                    .as_ref()
+                    .map_or_else(String::new, |z| tr_in!(lang, "bug.dateTime.zone", z))
+                + &moved
+        }
     }
 }
 
-/// The keys held down during a click or a drag, such as `cmd+shift`, or nothing.
-fn holding(modifiers: &Modifiers) -> Option<String> {
-    (!modifiers.is_empty()).then(|| modifiers.names().join("+"))
+/// The keys held down during a click, drag, hover or scroll, as a phrase that ends the sentence,
+/// or nothing.
+fn holding(lang: &str, modifiers: &Modifiers) -> String {
+    if modifiers.is_empty() {
+        String::new()
+    } else {
+        tr_in!(lang, "bug.holding", modifiers.names().join("+"))
+    }
 }
 
 /// What the screen should look like for `reference` to match.

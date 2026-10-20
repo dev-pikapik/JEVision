@@ -150,8 +150,9 @@ pub trait Hands: Send + Sync {
         double_click: bool,
         modifiers: Modifiers,
     ) -> Result<(), HandsError>;
-    /// Moves the pointer to `at` and leaves it there.
-    fn hover(&self, app: String, at: Point) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and leaves it there, with the keys of `modifiers` held down
+    /// while it moves.
+    fn hover(&self, app: String, at: Point, modifiers: Modifiers) -> Result<(), HandsError>;
     /// Presses `button` at the first point of `path`, moves through the others holding it down,
     /// and lets go at the last, with the keys of `modifiers` held down all the while. The button
     /// and the keys are let go even when the run is cancelled on the way.
@@ -163,7 +164,8 @@ pub trait Hands: Send + Sync {
         modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
-    /// brings what is further down into sight.
+    /// brings what is further down into sight. The keys of `modifiers` are held down while the
+    /// wheel turns: with ⌘ most apps zoom instead of scrolling.
     fn scroll(
         &self,
         app: String,
@@ -171,6 +173,7 @@ pub trait Hands: Send + Sync {
         direction: ScrollDirection,
         amount: u32,
         unit: ScrollUnit,
+        modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// The text may hold secret values: never log it.
     fn type_text(&self, text: String) -> Result<(), HandsError>;
@@ -179,6 +182,12 @@ pub trait Hands: Send + Sync {
     fn clipboard(&self) -> Result<String, HandsError>;
     /// Replaces what is on the clipboard with `text`, which may hold secret values: never log it.
     fn set_clipboard(&self, text: String) -> Result<(), HandsError>;
+    /// The picture on the clipboard as PNG; `None` when it holds none.
+    fn clipboard_image(&self) -> Result<Option<Vec<u8>>, HandsError>;
+    /// The files copied to the clipboard, as absolute paths; empty when it holds none.
+    fn clipboard_files(&self) -> Result<Vec<String>, HandsError>;
+    /// Replaces what is on the clipboard with the PNG picture `png`.
+    fn set_clipboard_image(&self, png: Vec<u8>) -> Result<(), HandsError>;
     /// Whether a person moved the mouse or typed since the last call; the object's own
     /// synthetic input does not count.
     fn user_input_detected(&self) -> bool;
@@ -312,6 +321,10 @@ pub struct RunOptions {
     /// The test is in the run only because other tests in it depend on it.
     #[uniffi(default = false)]
     pub added_as_dependency: bool,
+    /// Language code (`en`, `ru`) a date and time block writes month and day names in when it
+    /// names no language of its own; `None` is English.
+    #[uniffi(default = None)]
+    pub language: Option<String>,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -469,6 +482,7 @@ fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
             .keep_videos_days
             .map(|days| std::time::Duration::from_secs(u64::from(days) * 24 * 60 * 60)),
         added_as_dependency: options.added_as_dependency,
+        language: options.language.clone(),
         screen_lock: screen_lock(),
         ..Default::default()
     }
@@ -601,8 +615,13 @@ impl jevision_runner::Hands for HandsAdapter {
             .click(app.to_owned(), at, button, double, modifiers)?)
     }
 
-    fn hover(&self, app: &str, at: Point) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.hover(app.to_owned(), at)?)
+    fn hover(
+        &self,
+        app: &str,
+        at: Point,
+        modifiers: Modifiers,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.hover(app.to_owned(), at, modifiers)?)
     }
 
     fn drag(
@@ -624,8 +643,11 @@ impl jevision_runner::Hands for HandsAdapter {
         direction: ScrollDirection,
         amount: u32,
         unit: ScrollUnit,
+        modifiers: Modifiers,
     ) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.scroll(app.to_owned(), at, direction, amount, unit)?)
+        Ok(self
+            .0
+            .scroll(app.to_owned(), at, direction, amount, unit, modifiers)?)
     }
 
     fn type_text(&self, text: &str) -> Result<(), jevision_runner::HandsError> {
@@ -642,6 +664,18 @@ impl jevision_runner::Hands for HandsAdapter {
 
     fn set_clipboard(&self, text: &str) -> Result<(), jevision_runner::HandsError> {
         Ok(self.0.set_clipboard(text.to_owned())?)
+    }
+
+    fn clipboard_image(&self) -> Result<Option<Vec<u8>>, jevision_runner::HandsError> {
+        Ok(self.0.clipboard_image()?)
+    }
+
+    fn clipboard_files(&self) -> Result<Vec<String>, jevision_runner::HandsError> {
+        Ok(self.0.clipboard_files()?)
+    }
+
+    fn set_clipboard_image(&self, png: &[u8]) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.set_clipboard_image(png.to_vec())?)
     }
 
     fn user_input_detected(&self) -> bool {
@@ -1364,7 +1398,7 @@ pub(crate) mod tests {
             self.note(format!("click {button:?} {double} {}", holding(modifiers)));
             Ok(())
         }
-        fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
+        fn hover(&self, _: String, _: Point, _: Modifiers) -> Result<(), HandsError> {
             Ok(())
         }
         fn drag(
@@ -1384,6 +1418,7 @@ pub(crate) mod tests {
             _: ScrollDirection,
             _: u32,
             _: ScrollUnit,
+            _: Modifiers,
         ) -> Result<(), HandsError> {
             Ok(())
         }
@@ -1405,6 +1440,15 @@ pub(crate) mod tests {
         }
         fn set_clipboard(&self, text: String) -> Result<(), HandsError> {
             *self.clipboard.lock().unwrap() = text;
+            Ok(())
+        }
+        fn clipboard_image(&self) -> Result<Option<Vec<u8>>, HandsError> {
+            Ok(None)
+        }
+        fn clipboard_files(&self) -> Result<Vec<String>, HandsError> {
+            Ok(Vec::new())
+        }
+        fn set_clipboard_image(&self, _: Vec<u8>) -> Result<(), HandsError> {
             Ok(())
         }
         fn user_input_detected(&self) -> bool {

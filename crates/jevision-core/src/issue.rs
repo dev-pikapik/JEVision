@@ -85,11 +85,16 @@ pub fn describe(issue: &Issue) -> String {
     describe_in(&language(), issue)
 }
 
-/// The sentence for an issue in `lang`, starting with the block and field it concerns, for
-/// tools that show issues outside the app, such as the command line and AI assistants.
-pub fn describe_in(lang: &str, issue: &Issue) -> String {
+/// [`sentence_in`] in the process language.
+pub fn sentence(issue: &Issue) -> String {
+    sentence_in(&language(), issue)
+}
+
+/// What an issue says in `lang`, without where it is: for the app, which shows it next to the
+/// block or field it concerns.
+pub fn sentence_in(lang: &str, issue: &Issue) -> String {
     let p = |name: &str| issue.param(name).unwrap_or_default();
-    let text = match issue.code.as_str() {
+    match issue.code.as_str() {
         "flow.json.syntax" => tr_in!(lang, "flow.json.syntax", p("line"), p("column")),
         "flow.json.notObject" => tr_in!(lang, "flow.json.notObject"),
         "flow.format.missing" => tr_in!(lang, "flow.format.missing"),
@@ -221,6 +226,18 @@ pub fn describe_in(lang: &str, issue: &Issue) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
+        "flow.var.kind" => tr_in!(
+            lang,
+            "flow.var.kind",
+            value_kind(lang, p("type")),
+            p("variable"),
+            p("from")
+                .split(", ")
+                .map(|kind| value_kind(lang, kind))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        "flow.target.area" => tr_in!(lang, "flow.target.area", p("value")),
         "flow.dateTime.format" => {
             tr_in!(lang, "flow.dateTime.format", p("value"), "%Y-%m-%d %H:%M")
         }
@@ -307,7 +324,13 @@ pub fn describe_in(lang: &str, issue: &Issue) -> String {
                 .collect();
             format!("{} ({}).", issue.code, params.join(", "))
         }
-    };
+    }
+}
+
+/// The sentence for an issue in `lang`, starting with the block and field it concerns, for
+/// tools that show issues outside the app, such as the command line and AI assistants.
+pub fn describe_in(lang: &str, issue: &Issue) -> String {
+    let text = sentence_in(lang, issue);
     let named = |name| issue.param(name).filter(|v| !v.is_empty());
     let mut place: Vec<String> = [
         named("block").map(|v| tr_in!(lang, "flow.place.block", v)),
@@ -411,6 +434,8 @@ mod tests {
             describe_in("ru", &issue),
             "Блок «wait», поле «timeout»: Допустимо от 1ms до 10m."
         );
+        assert_eq!(sentence_in("en", &issue), "Must be from 1ms to 10m.");
+        assert_eq!(sentence_in("ru", &issue), "Допустимо от 1ms до 10m.");
         let syntax = Issue::error("flow.json.syntax")
             .with("line", 3)
             .with("column", 7);

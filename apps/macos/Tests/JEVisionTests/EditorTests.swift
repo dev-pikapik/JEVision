@@ -87,17 +87,46 @@ struct BlockSummaryTests {
   }
 
   @Test func describesPointerBlocks() {
-    #expect(summary(.hover(target: .image(""), waitForChange: false, next: nil)) == "Choose what to point at")
-    #expect(summary(.hover(target: .image("refs/help-icon.png"), waitForChange: false, next: nil)) == "Point at “help icon”")
+    #expect(summary(.hover(target: .image(""), modifiers: .none, waitForChange: false, next: nil)) == "Choose what to point at")
+    #expect(summary(.hover(target: .image("refs/help-icon.png"), modifiers: .none, waitForChange: false, next: nil)) == "Point at “help icon”")
     #expect(summary(.drag(from: .image("refs/file.png"), to: .image(""), button: .left, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to drag and where")
     #expect(
       summary(.drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .left, modifiers: .none, waitForChange: false, next: nil))
         == "Drag “file” to “trash bin”")
-    #expect(summary(.scroll(direction: .down, amount: 5, unit: .lines, at: nil, waitForChange: false, next: nil)) == "Scroll down 5 lines")
-    #expect(summary(.scroll(direction: .up, amount: 3, unit: .lines, at: .image(""), waitForChange: false, next: nil)) == "Scroll up 3 lines")
+    #expect(summary(.scroll(direction: .down, amount: 5, unit: .lines, at: nil, modifiers: .none, waitForChange: false, next: nil)) == "Scroll down 5 lines")
+    #expect(summary(.scroll(direction: .up, amount: 3, unit: .lines, at: .image(""), modifiers: .none, waitForChange: false, next: nil)) == "Scroll up 3 lines")
     #expect(
-      summary(.scroll(direction: .right, amount: 240, unit: .pixels, at: .image("refs/list.png"), waitForChange: false, next: nil))
+      summary(.scroll(direction: .right, amount: 240, unit: .pixels, at: .image("refs/list.png"), modifiers: .none, waitForChange: false, next: nil))
         == "Scroll right 240 px over “list”")
+    let option = Modifiers(command: false, shift: false, option: true, control: false)
+    let command = Modifiers(command: true, shift: false, option: false, control: false)
+    #expect(
+      summary(.hover(target: .image("refs/help-icon.png"), modifiers: option, waitForChange: false, next: nil))
+        == "Point at “help icon” holding ⌥")
+    #expect(
+      summary(.scroll(direction: .up, amount: 2, unit: .lines, at: nil, modifiers: command, waitForChange: false, next: nil))
+        == "Scroll up 2 lines holding ⌘")
+    #expect(
+      summary(.scroll(direction: .down, amount: 1, unit: .lines, at: .image("refs/map.png"), modifiers: command, waitForChange: false, next: nil))
+        == "Scroll down 1 lines over “map” holding ⌘")
+  }
+
+  @Test func namesAreasAndSavedPictures() {
+    let area = Target.area("0.1,0.2,0.5,0.3")
+    #expect(
+      summary(.click(target: area, button: .left, double: false, modifiers: .none, waitForChange: false, next: nil))
+        == "Click area “0.1,0.2,0.5,0.3”")
+    #expect(summary(.click(target: .area(" "), button: .left, double: false, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to click")
+    #expect(
+      summary(.hover(target: .area("${var.box}"), modifiers: .none, waitForChange: false, next: nil))
+        == unbreakablePlaceholders(text: "Point at area “${var.box}”"))
+    #expect(
+      summary(.drag(from: area, to: .image("refs/trash_bin.png"), button: .left, modifiers: .none, waitForChange: false, next: nil))
+        == "Drag “0.1,0.2,0.5,0.3” to “trash bin”")
+    #expect(summary(.type(text: "hi", into: area, next: nil)) == "Type “hi” into area “0.1,0.2,0.5,0.3”")
+    #expect(
+      summary(.click(target: .image("${var.shot}"), button: .left, double: false, modifiers: .none, waitForChange: false, next: nil))
+        == unbreakablePlaceholders(text: "Click “${var.shot}”"))
   }
 
   @Test func describesKeysHeldAndButtonOfClickAndDrag() {
@@ -116,23 +145,37 @@ struct BlockSummaryTests {
       summary(
         .drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .left, modifiers: held, waitForChange: false, next: nil)
       ) == "Drag “file” to “trash bin” holding ⇧⌘")
+    #expect(
+      summary(.click(target: .image("refs/row.png"), button: .middle, double: false, modifiers: .none, waitForChange: false, next: nil))
+        == "Middle-click “row”")
+    #expect(
+      summary(
+        .drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .middle, modifiers: held, waitForChange: false, next: nil)
+      ) == "Middle-drag “file” to “trash bin” holding ⇧⌘")
   }
 
   @Test func describesClipboardAndDateTimeBlocks() {
     #expect(summary(.clipboard(action: .put(text: ""), next: nil)) == "No text yet")
     #expect(summary(.clipboard(action: .put(text: "hello"), next: nil)) == "Put “hello” on the clipboard")
-    #expect(summary(.clipboard(action: .read(saveAs: "copied"), next: nil)) == "Read the clipboard → copied")
-    #expect(summary(.clipboard(action: .read(saveAs: ""), next: nil)) == "Choose a name to save it as")
+    #expect(summary(.clipboard(action: .read(saveAs: "copied", content: .text), next: nil)) == "Read the clipboard → copied")
+    #expect(summary(.clipboard(action: .read(saveAs: "", content: .image), next: nil)) == "Choose a name to save it as")
+    #expect(summary(.clipboard(action: .read(saveAs: "shot", content: .image), next: nil)) == "Read the picture on the clipboard → shot")
+    #expect(summary(.clipboard(action: .read(saveAs: "files", content: .files), next: nil)) == "Read the copied files → files")
+    #expect(summary(.clipboard(action: .putImage(image: ""), next: nil)) == "No picture yet")
+    #expect(summary(.clipboard(action: .putImage(image: "refs/app_logo.png"), next: nil)) == "Put “app logo” on the clipboard")
     #expect(
       summary(.clipboard(action: .check(is: .contains, to: "ok", timeoutMs: 5000), next: nil))
         == "Until the clipboard ∋ “ok” · \(BlockSummary.duration(5000))")
-    #expect(summary(.dateTime(saveAs: "", format: "%Y", shift: nil, next: nil)) == "Choose a name to save it as")
-    #expect(summary(.dateTime(saveAs: "today", format: "%Y-%m-%d", shift: nil, next: nil)) == "“%Y-%m-%d” → today")
+    #expect(summary(.dateTime(saveAs: "", format: "%Y", language: nil, timeZone: nil, shift: nil, next: nil)) == "Choose a name to save it as")
+    #expect(summary(.dateTime(saveAs: "today", format: "%Y-%m-%d", language: nil, timeZone: nil, shift: nil, next: nil)) == "“%Y-%m-%d” → today")
     #expect(
-      summary(.dateTime(saveAs: "due", format: "%Y-%m-%d", shift: TimeShift(amount: 3, unit: .days), next: nil))
+      summary(.dateTime(saveAs: "due", format: "%Y-%m-%d", language: nil, timeZone: nil, shift: TimeShift(amount: 3, unit: .days), next: nil))
         == "“%Y-%m-%d” · days +3 → due")
     #expect(
-      summary(.dateTime(saveAs: "old", format: "%H:%M", shift: TimeShift(amount: -1, unit: .hours), next: nil)) == "“%H:%M” · hours -1 → old")
+      summary(.dateTime(saveAs: "old", format: "%H:%M", language: nil, timeZone: nil, shift: TimeShift(amount: -1, unit: .hours), next: nil)) == "“%H:%M” · hours -1 → old")
+    #expect(
+      summary(.dateTime(saveAs: "due", format: "%d %B", language: "ru", timeZone: "Europe/Berlin", shift: nil, next: nil))
+        == "“%d %B” · Русский · Europe/Berlin → due")
   }
 
   @Test func namesElementsDescribedInWords() {
@@ -142,15 +185,15 @@ struct BlockSummaryTests {
       summary(.click(target: save, button: .right, double: false, modifiers: .none, waitForChange: false, next: nil))
         == "Right-click “the blue Save button”")
     #expect(summary(.click(target: blank, button: .left, double: false, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to click")
-    #expect(summary(.hover(target: save, waitForChange: false, next: nil)) == "Point at “the blue Save button”")
-    #expect(summary(.hover(target: blank, waitForChange: false, next: nil)) == "Choose what to point at")
+    #expect(summary(.hover(target: save, modifiers: .none, waitForChange: false, next: nil)) == "Point at “the blue Save button”")
+    #expect(summary(.hover(target: blank, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to point at")
     #expect(
       summary(.drag(from: .description("the report"), to: .image("refs/trash_bin.png"), button: .left, modifiers: .none, waitForChange: false, next: nil))
         == "Drag “the report” to “trash bin”")
     #expect(
-      summary(.scroll(direction: .down, amount: 2, unit: .lines, at: save, waitForChange: false, next: nil))
+      summary(.scroll(direction: .down, amount: 2, unit: .lines, at: save, modifiers: .none, waitForChange: false, next: nil))
         == "Scroll down 2 lines over “the blue Save button”")
-    #expect(summary(.scroll(direction: .down, amount: 2, unit: .lines, at: blank, waitForChange: false, next: nil)) == "Scroll down 2 lines")
+    #expect(summary(.scroll(direction: .down, amount: 2, unit: .lines, at: blank, modifiers: .none, waitForChange: false, next: nil)) == "Scroll down 2 lines")
     #expect(
       summary(.type(text: "hello", into: .description("the search field"), next: nil))
         == "Type “hello” into “the search field”")
@@ -211,6 +254,50 @@ struct PointerBlockTests {
     #expect(issues.contains { $0.code == "flow.drag.samePlace" && $0.param("field") == "to" })
     #expect(IssueText.message(issues.first { $0.code == "flow.drag.samePlace" }!).contains("drop"))
   }
+
+  @Test func picturesAndAreasOfTheWrongKindShowNextToTheirSetting() throws {
+    let flow = try loadFlow(json: Self.savedPicturesAndAreas)
+    let issues = validateFlow(flow: flow)
+    for id in ["c", "d", "e", "f"] {
+      let kind = try #require(flow.blocks.first { $0.id == id }?.kind)
+      let mine = issues.filter { $0.param("block") == id }
+      #expect(!mine.isEmpty, "\(id) has a problem")
+      for issue in mine {
+        let field = issue.param("field")?.split(separator: ".").first.map(String.init) ?? ""
+        #expect(InspectorView.fields(of: kind).contains(field), "\(issue.code) on \(field) shows next to its setting")
+        #expect(IssueText.fieldLabel(field) != nil, "\(field) has a name in lists of problems")
+      }
+    }
+    let wrong = try #require(issues.first { $0.code == "flow.var.kind" && $0.param("block") == "d" })
+    #expect(IssueText.message(wrong) == "This field takes area, but shot is saved as image.")
+    let area = try #require(issues.first { $0.code == "flow.target.area" })
+    #expect(IssueText.message(area).hasPrefix("“wide” isn’t an area."))
+  }
+
+  @Test func offersSavedPicturesAndAreasByTheirKind() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let url = folder.appending(path: "t.flow.json")
+    try Self.savedPicturesAndAreas.write(to: url, atomically: true, encoding: .utf8)
+    let context = FieldContext(issues: [], folder: folder, projectRoot: nil, document: FlowDocument(url: url), block: "c")
+    #expect(context.variables(of: .image) == ["shot"])
+    #expect(context.variables(of: .area) == ["zone"])
+    #expect(context.variables(of: .text) == ["files", "said"])
+  }
+
+  /// A picture read from the clipboard, an area and a text a script saves, and blocks that use
+  /// them in the wrong places.
+  private static let savedPicturesAndAreas = #"""
+    {"format":1,"name":"T","app":"com.apple.TextEdit","start":"a","blocks":{
+      "a":{"type":"clipboard","action":"read","saveAs":"shot","content":"image","next":"a2"},
+      "a2":{"type":"clipboard","action":"read","saveAs":"files","content":"files","next":"b"},
+      "b":{"type":"script","language":"sh","code":"true","outputs":[{"name":"zone","type":"area"},{"name":"said","type":"text"}],"next":"c"},
+      "c":{"type":"click","target":{"image":"${var.zone}"},"next":"d"},
+      "d":{"type":"scroll","direction":"up","amount":1,"at":{"area":"${var.shot}"},"next":"e"},
+      "e":{"type":"clipboard","action":"put","image":"${var.zone}","next":"f"},
+      "f":{"type":"hover","target":{"area":"wide"}}}}
+    """#
 }
 
 struct KeyComboTests {

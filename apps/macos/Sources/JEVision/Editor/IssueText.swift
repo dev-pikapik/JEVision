@@ -3,7 +3,7 @@ import JEVisionCore
 
 /// Problems found by the core, in words: the core words them, in the language the app hands it.
 enum IssueText {
-  static func message(_ issue: Issue) -> String { describeIssue(issue: issue) }
+  static func message(_ issue: Issue) -> String { issueSentence(issue: issue) }
 
   /// Name of the setting a problem is about, from the first part of its `field`, e.g. `until.appears.image`.
   static func fieldLabel(_ field: String) -> String? {
@@ -13,6 +13,9 @@ enum IssueText {
     case "windowSize": String(localized: "Window Size")
     case "windowPosition": String(localized: "Window Position")
     case "text": String(localized: "Text")
+    case "image": String(localized: "Picture")
+    case "content": String(localized: "What to Read")
+    case "timeZone": String(localized: "Time Zone")
     case "keys": String(localized: "Keys")
     case "files": String(localized: "Files")
     case "target": String(localized: "Target")

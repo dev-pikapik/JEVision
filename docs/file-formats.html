@@ -176,7 +176,7 @@
 <p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="schemas/block.schema.json">JSON Schema</a> is part of this documentation.</p>
 
 <h2 id="references">Reference images</h2>
-<p>References and click targets are PNG images of part of the app's window, saved by the app next to the tests, usually in a <code>refs</code> folder. A reference for dark appearance has the same name with <code>.dark</code> before <code>.png</code>, such as <code>refs/inbox.dark.png</code>. See <a href="checks.html#dark">Dark appearance</a>. Paths in tests are relative to the test file and use <code>/</code>.</p>
+<p>References and click targets are PNG images of part of the app's window, saved by the app next to the tests, usually in a <code>refs</code> folder. A reference for dark appearance has the same name with <code>.dark</code> before <code>.png</code>, such as <code>refs/inbox.dark.png</code>. See <a href="checks.html#dark">Dark appearance</a>. Paths in tests are relative to the test file and use <code>/</code>. A picture named by a variable, such as <code>{ "image": "${var.shot}" }</code>, is a PNG the run made or found, wherever it is on the Mac, and has no <code>.dark</code> version. See <a href="writing-tests.html#target">Target</a>.</p>
 
 <h2 id="environments">Environments</h2>
 <p><code>jevision.environments.json</code>, in the project folder:</p>
@@ -275,7 +275,7 @@
 <h2 id="versions">Format versions</h2>
 <p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
 <p><code>block.json</code> of a package has a <code>"format"</code> of its own, at <code>1</code>. A JEVision that finds a newer one refuses the package.</p>
-<p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, the <code>clipboard</code> and <code>dateTime</code> blocks, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
+<p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, <code>modifiers</code> of a hover or scroll, the <code>area</code> target, the <code>clipboard</code> and <code>dateTime</code> blocks with their <code>image</code>, <code>content</code>, <code>language</code> and <code>timeZone</code>, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
 </main>
 </div>
 <footer class="site-footer">

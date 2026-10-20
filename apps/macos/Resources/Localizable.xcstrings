@@ -289,6 +289,16 @@
         }
       }
     },
+    "%@ is the name of the month, %@ of the day of the week, %@ and %@ their short forms, and %@ writes a name in capitals. In Russian, %@ is the month as said after a day (31 марта) and %@ the month on its own (март 2026)." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — название месяца, %2$@ — дня недели, %3$@ и %4$@ — их краткие формы, а %5$@ пишет название заглавными буквами. По-русски %6$@ — месяц после числа (31 марта), а %7$@ — месяц сам по себе (март 2026)."
+          }
+        }
+      }
+    },
     "%@ is version %@ from another copy of JEVision" : {
       "localizations" : {
         "ru" : {
@@ -2345,6 +2355,16 @@
         }
       }
     },
+    "A name like Europe/Berlin. Leave it empty for the time of this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название вроде Europe/Berlin. Оставьте пустым, чтобы брать время этого Mac."
+          }
+        }
+      }
+    },
     "A negative amount goes back in time: −1 day is yesterday." : {
       "localizations" : {
         "ru" : {
@@ -2411,6 +2431,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них прогон остановится. Значения попадут в файл окружений, секреты останутся в Связке ключей на этом Mac."
+          }
+        }
+      }
+    },
+    "A saved picture is known only during the run, so its areas can’t be marked here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранённая картинка появляется только во время прогона, поэтому области на ней здесь не отметить."
           }
         }
       }
@@ -4895,6 +4925,16 @@
         }
       }
     },
+    "By Area" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По области"
+          }
+        }
+      }
+    },
     "By Description" : {
       "localizations" : {
         "ru" : {
@@ -6161,12 +6201,12 @@
         }
       }
     },
-    "Clicks an element found by how it looks, or a fixed point in the window." : {
+    "Clicks an element found by how it looks, a fixed point or the middle of an area in the window." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кликает по элементу, найденному по виду, или по точке в окне."
+            "value" : "Кликает по элементу, найденному по виду, по точке в окне или по середине области."
           }
         }
       }
@@ -9613,6 +9653,16 @@
         }
       }
     },
+    "Four fractions of the window from 0 to 1: from the left, from the top, the width and the height. The pointer goes to the middle of the area. A script can find the area and save it for this block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Четыре доли окна от 0 до 1: отступ слева, отступ сверху, ширина и высота. Указатель встаёт в середину области. Область может найти и сохранить для этого блока скрипт."
+          }
+        }
+      }
+    },
     "Frame" : {
       "localizations" : {
         "ru" : {
@@ -11298,12 +11348,22 @@
         }
       }
     },
-    "Later blocks read it as ${var.NAME}. In the format, %@ is the year, %@ the month, %@ the day, %@ the hour, %@ the minute and %@ the second. Names of months and days are in English." : {
+    "Later blocks can look for the picture or compare the screen with it as ${var.NAME}; a script gets the path of a PNG file. The run stops here when the clipboard holds no picture." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Следующие блоки читают его как ${var.NAME}. В формате %@ — год, %@ — месяц, %@ — день, %@ — час, %@ — минута, %@ — секунда. Названия месяцев и дней — на английском."
+            "value" : "Следующие блоки могут искать эту картинку или сравнивать с ней экран через ${var.NAME}; скрипт получает путь к PNG-файлу. Если в буфере нет картинки, прогон остановится на этом блоке."
+          }
+        }
+      }
+    },
+    "Later blocks read it as ${var.NAME}. In the format, %@ is the year, %@ the month, %@ the day, %@ the hour, %@ the minute and %@ the second." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующие блоки читают его как ${var.NAME}. В формате %@ — год, %@ — месяц, %@ — день, %@ — час, %@ — минута, %@ — секунда."
           }
         }
       }
@@ -11314,6 +11374,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Следующие блоки читают его как ${var.NAME}; если в буфере нет текста, значение пустое. Сохранённый текст виден среди значений запуска, поэтому не читайте буфер, пока в нём что-то личное."
+          }
+        }
+      }
+    },
+    "Later blocks read the paths of the copied files as ${var.NAME}, one per line. The run stops here when the clipboard holds no files." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующие блоки читают пути скопированных файлов как ${var.NAME}, по одному на строку. Если в буфере нет файлов, прогон остановится на этом блоке."
           }
         }
       }
@@ -12038,6 +12108,36 @@
         }
       }
     },
+    "Middle" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя"
+          }
+        }
+      }
+    },
+    "Middle-click %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средний клик по %@"
+          }
+        }
+      }
+    },
+    "Middle-drag %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащить %1$@ на %2$@ средней кнопкой"
+          }
+        }
+      }
+    },
     "Mine" : {
       "localizations" : {
         "ru" : {
@@ -12290,6 +12390,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Название столбца %lld"
+          }
+        }
+      }
+    },
+    "Names In" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Язык названий"
           }
         }
       }
@@ -12924,6 +13034,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В проекте нет других тестов"
+          }
+        }
+      }
+    },
+    "No picture yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинки пока нет"
           }
         }
       }
@@ -14446,6 +14566,26 @@
         }
       }
     },
+    "Or a picture a block saves" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или картинка, которую сохраняет блок"
+          }
+        }
+      }
+    },
+    "Or an area a block saves" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или область, которую сохраняет блок"
+          }
+        }
+      }
+    },
     "Or install it yourself" : {
       "localizations" : {
         "ru" : {
@@ -15608,6 +15748,16 @@
         }
       }
     },
+    "Put a Picture on the Clipboard" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положить картинку в буфер обмена"
+          }
+        }
+      }
+    },
     "Put in Quarantine" : {
       "localizations" : {
         "ru" : {
@@ -15700,12 +15850,12 @@
         }
       }
     },
-    "Puts a text on the clipboard, saves what is on it for later blocks, or waits until it holds a text." : {
+    "Puts a text or a picture on the clipboard, saves what is on it for later blocks (a text, a picture or the copied files), or waits until it holds a text." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кладёт текст в буфер обмена, сохраняет его содержимое для следующих блоков или ждёт, пока в буфере появится нужный текст."
+            "value" : "Кладёт в буфер обмена текст или картинку, сохраняет его содержимое для следующих блоков (текст, картинку или скопированные файлы) или ждёт, пока в буфере появится нужный текст."
           }
         }
       }
@@ -15726,12 +15876,12 @@
         }
       }
     },
-    "Puts text on the clipboard or reads it" : {
+    "Puts text or a picture on the clipboard or reads it" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кладёт текст в буфер или читает его"
+            "value" : "Кладёт текст или картинку в буфер или читает его"
           }
         }
       }
@@ -15852,6 +16002,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прочитать буфер → %@"
+          }
+        }
+      }
+    },
+    "Read the copied files → %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать скопированные файлы → %@"
+          }
+        }
+      }
+    },
+    "Read the picture on the clipboard → %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать картинку из буфера → %@"
           }
         }
       }
@@ -16680,6 +16850,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменить эталон этим снимком"
+          }
+        }
+      }
+    },
+    "Replaces what is on the clipboard with a PNG picture of the project or one a block saves. The picture stays there after the run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменяет содержимое буфера обмена PNG-картинкой из проекта или картинкой, которую сохраняет блок. Картинка остаётся в буфере после прогона."
           }
         }
       }
@@ -17826,6 +18006,16 @@
         }
       }
     },
+    "Same as the App" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в приложении"
+          }
+        }
+      }
+    },
     "Same by %@" : {
       "localizations" : {
         "ru" : {
@@ -17986,12 +18176,12 @@
         }
       }
     },
-    "Saves the current date and time, optionally moved back or forward, in the format you choose." : {
+    "Saves the current date and time, optionally moved back or forward, in the format, language and time zone you choose." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сохраняет текущую дату и время, при желании сдвинутые назад или вперёд, в выбранном формате."
+            "value" : "Сохраняет текущую дату и время, при желании сдвинутые назад или вперёд, в выбранном формате, на выбранном языке и в выбранном часовом поясе."
           }
         }
       }
@@ -19614,6 +19804,16 @@
         }
       }
     },
+    "Some apps show more on hover while a key is held, like ⌥ in menus." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Некоторые приложения показывают больше, если при наведении держать клавишу, — например ⌥ в меню."
+          }
+        }
+      }
+    },
     "Someone" : {
       "localizations" : {
         "ru" : {
@@ -20208,6 +20408,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выбирает путь по экрану или значению"
+          }
+        }
+      }
+    },
+    "Takes the picture a block saves earlier in the run, such as a screenshot a script makes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Берёт картинку, которую раньше в прогоне сохраняет блок, например снимок экрана из скрипта."
           }
         }
       }
@@ -21268,6 +21478,16 @@
         }
       }
     },
+    "The language of the names of months and days" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Язык названий месяцев и дней недели"
+          }
+        }
+      }
+    },
     "The model answered, but described the picture wrong" : {
       "localizations" : {
         "ru" : {
@@ -22128,6 +22348,16 @@
         }
       }
     },
+    "There’s no time zone “%@”. Write a name like Europe/Berlin or America/New_York, or leave the field empty for the time of this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часового пояса «%@» нет. Напишите название вроде Europe/Berlin или America/New_York либо оставьте поле пустым, чтобы брать время этого Mac."
+          }
+        }
+      }
+    },
     "There’s nothing to send yet. Commit your changes first." : {
       "localizations" : {
         "ru" : {
@@ -22626,6 +22856,16 @@
         }
       }
     },
+    "Time Zone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часовой пояс"
+          }
+        }
+      }
+    },
     "Time limit" : {
       "localizations" : {
         "ru" : {
@@ -22866,12 +23106,12 @@
         }
       }
     },
-    "Turns the scroll wheel over the window or over an element, by lines or by pixels." : {
+    "Turns the scroll wheel over the window or over an element, by lines or by pixels. With ⌘ held, most apps zoom instead." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Крутит колесо прокрутки над окном или над элементом — на строки или на пиксели."
+            "value" : "Крутит колесо прокрутки над окном или над элементом — на строки или на пиксели. Если держать ⌘, большинство приложений вместо этого меняют масштаб."
           }
         }
       }
@@ -23444,6 +23684,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Использовать эту учётную запись"
+          }
+        }
+      }
+    },
+    "Use a Saved Area" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Взять сохранённую область"
+          }
+        }
+      }
+    },
+    "Use a Saved Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Взять сохранённую картинку"
           }
         }
       }
@@ -24202,6 +24462,16 @@
         }
       }
     },
+    "What to Read" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что прочитать"
+          }
+        }
+      }
+    },
     "What to change" : {
       "localizations" : {
         "ru" : {
@@ -24438,6 +24708,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Размер окна"
+          }
+        }
+      }
+    },
+    "With ⌘ held, most apps zoom instead of scrolling." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если держать ⌘, большинство приложений меняют масштаб вместо прокрутки."
           }
         }
       }
@@ -25176,6 +25456,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "и ещё в очереди: %lld"
+          }
+        }
+      }
+    },
+    "area %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "области %@"
           }
         }
       }
@@ -26694,22 +26984,6 @@
         }
       }
     },
-    "bug.block.clickHolding" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Click %@ holding %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нажать: %1$@, удерживая %2$@"
-          }
-        }
-      }
-    },
     "bug.block.clipboardContains" : {
       "localizations" : {
         "en" : {
@@ -26806,6 +27080,22 @@
         }
       }
     },
+    "bug.block.clipboardPutImage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Put the picture “%@” on the clipboard"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положить картинку «%@» в буфер обмена"
+          }
+        }
+      }
+    },
     "bug.block.clipboardRead" : {
       "localizations" : {
         "en" : {
@@ -26818,6 +27108,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прочитать буфер обмена в `%@`"
+          }
+        }
+      }
+    },
+    "bug.block.clipboardReadFiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read the files on the clipboard into `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать файлы из буфера обмена в `%@`"
+          }
+        }
+      }
+    },
+    "bug.block.clipboardReadImage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read the picture on the clipboard into `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать картинку из буфера обмена в `%@`"
           }
         }
       }
@@ -26870,22 +27192,6 @@
         }
       }
     },
-    "bug.block.dateTimeShifted" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save the date and time as `%@` in the form `%@`, moved by %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сохранить дату и время как `%1$@` в формате `%2$@`, сдвиг: %3$@"
-          }
-        }
-      }
-    },
     "bug.block.doubleClick" : {
       "localizations" : {
         "en" : {
@@ -26898,22 +27204,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дважды нажать: %@"
-          }
-        }
-      }
-    },
-    "bug.block.doubleClickHolding" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Double-click %@ holding %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дважды нажать: %1$@, удерживая %2$@"
           }
         }
       }
@@ -26934,18 +27224,18 @@
         }
       }
     },
-    "bug.block.dragHolding" : {
+    "bug.block.dragMiddle" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drag from %@ to %@ holding %@"
+            "value" : "Drag from %@ to %@ with the middle button"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перетащить: откуда — %1$@, куда — %2$@, удерживая %3$@"
+            "value" : "Перетащить средней кнопкой: откуда — %1$@, куда — %2$@"
           }
         }
       }
@@ -26962,22 +27252,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетащить правой кнопкой: откуда — %1$@, куда — %2$@"
-          }
-        }
-      }
-    },
-    "bug.block.dragRightHolding" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag from %@ to %@ with the right button holding %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перетащить правой кнопкой: откуда — %1$@, куда — %2$@, удерживая %3$@"
           }
         }
       }
@@ -27110,6 +27384,22 @@
         }
       }
     },
+    "bug.block.middleClick" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Middle-click %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажать средней кнопкой: %@"
+          }
+        }
+      }
+    },
     "bug.block.openApp" : {
       "localizations" : {
         "en" : {
@@ -27238,22 +27528,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нажать правой кнопкой: %@"
-          }
-        }
-      }
-    },
-    "bug.block.rightClickHolding" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Right-click %@ holding %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нажать правой кнопкой: %1$@, удерживая %2$@"
           }
         }
       }
@@ -27486,6 +27760,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "**Причина:** %@"
+          }
+        }
+      }
+    },
+    "bug.dateTime.language" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", month and day names in `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", названия месяцев и дней на языке `%@`"
+          }
+        }
+      }
+    },
+    "bug.dateTime.moved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", moved by %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", сдвиг: %@"
+          }
+        }
+      }
+    },
+    "bug.dateTime.zone" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", time zone `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", часовой пояс `%@`"
           }
         }
       }
@@ -27758,6 +28080,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "### Шаги воспроизведения"
+          }
+        }
+      }
+    },
+    "bug.holding" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " holding %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", удерживая %@"
           }
         }
       }
@@ -28414,6 +28752,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "С данными: %@."
+          }
+        }
+      }
+    },
+    "bug.target.area" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the middle of the area %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "середина области %@"
           }
         }
       }
@@ -34610,6 +34964,22 @@
         }
       }
     },
+    "flow.target.area" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t an area. Write four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3, or use a saved area."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не область. Напишите четыре числа от 0 до 1 как x,y,width,height, например 0.1,0.2,0.5,0.3, или возьмите сохранённую область."
+          }
+        }
+      }
+    },
     "flow.value.notNumber" : {
       "localizations" : {
         "en" : {
@@ -34702,6 +35072,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "текст"
+          }
+        }
+      }
+    },
+    "flow.var.kind" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This field takes %@, but %@ is saved as %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тип этого поля: %1$@, а %2$@ сохраняется как: %3$@."
           }
         }
       }
@@ -35392,6 +35778,182 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снимки экрана"
+          }
+        }
+      }
+    },
+    "hands.clipboard.notPicture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file isn’t a picture the clipboard can hold."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот файл — не картинка, которую можно положить в буфер обмена."
+          }
+        }
+      }
+    },
+    "hands.clipboard.pictureRefused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The clipboard didn’t take the picture."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Буфер обмена не принял картинку."
+          }
+        }
+      }
+    },
+    "hands.clipboard.textRefused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The clipboard didn’t take the text."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Буфер обмена не принял текст."
+          }
+        }
+      }
+    },
+    "hands.event.refused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The system didn’t create an input event."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Система не создала событие ввода."
+          }
+        }
+      }
+    },
+    "hands.image.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The image to look for can’t be read."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать картинку, которую нужно найти."
+          }
+        }
+      }
+    },
+    "hands.keyboard.watchRefused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS didn’t let jevision watch the keyboard, so pressing Esc twice couldn’t stop the test. The person at this Mac can allow Accessibility for the app that runs jevision."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не дал jevision следить за клавиатурой, поэтому двойное нажатие Esc не остановило бы тест. Человек за этим Mac может разрешить универсальный доступ для приложения, которое запускает jevision."
+          }
+        }
+      }
+    },
+    "hands.keys.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a key combination."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не сочетание клавиш."
+          }
+        }
+      }
+    },
+    "hands.screenshot.notPng" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The screenshot can’t be saved as PNG."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимок экрана не удаётся сохранить как PNG."
+          }
+        }
+      }
+    },
+    "hands.screenshot.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The screenshot can’t be read."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать снимок экрана."
+          }
+        }
+      }
+    },
+    "hands.video.unfinished" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The video couldn’t be finished."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось завершить видео."
+          }
+        }
+      }
+    },
+    "hands.video.unwritable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The video file can’t be written."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся записать файл видео."
           }
         }
       }
@@ -41322,6 +41884,38 @@
         }
       }
     },
+    "run.clipboard.noFiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the clipboard holds no copied files."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: в буфере обмена нет скопированных файлов."
+          }
+        }
+      }
+    },
+    "run.clipboard.noImage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the clipboard holds no picture."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: в буфере обмена нет картинки."
+          }
+        }
+      }
+    },
     "run.clipboard.notEquals" : {
       "localizations" : {
         "en" : {
@@ -41334,6 +41928,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "буфер обмена отличается от «%@»"
+          }
+        }
+      }
+    },
+    "run.clipboard.notPicture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ isn’t a PNG picture, so it can’t go on the clipboard."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ — не PNG-картинка, её нельзя положить в буфер обмена."
           }
         }
       }
@@ -42182,6 +42792,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет блока «%@», с которого можно начать."
+          }
+        }
+      }
+    },
+    "run.target.badArea" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” isn’t an area. It must be four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» — не область. Нужны четыре числа от 0 до 1 как x,y,width,height, например 0.1,0.2,0.5,0.3."
           }
         }
       }
@@ -43692,6 +44318,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«Проверки по смыслу» оценивают экран по фразе, с картинкой или без. «Тексты и разбор падений» пишут черновики тестов и объясняют, почему тест упал. Поиск элемента по описанию всегда делает JEV. Блок может назвать свой ИИ для проверки. Выбор сохраняется в %@ в папке проекта, без ключей."
+          }
+        }
+      }
+    },
+    "“Same as the App” follows the language chosen in Settings → General. Without a time zone, the block tells the time of this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Как в приложении» — язык, выбранный в Настройках → Основные. Без часового пояса блок берёт время этого Mac."
           }
         }
       }

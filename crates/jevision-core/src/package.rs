@@ -670,7 +670,15 @@ pub(crate) fn visit_files(flow: &mut Flow, mut visit: impl FnMut(&str, bool, &mu
     }
 }
 
+/// The image paths a block names as files. A path made of `${var.…}` is known only while the
+/// test runs, so it is not a file of the project.
 fn images_mut(kind: &mut BlockKind) -> Vec<&mut String> {
+    let mut paths = image_texts_mut(kind);
+    paths.retain(|p| !p.contains("${"));
+    paths
+}
+
+fn image_texts_mut(kind: &mut BlockKind) -> Vec<&mut String> {
     fn target(t: &mut Target) -> Option<&mut String> {
         match t {
             Target::Image(path) => Some(path),
@@ -714,6 +722,10 @@ fn images_mut(kind: &mut BlockKind) -> Vec<&mut String> {
             .filter(|i| i.kind == ValueKind::Image)
             .map(|i| &mut i.value)
             .collect(),
+        BlockKind::Clipboard {
+            action: ClipboardAction::PutImage { image },
+            ..
+        } => vec![image],
         _ => Vec::new(),
     }
 }
@@ -791,7 +803,8 @@ pub fn risky_steps(flow: &Flow) -> Vec<RiskyStep> {
                     Risk::Clipboard,
                     match action {
                         ClipboardAction::Put { text } => text.clone(),
-                        ClipboardAction::Read { save_as } => save_as.clone(),
+                        ClipboardAction::PutImage { image } => image.clone(),
+                        ClipboardAction::Read { save_as, .. } => save_as.clone(),
                         ClipboardAction::Check { to, .. } => to.clone(),
                     },
                 ),

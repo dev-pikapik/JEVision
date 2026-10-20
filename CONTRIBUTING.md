@@ -73,8 +73,7 @@ an error, not a blank.
 - `apps/macos/scripts/check-localization.py` runs in `build.sh` and in CI. It fails when a text
   or a key the core asks for is missing from the catalog, a key is no longer used by the app or
   the core, a language lacks a translation or a plural form, or the arguments of a translation
-  differ from the English text. Write every key out in full: a key built with `format!` can't be
-  checked.
+  differ from the English text. Write every key out in full: the check rejects a key built with `format!`.
 - To add a language, add its translation of every text to the catalog (Xcode's String Catalog
   editor works). The check, the language picker and the core pick it up; a language whose
   plural forms are not `one`/`other` also needs its rule in `plural_category`

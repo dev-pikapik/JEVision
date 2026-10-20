@@ -178,6 +178,9 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
             key,
             &[block, p("name"), &value_kind(lang, p("type")), p("value")],
         ),
+        "run.clipboard.noImage" | "run.clipboard.noFiles" => Phrase::new(key, &[block]),
+        "run.clipboard.notPicture" => Phrase::new(key, &[block, p("image")]),
+        "run.target.badArea" => Phrase::new(key, &[block, p("value")]),
         "run.clipboard.mismatch" => {
             let expectation = clipboard_expectation(lang, p("test"), p("expected"));
             Phrase::new(key, &[block, seconds, &expectation, p("actual")])

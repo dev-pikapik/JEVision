@@ -10,7 +10,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use std::{env, fs};
 
-use chrono::{DateTime, Days, Months, TimeDelta, TimeZone};
+use chrono::{DateTime, Datelike, Days, Months, TimeDelta, TimeZone, Utc};
 use jevision_core::{
     FileState, HttpMethod, JsonStep, ScriptLanguage, TimeShift, TimeUnit, ValueTest,
 };
@@ -177,11 +177,212 @@ pub(crate) fn is_png(path: &Path) -> bool {
         .is_ok_and(|()| head == SIGNATURE)
 }
 
+/// Language of the month and day names a date is written with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DateLanguage {
+    English,
+    Russian,
+}
+
+impl DateLanguage {
+    /// The language of a block's `language` field or of the app (`ru`, `en`, `ru-RU`, `ru_RU`);
+    /// English for anything else.
+    pub(crate) fn from_code(code: &str) -> Self {
+        let primary = code.split(['-', '_']).next().unwrap_or_default();
+        if primary.eq_ignore_ascii_case("ru") {
+            Self::Russian
+        } else {
+            Self::English
+        }
+    }
+}
+
+/// The names of the months and days in one language.
+struct Names {
+    /// The month as it is said after a day: `31 марта`.
+    months: [&'static str; 12],
+    /// The month by itself: `март 2026`.
+    months_alone: [&'static str; 12],
+    months_short: [&'static str; 12],
+    days: [&'static str; 7],
+    days_short: [&'static str; 7],
+}
+
+const ENGLISH: Names = Names {
+    months: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ],
+    months_alone: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ],
+    months_short: [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ],
+    days: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ],
+    days_short: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+};
+
+const RUSSIAN: Names = Names {
+    months: [
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+    ],
+    months_alone: [
+        "январь",
+        "февраль",
+        "март",
+        "апрель",
+        "май",
+        "июнь",
+        "июль",
+        "август",
+        "сентябрь",
+        "октябрь",
+        "ноябрь",
+        "декабрь",
+    ],
+    months_short: [
+        "янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек",
+    ],
+    days: [
+        "понедельник",
+        "вторник",
+        "среда",
+        "четверг",
+        "пятница",
+        "суббота",
+        "воскресенье",
+    ],
+    days_short: ["пн", "вт", "ср", "чт", "пт", "сб", "вс"],
+};
+
+impl DateLanguage {
+    fn names(self) -> &'static Names {
+        match self {
+            Self::English => &ENGLISH,
+            Self::Russian => &RUSSIAN,
+        }
+    }
+}
+
+/// `format` with the names of the months and days of `date` written out as plain text in
+/// `language`, so that the date formatter, which knows no language but its own, never sees
+/// them. `%B` is the month as it is said after a day (`31 марта`), `%OB` the month by itself
+/// (`март 2026`); in English both are the same. `%^B`, `%^b`, `%^A` and `%^a` write capitals.
+fn with_names(format: &str, language: DateLanguage, date: &impl Datelike) -> String {
+    let names = language.names();
+    let month = date.month0() as usize;
+    let day = date.weekday().num_days_from_monday() as usize;
+    let mut out = String::with_capacity(format.len());
+    let mut chars = format.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '%' {
+            out.push(c);
+            continue;
+        }
+        let mut flags = String::new();
+        while let Some(&f) = chars.peek() {
+            if !"-_0^#O".contains(f) {
+                break;
+            }
+            flags.push(f);
+            chars.next();
+        }
+        let Some(letter) = chars.next() else {
+            out.push('%');
+            out.push_str(&flags);
+            break;
+        };
+        let name = match letter {
+            'B' if flags.contains('O') => Some(names.months_alone[month]),
+            'B' => Some(names.months[month]),
+            'b' | 'h' => Some(names.months_short[month]),
+            'A' => Some(names.days[day]),
+            'a' => Some(names.days_short[day]),
+            _ => None,
+        };
+        match (name, letter) {
+            (Some(name), _) if flags.contains('^') => out.push_str(&name.to_uppercase()),
+            (Some(name), _) => out.push_str(name),
+            // These two spell a month or a day inside.
+            (None, 'v') => out.push_str(&with_names("%e-%b-%Y", language, date)),
+            (None, 'c') => out.push_str(&with_names("%a %b %e %T %Y", language, date)),
+            (None, letter) => {
+                out.push('%');
+                out.push_str(&flags);
+                out.push(letter);
+            }
+        }
+    }
+    out
+}
+
+/// `now` in the time zone `zone` (an IANA name such as `Europe/Berlin`; this computer's when
+/// `None`), moved by `shift` and written as `format`; `Err` says why that cannot be done.
+pub(crate) fn date_time_in(
+    now: DateTime<Utc>,
+    zone: Option<&str>,
+    format: &str,
+    shift: Option<TimeShift>,
+    language: DateLanguage,
+) -> Result<String, String> {
+    match zone {
+        None => date_time(now.with_timezone(&chrono::Local), format, shift, language),
+        Some(name) => {
+            let zone: chrono_tz::Tz = name
+                .parse()
+                .map_err(|_| format!("“{name}” is not a time zone"))?;
+            date_time(now.with_timezone(&zone), format, shift, language)
+        }
+    }
+}
+
 /// `now` moved by `shift` and written as `format`; `Err` says why that cannot be done.
 pub(crate) fn date_time<Tz: TimeZone>(
     now: DateTime<Tz>,
     format: &str,
     shift: Option<TimeShift>,
+    language: DateLanguage,
 ) -> Result<String, String>
 where
     Tz::Offset: std::fmt::Display,
@@ -222,8 +423,9 @@ where
         }
     };
     let moved = moved.ok_or("the date is out of range")?;
+    let named = with_names(format, language, &moved);
     let mut text = String::new();
-    write!(text, "{}", moved.format(format))
+    write!(text, "{}", moved.format(&named))
         .map_err(|_| format!("“{format}” is not a date format"))?;
     Ok(text)
 }
@@ -475,12 +677,13 @@ mod tests {
 
     #[test]
     fn dates_are_moved_and_written() {
-        use chrono::Utc;
+        use DateLanguage::English;
         let now = Utc.with_ymd_and_hms(2026, 3, 31, 14, 5, 9).unwrap();
-        let at =
-            |format: &str, amount, unit| date_time(now, format, Some(TimeShift { amount, unit }));
+        let at = |format: &str, amount, unit| {
+            date_time(now, format, Some(TimeShift { amount, unit }), English)
+        };
         assert_eq!(
-            date_time(now, "%Y-%m-%d %H:%M:%S", None).as_deref(),
+            date_time(now, "%Y-%m-%d %H:%M:%S", None, English).as_deref(),
             Ok("2026-03-31 14:05:09")
         );
         assert_eq!(
@@ -494,13 +697,91 @@ mod tests {
         assert_eq!(at("%T", -10, TimeUnit::Seconds).as_deref(), Ok("14:04:59"));
         assert_eq!(at("%H", 12, TimeUnit::Hours).as_deref(), Ok("02"));
         assert_eq!(
-            date_time(now, "%A %B", None).as_deref(),
+            date_time(now, "%A %B", None, English).as_deref(),
             Ok("Tuesday March")
         );
-        assert!(date_time(now, "%Q", None).is_err());
+        assert!(date_time(now, "%Q", None, English).is_err());
         assert_eq!(
             at("%F", i32::MAX, TimeUnit::Years),
             Err("the date is out of range".to_owned())
+        );
+    }
+
+    #[test]
+    fn month_and_day_names_follow_the_language() {
+        use DateLanguage::{English, Russian};
+        let now = Utc.with_ymd_and_hms(2026, 3, 31, 14, 5, 9).unwrap();
+        let write = |format: &str, language| date_time(now, format, None, language);
+        assert_eq!(
+            write("%A, %-d %B %Y", Russian).as_deref(),
+            Ok("вторник, 31 марта 2026")
+        );
+        assert_eq!(
+            write("%A, %-d %B %Y", English).as_deref(),
+            Ok("Tuesday, 31 March 2026")
+        );
+        assert_eq!(write("%OB %Y", Russian).as_deref(), Ok("март 2026"));
+        assert_eq!(write("%OB %Y", English).as_deref(), Ok("March 2026"));
+        assert_eq!(write("%a %b %h", Russian).as_deref(), Ok("вт мар мар"));
+        assert_eq!(write("%a %b", English).as_deref(), Ok("Tue Mar"));
+        assert_eq!(write("%^B %^a", Russian).as_deref(), Ok("МАРТА ВТ"));
+        assert_eq!(write("%^B", English).as_deref(), Ok("MARCH"));
+        assert_eq!(
+            write("%c", Russian).as_deref(),
+            Ok("вт мар 31 14:05:09 2026")
+        );
+        assert_eq!(write("%v", Russian).as_deref(), Ok("31-мар-2026"));
+        // Numbers, percent signs and the other specifiers are not touched.
+        assert_eq!(
+            write("100%% %F %H:%M", Russian).as_deref(),
+            Ok("100% 2026-03-31 14:05")
+        );
+        assert!(write("%Q %B", Russian).is_err());
+        let may = Utc.with_ymd_and_hms(2026, 5, 4, 0, 0, 0).unwrap();
+        assert_eq!(
+            date_time(may, "%A %B %b", None, Russian).as_deref(),
+            Ok("понедельник мая мая")
+        );
+    }
+
+    #[test]
+    fn the_time_zone_moves_the_clock_and_the_day() {
+        use DateLanguage::English;
+        let now = Utc.with_ymd_and_hms(2026, 3, 31, 23, 30, 0).unwrap();
+        let at = |zone: Option<&str>, format: &str| date_time_in(now, zone, format, None, English);
+        assert_eq!(
+            at(Some("Europe/Berlin"), "%F %H:%M %Z").as_deref(),
+            Ok("2026-04-01 01:30 CEST")
+        );
+        assert_eq!(
+            at(Some("America/New_York"), "%F %H:%M").as_deref(),
+            Ok("2026-03-31 19:30")
+        );
+        assert_eq!(
+            at(Some("Asia/Kolkata"), "%F %H:%M %:z").as_deref(),
+            Ok("2026-04-01 05:00 +05:30")
+        );
+        assert_eq!(at(Some("UTC"), "%R").as_deref(), Ok("23:30"));
+        assert_eq!(
+            at(Some("Mars/Olympus"), "%R"),
+            Err("“Mars/Olympus” is not a time zone".to_owned())
+        );
+        // Without a zone it is this computer's: the same moment, the same year.
+        assert_eq!(at(None, "%Y").as_deref(), Ok("2026"));
+    }
+
+    #[test]
+    fn shifting_keeps_the_local_time_across_a_clock_change() {
+        use DateLanguage::English;
+        // Europe/Berlin moves its clocks forward on 2026-03-29.
+        let now = Utc.with_ymd_and_hms(2026, 3, 28, 11, 0, 0).unwrap();
+        let shift = Some(TimeShift {
+            amount: 1,
+            unit: TimeUnit::Days,
+        });
+        assert_eq!(
+            date_time_in(now, Some("Europe/Berlin"), "%F %H:%M", shift, English).as_deref(),
+            Ok("2026-03-29 12:00")
         );
     }
 

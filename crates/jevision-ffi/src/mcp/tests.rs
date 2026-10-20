@@ -103,7 +103,7 @@ impl Hands for FakeHands {
     ) -> Result<(), HandsError> {
         Ok(())
     }
-    fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
+    fn hover(&self, _: String, _: Point, _: Modifiers) -> Result<(), HandsError> {
         Ok(())
     }
     fn drag(
@@ -122,6 +122,7 @@ impl Hands for FakeHands {
         _: ScrollDirection,
         _: u32,
         _: ScrollUnit,
+        _: Modifiers,
     ) -> Result<(), HandsError> {
         Ok(())
     }
@@ -136,6 +137,15 @@ impl Hands for FakeHands {
         Ok(String::new())
     }
     fn set_clipboard(&self, _: String) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn clipboard_image(&self) -> Result<Option<Vec<u8>>, HandsError> {
+        Ok(None)
+    }
+    fn clipboard_files(&self) -> Result<Vec<String>, HandsError> {
+        Ok(Vec::new())
+    }
+    fn set_clipboard_image(&self, _: Vec<u8>) -> Result<(), HandsError> {
         Ok(())
     }
     fn user_input_detected(&self) -> bool {

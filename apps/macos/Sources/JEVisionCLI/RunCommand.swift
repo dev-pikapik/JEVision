@@ -453,7 +453,7 @@ final class TestSession: @unchecked Sendable {
       project: project, test: entry.file, blocker: blocker,
       options: RunOptions(
         startAt: nil, retries: nil, environment: request.environment, vision: nil, localOnly: localOnly,
-        schedule: request.schedule, video: .off, addedAsDependency: entry.added))
+        schedule: request.schedule, video: .off, addedAsDependency: entry.added, language: RunLanguage.app))
     defer { emit(text) }
     switch outcome {
     case .finished(let dir, let html, let report):
@@ -487,7 +487,8 @@ final class TestSession: @unchecked Sendable {
         startAt: request.startAt, retries: request.retries, environment: request.environment, dataRows: request.rows,
         vision: vision,
         localOnly: localOnly, schedule: request.schedule, fallback: fallback, providers: providers, usage: usage,
-        video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added),
+        video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added,
+        language: RunLanguage.app),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
     switch listener.outcome {

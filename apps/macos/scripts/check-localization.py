@@ -18,8 +18,8 @@ a string literal under crates/ is exactly that key; a key that the core asks for
 catalog's own keys (`run.target.notFound`) must be in the catalog. Texts the core
 builds with `format!` from a key prefix are not supported: write every key out.
 
-The command line (Sources/JEVisionCLI) asks the core for its texts with `words("cli.…", …)`:
-the key must be a string literal, the catalog must have it in English and Russian, and a
+The command line (Sources/JEVisionCLI) asks the core for its texts with `words("cli.…", …)` and the
+hands (Sources/JEVisionHands) with `handsWords("hands.…", …)`: the key must be a string literal, the catalog must have it in English and Russian, and a
 key counts as used.
 """
 import glob
@@ -260,13 +260,16 @@ def specs(text):
     return sorted(re.sub(r'(?<=%)\d+\$', '', m) for m in SPEC.findall(text.replace('%%', '')))
 
 
-CLI_WORDS = re.compile(r'\bwords\(\s*(?:"([^"\\]*)")?')
+CLI_WORDS = re.compile(r'\b(?:words|handsWords)\(\s*(?:"([^"\\]*)")?')
 
 
 def cli_keys():
-    """({key: where it is first used} for the command line's `words("key"…)`, calls without a literal key)."""
+    """({key: where it is first used} for `words("key"…)` of the command line and `handsWords("key"…)` of the
+    hands, calls without a literal key)."""
     keys, problems = {}, []
-    for path in sorted(glob.glob(os.path.join(ROOT, 'Sources', 'JEVisionCLI', '**', '*.swift'), recursive=True)):
+    sources = [p for part in ('JEVisionCLI', 'JEVisionHands')
+               for p in glob.glob(os.path.join(ROOT, 'Sources', part, '**', '*.swift'), recursive=True)]
+    for path in sorted(sources):
         source = open(path, encoding='utf-8').read()
         where = os.path.relpath(path, ROOT)
         for match in CLI_WORDS.finditer(source):

@@ -8,13 +8,13 @@ use std::collections::HashMap;
 
 use jevision_core::{
     Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent,
-    CanvasItem, CanvasSection, ClipboardAction, Compare, Condition, DatabaseExpect, ElseIf,
-    ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue, IssueParam,
-    LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note, NoteAnchor,
-    PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue, ScriptInput,
-    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
-    Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind,
-    ValueTest, WaitUntil, WindowPosition, WindowSize,
+    CanvasItem, CanvasSection, ClipboardAction, ClipboardContent, Compare, Condition,
+    DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField,
+    Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton,
+    NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
+    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
+    SearchCandidate, Severity, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
+    TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -156,6 +156,13 @@ pub fn describe_issue(issue: Issue) -> String {
     jevision_core::describe(&issue)
 }
 
+/// What a problem says in the current language, without the block and field: the app shows it
+/// next to them.
+#[uniffi::export]
+pub fn issue_sentence(issue: Issue) -> String {
+    jevision_core::sentence(&issue)
+}
+
 /// Writes a test in canonical form, ready to be saved to its `*.flow.json` file.
 #[uniffi::export]
 pub fn save_flow(flow: Flow) -> String {
@@ -179,6 +186,21 @@ pub fn required_secrets(flow: Flow) -> Vec<String> {
 #[uniffi::export]
 pub fn reference_dark_variant(image: String) -> String {
     jevision_core::dark_variant(&image)
+}
+
+/// The codes of the languages a date and time block writes month and day names in.
+#[uniffi::export]
+pub fn date_languages() -> Vec<String> {
+    jevision_core::DATE_LANGUAGES
+        .iter()
+        .map(|l| (*l).to_owned())
+        .collect()
+}
+
+/// Whether `name` is a time zone a date and time block knows, such as `Europe/Berlin`.
+#[uniffi::export]
+pub fn time_zone_known(name: String) -> bool {
+    jevision_core::time_zone_known(&name)
 }
 
 /// Every block type, in palette order.
@@ -741,6 +763,7 @@ pub enum BlockKind {
     },
     Hover {
         target: Target,
+        modifiers: Modifiers,
         wait_for_change: bool,
         next: Option<String>,
     },
@@ -757,6 +780,7 @@ pub enum BlockKind {
         amount: u32,
         unit: ScrollUnit,
         at: Option<Target>,
+        modifiers: Modifiers,
         wait_for_change: bool,
         next: Option<String>,
     },
@@ -851,6 +875,8 @@ pub enum BlockKind {
     DateTime {
         save_as: String,
         format: String,
+        language: Option<String>,
+        time_zone: Option<String>,
         shift: Option<TimeShift>,
         next: Option<String>,
     },
@@ -869,8 +895,12 @@ pub enum ClipboardAction {
     Put {
         text: String,
     },
+    PutImage {
+        image: String,
+    },
     Read {
         save_as: String,
+        content: ClipboardContent,
     },
     Check {
         is: ValueTest,
@@ -944,6 +974,13 @@ pub struct ScriptOutput {
 }
 
 #[uniffi::remote(Enum)]
+pub enum ClipboardContent {
+    Text,
+    Image,
+    Files,
+}
+
+#[uniffi::remote(Enum)]
 pub enum ValueKind {
     Text,
     Number,
@@ -1003,6 +1040,7 @@ pub enum Target {
     Image(String),
     Point(Point),
     Description(String),
+    Area(String),
 }
 
 #[uniffi::remote(Record)]
@@ -1035,6 +1073,7 @@ pub struct Rect {
 pub enum MouseButton {
     Left,
     Right,
+    Middle,
 }
 
 #[uniffi::remote(Enum)]
@@ -1170,6 +1209,13 @@ mod tests {
     use super::*;
 
     const EXAMPLE: &str = include_str!("../../../examples/sign-in.flow.json");
+
+    #[test]
+    fn the_date_block_names_its_languages_and_knows_zones() {
+        assert_eq!(date_languages(), ["en", "ru"]);
+        assert!(time_zone_known("Europe/Berlin".to_owned()));
+        assert!(!time_zone_known("Mars/Olympus".to_owned()));
+    }
 
     #[test]
     fn load_validate_save_round_trip() {

@@ -86,12 +86,30 @@ private let smokeTest = """
 @Test func clipboardAndDateBlocksKeepTheirValues() throws {
   var flow = try loadFlow(json: smokeTest)
   let index = try #require(flow.blocks.firstIndex { $0.id == "new" })
-  flow.blocks[index].kind = .clipboard(action: .read(saveAs: "copied"), next: "stamp")
+  flow.blocks[index].kind = .clipboard(
+    action: .read(saveAs: "copied", content: .text), next: "stamp")
   flow.blocks.append(
     Block(
       id: "stamp",
       kind: .dateTime(
-        saveAs: "day", format: "%d.%m.%Y", shift: TimeShift(amount: -1, unit: .weeks), next: nil)))
+        saveAs: "day", format: "%d.%m.%Y", language: nil, timeZone: nil,
+        shift: TimeShift(amount: -1, unit: .weeks), next: nil)))
   #expect(savedVariables(flow: flow) == ["copied", "day"])
   #expect(try loadFlow(json: saveFlow(flow: flow)) == flow)
+}
+
+@Test func theDateBlockNamesItsLanguagesAndKnowsZones() {
+  #expect(dateLanguages() == ["en", "ru"])
+  #expect(timeZoneKnown(name: "Europe/Berlin"))
+  #expect(!timeZoneKnown(name: "Mars/Olympus"))
+}
+
+@Test func aPictureReadFromTheClipboardKeepsItsContentAndTypeInTheFile() throws {
+  var flow = try loadFlow(json: smokeTest)
+  let index = try #require(flow.blocks.firstIndex { $0.id == "new" })
+  flow.blocks[index].kind = .clipboard(
+    action: .read(saveAs: "shot", content: .image), next: nil)
+  let saved = saveFlow(flow: flow)
+  #expect(saved.contains("\"content\": \"image\""))
+  #expect(try loadFlow(json: saved) == flow)
 }

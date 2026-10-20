@@ -11,10 +11,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    AiChoice, BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
-    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE,
-    PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind,
-    WaitUntil, dark_variant, else_if_edge,
+    AiChoice, BlockKind, Blocker, ClipboardAction, ClipboardContent, Compare, Condition,
+    DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow,
+    PROJECT_FILE, PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target,
+    ValueKind, WaitUntil, dark_variant, else_if_edge, parse_area,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -102,6 +102,9 @@ pub struct RunOptions {
     /// lock; [`default_screen_lock`] is where the app, the command line and the assistant's
     /// server meet.
     pub screen_lock: Option<PathBuf>,
+    /// Language of the app that started the run (`en`, `ru`): what a `dateTime` block writes
+    /// month and day names in when it names no language of its own. `None` is English.
+    pub language: Option<String>,
 }
 
 impl Default for RunOptions {
@@ -120,6 +123,7 @@ impl Default for RunOptions {
             keep_videos_for: None,
             added_as_dependency: false,
             screen_lock: None,
+            language: None,
         }
     }
 }
@@ -1166,6 +1170,7 @@ impl Exec<'_> {
             }
             BlockKind::Hover {
                 target,
+                modifiers,
                 wait_for_change,
                 next,
             } => {
@@ -1173,7 +1178,7 @@ impl Exec<'_> {
                 self.hands(id, |h| h.activate(&app))?;
                 let before = self.snapshot(step, "before")?;
                 let at = self.locate(t, id, target, before.as_ref(), step)?;
-                self.hands(id, |h| h.hover(&app, at))?;
+                self.hands(id, |h| h.hover(&app, at, *modifiers))?;
                 if *wait_for_change {
                     self.wait_for_change(id, before, "run.action.noChange")?;
                 }
@@ -1207,6 +1212,7 @@ impl Exec<'_> {
                 amount,
                 unit,
                 at,
+                modifiers,
                 wait_for_change,
                 next,
             } => {
@@ -1216,7 +1222,9 @@ impl Exec<'_> {
                 let middle = Target::Point(Point { x: 0.5, y: 0.5 });
                 let at =
                     self.locate(t, id, at.as_ref().unwrap_or(&middle), before.as_ref(), step)?;
-                self.hands(id, |h| h.scroll(&app, at, *direction, *amount, *unit))?;
+                self.hands(id, |h| {
+                    h.scroll(&app, at, *direction, *amount, *unit, *modifiers)
+                })?;
                 if *wait_for_change {
                     self.wait_for_change(id, before, "run.action.noChange")?;
                 }
@@ -1270,13 +1278,22 @@ impl Exec<'_> {
                 match self.evaluate(t, id, reference, &shot, true, &mut None)? {
                     Ok(e) => {
                         if let Some(loaded) = &e.reference {
-                            let path = self.resolve(t, id, &loaded.name)?;
+                            let path = if reference.image.contains("${") {
+                                outside(t, &loaded.name)
+                            } else {
+                                self.resolve(t, id, &loaded.name)?
+                            };
                             step.reference = Some(relative(self.project, &path));
                         }
                         self.record_comparison(step, &e)?;
                         if !e.passed {
                             return Err(fail(mismatch(id, reference, &e)));
                         }
+                    }
+                    // A picture from a variable is never made up from the screen: it is what
+                    // the test wants the screen to look like.
+                    Err(name) if reference.image.contains("${") => {
+                        return Err(missing_reference(id, &name));
                     }
                     Err(name) => self.create_baseline(t, id, reference, &name, &shot, step)?,
                 }
@@ -1667,9 +1684,48 @@ impl Exec<'_> {
                         let text = self.substitute(id, text)?;
                         self.hands(id, |h| h.set_clipboard(&text))?;
                     }
-                    ClipboardAction::Read { save_as } => {
-                        let text = self.hands(id, |h| h.clipboard())?;
-                        self.save(step, save_as, text);
+                    ClipboardAction::PutImage { image } => {
+                        let path = self.outside_path(t, id, image)?;
+                        if !system::is_png(&path) {
+                            return Err(fail(
+                                Failure::new("run.clipboard.notPicture")
+                                    .with("block", id)
+                                    .with("image", relative(self.project, &path)),
+                            ));
+                        }
+                        let png = fs::read(&path)
+                            .map_err(|e| fail(unreadable_reference(id, image, e.to_string())))?;
+                        self.hands(id, |h| h.set_clipboard_image(&png))?;
+                    }
+                    ClipboardAction::Read { save_as, content } => {
+                        let value = match content {
+                            ClipboardContent::Text => self.hands(id, |h| h.clipboard())?,
+                            ClipboardContent::Image => {
+                                let png =
+                                    self.hands(id, |h| h.clipboard_image())?.ok_or_else(|| {
+                                        fail(
+                                            Failure::new("run.clipboard.noImage").with("block", id),
+                                        )
+                                    })?;
+                                let name = format!(
+                                    "shots/{}-{:03}-{}-clipboard.png",
+                                    self.attempt, step.seq, step.block
+                                );
+                                let path = self.dir.join(&name);
+                                write(&path, &png)?;
+                                path.display().to_string()
+                            }
+                            ClipboardContent::Files => {
+                                let files = self.hands(id, |h| h.clipboard_files())?;
+                                if files.is_empty() {
+                                    return Err(fail(
+                                        Failure::new("run.clipboard.noFiles").with("block", id),
+                                    ));
+                                }
+                                files.join("\n")
+                            }
+                        };
+                        self.save(step, save_as, value);
                     }
                     ClipboardAction::Check { is, to, timeout_ms } => {
                         let to = self.substitute(id, to)?;
@@ -1708,17 +1764,32 @@ impl Exec<'_> {
             BlockKind::DateTime {
                 save_as,
                 format,
+                language,
+                time_zone,
                 shift,
                 next,
             } => {
-                let text =
-                    system::date_time(chrono::Local::now(), format, *shift).map_err(|reason| {
-                        fail(
-                            Failure::new("run.dateTime.failed")
-                                .with("block", id)
-                                .with("reason", reason),
-                        )
-                    })?;
+                // The block's own language, then the app's; English when neither is known.
+                let language = system::DateLanguage::from_code(
+                    language
+                        .as_deref()
+                        .or(self.options.language.as_deref())
+                        .unwrap_or_default(),
+                );
+                let text = system::date_time_in(
+                    chrono::Utc::now(),
+                    time_zone.as_deref(),
+                    format,
+                    *shift,
+                    language,
+                )
+                .map_err(|reason| {
+                    fail(
+                        Failure::new("run.dateTime.failed")
+                            .with("block", id)
+                            .with("reason", reason),
+                    )
+                })?;
                 self.save(step, save_as, text);
                 Ok(next.clone())
             }
@@ -2189,18 +2260,27 @@ impl Exec<'_> {
         strict: bool,
         cache: &mut Option<Loaded>,
     ) -> Result<Result<Loaded, String>, Stop> {
-        let mut name = if shot.dark {
+        // A picture a variable names has no dark twin and may be anywhere on this Mac.
+        let variable = r.image.contains("${");
+        let mut name = if variable {
+            self.substitute(id, &r.image)?
+        } else if shot.dark {
             dark_variant(&r.image)
         } else {
             r.image.clone()
         };
-        if !strict && name != r.image && !self.resolve(t, id, &name)?.exists() {
+        if !variable && !strict && name != r.image && !self.resolve(t, id, &name)?.exists() {
             name = r.image.clone();
         }
         if let Some(loaded) = cache.take().filter(|c| c.name == name) {
             return Ok(Ok(loaded));
         }
-        let bytes = match fs::read(self.resolve(t, id, &name)?) {
+        let path = if variable {
+            outside(t, &name)
+        } else {
+            self.resolve(t, id, &name)?
+        };
+        let bytes = match fs::read(path) {
             Ok(bytes) => bytes,
             Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Err(name)),
             Err(e) => return Err(fail(unreadable_reference(id, &name, e.to_string()))),
@@ -2276,7 +2356,7 @@ impl Exec<'_> {
     ) -> Result<Point, Stop> {
         let image = match target {
             Target::Image(image) => image,
-            Target::Point(_) | Target::Description(_) => {
+            Target::Point(_) | Target::Description(_) | Target::Area(_) => {
                 let captured;
                 let shot = match shot {
                     Some(shot) => shot,
@@ -2291,6 +2371,7 @@ impl Exec<'_> {
                     Target::Description(what) => {
                         self.find_described(t, id, what, shot, &window, step)?
                     }
+                    Target::Area(area) => self.area_centre(id, area)?,
                     Target::Image(_) => unreachable!("handled above"),
                 };
                 // The test keeps the point as fractions of the window; hands click in points.
@@ -2300,13 +2381,24 @@ impl Exec<'_> {
                 });
             }
         };
-        let dark = dark_variant(image);
-        let name = if shot.is_some_and(|s| s.dark) && self.resolve(t, id, &dark)?.exists() {
-            &dark
+        let (name, path) = if image.contains("${") {
+            // A picture a variable names, such as one the test took from the clipboard: it has
+            // no dark twin and may be anywhere on this Mac.
+            let name = self.substitute(id, image)?;
+            let path = outside(t, &name);
+            (name, path)
         } else {
-            image
+            let dark = dark_variant(image);
+            let name = if shot.is_some_and(|s| s.dark) && self.resolve(t, id, &dark)?.exists() {
+                dark
+            } else {
+                image.clone()
+            };
+            let path = self.resolve(t, id, &name)?;
+            (name, path)
         };
-        let bytes = match fs::read(self.resolve(t, id, name)?) {
+        let name = &name;
+        let bytes = match fs::read(path) {
             Ok(bytes) => bytes,
             Err(e) if e.kind() == io::ErrorKind::NotFound => {
                 return Err(missing_reference(id, name));
@@ -2322,6 +2414,23 @@ impl Exec<'_> {
                         .with("image", name),
                 )
             })
+    }
+
+    /// The centre of the area `text` names (`x,y,width,height`, written in the test or kept in a
+    /// variable), in fractions of the window.
+    fn area_centre(&self, id: &str, text: &str) -> Result<Point, Stop> {
+        let filled = self.substitute(id, text)?;
+        let area = parse_area(&filled).ok_or_else(|| {
+            fail(
+                Failure::new("run.target.badArea")
+                    .with("block", id)
+                    .with("value", &filled),
+            )
+        })?;
+        Ok(Point {
+            x: area.x + area.width / 2.0,
+            y: area.y + area.height / 2.0,
+        })
     }
 
     /// Asks the locator where the element `what` describes is on `shot`, private areas covered;

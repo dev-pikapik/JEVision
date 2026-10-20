@@ -584,7 +584,7 @@ extension Recording {
     case .drag(let from, let to, let button, let modifiers):
       .drag(from: try target(from), to: try target(to), button: button, modifiers: modifiers, waitForChange: false, next: nil)
     case .scroll(let direction, let amount, let unit, let at):
-      .scroll(direction: direction, amount: amount, unit: unit, at: .point(at), waitForChange: false, next: nil)
+      .scroll(direction: direction, amount: amount, unit: unit, at: .point(at), modifiers: .none, waitForChange: false, next: nil)
     case .type(let text, let into): .type(text: text, into: try into.map(target), next: nil)
     case .secret(let name, let into): .type(text: "${secret.\(name)}", into: try into.map(target), next: nil)
     case .pressKeys(let keys): .pressKeys(keys: keys, next: nil)

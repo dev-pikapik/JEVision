@@ -55,7 +55,9 @@ pub use env::{
 };
 pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
-pub use issue::{Issue, IssueParam, ParseError, Severity, describe, describe_in};
+pub use issue::{
+    Issue, IssueParam, ParseError, Severity, describe, describe_in, sentence, sentence_in,
+};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
