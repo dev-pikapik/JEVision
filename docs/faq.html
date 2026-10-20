@@ -136,7 +136,7 @@
 <p>When a test sometimes passes and sometimes fails, see <a href="retries.html">Retries, flaky tests and quarantine</a>.</p>
 
 <h2 id="dark">Tests fail in dark mode</h2>
-<p>A screen in dark appearance doesn't look like a reference taken in light appearance. JEVision keeps a second reference for dark appearance, such as <code>refs/inbox.dark.png</code>, and makes it the first time a check runs in dark mode. See <a href="checks.html#dark">Dark appearance</a>.</p>
+<p>A screen in dark appearance doesn't look like a reference taken in light appearance. JEVision keeps a second reference for dark appearance, such as <code>refs/inbox.dark.png</code>, and makes it the first time a check runs in dark mode; the report marks that step <strong>Reference saved</strong>, so look at it once. See <a href="checks.html#dark">Dark appearance</a>.</p>
 
 <h2 id="keychain">macOS asks about the Keychain</h2>
 <p>The first time <code>jevision</code> reads a <a href="environments.html#secrets">secret</a> from the Keychain, macOS asks whether to allow it. Choose <strong>Always Allow</strong>, especially for <a href="schedules.html">schedules</a> and CI, where nobody is there to answer. In CI, you can pass secrets as environment variables instead. See <a href="environments.html#secret-order">Where a secret's value comes from</a>.</p>

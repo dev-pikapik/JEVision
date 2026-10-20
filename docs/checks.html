@@ -129,9 +129,10 @@
 <p>An app can look different in dark appearance. When the window of the app under test is drawn dark, JEVision compares it with a dark version of the reference: <code>refs/inbox.png</code> becomes <code>refs/inbox.dark.png</code>, with <code>.dark</code> before the extension.</p>
 <ul>
   <li>A <code>check</code> always uses the dark version in dark appearance. If it doesn't exist yet, the run saves it, just like the first light picture.</li>
-  <li><code>waitFor</code> and <code>if</code> use the dark version when it exists and the light picture otherwise.</li>
+  <li><code>waitFor</code> and <code>if</code> use the dark version when it exists and the light picture otherwise. When a <code>waitFor</code> runs out of time in dark appearance and only the light picture exists, the failure names the dark picture that is missing.</li>
 </ul>
 <p>The test file names only the light picture; the dark one sits next to it.</p>
+<p>A dark window is never compared with the light picture, so a missing dark picture can't fail a check by itself or pass it unseen. The run saves it and the report marks that step <strong>Reference saved</strong>: look at it once and keep it, or delete it to take it again.</p>
 
 <h2 id="accept">When the app changed on purpose</h2>
 <p>If a check fails because the app was redesigned, not because of a bug, open the run's report and accept the screenshot as the new reference. The old picture goes to the Trash, and <strong>Edit → Undo</strong> brings it back. In git, the change shows up as a changed picture you can compare side by side, under a sliding divider, one over the other or with the differing pixels in red.</p>

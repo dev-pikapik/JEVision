@@ -147,7 +147,7 @@
 <p>Describes the test format: the fields of a test, every block type with its fields and an example, how blocks lead to each other, and the shapes of targets, references, areas and durations. Takes no arguments. Assistants call it before writing a test.</p>
 
 <h3 id="run_test"><code>run_test</code></h3>
-<p>Runs a test, or every test in a folder one after another, on this Mac for real. Needs <strong>Allow assistants to run tests</strong> and an unlocked screen. Answers at once with a run id; one run at a time.</p>
+<p>Runs a test, or every test in a folder one after another, on this Mac for real. Needs <strong>Allow assistants to run tests</strong> and an unlocked screen. Answers at once with a run id; one run at a time. If the app or <code>jevision run</code> has the screen, the run waits for it. See <a href="cli.html#screen">One run at a time on the screen</a>.</p>
 <ul>
   <li><code>path</code> (required): a test file or folder.</li>
   <li><code>retries</code>: run a failed test this many more times, 0 to 10, instead of the number in the test.</li>
