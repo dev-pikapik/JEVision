@@ -1,4 +1,5 @@
 import CoreGraphics
+import JEVisionCore
 
 /// A key combination as test files write it (`cmd+shift+s`), as virtual key codes of the
 /// US layout. macOS matches shortcuts to the same keys on other layouts.
@@ -58,4 +59,38 @@ public struct KeyStroke: Equatable, Sendable {
     default: .maskControl
     }
   }
+}
+
+extension Modifiers {
+  /// No key held down.
+  public static let none = Modifiers(command: false, shift: false, option: false, control: false)
+
+  /// The keys held down in `flags`.
+  public init(flags: CGEventFlags) {
+    self.init(
+      command: flags.contains(.maskCommand), shift: flags.contains(.maskShift), option: flags.contains(.maskAlternate),
+      control: flags.contains(.maskControl))
+  }
+
+  /// Key codes of the keys held, in the order to press them: the order a combination is written in.
+  var keyCodes: [CGKeyCode] {
+    var codes: [CGKeyCode] = []
+    if command { codes.append(55) }
+    if shift { codes.append(56) }
+    if option { codes.append(58) }
+    if control { codes.append(59) }
+    return codes
+  }
+
+  /// What the flags of an event say while all of them are held.
+  var flags: CGEventFlags {
+    keyCodes.reduce(into: []) { $0.insert(KeyStroke.flag(of: $1)) }
+  }
+
+  /// The keys as menus show them, in menu order: ⌃⌥⇧⌘.
+  public var symbols: String {
+    [(control, "⌃"), (option, "⌥"), (shift, "⇧"), (command, "⌘")].filter(\.0).map(\.1).joined()
+  }
+
+  public var isEmpty: Bool { !(command || shift || option || control) }
 }

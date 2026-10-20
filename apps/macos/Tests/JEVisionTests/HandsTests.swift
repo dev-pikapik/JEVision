@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CoreVideo
 import Foundation
@@ -76,6 +77,36 @@ struct KeyStrokeTests {
     #expect(KeyStroke("hyper+a") == nil)
     #expect(KeyStroke("cmd+cmd+a") == nil)
     #expect(KeyStroke("") == nil)
+  }
+}
+
+struct ModifiersTests {
+  @Test func keysAndFlagsAgree() {
+    let held = Modifiers(command: true, shift: false, option: true, control: true)
+    #expect(held.keyCodes == [55, 58, 59])
+    #expect(held.flags == [.maskCommand, .maskAlternate, .maskControl])
+    #expect(Modifiers(flags: held.flags) == held)
+    #expect(Modifiers(flags: [.maskShift, .maskAlphaShift, .maskNonCoalesced]) == Modifiers(command: false, shift: true, option: false, control: false))
+    #expect(held.symbols == "⌃⌥⌘")
+    #expect(Modifiers.none.isEmpty && Modifiers.none.keyCodes.isEmpty && Modifiers.none.flags.isEmpty)
+  }
+}
+
+@Suite(.serialized) struct ClipboardTests {
+  @Test func putsTextAndReadsItBack() throws {
+    let board = NSPasteboard.general
+    let saved = board.string(forType: .string)
+    defer {
+      board.clearContents()
+      if let saved { board.setString(saved, forType: .string) }
+    }
+    let hands = MacHands(input: InputWatcher(), isCancelled: { false })
+    try hands.setClipboard(text: "héllo\nwörld ✓")
+    #expect(try hands.clipboard() == "héllo\nwörld ✓")
+    try hands.setClipboard(text: "")
+    #expect(try hands.clipboard() == "")
+    board.clearContents()
+    #expect(try hands.clipboard() == "")
   }
 }
 
