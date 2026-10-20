@@ -208,6 +208,10 @@ enum CommandPalette {
       .addToBoard(.link), String(localized: "Add Link to Board…"), String(localized: "Puts a web address on the board."),
       symbol: "globe", keywords: String(localized: "board url web"), if: onBoard)
     add(
+      .addToBoard(.image), String(localized: "Add Image to Board…"),
+      String(localized: "Puts a picture from your Mac on the board."), symbol: "photo",
+      keywords: String(localized: "board picture photo screenshot"), if: onBoard)
+    add(
       .addToBoard(.board), String(localized: "Add Link to New Board"),
       String(localized: "Makes a new board and puts a way to it on this one."), symbol: "rectangle.on.rectangle",
       keywords: String(localized: "board"), if: onBoard)

@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import JEVisionCore
 import Observation
 
@@ -14,8 +15,10 @@ final class ProjectBoards {
   private(set) var current: String?
   /// What the board in view holds; `nil` while its file can't be read.
   private(set) var board: Board?
-  /// What shows of `board`, worked out once per change.
-  private(set) var layout = BoardLayout(nodes: [], edges: [], bounds: nil)
+  /// What shows of `board` and where, worked out once per change.
+  private(set) var scene = BoardScene.empty
+  /// Counts the changes of `board`: what is worked out from the scene starts over when it moves.
+  private(set) var generation = 0
   /// Why the file of the board in view can't be read.
   private(set) var problem: String?
   /// The board that holds every test of the project.
@@ -30,8 +33,8 @@ final class ProjectBoards {
   @ObservationIgnored private let defaults: UserDefaults
 
   static let selectionKey = "selectedBoards"
-  static let suffix = boardSuffix()
-  static let folderName = boardsFolder()
+  nonisolated static let suffix = boardSuffix()
+  nonisolated static let folderName = boardsFolder()
 
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
@@ -39,11 +42,14 @@ final class ProjectBoards {
 
   var folder: URL? { project?.appending(path: Self.folderName, directoryHint: .isDirectory) }
 
+  /// What shows of `board`.
+  var layout: BoardLayout { scene.layout }
+
   /// The file of the board `name`, relative to the project, as boards point at each other.
-  static func path(of name: String) -> String { folderName + "/" + name + suffix }
+  nonisolated static func path(of name: String) -> String { folderName + "/" + name + suffix }
 
   /// The board name of a file relative to the project, when it is a board of the project.
-  static func name(of path: String) -> String? {
+  nonisolated static func name(of path: String) -> String? {
     let prefix = folderName + "/"
     guard path.hasPrefix(prefix), path.hasSuffix(suffix) else { return nil }
     let name = String(path.dropFirst(prefix.count).dropLast(suffix.count))
@@ -169,6 +175,43 @@ final class ProjectBoards {
     undoManager?.setActionName(action)
   }
 
+  /// Keeps the picture `data` in the project, puts it on the board in view centered on `point` and
+  /// returns the new node's id. `name` is what the picture is called, with its ending.
+  @discardableResult
+  func addImage(_ data: Data, named name: String, at point: CGPoint, undoManager: UndoManager?) throws -> String? {
+    guard let project, let board else { return nil }
+    guard let size = Self.pixelSize(of: data) else {
+      throw BoardError.NotAPicture
+    }
+    let file = try storeBoardImage(project: project.path(percentEncoded: false), name: name, data: data)
+    let edit = addImageToBoard(board: board, file: file, width: size.width, height: size.height, at: Point(x: point.x, y: point.y))
+    try self.edit(edit.board, action: String(localized: "Add Image"), undoManager: undoManager)
+    return edit.id
+  }
+
+  /// The size of a picture in pixels, `nil` when the data isn't one.
+  static func pixelSize(of data: Data) -> CGSize? {
+    guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = properties[kCGImagePropertyPixelWidth] as? Double,
+      let height = properties[kCGImagePropertyPixelHeight] as? Double, width > 0, height > 0
+    else { return nil }
+    return CGSize(width: width, height: height)
+  }
+
+  /// Opens the card of the test `id` so it shows its blocks, or folds them back into the card.
+  func toggleBlocks(of id: String, undoManager: UndoManager?) throws {
+    guard let project, let board, let node = scene.nodes[id] else { return }
+    let new =
+      node.open
+      ? closeTestOnBoard(board: board, id: id)
+      : openTestOnBoard(project: project.path(percentEncoded: false), board: board, id: id)
+    guard let new else { return }
+    try edit(
+      new, action: node.open ? String(localized: "Hide Blocks") : String(localized: "Show Blocks"),
+      undoManager: undoManager)
+  }
+
   /// A file name for a board called `name`: characters a file name can't hold become dashes.
   static func fileName(_ name: String) -> String {
     let clean = name.trimmingCharacters(in: .whitespaces)
@@ -196,7 +239,8 @@ final class ProjectBoards {
   private func show(_ new: Board?) {
     guard board != new else { return }
     board = new
-    layout = new.map { layOutBoard(board: $0) } ?? BoardLayout(nodes: [], edges: [], bounds: nil)
+    scene = new.map { BoardScene($0) } ?? .empty
+    generation += 1
   }
 
   private func file(_ name: String) -> URL {
@@ -215,6 +259,7 @@ final class ProjectBoards {
     if case BoardError.Invalid(let message) = error {
       return String(localized: "This board can’t be read: \(message)")
     }
+    if case BoardError.NotAPicture = error { return String(localized: "This isn’t a picture JEVision can show.") }
     return error.localizedDescription
   }
 }
@@ -235,5 +280,5 @@ enum BoardRequest: Hashable {
 
 /// What can be put on a board in one step.
 enum BoardAddition: Hashable {
-  case test, note, frame, link, board
+  case test, note, frame, link, board, image
 }
