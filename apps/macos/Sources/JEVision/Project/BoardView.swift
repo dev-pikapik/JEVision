@@ -1356,19 +1356,25 @@ struct BoardView: View {
     return project.items.flatMap(\.tests).filter { !on.contains($0.id) }
   }
 
-  /// The test running now, relative to the project.
-  private var runningFile: String? {
+  /// The test started now, relative to the project.
+  private var startedFile: String? {
     guard let running = runs.running, let root = project.rootURL else { return nil }
     return RelativePath.from(root, to: running.document.url)
   }
 
-  /// The tests of the batch running now that haven't started.
+  /// The test running now; one waiting for another run to give up the screen hasn't begun.
+  private var runningFile: String? {
+    runs.state?.isWaitingForScreen == true ? nil : startedFile
+  }
+
+  /// The tests of the batch running now that haven't started, and the test waiting for the screen.
   private var waitingFiles: Set<String> {
-    guard let batch = runs.batch else { return [] }
-    return Set(
-      batch.entries.compactMap { entry in
+    var files = Set(
+      (runs.batch?.entries ?? []).compactMap { entry in
         if case .waiting = entry.state { entry.file } else { nil }
       })
+    if runs.state?.isWaitingForScreen == true, let file = startedFile { files.insert(file) }
+    return files
   }
 
   private var source: BoardStatusSource {
