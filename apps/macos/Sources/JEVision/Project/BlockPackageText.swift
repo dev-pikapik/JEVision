@@ -8,7 +8,8 @@ enum BlockPackageText {
     let p = { (name: String) in issue.param(name) ?? "" }
     switch issue.code {
     case "flow.block.notInstalled":
-      return String(localized: "flow.block.notInstalled", defaultValue: "This step needs the block “\(p("id"))”, which isn’t installed in this project. Install it, or remove the step.", bundle: .app, locale: .app)
+      let block = BlockNeed(issue)?.label ?? p("id")
+      return String(localized: "flow.block.notInstalled", defaultValue: "This step needs the block “\(block)”, which isn’t installed in this project. Install it, or remove the step.", bundle: .app, locale: .app)
     case "block.json.syntax":
       return String(localized: "block.json.syntax", defaultValue: "block.json isn’t valid JSON. Check line \(p("line")), column \(p("column")).", bundle: .app, locale: .app)
     case "block.json.notObject":

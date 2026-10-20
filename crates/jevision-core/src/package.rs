@@ -273,6 +273,28 @@ pub fn package_of_path(path: &str) -> Option<&str> {
         .filter(|id| !id.is_empty())
 }
 
+/// `com.acme.sign-in 1.2.0`, or the id alone when the version isn't known.
+pub fn block_with_version(id: &str, version: &str) -> String {
+    if version.is_empty() {
+        id.to_owned()
+    } else {
+        format!("{id} {version}")
+    }
+}
+
+/// The command that installs the package at `source`; without an address it says what to give.
+pub fn install_command(source: &str) -> String {
+    let plain = |b: u8| b.is_ascii_alphanumeric() || b"-._~:/%@+=".contains(&b);
+    let source = if source.is_empty() {
+        "<folder, .zip file or https address>".to_owned()
+    } else if source.bytes().all(plain) {
+        source.to_owned()
+    } else {
+        format!("'{}'", source.replace('\'', r"'\''"))
+    };
+    format!("jevision blocks install {source}")
+}
+
 /// Whether `id` can be the id of a package.
 pub fn is_package_id(id: &str) -> bool {
     let parts: Vec<&str> = id.split('.').collect();

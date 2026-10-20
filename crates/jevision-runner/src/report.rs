@@ -506,9 +506,10 @@ pub fn describe(f: &Failure) -> String {
             p("errors")
         ),
         "run.block.notInstalled" => format!(
-            "Block {}: the package {} is not installed; install it from the block library first.",
+            "Block {}: the package {} is not installed; install it with `{}`, then run the test again.",
             p("block"),
-            p("package")
+            jevision_core::block_with_version(p("package"), p("version")),
+            jevision_core::install_command(p("source"))
         ),
         "run.block.needsNewer" => format!(
             "Block {}: the package {} needs JEVision {} or newer, and this is {}.",

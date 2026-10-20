@@ -22,6 +22,9 @@
     "add": {
       "type": "runTest",
       "test": "blocks/org.jevision.add-line.jevblock/flow.json",
+      "package": {
+        "version": "1.0.0"
+      },
       "inputs": {
         "line": "- eggs"
       },

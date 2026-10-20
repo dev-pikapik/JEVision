@@ -211,12 +211,112 @@ struct CommunityBlocksTests {
     #expect(blocks.error?.contains("com.anna.sign-in") == true, "Removing it twice says it isn't installed")
   }
 
+  /// A test in `theirs` with one step that runs the block `com.anna.sign-in`, as the file keeps it.
+  private func userTest(in theirs: URL, package: String) throws -> FlowDocument {
+    let text = """
+      {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "runTest", "test": "blocks/com.anna.sign-in.jevblock/flow.json"\(package),
+              "inputs": {"email": "a@b.c"}}}}
+      """
+    let file = theirs.appending(path: "t.flow.json")
+    try text.write(to: file, atomically: true, encoding: .utf8)
+    return FlowDocument(url: file)
+  }
+
+  @Test func aMissingBlockIsAnErrorThatNamesItsVersionAndAddress() throws {
+    let (_, theirs) = try projects()
+    let address = "https://example.com/sign-in.zip"
+    let document = try userTest(in: theirs, package: #", "package": {"version": "1.2.0", "source": "\#(address)"}"#)
+    let issue = try #require(document.issues(of: "a").first { $0.code == "flow.block.notInstalled" })
+    #expect(issue.severity == .error)
+    #expect(IssueText.message(issue).contains("com.anna.sign-in 1.2.0"))
+    #expect(BlockNeed(issue) == BlockNeed(id: "com.anna.sign-in", version: "1.2.0", source: address))
+
+    let old = try userTest(in: theirs, package: "")
+    let oldIssue = try #require(old.issues(of: "a").first { $0.code == "flow.block.notInstalled" })
+    #expect(BlockNeed(oldIssue) == BlockNeed(id: "com.anna.sign-in"), "A test from before the version was kept still reads")
+    #expect(BlockNeed(oldIssue)?.label == "com.anna.sign-in")
+    #expect(IssueText.message(oldIssue).contains("“com.anna.sign-in”"))
+  }
+
+  @Test func theRunNamesTheBlockItNeedsToo() {
+    let failure = Failure(
+      code: "run.block.notInstalled",
+      params: ["block": "a", "package": "com.anna.sign-in", "version": "1.2.0", "source": "https://example.com/b.zip"])
+    #expect(BlockNeed(failure) == BlockNeed(id: "com.anna.sign-in", version: "1.2.0", source: "https://example.com/b.zip"))
+    #expect(RunText.failure(failure).contains("com.anna.sign-in 1.2.0"))
+    #expect(BlockNeed(Failure(code: "run.file.missing", params: [:])) == nil)
+  }
+
+  @Test func installingFromTheErrorChecksThatItIsTheBlockTheTestNeeds() async throws {
+    let (mine, theirs) = try projects()
+    let file = try zip("1.0.0", from: mine)
+    let document = try userTest(in: theirs, package: #", "package": {"version": "1.0.0"}"#)
+    let need = try #require(document.issues(of: "a").lazy.compactMap(BlockNeed.init).first)
+
+    let model = BlockInstallModel(project: theirs)
+    model.need = need
+    await model.read(file)
+    #expect(model.needMismatch == nil, "The same block and version")
+
+    model.need = BlockNeed(id: "com.bob.other", version: "1.0.0")
+    #expect(model.needMismatch == .otherBlock(wanted: "com.bob.other 1.0.0"))
+    model.need = BlockNeed(id: "com.anna.sign-in", version: "2.0.0")
+    #expect(model.needMismatch == .otherVersion(wanted: "2.0.0"))
+    model.need = BlockNeed(id: "com.anna.sign-in")
+    #expect(model.needMismatch == nil, "A test that names no version takes any")
+
+    await model.install()
+    document.revalidate()
+    #expect(document.issues(of: "a").allSatisfy { $0.code != "flow.block.notInstalled" })
+  }
+
+  @Test func theErrorOpensTheSheetOnTheBlockAndAsksForAFileWithoutAnAddress() async throws {
+    let (mine, theirs) = try projects()
+    let file = try zip("1.0.0", from: mine)
+    let project = ProjectStore()
+    project.open(theirs)
+
+    let withoutAddress = BlockNeed(id: "com.anna.sign-in", version: "1.0.0")
+    project.installBlock(for: withoutAddress)
+    var model = try #require(project.installingBlock)
+    #expect(model.need == withoutAddress)
+    if case .choosing = model.phase {} else { Issue.record("Without an address the sheet waits for a file, got \(model.phase)") }
+
+    project.installingBlock = nil
+    project.installBlock(for: BlockNeed(id: "com.anna.sign-in", version: "1.0.0", source: file))
+    model = try #require(project.installingBlock)
+    for _ in 0..<200 where !isReview(model.phase) { try await Task.sleep(for: .milliseconds(25)) }
+    #expect(isReview(model.phase), "With an address the sheet reads the block at once")
+    #expect(model.needMismatch == nil)
+    await model.install()
+    #expect(ProjectLibrary.communityEntries(theirs).map { $0.package?.id } == ["com.anna.sign-in"])
+  }
+
+  @Test func aStepAddedFromTheLibraryKeepsTheVersionOfItsBlock() async throws {
+    let (mine, theirs) = try projects()
+    let model = BlockInstallModel(project: theirs)
+    await model.read(try zip("1.0.0", from: mine))
+    await model.install()
+    let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
+    let document = try userTest(in: theirs, package: "")
+
+    document.add(entry, at: Slot(from: "a", edge: "next"))
+    let added = try #require(document.selection.flatMap(document.block))
+    guard case .runTest(_, let package, _, _) = added.kind else {
+      Issue.record("Expected a step that runs the block, got \(added.kind)")
+      return
+    }
+    #expect(package == PackageNeed(version: "1.0.0", source: nil), "A block from a file has no address to keep")
+    #expect(LibraryEntry.Package(id: "x", author: "", version: "1.0.0", license: "", source: "/tmp/x.zip").need.source == nil)
+  }
+
   @Test func namesBlocksOfCommunityByTheirIdInSummaries() {
     let path = "blocks/com.anna.sign-in.jevblock/flow.json"
     #expect(ProjectScanner.testName(path: path) == "com.anna.sign-in")
     #expect(ProjectScanner.testName(path: "Login/Sign In.flow.json") == "Sign In")
     #expect(ProjectScanner.testName(path: "blocks/Sign in.block.json") == "Sign in")
-    let summary = BlockSummary.text(.runTest(test: path, inputs: [:], next: nil), appName: { $0 })
+    let summary = BlockSummary.text(.runTest(test: path, package: nil, inputs: [:], next: nil), appName: { $0 })
     #expect(summary.contains("com.anna.sign-in"))
   }
 

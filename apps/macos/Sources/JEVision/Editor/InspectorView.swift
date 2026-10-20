@@ -568,14 +568,22 @@ struct InspectorView: View {
           .foregroundStyle(.secondary)
       }
 
-    case .runTest(let test, let inputs, let next):
-      let make = { (test: String, inputs: [String: String]) in BlockKind.runTest(test: test, inputs: inputs, next: next) }
+    case .runTest(let test, let package, let inputs, let next):
+      let make = { (test: String, inputs: [String: String]) in
+        BlockKind.runTest(test: test, package: package, inputs: inputs, next: next)
+      }
       let own = document.url.standardizedFileURL
       let tests = project.items.allTests.filter { $0.url.standardizedFileURL != own }
       let blocks = project.library.blocks.filter { $0.url?.standardizedFileURL != own }
       let block = blocks.first { $0.url.map { RelativePath.from(context.folder, to: $0) } == test }
       Section {
-        Picker(selection: bind("test", test) { make($0, inputs) }) {
+        Picker(
+          selection: bind("test", test) { chosen in
+            // The block's version and address go with the step, so a project without it can say what to install.
+            let entry = blocks.first { $0.url.map { RelativePath.from(context.folder, to: $0) } == chosen }
+            return .runTest(test: chosen, package: entry?.package?.need, inputs: inputs, next: next)
+          }
+        ) {
           if test.isEmpty { Text("Choose a Test").tag("") }
           ForEach(tests) { item in
             Text(item.parentPath.isEmpty ? item.name : item.parentPath + "/" + item.name)

@@ -22,7 +22,8 @@ enum RunText {
     case "run.input.missing":
       return String(localized: "run.input.missing", defaultValue: "Block “\(block)”: nothing gives the input \(p("name")). Run this block from a test that fills it in.", bundle: .app, locale: .app)
     case "run.block.notInstalled":
-      return String(localized: "run.block.notInstalled", defaultValue: "Block “\(block)”: the community block \(p("package")) isn’t installed. Install it from File → Install Block…, then run the test again.", bundle: .app, locale: .app)
+      let package = BlockNeed(failure)?.label ?? p("package")
+      return String(localized: "run.block.notInstalled", defaultValue: "Block “\(block)”: the community block \(package) isn’t installed. Install it from File → Install Block…, then run the test again.", bundle: .app, locale: .app)
     case "run.block.needsNewer":
       return String(localized: "run.block.needsNewer", defaultValue: "Block “\(block)”: the community block \(p("package")) needs JEVision \(p("needs")) or newer, and this is \(p("have")). Update JEVision to run it.", bundle: .app, locale: .app)
     case "run.path.outsideProject":

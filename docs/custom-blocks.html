@@ -90,10 +90,12 @@
 <pre><code>{
   "type": "runTest",
   "test": "blocks/com.acme.sign-in.jevblock/flow.json",
+  "package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in" },
   "inputs": { "email": "anna@example.com", "password": "${secret.password}" },
   "next": "inbox"
 }</code></pre>
 <ul>
+  <li><code>package</code> is the version of the block the test was made with and, when it came from a web address, that address. JEVision fills it in when you add a block from the library. A test without it still works.</li>
   <li>Inside the block, a step reads a value as <code>${input.NAME}</code>, such as <code>${input.email}</code> in the text of a <code>type</code> block.</li>
   <li>A value the test leaves out gets a warning while you edit, and stops the run with a message that names the missing value, unless the block gives that value a <code>default</code>.</li>
   <li>The block acts on its own application (the <code>app</code> of its file), uses the same environment as the test, and a failure inside it fails the test. A block can't run itself, directly or through other blocks.</li>
@@ -157,7 +159,7 @@
 <h2 id="reports">Runs and reports</h2>
 <ul>
   <li>The steps of a package are reported under the name and version of the package, such as “in Sign in 1.2.0”, and the report lists the packages a run used with their authors. Statistics and the run list name a package by its id.</li>
-  <li>A test that uses a block that isn't installed is marked while you edit and when you validate, and a run of it stops with “the block is not installed” before anything happens on screen.</li>
+  <li>A test that uses a block that isn't installed is marked while you edit and when you validate, and a run of it stops with “the block is not installed” before anything happens on screen. The error names the block and its version, such as “needs the block com.acme.sign-in 1.2.0”. <strong>Install…</strong> in the editor and in the report opens the Install Block sheet: it reads the block from the address the test knows, or asks for a file or an address when it doesn't know one. <code>jevision validate</code> and <code>jevision run</code> print the same message with the command to run, such as <code>jevision blocks install https://github.com/acme/sign-in</code>.</li>
   <li>A block that needs a newer JEVision stops a run with a message that says which version it needs.</li>
 </ul>
 

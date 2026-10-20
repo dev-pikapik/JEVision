@@ -65,8 +65,8 @@ pub use model::*;
 pub use package::{
     BlockManifest, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
     PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, app_version,
-    check_package, is_block_path, is_package_id, package_issue, package_of_path, parse_manifest,
-    risky_steps, suggest_id,
+    block_with_version, check_package, install_command, is_block_path, is_package_id,
+    package_issue, package_of_path, parse_manifest, risky_steps, suggest_id,
 };
 pub use package_files::{
     BLOCKS_FOLDER, Change, ExportMeta, Exported, Installed, MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES,

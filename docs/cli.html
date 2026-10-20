@@ -291,6 +291,7 @@ jevision blocks install https://github.com/acme/sign-in-block --yes
 jevision blocks list
 jevision blocks update --yes
 jevision blocks remove com.acme.sign-in</code></pre>
+<p>A test that needs a block you haven't installed says so in <code>jevision validate</code> and <code>jevision run</code>, with the id and version the test was made with and the command that installs it, such as <code>needs the block com.acme.sign-in 1.2.0 … install it with `jevision blocks install https://github.com/acme/sign-in-block`</code>. A test that knows no address says <code>jevision blocks install &lt;folder, .zip file or https address&gt;</code>.</p>
 <p>Exit status: <code>0</code>, done (or nothing to do); <code>1</code>, the block wasn't installed because <code>--yes</code> is missing, <code>--force</code> is needed to go back to an older version, or the block has an error; a block that is installed already in the same version is left as it is, with status <code>0</code>; <code>2</code>, wrong arguments, a source that can't be read or downloaded, or a block that isn't installed.</p>
 
 <h2 id="schedule"><code>jevision schedule run</code></h2>

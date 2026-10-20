@@ -11,10 +11,10 @@ use crate::issue::{Issue, ParseError};
 use crate::model::{
     Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction, Compare, Condition,
     DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod,
-    Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference, SavedValue,
-    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
-    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition,
-    WindowSize, parse_duration,
+    Modifiers, MouseButton, NamedValue, Note, PackageNeed, Point, Priority, Rect, Reference,
+    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target,
+    TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
+    WindowPosition, WindowSize, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -772,6 +772,10 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         }
         "runTest" => {
             let test = o.string("test", out);
+            let package = match o.opt_object("package", out) {
+                None => Some(None),
+                Some(p) => package_need(p, out).map(Some),
+            };
             let inputs = o
                 .opt_object("inputs", out)
                 .map(|i| {
@@ -791,6 +795,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             all_present(|| {
                 Some(BlockKind::RunTest {
                     test: test?,
+                    package: package?,
                     inputs,
                     next,
                 })
@@ -1167,6 +1172,16 @@ fn modifiers(o: &mut Obj<'_>, out: &mut Out) -> Modifiers {
         }
     }
     held
+}
+
+fn package_need(mut o: Obj<'_>, out: &mut Out) -> Option<PackageNeed> {
+    let version = o.string("version", out);
+    let source = o.opt_string("source", out);
+    o.finish(out);
+    Some(PackageNeed {
+        version: version?,
+        source,
+    })
 }
 
 fn time_shift(mut o: Obj<'_>, out: &mut Out) -> Option<TimeShift> {

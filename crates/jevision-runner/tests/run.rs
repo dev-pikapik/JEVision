@@ -1918,6 +1918,37 @@ fn a_package_that_is_not_installed_or_too_new_stops_the_run_with_a_reason() {
 }
 
 #[test]
+fn a_missing_package_is_reported_with_the_version_and_address_the_test_recorded() {
+    let p = Project::new();
+    p.test(
+        r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+            "package":{"version":"1.2.0","source":"https://github.com/acme/sign-in"},
+            "inputs":{"email":"me@example.com"}}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(failure.code, "run.block.notInstalled");
+    assert_eq!(failure.param("package"), "com.acme.sign-in");
+    assert_eq!(failure.param("version"), "1.2.0");
+    assert_eq!(failure.param("source"), "https://github.com/acme/sign-in");
+    assert_eq!(
+        jevision_runner::describe(&failure),
+        "Block sub: the package com.acme.sign-in 1.2.0 is not installed; install it with \
+         `jevision blocks install https://github.com/acme/sign-in`, then run the test again."
+    );
+
+    // A test saved before the version was recorded fails the same way, without them.
+    p.test(PACKAGE_STEP, "sub", 0);
+    let report = run(&p, &hands).report;
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(failure.param("version"), "");
+    assert!(jevision_runner::describe(&failure).contains("com.acme.sign-in is not installed"));
+}
+
+#[test]
 fn placeholders_fill_the_paths_of_files_blocks_read() {
     let p = Project::new();
     p.write(

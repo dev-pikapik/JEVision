@@ -29019,6 +29019,108 @@
           }
         }
       }
+    },
+    "This test needs the block %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому тесту нужен блок %@."
+          }
+        }
+      }
+    },
+    "Needed block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужный блок"
+          }
+        }
+      }
+    },
+    "The test needs the block %@, and this is another block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесту нужен блок %@, а это другой блок."
+          }
+        }
+      }
+    },
+    "Not the block the test needs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не тот блок, что нужен тесту"
+          }
+        }
+      }
+    },
+    "The test was made with version %@ of this block." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест сделан с версией %@ этого блока."
+          }
+        }
+      }
+    },
+    "Another version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другая версия"
+          }
+        }
+      }
+    },
+    "Opens the sheet that installs the block this step needs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает окно, где устанавливается блок, нужный этому шагу."
+          }
+        }
+      }
+    },
+    "flow.package.version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The version of the block must look like 1.2.0."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия блока должна выглядеть как 1.2.0."
+          }
+        }
+      }
+    },
+    "flow.package.source" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The address of the block must start with https://."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес блока должен начинаться с https://."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

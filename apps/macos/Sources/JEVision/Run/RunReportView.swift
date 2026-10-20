@@ -467,6 +467,11 @@ private struct StepRow: View {
             .font(.subheadline)
             .foregroundStyle(.red)
             .lineLimit(isExpanded ? nil : 2)
+          if let need = BlockNeed(failure) {
+            Button("Install…") { project.installBlock(for: need) }
+              .controlSize(.small)
+              .help(Text("Opens the sheet that installs the block this step needs."))
+          }
         }
       }
       Spacer(minLength: 8)

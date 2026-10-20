@@ -33,6 +33,11 @@ struct InstallBlockSheet: View {
   private var choosing: some View {
     VStack(alignment: .leading, spacing: 16) {
       title("Install a Block")
+      if let need = model.need {
+        note(
+          Text("This test needs the block \(need.label)."), symbol: "puzzlepiece.extension.fill", color: .accentColor,
+          label: Text("Needed block"))
+      }
       Text("A block is a set of steps someone shared, ready to use in your tests. Choose its folder or .zip file, drop it here, or paste an address: a GitHub repository, a GitHub release or a link to a .zip file.")
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -118,6 +123,7 @@ struct InstallBlockSheet: View {
       }
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
+          if let mismatch = model.needMismatch { mismatchBanner(mismatch) }
           if let conflict = model.conflict { conflictBanner(conflict) }
           ForEach(model.errors, id: \.self) { message in
             note(message, symbol: "xmark.octagon.fill", color: .red, label: Text("Problem"))
@@ -134,6 +140,20 @@ struct InstallBlockSheet: View {
       }
       .frame(maxHeight: 360)
       reviewButtons(manifest)
+    }
+  }
+
+  @ViewBuilder
+  private func mismatchBanner(_ mismatch: BlockNeedMismatch) -> some View {
+    switch mismatch {
+    case .otherBlock(let wanted):
+      note(
+        Text("The test needs the block \(wanted), and this is another block."), symbol: "exclamationmark.triangle.fill",
+        color: .orange, label: Text("Not the block the test needs"))
+    case .otherVersion(let wanted):
+      note(
+        Text("The test was made with version \(wanted) of this block."), symbol: "info.circle.fill",
+        color: .accentColor, label: Text("Another version"))
     }
   }
 

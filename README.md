@@ -385,7 +385,9 @@ marks scripts, network requests, database queries, opened applications and typed
 what you let into your project. Installed blocks appear in the library under **Community** with
 their author and version, and reports name the package and its version. **Update** fetches the
 newest version of a block installed from an address, and **Remove** names the tests that still use a
-block instead of removing it behind their back.
+block instead of removing it behind their back. A test that uses a block you haven't installed names
+it with its version and offers **Install…** right in the error; `jevision validate` and `jevision run`
+print the same message with the `jevision blocks install` command.
 
 ```sh
 jevision blocks list                      # the blocks installed in the project

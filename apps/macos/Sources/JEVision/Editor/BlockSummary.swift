@@ -111,7 +111,7 @@ enum BlockSummary {
       return file.isEmpty
         ? String(localized: "Choose a CSV file")
         : String(localized: "For each row of \((file as NSString).lastPathComponent)")
-    case .runTest(let test, let inputs, _):
+    case .runTest(let test, _, let inputs, _):
       if test.isEmpty { return String(localized: "Choose a test") }
       guard isBlockPath(path: test), !inputs.isEmpty else {
         return String(localized: "Runs \(quoted(ProjectScanner.testName(path: test)))")

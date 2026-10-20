@@ -153,6 +153,7 @@
   "inputs": [ { "name": "email" }, { "name": "password" } ]
 }</code></pre>
 <p><code>jevision.blocks.json</code>, in the project folder, keeps the address each package was installed from: <code>{ "sources": { "com.acme.sign-in": "https://github.com/acme/sign-in-block" } }</code>. Packages installed from a file have no entry.</p>
+<p>A <code>runTest</code> block that runs a package keeps <code>"package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in-block" }</code>, the version the test was made with and, when there is one, the address to install it from. Both are optional, and a test without <code>package</code> reads as before. When the package isn't installed, validation and runs name it with that version and say how to install it.</p>
 <p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="schemas/block.schema.json">JSON Schema</a> is part of this documentation.</p>
 
 <h2 id="references">Reference images</h2>

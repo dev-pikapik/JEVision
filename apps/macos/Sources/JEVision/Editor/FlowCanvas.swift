@@ -490,7 +490,7 @@ struct FlowCanvas: View {
 
   /// The custom block a Run Test block runs, as the library knows it.
   private func customBlock(_ kind: BlockKind) -> LibraryEntry? {
-    guard case .runTest(let test, _, _) = kind, isBlockPath(path: test) else {
+    guard case .runTest(let test, _, _, _) = kind, isBlockPath(path: test) else {
       return nil
     }
     let file = document.url.deletingLastPathComponent().appending(path: test).standardizedFileURL

@@ -48,6 +48,12 @@ enum BlockConflict: Equatable {
   case downgrade(from: String, to: String)
 }
 
+/// How the block being read differs from the one a test asked for.
+enum BlockNeedMismatch: Equatable {
+  case otherBlock(wanted: String)
+  case otherVersion(wanted: String)
+}
+
 /// The sheet that installs a block someone shared: choose where it is, read what it does, then
 /// install it. Nothing is installed, and nothing in it runs, before the person says so.
 @MainActor
@@ -68,6 +74,8 @@ final class BlockInstallModel: Identifiable {
   private(set) var phase = Phase.choosing
   /// What the person typed or pasted: an address of a zip file, a GitHub repository or release.
   var address = ""
+  /// The block a test asked for, when the sheet was opened from the error about it.
+  var need: BlockNeed?
 
   private let project: URL
   private let installer: BlockInstaller
@@ -203,6 +211,14 @@ final class BlockInstallModel: Identifiable {
     case .update(let from): return .update(from: from, to: version)
     case .downgrade(let from): return .downgrade(from: from, to: version)
     }
+  }
+
+  /// Set when the block being read isn't the one the test asked for.
+  var needMismatch: BlockNeedMismatch? {
+    guard let need, let manifest = preview?.manifest else { return nil }
+    if manifest.id != need.id { return .otherBlock(wanted: need.label) }
+    if !need.version.isEmpty, manifest.version != need.version { return .otherVersion(wanted: need.version) }
+    return nil
   }
 
   /// Problems that stop the installation, in words.

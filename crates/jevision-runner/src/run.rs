@@ -12,9 +12,9 @@ use std::{fs, io};
 
 use jevision_core::{
     AiChoice, BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
-    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE, Point,
-    ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant,
-    else_if_edge,
+    DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow, PROJECT_FILE,
+    PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind,
+    WaitUntil, dark_variant, else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -722,6 +722,21 @@ struct TestFile {
     file: String,
     dir: PathBuf,
     flow: Flow,
+}
+
+/// Adds the version and address the block names for its package to the failure that it isn't
+/// installed, for the person who has to install it.
+fn with_package(failure: Failure, package: Option<&PackageNeed>) -> Failure {
+    match package {
+        Some(need) if failure.code == "run.block.notInstalled" => {
+            let failure = failure.with("version", &need.version);
+            match &need.source {
+                Some(source) => failure.with("source", source),
+                None => failure,
+            }
+        }
+        _ => failure,
+    }
 }
 
 fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
@@ -1707,7 +1722,12 @@ impl Exec<'_> {
                 self.save(step, save_as, text);
                 Ok(next.clone())
             }
-            BlockKind::RunTest { test, inputs, next } => {
+            BlockKind::RunTest {
+                test,
+                package,
+                inputs,
+                next,
+            } => {
                 let path = self.resolve_filled(t, id, test)?;
                 let mut given = HashMap::with_capacity(inputs.len());
                 for (name, value) in inputs {
@@ -1729,7 +1749,7 @@ impl Exec<'_> {
                         fetch_secrets(&sub.flow, self.runner.secrets, self.secrets)?;
                         Ok(sub)
                     })
-                    .map_err(|f| fail(f.with("block", id)))?;
+                    .map_err(|f| fail(with_package(f, package.as_ref()).with("block", id)))?;
                 self.tests.push(path);
                 self.apps.push(sub.flow.app.clone());
                 self.inputs.push(given);

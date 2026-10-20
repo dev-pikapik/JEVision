@@ -289,9 +289,16 @@ pub fn describe(issue: &Issue) -> String {
             p("cycle")
         ),
         "flow.block.notInstalled" => format!(
-            "needs the block {}, which isn't installed in this project; install it or remove this step.",
-            p("id")
+            "needs the block {}, which isn't installed in this project; install it with `{}` or remove this step.",
+            crate::block_with_version(p("id"), p("version")),
+            crate::install_command(p("source"))
         ),
+        "flow.package.version" => {
+            "the version of the package must look like 1.2.0.".to_owned()
+        }
+        "flow.package.source" => {
+            "the address of the package must start with https://.".to_owned()
+        }
         "block.json.syntax" => format!(
             "block.json is not valid JSON at line {}, column {}.",
             p("line"),

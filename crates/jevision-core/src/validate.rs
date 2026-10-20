@@ -10,7 +10,7 @@ use crate::model::{
     DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, Point, Rect, Reference, ScriptInput,
     TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
 };
-use crate::package::{is_block_path, package_of_path};
+use crate::package::{Version, is_block_path, package_of_path};
 
 pub const MAX_RETRIES: u32 = 10;
 pub const MAX_REPEAT: u32 = 10_000;
@@ -176,13 +176,22 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             && !dir.join(path).exists()
         {
             if let Some(package) = package_of_path(path).filter(|_| field == "test") {
-                out.push(
-                    Issue::error("flow.block.notInstalled")
-                        .with("block", block)
-                        .with("field", field)
-                        .with("id", package)
-                        .with("path", path),
-                );
+                let mut issue = Issue::error("flow.block.notInstalled")
+                    .with("block", block)
+                    .with("field", field)
+                    .with("id", package)
+                    .with("path", path);
+                let need = blocks.iter().find_map(|b| match &b.kind {
+                    BlockKind::RunTest { package, .. } if b.id == *block => package.as_ref(),
+                    _ => None,
+                });
+                if let Some(need) = need {
+                    issue = issue.with("version", &need.version);
+                    if let Some(source) = &need.source {
+                        issue = issue.with("source", source);
+                    }
+                }
+                out.push(issue);
                 continue;
             }
             out.push(
@@ -674,7 +683,24 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             path_with_extension(id, "file", file, ".csv", out);
             loop_body(id, body, out);
         }
-        BlockKind::RunTest { test, inputs, .. } => {
+        BlockKind::RunTest {
+            test,
+            package,
+            inputs,
+            ..
+        } => {
+            if let Some(need) = package {
+                if need.version.parse::<Version>().is_err() {
+                    out.push(err("flow.package.version", "package.version"));
+                }
+                if need
+                    .source
+                    .as_ref()
+                    .is_some_and(|s| !s.starts_with("https://"))
+                {
+                    out.push(err("flow.package.source", "package.source"));
+                }
+            }
             if package_of_path(test).is_some() {
                 relative_path(id, "test", test, out);
             } else {
