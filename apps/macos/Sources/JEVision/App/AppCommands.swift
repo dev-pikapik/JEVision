@@ -70,6 +70,7 @@ struct AppCommands: Commands {
         .keyboardShortcut(Shortcuts.disconnect)
         .disabled(!canDisconnect)
       }
+      .disabled(canvas?.isReadOnly == true)
       .appLocale()
     }
     CommandGroup(before: .toolbar) {
@@ -122,16 +123,16 @@ struct AppCommands: Commands {
           if let document = project.document { records.record(document) }
         }
         .keyboardShortcut(Shortcuts.record)
-        .disabled(!canRun)
+        .disabled(!canRun || project.document?.isReadOnly == true)
         Divider()
         Button("Add Block…") { blockPalette?.open() }
           .keyboardShortcut(Shortcuts.addBlock)
-          .disabled(blockPalette == nil)
+          .disabled(blockPalette == nil || project.document?.isReadOnly == true)
         Button { project.document?.addCondition() } label: {
           selectionIsIf ? Text("Add Condition") : Text("Add If")
         }
           .keyboardShortcut(Shortcuts.addCondition)
-          .disabled(project.document?.flow == nil)
+          .disabled(project.document?.flow == nil || project.document?.isReadOnly == true)
       }
       .appLocale()
     }

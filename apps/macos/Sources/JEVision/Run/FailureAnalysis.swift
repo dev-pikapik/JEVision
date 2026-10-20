@@ -166,7 +166,10 @@ struct FailureAnalysisCard: View {
   private func canFix(_ explanation: FailureExplanation) -> Bool {
     switch explanation.fix {
     case .runAgain, .addRetries, .quarantine, .addWait: project.hasTest(explanation.test)
-    case .updateReference: RunHistory.failedStep(run.report).map { $0.after != nil && $0.reference != nil } ?? false
+    case .updateReference:
+      RunHistory.failedStep(run.report).map {
+        $0.after != nil && $0.reference.map { blockPackageId(path: $0) == nil } == true
+      } ?? false
     case .openBlock: RunHistory.failedStep(run.report).map { project.hasTest($0.test) } ?? false
     }
   }

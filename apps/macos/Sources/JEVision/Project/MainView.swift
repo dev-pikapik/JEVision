@@ -53,6 +53,7 @@ struct MainView: View {
     }
     .sheet(item: $project.installingBlock) { InstallBlockSheet(model: $0) }
     .sheet(isPresented: $project.showsCustomBlocks) { CustomBlocksSheet() }
+    .sheet(item: $project.owningBlock) { OwnBlockSheet(model: $0) }
     .dropDestination(for: URL.self) { urls, _ in
       guard project.status == .ready, let source = urls.lazy.compactMap(BlockInstallModel.source).first else { return false }
       project.installBlock(from: source)

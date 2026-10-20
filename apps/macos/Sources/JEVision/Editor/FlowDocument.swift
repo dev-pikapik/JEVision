@@ -14,6 +14,9 @@ enum GridSnap {
 @Observable
 final class FlowDocument {
   let url: URL
+  /// The steps of an installed community block: shown, never changed or saved, since an update of
+  /// the block would replace them.
+  let isReadOnly: Bool
   private(set) var flow: Flow? {
     didSet {
       blockIndex = Dictionary(
@@ -43,6 +46,8 @@ final class FlowDocument {
   private var linked: Set<String> = []
   /// Why the last change couldn't be written to the file.
   private(set) var saveError: String?
+  /// The canvas shows what isn't in the file: a draft, or a change that couldn't be written.
+  var hasUnsavedChanges: Bool { beforeDraft != nil || saveError != nil }
   /// The block the inspector shows.
   var selection: String? {
     didSet {
@@ -90,6 +95,7 @@ final class FlowDocument {
   init(url: URL, project: URL? = nil) {
     self.url = url
     self.project = project
+    isReadOnly = url.deletingLastPathComponent().pathComponents.contains { $0.hasSuffix(".jevblock") }
     reload()
   }
 
@@ -202,7 +208,7 @@ final class FlowDocument {
   func insertRecorded(
     _ blocks: [BlockKind], files: [URL], at slot: Slot?, app: String, trash: @escaping Baseline.Trash = Baseline.moveToTrash
   ) {
-    guard var flow else { return }
+    guard var flow, !isReadOnly else { return }
     if flow.app.isEmpty { flow.app = app }
     let wasEmpty = flow.blocks.isEmpty
     guard let edited = insertBlocks(flow: flow, blocks: blocks, slot: slot) else { return }
@@ -342,6 +348,7 @@ final class FlowDocument {
   /// such block.
   @discardableResult
   func startLink(from slot: Slot? = nil) -> Bool {
+    guard !isReadOnly else { return false }
     let ports = layout.ports.map(\.slot).filter { $0.from == slot?.from ?? selection }
     let current = linking.flatMap { ports.firstIndex(of: $0.slot) }
     guard let slot = slot ?? (current.map { ports[($0 + 1) % ports.count] } ?? ports.first),
@@ -416,7 +423,7 @@ final class FlowDocument {
   /// Deletes `items`; deleted blocks are bridged, so the blocks around them stay linked. When
   /// notes are about those blocks, nothing happens until `finishRemoval` says what becomes of them.
   func remove(_ items: [CanvasItem]) {
-    guard let flow, !items.isEmpty else { return }
+    guard let flow, !items.isEmpty, !isReadOnly else { return }
     let blocks = items.compactMap(\.blockID)
     let notes = notesLeftByRemoving(flow: flow, blocks: blocks).filter { !items.contains(.note(id: $0)) }
     if notes.isEmpty {
@@ -471,7 +478,7 @@ final class FlowDocument {
 
   /// Shows `draft` on the canvas in place of the test, without saving it.
   func showDraft(_ draft: Flow) {
-    guard let flow else { return }
+    guard let flow, !isReadOnly else { return }
     if beforeDraft == nil { beforeDraft = flow }
     set(draft)
     selection = nil
@@ -501,6 +508,7 @@ final class FlowDocument {
   }
 
   private func apply(_ new: Flow, select: String?, action: String, coalesce: String? = nil) {
+    guard !isReadOnly else { return }
     if beforeDraft != nil {
       if undoManager?.isUndoing == true || undoManager?.isRedoing == true {
         // Undo and Redo change the test in the file, so the draft goes away first.
@@ -548,10 +556,10 @@ final class FlowDocument {
 
   private func check(_ flow: Flow) -> [Issue] {
     let folder = url.deletingLastPathComponent().path(percentEncoded: false)
-    // Of the checks against the disk, only the custom blocks' inputs and the blocks that aren't installed
-    // aren't shown next to their fields.
+    // Of the checks against the disk, only the custom blocks' inputs and the blocks that aren't installed,
+    // or need one that isn't, aren't shown next to their fields.
     let inputs = validateFlowIn(flow: flow, folder: folder).filter {
-      $0.code == "flow.input.missing" || $0.code == "flow.block.notInstalled"
+      ["flow.input.missing", "flow.block.notInstalled", "flow.block.dependencyUnmet"].contains($0.code)
     }
     var issues = validateFlow(flow: flow) + inputs + environmentIssues(flow: flow, folder: folder)
       + dataIssues(flow: flow, folder: folder)

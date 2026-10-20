@@ -75,6 +75,9 @@ struct EditorView: View {
     }
     return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
       .unmirrored()
+      .safeAreaInset(edge: .top, spacing: 0) {
+        if document.isReadOnly { ReadOnlyBar(id: blockPackageId(path: document.url.path)) }
+      }
       .overlay(alignment: .topLeading) {
         if let target = palette {
           GeometryReader { box in
@@ -114,16 +117,18 @@ struct EditorView: View {
           if !document.layout.blocks.isEmpty {
             HStack(spacing: 8) {
               ZoomBar(zoom: canvasZoom)
-              if document.layout.blocks.count <= 2 { AddBlockHint(open: openPalette) }
+              if document.layout.blocks.count <= 2 && !document.isReadOnly { AddBlockHint(open: openPalette) }
             }
             .padding(.bottom, 12)
           }
           if let result = runs.result, result.test == document.url {
             RunResultBar(
               result: result, showFailedBlock: failedBlock.map { id in { showBlock(id) } },
-              addCheck: result.nothingChecked ? { addCheck() } : nil)
+              addCheck: result.nothingChecked && !document.isReadOnly ? { addCheck() } : nil)
               .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-          } else if !document.layout.blocks.isEmpty, document.issues.contains(where: { $0.code == "flow.noCheck" }) {
+          } else if !document.layout.blocks.isEmpty, !document.isReadOnly,
+            document.issues.contains(where: { $0.code == "flow.noCheck" })
+          {
             HStack(spacing: 10) {
               Image(systemName: RunStatus.unchecked.symbol)
                 .foregroundStyle(.secondary)
@@ -166,6 +171,7 @@ struct EditorView: View {
             NoteInspector(document: document, id: note.id)
           }
         }
+        .disabled(document.isReadOnly)
         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
         // Esc hands the keyboard back to the canvas, where ⌫ deletes the selected block.
         .onExitCommand { canvasFocused = true }
@@ -183,6 +189,7 @@ struct EditorView: View {
           .accessibilityHint(Text("Shows the test card: what it checks, who looks after it, its retries, flaky mark and secrets."))
           .popover(isPresented: $showsDetails, arrowEdge: .bottom) {
             TestDetailsView(document: document)
+              .disabled(document.isReadOnly)
           }
         }
         ToolbarItemGroup(placement: .primaryAction) {
@@ -192,6 +199,7 @@ struct EditorView: View {
               set: { app in document.updateFlow(field: "app") { $0.app = app ?? "" } }),
             noneTitle: Text("Choose App")
           )
+          .disabled(document.isReadOnly)
           .help(Text("The app the test runs in. Click to choose another one."))
           LastRunChip(run: lastRun?.own)
         }
@@ -214,14 +222,16 @@ struct EditorView: View {
           .labelStyle(.titleAndIcon)
           .help(Text("Run the test (⌘R)"))
           Button("Record", systemImage: "record.circle") { records.record(document) }
-            .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
+            .disabled(
+              runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil
+                || document.isReadOnly)
             .labelStyle(.titleAndIcon)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
         if !flow.canvas.notes.isEmpty {
           ToolbarItem(placement: .primaryAction) {
             Menu {
-              if let selection = document.selection {
+              if let selection = document.selection, !document.isReadOnly {
                 Button("Add Note to Block", systemImage: "note.text.badge.plus") { document.addNote(about: selection) }
               }
               Toggle(
@@ -250,6 +260,7 @@ struct EditorView: View {
           } primaryAction: {
             openPalette()
           }
+          .disabled(document.isReadOnly)
           .labelStyle(.titleAndIcon)
           .help(Text("Add a block after the selected one (Space or ⌘B)"))
           let growsIf = document.selection.flatMap(document.block)?.kind.typeName == "if"
@@ -263,6 +274,7 @@ struct EditorView: View {
               Image(systemName: "arrow.triangle.branch")
             }
           }
+          .disabled(document.isReadOnly)
           .help(
             growsIf
               ? Text("Add one more way out to the selected If (⇧⌘B)")
@@ -376,6 +388,7 @@ struct EditorView: View {
         } onAdd: { slot in
           palette = PaletteTarget(slot: slot)
         } onPalette: { slot, point, at in
+          guard !document.isReadOnly else { return }
           palette = PaletteTarget(
             slot: slot ?? document.slotAfterSelection, point: point,
             anchor: CGPoint(x: at.x * zoom - scroll.x, y: at.y * zoom - scroll.y))
@@ -411,8 +424,10 @@ struct EditorView: View {
           } description: {
             Text("Add the first step of the test.")
           } actions: {
-            Button("Add Block") { openPalette() }
-              .buttonStyle(.glassProminent)
+            if !document.isReadOnly {
+              Button("Add Block") { openPalette() }
+                .buttonStyle(.glassProminent)
+            }
           }
         }
       }
@@ -440,17 +455,19 @@ struct EditorView: View {
       press in handle(press.key)
     }
     .onCopyCommand(perform: document.picked.isEmpty ? nil : { clipboardItems() })
-    .onCutCommand(perform: document.picked.isEmpty ? nil : {
+    .onCutCommand(perform: document.picked.isEmpty || document.isReadOnly ? nil : {
       let items = clipboardItems()
       document.remove(document.pickedInOrder)
       return items
     })
-    .onPasteCommand(of: [.utf8PlainText]) { _ in CanvasClipboard.paste(into: document) }
+    .onPasteCommand(of: [.utf8PlainText], validator: { document.isReadOnly ? nil : $0 }) { _ in
+      CanvasClipboard.paste(into: document)
+    }
     .focusedValue(\.canvasDocument, document)
     .onChange(of: document.linking) { old, new in announce(old: old, new: new) }
     .onChange(of: document.pickedLinks) { if !document.pickedLinks.isEmpty { canvasFocused = true } }
     .accessibilityElement(children: .contain)
-    .accessibilityLabel(Text("Canvas"))
+    .accessibilityLabel(document.isReadOnly ? Text("Canvas, read-only") : Text("Canvas"))
   }
 
   /// Tells VoiceOver which block a link being made from the keyboard leads to.
@@ -466,10 +483,11 @@ struct EditorView: View {
   }
 
   private func describeTest() {
-    if document.drafter == nil { document.drafter = TestDrafter() }
+    if document.drafter == nil && !document.isReadOnly { document.drafter = TestDrafter() }
   }
 
   private func openPalette() {
+    guard !document.isReadOnly else { return }
     palette = PaletteTarget(slot: document.slotAfterSelection)
   }
 
@@ -572,7 +590,9 @@ struct EditorView: View {
         return .ignored
       }
     case .delete, .deleteForward:
-      if !document.pickedLinks.isEmpty {
+      if document.isReadOnly {
+        return .ignored
+      } else if !document.pickedLinks.isEmpty {
         document.unlink(document.pickedLinks.sorted { ($0.from, $0.edge) < ($1.from, $1.edge) })
       } else if !document.picked.isEmpty {
         document.remove(document.pickedInOrder)
@@ -676,6 +696,36 @@ struct CanvasZoom {
 }
 
 /// Tells a new test's author how to add the next block: a click, or Space on the canvas.
+/// Says an installed community block can't be changed here, and offers a copy among the project's
+/// own blocks that can.
+private struct ReadOnlyBar: View {
+  @Environment(ProjectStore.self) private var project
+  /// The installed block, like `com.acme.sign-in`; `nil` for a file inside one that isn't its steps.
+  let id: String?
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "lock.fill")
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+      Text("This block comes from the community and can’t be edited here.")
+        .fixedSize(horizontal: false, vertical: true)
+      Spacer(minLength: 8)
+      if let id {
+        Button("Make This a Block of the Project…") { project.owningBlock = project.makeOwnBlockModel(of: id) }
+          .buttonStyle(.glassProminent)
+          .help(Text("Makes a copy among the project’s own blocks, which you can change. The installed block stays."))
+      }
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 8)
+    .adaptiveGlass()
+    .padding([.horizontal, .top])
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(Text("Read-only block"))
+  }
+}
+
 private struct AddBlockHint: View {
   let open: () -> Void
 
