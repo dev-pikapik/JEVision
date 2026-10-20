@@ -17,9 +17,17 @@ struct ReferenceWizardView: View {
   let wizard: ReferenceWizard
   let undoManager: UndoManager?
   @State private var picture: ReferencePicture?
+  /// The picture being replaced, when the guide comes from the reference editor.
+  @State private var current: ReferencePicture?
   @State private var preview: URL?
 
-  private var images: StepImages { StepImages(step: wizard.step, in: wizard.run) }
+  /// The pictures a larger preview can show.
+  private var previews: [URL] {
+    switch wizard.source {
+    case .run(let step, let folder): StepImages(step: step, in: folder).all
+    case .editor(_, _, let old): [old, wizard.screenshot].compactMap(\.self)
+    }
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -30,8 +38,11 @@ struct ReferenceWizardView: View {
       footer
     }
     .frame(minWidth: 820, idealWidth: 980, minHeight: 560, idealHeight: 700)
-    .task { picture = ReferencePicture(url: wizard.screenshot) }
-    .quickLookPreview($preview, in: images.all)
+    .task {
+      picture = ReferencePicture(url: wizard.screenshot)
+      if case .editor(_, _, let old?) = wizard.source { current = ReferencePicture(url: old) }
+    }
+    .quickLookPreview($preview, in: previews)
     .onChange(of: wizard.page) { _, _ in
       guard wizard.outcome == nil else { return }
       AccessibilityNotification.Announcement(pageAnnouncement).post()
@@ -134,7 +145,9 @@ struct ReferenceWizardView: View {
   private var compare: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
-        Comparison(step: wizard.step, images: images) { preview = $0 }
+        if case .run(let step, let folder) = wizard.source {
+          Comparison(step: step, images: StepImages(step: step, in: folder)) { preview = $0 }
+        }
         Text("Next runs compare with it. The current image \(wizard.reference) moves to the Trash, and Edit › Undo puts it back.")
           .font(.callout)
           .foregroundStyle(.secondary)
@@ -153,6 +166,12 @@ struct ReferenceWizardView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 14) {
         let tests = wizard.entries.reduce(into: [String]()) { if !$0.contains($1.use.test) { $0.append($1.use.test) } }
+        if case .editor = wizard.source {
+          HStack(alignment: .top, spacing: 16) {
+            thumbnail(current, String(localized: "Current picture"), wizard.old)
+            thumbnail(picture, String(localized: "New picture"), wizard.screenshot)
+          }
+        }
         Text(String(localized: "Used by \(wizard.entries.count) blocks") + " " + String(localized: "in \(tests.count) tests"))
           .font(.title3.weight(.semibold))
           .accessibilityAddTraits(.isHeader)
@@ -165,8 +184,8 @@ struct ReferenceWizardView: View {
               .font(.headline)
               .accessibilityAddTraits(.isHeader)
             ForEach(wizard.entries.filter { $0.use.test == test }) { entry in
-              UseRow(entry: entry, isFailed: isFailed(entry)) {
-                if isFailed(entry) { Text("Failed this run").foregroundStyle(.red) }
+              UseRow(entry: entry, isFailed: isOrigin(entry)) {
+                if isOrigin(entry) { originLabel }
               }
             }
           }
@@ -183,10 +202,10 @@ struct ReferenceWizardView: View {
         Text("Ready to replace the picture")
           .font(.title3.weight(.semibold))
           .accessibilityAddTraits(.isHeader)
-        Text("The new screenshot becomes the reference image. The old one moves to the Trash.")
+        Text("The new picture becomes the reference image. The old one moves to the Trash.")
           .foregroundStyle(.secondary)
         ForEach(wizard.entries) { entry in
-          UseRow(entry: entry, isFailed: isFailed(entry), showsTest: true) {
+          UseRow(entry: entry, isFailed: isOrigin(entry), showsTest: true) {
             Text(Self.decisionText(entry))
               .foregroundStyle(entry.decision == .skipped ? Color.orange : Color.secondary)
           }
@@ -239,8 +258,37 @@ struct ReferenceWizardView: View {
     if wizard.isSingle { dismiss() }
   }
 
-  private func isFailed(_ entry: ReferenceWizard.Entry) -> Bool {
-    entry.use.test == wizard.step.test && entry.use.block == wizard.step.block
+  /// The block the guide was started from: the failed check, or the block open in the editor.
+  private func isOrigin(_ entry: ReferenceWizard.Entry) -> Bool {
+    entry.use.test == wizard.origin.test && entry.use.block == wizard.origin.block
+  }
+
+  @ViewBuilder private var originLabel: some View {
+    switch wizard.source {
+    case .run: Text("Failed this run").foregroundStyle(.red)
+    case .editor: Text("Open in the editor").foregroundStyle(.secondary)
+    }
+  }
+
+  @ViewBuilder private func thumbnail(_ picture: ReferencePicture?, _ title: String, _ url: URL?) -> some View {
+    if let picture {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(title)
+          .font(.callout)
+          .foregroundStyle(.secondary)
+        Button {
+          preview = url
+        } label: {
+          Image(decorative: picture.image, scale: 1)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(maxHeight: 150)
+            .clipShape(.rect(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(title))
+      }
+    }
   }
 
   private var pageAnnouncement: String {

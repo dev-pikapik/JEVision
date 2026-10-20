@@ -6425,6 +6425,16 @@
         }
       }
     },
+    "Current picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текущая картинка"
+          }
+        }
+      }
+    },
     "Custom Blocks" : {
       "localizations" : {
         "ru" : {
@@ -11198,6 +11208,16 @@
         }
       }
     },
+    "New picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая картинка"
+          }
+        }
+      }
+    },
     "New reference image" : {
       "localizations" : {
         "ru" : {
@@ -12678,6 +12698,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть в новом экземпляре приложения"
+          }
+        }
+      }
+    },
+    "Open in the editor" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыт в редакторе"
           }
         }
       }
@@ -19410,22 +19440,22 @@
         }
       }
     },
+    "The new picture becomes the reference image. The old one moves to the Trash." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая картинка станет эталоном. Старая уйдёт в Корзину."
+          }
+        }
+      }
+    },
     "The new picture can’t be read" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать новую картинку"
-          }
-        }
-      }
-    },
-    "The new screenshot becomes the reference image. The old one moves to the Trash." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Новый снимок станет эталоном. Старый уйдёт в Корзину."
           }
         }
       }

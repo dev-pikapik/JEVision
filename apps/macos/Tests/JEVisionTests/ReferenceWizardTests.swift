@@ -175,6 +175,70 @@ struct ReferenceWizardTests {
     wizard.decide(0, .skipped)
     #expect(wizard.page == .compare && wizard.entries[0].decision == .pending)
   }
+
+  @Test func startsFromTheEditorWithTheBlocksThatUseThePicture() throws {
+    let project = try SharedPicture()
+    defer { project.remove() }
+    let picture = try TemporaryPicture(Data("fresh".utf8))
+    let wizard = try #require(
+      ReferenceWizard(
+        replacing: "refs/home.png", with: picture, in: project.root,
+        file: project.root.appending(path: "smoke/inbox.flow.json"), block: "a"))
+    #expect(wizard.page == .affected, "the old and new picture come from the editor, so the list is first")
+    #expect(wizard.pages == [.affected, .block(0), .block(1), .block(2), .block(3), .finish])
+    #expect(!wizard.canGoBack && wizard.position == 1)
+    #expect(wizard.origin.test == "smoke/inbox.flow.json" && wizard.origin.block == "a")
+    #expect(wizard.entries.first?.use.test == "smoke/inbox.flow.json" && wizard.entries.first?.use.block == "a")
+    #expect(wizard.entries.count == 4)
+    #expect(wizard.screenshot == picture.url)
+    #expect(wizard.old?.lastPathComponent == "home.png")
+
+    wizard.next()
+    #expect(wizard.page == .block(0) && wizard.canGoBack)
+    wizard.back()
+    #expect(wizard.page == .affected)
+  }
+
+  @Test func theEditorReplacesAPictureOnlyOneBlockUsesAtOnce() throws {
+    let project = try SharedPicture()
+    defer { project.remove() }
+    let picture = try TemporaryPicture(Data("fresh".utf8))
+    let login = project.root.appending(path: "login.flow.json")
+    #expect(
+      ReferenceWizard(replacing: "refs/login.png", with: picture, in: project.root, file: login, block: "b") == nil)
+    #expect(
+      ReferenceWizard(replacing: "refs/none.png", with: picture, in: project.root, file: login, block: "b") == nil)
+  }
+
+  @Test func theGuideStartedInTheEditorWritesThePictureAndTheSettingsTogether() throws {
+    let project = try SharedPicture()
+    defer { project.remove() }
+    let before = SharedPicture.tests.map { project.text($0) }
+    let picture = try TemporaryPicture(Data("fresh".utf8))
+    let wizard = try #require(
+      ReferenceWizard(
+        replacing: "refs/home.png", with: picture, in: project.root,
+        file: project.root.appending(path: "login.flow.json"), block: "a"))
+    #expect(wizard.entries.first?.use.test == "login.flow.json")
+    wizard.next()
+    wizard.edit(0, Self.tighter(0.6))
+    for index in wizard.entries.indices { wizard.decide(index, index == 3 ? .skipped : .confirmed) }
+    #expect(wizard.page == .finish)
+
+    var accepted = try ReferenceAcceptance.accept(
+      wizard.screenshot, keeping: wizard.keeping, as: project.picture, in: project.root, edits: wizard.edits,
+      trash: project.moveToTrash)
+    wizard.finished()
+    #expect(wizard.outcome == ReferenceWizard.Outcome(blocks: 3, tests: 3, skipped: 1))
+    #expect(project.text("refs/home.png") == "fresh")
+    #expect(project.text("login.flow.json") != before[0], "the block the editor was open on has its new settings")
+
+    try ReferenceAcceptance.undo(accepted, in: project.root)
+    #expect(project.text("refs/home.png") == "old")
+    #expect(SharedPicture.tests.map { project.text($0) } == before)
+    accepted = try ReferenceAcceptance.redo(accepted, in: project.root, trash: project.moveToTrash)
+    #expect(project.text("refs/home.png") == "fresh")
+  }
 }
 
 struct ReferenceAcceptanceTests {
@@ -261,6 +325,29 @@ struct ReferenceAcceptanceTests {
     try ReferenceAcceptance.undo(accepted, in: project.root)
     #expect(project.text("refs/home.png") == "old")
     #expect(SharedPicture.tests.map { project.text($0) } == before)
+  }
+
+  @Test func theNewPictureStaysForRedoAndGoesWhenNothingCanRedoAnyMore() throws {
+    let project = try SharedPicture()
+    defer { project.remove() }
+    var accepted: AcceptedReference?
+    var file: URL?
+    do {
+      let picture = try TemporaryPicture(Data("fresh".utf8))
+      file = picture.url
+      accepted = try ReferenceAcceptance.accept(
+        picture.url, keeping: picture, as: project.picture, in: project.root, edits: [], trash: project.moveToTrash)
+    }
+    let temporary = try #require(file)
+    #expect(FileManager.default.fileExists(atPath: temporary.path), "Redo needs the new picture again")
+
+    try ReferenceAcceptance.undo(try #require(accepted), in: project.root)
+    #expect(project.text("refs/home.png") == "old")
+    accepted = try ReferenceAcceptance.redo(try #require(accepted), in: project.root, trash: project.moveToTrash)
+    #expect(project.text("refs/home.png") == "fresh")
+
+    accepted = nil
+    #expect(!FileManager.default.fileExists(atPath: temporary.path))
   }
 
   @Test @MainActor func saysWhatWentWrongInWords() {

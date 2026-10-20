@@ -145,6 +145,7 @@
   <li><strong>Summary</strong> of what is about to change. <strong>Accept as New Reference</strong> writes everything, then says, for example, “Updated 3 blocks in 2 tests”.</li>
 </ol>
 <p>The new picture and the changed settings are written together: if one test can't be saved, or a test was edited while the guide was open, nothing is replaced. <strong>Cancel</strong> at any step changes nothing, and <strong>Edit → Undo</strong> after the end puts back the picture and every setting. A skipped block still compares with the new picture, so the summary warns about it. When only one block uses the picture, the guide is a single step: the two pictures and that block's settings.</p>
+<p>The same guide opens when you choose <strong>Replace Image</strong> in the <a href="#areas">reference editor</a> for a picture that other blocks use too; it starts at the list of blocks, since you have just chosen the new picture. If only this block uses the picture, it is replaced at once, and <strong>Edit → Undo</strong> brings the old one back.</p>
 <p>A block that looks for the picture on the screen, such as a <code>click</code> or a <code>drag</code> with an image target, has no areas or similarity: it is listed, and from now on it looks for the new picture. The command line has no command to accept a reference.</p>
 
 <h2 id="meaning">Checks by meaning</h2>
