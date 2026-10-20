@@ -622,7 +622,7 @@ final class ProjectStore {
 
     init(_ runs: [SavedRun]) {
       self.runs = runs
-      latest = ProjectMap.latestRuns(runs.filter { $0.report.ci == nil })
+      latest = ProjectMap.latestRuns(runs.filter(\.isHere))
       let reports = runs.map(\.report)
       let now = Int64(Date.now.timeIntervalSince1970 * 1000)
       flaky = runs.isEmpty ? [:] : flakyTests(runs: reports, nowMs: now)

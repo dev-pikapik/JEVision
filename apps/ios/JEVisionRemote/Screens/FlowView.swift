@@ -7,19 +7,32 @@ struct FlowView: View {
   var current: String?
   var maxHeight: CGFloat = .infinity
   @State private var width: CGFloat = 0
+  @State private var hidesResolved = false
+  @State private var openNote: TestNote?
 
   var body: some View {
     let scale = width > 0 ? min(1, max(0.45, width / max(flow.size.width, 1))) : 1
-    ScrollView([.horizontal, .vertical]) {
-      canvas
-        .scaleEffect(scale, anchor: .topLeading)
-        .frame(width: flow.size.width * scale, height: flow.size.height * scale, alignment: .topLeading)
-        .frame(minWidth: width)
+    VStack(alignment: .leading, spacing: 8) {
+      if flow.hasResolvedNotes {
+        Toggle("Hide Resolved Notes", isOn: $hidesResolved)
+          .font(.subheadline)
+          .padding(.horizontal)
+          .accessibilityIdentifier("hideResolved")
+      }
+      ScrollView([.horizontal, .vertical]) {
+        canvas
+          .scaleEffect(scale, anchor: .topLeading)
+          .frame(width: flow.size.width * scale, height: flow.size.height * scale, alignment: .topLeading)
+          .frame(minWidth: width)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+      .frame(height: min(flow.size.height * scale, maxHeight))
+      .frame(maxWidth: .infinity)
+      .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
-    .scrollBounceBehavior(.basedOnSize)
-    .frame(height: min(flow.size.height * scale, maxHeight))
-    .frame(maxWidth: .infinity)
-    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    .sheet(item: $openNote) { note in
+      NoteSheet(note: note, subject: NoteText.subject(of: note, in: flow))
+    }
   }
 
   private var canvas: some View {
@@ -32,6 +45,7 @@ struct FlowView: View {
           .offset(x: frame.area.minX, y: frame.area.minY)
       }
       Edges(flow: flow)
+      NoteLinks(flow: flow, notes: notes)
       ForEach(flow.edges.filter { ($0.edge == "then" || $0.edge == "else") && !$0.points.isEmpty }, id: \.self) { edge in
         let point = edge.points[min(2, edge.points.count - 1)]
         Text(edge.edge == "then" ? "Yes" : "No")
@@ -46,9 +60,16 @@ struct FlowView: View {
             .offset(x: area.minX, y: area.minY)
         }
       }
+      ForEach(notes) { note in
+        NoteCard(note: note) { openNote = note }
+          .frame(width: note.area.width, height: note.area.height)
+          .offset(x: note.area.minX, y: note.area.minY)
+      }
     }
     .frame(width: flow.size.width, height: flow.size.height, alignment: .topLeading)
   }
+
+  private var notes: [TestNote] { flow.notes(hidingResolved: hidesResolved) }
 
   private var steps: [TestFlow.Block] { flow.blocks.filter { $0.area != nil } }
 
@@ -93,6 +114,32 @@ private struct Edges: View {
     path.addLine(to: CGPoint(x: b.x - length * cos(angle + spread), y: b.y - length * sin(angle + spread)))
     path.closeSubpath()
     return path
+  }
+}
+
+/// A dashed line from each note about a block to the block, as the Mac draws it.
+private struct NoteLinks: View {
+  let flow: TestFlow
+  let notes: [TestNote]
+
+  var body: some View {
+    Canvas { context, _ in
+      for note in notes {
+        guard case .block(let id) = note.anchor,
+          let block = flow.blocks.first(where: { $0.id == id })?.area, !block.intersects(note.area)
+        else { continue }
+        let ends = NoteLink.ends(note: note.area, block: block)
+        var line = Path()
+        line.move(to: ends.0)
+        line.addLine(to: ends.1)
+        context.stroke(
+          line, with: .style(.secondary.opacity(note.resolved == nil ? 0.8 : 0.4)),
+          style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+      }
+    }
+    .frame(width: flow.size.width, height: flow.size.height)
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
   }
 }
 

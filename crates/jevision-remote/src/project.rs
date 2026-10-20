@@ -7,15 +7,16 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 use jevision_core::{
-    BlockKind, ClipboardAction, Condition, DataTable, ScrollDirection, ScrollUnit, Target,
-    WaitUntil,
+    AttachmentKind, BlockKind, ClipboardAction, Condition, DataTable, NoteAnchor, ScrollDirection,
+    ScrollUnit, Target, WaitUntil,
 };
 use jevision_runner::{Run, RunReport};
 
 use crate::RemoteError;
 use crate::wire::{
-    Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, MAX_MESSAGE, MAX_PICTURE, Position,
-    RunState, RunStatus, RunSummary, TestEntry, TestSummary,
+    Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, MAX_MESSAGE, MAX_PICTURE,
+    NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary, Position, RunState,
+    RunStatus, RunSummary, TestEntry, TestSummary, bounded_notes,
 };
 
 const TEST_SUFFIX: &str = ".flow.json";
@@ -188,7 +189,58 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
             })
             .collect(),
         rows: row_labels(root, &file, &flow),
+        notes: bounded_notes(flow.canvas.notes.iter().map(note_summary).collect()),
     })
+}
+
+/// A note of the test as it goes to the phone, before its limits are applied.
+fn note_summary(note: &jevision_core::Note) -> NoteSummary {
+    let (anchor, block) = match &note.anchor {
+        NoteAnchor::Test => ("test", None),
+        NoteAnchor::Block { id } => ("block", Some(id.clone())),
+        NoteAnchor::Folder => ("folder", None),
+    };
+    NoteSummary {
+        id: note.id.clone(),
+        text: note.text.clone(),
+        author: note.author.clone(),
+        time: note.time.clone(),
+        anchor: anchor.to_owned(),
+        block,
+        area: Area {
+            x: note.rect.x,
+            y: note.rect.y,
+            width: note.rect.width,
+            height: note.rect.height,
+        },
+        reply_count: note.replies.len().try_into().unwrap_or(u32::MAX),
+        replies: note
+            .replies
+            .iter()
+            .map(|r| NoteReplySummary {
+                id: r.id.clone(),
+                author: r.author.clone(),
+                time: r.time.clone(),
+                text: r.text.clone(),
+            })
+            .collect(),
+        resolved: note.resolved.as_ref().map(|r| NoteResolvedSummary {
+            by: r.by.clone(),
+            time: r.time.clone(),
+        }),
+        attachments: note
+            .attachments
+            .iter()
+            .map(|a| NoteAttachmentSummary {
+                kind: match a.kind {
+                    AttachmentKind::File => "file",
+                    AttachmentKind::Link => "link",
+                }
+                .to_owned(),
+                value: a.value.clone(),
+            })
+            .collect(),
+    }
 }
 
 /// A card field as the test file writes it, such as `critical`.
@@ -231,6 +283,37 @@ fn row_labels(root: &Path, file: &Path, flow: &jevision_core::Flow) -> Vec<Strin
             .unwrap_or_default(),
         _ => Vec::new(),
     }
+}
+
+/// The title of `block` of the test at `path` while it runs: its `${…}` placeholders filled from
+/// `values`, the values the block sees with secrets masked; placeholders `values` lacks stay as
+/// written. `None` when the test or the block can't be read.
+pub fn running_title(
+    root: &Path,
+    path: &str,
+    block: &str,
+    values: &HashMap<String, String>,
+) -> Option<String> {
+    let (_, flow) = read_test(&self::root(root).ok()?, path).ok()?;
+    let block = flow.blocks.iter().find(|b| b.id == block)?;
+    let title = title(&block.kind);
+    let mut filled = String::with_capacity(title.len());
+    let mut rest = title.as_str();
+    while let Some(at) = rest.find("${") {
+        let Some(len) = rest[at..].find('}') else {
+            break;
+        };
+        let placeholder = &rest[at..=at + len];
+        filled.push_str(&rest[..at]);
+        filled.push_str(
+            values
+                .get(&placeholder[2..len])
+                .map_or(placeholder, String::as_str),
+        );
+        rest = &rest[at + len + 1..];
+    }
+    filled.push_str(rest);
+    Some(jevision_core::unbreakable_placeholders(&filled))
 }
 
 fn title(kind: &BlockKind) -> String {

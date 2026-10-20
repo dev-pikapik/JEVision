@@ -1030,7 +1030,9 @@ struct FrameView: View {
           .onSubmit(endEditing)
           .onChange(of: focused) { if !focused { endEditing() } }
       } else if section.title.isEmpty {
-        Text("Untitled Frame").foregroundStyle(.secondary)
+        // An unnamed frame, like the rows of "Arrange in Rows", shows no heading until it's picked:
+        // the links into its blocks cross the title bar, and a hint there would sit under them.
+        Text("Untitled Frame").foregroundStyle(.secondary).opacity(isPicked ? 1 : 0)
       } else {
         Text(verbatim: section.title).lineLimit(1)
       }

@@ -57,6 +57,18 @@ struct FlakyQuarantineTests {
     #expect(QuarantineText.event(events[1]).hasSuffix("Failed after passing, nothing changed"))
   }
 
+  @Test func theEvidenceCountsOnlyWhatHappened() {
+    func text(_ passed: UInt32, _ retry: UInt32, _ failed: UInt32) -> String {
+      RunHistory.flakyEvidence(
+        FlakyEvidence(passed: passed, passedOnRetry: retry, failed: failed, environment: nil, since: "2026-10-01T09:00:00Z"))
+    }
+    // Passes after a retry are no failed run: "Failed: 0" would contradict the pass rate beside it.
+    #expect(!text(1, 1, 0).contains("Failed"))
+    #expect(text(1, 1, 0).hasSuffix("Passed: 1 · Passed on retry: 1"))
+    #expect(text(0, 2, 0).hasSuffix("Passed on retry: 2"))
+    #expect(text(2, 0, 1).hasSuffix("Passed: 2 · Failed: 1"))
+  }
+
   @Test func theEvidenceNamesTheDataRow() {
     let row = DataRow(number: 2, label: "anna", hash: "0123456789abcdef")
     let evidence = FlakyEvidence(

@@ -62,17 +62,15 @@ struct ContinuousIntegrationSection: View {
   var body: some View {
     Section {
       if project.rootURL != nil {
-        LabeledContent {
-          HStack {
-            Button(copied ? "Copied" : "Copy Workflow", systemImage: copied ? "checkmark" : "doc.on.doc") {
-              guard let workflow else { return }
-              NSPasteboard.general.clearContents()
-              NSPasteboard.general.setString(workflow.text, forType: .string)
-              copied = true
-            }
-            Button("Add to Project…") { adding = true }
-              .disabled(workflow?.path == nil)
+        ActionRow {
+          Button(copied ? "Copied" : "Copy Workflow", systemImage: copied ? "checkmark" : "doc.on.doc") {
+            guard let workflow else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(workflow.text, forType: .string)
+            copied = true
           }
+          Button("Add to Project…") { adding = true }
+            .disabled(workflow?.path == nil)
         } label: {
           RowLabel(Text("Run tests on every pull request"), Text("GitHub Actions, on a Mac of your own"))
         }

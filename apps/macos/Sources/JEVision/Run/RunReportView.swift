@@ -287,7 +287,7 @@ private struct ReportHeader: View {
           }
           .foregroundStyle(.secondary)
         }
-        HStack(spacing: 8) {
+        WrapLayout(spacing: 8) {
           if let failed {
             Button("Open Failed Block", systemImage: "scope") { openFailedBlock(failed) }
               .buttonStyle(.glassProminent)

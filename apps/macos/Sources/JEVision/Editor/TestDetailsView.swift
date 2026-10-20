@@ -205,12 +205,10 @@ struct TestDetailsView: View {
           Button("Edit Environments…") { project.environments.edit() }
         } else if let environment = missing.environment {
           ForEach(missing.values, id: \.self) { name in
-            LabeledContent {
-              HStack {
-                Text("Not set in \(environment)").foregroundStyle(.secondary)
-                Button("Set…") { settingValue = EnvironmentValueName(id: name) }
-                  .accessibilityLabel(Text("Set \(name)"))
-              }
+            ActionRow {
+              Text("Not set in \(environment)").foregroundStyle(.secondary)
+              Button("Set…") { settingValue = EnvironmentValueName(id: name) }
+                .accessibilityLabel(Text("Set \(name)"))
             } label: {
               Label {
                 Text(verbatim: name)
@@ -230,12 +228,10 @@ struct TestDetailsView: View {
           Button("Add Environment…") { addingEnvironment = true }
         }
         ForEach(missing.secrets, id: \.self) { name in
-          LabeledContent {
-            HStack {
-              Text("Not set").foregroundStyle(.secondary)
-              Button("Set…") { settingSecret = SecretName(id: name) }
-                .accessibilityLabel(Text("Set \(name)"))
-            }
+          ActionRow {
+            Text("Not set").foregroundStyle(.secondary)
+            Button("Set…") { settingSecret = SecretName(id: name) }
+              .accessibilityLabel(Text("Set \(name)"))
           } label: {
             Label {
               Text(verbatim: name)

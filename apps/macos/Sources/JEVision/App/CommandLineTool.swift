@@ -133,7 +133,7 @@ struct CommandLineToolView: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
         } else {
-          LabeledContent {
+          ActionRow {
             Button(isInstalled ? "Reinstall…" : "Install…", action: installForEveryone)
               .keyboardShortcut(isInstalled ? nil : .defaultAction)
           } label: {
@@ -155,7 +155,7 @@ struct CommandLineToolView: View {
       }
       if showsAlternatives, tool.unavailableReason == nil {
         Section("Without an administrator’s password") {
-          LabeledContent {
+          ActionRow {
             Button("Install Just for Me", action: installForMe)
           } label: {
             Text("Add jevision to ~/.local/bin")

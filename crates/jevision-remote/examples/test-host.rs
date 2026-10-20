@@ -34,7 +34,20 @@ const PEOPLE: &str = r#"{"format":1,"name":"Greet every person","app":"com.apple
     "ready":{"type":"if","reference":{"image":"","compare":"meaning","expect":"An empty document"},
       "then":"rows"},
     "rows":{"type":"useData","file":"people.csv","body":"type"},
-    "type":{"type":"type","text":"Hello, ${data.name}!","next":"rows"}}}"#;
+    "type":{"type":"type","text":"Hello, ${data.name}!","next":"rows"}},
+  "canvas":{"notes":{
+    "greeting":{"text":"**Check** the greeting for every row. The wording is in [the ticket](https://example.com/tickets/42).",
+      "author":"Anna Weber","time":"2026-10-18T09:30:00Z","anchor":{"type":"block","block":"rows"},
+      "attachments":[{"file":"greeting.png"},{"link":"https://example.com/tickets/42"}],
+      "replies":[{"id":"r1","author":"Boris Keller","time":"2026-10-18T10:05:00Z","text":"Chen has no email yet, the greeting still works."},
+        {"id":"r2","author":"Anna Weber","time":"2026-10-18T10:20:00Z","text":"Fine, **keep** it."}],
+      "frame":{"x":288,"y":144,"width":192,"height":128}},
+    "blank":{"text":"TextEdit starts with a **blank** document.","author":"Boris Keller",
+      "time":"2026-10-17T16:00:00Z","anchor":{"type":"block","block":"open"},
+      "resolved":{"by":"Boris Keller","time":"2026-10-17T17:00:00Z"},
+      "frame":{"x":288,"y":16,"width":192,"height":96}},
+    "timing":{"text":"Runs about *40 seconds* for three rows.","author":"Chen Li",
+      "time":"2026-10-18T11:00:00Z","frame":{"x":288,"y":304,"width":192,"height":96}}}}}"#;
 const PEOPLE_CSV: &str =
     "name,email\nAnna,anna@example.com\nBoris,boris@example.com\nChen,chen@example.com\n";
 const FAILING: &str = "login/sign-in.flow.json";
@@ -271,9 +284,13 @@ impl Player {
             .into_iter()
             .map(|b| (b.id.clone(), b.kind.type_name()))
             .collect();
-        let rows: Vec<Option<(u32, String)>> = match (table_rows(root, test, &flow), row) {
-            (Some(labels), Some(row)) => vec![Some((row + 1, labels[row as usize].clone()))],
-            (Some(labels), None) => (1..).zip(labels).map(Some).collect(),
+        let table = data_table(root, test, &flow);
+        let rows: Vec<Option<(u32, String)>> = match (&table, row) {
+            (Some(table), Some(row)) => vec![Some((row + 1, table.label(row as usize)))],
+            (Some(table), None) => (1..)
+                .zip((0..table.rows.len()).map(|row| table.label(row)))
+                .map(Some)
+                .collect(),
             (None, _) => vec![None],
         };
 
@@ -282,6 +299,16 @@ impl Player {
         let mut waited = step.is_zero();
         for row in rows {
             let attempt = 1;
+            // What the blocks of this row see, for the titles the phone shows while they run.
+            let values: HashMap<String, String> = match (&table, &row) {
+                (Some(table), Some((number, _))) => table
+                    .columns
+                    .iter()
+                    .zip(&table.rows[*number as usize - 1])
+                    .map(|(column, value)| (format!("data.{column}"), value.clone()))
+                    .collect(),
+                _ => HashMap::new(),
+            };
             self.update(run, |s| s.attempt = attempt);
             self.publish(root, run, RunEvent::AttemptStarted { attempt });
             if !waited {
@@ -310,6 +337,12 @@ impl Player {
                         test: test.to_owned(),
                         block: block.clone(),
                         block_type: (*kind).to_owned(),
+                        title: jevision_remote::running_title(
+                            Path::new(root),
+                            test,
+                            block,
+                            &values,
+                        ),
                     },
                 );
                 std::thread::sleep(step);
@@ -418,12 +451,15 @@ impl Player {
     }
 }
 
-/// Labels of the rows of the test's data table, when it has one.
-fn table_rows(root: &str, test: &str, flow: &jevision_core::Flow) -> Option<Vec<String>> {
+/// The test's data table, when it has one.
+fn data_table(
+    root: &str,
+    test: &str,
+    flow: &jevision_core::Flow,
+) -> Option<jevision_core::DataTable> {
     let file = jevision_core::primary_data_file(flow)?;
     let path = Path::new(root).join(test).parent()?.join(file);
-    let table = jevision_core::DataTable::load(&path).ok()?;
-    Some((0..table.rows.len()).map(|row| table.label(row)).collect())
+    jevision_core::DataTable::load(&path).ok()
 }
 
 /// A run folder name like the runner's, such as `20261018-130000123-sign-in`.

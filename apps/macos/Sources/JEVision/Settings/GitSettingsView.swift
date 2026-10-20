@@ -164,44 +164,38 @@ struct GitSettingsView: View {
   @ViewBuilder
   private var gitHubSection: some View {
     Section {
-      LabeledContent {
+      ActionRow {
         switch git.gitHub {
         case .checking:
           ProgressView().controlSize(.small)
             .accessibilityLabel(Text("Checking the GitHub account"))
         case .signedIn(let account):
-          HStack {
-            Text(verbatim: account.login)
-              .textSelection(.enabled)
-            Button("Sign Out", action: git.signOutOfGitHub)
-              .help(Text("Forget the sign-in kept in the Keychain"))
-          }
+          Text(verbatim: account.login)
+            .textSelection(.enabled)
+          Button("Sign Out", action: git.signOutOfGitHub)
+            .help(Text("Forget the sign-in kept in the Keychain"))
         case .signedOut:
-          HStack {
-            if git.signInCode == nil {
-              if signInClientID.isEmpty {
-                // Without an OAuth app, GitHub CLI signs in; its account is then offered below.
-                Button("Connect GitHub…") { GitHubConnect.start() }
-                  .help(Text("Opens Terminal to sign in to GitHub in your browser"))
-              } else {
-                Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
-                  .help(Text("Opens GitHub in your browser to let JEVision in"))
-              }
+          if git.signInCode == nil {
+            if signInClientID.isEmpty {
+              // Without an OAuth app, GitHub CLI signs in; its account is then offered below.
+              Button("Connect GitHub…") { GitHubConnect.start() }
+                .help(Text("Opens Terminal to sign in to GitHub in your browser"))
+            } else {
+              Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
+                .help(Text("Opens GitHub in your browser to let JEVision in"))
             }
-            Button("Check Again", action: git.checkGitHub)
           }
+          Button("Check Again", action: git.checkGitHub)
         }
       } label: {
         RowLabel(Text("Account"), accountDetail)
       }
       .settingAnchor("gitHubAccount")
       if let code = git.signInCode {
-        LabeledContent {
-          HStack {
-            Button("Copy Code", action: git.copySignInCode)
-            Button("Open GitHub", action: git.openSignInPage)
-            Button("Cancel", action: git.cancelSignIn)
-          }
+        ActionRow {
+          Button("Copy Code", action: git.copySignInCode)
+          Button("Open GitHub", action: git.openSignInPage)
+          Button("Cancel", action: git.cancelSignIn)
         } label: {
           VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
@@ -219,20 +213,18 @@ struct GitSettingsView: View {
           .fixedSize(horizontal: false, vertical: true)
         }
       } else if case .signedOut = git.gitHub, let account = git.gitHubCLIAccount {
-        LabeledContent {
+        ActionRow {
           Button("Use This Account", action: git.useGitHubCLIAccount)
         } label: {
           RowLabel(Text("GitHub CLI is signed in as \(account.login)"), Text("Sign in with the same account, without the browser."))
         }
       }
       if case .tracked(let status) = git.state, status.github != nil {
-        LabeledContent {
-          HStack {
-            Button("New…") { isComposing = true }
-              .help(Text("Propose the changes on your branch"))
-              .disabled(git.activity != nil || !status.hasCommits || status.branch == nil)
-            Button("Show…") { openWindow(id: SceneID.pullRequests) }
-          }
+        ActionRow {
+          Button("New…") { isComposing = true }
+            .help(Text("Propose the changes on your branch"))
+            .disabled(git.activity != nil || !status.hasCommits || status.branch == nil)
+          Button("Show…") { openWindow(id: SceneID.pullRequests) }
         } label: {
           RowLabel(Text("Pull Requests"), Text("Propose your branch’s changes, or see what others propose."))
         }

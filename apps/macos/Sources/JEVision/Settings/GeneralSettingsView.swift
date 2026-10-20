@@ -18,10 +18,15 @@ struct GeneralSettingsView: View {
     Form {
       SettingsHeader(tab: .general, text: Text("How JEVision looks, which language it speaks and what it does while a test runs."))
       Section {
-        Picker("Appearance", selection: $appearance) {
-          ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+        ActionRow {
+          Picker("Appearance", selection: $appearance) {
+            ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+          }
+          .pickerStyle(.segmented)
+          .labelsHidden()
+        } label: {
+          Text("Appearance")
         }
-        .pickerStyle(.segmented)
         .settingAnchor("appearance")
         Picker("Language", selection: language) {
           Text("System").tag("")

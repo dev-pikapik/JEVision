@@ -4,7 +4,7 @@ import JEVisionCore
 /// What the saved runs say about the open test: the toolbar's last-run status, the marks on the
 /// blocks and the reason a selected block failed.
 struct LastRun {
-  /// The newest run of the test itself.
+  /// The newest run of the test itself, made here: the board and the sidebar show the same one.
   let own: SavedRun?
   /// The run the blocks show.
   let shown: SavedRun?
@@ -24,15 +24,15 @@ struct LastRun {
     taken = Set(steps.compactMap { step in step.test == file ? step.branch.map { Slot(from: step.block, edge: $0) } : nil })
   }
 
-  /// The newest run of `file`, from the runs newest first.
+  /// The newest run of `file` made here, from the runs newest first.
   static func own(_ file: String, in runs: [SavedRun]) -> SavedRun? {
-    runs.first { $0.report.file == file }
+    runs.first { $0.isHere && $0.report.file == file }
   }
 
-  /// The newest run in which blocks of `file` ran: its own, or one of a test that ran it.
+  /// The newest run made here in which blocks of `file` ran: its own, or one of a test that ran it.
   static func ran(_ file: String, in runs: [SavedRun]) -> SavedRun? {
     runs.first { run in
-      run.report.file == file || decidingAttempt(report: run.report)?.steps.contains { $0.test == file } == true
+      run.isHere && (run.report.file == file || decidingAttempt(report: run.report)?.steps.contains { $0.test == file } == true)
     }
   }
 
