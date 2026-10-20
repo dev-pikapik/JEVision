@@ -19,6 +19,7 @@ mod issue;
 mod layout;
 mod merge;
 mod model;
+mod notes;
 mod package;
 mod package_files;
 mod project;
@@ -62,6 +63,12 @@ pub use merge::{
     ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
+pub use notes::{
+    IssueRef, MENTION_SCHEME, NOTE_ASSETS_SUFFIX, NoteEvent, NoteEventKind, NoteVersion,
+    assets_folder, attachment_file_name, complete_mention, github_issue_ref, is_safe_name,
+    is_web_address, mention_suggestions, mentions_as_links, note_file_path, note_files_folder,
+    note_timeline,
+};
 pub use package::{
     BlockManifest, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
     PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, app_version,

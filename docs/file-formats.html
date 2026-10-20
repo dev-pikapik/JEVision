@@ -131,11 +131,30 @@
   <tbody>
     <tr><td><code>positions</code></td><td>Where each block sits: block id → <code>{ "x": …, "y": … }</code>, the top-left corner of the block in canvas points from the top-left corner of the canvas. Without <code>positions</code>, the editor lays out every block itself.</td></tr>
     <tr><td><code>sections</code></td><td>Titled frames that group blocks: section id → <code>{ "title": "…", "frame": { "x": …, "y": …, "width": …, "height": … } }</code>.</td></tr>
-    <tr><td><code>notes</code></td><td>Sticky notes: note id → <code>{ "text": "…", "author": "…", "time": "…", "frame": { … } }</code>. <code>author</code> and <code>time</code> (an RFC 3339 date and time, such as <code>2026-10-18T09:30:00Z</code>) are optional.</td></tr>
+    <tr><td><code>notes</code></td><td>Sticky notes: note id → <code>{ "text": "…", "author": "…", "time": "…", "frame": { … } }</code>, with more fields for what a note is about, its files and links, and the talk under it; see <a href="#notes">Notes</a>. <code>author</code> and <code>time</code> (an RFC 3339 date and time, such as <code>2026-10-18T09:30:00Z</code>) are optional.</td></tr>
   </tbody>
 </table>
 </div>
 <p>Whole numbers are written without a decimal point, so moving a block by a whole point changes one short line in the diff.</p>
+
+<h3 id="notes">Notes</h3>
+<p>A note is Markdown text with a place on the canvas. Every field except <code>text</code> and <code>frame</code> is optional, and a file written before they existed opens as it was.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>text</code></td><td>The note as Markdown source: headings, lists, check boxes, quotes, links, <strong>bold</strong> and <em>italic</em> text. <code>@name</code> mentions a person; the editor suggests the names of the project's git authors. The text is kept as it was written; the editor only draws the styles.</td></tr>
+    <tr><td><code>anchor</code></td><td>What the note is about. <code>{ "type": "block", "block": "<var>block id</var>" }</code> for a block, <code>{ "type": "folder" }</code> for the folder the test is in, and for the test itself, the default, no <code>anchor</code>. A note about a block shows in that block's inspector, moves with the block and is copied with it, without its replies and files. A note about a folder shows on the folder's page.</td></tr>
+    <tr><td><code>attachments</code></td><td>A list of what comes with the note: <code>{ "file": "shot.png" }</code> for a file kept next to the test (see below), <code>{ "link": "https://…" }</code> for a web address. A link to a GitHub issue or pull request shows its number, title and state once you are signed in to GitHub.</td></tr>
+    <tr><td><code>replies</code></td><td>The talk under the note, in order: <code>{ "id": "…", "author": "…", "time": "…", "text": "…" }</code>. The reply <code>id</code> is unique within the note.</td></tr>
+    <tr><td><code>resolved</code></td><td><code>{ "by": "…", "time": "…" }</code> when the discussion is settled; left out while it is open. The canvas can hide settled notes.</td></tr>
+    <tr><td><code>frame</code></td><td>Where the note is and how big it is, as for a section.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>The files of a note are copied next to the test: the files of the notes of <code>login/sign-in.flow.json</code> are in <code>login/sign-in.assets/notes/<var>note id</var>/</code>. Renaming the test in JEVision moves the folder with it, and deleting the test moves it to the trash too. A file bigger than the limit set in <strong>Settings</strong> (10 MB by default) is not attached silently: JEVision offers to track it with Git LFS, which adds a line to <code>.gitattributes</code> only when you choose it, or to attach it anyway.</p>
+<p>The history of a note comes from the git history of the test file, so who wrote it, edited it, replied or settled it is shown without anything stored in the note. In a project without git, the note shows only its author and time.</p>
+<p>Two people who changed the same test combine their notes: replies and files that one side added are kept, a reply or file that one side removed and the other left alone is removed, and the same reply edited two ways is left for a person to settle.</p>
 
 <h2 id="blocks">Custom blocks and packages</h2>
 <p>A <a href="custom-blocks.html">custom block</a> is a test that other tests run with a <a href="writing-tests.html#runTest"><code>runTest</code></a> block, which may give it values in <code>inputs</code>. There are two kinds of files:</p>

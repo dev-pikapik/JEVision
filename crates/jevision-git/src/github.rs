@@ -124,6 +124,25 @@ pub struct GitHubIssue {
     pub url: String,
 }
 
+/// Whether an issue or pull request is still being worked on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IssueState {
+    Open,
+    Closed,
+    /// A pull request that was merged.
+    Merged,
+}
+
+/// An issue or pull request as the page of it would tell.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IssueStatus {
+    pub number: u64,
+    pub title: String,
+    pub url: String,
+    pub state: IssueState,
+    pub is_pull_request: bool,
+}
+
 /// A file a GitHub Actions run saved, such as the reports of a test run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Artifact {
@@ -289,6 +308,24 @@ impl GitHub {
         }
         let path = repo_path(repo, "/pulls");
         Ok(pull_request(&self.created("POST", &path, &request)?))
+    }
+
+    /// The title and state of issue or pull request number `number`.
+    pub fn issue_status(&self, repo: &GitHubRepo, number: u64) -> Result<IssueStatus, GitError> {
+        let v = self.get(&repo_path(repo, &format!("/issues/{number}")))?;
+        let pull = v.get("pull_request").filter(|p| p.is_object());
+        let state = match (v["state"].as_str(), pull) {
+            (Some("closed"), Some(p)) if p["merged_at"].is_string() => IssueState::Merged,
+            (Some("closed"), _) => IssueState::Closed,
+            _ => IssueState::Open,
+        };
+        Ok(IssueStatus {
+            number: v["number"].as_u64().unwrap_or(number),
+            title: text(&v["title"]),
+            url: text(&v["html_url"]),
+            state,
+            is_pull_request: pull.is_some(),
+        })
     }
 
     /// The open issue whose description contains `marker`, the latest updated first.

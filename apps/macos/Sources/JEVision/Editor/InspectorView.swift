@@ -36,6 +36,7 @@ struct InspectorView: View {
           IssueList(issues: context.issues.filter { !Self.fields(of: block.kind).contains(field(of: $0)) })
         }
         fields(block.kind, flow: flow, context: context)
+        BlockNotes(document: document, block: id)
       }
       .formStyle(.grouped)
     }

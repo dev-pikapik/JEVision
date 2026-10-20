@@ -135,6 +135,18 @@ fn note_fields(was: &Note, now: &Note) -> Vec<String> {
     if was.author != now.author {
         fields.push("author".to_owned());
     }
+    if was.anchor != now.anchor {
+        fields.push("anchor".to_owned());
+    }
+    if was.attachments != now.attachments {
+        fields.push("attachments".to_owned());
+    }
+    if was.replies != now.replies {
+        fields.push("replies".to_owned());
+    }
+    if was.resolved != now.resolved {
+        fields.push("resolved".to_owned());
+    }
     fields.extend(rect_fields(&was.rect, &now.rect));
     fields
 }
@@ -202,7 +214,7 @@ fn changed_keys(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse;
+    use crate::{NoteAnchor, parse};
 
     fn flow(blocks: &str) -> Flow {
         parse(&format!(
@@ -332,6 +344,10 @@ mod tests {
             text: text.into(),
             author: "Ann".into(),
             time: "2026-01-01T00:00:00Z".into(),
+            anchor: NoteAnchor::Test,
+            attachments: Vec::new(),
+            replies: Vec::new(),
+            resolved: None,
             rect,
         };
         let frame = |id: &str, title: &str, rect| CanvasSection {

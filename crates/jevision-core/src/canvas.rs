@@ -6,7 +6,10 @@ use std::collections::{HashMap, HashSet};
 use crate::decode::parse;
 use crate::edit::set_edge;
 use crate::layout::{GRID, layout, rows};
-use crate::model::{BODY, Block, BlockKind, CanvasSection, Flow, NEXT, Note, Point, Rect, THEN};
+use crate::model::{
+    AttachmentKind, BODY, Block, BlockKind, CanvasSection, Flow, NEXT, Note, NoteAnchor, Point,
+    Rect, THEN,
+};
 use crate::to_canonical_json;
 use crate::validate::validate;
 
@@ -49,7 +52,7 @@ fn contains(outer: &Rect, inner: &Rect) -> bool {
 impl Flow {
     /// Gives every block a position, where the automatic layout draws it, so that moving one
     /// block leaves the others in place.
-    fn pin_blocks(&mut self) {
+    pub(crate) fn pin_blocks(&mut self) {
         if !self.canvas.positions.is_empty() {
             return;
         }
@@ -74,8 +77,32 @@ impl Flow {
         })
     }
 
-    /// `items` and, after them, everything that lies wholly inside a section among them.
+    /// `items` and, after them, everything that lies wholly inside a section among them, and
+    /// the notes about the blocks among them.
     fn with_contents(&self, items: &[CanvasItem]) -> Vec<CanvasItem> {
+        let mut all = self.with_inside(items);
+        let moved: HashSet<String> = all
+            .iter()
+            .filter_map(|i| match i {
+                CanvasItem::Block { id } => Some(id.clone()),
+                _ => None,
+            })
+            .collect();
+        for note in &self.canvas.notes {
+            if matches!(&note.anchor, NoteAnchor::Block { id } if moved.contains(id)) {
+                let item = CanvasItem::Note {
+                    id: note.id.clone(),
+                };
+                if !all.contains(&item) {
+                    all.push(item);
+                }
+            }
+        }
+        all
+    }
+
+    /// `items` and, after them, everything that lies wholly inside a section among them.
+    fn with_inside(&self, items: &[CanvasItem]) -> Vec<CanvasItem> {
         let frames: Vec<Rect> = items
             .iter()
             .filter_map(|i| match i {
@@ -250,8 +277,16 @@ impl Flow {
         item
     }
 
-    /// Adds a note with the default size and its top-left corner at `at`.
-    pub fn add_note(&mut self, text: &str, author: &str, time: &str, at: Point) -> CanvasItem {
+    /// Adds a note about `anchor` with the default size and its top-left corner at `at`; one
+    /// about a block that isn't there is about the test.
+    pub fn add_note(
+        &mut self,
+        text: &str,
+        author: &str,
+        time: &str,
+        at: Point,
+        anchor: NoteAnchor,
+    ) -> CanvasItem {
         let id = unique(self.canvas.notes.iter().map(|n| n.id.as_str()), "note");
         let rect = Rect {
             x: at.x,
@@ -259,11 +294,19 @@ impl Flow {
             width: 14.0 * GRID,
             height: 9.0 * GRID,
         };
+        let anchor = match anchor {
+            NoteAnchor::Block { id } if !self.blocks.iter().any(|b| b.id == id) => NoteAnchor::Test,
+            anchor => anchor,
+        };
         self.canvas.notes.push(Note {
             id: id.clone(),
             text: text.to_owned(),
             author: author.to_owned(),
             time: time.to_owned(),
+            anchor,
+            attachments: Vec::new(),
+            replies: Vec::new(),
+            resolved: None,
             rect,
         });
         let item = CanvasItem::Note { id };
@@ -303,13 +346,23 @@ impl Flow {
         true
     }
 
-    /// Removes `items`; removed blocks are joined around like [`Flow::remove_block`]. Returns
-    /// the block to select next.
+    /// Removes `items`; removed blocks are joined around like [`Flow::remove_block`], and the
+    /// notes about them stay on the canvas as notes about the test. Returns the block to select
+    /// next.
     pub fn remove_items(&mut self, items: &[CanvasItem]) -> Option<String> {
+        self.remove_items_and(items, false)
+    }
+
+    /// Like [`Flow::remove_items`], but the notes about the removed blocks go with them.
+    pub fn remove_items_with_notes(&mut self, items: &[CanvasItem]) -> Option<String> {
+        self.remove_items_and(items, true)
+    }
+
+    fn remove_items_and(&mut self, items: &[CanvasItem], with_notes: bool) -> Option<String> {
         let mut select = None;
         for item in items {
             match item {
-                CanvasItem::Block { id } => select = self.remove_block(id),
+                CanvasItem::Block { id } => select = self.remove_block_and(id, with_notes),
                 CanvasItem::Section { id } => self.canvas.sections.retain(|s| &s.id != id),
                 CanvasItem::Note { id } => self.canvas.notes.retain(|n| &n.id != id),
             }
@@ -452,8 +505,27 @@ impl Flow {
         }
         for n in part.canvas.notes {
             let id = unique(self.canvas.notes.iter().map(|n| n.id.as_str()), &n.id);
+            // A copy is a new note: it brings its text and links, not the discussion or the
+            // files, which stay with the original. It is about the copy of its block when that
+            // was copied too, else about the same block while that is there.
+            let anchor = match &n.anchor {
+                NoteAnchor::Block { id } => match ids.get(id) {
+                    Some(copy) => NoteAnchor::Block { id: copy.clone() },
+                    None if self.blocks[..first].iter().any(|b| &b.id == id) => n.anchor.clone(),
+                    None => NoteAnchor::Test,
+                },
+                anchor => anchor.clone(),
+            };
             self.canvas.notes.push(Note {
                 id: id.clone(),
+                anchor,
+                attachments: n
+                    .attachments
+                    .into_iter()
+                    .filter(|a| a.kind == AttachmentKind::Link)
+                    .collect(),
+                replies: Vec::new(),
+                resolved: None,
                 rect: shift(n.rect),
                 ..n
             });
@@ -554,7 +626,7 @@ mod tests {
         assert!(f.move_items(&[block("b")], 3.0, 0.0, true));
         assert_eq!(f.canvas.positions["b"].x % GRID, 0.0);
 
-        let note = f.add_note("x", "me", "now", Point { x: 0.0, y: 0.0 });
+        let note = f.add_note("x", "me", "now", Point { x: 0.0, y: 0.0 }, NoteAnchor::Test);
         let frame = Rect {
             x: 10.0,
             y: 11.0,
@@ -747,7 +819,7 @@ mod tests {
             height: BLOCK_HEIGHT + 4.0 * GRID,
         };
         let section = f.add_section("Start", frame);
-        f.add_note("", "", "", Point { x: 2000.0, y: 0.0 });
+        f.add_note("", "", "", Point { x: 2000.0, y: 0.0 }, NoteAnchor::Test);
         let rect = f.canvas.sections[0].rect;
         assert!(f.move_items(&[section], 32.0, 0.0, true));
         assert_eq!(f.canvas.sections[0].rect.x, rect.x + 32.0);
@@ -788,6 +860,7 @@ mod tests {
             "Anna",
             "2026-10-18T09:30:00Z",
             Point { x: 592.0, y: 0.0 },
+            NoteAnchor::Test,
         );
         assert!(f.move_items(std::slice::from_ref(&note), 16.0, 32.0, true));
         assert_eq!(
@@ -1024,7 +1097,13 @@ mod tests {
                 height: 160.0,
             },
         );
-        f.add_note("check this", "Anna", "", Point { x: 700.0, y: 300.0 });
+        f.add_note(
+            "check this",
+            "Anna",
+            "",
+            Point { x: 700.0, y: 300.0 },
+            NoteAnchor::Test,
+        );
         f.arrange_in_rows();
         let once = f.clone();
         f.arrange_in_rows();

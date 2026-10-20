@@ -1209,6 +1209,120 @@ fn a_malformed_canvas_is_reported() {
     assert_eq!(issues[0].param("field"), Some("canvas.zoom"));
 }
 
+/// A test with notes that are about a block, a folder, carry files and links, and are discussed.
+const DISCUSSED: &str = r#"{
+  "format": 1,
+  "name": "Discussed",
+  "app": "com.apple.TextEdit",
+  "start": "a",
+  "blocks": {
+    "a": { "type": "pressKeys", "keys": "a", "next": "b" },
+    "b": { "type": "check", "reference": { "image": "refs/b.png" } }
+  },
+  "canvas": {
+    "notes": {
+      "plain": { "text": "Old note", "frame": { "x": 0, "y": 200, "width": 224, "height": 144 } },
+      "b-note": {
+        "text": "See **the check**",
+        "author": "Anna",
+        "time": "2026-10-18T09:30:00Z",
+        "anchor": { "type": "block", "block": "b" },
+        "attachments": [{ "file": "shot.png" }, { "link": "https://github.com/o/r/issues/12" }],
+        "replies": [{ "id": "reply", "author": "Bob", "time": "2026-10-19T08:00:00Z", "text": "@Anna done" }],
+        "resolved": { "by": "Anna", "time": "2026-10-20T10:00:00Z" },
+        "frame": { "x": 300, "y": 200, "width": 224, "height": 144 }
+      },
+      "dir": { "text": "", "anchor": { "type": "folder" }, "frame": { "x": 600, "y": 200, "width": 224, "height": 144 } }
+    }
+  }
+}"#;
+
+#[test]
+fn notes_with_anchors_files_and_replies_round_trip() {
+    let flow = parse(DISCUSSED).unwrap();
+    assert!(validate(&flow).is_empty());
+    let note = |id: &str| flow.canvas.notes.iter().find(|n| n.id == id).unwrap();
+    assert_eq!(note("plain").anchor, NoteAnchor::Test);
+    assert_eq!(note("dir").anchor, NoteAnchor::Folder);
+    let b = note("b-note");
+    assert_eq!(b.anchor, NoteAnchor::Block { id: "b".into() });
+    assert_eq!(b.attachments.len(), 2);
+    assert_eq!(b.replies[0].author, "Bob");
+    assert_eq!(b.resolved.as_ref().unwrap().by, "Anna");
+
+    let text = to_canonical_json(&flow);
+    assert_eq!(to_canonical_json(&parse(&text).unwrap()), text);
+    // A note that is about the test and has nothing else is written as it always was.
+    let plain = text.split(r#""plain": {"#).nth(1).unwrap();
+    assert!(
+        plain.starts_with("\n        \"text\": \"Old note\",\n        \"frame\""),
+        "{plain}"
+    );
+    let b = text.split(r#""b-note": {"#).nth(1).unwrap();
+    let order = [
+        "text",
+        "author",
+        "time",
+        "anchor",
+        "attachments",
+        "replies",
+        "resolved",
+        "frame",
+    ];
+    let at: Vec<usize> = order
+        .iter()
+        .map(|k| b.find(&format!("\"{k}\"")).unwrap())
+        .collect();
+    assert!(at.windows(2).all(|w| w[0] < w[1]), "{order:?} {at:?}");
+}
+
+#[test]
+fn malformed_notes_are_reported_and_unsafe_ones_are_flagged() {
+    let bad = |from: &str, to: &str| DISCUSSED.replace(from, to);
+    let issues = parse_err(&bad(
+        r#""type": "block", "block": "b""#,
+        r#""type": "block""#,
+    ));
+    assert_eq!(codes(&issues), ["flow.field.missing"]);
+    assert_eq!(
+        issues[0].param("field"),
+        Some("canvas.notes.b-note.anchor.block")
+    );
+    let issues = parse_err(&bad(r#""type": "folder""#, r#""type": "moon""#));
+    assert_eq!(codes(&issues), ["flow.field.value"]);
+    let issues = parse_err(&bad(
+        r#"{ "file": "shot.png" }"#,
+        r#"{ "file": "shot.png", "link": "https://x.org" }"#,
+    ));
+    assert!(!issues.is_empty());
+    let issues = parse_err(&bad(r#""by": "Anna""#, r#""by": "Anna", "why": "x""#));
+    assert_eq!(codes(&issues), ["flow.field.unknown"]);
+
+    let issues = |from: &str, to: &str| codes(&validate(&parse(&bad(from, to)).unwrap())).join(",");
+    assert_eq!(
+        issues(r#""block": "b""#, r#""block": "zzz""#),
+        "flow.note.unknownBlock"
+    );
+    assert_eq!(
+        issues(r#"{ "file": "shot.png" }"#, r#"{ "file": "../shot.png" }"#),
+        "flow.note.attachment.invalid"
+    );
+    assert_eq!(
+        issues("https://github.com/o/r/issues/12", "file:///etc/passwd"),
+        "flow.note.attachment.invalid"
+    );
+    assert_eq!(
+        issues(
+            r#""replies": [{"#,
+            r#""replies": [{ "id": "reply", "text": "again" }, {"#
+        ),
+        "flow.note.reply.duplicateId"
+    );
+    let all = validate(&parse(&bad(r#""block": "b""#, r#""block": "zzz""#)).unwrap());
+    assert_eq!(all[0].severity, Severity::Warning);
+    assert!(describe(&all[0]).contains("zzz"));
+}
+
 /// The blocks that work without the screen, plus an `if` that branches on a saved value.
 const SYSTEM_BLOCKS: &str = r#"{
   "format": 1, "name": "System", "app": "com.apple.TextEdit", "start": "ask",
