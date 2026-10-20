@@ -94,7 +94,7 @@ struct CommandPaletteTests {
     state.boardInView = "Plan"
     state.boardItems = [("n1", "Release checklist", "Note on Plan")]
     let found = actions(state)
-    for addition in [BoardAddition.note, .frame, .link, .board] {
+    for addition in [BoardAddition.note, .frame, .link, .image, .board] {
       #expect(found.contains(.addToBoard(addition)))
     }
     #expect(!found.contains(.addToBoard(.test)), "Every test is on the board already")

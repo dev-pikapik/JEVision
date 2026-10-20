@@ -13,6 +13,7 @@ mod decode;
 mod diff;
 mod edit;
 mod env;
+mod index;
 mod issue;
 mod layout;
 mod merge;
@@ -30,7 +31,8 @@ pub use batch::{
 };
 pub use board::{
     BOARD_SUFFIX, BOARDS_FOLDER, Board, BoardEdge, BoardLayout, BoardNode, BoardNodeKind,
-    CARD_HEIGHT, CARD_WIDTH, FRAME_HEADER, LaidBoardEdge, LaidNode,
+    CARD_HEIGHT, CARD_WIDTH, FRAME_HEADER, FrameTests, IMAGE_SUFFIXES, IMAGES_FOLDER,
+    LaidBoardEdge, LaidNode, OPEN_HEADER, blocks_area, is_image_file,
 };
 pub use canvas::CanvasItem;
 pub use ci::{
@@ -45,6 +47,7 @@ pub use env::{
     AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
     required_env_values, validate_environment_values,
 };
+pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,

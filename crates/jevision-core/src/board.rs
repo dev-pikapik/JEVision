@@ -3,19 +3,24 @@
 //! 1.0 format (jsoncanvas.org), so Obsidian opens it too: a test is a `file` node that points at
 //! its `*.flow.json`, another board a `file` node that points at its `*.canvas`, a note a `text`
 //! node in Markdown, a link a `link` node and a frame a `group` node. What only JEVision uses
-//! sits under a `jevision` key; keys this build doesn't know are kept as they were. Files are
-//! written in one canonical form, a line per node and edge, so a change shows as a small diff.
+//! sits under a `jevision` key; keys this build doesn't know are kept as they were. A picture is
+//! a `file` node that points at the image, as in Obsidian. Files are written in one canonical
+//! form, a line per node and edge, so a change shows as a small diff.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde_json::{Map, Value};
 
+use crate::index::RectIndex;
 use crate::layout::GRID;
 use crate::model::{Point, Rect};
 
 /// Folder of the project that holds its boards.
 pub const BOARDS_FOLDER: &str = "boards";
+
+/// Folder of the boards folder that holds the pictures put on boards.
+pub const IMAGES_FOLDER: &str = "images";
 /// Ending of a board's file name.
 pub const BOARD_SUFFIX: &str = ".canvas";
 const TEST_SUFFIX: &str = ".flow.json";
@@ -27,6 +32,17 @@ pub const CARD_WIDTH: f64 = 14.0 * GRID;
 pub const CARD_HEIGHT: f64 = 6.0 * GRID;
 /// Height of a frame's title bar: all that shows of a folded frame.
 pub const FRAME_HEADER: f64 = 3.0 * GRID;
+/// Height of the title bar of a test whose blocks are shown inside its card.
+pub const OPEN_HEADER: f64 = 3.0 * GRID;
+/// The most a test with its blocks shown takes up on the board, per side; a bigger test shows
+/// its blocks smaller.
+const OPEN_LIMIT: f64 = 150.0 * GRID;
+/// Longest side of a picture put on a board.
+const IMAGE_SIDE: f64 = 24.0 * GRID;
+/// Endings of the files a board shows as pictures, in lower case.
+pub const IMAGE_SUFFIXES: [&str; 10] = [
+    "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "tif", "tiff", "bmp",
+];
 /// Space around and between the cards in a folder's frame on the board of all tests.
 const PAD: f64 = GRID;
 /// Space between the folders' frames on the board of all tests.
@@ -60,6 +76,9 @@ pub struct BoardNode {
     /// One of the preset colors `1` to `6` (red, orange, yellow, green, cyan, purple) or a
     /// `#rrggbb` color; empty for none.
     pub color: String,
+    /// A test's card opened to show the blocks inside it, drawn closer to the test itself the
+    /// nearer the board is looked at; only a `file` node can be open.
+    pub open: bool,
     /// Keys this build doesn't use, as a JSON object; empty when there are none.
     pub extra: String,
 }
@@ -108,6 +127,14 @@ pub struct BoardEdge {
     pub extra: String,
 }
 
+/// The tests a frame holds.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrameTests {
+    pub frame: String,
+    /// Test files relative to the project.
+    pub tests: Vec<String>,
+}
+
 /// What is shown of a board, worked out once per change instead of on every redraw.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoardLayout {
@@ -124,6 +151,8 @@ pub struct BoardLayout {
 pub struct LaidNode {
     pub id: String,
     pub rect: Rect,
+    /// A frame: it only takes a click on its title bar.
+    pub frame: bool,
 }
 
 /// Where an arrow leaves and arrives: the middle of a side of each node.
@@ -140,7 +169,7 @@ fn snap(v: f64) -> f64 {
     (v / GRID).round() * GRID
 }
 
-fn contains(outer: &Rect, inner: &Rect) -> bool {
+pub(crate) fn contains(outer: &Rect, inner: &Rect) -> bool {
     inner.x >= outer.x
         && inner.y >= outer.y
         && inner.x + inner.width <= outer.x + outer.width
@@ -172,6 +201,27 @@ fn renamed(path: &str, old: &str, new: &str) -> Option<String> {
         .map(|rest| format!("{new}{rest}"))
 }
 
+/// Whether `file` is a picture a board shows, going by its ending.
+pub fn is_image_file(file: &str) -> bool {
+    file.rsplit_once('.')
+        .is_some_and(|(_, ending)| IMAGE_SUFFIXES.contains(&ending.to_ascii_lowercase().as_str()))
+}
+
+/// Where the blocks of a test whose card is `card` are drawn when it shows them: the middle of
+/// the card under its title bar, as large as fits with the blocks' proportions kept. `content`
+/// is the size the blocks take up on the test's own canvas.
+pub fn blocks_area(card: &Rect, content: (f64, f64)) -> Rect {
+    let (width, height) = (content.0.max(1.0), content.1.max(1.0));
+    let room = (card.width, (card.height - OPEN_HEADER).max(1.0));
+    let fit = (room.0 / width).min(room.1 / height);
+    Rect {
+        x: card.x + (room.0 - width * fit) / 2.0,
+        y: card.y + OPEN_HEADER,
+        width: width * fit,
+        height: height * fit,
+    }
+}
+
 const SIDES: [&str; 4] = ["top", "right", "bottom", "left"];
 const ENDS: [&str; 2] = ["none", "arrow"];
 
@@ -182,6 +232,18 @@ impl BoardNode {
             BoardNodeKind::File { file } if file.ends_with(TEST_SUFFIX) => Some(file),
             _ => None,
         }
+    }
+
+    /// The picture file this node shows, when it is a picture.
+    pub fn image(&self) -> Option<&str> {
+        match &self.kind {
+            BoardNodeKind::File { file } if is_image_file(file) => Some(file),
+            _ => None,
+        }
+    }
+
+    fn is_frame(&self) -> bool {
+        matches!(self.kind, BoardNodeKind::Group { .. })
     }
 
     fn is_folded(&self) -> bool {
@@ -243,10 +305,11 @@ impl Board {
             }
             board.nodes.push(node);
         }
+        let node_ids: HashSet<String> = ids.clone();
         for (n, edge) in edges.into_iter().enumerate() {
             let edge = parse_edge(edge, n)?;
             for end in [&edge.from, &edge.to] {
-                if !board.nodes.iter().any(|node| &node.id == end) {
+                if !node_ids.contains(end) {
                     return Err(format!(
                         "arrow \"{}\" leads to \"{end}\", which isn't a node of the board",
                         edge.id
@@ -290,7 +353,28 @@ impl Board {
     /// Adds a node of `kind` centered on `at`, snapped to the grid, and returns its id. A
     /// frame goes behind everything so it doesn't cover what it is drawn around.
     pub fn add(&mut self, kind: BoardNodeKind, at: Point) -> String {
-        let (width, height) = BoardNode::size(&kind);
+        let size = BoardNode::size(&kind);
+        self.add_sized(kind, size, at)
+    }
+
+    /// Adds a picture of `width` by `height` pixels, shown from the file `file` relative to the
+    /// project, centered on `at`, in its own proportions: its longer side is as it is, but no
+    /// less than 3 and no more than 24 grid steps.
+    pub fn add_image(&mut self, file: &str, width: f64, height: f64, at: Point) -> String {
+        let (width, height) = (width.max(1.0), height.max(1.0));
+        let long = width.max(height);
+        let fit = long.clamp(MIN_SIZE, IMAGE_SIDE) / long;
+        let size = (
+            (width * fit).round().max(GRID),
+            (height * fit).round().max(GRID),
+        );
+        let kind = BoardNodeKind::File {
+            file: file.to_owned(),
+        };
+        self.add_sized(kind, size, at)
+    }
+
+    fn add_sized(&mut self, kind: BoardNodeKind, (width, height): (f64, f64), at: Point) -> String {
         let id = self.new_id(&format!("{kind:?}{}{}", at.x, at.y));
         let node = BoardNode {
             id: id.clone(),
@@ -302,9 +386,10 @@ impl Board {
             },
             kind,
             color: String::new(),
+            open: false,
             extra: String::new(),
         };
-        if matches!(node.kind, BoardNodeKind::Group { .. }) {
+        if node.is_frame() {
             self.nodes.insert(0, node);
         } else {
             self.nodes.push(node);
@@ -330,10 +415,11 @@ impl Board {
 
     /// The nodes `ids` with everything inside the frames among them.
     pub fn with_contents(&self, ids: &[String]) -> Vec<String> {
+        let mut seen: HashSet<String> = HashSet::new();
         let mut moved: Vec<String> = Vec::new();
         for id in ids {
             for id in std::iter::once(id.clone()).chain(self.contents(id)) {
-                if !moved.contains(&id) {
+                if seen.insert(id.clone()) {
                     moved.push(id);
                 }
             }
@@ -380,9 +466,43 @@ impl Board {
     /// Removes the nodes `ids` and the arrows to and from them. What lies inside a removed
     /// frame stays.
     pub fn remove(&mut self, ids: &[String]) {
-        self.nodes.retain(|n| !ids.contains(&n.id));
+        let gone: HashSet<&str> = ids.iter().map(String::as_str).collect();
+        self.nodes.retain(|n| !gone.contains(n.id.as_str()));
         self.edges
-            .retain(|e| !ids.contains(&e.from) && !ids.contains(&e.to));
+            .retain(|e| !gone.contains(e.from.as_str()) && !gone.contains(e.to.as_str()));
+    }
+
+    /// Opens the card of the test `id` to show the blocks inside it: the card grows, from its
+    /// top left corner, to hold `content`, the size the blocks take up on the test's own
+    /// canvas, and comes to the front so it doesn't hide behind what it now overlaps. A test
+    /// bigger than the board's limit shows its blocks smaller. `false` when `id` isn't a test's
+    /// card or is open already.
+    pub fn open_test(&mut self, id: &str, content: (f64, f64)) -> bool {
+        let Some(at) = self.nodes.iter().position(|n| n.id == id) else {
+            return false;
+        };
+        if self.nodes[at].test().is_none() || self.nodes[at].open {
+            return false;
+        }
+        let (width, height) = (content.0.max(1.0), content.1.max(1.0));
+        let fit = (OPEN_LIMIT / width.max(height)).min(1.0);
+        let mut node = self.nodes.remove(at);
+        node.open = true;
+        node.rect.width = snap(width * fit).max(CARD_WIDTH);
+        node.rect.height = (OPEN_HEADER + snap(height * fit)).max(CARD_HEIGHT);
+        self.nodes.push(node);
+        true
+    }
+
+    /// Folds the open test `id` back into its card. `false` when it isn't open.
+    pub fn close_test(&mut self, id: &str) -> bool {
+        let Some(node) = self.nodes.iter_mut().find(|n| n.id == id && n.open) else {
+            return false;
+        };
+        node.open = false;
+        node.rect.width = CARD_WIDTH;
+        node.rect.height = CARD_HEIGHT;
+        true
     }
 
     /// Draws an arrow from node `from` to node `to` and returns its id; `None` when one of them
@@ -413,14 +533,7 @@ impl Board {
 
     /// What is shown: the nodes not inside a folded frame and the arrows between them.
     pub fn layout(&self) -> BoardLayout {
-        let mut hidden: HashSet<&str> = HashSet::new();
-        for frame in self.nodes.iter().filter(|n| n.is_folded()) {
-            for node in &self.nodes {
-                if node.id != frame.id && contains(&frame.rect, &node.rect) {
-                    hidden.insert(&node.id);
-                }
-            }
-        }
+        let hidden = self.hidden();
         let nodes: Vec<LaidNode> = self
             .nodes
             .iter()
@@ -428,6 +541,7 @@ impl Board {
             .map(|n| LaidNode {
                 id: n.id.clone(),
                 rect: n.shown(),
+                frame: n.is_frame(),
             })
             .collect();
         let shown: HashMap<&str, Rect> = nodes.iter().map(|n| (n.id.as_str(), n.rect)).collect();
@@ -456,6 +570,56 @@ impl Board {
         }
     }
 
+    /// For each frame, the tests whose cards lie inside it, shown or folded away, each test
+    /// once and in board order: what a frame sums up.
+    pub fn frame_tests(&self) -> Vec<FrameTests> {
+        let mut frames = self.nodes.iter().filter(|n| n.is_frame()).peekable();
+        if frames.peek().is_none() {
+            return Vec::new();
+        }
+        let index = self.rect_index();
+        frames
+            .map(|frame| {
+                let mut seen = HashSet::new();
+                let tests = index
+                    .inside(&frame.rect)
+                    .into_iter()
+                    .filter_map(|at| self.nodes[at].test())
+                    .filter(|test| seen.insert(*test))
+                    .map(str::to_owned)
+                    .collect();
+                FrameTests {
+                    frame: frame.id.clone(),
+                    tests,
+                }
+            })
+            .collect()
+    }
+
+    /// The ids of the nodes inside a folded frame, which aren't shown.
+    fn hidden(&self) -> HashSet<&str> {
+        let mut hidden = HashSet::new();
+        let mut folded = self.nodes.iter().filter(|n| n.is_folded()).peekable();
+        if folded.peek().is_none() {
+            return hidden;
+        }
+        let index = self.rect_index();
+        for frame in folded {
+            for at in index.query(&frame.rect) {
+                let node = &self.nodes[at];
+                if node.id != frame.id && contains(&frame.rect, &node.rect) {
+                    hidden.insert(node.id.as_str());
+                }
+            }
+        }
+        hidden
+    }
+
+    /// An index of where the nodes lie, by position in `nodes`.
+    pub(crate) fn rect_index(&self) -> RectIndex {
+        RectIndex::new(&self.nodes.iter().map(|n| n.rect).collect::<Vec<_>>())
+    }
+
     /// On the board of all tests, puts the tests `tests` (relative to the project, in sidebar
     /// order) that aren't on it yet into the frame of their folder, below its cards; a folder
     /// without a frame gets one right of everything, titled with the folder, or `root_title`
@@ -476,83 +640,151 @@ impl Board {
         self.remove(&gone);
         let mut changed = self.nodes.len() != before;
 
-        let placed: HashSet<String> = self
-            .nodes
+        let placed: HashSet<&str> = self.nodes.iter().filter_map(BoardNode::test).collect();
+        let missing: Vec<&str> = tests
             .iter()
-            .filter_map(|n| n.test().map(str::to_owned))
+            .map(String::as_str)
+            .filter(|t| !placed.contains(t))
             .collect();
-        for test in tests.iter().filter(|t| !placed.contains(t.as_str())) {
-            self.place_test(test, root_title);
+        if !missing.is_empty() {
+            self.place_tests(&missing, root_title);
             changed = true;
         }
         changed
     }
 
-    fn place_test(&mut self, test: &str, root_title: &str) {
-        let folder = folder_of(test);
-        let frame = self.nodes.iter().position(
-            |n| matches!(&n.kind, BoardNodeKind::Group { folder: Some(f), .. } if f == folder),
-        );
-        let frame = match frame {
-            Some(i) => i,
-            None => {
-                let (x, y) = match self.layout().bounds {
-                    Some(b) => (snap(b.x + b.width + COLUMN_GAP), snap(b.y)),
-                    None => (0.0, 0.0),
-                };
-                let label = if folder.is_empty() {
-                    root_title.to_owned()
-                } else {
-                    folder.to_owned()
-                };
-                let id = self.new_id(&format!("folder:{folder}"));
-                self.nodes.insert(
-                    0,
-                    BoardNode {
-                        id,
-                        kind: BoardNodeKind::Group {
-                            label,
-                            collapsed: false,
-                            folder: Some(folder.to_owned()),
-                        },
-                        rect: Rect {
+    /// Puts a card for each of `tests` into the frame of its folder, in one go: the places are
+    /// worked out first, so a board of thousands of tests fills in at once.
+    fn place_tests(&mut self, tests: &[&str], root_title: &str) {
+        /// A folder's frame while cards are added to it.
+        struct Area {
+            /// Where the frame already is among the nodes; `None` for one made now.
+            at: Option<usize>,
+            id: String,
+            label: String,
+            folder: String,
+            rect: Rect,
+            /// The lowest edge of what lies in the frame.
+            below: f64,
+        }
+
+        let mut taken = self.ids();
+        let rects: Vec<Rect> = self.nodes.iter().map(|n| n.rect).collect();
+        let index = RectIndex::new(&rects);
+        let mut frames: HashMap<&str, usize> = HashMap::new();
+        for (at, node) in self.nodes.iter().enumerate() {
+            if let BoardNodeKind::Group {
+                folder: Some(folder),
+                ..
+            } = &node.kind
+            {
+                frames.entry(folder).or_insert(at);
+            }
+        }
+        let bounds = self.layout().bounds;
+        let top = bounds.map_or(0.0, |b| snap(b.y));
+        let mut right = bounds.map(|b| b.x + b.width);
+
+        let mut areas: Vec<Area> = Vec::new();
+        let mut area_of: HashMap<&str, usize> = HashMap::new();
+        let mut cards: Vec<BoardNode> = Vec::with_capacity(tests.len());
+        for &test in tests {
+            let folder = folder_of(test);
+            let area = *area_of.entry(folder).or_insert_with(|| {
+                let area = match frames.get(folder) {
+                    Some(&at) => {
+                        let rect = rects[at];
+                        let below = index
+                            .query(&rect)
+                            .into_iter()
+                            .filter(|&n| n != at && contains(&rect, &rects[n]))
+                            .map(|n| rects[n].y + rects[n].height)
+                            .fold(rect.y + FRAME_HEADER - PAD, f64::max);
+                        let BoardNodeKind::Group { label, .. } = &self.nodes[at].kind else {
+                            unreachable!("frames are groups");
+                        };
+                        Area {
+                            at: Some(at),
+                            id: self.nodes[at].id.clone(),
+                            label: label.clone(),
+                            folder: folder.to_owned(),
+                            rect,
+                            below,
+                        }
+                    }
+                    None => {
+                        let x = right.map_or(0.0, |right| snap(right + COLUMN_GAP));
+                        let rect = Rect {
                             x,
-                            y,
+                            y: top,
                             width: CARD_WIDTH + 2.0 * PAD,
                             height: FRAME_HEADER,
-                        },
-                        color: String::new(),
-                        extra: String::new(),
+                        };
+                        right = Some(x + rect.width);
+                        Area {
+                            at: None,
+                            id: fresh_id(&mut taken, &format!("folder:{folder}")),
+                            label: if folder.is_empty() {
+                                root_title.to_owned()
+                            } else {
+                                folder.to_owned()
+                            },
+                            folder: folder.to_owned(),
+                            rect,
+                            below: rect.y + FRAME_HEADER - PAD,
+                        }
+                    }
+                };
+                areas.push(area);
+                areas.len() - 1
+            });
+            let area = &mut areas[area];
+            let card = Rect {
+                x: area.rect.x + PAD,
+                y: area.below + PAD,
+                width: CARD_WIDTH,
+                height: CARD_HEIGHT,
+            };
+            area.rect.height = area
+                .rect
+                .height
+                .max(card.y + card.height + PAD - area.rect.y);
+            area.below = card.y + card.height;
+            cards.push(BoardNode {
+                id: fresh_id(&mut taken, test),
+                kind: BoardNodeKind::File {
+                    file: test.to_owned(),
+                },
+                rect: card,
+                color: String::new(),
+                open: false,
+                extra: String::new(),
+            });
+        }
+
+        // New frames go behind everything, the latest first; the cards on top of everything.
+        let mut front = Vec::new();
+        for area in areas {
+            match area.at {
+                Some(at) => self.nodes[at].rect.height = area.rect.height,
+                None => front.push(BoardNode {
+                    id: area.id,
+                    kind: BoardNodeKind::Group {
+                        label: area.label,
+                        collapsed: false,
+                        folder: Some(area.folder),
                     },
-                );
-                0
+                    rect: area.rect,
+                    color: String::new(),
+                    open: false,
+                    extra: String::new(),
+                }),
             }
-        };
-        let area = self.nodes[frame].rect;
-        let below = self
-            .nodes
-            .iter()
-            .filter(|n| n.id != self.nodes[frame].id && contains(&area, &n.rect))
-            .map(|n| n.rect.y + n.rect.height)
-            .fold(area.y + FRAME_HEADER - PAD, f64::max);
-        let card = Rect {
-            x: area.x + PAD,
-            y: below + PAD,
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
-        };
-        let rect = &mut self.nodes[frame].rect;
-        rect.height = rect.height.max(card.y + card.height + PAD - rect.y);
-        let id = self.new_id(test);
-        self.nodes.push(BoardNode {
-            id,
-            kind: BoardNodeKind::File {
-                file: test.to_owned(),
-            },
-            rect: card,
-            color: String::new(),
-            extra: String::new(),
-        });
+        }
+        front.reverse();
+        front.append(&mut self.nodes);
+        self.nodes = front;
+        self.nodes.extend(cards);
     }
 
     /// Points the nodes that show the file or folder `old` (relative to the project) at `new`
@@ -586,23 +818,32 @@ impl Board {
         changed
     }
 
-    /// An id no node or edge has: sixteen hex digits, like the ones Obsidian makes.
-    fn new_id(&self, seed: &str) -> String {
-        let taken: HashSet<&str> = self
-            .nodes
+    /// The ids of the nodes and edges.
+    fn ids(&self) -> HashSet<String> {
+        self.nodes
             .iter()
-            .map(|n| n.id.as_str())
-            .chain(self.edges.iter().map(|e| e.id.as_str()))
-            .collect();
-        (0u64..)
-            .map(|n| {
-                let mut hasher = DefaultHasher::new();
-                (seed, taken.len(), n).hash(&mut hasher);
-                format!("{:016x}", hasher.finish())
-            })
-            .find(|id| !taken.contains(id.as_str()))
-            .expect("an unused id always exists")
+            .map(|n| n.id.clone())
+            .chain(self.edges.iter().map(|e| e.id.clone()))
+            .collect()
     }
+
+    fn new_id(&self, seed: &str) -> String {
+        fresh_id(&mut self.ids(), seed)
+    }
+}
+
+/// An id not in `taken`, which it joins: sixteen hex digits, like the ones Obsidian makes.
+fn fresh_id(taken: &mut HashSet<String>, seed: &str) -> String {
+    let id = (0u64..)
+        .map(|n| {
+            let mut hasher = DefaultHasher::new();
+            (seed, taken.len(), n).hash(&mut hasher);
+            format!("{:016x}", hasher.finish())
+        })
+        .find(|id| !taken.contains(id))
+        .expect("an unused id always exists");
+    taken.insert(id.clone());
+    id
 }
 
 /// `side` when the file names one, otherwise the side of `rect` that faces `other`.
@@ -729,6 +970,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
     let what = format!("node \"{id}\"");
     let kind = take_text(&mut object, "type", &what, true)?;
     let mut ours = take_ours(&mut object, &what)?;
+    let mut open = false;
     let kind = match kind.as_str() {
         "text" => BoardNodeKind::Text {
             text: take_text(&mut object, "text", &what, true)?,
@@ -738,6 +980,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
             if file.trim().is_empty() {
                 return Err(format!("\"file\" of {what} is empty"));
             }
+            open = take_flag(&mut ours, "open", &what)?;
             BoardNodeKind::File { file }
         }
         "link" => BoardNodeKind::Link {
@@ -780,6 +1023,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
         kind,
         rect,
         color,
+        open,
         extra: extra(object),
     })
 }
@@ -866,6 +1110,9 @@ fn write_node(node: &BoardNode) -> String {
         BoardNodeKind::File { file } => {
             fields.push(("type", json("file")));
             fields.push(("file", json(file)));
+            if node.open {
+                ours.push("\"open\":true".to_owned());
+            }
         }
         BoardNodeKind::Link { url } => {
             fields.push(("type", json("link")));
@@ -1335,5 +1582,190 @@ mod tests {
                 height: 96.0
             }
         );
+    }
+
+    #[test]
+    fn a_frame_sums_up_the_tests_inside_it_folded_or_not() {
+        let card = |id: &str, file: &str, x: i64, y: i64| {
+            format!(
+                r#"{{"id":"{id}","type":"file","file":"{file}","x":{x},"y":{y},"width":224,"height":96}}"#
+            )
+        };
+        let text = format!(
+            r#"{{"nodes":[
+                {{"id":"outer","type":"group","label":"Outer","x":0,"y":0,"width":1000,"height":600}},
+                {{"id":"inner","type":"group","label":"Inner","x":16,"y":64,"width":400,"height":300,
+                  "jevision":{{"collapsed":true}}}},
+                {a},{b},{again},{c},
+                {{"id":"note","type":"text","text":"n","x":500,"y":200,"width":200,"height":80}}
+            ],"edges":[]}}"#,
+            a = card("a", "x/a.flow.json", 32, 100),
+            b = card("b", "x/b.flow.json", 520, 300),
+            again = card("again", "x/b.flow.json", 520, 450),
+            c = card("c", "y/c.flow.json", 2000, 0),
+        );
+        let board = Board::parse(&text).unwrap();
+        // The folded frame hides its card, yet the frames still count it.
+        assert!(board.layout().nodes.iter().all(|n| n.id != "a"));
+        assert_eq!(
+            board.frame_tests(),
+            [
+                FrameTests {
+                    frame: "outer".into(),
+                    tests: vec!["x/a.flow.json".into(), "x/b.flow.json".into()],
+                },
+                FrameTests {
+                    frame: "inner".into(),
+                    tests: vec!["x/a.flow.json".into()],
+                },
+            ]
+        );
+        assert!(Board::default().frame_tests().is_empty());
+    }
+
+    fn texts(board: &Board) -> Vec<(String, Rect)> {
+        board
+            .nodes
+            .iter()
+            .map(|n| (format!("{:?}", n.kind), n.rect))
+            .collect()
+    }
+
+    #[test]
+    fn many_tests_land_where_one_by_one_would_put_them() {
+        let files: Vec<String> = (0..40)
+            .map(|i| format!("{}/t{i}.flow.json", ["", "smoke", "a/b"][i % 3]))
+            .collect();
+        let empty = || Board {
+            all_tests: true,
+            ..Board::default()
+        };
+        let mut together = empty();
+        assert!(together.sync_tests(&files, "Acme"));
+        let mut one_by_one = empty();
+        for n in 1..=files.len() {
+            one_by_one.sync_tests(&files[..n], "Acme");
+        }
+        assert_eq!(texts(&together), texts(&one_by_one));
+        let ids: HashSet<&str> = together.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(ids.len(), together.nodes.len(), "ids are unique");
+    }
+
+    #[test]
+    fn pictures_are_files_that_keep_their_proportions() {
+        assert!(is_image_file("assets/shot.PNG") && is_image_file("a.b/c.heic"));
+        assert!(!is_image_file("smoke/a.flow.json") && !is_image_file("png"));
+        let mut board = Board::default();
+        board.add_image("assets/wide.png", 1920.0, 960.0, Point { x: 0.0, y: 0.0 });
+        board.add_image("assets/tiny.png", 40.0, 30.0, Point { x: 0.0, y: 0.0 });
+        let (wide, tiny) = (&board.nodes[0], &board.nodes[1]);
+        assert_eq!(wide.image(), Some("assets/wide.png"));
+        assert_eq!(
+            (wide.rect.width, wide.rect.height),
+            (IMAGE_SIDE, IMAGE_SIDE / 2.0)
+        );
+        assert_eq!(
+            (tiny.rect.width, tiny.rect.height),
+            (MIN_SIZE, 36.0),
+            "small ones grow"
+        );
+        assert!(wide.test().is_none(), "a picture isn't a test");
+
+        // Obsidian writes pictures as file nodes too, so the board still reads in both.
+        let again = Board::parse(&board.to_json()).unwrap();
+        assert_eq!(again, board);
+        assert!(
+            board
+                .to_json()
+                .contains("\"type\":\"file\",\"file\":\"assets/wide.png\"")
+        );
+    }
+
+    #[test]
+    fn an_open_test_grows_to_show_its_blocks_and_folds_back() {
+        let mut board = Board {
+            all_tests: true,
+            ..Board::default()
+        };
+        board.sync_tests(&tests(&["a.flow.json", "b.flow.json"]), "Acme");
+        let note = board.add(
+            BoardNodeKind::Text { text: "n".into() },
+            Point { x: 0.0, y: 0.0 },
+        );
+        let a = card(&board, "a.flow.json").id.clone();
+        let card_rect = card(&board, "a.flow.json").rect;
+
+        assert!(!board.open_test(&note, (400.0, 300.0)), "only tests open");
+        assert!(!board.open_test("nope", (400.0, 300.0)));
+        assert!(board.open_test(&a, (400.0, 300.0)));
+        assert!(!board.open_test(&a, (400.0, 300.0)), "already open");
+        let open = board.nodes.last().unwrap();
+        assert!(open.open && open.id == a, "an open test comes to the front");
+        assert_eq!((open.rect.x, open.rect.y), (card_rect.x, card_rect.y));
+        assert_eq!(
+            (open.rect.width, open.rect.height),
+            (400.0, OPEN_HEADER + 304.0)
+        );
+
+        // It stays open in the file, in our own part of the node, and reads back so.
+        let text = board.to_json();
+        assert!(text.contains("\"jevision\":{\"open\":true}"), "{text}");
+        assert_eq!(Board::parse(&text).unwrap(), board);
+        assert!(!card(&board, "b.flow.json").open);
+
+        assert!(board.close_test(&a));
+        assert!(!board.close_test(&a));
+        let closed = card(&board, "a.flow.json");
+        assert_eq!(
+            (closed.rect.width, closed.rect.height),
+            (CARD_WIDTH, CARD_HEIGHT)
+        );
+        assert!(!board.to_json().contains("open"));
+
+        // A test too big for the board's limit shows its blocks smaller, in the same shape.
+        assert!(board.open_test(&a, (10_000.0, 5_000.0)));
+        let huge = card(&board, "a.flow.json").rect;
+        assert_eq!(huge.width, OPEN_LIMIT);
+        assert_eq!(huge.height, OPEN_HEADER + OPEN_LIMIT / 2.0);
+    }
+
+    #[test]
+    fn open_marks_only_belong_to_tests() {
+        let group = r#"{"nodes":[{"id":"g","type":"group","x":0,"y":0,"width":160,"height":160,"jevision":{"open":true}}],"edges":[]}"#;
+        assert!(Board::parse(group).unwrap_err().contains("\"open\""));
+        let card = r#"{"nodes":[{"id":"c","type":"file","file":"a.flow.json","x":0,"y":0,"width":400,"height":300,"jevision":{"open":"yes"}}],"edges":[]}"#;
+        assert!(Board::parse(card).unwrap_err().contains("true or false"));
+    }
+
+    #[test]
+    fn the_blocks_of_an_open_test_fit_under_its_title_bar() {
+        let card = Rect {
+            x: 100.0,
+            y: 200.0,
+            width: 400.0,
+            height: OPEN_HEADER + 300.0,
+        };
+        // As big as the card, in the same proportions, centered.
+        assert_eq!(
+            blocks_area(&card, (400.0, 300.0)),
+            Rect {
+                x: 100.0,
+                y: 200.0 + OPEN_HEADER,
+                width: 400.0,
+                height: 300.0
+            }
+        );
+        let narrow = blocks_area(&card, (100.0, 300.0));
+        assert_eq!((narrow.width, narrow.height), (100.0, 300.0));
+        assert_eq!(narrow.x, 100.0 + 150.0, "centered across the card");
+        let small = blocks_area(&card, (4000.0, 3000.0));
+        assert_eq!((small.width, small.height), (400.0, 300.0), "shown smaller");
+    }
+
+    #[test]
+    fn the_layout_tells_frames_from_the_rest() {
+        let board = Board::parse(OBSIDIAN).unwrap();
+        let frames: Vec<bool> = board.layout().nodes.iter().map(|n| n.frame).collect();
+        assert_eq!(frames, [true, false, false, false]);
     }
 }

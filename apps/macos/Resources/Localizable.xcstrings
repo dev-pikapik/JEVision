@@ -1013,12 +1013,44 @@
         }
       }
     },
+    "%lld of %lld blocks passed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld blocks passed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld из %2$lld блоков пройдено"
+          }
+        }
+      }
+    },
     "%lld of %lld failed" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Упали: %lld из %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld passed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld passed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld из %2$lld пройдено"
           }
         }
       }
@@ -1185,6 +1217,22 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld running" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld running"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выполняется: %lld"
           }
         }
       }
@@ -2273,6 +2321,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить картинку"
+          }
+        }
+      }
+    },
+    "Add Image to Board…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Image to Board…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку на доску…"
+          }
+        }
+      }
+    },
+    "Add Image…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Image…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку…"
           }
         }
       }
@@ -3945,6 +4025,22 @@
         }
       }
     },
+    "Cancel Connecting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel Connecting"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить соединение"
+          }
+        }
+      }
+    },
     "Canvas" : {
       "localizations" : {
         "ru" : {
@@ -4769,6 +4865,22 @@
         }
       }
     },
+    "Choose the pictures to put on the board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the pictures to put on the board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите картинки для доски"
+          }
+        }
+      }
+    },
     "Choose the step after %@" : {
       "localizations" : {
         "ru" : {
@@ -5411,6 +5523,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключить GitHub…"
+          }
+        }
+      }
+    },
+    "Connect Here" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect Here"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Соединить здесь"
           }
         }
       }
@@ -8355,6 +8483,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скрыть"
+          }
+        }
+      }
+    },
+    "Hide Blocks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Blocks"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть блоки"
           }
         }
       }
@@ -12434,12 +12578,76 @@
         }
       }
     },
+    "Pick what to connect “%@” to, then press Return" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick what to connect “%@” to, then press Return"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, с чем соединить «%@», и нажмите Return"
+          }
+        }
+      }
+    },
+    "Picture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка"
+          }
+        }
+      }
+    },
+    "Picture not found" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture not found"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка не найдена"
+          }
+        }
+      }
+    },
     "Picture of the window, %lld by %lld pixels" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Картинка окна, %1$lld на %2$lld пикселей"
+          }
+        }
+      }
+    },
+    "Picture on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture on %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка на доске %@"
           }
         }
       }
@@ -12906,6 +13114,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернуть файл к виду после этого коммита. Правка › Отменить вернёт как было."
+          }
+        }
+      }
+    },
+    "Puts a picture from your Mac on the board." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts a picture from your Mac on the board."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кладёт на доску картинку с вашего Mac."
           }
         }
       }
@@ -14470,6 +14694,22 @@
         }
       }
     },
+    "Running block %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running block %lld of %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется блок %1$lld из %2$lld"
+          }
+        }
+      }
+    },
     "Running now" : {
       "localizations" : {
         "ru" : {
@@ -15412,6 +15652,22 @@
         }
       }
     },
+    "Selected tests" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected tests"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные тесты"
+          }
+        }
+      }
+    },
     "Send Test Message" : {
       "localizations" : {
         "ru" : {
@@ -15752,6 +16008,22 @@
         }
       }
     },
+    "Show Blocks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Blocks"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать блоки"
+          }
+        }
+      }
+    },
     "Show Everything" : {
       "localizations" : {
         "en" : {
@@ -15928,6 +16200,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать весь тест (⌘0)"
+          }
+        }
+      }
+    },
+    "Shows all the fields of the block" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows all the fields of the block"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает все поля блока"
           }
         }
       }
@@ -18750,6 +19038,22 @@
         }
       }
     },
+    "This isn’t a picture JEVision can show." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn’t a picture JEVision can show."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не картинка, которую JEVision умеет показывать."
+          }
+        }
+      }
+    },
     "This month: %@" : {
       "localizations" : {
         "ru" : {
@@ -19848,6 +20152,22 @@
         }
       }
     },
+    "Waiting for its turn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for its turn"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт своей очереди"
+          }
+        }
+      }
+    },
     "Waiting for the answer…" : {
       "localizations" : {
         "ru" : {
@@ -20798,6 +21118,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "доска карта проект открыть"
+          }
+        }
+      }
+    },
+    "board picture photo screenshot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board picture photo screenshot"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска картинка фото изображение скриншот снимок"
           }
         }
       }

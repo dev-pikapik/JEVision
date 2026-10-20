@@ -179,7 +179,8 @@ struct CommandPaletteView: View {
         case .text(let text):
           (node.id, String(text.prefix { $0 != "\n" }.prefix(80)), String(localized: "Note on \(name)"))
         case .link(let url): (node.id, url, String(localized: "Link on \(name)"))
-        case .file: nil
+        case .file(let file):
+          isBoardImage(file: file) ? (node.id, (file as NSString).lastPathComponent, String(localized: "Picture on \(name)")) : nil
         }
       }.filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
     }

@@ -51,19 +51,54 @@ enum ProjectMap {
     return usedBy
   }
 
+  /// How far from an arrow's two cards another card can lie and still be gone around: a card
+  /// farther off isn't asked about, so a board of thousands of cards routes its arrows quickly.
+  static let routeReach = 600.0
+
   /// An arrow from each test to each test it runs and each test it depends on, between the
   /// cards' frames. `bounds` also holds the frames of the folder titles.
   static func links(_ map: [String: MapTest], bounds: [String: CGRect]) -> [Link] {
-    let keys = bounds.keys.sorted()
+    let near = Neighbourhood(bounds, cell: routeReach)
     return map.keys.sorted().flatMap { file -> [Link] in
       guard let from = bounds[file], let test = map[file] else { return [] }
       let targets = test.uses.map { ($0, false) } + test.dependsOn.map { ($0, true) }
       return targets.compactMap { target, isDependency in
         guard target != file, let to = bounds[target] else { return nil }
-        let others = keys.filter { $0 != file && $0 != target }.compactMap { bounds[$0].map(rect) }
+        let area = from.union(to).insetBy(dx: -routeReach, dy: -routeReach)
+        let others = near.keys(in: area).filter { $0 != file && $0 != target }.sorted().compactMap { bounds[$0].map(rect) }
         let points = mapLinkRoute(from: rect(from), to: rect(to), others: others).map { CGPoint(x: $0.x, y: $0.y) }
         return Link(from: from, to: to, points: points, isDependency: isDependency)
       }
+    }
+  }
+
+  /// The frames of `bounds` by square cell, to find the ones near a place without going over all.
+  private struct Neighbourhood {
+    let cell: Double
+    private var cells: [Cell: [String]] = [:]
+
+    private struct Cell: Hashable {
+      let x: Int
+      let y: Int
+    }
+
+    init(_ bounds: [String: CGRect], cell: Double) {
+      self.cell = cell
+      for (key, rect) in bounds {
+        for c in covering(rect) { cells[c, default: []].append(key) }
+      }
+    }
+
+    func keys(in area: CGRect) -> Set<String> {
+      var found: Set<String> = []
+      for c in covering(area) { found.formUnion(cells[c] ?? []) }
+      return found
+    }
+
+    private func covering(_ rect: CGRect) -> [Cell] {
+      let (x0, x1) = (Int((rect.minX / cell).rounded(.down)), Int((rect.maxX / cell).rounded(.down)))
+      let (y0, y1) = (Int((rect.minY / cell).rounded(.down)), Int((rect.maxY / cell).rounded(.down)))
+      return (x0...max(x0, x1)).flatMap { x in (y0...max(y0, y1)).map { Cell(x: x, y: $0) } }
     }
   }
 
@@ -84,9 +119,13 @@ struct DashedLine: Shape {
 /// Arrows from a card to the cards of the tests it runs, dashed, and of the tests it depends on,
 /// solid in the accent colour; in straight runs with rounded turns that go around the other cards.
 enum UsesArrows {
-  /// Draws `links`, laid out in board points, where `transform` puts the board.
-  static func draw(_ links: [ProjectMap.Link], in context: GraphicsContext, transform: CGAffineTransform) {
+  /// Draws `links`, laid out in board points, where `transform` puts the board; only the ones
+  /// that reach into `area` (board points), when given.
+  static func draw(
+    _ links: [ProjectMap.Link], in context: GraphicsContext, transform: CGAffineTransform, area: CGRect? = nil
+  ) {
     for link in links {
+      if let area, !Self.bounds(of: link).intersects(area) { continue }
       let points = link.points.map { $0.applying(transform) }
       guard points.count > 1, let end = points.last else { continue }
       var line = Path()
@@ -113,6 +152,17 @@ enum UsesArrows {
   }
 }
 
+extension UsesArrows {
+  /// The smallest rectangle that holds the whole arrow.
+  static func bounds(of link: ProjectMap.Link) -> CGRect {
+    guard let first = link.points.first else { return link.from.union(link.to) }
+    let corners = link.points.dropFirst().reduce(CGRect(origin: first, size: .zero)) { box, point in
+      box.union(CGRect(origin: point, size: .zero))
+    }
+    return corners.insetBy(dx: -10, dy: -10)
+  }
+}
+
 /// A test on a board: its name, how it last ran or that it runs now, quarantine and flakiness,
 /// and a bar per block. It fills the card's place on the board.
 struct TestCard: View {
@@ -131,12 +181,25 @@ struct TestCard: View {
   /// The test file is no longer in the project.
   let isMissing: Bool
   let isPicked: Bool
+  /// It is in the batch running now and hasn't had its turn.
+  var isWaiting = false
+  /// Shows a chevron that opens the blocks inside the card; `nil` when there is nothing to open.
+  var blocksChevron: String?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text(verbatim: name)
-        .font(.headline)
-        .lineLimit(1)
+      HStack(spacing: 6) {
+        Text(verbatim: name)
+          .font(.headline)
+          .lineLimit(1)
+        Spacer(minLength: 0)
+        if let blocksChevron {
+          Image(systemName: blocksChevron)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+        }
+      }
       HStack(spacing: 5) {
         if isRunning {
           ProgressView().controlSize(.mini)
@@ -196,26 +259,23 @@ struct TestCard: View {
     .background(.background, in: .rect(cornerRadius: 14))
     .overlay(
       RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(isPicked ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator), lineWidth: isPicked ? 2 : 0.5)
+        .strokeBorder(
+          isPicked || isRunning ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator),
+          style: StrokeStyle(lineWidth: isPicked || isRunning ? 2 : 0.5, dash: isWaiting && !isPicked ? [4, 3] : []))
     )
-    .shadow(color: .black.opacity(0.06), radius: 7, y: 4)
+    .shadow(color: isRunning ? .accentColor.opacity(0.45) : .black.opacity(0.06), radius: isRunning ? 10 : 7, y: isRunning ? 0 : 4)
     .opacity(isMissing ? 0.6 : 1)
   }
 
+  var status: BoardTestStatus {
+    BoardTestStatus(info: info, last: last, isRunning: isRunning, isWaiting: isWaiting, isMissing: isMissing)
+  }
+
   var state: (symbol: String, color: Color, text: String) {
-    if isMissing {
-      return ("questionmark.folder", .secondary, String(localized: "Not in the project any more"))
-    }
-    if isRunning { return ("play.fill", .accentColor, String(localized: "Running…")) }
-    if let info, !info.readable {
-      return ("exclamationmark.triangle.fill", .red, String(localized: "Can’t be read"))
-    }
-    if let info, info.errors > 0 {
-      return ("exclamationmark.octagon.fill", .red, String(localized: "Can’t run: fix the problems in the test"))
-    }
-    guard let last else { return ("circle.dashed", .secondary, String(localized: "Not run yet")) }
+    let status = status
+    guard case .ran = status.kind, let last else { return (status.symbol, status.color, status.text) }
     let when = last.startedAt.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
-    return (last.status.symbol, last.status.color, "\(last.status.title) · \(when)")
+    return (status.symbol, status.color, "\(status.text) · \(when)")
   }
 
   private var flakyHelp: String? { TestFields.flakyHelp(flaky, marked: info?.flaky == true) }
