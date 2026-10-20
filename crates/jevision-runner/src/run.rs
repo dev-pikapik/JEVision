@@ -25,8 +25,8 @@ use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
 use crate::usage::{LimitState, UsageBook, price_of};
 use crate::{
-    Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK, Screenshot,
-    SecretSource, VisionError, VisionJudge,
+    CiOrigin, Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK,
+    Screenshot, SecretSource, VisionError, VisionJudge,
 };
 use jevision_core::DataTable;
 use jevision_vision::image::{Comparison, Image};
@@ -88,6 +88,8 @@ pub struct RunOptions {
     pub requested_by: Option<String>,
     /// Name of the schedule that started the run, saved in the report.
     pub schedule: Option<String>,
+    /// The CI job that started the run, saved in the report.
+    pub ci: Option<CiOrigin>,
     pub video: VideoMode,
     /// Videos of the project's runs older than this are deleted after the run; `None` keeps
     /// them all.
@@ -112,6 +114,7 @@ impl Default for RunOptions {
             local_only: false,
             requested_by: None,
             schedule: None,
+            ci: None,
             video: VideoMode::Off,
             keep_videos_for: None,
             added_as_dependency: false,
@@ -207,6 +210,7 @@ impl Run {
             baselines_created: Vec::new(),
             requested_by: options.requested_by.clone(),
             schedule: options.schedule.clone(),
+            ci: options.ci.clone(),
             environment: options.environment.clone(),
             video: None,
             file_hash: bytes.as_deref().map(content_hash),
@@ -285,6 +289,7 @@ impl Runner<'_> {
             nothing_checked: true,
             requested_by: options.requested_by.clone(),
             schedule: options.schedule.clone(),
+            ci: options.ci.clone(),
             environment: options.environment.clone(),
             video: None,
             file_hash: loaded

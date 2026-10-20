@@ -718,9 +718,14 @@ impl Api {
                 reader.read_exact(&mut content).unwrap();
                 request.push_str(&String::from_utf8_lossy(&content));
                 seen.lock().unwrap().push(request);
+                // A 302 has the address to go to where the body would be.
+                let (location, body) = match status {
+                    302 => (format!("Location: {body}\r\n"), String::new()),
+                    _ => (String::new(), body),
+                };
                 let _ = write!(
                     reader.into_inner(),
-                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    "HTTP/1.1 {status} X\r\n{location}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                     body.len()
                 );
             }
@@ -798,6 +803,97 @@ fn open_pull_requests_are_listed_page_by_page() {
     let api = Api::serve(vec![(200, "[]")]);
     api.hub().pull_requests(&acme(), Some("feat/a b")).unwrap();
     assert!(api.requests()[0].contains("&head=acme%3Afeat%2Fa%20b&"));
+}
+
+const ARTIFACTS: &str = r#"{"total_count": 3, "artifacts": [
+    {"id": 31, "name": "jevision-reports", "size_in_bytes": 2048, "expired": false,
+     "created_at": "2026-10-18T09:30:00Z",
+     "workflow_run": {"id": 9001, "head_branch": "feat/login", "head_sha": "abc1234"}},
+    {"id": 30, "name": "jevision-reports", "size_in_bytes": 10, "expired": true,
+     "created_at": "2026-07-01T09:30:00Z",
+     "workflow_run": {"id": 8000, "head_branch": "main", "head_sha": "def5678"}},
+    {"id": 29, "name": "jevision-reports", "expired": false}]}"#;
+
+#[test]
+fn ci_artifacts_are_listed_newest_first_without_the_expired() {
+    let api = Api::serve(vec![(200, ARTIFACTS)]);
+    let found = api
+        .hub()
+        .artifacts(&acme(), "jevision-reports", 10)
+        .unwrap();
+    assert_eq!(
+        found[0],
+        Artifact {
+            id: 31,
+            run: 9001,
+            branch: "feat/login".into(),
+            commit: "abc1234".into(),
+            size: 2048,
+            created: 1_792_315_800,
+        }
+    );
+    assert_eq!(
+        found.iter().map(|a| a.id).collect::<Vec<_>>(),
+        [31, 29],
+        "the expired one is gone, an unfinished record reads as empty"
+    );
+    let request = &api.requests()[0];
+    assert!(
+        request.starts_with(
+            "GET /repos/acme/qa/actions/artifacts?name=jevision-reports&per_page=10 HTTP/1.1\r\n"
+        ),
+        "{request}"
+    );
+
+    let api = Api::serve(vec![
+        (200, "[]"),
+        (401, r#"{"message": "Bad credentials"}"#),
+    ]);
+    assert!(api.hub().artifacts(&acme(), "a b", 10).is_err());
+    assert_eq!(
+        api.hub().artifacts(&acme(), "x", 10),
+        Err(GitError::GitHubSignedOut)
+    );
+}
+
+#[test]
+fn an_artifact_downloads_from_where_github_sends_it_without_the_token() {
+    let storage = Api::serve(vec![(200, "PK-the-zip")]);
+    let api = Api::serve(vec![(302, &format!("{}/blob?sig=1", storage.address))]);
+    let mut zip = Vec::new();
+    api.hub()
+        .download_artifact(&acme(), 31, &mut zip, 1024)
+        .unwrap();
+    assert_eq!(zip, b"PK-the-zip");
+    let asked = &api.requests()[0];
+    assert!(asked.starts_with("GET /repos/acme/qa/actions/artifacts/31/zip HTTP/1.1\r\n"));
+    assert!(asked.contains("secret-token"));
+    let followed = &storage.requests()[0];
+    assert!(
+        followed.starts_with("GET /blob?sig=1 HTTP/1.1\r\n"),
+        "{followed}"
+    );
+    assert!(!followed.contains("secret-token"), "{followed}");
+}
+
+#[test]
+fn an_artifact_that_is_too_large_or_gone_is_not_saved_whole() {
+    let api = Api::serve(vec![(200, "0123456789"), (200, "0123456789")]);
+    let mut zip = Vec::new();
+    let result = api.hub().download_artifact(&acme(), 1, &mut zip, 9);
+    assert!(matches!(result, Err(GitError::Failed { .. })), "{result:?}");
+    // Exactly the limit is fine.
+    let mut zip = Vec::new();
+    api.hub()
+        .download_artifact(&acme(), 1, &mut zip, 10)
+        .unwrap();
+    assert_eq!(zip.len(), 10);
+
+    let api = Api::serve(vec![(404, r#"{"message": "Not Found"}"#)]);
+    assert_eq!(
+        api.hub().download_artifact(&acme(), 2, &mut Vec::new(), 10),
+        Err(GitError::RemoteNotFound)
+    );
 }
 
 #[test]
