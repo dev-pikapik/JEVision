@@ -265,6 +265,8 @@ pub enum Event {
     },
     /// A block starts. `test` is the file the block belongs to (it differs from the run's test
     /// inside `runTest`); `variables` are the values visible to it, secrets masked.
+    /// `timeout_ms` is the longest the block waits, when it waits; time the run is paused
+    /// doesn't count against it.
     StepStarted {
         attempt: u32,
         seq: u32,
@@ -272,6 +274,7 @@ pub enum Event {
         block: String,
         block_type: String,
         variables: BTreeMap<String, String>,
+        timeout_ms: Option<u64>,
     },
     StepFinished {
         attempt: u32,

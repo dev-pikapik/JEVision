@@ -118,6 +118,10 @@ final class RecordCenter {
     recorder?.undoLastStep()
   }
 
+  func addWait() {
+    recorder?.addWait()
+  }
+
   /// Lets the person drag a frame around the part of the screen to check.
   func addCheck() {
     guard let recorder, areaPicker == nil else { return }

@@ -934,6 +934,7 @@ impl Exec<'_> {
             block: id.to_owned(),
             block_type: block_type.clone(),
             variables: self.variables(),
+            timeout_ms: block.kind.wait_ms(),
         });
         let clock = Instant::now();
         let mut step = Step {

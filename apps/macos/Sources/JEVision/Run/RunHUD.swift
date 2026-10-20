@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// A floating glass panel shown while the window is away: during a run or a recording. It stays
@@ -93,8 +94,11 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 struct RunHUD: View {
   static let width = 336.0
   /// Tall enough for the longest state; the empty part below the HUD lets clicks through.
-  static let height = 460.0
+  static let height = 560.0
   let center: RunCenter
+  @AppStorage(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
+  @AppStorage(RunInputSettings.escapeStopsKey) private var escapeStops = true
+  @State private var valuesShown = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -150,20 +154,19 @@ struct RunHUD: View {
         .lineLimit(1)
         .truncationMode(.tail)
       }
-      HStack {
-        Text("Step \(step) of \(total)")
-        Spacer()
-        if state.maxAttempts > 1 {
-          Text("Try \(state.attempt) of \(state.maxAttempts)")
-        }
-      }
-      .font(.caption)
-      .monospacedDigit()
-      .foregroundStyle(.secondary)
+      Text("Step \(step) of \(total)")
+        .font(.caption)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
     }
     .accessibilityElement(children: .combine)
 
+    if let layout = document?.layout, !layout.blocks.isEmpty {
+      RunMiniMapView(layout: layout, state: state)
+    }
+
     currentBlock(state, document: document)
+    live(state)
 
     if let choice = state.lastChoice.flatMap(RunText.branch) {
       Label(choice, systemImage: "arrow.triangle.branch")
@@ -177,8 +180,8 @@ struct RunHUD: View {
       queue(batch)
     }
 
-    if state.isPaused, !state.variables.isEmpty {
-      variables(state.variables)
+    if !state.variables.isEmpty {
+      values(state.variables)
     }
 
     if case .waitingForScreen(let holder) = state.phase {
@@ -217,17 +220,34 @@ struct RunHUD: View {
     }
     .labelStyle(.titleAndIcon)
 
-    HStack(spacing: 4) {
-      Text(verbatim: "esc esc")
-        .font(.caption2.monospaced().weight(.semibold))
-        .padding(.horizontal, 4)
-        .background(.quaternary, in: .rect(cornerRadius: 4))
-      Text("stop from anywhere · move the mouse to pause")
+    hints
+  }
+
+  /// What the person's own hands do to the run, as far as Settings let them.
+  @ViewBuilder
+  private var hints: some View {
+    if escapeStops || pausesOnMouse {
+      HStack(spacing: 4) {
+        if escapeStops {
+          Text(verbatim: "esc esc")
+            .font(.caption2.monospaced().weight(.semibold))
+            .padding(.horizontal, 4)
+            .background(.quaternary, in: .rect(cornerRadius: 4))
+          Text("stop from anywhere")
+        }
+        if escapeStops, pausesOnMouse { Text(verbatim: "·") }
+        if pausesOnMouse { Text("move the mouse to pause") }
+      }
+      .font(.caption2)
+      .foregroundStyle(.secondary)
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(
+        Text(
+          [
+            escapeStops ? String(localized: "Press Escape twice to stop from any app.") : nil,
+            pausesOnMouse ? String(localized: "Moving the mouse pauses the test.") : nil,
+          ].compactMap { $0 }.joined(separator: " ")))
     }
-    .font(.caption2)
-    .foregroundStyle(.secondary)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text("Press Escape twice to stop from any app. Moving the mouse pauses the test."))
   }
 
   @ViewBuilder
@@ -251,12 +271,51 @@ struct RunHUD: View {
     }
   }
 
-  /// The values the next block sees, while the test waits.
-  private func variables(_ values: [String: String]) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text("Variables")
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
+  /// What the block that runs now waits for and the retry the test is in, if any.
+  @ViewBuilder
+  private func live(_ state: RunState) -> some View {
+    if state.waitLimit != nil || state.attempt > 1 {
+      TimelineView(.periodic(from: .now, by: 1)) { context in
+        Text(Self.live(of: state, at: context.date))
+          .font(.caption)
+          .monospacedDigit()
+          .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .accessibilityLabel(Text(Self.liveDescription(of: state)))
+      }
+    }
+  }
+
+  /// "6 s left · retry 1 of 2": the time the wait has left, ticking, and the retry; each when it applies.
+  static func live(of state: RunState, at now: Date) -> String {
+    var parts: [String] = []
+    if let left = state.remaining(at: now) {
+      parts.append(String(localized: "\(Int(left.rounded(.up))) s left"))
+    }
+    if state.attempt > 1 { parts.append(retry(of: state)) }
+    let line = parts.joined(separator: " · ")
+    return line.prefix(1).uppercased() + line.dropFirst()
+  }
+
+  /// The same for VoiceOver: what doesn't change from second to second.
+  static func liveDescription(of state: RunState) -> String {
+    var parts: [String] = []
+    if let limit = state.waitLimit {
+      let time = Duration.seconds(Int(limit.rounded(.up))).formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+      parts.append(String(localized: "Waits up to \(time)"))
+    }
+    if state.attempt > 1 { parts.append(retry(of: state)) }
+    return parts.joined(separator: ", ")
+  }
+
+  private static func retry(of state: RunState) -> String {
+    String(localized: "retry \(Int(state.attempt) - 1) of \(max(Int(state.maxAttempts) - 1, 1))")
+  }
+
+  /// The values the next block sees, folded away until the person wants them; a secret only says
+  /// that it is set.
+  private func values(_ values: [String: String]) -> some View {
+    DisclosureGroup(isExpanded: $valuesShown) {
       ScrollView {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 8, verticalSpacing: 3) {
           ForEach(values.sorted { $0.key < $1.key }, id: \.key) { name, value in
@@ -265,7 +324,7 @@ struct RunHUD: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-              Text(verbatim: value.isEmpty ? "\u{201C}\u{201D}" : value)
+              Text(verbatim: Self.shown(name, value))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .textSelection(.enabled)
@@ -277,9 +336,19 @@ struct RunHUD: View {
         .font(.caption.monospaced())
       }
       .frame(maxHeight: 84)
+    } label: {
+      Text("Values")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
     }
     .accessibilityElement(children: .contain)
-    .accessibilityLabel(Text("Variables"))
+    .accessibilityLabel(Text("Values"))
+  }
+
+  /// How a value reads in the panel: a secret says only that it is set, whatever the runner sends.
+  static func shown(_ name: String, _ value: String) -> String {
+    if name.hasPrefix("secret.") { return String(localized: "Set") }
+    return value.isEmpty ? "\u{201C}\u{201D}" : value
   }
 
   /// The tests of the batch running now and the next ones waiting, with what each waits for.
