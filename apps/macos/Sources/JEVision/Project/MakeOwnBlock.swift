@@ -142,7 +142,7 @@ struct OwnBlockSheet: View {
         Button("Cancel", role: .cancel) { dismiss() }
           .keyboardShortcut(.cancelAction)
         Button("Make Block") {
-          model.make(open: [project.document].compactMap { $0 })
+          model.make(open: project.openDocuments)
           if model.made?.skipped.isEmpty == true { dismiss() }
         }
         .keyboardShortcut(.defaultAction)

@@ -100,6 +100,7 @@ struct BoardView: View {
       .onChange(of: runningFile) { refreshLook() }
       .onChange(of: waitingFiles) { refreshLook() }
       .onChange(of: project.items) { documents.reload() }
+      .onAppear { project.boardDocuments = documents }
       .popover(item: $testPicker, attachmentAnchor: .point(pickerAnchor), arrowEdge: .bottom) { place in
         BoardTestPicker(tests: testsOffBoard) { test in
           testPicker = nil
