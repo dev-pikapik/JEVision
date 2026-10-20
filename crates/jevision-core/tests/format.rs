@@ -1286,6 +1286,11 @@ fn clipboard_and_date_blocks_round_trip_in_canonical_form() {
         ids.map(|id| kind(id).checks()),
         [false, false, true, false, false]
     );
+    // Only the check waits, and for as long as its timeout says.
+    assert_eq!(
+        ids.map(|id| kind(id).wait_ms()),
+        [None, None, Some(5000), None, None]
+    );
     for name in ["clipboard", "dateTime"] {
         let block = BlockKind::new(name, "x").unwrap();
         assert_eq!(block.type_name(), name);

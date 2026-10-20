@@ -1,8 +1,13 @@
+import JEVisionHands
 import SwiftUI
 
 struct GeneralSettingsView: View {
   @Environment(Updates.self) private var updates
   @AppStorage(Appearance.key) private var appearance = Appearance.system
+  @AppStorage(RunInputSettings.collapsesKey) private var collapses = true
+  @AppStorage(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
+  @AppStorage(RunInputSettings.escapeStopsKey) private var escapeStops = true
+  @AppStorage(GridSnap.key) private var snapsToGrid = true
 
   private var language: Binding<String> {
     Binding(get: { AppLanguage.shared.saved }, set: { AppLanguage.shared.choose($0) })
@@ -10,7 +15,7 @@ struct GeneralSettingsView: View {
 
   var body: some View {
     Form {
-      SettingsHeader(tab: .general, text: Text("How JEVision looks and which language it speaks."))
+      SettingsHeader(tab: .general, text: Text("How JEVision looks, which language it speaks and what it does while a test runs."))
       Section {
         Picker("Appearance", selection: $appearance) {
           ForEach(Appearance.allCases) { Text($0.title).tag($0) }
@@ -32,13 +37,53 @@ struct GeneralSettingsView: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       }
+      Section {
+        Toggle(isOn: $collapses) {
+          RowLabel(
+            Text("Step aside while a test runs"),
+            Text("JEVision hides and leaves a small panel, so the app you test is in view."))
+        }
+        .settingAnchor("runCollapses")
+        Toggle(isOn: $pausesOnMouse) {
+          RowLabel(
+            Text("Pause when you move the mouse"),
+            Text("A test uses the mouse and keyboard, so your own hands would spoil it. It waits until you press Resume."))
+        }
+        .settingAnchor("runPausesOnMouse")
+        Toggle(isOn: $escapeStops) {
+          RowLabel(Text("Stop with Esc Esc"), Text("Pressing Escape twice, in any app, stops the test."))
+        }
+        .settingAnchor("runEscapeStops")
+      } header: {
+        Text("While a test runs")
+      } footer: {
+        Text("A change counts at once, even for a test that is running.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      Section {
+        Toggle(isOn: $snapsToGrid) {
+          RowLabel(
+            Text("Snap to grid"),
+            Text("What you move on a canvas lands on the grid. Hold ⌘ while moving to do the opposite."))
+        }
+        .settingAnchor("snapToGrid")
+      } header: {
+        Text("Canvas")
+      }
       UpdatesSection(updates: updates)
       RestoreDefaultsSection(
-        message: Text("Appearance and language follow the system again."),
-        isDefault: appearance == .system && language.wrappedValue.isEmpty
+        message: Text("Appearance and language follow the system again. The options for running tests and for the canvas go back to how they came."),
+        isDefault: appearance == .system && language.wrappedValue.isEmpty && collapses && pausesOnMouse && escapeStops
+          && snapsToGrid
       ) {
         appearance = .system
         language.wrappedValue = ""
+        collapses = true
+        pausesOnMouse = true
+        escapeStops = true
+        snapsToGrid = true
       }
     }
     .formStyle(.grouped)

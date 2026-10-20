@@ -28,6 +28,7 @@ struct FlowCanvas: View {
   let onPalette: (Slot?, Point, CGPoint) -> Void
 
   /// The test while something is dragged: drawn, but saved only when the drag ends.
+  @AppStorage(GridSnap.key) private var snapsToGrid = true
   @State private var preview: (flow: Flow, layout: FlowLayout)?
   @State private var link: LinkDrag?
   @State private var marquee: CGRect?
@@ -353,13 +354,17 @@ struct FlowCanvas: View {
     [item] + document.pickedInOrder.filter { $0 != item }
   }
 
+  /// Whether a drag lands on the grid: the setting, turned round while ⌘ is held.
+  private var snapping: Bool { snapsToGrid != NSEvent.modifierFlags.contains(.command) }
+
   private func moveGesture(_ item: CanvasItem) -> some Gesture {
     DragGesture(minimumDistance: 3, coordinateSpace: .named(Self.space))
       .onChanged { value in
         if !document.picked.contains(item) { onPick([item], item.blockID) }
         guard let flow = document.flow,
           let moved = moveOnCanvas(
-            flow: flow, items: dragged(item), dx: value.translation.width, dy: value.translation.height)
+            flow: flow, items: dragged(item), dx: value.translation.width, dy: value.translation.height,
+            snap: snapping)
         else {
           preview = nil
           return
@@ -368,7 +373,8 @@ struct FlowCanvas: View {
       }
       .onEnded { value in
         preview = nil
-        document.move(dragged(item), dx: value.translation.width, dy: value.translation.height)
+        document.move(
+          dragged(item), dx: value.translation.width, dy: value.translation.height, snap: snapping)
       }
   }
 
@@ -404,13 +410,13 @@ struct FlowCanvas: View {
     DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.space))
       .onChanged { value in
         guard let flow = document.flow, let rect = grown(item, by: value.translation),
-          let resized = resizeOnCanvas(flow: flow, item: item, rect: rect)
+          let resized = resizeOnCanvas(flow: flow, item: item, rect: rect, snap: snapping)
         else { return }
         preview = (resized, layoutFlow(flow: resized))
       }
       .onEnded { value in
         preview = nil
-        if let rect = grown(item, by: value.translation) { document.resize(item, to: rect) }
+        if let rect = grown(item, by: value.translation) { document.resize(item, to: rect, snap: snapping) }
       }
   }
 

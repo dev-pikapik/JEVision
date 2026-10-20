@@ -684,6 +684,8 @@ pub enum RunEvent {
         attempt: u32,
     },
     /// `test` is the file the block belongs to; it differs from the run's test inside `runTest`.
+    /// `timeout_ms` is the longest the block waits, when it waits; time the run is paused
+    /// doesn't count against it.
     StepStarted {
         attempt: u32,
         seq: u32,
@@ -691,6 +693,7 @@ pub enum RunEvent {
         block: String,
         block_type: String,
         variables: HashMap<String, String>,
+        timeout_ms: Option<u64>,
     },
     StepFinished {
         attempt: u32,
@@ -768,6 +771,7 @@ impl From<jevision_runner::Event> for RunEvent {
                 block,
                 block_type,
                 variables,
+                timeout_ms,
             } => Self::StepStarted {
                 attempt,
                 seq,
@@ -775,6 +779,7 @@ impl From<jevision_runner::Event> for RunEvent {
                 block,
                 block_type,
                 variables: variables.into_iter().collect(),
+                timeout_ms,
             },
             E::StepFinished { attempt, step } => Self::StepFinished {
                 attempt,

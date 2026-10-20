@@ -781,6 +781,33 @@ fn wait_for_times_out_with_localizable_reason() {
 }
 
 #[test]
+fn a_block_that_waits_says_for_how_long_when_it_starts() {
+    let p = Project::new();
+    p.test(
+        r#""keys":{"type":"pressKeys","keys":"cmd+n","next":"nap"},
+           "nap":{"type":"pause","duration":"20ms","next":"settle"},
+           "settle":{"type":"waitFor","until":"screenStable","timeout":"1s"}"#,
+        "keys",
+        0,
+    );
+    let hands = Fake::new(solid([1, 2, 3]));
+    let (_, events) = run_with(&p, &hands, RunControl::new(), &options());
+    let limits: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::StepStarted {
+                block, timeout_ms, ..
+            } => Some((block.as_str(), *timeout_ms)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        limits,
+        [("keys", None), ("nap", Some(20)), ("settle", Some(1000))]
+    );
+}
+
+#[test]
 fn a_run_that_never_looks_at_the_screen_says_nothing_was_checked() {
     let p = Project::new();
     p.test(
