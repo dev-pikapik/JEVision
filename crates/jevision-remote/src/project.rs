@@ -156,6 +156,10 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
     Ok(TestSummary {
         name: flow.name.clone(),
         description: flow.description.clone(),
+        priority: tag(flow.priority),
+        test_type: tag(flow.test_type),
+        status: tag(flow.status),
+        author: flow.author.clone(),
         app: flow.app.clone(),
         start: flow.start.clone(),
         width: layout.width,
@@ -185,6 +189,14 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
             .collect(),
         rows: row_labels(root, &file, &flow),
     })
+}
+
+/// A card field as the test file writes it, such as `critical`.
+fn tag(value: Option<impl serde::Serialize>) -> Option<String> {
+    match serde_json::to_value(value?).ok()? {
+        serde_json::Value::String(tag) => Some(tag),
+        _ => None,
+    }
 }
 
 /// What each row of the data table a run of the test at `path` goes through is called.
@@ -321,6 +333,7 @@ pub(crate) fn saved_status(root: &Path, run: &str) -> Result<RunStatus, RemoteEr
         verdict: Some(report.verdict),
         attempt: report.attempts.len() as u32,
         block: None,
+        waiting: None,
     })
 }
 

@@ -3,7 +3,8 @@
 //! Serves a small project from a new temporary folder, prints a pairing link that points at
 //! this computer's loopback address, and plays every run a phone starts block by block instead
 //! of driving the Mac: `login/sign-in.flow.json` fails at its last block, everything else
-//! passes. Phones pair with permission to run. Stop it with Ctrl-C.
+//! passes, after waiting three steps for the screen as if another run had it. Phones pair with
+//! permission to run. Stop it with Ctrl-C.
 //!
 //! ```sh
 //! cargo run -p jevision-remote --example test-host -- [--step-ms 400] [--link-file PATH]
@@ -20,13 +21,14 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use jevision_core::{BlockKind, Compare, Condition};
 use jevision_remote::{
     Device, Failure, Host, HostConfig, HostDelegate, Network, Permission, Project, Relay,
-    RemoteError, RunEvent, RunState, RunStatus, StepStatus, Verdict,
+    RemoteError, RunEvent, RunState, RunStatus, ScreenHolder, ScreenWait, StepStatus, Verdict,
 };
 use serde_json::json;
 
 const SIGN_IN: &str = include_str!("../../../examples/sign-in.flow.json");
 const PEOPLE: &str = r#"{"format":1,"name":"Greet every person","app":"com.apple.TextEdit",
-  "description":"Types a greeting for each person in people.csv.","start":"open","blocks":{
+  "description":"Types a greeting for each person in people.csv.","testType":"regression",
+  "priority":"high","status":"ready","author":"Anna Weber","start":"open","blocks":{
     "open":{"type":"openApp","next":"ready"},
     "ready":{"type":"if","reference":{"image":"","compare":"meaning","expect":"An empty document"},
       "then":"rows"},
@@ -193,6 +195,7 @@ impl Player {
                 verdict: None,
                 attempt: 0,
                 block: None,
+                waiting: None,
             },
         );
     }
@@ -201,6 +204,27 @@ impl Player {
         if let Some(status) = self.runs.lock().unwrap().get_mut(run) {
             change(status);
         }
+    }
+
+    /// Makes the run wait for the screen for a while, as it does when another run has it.
+    fn wait_for_screen(&self, root: &str, run: &str, time: Duration) {
+        let since = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
+        self.update(run, |s| {
+            s.waiting = Some(ScreenWait {
+                holder: Some(ScreenHolder {
+                    process: "jevision".into(),
+                    test: "Sign in".into(),
+                    since: since.as_secs(),
+                }),
+            });
+        });
+        let status = self.runs.lock().unwrap().get(run).cloned();
+        if let (Some(host), Some(status)) = (self.host.get().and_then(Weak::upgrade), status) {
+            host.publish_status(root.to_owned(), run.to_owned(), status);
+        }
+        std::thread::sleep(time);
     }
 
     fn publish(&self, root: &str, run: &str, event: RunEvent) {
@@ -229,10 +253,15 @@ impl Player {
 
         let mut attempts = Vec::new();
         let mut verdict = Verdict::Passed;
+        let mut waited = step.is_zero();
         for row in rows {
             let attempt = 1;
             self.update(run, |s| s.attempt = attempt);
             self.publish(root, run, RunEvent::AttemptStarted { attempt });
+            if !waited {
+                waited = true;
+                self.wait_for_screen(root, run, step * 3);
+            }
             let attempt_clock = Instant::now();
             let mut steps = Vec::new();
             let mut outcome = (Verdict::Passed, None);
@@ -242,7 +271,10 @@ impl Player {
                     break;
                 }
                 let seq = index as u32 + 1;
-                self.update(run, |s| s.block = Some(block.clone()));
+                self.update(run, |s| {
+                    s.block = Some(block.clone());
+                    s.waiting = None;
+                });
                 self.publish(
                     root,
                     run,

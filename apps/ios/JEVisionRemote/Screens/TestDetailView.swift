@@ -23,6 +23,21 @@ struct TestDetailView: View {
               .foregroundStyle(.secondary)
               .padding(.horizontal)
           }
+          let facts = CardText.facts(of: flow)
+          if !facts.isEmpty {
+            VStack(spacing: 0) {
+              ForEach(facts) { fact in
+                LabeledContent {
+                  Text(verbatim: fact.value)
+                } label: {
+                  Text(verbatim: fact.label)
+                }
+                .padding(.vertical, 10)
+                if fact != facts.last { Divider() }
+              }
+            }
+            .padding(.horizontal)
+          }
           FlowView(flow: flow, maxHeight: 520)
             .background(.fill.quinary, in: .rect(cornerRadius: 20))
             .padding(.horizontal)

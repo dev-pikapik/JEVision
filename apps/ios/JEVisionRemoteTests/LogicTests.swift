@@ -215,8 +215,37 @@ struct AppModelTests {
 }
 
 struct RunProgressTests {
-  private func status(_ state: RunState, block: String? = nil, attempt: Int = 1, verdict: Verdict? = nil) -> RunUpdate {
-    .status(RunStatus(run: "r", test: "main.json", state: state, verdict: verdict, attempt: attempt, block: block))
+  private func status(
+    _ state: RunState, block: String? = nil, attempt: Int = 1, verdict: Verdict? = nil, waiting: ScreenWait? = nil
+  ) -> RunUpdate {
+    .status(
+      RunStatus(run: "r", test: "main.json", state: state, verdict: verdict, attempt: attempt, block: block, waiting: waiting))
+  }
+
+  @Test func waitsForTheScreenUntilItsFirstBlockStarts() {
+    let holder = ScreenHolder(process: "jevision", test: "Sign in", since: Date(timeIntervalSince1970: 1_800_000_000))
+    var progress = RunProgress()
+    progress.apply(status(.running))
+    #expect(progress.waiting == nil)
+    progress.apply(status(.running, waiting: ScreenWait(holder: holder)))
+    #expect(progress.waiting == ScreenWait(holder: holder))
+    #expect(progress.state == .running)
+    progress.apply(.event(.blockStarted(test: "main.json", block: "a", kind: "click")))
+    #expect(progress.waiting == nil)
+
+    // A retry waits again, and a run that ends doesn't wait any more.
+    progress.apply(.event(.attemptStarted(attempt: 2)))
+    progress.apply(status(.running, attempt: 2, waiting: ScreenWait(holder: nil)))
+    #expect(progress.waiting == ScreenWait(holder: nil))
+    progress.apply(.event(.finished(verdict: .cancelled, flaky: false)))
+    #expect(progress.waiting == nil)
+  }
+
+  @Test func aStatusFromAnOlderMacIsNotWaiting() {
+    var progress = RunProgress()
+    progress.apply(status(.running, waiting: ScreenWait(holder: nil)))
+    progress.apply(status(.running))
+    #expect(progress.waiting == nil)
   }
 
   @Test func followsBlocksToTheEnd() {
@@ -360,5 +389,38 @@ struct ReportTitleTests {
     let title = ReportView.title(of: retried.attempts[1], in: retried)
     #expect(title?.hasPrefix(TestDetailView.rowTitle(number: 1, label: "Anna")) == true)
     #expect(title != ReportView.title(of: retried.attempts[0], in: retried))
+  }
+}
+
+struct CardAndQueueTextTests {
+  private func flow(priority: String? = nil, testType: String? = nil, status: String? = nil, author: String? = nil) -> TestFlow {
+    TestFlow(
+      name: "Sign in", description: nil, app: "com.example.app", start: "open", size: .zero, blocks: [], frames: [], edges: [],
+      priority: priority, testType: testType, status: status, author: author)
+  }
+
+  @Test func theCardReadsLikeTheMacsInItsOrder() {
+    let facts = CardText.facts(of: flow(priority: "critical", testType: "smoke", status: "ready", author: "Anna"))
+    #expect(facts.map(\.label) == [String(localized: "Type"), String(localized: "Priority"), String(localized: "Status"), String(localized: "Author")])
+    #expect(facts.map(\.value) == [String(localized: "Smoke"), String(localized: "Critical"), String(localized: "Ready"), "Anna"])
+  }
+
+  @Test func aCardWithoutFieldsShowsNone() {
+    #expect(CardText.facts(of: flow()).isEmpty)
+    #expect(CardText.facts(of: flow(author: "")).isEmpty)
+  }
+
+  @Test func aValueFromANewerMacShowsAsWritten() {
+    #expect(CardText.priority("urgent") == "urgent")
+    #expect(CardText.testType("load") == "load")
+    #expect(CardText.status("retired") == "retired")
+  }
+
+  @Test func theQueueSaysWhoHasTheScreen() {
+    let since = Date(timeIntervalSince1970: 1_800_000_000)
+    let holder = ScreenHolder(process: "jevision", test: "Sign in", since: since)
+    let time = since.formatted(date: .omitted, time: .shortened)
+    #expect(RunText.screenBusy(holder) == String(localized: "screen.busy", defaultValue: "Screen busy: \("jevision"), test \("Sign in"), since \(time)"))
+    #expect(RunText.screenBusy(nil) == String(localized: "screen.busy.unknown", defaultValue: "Screen busy: another run is using it."))
   }
 }

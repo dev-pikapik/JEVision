@@ -126,6 +126,13 @@ enum RunText {
     }
   }
 
+  /// Who has the screen, for a run that waits for its turn: Screen busy: JEVision, test Sign in, since 12:03.
+  static func screenBusy(_ holder: ScreenHolder?) -> String {
+    guard let holder else { return String(localized: "screen.busy.unknown", defaultValue: "Screen busy: another run is using it.") }
+    let since = holder.since.formatted(date: .omitted, time: .shortened)
+    return String(localized: "screen.busy", defaultValue: "Screen busy: \(holder.process), test \(holder.test), since \(since)")
+  }
+
   /// Which way an `if` step went, named as the Mac's canvas names the ways out:
   /// Took “Condition 2: Inbox is empty”, Took “Otherwise”. `nil` for other blocks.
   static func branch(_ step: RunReport.Step) -> String? {

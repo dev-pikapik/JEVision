@@ -17,6 +17,8 @@ struct RunProgress: Equatable {
   /// The run's test file; blocks of tests it calls belong to other files.
   private(set) var test: String?
   private(set) var state: RunState = .running
+  /// Set while the run waits for its turn at the screen; its first block hasn't started yet.
+  private(set) var waiting: ScreenWait?
   private(set) var attempt = 1
   /// The block of the run's own test that is running now.
   private(set) var current: String?
@@ -48,6 +50,7 @@ struct RunProgress: Equatable {
       state = status.state
       if status.attempt != attempt { startAttempt(status.attempt) }
       verdict = status.verdict
+      waiting = status.state == .finished ? nil : status.waiting
       current = status.state == .finished ? nil : status.block
       if let current, running?.block != current {
         running = Step(id: 0, test: status.test, block: current, kind: "", status: nil, failure: nil)
@@ -65,6 +68,7 @@ struct RunProgress: Equatable {
       startAttempt(number)
     case .blockStarted(let file, let block, let kind):
       kinds[file + "\n" + block] = kind
+      waiting = nil
       running = Step(id: 0, test: file, block: block, kind: kind, status: nil, failure: nil)
       if isOwn(file) { current = block }
     case .blockFinished(let file, let block, let status, let failure, let branch, let branches, let condition):
@@ -86,6 +90,7 @@ struct RunProgress: Equatable {
       state = .running
     case .finished(let verdict, let flaky):
       state = .finished
+      waiting = nil
       self.verdict = verdict
       self.flaky = flaky
       current = nil
@@ -99,6 +104,7 @@ struct RunProgress: Equatable {
 
   private mutating func startAttempt(_ number: Int) {
     attempt = number
+    waiting = nil
     current = nil
     running = nil
     marks = [:]
