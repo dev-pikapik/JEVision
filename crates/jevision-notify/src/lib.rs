@@ -333,7 +333,8 @@ pub fn message_for(
     let fixed =
         report.verdict == Verdict::Passed && previous.is_some_and(|p| p.verdict == Verdict::Failed);
     let send = match (report.verdict, settings.when) {
-        (Verdict::Cancelled, _) => false,
+        // A verdict of a newer version is never this version's own run.
+        (Verdict::Cancelled | Verdict::Unknown, _) => false,
         (_, NotifyWhen::Every) => true,
         (Verdict::Failed, _) => !report.quarantined,
         // A failed dependency sends its own message; a missing one or a circle sends none.
@@ -356,6 +357,7 @@ pub fn message(run: &Run, fixed: bool) -> Message {
         Verdict::Passed => "Passed",
         Verdict::Cancelled => "Stopped",
         Verdict::Blocked => "Blocked",
+        Verdict::Unknown => "Unknown status",
     };
     let mut lines = Vec::new();
     if let Some(reason) = reason(report) {
@@ -455,7 +457,11 @@ pub fn previous(project: &Path, run: &Run) -> Option<RunReport> {
         .filter_map(|n| Run::load(&project.join(".jevision").join("runs").join(n)).ok())
         .map(|r| r.report)
         .find(|r| {
-            r.file == run.report.file && !matches!(r.verdict, Verdict::Cancelled | Verdict::Blocked)
+            r.file == run.report.file
+                && !matches!(
+                    r.verdict,
+                    Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown
+                )
         })
 }
 

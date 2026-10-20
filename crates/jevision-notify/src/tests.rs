@@ -130,6 +130,9 @@ fn messages_go_out_when_the_settings_say() {
         Some("Passed: Sign in")
     );
     assert_eq!(message_for(&every, &stopped, None, false), None);
+    // A verdict only a newer version knows is never this version's own run.
+    let newer = run(report("retried", None));
+    assert_eq!(message_for(&every, &newer, None, false), None);
 
     let blocked = |reason: serde_json::Value| {
         let mut value = report("blocked", None);
@@ -234,6 +237,7 @@ fn fixed_is_told_against_the_last_finished_run_of_the_same_file() {
     save("20261019-080000-sign-in", report("failed", Some("x")));
     save("20261019-083000-sign-in", report("cancelled", None));
     save("20261019-083500-sign-in", report("blocked", None));
+    save("20261019-083700-sign-in", report("retried", None));
     let mut other = report("passed", None);
     other["file"] = json!("other/sign-in.flow.json");
     save("20261019-083000-sign-in-2", other);
