@@ -46,7 +46,8 @@ pub use pairing::{DeviceSigner, PairingOffer};
 #[cfg(feature = "host")]
 pub use store::{Activity, ActivityKind, Device, DeviceKind};
 pub use wire::{
-    Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, PauseReason, Position, ProjectInfo,
+    Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, NoteAttachmentSummary,
+    NoteReplySummary, NoteResolvedSummary, NoteSummary, PauseReason, Position, ProjectInfo,
     RunEvent, RunList, RunState, RunStatus, RunSummary, RunUpdate, ScreenHolder, ScreenWait,
     TestEntry, TestSummary,
 };

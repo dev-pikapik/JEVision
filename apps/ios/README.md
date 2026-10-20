@@ -4,6 +4,7 @@ JEVision Remote turns an iPhone into a remote for JEVision on your Mac. Once pai
 
 - browse the projects and tests on each paired Mac,
 - see a test drawn as its flow, with its last results,
+- read the sticky notes on a test's canvas, with their replies and links (read-only; attached files stay on the Mac),
 - run a test (if the Mac allows it) and follow it block by block, or stop it,
 - read reports with a one-phrase reason for each failure, and open screenshots only when you need them,
 - look through a project's run history.

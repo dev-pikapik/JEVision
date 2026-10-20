@@ -34,7 +34,20 @@ const PEOPLE: &str = r#"{"format":1,"name":"Greet every person","app":"com.apple
     "ready":{"type":"if","reference":{"image":"","compare":"meaning","expect":"An empty document"},
       "then":"rows"},
     "rows":{"type":"useData","file":"people.csv","body":"type"},
-    "type":{"type":"type","text":"Hello, ${data.name}!","next":"rows"}}}"#;
+    "type":{"type":"type","text":"Hello, ${data.name}!","next":"rows"}},
+  "canvas":{"notes":{
+    "greeting":{"text":"**Check** the greeting for every row. The wording is in [the ticket](https://example.com/tickets/42).",
+      "author":"Anna Weber","time":"2026-10-18T09:30:00Z","anchor":{"type":"block","block":"rows"},
+      "attachments":[{"file":"greeting.png"},{"link":"https://example.com/tickets/42"}],
+      "replies":[{"id":"r1","author":"Boris Keller","time":"2026-10-18T10:05:00Z","text":"Chen has no email yet, the greeting still works."},
+        {"id":"r2","author":"Anna Weber","time":"2026-10-18T10:20:00Z","text":"Fine, **keep** it."}],
+      "frame":{"x":288,"y":144,"width":192,"height":128}},
+    "blank":{"text":"TextEdit starts with a **blank** document.","author":"Boris Keller",
+      "time":"2026-10-17T16:00:00Z","anchor":{"type":"block","block":"open"},
+      "resolved":{"by":"Boris Keller","time":"2026-10-17T17:00:00Z"},
+      "frame":{"x":288,"y":16,"width":192,"height":96}},
+    "timing":{"text":"Runs about *40 seconds* for three rows.","author":"Chen Li",
+      "time":"2026-10-18T11:00:00Z","frame":{"x":288,"y":304,"width":192,"height":96}}}}}"#;
 const PEOPLE_CSV: &str =
     "name,email\nAnna,anna@example.com\nBoris,boris@example.com\nChen,chen@example.com\n";
 const FAILING: &str = "login/sign-in.flow.json";

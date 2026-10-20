@@ -304,6 +304,11 @@ pub struct TestSummary {
     /// once per row; a run can be limited to one of them. Empty without such a table.
     #[serde(default)]
     pub rows: Vec<String>,
+    /// The sticky notes of the test as the Mac editor shows them, read-only; the Mac sends at
+    /// most a hundred. Absent from Macs that don't send them, and phones that predate notes
+    /// ignore it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<NoteSummary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -346,6 +351,191 @@ pub struct Area {
 pub struct Position {
     pub x: f64,
     pub y: f64,
+}
+
+/// Largest number of notes of a test that reach the phone.
+pub(crate) const MAX_NOTES: usize = 100;
+/// Largest note and reply text, in bytes.
+pub(crate) const MAX_NOTE_TEXT: usize = 4000;
+pub(crate) const MAX_REPLY_TEXT: usize = 1000;
+/// Replies of a note that reach the phone: the newest ones.
+pub(crate) const MAX_REPLIES: usize = 20;
+pub(crate) const MAX_ATTACHMENTS: usize = 10;
+/// Largest file name or web address of an attachment, in bytes.
+pub(crate) const MAX_ATTACHMENT_VALUE: usize = 512;
+/// Largest author name, time and id, in bytes.
+pub(crate) const MAX_NOTE_LABEL: usize = 64;
+/// Largest width and height of a note, in canvas points.
+const MAX_NOTE_SIDE: f64 = 2000.0;
+/// Largest corner of a note, in canvas points.
+const MAX_NOTE_CORNER: f64 = 1_000_000.0;
+/// Largest size of all notes of a test together as JSON, so a test with many long notes
+/// still fits a message. Notes that don't fit are left out.
+pub(crate) const MAX_NOTES_JSON: usize = 1 << 20;
+
+/// A sticky note of a test, read-only. Its text is Markdown. Files that come with a note stay
+/// on the Mac; only their names travel. A phone limits whatever it receives with
+/// `bounded_notes` before drawing it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteSummary {
+    pub id: String,
+    pub text: String,
+    /// Who wrote the note; empty when unknown.
+    pub author: String,
+    /// When it was written, RFC 3339; empty when unknown.
+    pub time: String,
+    /// What the note is about: `test`, `block` or `folder`. Anything else reads as `test`.
+    pub anchor: String,
+    /// The block a note about a block is about.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block: Option<String>,
+    /// Where the note sits on the canvas, in the same points as the blocks.
+    pub area: Area,
+    /// How many replies the note has, also when only the newest are in `replies`.
+    pub reply_count: u32,
+    /// The discussion under the note, oldest first.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub replies: Vec<NoteReplySummary>,
+    /// Set when the discussion is settled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved: Option<NoteResolvedSummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<NoteAttachmentSummary>,
+}
+
+/// One message under a note.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteReplySummary {
+    pub id: String,
+    pub author: String,
+    /// RFC 3339; empty when unknown.
+    pub time: String,
+    pub text: String,
+}
+
+/// Who settled the discussion under a note, and when.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteResolvedSummary {
+    pub by: String,
+    /// RFC 3339; empty when unknown.
+    pub time: String,
+}
+
+/// A file or a link that comes with a note.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteAttachmentSummary {
+    /// `file` or `link`.
+    pub kind: String,
+    /// The file name, which stays on the Mac, or the web address.
+    pub value: String,
+}
+
+/// `text` cut to at most `max` bytes at a character boundary, with `…` where it was cut.
+fn cut(text: &mut String, max: usize) {
+    if text.len() <= max {
+        return;
+    }
+    let mut end = max.saturating_sub('…'.len_utf8());
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    text.truncate(end);
+    text.push('…');
+}
+
+/// An address the phone may open: `http` or `https`, with a host and no spaces.
+fn is_web_address(address: &str) -> bool {
+    let rest = address
+        .strip_prefix("https://")
+        .or_else(|| address.strip_prefix("http://"));
+    rest.is_some_and(|r| {
+        r.chars().next().is_some_and(char::is_alphanumeric)
+            && !address.chars().any(|c| c.is_whitespace() || c.is_control())
+    })
+}
+
+/// `notes` as a phone may take them, whoever sent them: at most [`MAX_NOTES`] notes within
+/// [`MAX_NOTES_JSON`] bytes of JSON altogether, each with its text, replies (the newest ones), attachments
+/// and labels cut to their limits, links other than web addresses and attachments of unknown
+/// kinds dropped, an unknown anchor read as `test` and the area kept on the canvas. Notes
+/// without a usable area go. Cutting again changes nothing.
+pub(crate) fn bounded_notes(notes: Vec<NoteSummary>) -> Vec<NoteSummary> {
+    let mut left = MAX_NOTES_JSON;
+    let mut kept = Vec::new();
+    for note in notes.into_iter().take(MAX_NOTES) {
+        let Some(note) = bounded_note(note) else {
+            continue;
+        };
+        let size = serde_json::to_string(&note).map_or(usize::MAX, |json| json.len());
+        if size > left {
+            break;
+        }
+        left -= size;
+        kept.push(note);
+    }
+    kept
+}
+
+fn bounded_note(mut note: NoteSummary) -> Option<NoteSummary> {
+    let area = &mut note.area;
+    if ![area.x, area.y, area.width, area.height]
+        .iter()
+        .all(|v| v.is_finite())
+    {
+        return None;
+    }
+    area.x = area.x.clamp(0.0, MAX_NOTE_CORNER);
+    area.y = area.y.clamp(0.0, MAX_NOTE_CORNER);
+    area.width = area.width.clamp(1.0, MAX_NOTE_SIDE);
+    area.height = area.height.clamp(1.0, MAX_NOTE_SIDE);
+
+    for label in [&mut note.id, &mut note.author, &mut note.time] {
+        cut(label, MAX_NOTE_LABEL);
+    }
+    cut(&mut note.text, MAX_NOTE_TEXT);
+    if note.anchor == "block" {
+        if let Some(block) = &mut note.block {
+            cut(block, MAX_NOTE_LABEL);
+        } else {
+            note.anchor = "test".into();
+        }
+    } else {
+        if note.anchor != "folder" {
+            note.anchor = "test".into();
+        }
+        note.block = None;
+    }
+
+    note.reply_count = note
+        .reply_count
+        .max(note.replies.len().try_into().unwrap_or(u32::MAX));
+    let skipped = note.replies.len().saturating_sub(MAX_REPLIES);
+    note.replies.drain(..skipped);
+    for reply in &mut note.replies {
+        for label in [&mut reply.id, &mut reply.author, &mut reply.time] {
+            cut(label, MAX_NOTE_LABEL);
+        }
+        cut(&mut reply.text, MAX_REPLY_TEXT);
+    }
+    if let Some(resolved) = &mut note.resolved {
+        cut(&mut resolved.by, MAX_NOTE_LABEL);
+        cut(&mut resolved.time, MAX_NOTE_LABEL);
+    }
+    // A cut address would lead somewhere else, so a long link goes instead of being cut.
+    note.attachments.retain(|a| match a.kind.as_str() {
+        "file" => !a.value.is_empty(),
+        "link" => a.value.len() <= MAX_ATTACHMENT_VALUE && is_web_address(&a.value),
+        _ => false,
+    });
+    note.attachments.truncate(MAX_ATTACHMENTS);
+    for attachment in &mut note.attachments {
+        cut(&mut attachment.value, MAX_ATTACHMENT_VALUE);
+    }
+    Some(note)
 }
 
 /// Where a run stands.
