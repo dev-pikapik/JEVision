@@ -13,7 +13,7 @@ pub enum BoardError {
     #[error("{message}")]
     Invalid { message: String },
     /// The data or the name given for a board's picture is not one JEVision can show.
-    #[error("this is not a picture JEVision can show")]
+    #[error("{}", jevision_l10n::tr!("board.picture.unsupported"))]
     NotAPicture,
 }
 

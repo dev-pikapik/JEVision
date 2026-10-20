@@ -1,4 +1,5 @@
 import Foundation
+import JEVisionCore
 import Observation
 import Synchronization
 
@@ -9,8 +10,15 @@ import Synchronization
 final class AppLanguage: Observable, Sendable {
   static let shared = AppLanguage()
 
-  /// Empty means "follow the system".
-  static let choices = ["", "en", "ru"]
+  /// The choices in the settings: empty means "follow the system", then every language the app has
+  /// texts for, English first. A language added to the catalog shows up here without code changes.
+  static var choices: [String] { [""] + languages(in: .main) }
+
+  /// The languages `bundle` has texts for, the source language first.
+  static func languages(in bundle: Bundle) -> [String] {
+    let found = bundle.localizations.filter { $0 != "Base" }
+    return (found.isEmpty ? ["en"] : found).sorted { $0 == "en" ? $1 != "en" : $1 != "en" && $0 < $1 }
+  }
 
   private static let key = "AppleLanguages"
 
@@ -28,6 +36,8 @@ final class AppLanguage: Observable, Sendable {
   private let domain: String
   private let system: @Sendable () -> [String]
   private let main: Bundle
+  /// Hands the language in use to the core, which words its messages, reports and issues in it.
+  private let apply: @Sendable (String) -> Void
 
   /// The language of the choice or, for "System", of the Mac's list that the app has texts for.
   /// `available` are the languages the app has texts for.
@@ -45,14 +55,17 @@ final class AppLanguage: Observable, Sendable {
     return Locale(components: parts)
   }
 
-  /// `domain` is where `defaults` keeps the app's settings; `system` lists the Mac's languages.
+  /// `domain` is where `defaults` keeps the app's settings; `system` lists the Mac's languages;
+  /// `apply` receives the language in use at launch and at every change.
   init(
     main: Bundle = .main,
     defaults: UserDefaults = .standard,
     domain: String = Bundle.main.bundleIdentifier ?? "",
-    system: @escaping @Sendable () -> [String] = AppLanguage.systemLanguages
+    system: @escaping @Sendable () -> [String] = AppLanguage.systemLanguages,
+    apply: @escaping @Sendable (String) -> Void = { setLanguage(tag: $0) }
   ) {
     self.main = main
+    self.apply = apply
     self.defaults = defaults
     self.domain = domain
     self.system = system
@@ -101,8 +114,7 @@ final class AppLanguage: Observable, Sendable {
 
   private func refresh() {
     let saved = (defaults.persistentDomain(forName: domain)?[Self.key] as? [String])?.first ?? ""
-    let available = main.localizations.filter { $0 != "Base" }
-    let language = Self.resolve(saved: saved, system: system(), available: available.isEmpty ? ["en"] : available)
+    let language = Self.resolve(saved: saved, system: system(), available: Self.languages(in: main))
     let folder = main.path(forResource: language, ofType: "lproj").flatMap { Bundle(path: $0) }
     registrar.withMutation(of: self, keyPath: \.locale) {
       state.withLock {
@@ -112,6 +124,7 @@ final class AppLanguage: Observable, Sendable {
         $0.bundle = folder
       }
     }
+    apply(language)
   }
 
   /// The Mac's languages in order of preference, as set now rather than when the app opened.

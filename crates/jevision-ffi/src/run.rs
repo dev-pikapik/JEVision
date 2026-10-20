@@ -951,7 +951,7 @@ pub fn deciding_attempt(report: &RunReport) -> Option<Attempt> {
         .cloned()
 }
 
-/// English sentence for a retry verdict, for the command line.
+/// The sentence for a retry verdict in the current language, for the command line.
 #[uniffi::export]
 pub fn describe_retry_verdict(verdict: RetryVerdict) -> String {
     verdict.describe()
@@ -1145,8 +1145,8 @@ impl From<jevision_runner::Step> for Step {
     }
 }
 
-/// Which way an `if` step went, in English, for the command line: `Took “Condition 2: Inbox is
-/// empty”`, `Took “Otherwise”`. `None` for other blocks.
+/// Which way an `if` step went, in the current language, for the command line: `Took “Condition
+/// 2: Inbox is empty”`, `Took “Otherwise”`. `None` for other blocks.
 #[uniffi::export]
 pub fn branch_text(step: &Step) -> Option<String> {
     jevision_runner::branch_text(
@@ -1172,13 +1172,31 @@ impl From<jevision_runner::Failure> for Failure {
     }
 }
 
-/// English sentence for a failure, for when the app has no translation of its code.
+impl From<Failure> for jevision_runner::Failure {
+    fn from(f: Failure) -> Self {
+        Self {
+            code: f.code,
+            params: f.params.into_iter().collect(),
+        }
+    }
+}
+
+/// The sentence for a failure in the current language, saying which block failed.
 #[uniffi::export]
 pub fn describe_failure(failure: Failure) -> String {
-    jevision_runner::describe(&jevision_runner::Failure {
-        code: failure.code,
-        params: failure.params.into_iter().collect(),
-    })
+    jevision_runner::describe(&failure.into())
+}
+
+/// The sentence for a failed visual check in the current language, without the block it is in.
+#[uniffi::export]
+pub fn describe_vision_failure(failure: Failure) -> String {
+    jevision_runner::describe_vision(&failure.into())
+}
+
+/// The note on a passed run that checked nothing, in the current language.
+#[uniffi::export]
+pub fn nothing_checked() -> String {
+    jevision_runner::nothing_checked_in(&jevision_l10n::language())
 }
 
 #[uniffi::remote(Record)]
@@ -1632,7 +1650,7 @@ pub(crate) mod tests {
         assert_eq!(failure.params["block"], "open");
         assert_eq!(
             describe_failure(failure),
-            "Block open: permission accessibility is not granted."
+            "JEVision isn’t allowed to use Accessibility. Turn it on in Settings → Permissions."
         );
     }
 
@@ -1678,5 +1696,32 @@ pub(crate) mod tests {
             RunEvent::from(jevision_runner::Event::WaitingForScreen { holder: None }),
             RunEvent::WaitingForScreen { holder: None }
         );
+    }
+
+    #[test]
+    fn a_vision_failure_reads_without_its_block() {
+        let failure =
+            jevision_runner::Failure::new("run.vision.noKey").with("provider", "Anthropic");
+        let english = "The API key for Anthropic isn’t set. Set it in Settings → AI.";
+        assert_eq!(jevision_runner::describe_vision_in("en", &failure), english);
+        assert_eq!(
+            jevision_runner::describe_vision_in("ru", &failure),
+            "Ключ API для Anthropic не задан. Задайте его в Настройках → ИИ."
+        );
+        assert_eq!(describe_vision_failure(failure.into()), english);
+    }
+
+    #[test]
+    fn retry_verdicts_read_in_russian_and_english() {
+        let verdict = RetryVerdict::FailedEveryTime { attempts: 3 };
+        assert_eq!(
+            verdict.describe_in("en"),
+            "Failed 3 times in a row — a real failure, not flakiness."
+        );
+        assert_eq!(
+            verdict.describe_in("ru"),
+            "Упал 3 раза подряд — это настоящий сбой, а не нестабильность."
+        );
+        assert_eq!(describe_retry_verdict(verdict), verdict.describe_in("en"));
     }
 }

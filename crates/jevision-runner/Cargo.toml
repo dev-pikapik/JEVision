@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 jevision-core.workspace = true
+jevision-l10n.workspace = true
 jevision-vision.workspace = true
 libc = "0.2"
 rusqlite = { version = "0.40", features = ["bundled"] }

@@ -185,7 +185,7 @@ impl<'v> Obj<'v> {
             .filter_map(|v| v.as_str().map(str::to_owned))
             .collect();
         if strings.len() != items.len() {
-            self.wrong_type(key, "array of strings", out);
+            self.wrong_type(key, "stringArray", out);
             return None;
         }
         Some(strings)
@@ -1282,7 +1282,7 @@ fn expect_status(o: &mut Obj<'_>, out: &mut Out) -> Option<ExpectStatus> {
         Some(v) => {
             let code = v.as_u64().and_then(|n| u16::try_from(n).ok());
             if code.is_none() {
-                o.wrong_type("expectStatus", "a status code, \"success\" or \"any\"", out);
+                o.wrong_type("expectStatus", "status", out);
             }
             code.map(ExpectStatus::Exactly)
         }

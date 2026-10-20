@@ -39,7 +39,7 @@ impl Image {
         let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
         let size = reader
             .output_buffer_size()
-            .ok_or_else(|| "image is too large".to_owned())?;
+            .ok_or_else(|| jevision_l10n::tr!("vision.image.tooLarge"))?;
         let mut buf = vec![0; size];
         let info = reader.next_frame(&mut buf).map_err(|e| e.to_string())?;
         let pixels = info.width as usize * info.height as usize;

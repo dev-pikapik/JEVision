@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use jevision_core::{Batch, RunMode};
+use jevision_l10n::tr_in;
 use serde::{Deserialize, Serialize};
 
 /// Who has the screen.
@@ -44,21 +45,24 @@ impl ScreenHolder {
     }
 }
 
-/// For people: `Screen busy: JEVision, test Sign in, since 12:03.`
+/// For people: `Screen busy: JEVision, test Sign in, since 12:03`, in the language set with
+/// `jevision_l10n::set_language`.
 pub fn describe_screen_holder(holder: Option<&ScreenHolder>) -> String {
+    describe_screen_holder_in(&jevision_l10n::language(), holder)
+}
+
+/// [`describe_screen_holder`] in `lang`.
+pub fn describe_screen_holder_in(lang: &str, holder: Option<&ScreenHolder>) -> String {
     let Some(holder) = holder else {
-        return "Screen busy: another run is using it.".to_owned();
+        return tr_in!(lang, "screen.busy.unknown");
     };
     let time = i64::try_from(holder.since)
         .ok()
         .and_then(|secs| chrono::DateTime::from_timestamp(secs, 0))
         .map(|t| t.with_timezone(&chrono::Local).format("%H:%M").to_string());
     match time {
-        Some(time) => format!(
-            "Screen busy: {}, test {}, since {time}.",
-            holder.process, holder.test
-        ),
-        None => format!("Screen busy: {}, test {}.", holder.process, holder.test),
+        Some(time) => tr_in!(lang, "screen.busy", &holder.process, &holder.test, time),
+        None => tr_in!(lang, "screen.busy.process", &holder.process, &holder.test),
     }
 }
 
@@ -241,16 +245,25 @@ mod tests {
     }
 
     #[test]
-    fn the_holder_is_described_for_people() {
-        let text = describe_screen_holder(Some(&holder("Sign in")));
+    fn the_holder_is_described_for_people_in_each_language() {
+        let who = holder("Sign in");
+        let en = describe_screen_holder_in("en", Some(&who));
         assert!(
-            text.starts_with("Screen busy: JEVision, test Sign in, since "),
-            "{text}"
+            en.starts_with("Screen busy: JEVision, test Sign in, since "),
+            "{en}"
         );
-        assert!(text.ends_with('.'));
+        let ru = describe_screen_holder_in("ru", Some(&who));
+        assert!(
+            ru.starts_with("Экран занят: JEVision, тест Sign in, с "),
+            "{ru}"
+        );
         assert_eq!(
-            describe_screen_holder(None),
+            describe_screen_holder_in("en", None),
             "Screen busy: another run is using it."
+        );
+        assert_eq!(
+            describe_screen_holder_in("ru", None),
+            "Экран занят: его использует другой прогон."
         );
     }
 }

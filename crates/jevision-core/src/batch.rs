@@ -11,6 +11,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use jevision_l10n::{language, tr_in};
 use serde::{Deserialize, Serialize};
 
 use crate::issue::Issue;
@@ -58,16 +59,20 @@ pub enum BlockReason {
 }
 
 impl Blocker {
-    /// `Blocked: Login failed`, for the command line and the reports.
+    /// [`Self::describe_in`] in the process language.
     pub fn describe(&self) -> String {
+        self.describe_in(&language())
+    }
+
+    /// `Blocked: Login failed` in `lang`, for the command line and the reports.
+    pub fn describe_in(&self, lang: &str) -> String {
         match &self.reason {
-            BlockReason::Failed => format!("Blocked: {} failed", self.cause_name),
-            BlockReason::NotRun => format!("Blocked: {} couldn't run", self.cause_name),
-            BlockReason::Missing => format!("Blocked: {} doesn't exist", self.cause),
-            BlockReason::Cycle { tests } => format!(
-                "Blocked: the tests depend on each other in a circle: {}",
-                tests.join(" → ")
-            ),
+            BlockReason::Failed => tr_in!(lang, "batch.blocked.failed", &self.cause_name),
+            BlockReason::NotRun => tr_in!(lang, "batch.blocked.notRun", &self.cause_name),
+            BlockReason::Missing => tr_in!(lang, "batch.blocked.missing", &self.cause),
+            BlockReason::Cycle { tests } => {
+                tr_in!(lang, "batch.blocked.cycle", tests.join(" → "))
+            }
         }
     }
 }
@@ -655,7 +660,11 @@ mod tests {
         };
         assert_eq!(pay.dependency, "cart/add.flow.json");
         assert_eq!(pay.cause, "login.flow.json");
-        assert_eq!(pay.describe(), "Blocked: Login failed");
+        assert_eq!(pay.describe_in("en"), "Blocked: Login failed");
+        assert_eq!(
+            pay.describe_in("ru"),
+            "Заблокирован: тест «Login» не прошёл"
+        );
         assert_eq!(batch.start_next(), Some(3), "independent tests still run");
         batch.finish(3, TestOutcome::Passed);
         assert!(batch.is_over());
@@ -679,13 +688,16 @@ mod tests {
         let TestState::Blocked(b) = &batch.tests()[2].state else {
             panic!("b is blocked before anything runs")
         };
-        assert_eq!(b.describe(), "Blocked: gone.flow.json doesn't exist");
+        assert_eq!(b.describe_in("en"), "Blocked: gone.flow.json doesn’t exist");
         assert_eq!(batch.start_next(), Some(0));
         assert_eq!(batch.finish(0, TestOutcome::NotRun), [1]);
         let TestState::Blocked(a) = &batch.tests()[1].state else {
             panic!("a is blocked")
         };
-        assert_eq!(a.describe(), "Blocked: broken.flow.json couldn't run");
+        assert_eq!(
+            a.describe_in("en"),
+            "Blocked: broken.flow.json couldn’t run"
+        );
         assert!(batch.is_over());
     }
 
@@ -707,7 +719,7 @@ mod tests {
             unreachable!()
         };
         assert_eq!(
-            c.describe(),
+            c.describe_in("en"),
             "Blocked: the tests depend on each other in a circle: a.flow.json → b.flow.json → a.flow.json"
         );
     }

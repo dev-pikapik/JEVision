@@ -142,7 +142,7 @@ pub(crate) fn send(
             .canonicalize()
             .ok()
             .filter(|file| file.starts_with(&inside))
-            .ok_or_else(|| failed(format!("{} isn't a picture of this run", shot.path)))?;
+            .ok_or_else(|| failed(jevision_l10n::tr!("bug.picture.notInRun", &shot.path)))?;
         let png = std::fs::read(&file).map_err(|e| failed(e.to_string()))?;
         let masked = MaskedImage::from_png(&png, &settings.hide).map_err(failed)?;
         pictures.push((

@@ -8,9 +8,9 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+jevision-l10n.workspace = true
 base64 = "0.23"
 serde_json.workspace = true
-thiserror.workspace = true
 ureq = { version = "3.1", default-features = false, features = ["rustls"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

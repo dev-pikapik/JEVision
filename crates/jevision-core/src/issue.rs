@@ -1,4 +1,6 @@
+use jevision_l10n::{language, tr_in};
 use serde::ser::{SerializeMap, Serializer};
+use serde_json::error::Category;
 
 /// How serious a problem is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -78,364 +80,225 @@ pub struct ParseError {
     pub issues: Vec<Issue>,
 }
 
-/// English sentence for an issue, starting with the block and field it concerns, for tools
-/// that have no translation at hand, such as the command line and AI assistants.
+/// [`describe_in`] in the process language.
 pub fn describe(issue: &Issue) -> String {
-    let p = |name| issue.param(name).unwrap_or_default();
+    describe_in(&language(), issue)
+}
+
+/// The sentence for an issue in `lang`, starting with the block and field it concerns, for
+/// tools that show issues outside the app, such as the command line and AI assistants.
+pub fn describe_in(lang: &str, issue: &Issue) -> String {
+    let p = |name: &str| issue.param(name).unwrap_or_default();
     let text = match issue.code.as_str() {
-        "flow.json.syntax" => format!(
-            "not valid JSON at line {}, column {}.",
-            p("line"),
-            p("column")
+        "flow.json.syntax" => tr_in!(lang, "flow.json.syntax", p("line"), p("column")),
+        "flow.json.notObject" => tr_in!(lang, "flow.json.notObject"),
+        "flow.format.missing" => tr_in!(lang, "flow.format.missing"),
+        "flow.format.tooNew" => tr_in!(lang, "flow.format.tooNew", p("found"), p("supported")),
+        "flow.format.unsupported" => {
+            tr_in!(lang, "flow.format.unsupported", p("found"), p("oldest"))
+        }
+        "flow.block.unknownType" => {
+            tr_in!(lang, "flow.block.unknownType", p("block"), p("type"))
+        }
+        "flow.field.missing" => tr_in!(lang, "flow.field.missing", p("field")),
+        "flow.field.type" if p("expected").is_empty() => {
+            tr_in!(lang, "flow.field.type", p("field"))
+        }
+        "flow.field.type" => tr_in!(
+            lang,
+            "flow.field.type.expected",
+            p("field"),
+            expected_kind(lang, p("expected"))
         ),
-        "flow.json.notObject" => "must be a JSON object.".to_owned(),
-        "flow.format.missing" => format!(
-            "\"format\" is missing; this version writes format {}.",
-            crate::FORMAT_VERSION
-        ),
-        "flow.format.tooNew" => format!(
-            "format {} is from a newer JEVision; this version reads up to format {}.",
-            p("found"),
-            p("supported")
-        ),
-        "flow.format.unsupported" => format!(
-            "format {} is too old; this version reads format {} and newer.",
-            p("found"),
-            p("oldest")
-        ),
-        "flow.block.unknownType" => format!("unknown type \"{}\".", p("type")),
-        "flow.field.missing" => "required, but missing.".to_owned(),
-        "flow.field.type" if p("expected").is_empty() => "wrong kind of value.".to_owned(),
-        "flow.field.type" => format!("wrong kind of value; it must be {}.", p("expected")),
-        "flow.field.value" => format!(
-            "\"{}\" isn't allowed here; use one of: {}.",
-            p("value"),
-            p("allowed")
-        ),
-        "flow.field.duration" => format!(
-            "\"{}\" isn't a duration; write it like 500ms, 10s or 2m.",
-            p("value")
-        ),
-        "flow.field.oneOf" => format!("use exactly one of: {}.", p("options")),
-        "flow.field.unknown" => "not a known field.".to_owned(),
+        "flow.field.value" => tr_in!(lang, "flow.field.value", p("value"), p("allowed")),
+        "flow.field.duration" => tr_in!(lang, "flow.field.duration", p("value")),
+        "flow.field.oneOf" => tr_in!(lang, "flow.field.oneOf", p("options")),
+        "flow.field.unknown" => tr_in!(lang, "flow.field.unknown", p("field")),
         "flow.reference.expectNeedsMeaning" => {
-            "\"expect\" works only with \"compare\": \"meaning\".".to_owned()
+            tr_in!(lang, "flow.reference.expectNeedsMeaning")
         }
-        "flow.reference.modelNeedsMeaning" => {
-            "\"model\" works only with \"compare\": \"meaning\".".to_owned()
-        }
-        "flow.reference.unknownProvider" => format!(
-            "\"{}\" isn't an AI provider; use one of: {}.",
+        "flow.reference.modelNeedsMeaning" => tr_in!(lang, "flow.reference.modelNeedsMeaning"),
+        "flow.reference.unknownProvider" => tr_in!(
+            lang,
+            "flow.reference.unknownProvider",
             p("provider"),
             p("allowed")
         ),
         "flow.reference.providerNeedsMeaning" => {
-            "\"provider\" works only with \"compare\": \"meaning\".".to_owned()
+            tr_in!(lang, "flow.reference.providerNeedsMeaning")
         }
         "flow.reference.thresholdNeedsSimilar" => {
-            "\"threshold\" works only with \"compare\": \"similar\".".to_owned()
+            tr_in!(lang, "flow.reference.thresholdNeedsSimilar")
         }
-        "flow.field.empty" => "can't be empty.".to_owned(),
-        "flow.field.range" => format!("must be from {} to {}.", p("min"), p("max")),
-        "flow.app.invalid" => format!(
-            "\"{}\" isn't an app bundle identifier like com.apple.TextEdit.",
-            p("value")
-        ),
-        "flow.link.invalid" => format!(
-            "\"{}\" isn't a web address; start it with https://.",
-            p("value")
-        ),
-        "flow.tags.duplicate" => format!("the tag \"{}\" is listed twice.", p("tag")),
-        "flow.block.duplicateId" => "two blocks have this name.".to_owned(),
-        "flow.block.invalidId" => {
-            "can't be a block name: use only letters, digits, - and _.".to_owned()
-        }
+        "flow.field.empty" => tr_in!(lang, "flow.field.empty"),
+        "flow.field.range" => tr_in!(lang, "flow.field.range", p("min"), p("max")),
+        "flow.app.invalid" => tr_in!(lang, "flow.app.invalid", p("value")),
+        "flow.link.invalid" => tr_in!(lang, "flow.link.invalid", p("value")),
+        "flow.tags.duplicate" => tr_in!(lang, "flow.tags.duplicate", p("tag")),
+        "flow.block.duplicateId" => tr_in!(lang, "flow.block.duplicateId", p("block")),
+        "flow.block.invalidId" => tr_in!(lang, "flow.block.invalidId", p("block")),
         "flow.start.unknownBlock" if p("target").is_empty() => {
-            "the test has no blocks yet.".to_owned()
+            tr_in!(lang, "flow.start.noBlocks")
         }
-        "flow.start.unknownBlock" => format!(
-            "the test starts at \"{}\", but there is no such block.",
-            p("target")
-        ),
-        "flow.edge.unknownTarget" => {
-            format!("leads to \"{}\", but there is no such block.", p("target"))
+        "flow.start.unknownBlock" => tr_in!(lang, "flow.start.unknownBlock", p("target")),
+        "flow.edge.unknownTarget" => tr_in!(lang, "flow.edge.unknownTarget", p("target")),
+        "flow.path.invalid" => tr_in!(lang, "flow.path.invalid", p("value")),
+        "flow.path.extension" => tr_in!(lang, "flow.path.extension", p("expected")),
+        "flow.placeholder.invalid" => {
+            tr_in!(lang, "flow.placeholder.invalid", p("placeholder"))
         }
-        "flow.path.invalid" => {
-            format!("\"{}\" isn't a path inside the project folder.", p("value"))
+        "flow.input.invalid" => tr_in!(lang, "flow.input.invalid", p("name")),
+        "flow.input.missing" => tr_in!(lang, "flow.input.missing", p("name")),
+        "flow.keys.invalid" => tr_in!(lang, "flow.keys.invalid", p("value")),
+        "flow.drag.samePlace" => tr_in!(lang, "flow.drag.samePlace"),
+        "flow.point.invalid" => tr_in!(lang, "flow.point.invalid"),
+        "flow.area.invalid" => tr_in!(lang, "flow.area.invalid"),
+        "flow.loop.emptyBody" => tr_in!(lang, "flow.loop.emptyBody"),
+        "flow.cycle" => tr_in!(lang, "flow.cycle", p("blocks")),
+        "flow.block.unreachable" => tr_in!(lang, "flow.block.unreachable"),
+        "flow.if.sameCondition" => tr_in!(lang, "flow.if.sameCondition"),
+        "flow.loop.noReturn" => tr_in!(lang, "flow.loop.noReturn"),
+        "flow.note.unknownBlock" => {
+            tr_in!(lang, "flow.note.unknownBlock", p("note"), p("block"))
         }
-        "flow.path.extension" => format!("must name a {} file.", p("expected")),
-        "flow.placeholder.invalid" => format!(
-            "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}}, ${{data.COLUMN}} or ${{var.NAME}}.",
-            p("placeholder")
-        ),
-        "flow.input.invalid" => format!(
-            "\"{}\" can't name an input; use letters, digits and _, not starting with a digit.",
-            p("name")
-        ),
-        "flow.input.missing" => format!(
-            "the block reads the input {}; give it a value.",
-            p("name")
-        ),
-        "flow.keys.invalid" => format!(
-            "\"{}\" isn't a key combination like cmd+shift+s.",
-            p("value")
-        ),
-        "flow.drag.samePlace" => {
-            "the drag ends where it starts; choose another place to drop on.".to_owned()
+        "flow.note.attachment.invalid" => {
+            tr_in!(lang, "flow.note.attachment.invalid", p("note"), p("value"))
         }
-        "flow.point.invalid" => {
-            "the point must be inside the window: x and y from 0 to 1.".to_owned()
+        "flow.note.reply.duplicateId" => {
+            tr_in!(lang, "flow.note.reply.duplicateId", p("note"), p("reply"))
         }
-        "flow.area.invalid" => {
-            "the area must lie inside the image: x, y, width and height from 0 to 1.".to_owned()
+        "flow.noCheck" => tr_in!(lang, "flow.noCheck"),
+        "flow.reference.notSaved" => tr_in!(lang, "flow.reference.notSaved", p("path")),
+        "flow.file.missing" => tr_in!(lang, "flow.file.missing", p("path")),
+        "flow.env.unknown" => {
+            tr_in!(
+                lang,
+                "flow.env.unknown",
+                p("name"),
+                crate::ENVIRONMENTS_FILE
+            )
         }
-        "flow.loop.emptyBody" => "the loop has nothing inside; add a block on its body.".to_owned(),
-        "flow.cycle" => format!(
-            "these blocks lead round in a circle: {}. Use a repeat block to run steps again.",
-            p("blocks")
-        ),
-        "flow.block.unreachable" => "nothing leads to this block, so it never runs.".to_owned(),
-        "flow.if.sameCondition" => {
-            "an earlier condition of this block checks the same thing, so this one never leads anywhere."
-                .to_owned()
+        "flow.env.partial" => tr_in!(lang, "flow.env.partial", p("name"), p("environments")),
+        "flow.environments.invalid" => {
+            tr_in!(lang, "flow.environments.invalid", p("file"), p("reason"))
         }
-        "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
-        "flow.note.unknownBlock" => format!(
-            "the note \"{}\" is about the block \"{}\", but there is no such block.",
-            p("note"),
-            p("block")
-        ),
-        "flow.note.attachment.invalid" => format!(
-            "the note \"{}\" has \"{}\", which isn't a file name or a web address.",
-            p("note"),
-            p("value")
-        ),
-        "flow.note.reply.duplicateId" => format!(
-            "the note \"{}\" has two replies named \"{}\".",
-            p("note"),
-            p("reply")
-        ),
-        "flow.noCheck" => "this test never checks the screen, so it can't catch a wrong result; add a check block.".to_owned(),
-        "flow.reference.notSaved" => format!(
-            "{} doesn't exist yet; the first run will save the screen there as the reference.",
-            p("path")
-        ),
-        "flow.file.missing" => format!(
-            "{} doesn't exist; the run will stop at this block until it's added.",
-            p("path")
-        ),
-        "flow.env.unknown" => format!(
-            "no environment has the value {}; add it to {}.",
-            p("name"),
-            crate::ENVIRONMENTS_FILE
-        ),
-        "flow.env.partial" => format!(
-            "the value {} is missing in these environments: {}.",
-            p("name"),
-            p("environments")
-        ),
-        "flow.environments.invalid" => format!("{} can't be read: {}.", p("file"), p("reason")),
-        "flow.data.invalid" => format!(
-            "{} can't be used as a data table: {}.",
+        "flow.data.invalid" => tr_in!(
+            lang,
+            "flow.data.invalid",
             p("path"),
-            p("reason")
+            crate::data::data_problem(lang, p("problem"), &|name| p(name).to_owned())
         ),
-        "flow.data.unknownColumn" => format!(
-            "{} has no column \"{}\"; its columns are: {}.",
+        "flow.data.unknownColumn" => tr_in!(
+            lang,
+            "flow.data.unknownColumn",
             p("path"),
             p("column"),
             p("columns")
         ),
-        "flow.name.invalid" => format!(
-            "\"{}\" can't be a name: start with a letter or _, then use letters, digits and _.",
-            p("value")
-        ),
-        "flow.name.duplicate" => format!("the name \"{}\" is used twice.", p("value")),
-        "flow.http.url" => format!(
-            "\"{}\" isn't a web address; start it with http:// or https://.",
-            p("value")
-        ),
-        "flow.http.header" => format!("\"{}\" can't be a header name.", p("value")),
-        "flow.http.saveFrom" => format!(
-            "\"{}\" isn't a part of the answer; use status, body, body.FIELD like body.items[0].id, or header.NAME.",
-            p("value")
-        ),
-        "flow.value.notNumber" => format!(
-            "\"{}\" isn't a number, so it can't be compared as greater or less.",
-            p("value")
-        ),
-        "flow.script.inputType" => format!(
-            "\"{}\" isn't a valid {} for the input {}: {}.",
+        "flow.name.invalid" => tr_in!(lang, "flow.name.invalid", p("value")),
+        "flow.name.duplicate" => tr_in!(lang, "flow.name.duplicate", p("value")),
+        "flow.http.url" => tr_in!(lang, "flow.http.url", p("value")),
+        "flow.http.header" => tr_in!(lang, "flow.http.header", p("value")),
+        "flow.http.saveFrom" => tr_in!(lang, "flow.http.saveFrom", p("value")),
+        "flow.value.notNumber" => tr_in!(lang, "flow.value.notNumber", p("value")),
+        "flow.script.inputType" => tr_in!(
+            lang,
+            "flow.script.inputType",
             p("value"),
-            p("type"),
+            value_kind(lang, p("type")),
             p("name"),
-            match p("type") {
-                "number" => "write a number such as 3.5",
-                "boolean" => "write true or false",
-                "image" => "write the path of a PNG file",
-                _ => "write four numbers between 0 and 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3",
-            }
+            input_hint(lang, p("type"))
         ),
-        "flow.script.inputKind" => format!(
-            "the input {} takes a {}, but {} is saved as {}.",
+        "flow.script.inputKind" => tr_in!(
+            lang,
+            "flow.script.inputKind",
             p("name"),
-            p("type"),
+            value_kind(lang, p("type")),
             p("variable"),
             p("from")
+                .split(", ")
+                .map(|kind| value_kind(lang, kind))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
-        "flow.dateTime.format" => format!(
-            "\"{}\" isn't a date format; write letters after %, such as %Y-%m-%d %H:%M.",
-            p("value")
-        ),
-        "flow.var.unknown" => format!(
-            "no block of this test saves the value {}; the run stops here unless a test it runs saves it.",
-            p("name")
-        ),
-        "flow.dependency.invalid" => format!(
-            "\"{}\" isn't a test file inside the project folder; write its path from this \
-             test's folder, such as login.flow.json.",
-            p("value")
-        ),
-        "flow.dependency.duplicate" => format!("{} is listed twice.", p("test")),
-        "flow.dependency.missing" => format!("the test {} doesn't exist.", p("test")),
-        "flow.dependency.self" => "a test can't depend on itself.".to_owned(),
-        "flow.dependency.cycle" => format!(
-            "the tests depend on each other in a circle: {}. Remove one of these dependencies.",
-            p("cycle")
-        ),
-        "flow.block.notInstalled" => format!(
-            "needs the block {}, which isn't installed in this project; install it with `{}` or remove this step.",
+        "flow.dateTime.format" => {
+            tr_in!(lang, "flow.dateTime.format", p("value"), "%Y-%m-%d %H:%M")
+        }
+        "flow.var.unknown" => tr_in!(lang, "flow.var.unknown", p("name")),
+        "flow.dependency.invalid" => tr_in!(lang, "flow.dependency.invalid", p("value")),
+        "flow.dependency.duplicate" => tr_in!(lang, "flow.dependency.duplicate", p("test")),
+        "flow.dependency.missing" => tr_in!(lang, "flow.dependency.missing", p("test")),
+        "flow.dependency.self" => tr_in!(lang, "flow.dependency.self"),
+        "flow.dependency.cycle" => tr_in!(lang, "flow.dependency.cycle", p("cycle")),
+        "flow.block.notInstalled" => tr_in!(
+            lang,
+            "flow.block.notInstalled.command",
             crate::block_with_version(p("id"), p("version")),
-            crate::install_command(p("source"))
+            crate::install_command_in(lang, p("source"))
         ),
-        "flow.package.version" => {
-            "the version of the package must look like 1.2.0.".to_owned()
+        "flow.package.version" => tr_in!(lang, "flow.package.version"),
+        "flow.package.source" => tr_in!(lang, "flow.package.source"),
+        "block.json.syntax" => tr_in!(lang, "block.json.syntax", p("line"), p("column")),
+        "block.json.notObject" => tr_in!(lang, "block.json.notObject"),
+        "block.format.unsupported" => {
+            tr_in!(lang, "block.format.unsupported", p("found"), p("supported"))
         }
-        "flow.package.source" => {
-            "the address of the package must start with https://.".to_owned()
+        "block.field.missing" => tr_in!(lang, "block.field.missing", p("field")),
+        "block.field.empty" => tr_in!(lang, "block.field.empty", p("field")),
+        "block.field.tooLong" => tr_in!(lang, "block.field.tooLong", p("field"), p("max")),
+        "block.field.type" => match p("expected") {
+            "a list" => tr_in!(lang, "block.field.type.list", p("field")),
+            "an object" => tr_in!(lang, "block.field.type.object", p("field")),
+            _ => tr_in!(lang, "block.field.type.text", p("field")),
+        },
+        "block.field.unknown" => tr_in!(lang, "block.field.unknown", p("field")),
+        "block.id.invalid" => tr_in!(lang, "block.id.invalid", p("value")),
+        "block.version.invalid" => tr_in!(lang, "block.version.invalid", p("value")),
+        "block.icon.invalid" => tr_in!(lang, "block.icon.invalid", p("value")),
+        "block.input.invalid" => tr_in!(lang, "block.input.invalid", p("name")),
+        "block.input.duplicate" => tr_in!(lang, "block.input.duplicate", p("name")),
+        "block.input.undeclared" => tr_in!(lang, "block.input.undeclared", p("name")),
+        "block.input.unused" => tr_in!(lang, "block.input.unused", p("name")),
+        "block.version.needsNewer" => {
+            tr_in!(lang, "block.version.needsNewer", p("needs"), p("have"))
         }
-        "block.json.syntax" => format!(
-            "block.json is not valid JSON at line {}, column {}.",
-            p("line"),
-            p("column")
-        ),
-        "block.json.notObject" => "block.json must be a JSON object.".to_owned(),
-        "block.format.unsupported" => format!(
-            "format {} isn't supported; this version reads format {}.",
-            p("found"),
-            p("supported")
-        ),
-        "block.field.missing" => "required, but missing.".to_owned(),
-        "block.field.empty" => "can't be empty.".to_owned(),
-        "block.field.tooLong" => format!("is too long; the most is {}.", p("max")),
-        "block.field.type" => format!("wrong kind of value; it must be {}.", p("expected")),
-        "block.field.unknown" => "isn't a field of block.json.".to_owned(),
-        "block.id.invalid" => format!(
-            "\"{}\" can't be a package id; write three or more parts of lowercase letters, digits \
-             and - joined by dots, like com.acme.sign-in.",
-            p("value")
-        ),
-        "block.version.invalid" => format!(
-            "\"{}\" isn't a version; write three numbers like 1.2.0.",
-            p("value")
-        ),
-        "block.icon.invalid" => format!(
-            "\"{}\" isn't the name of an SF Symbol; write lowercase letters, digits and dots, \
-             like person.badge.key.",
-            p("value")
-        ),
-        "block.input.invalid" => format!(
-            "\"{}\" can't be an input name: start with a letter or _, then use letters, digits and _.",
-            p("name")
-        ),
-        "block.input.duplicate" => format!("the input \"{}\" is listed twice.", p("name")),
-        "block.input.undeclared" => format!(
-            "the steps read the input \"{}\", but block.json doesn't list it under inputs.",
-            p("name")
-        ),
-        "block.input.unused" => format!(
-            "block.json lists the input \"{}\", but no step reads it.",
-            p("name")
-        ),
-        "block.version.needsNewer" => format!(
-            "needs JEVision {} or newer; this is {}. Update JEVision to use this block.",
-            p("needs"),
-            p("have")
-        ),
-        "block.path.outside" => format!(
-            "{} leads out of the package folder; a block can only use files inside it.",
-            p("path")
-        ),
-        "block.file.missing" => format!("the package has no {}.", p("file")),
-        "block.file.unreadable" => format!("{} can't be read: {}.", p("file"), p("reason")),
-        "block.folder.notPackage" => format!(
-            "{} isn't a block package: it has no block.json and flow.json.",
-            p("path")
-        ),
-        "block.package.tooLarge" => format!("the package is larger than {}.", megabytes(p("max"))),
-        "block.package.tooManyFiles" => format!("the package has more than {} files.", p("max")),
-        "block.path.unsafe" => format!(
-            "{} would end up outside the package folder, so the archive is refused.",
-            p("path")
-        ),
-        "block.install.exists" => format!(
-            "{} {} is already installed.",
-            p("id"),
-            p("version")
-        ),
-        "block.install.failed" => format!("couldn't install {}: {}.", p("id"), p("reason")),
-        "block.remove.failed" => format!("couldn't remove {}: {}.", p("id"), p("reason")),
-        "block.notInstalled" => format!("no block with the id {} is installed.", p("id")),
-        "block.source.missing" => format!("{} doesn't exist.", p("source")),
-        "block.source.unsupported" => format!(
-            "{} isn't a block package folder, a .zip file or an https address; GitHub \
-             repositories and releases work too.",
-            p("source")
-        ),
-        "block.source.none" => format!(
-            "{} wasn't installed from an address, so there is nothing to update it from.",
-            p("id")
-        ),
-        "block.update.otherId" => format!(
-            "the address of {} now holds a different block, {}, so it isn't an update.",
-            p("id"),
-            p("found")
-        ),
-        "block.download.notHttps" => format!(
-            "only https addresses can be downloaded; {} isn't one.",
-            p("url")
-        ),
-        "block.download.failed" => format!("couldn't download {}: {}.", p("url"), p("reason")),
-        "block.download.tooLarge" => {
-            format!("{} is larger than {}.", p("url"), megabytes(p("max")))
+        "block.path.outside" => tr_in!(lang, "block.path.outside", p("path")),
+        "block.file.missing" => tr_in!(lang, "block.file.missing", p("file")),
+        "block.file.unreadable" => {
+            tr_in!(lang, "block.file.unreadable", p("file"), p("reason"))
         }
-        "block.archive.invalid" => format!("the archive can't be read: {}.", p("reason")),
-        "block.archive.empty" => {
-            "the archive has no block package: no folder with block.json and flow.json.".to_owned()
+        "block.folder.notPackage" => tr_in!(lang, "block.folder.notPackage", p("path")),
+        "block.package.tooLarge" => {
+            tr_in!(lang, "block.package.tooLarge", megabytes(lang, p("max")))
         }
-        "block.archive.several" => format!(
-            "the archive has several block packages ({}); install them one by one.",
-            p("ids")
+        "block.package.tooManyFiles" => tr_in!(lang, "block.package.tooManyFiles", p("max")),
+        "block.path.unsafe" => tr_in!(lang, "block.path.unsafe", p("path")),
+        "block.install.exists" => tr_in!(lang, "block.install.exists", p("id"), p("version")),
+        "block.install.failed" => tr_in!(lang, "block.install.failed", p("id"), p("reason")),
+        "block.remove.failed" => tr_in!(lang, "block.remove.failed", p("id"), p("reason")),
+        "block.notInstalled" => tr_in!(lang, "block.notInstalled", p("id")),
+        "block.source.missing" => tr_in!(lang, "block.source.missing", p("source")),
+        "block.source.unsupported" => tr_in!(lang, "block.source.unsupported", p("source")),
+        "block.source.none" => tr_in!(lang, "block.source.none", p("id")),
+        "block.update.otherId" => tr_in!(lang, "block.update.otherId", p("id"), p("found")),
+        "block.download.notHttps" => tr_in!(lang, "block.download.notHttps", p("url")),
+        "block.download.failed" => {
+            tr_in!(lang, "block.download.failed", p("url"), p("reason"))
+        }
+        "block.download.tooLarge" => tr_in!(
+            lang,
+            "block.download.tooLarge",
+            p("url"),
+            megabytes(lang, p("max"))
         ),
-        "block.lock.invalid" => format!(
-            "{} can't be read: {}.",
-            crate::PACKAGE_LOCK_FILE,
-            p("reason")
-        ),
-        "block.export.nested" => format!(
-            "this block runs {}, and a package can't hold other blocks yet; put the steps of \
-             that block into this one.",
-            p("test")
-        ),
-        "block.export.failed" => format!("couldn't write the package: {}.", p("reason")),
-        "block.export.notBlock" => format!(
-            "{} isn't one of this project's own blocks.",
-            p("path")
-        ),
-        "block.export.skipped" => format!(
-            "{} isn't a file a package can hold, so it was left out.",
-            p("path")
-        ),
+        "block.archive.invalid" => tr_in!(lang, "block.archive.invalid", p("reason")),
+        "block.archive.empty" => tr_in!(lang, "block.archive.empty"),
+        "block.archive.several" => tr_in!(lang, "block.archive.several", p("ids")),
+        "block.lock.invalid" => tr_in!(lang, "block.lock.invalid", p("reason")),
+        "block.export.nested" => tr_in!(lang, "block.export.nested", p("test")),
+        "block.export.failed" => tr_in!(lang, "block.export.failed", p("reason")),
+        "block.export.notBlock" => tr_in!(lang, "block.export.notBlock", p("path")),
+        "block.export.skipped" => tr_in!(lang, "block.export.skipped", p("path")),
         _ => {
             let params: Vec<String> = issue
                 .params
@@ -445,21 +308,21 @@ pub fn describe(issue: &Issue) -> String {
             format!("{} ({}).", issue.code, params.join(", "))
         }
     };
-    let mut place = Vec::new();
-    for (name, label) in [("block", "Block"), ("edge", "edge"), ("field", "field")] {
-        if let Some(value) = issue.param(name).filter(|v| !v.is_empty()) {
-            place.push(format!("{label} \"{value}\""));
-        }
-    }
+    let named = |name| issue.param(name).filter(|v| !v.is_empty());
+    let mut place: Vec<String> = [
+        named("block").map(|v| tr_in!(lang, "flow.place.block", v)),
+        named("edge").map(|v| tr_in!(lang, "flow.place.edge", v)),
+        named("field").map(|v| tr_in!(lang, "flow.place.field", v)),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
     if place.is_empty() {
-        place.push(
-            if issue.code.starts_with("block.") {
-                "Package"
-            } else {
-                "Test"
-            }
-            .to_owned(),
-        );
+        place.push(if issue.code.starts_with("block.") {
+            tr_in!(lang, "flow.place.package")
+        } else {
+            tr_in!(lang, "flow.place.test")
+        });
     }
     let place = place.join(", ");
     let mut first = place.chars();
@@ -470,11 +333,63 @@ pub fn describe(issue: &Issue) -> String {
     format!("{place}: {text}")
 }
 
+/// What a field of the wrong kind must hold, from the `expected` of `flow.field.type`.
+fn expected_kind(lang: &str, expected: &str) -> String {
+    match expected {
+        "integer" => tr_in!(lang, "flow.expected.integer"),
+        "number" => tr_in!(lang, "flow.expected.number"),
+        "string" => tr_in!(lang, "flow.expected.string"),
+        "boolean" => tr_in!(lang, "flow.expected.boolean"),
+        "object" => tr_in!(lang, "flow.expected.object"),
+        "array" => tr_in!(lang, "flow.expected.array"),
+        "stringArray" => tr_in!(lang, "flow.expected.stringArray"),
+        "status" => tr_in!(lang, "flow.expected.status"),
+        other => other.to_owned(),
+    }
+}
+
+/// A kind of script value (`number`, `image`…) in words, for the middle of a sentence.
+fn value_kind(lang: &str, kind: &str) -> String {
+    match kind {
+        "number" => tr_in!(lang, "flow.valueKind.number"),
+        "boolean" => tr_in!(lang, "flow.valueKind.boolean"),
+        "image" => tr_in!(lang, "flow.valueKind.image"),
+        "area" => tr_in!(lang, "flow.valueKind.area"),
+        _ => tr_in!(lang, "flow.valueKind.text"),
+    }
+}
+
+/// How to write a script input value of this kind.
+fn input_hint(lang: &str, kind: &str) -> String {
+    match kind {
+        "number" => tr_in!(lang, "flow.script.hint.number"),
+        "boolean" => tr_in!(lang, "flow.script.hint.boolean"),
+        "image" => tr_in!(lang, "flow.script.hint.image"),
+        _ => tr_in!(lang, "flow.script.hint.area"),
+    }
+}
+
 /// A size given in bytes, as whole megabytes.
-fn megabytes(bytes: &str) -> String {
-    bytes
-        .parse::<u64>()
-        .map_or_else(|_| bytes.to_owned(), |b| format!("{} MB", b >> 20))
+fn megabytes(lang: &str, bytes: &str) -> String {
+    bytes.parse::<u64>().map_or_else(
+        |_| bytes.to_owned(),
+        |b| tr_in!(lang, "package.size.megabytes", b >> 20),
+    )
+}
+
+/// What is wrong with a JSON text that isn't JSON at all, in the process language; for any
+/// other problem, the reader's own words, which name the fields it expected.
+pub(crate) fn json_problem(e: &serde_json::Error) -> String {
+    json_problem_in(&language(), e)
+}
+
+fn json_problem_in(lang: &str, e: &serde_json::Error) -> String {
+    match e.classify() {
+        Category::Syntax | Category::Eof => {
+            tr_in!(lang, "flow.json.syntax", e.line(), e.column())
+        }
+        Category::Io | Category::Data => e.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -489,20 +404,92 @@ mod tests {
             .with("min", "1ms")
             .with("max", "10m");
         assert_eq!(
-            describe(&issue),
-            "Block \"wait\", field \"timeout\": must be from 1ms to 10m."
+            describe_in("en", &issue),
+            "Block “wait”, field “timeout”: Must be from 1ms to 10m."
         );
         assert_eq!(
-            describe(
-                &Issue::error("flow.json.syntax")
-                    .with("line", 3)
-                    .with("column", 7)
+            describe_in("ru", &issue),
+            "Блок «wait», поле «timeout»: Допустимо от 1ms до 10m."
+        );
+        let syntax = Issue::error("flow.json.syntax")
+            .with("line", 3)
+            .with("column", 7);
+        assert_eq!(
+            describe_in("en", &syntax),
+            "Test: The file isn’t valid JSON. Check line 3, column 7."
+        );
+        assert_eq!(
+            describe_in("ru", &syntax),
+            "Тест: Файл не является корректным JSON. Проверьте строку 3, столбец 7."
+        );
+        assert_eq!(
+            describe_in(
+                "en",
+                &Issue::error("flow.field.unknown").with("field", "colour")
             ),
-            "Test: not valid JSON at line 3, column 7."
+            "Field “colour”: “colour” isn’t a known setting."
+        );
+    }
+
+    #[test]
+    fn names_the_kinds_of_values_in_words() {
+        let issue = Issue::error("flow.field.type")
+            .with("field", "files")
+            .with("expected", "stringArray");
+        assert_eq!(
+            describe_in("en", &issue),
+            "Field “files”: “files” has the wrong kind of value. It must be a list of texts."
         );
         assert_eq!(
-            describe(&Issue::error("flow.field.unknown").with("field", "colour")),
-            "Field \"colour\": not a known field."
+            describe_in("ru", &issue),
+            "Поле «files»: У «files» значение не того вида. Ожидается: список строк."
+        );
+        let script = Issue::error("flow.script.inputType")
+            .with("value", "abc")
+            .with("type", "number")
+            .with("name", "count");
+        assert_eq!(
+            describe_in("en", &script),
+            "Test: “abc” isn’t a valid number for the input count. Write a number such as 3.5."
+        );
+        assert_eq!(
+            describe_in("ru", &script),
+            "Тест: «abc» не подходит как число для входного значения count. Напишите число, \
+             например 3.5."
+        );
+    }
+
+    #[test]
+    fn sizes_and_install_commands_follow_the_language() {
+        let large = Issue::error("block.package.tooLarge").with("max", 50u64 << 20);
+        assert_eq!(
+            describe_in("en", &large),
+            "Package: The block is larger than 50 MB."
+        );
+        assert_eq!(describe_in("ru", &large), "Пакет: Блок больше, чем 50 МБ.");
+        let missing = Issue::error("flow.block.notInstalled")
+            .with("block", "sign")
+            .with("id", "com.acme.sign-in")
+            .with("version", "1.2.0");
+        assert!(describe_in("en", &missing).contains(
+            "Install it with `jevision blocks install <folder, .zip file or https address>`"
+        ));
+        assert!(
+            describe_in("ru", &missing)
+                .contains("`jevision blocks install <папка, файл .zip или адрес https>`")
+        );
+    }
+
+    #[test]
+    fn a_broken_json_text_says_where() {
+        let e = serde_json::from_str::<serde_json::Value>("{\n  \"a\": }").unwrap_err();
+        assert_eq!(
+            json_problem_in("en", &e),
+            "The file isn’t valid JSON. Check line 2, column 8."
+        );
+        assert_eq!(
+            json_problem_in("ru", &e),
+            "Файл не является корректным JSON. Проверьте строку 2, столбец 8."
         );
     }
 }

@@ -1362,11 +1362,11 @@ mod tests {
             reply["error"]["message"]
                 .as_str()
                 .unwrap()
-                .contains("isn't paired"),
+                .contains("isn’t paired"),
             "{reply}"
         );
         let (failed, text) = terminal.call("list_tests", json!({}));
-        assert!(failed && text.contains("isn't paired"), "{text}");
+        assert!(failed && text.contains("isn’t paired"), "{text}");
         terminal.close();
         assert!(connected_assistants(mac.folder()).is_empty());
     }
@@ -1409,12 +1409,12 @@ mod tests {
             tools["error"]["message"]
                 .as_str()
                 .unwrap()
-                .contains("doesn't let this computer"),
+                .contains("doesn’t let this computer"),
             "{tools}"
         );
         let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
         assert!(
-            failed && text.contains("doesn't let this computer"),
+            failed && text.contains("doesn’t let this computer"),
             "{text}"
         );
         assert_eq!(mac.app.runs.load(std::sync::atomic::Ordering::Relaxed), 0);
@@ -1459,7 +1459,7 @@ mod tests {
         *mac.app.problem.lock().unwrap() = Some("The screen of this Mac is locked.".into());
         let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
         assert!(
-            failed && text.contains("can't run tests right now") && text.contains("locked"),
+            failed && text.contains("can’t run tests right now") && text.contains("locked"),
             "{text}"
         );
         assert_eq!(mac.app.runs.load(Ordering::Relaxed), 0);
@@ -1488,7 +1488,7 @@ mod tests {
 
         // The app is not open: nobody can allow it, so nothing runs.
         let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
-        assert!(failed && text.contains("JEVision isn't open"), "{text}");
+        assert!(failed && text.contains("JEVision isn’t open"), "{text}");
 
         // The owner sees which assistant on which computer asks, and allows it.
         pending_assistant_requests(folder.clone());
@@ -1511,7 +1511,7 @@ mod tests {
             (outcome, app.join().unwrap())
         });
         assert!(
-            outcome.0 && outcome.1.contains("didn't allow"),
+            outcome.0 && outcome.1.contains("didn’t allow"),
             "{}",
             outcome.1
         );

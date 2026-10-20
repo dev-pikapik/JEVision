@@ -55,7 +55,7 @@ pub use env::{
 };
 pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
-pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
+pub use issue::{Issue, IssueParam, ParseError, Severity, describe, describe_in};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
@@ -72,8 +72,8 @@ pub use notes::{
 pub use package::{
     BlockManifest, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
     PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, app_version,
-    block_with_version, check_package, install_command, is_block_path, is_package_id,
-    package_issue, package_of_path, parse_manifest, risky_steps, suggest_id,
+    block_with_version, check_package, install_command, install_command_in, is_block_path,
+    is_package_id, package_issue, package_of_path, parse_manifest, risky_steps, suggest_id,
 };
 pub use package_files::{
     BLOCKS_FOLDER, Change, ExportMeta, Exported, Installed, MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES,

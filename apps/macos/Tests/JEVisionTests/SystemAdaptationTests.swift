@@ -48,7 +48,7 @@ struct AppLanguageTests {
   @Test func choosingALanguageAppliesAtOnceAndIsKept() throws {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
-    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] })
+    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { _ in })
     #expect(language.saved == "")
     #expect(language.language == "en")
     language.choose("ru")
@@ -63,11 +63,42 @@ struct AppLanguageTests {
     #expect(suite.persistentDomain(forName: name)?["AppleLanguages"] == nil)
   }
 
+  @Test func theLanguageInUseGoesToTheCoreAtLaunchAndAtEveryChange() throws {
+    let (suite, name) = try defaults()
+    defer { suite.removePersistentDomain(forName: name) }
+    let sent = Mutex<[String]>([])
+    let language = AppLanguage(
+      main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { tag in sent.withLock { $0.append(tag) } })
+    language.choose("ru")
+    language.choose("")
+    #expect(sent.withLock { $0 } == ["en", "ru", "en"])
+  }
+
+  /// A tag the catalog has no texts for, so that no wording elsewhere changes while it is set.
+  @Test func theCoreReceivesTheLanguageThroughTheDefaultHandOver() throws {
+    let (suite, name) = try defaults()
+    defer { suite.removePersistentDomain(forName: name) }
+    let before = currentLanguage()
+    defer { setLanguage(tag: before) }
+    _ = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] })
+    #expect(currentLanguage() == "en")
+    let other = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] })
+    other.choose("de")
+    #expect(currentLanguage() == "de")
+  }
+
+  @Test func theChoicesAreTheLanguagesOfTheAppWithEnglishFirst() throws {
+    #expect(AppLanguage.languages(in: try appWithTexts()).first == "en")
+    let empty = try #require(Bundle(url: FileManager.default.temporaryDirectory))
+    #expect(AppLanguage.languages(in: empty) == ["en"])
+    #expect(AppLanguage.choices.first == "")
+  }
+
   @Test func theSystemLanguageIsReadAgainWhenTheMacChangesIt() throws {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
     let languages = SystemLanguages()
-    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { languages.list.withLock { $0 } })
+    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { languages.list.withLock { $0 } }, apply: { _ in })
     language.start()
     #expect(language.language == "en")
     languages.list.withLock { $0 = ["ru-RU"] }
@@ -80,7 +111,7 @@ struct AppLanguageTests {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
     let empty = try #require(Bundle(url: FileManager.default.temporaryDirectory))
-    let language = AppLanguage(main: empty, defaults: suite, domain: name, system: { ["ru"] })
+    let language = AppLanguage(main: empty, defaults: suite, domain: name, system: { ["ru"] }, apply: { _ in })
     #expect(language.bundle == nil)
   }
 }

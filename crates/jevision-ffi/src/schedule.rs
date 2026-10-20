@@ -3,6 +3,8 @@
 
 use std::path::Path;
 
+use jevision_l10n::tr;
+
 use jevision_core::{
     Repeat, Schedule, ScheduleTests, ScheduledOutcome as CoreOutcome, TimeOfDay, Weekday,
 };
@@ -12,7 +14,7 @@ use jevision_runner::VideoMode;
 /// The schedule file can't be read or written, or the schedules in it can't run.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum ScheduleError {
-    #[error("{file} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .file, .reason))]
     Unreadable { file: String, reason: String },
     /// A schedule can't run as it is; `reason` says why.
     #[error("{reason}")]
@@ -104,9 +106,11 @@ impl TryFrom<ProjectSchedule> for Schedule {
 
     fn try_from(s: ProjectSchedule) -> Result<Self, ScheduleError> {
         let at = TimeOfDay::new(s.hour, s.minute).ok_or_else(|| {
-            invalid(format!(
-                "schedule \"{}\": {}:{} isn't a time of day",
-                s.name, s.hour, s.minute
+            let time = format!("{}:{:02}", s.hour, s.minute);
+            invalid(tr!(
+                "schedule.problem",
+                &s.name,
+                tr!("schedule.hourMinute.invalid", time)
             ))
         })?;
         let repeat = match s.repeats {
@@ -115,9 +119,10 @@ impl TryFrom<ProjectSchedule> for Schedule {
                 days.into_iter()
                     .map(|day| {
                         Weekday::from_number(day).ok_or_else(|| {
-                            invalid(format!(
-                                "schedule \"{}\": {day} isn't a day of the week",
-                                s.name
+                            invalid(tr!(
+                                "schedule.problem",
+                                &s.name,
+                                tr!("schedule.day.invalid", day)
                             ))
                         })
                     })

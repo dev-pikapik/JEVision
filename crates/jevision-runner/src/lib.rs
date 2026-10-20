@@ -20,11 +20,15 @@ mod run;
 mod screen;
 mod system;
 mod usage;
+mod words;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
-pub use bug::{BugContext, BugDraft, BugPicture, bug_report, describe_block, mask_secrets};
+pub use bug::{
+    BugContext, BugDraft, BugPicture, bug_report, bug_report_in, describe_block, describe_block_in,
+    mask_secrets,
+};
 pub use ci::CiOrigin;
 pub use control::{PauseReason, RunControl};
 pub use import::{import_ci_artifact, imported_ci_artifacts};
@@ -40,17 +44,23 @@ pub use jevision_vision::{
 };
 pub use packages::{Staged, discard_staged, stage_source, zip_package};
 pub use report::{
-    Attempt, DataRow, Failure, NOTHING_CHECKED, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,
-    Step, StepStatus, UsedPackage, Verdict, VisionAnswer, branch_text, describe, describe_vision,
-    html, junit_xml,
+    Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
+    UsedPackage, Verdict, VisionAnswer, branch_text, branch_text_in, html, html_in, junit_xml,
+    junit_xml_in, nothing_checked_in,
 };
 pub use run::{
     Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, today, vision_failure,
 };
-pub use screen::{ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder};
+pub use screen::{
+    ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder,
+    describe_screen_holder_in,
+};
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,
     WARN_SHARE, default_prices, money, price_of,
+};
+pub use words::{
+    Phrase, describe, describe_in, describe_vision, describe_vision_in, phrase, vision_phrase,
 };
 
 /// Shown instead of a secret value wherever a secret would otherwise appear.

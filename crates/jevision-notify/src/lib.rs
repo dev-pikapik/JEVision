@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io};
 
+use jevision_l10n::{language, tr, tr_in};
 use jevision_runner::{Run, RunReport, Verdict};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -22,7 +23,7 @@ mod tests;
 pub use chats::{ChatKind, FoundChat, FoundChats, find_chats};
 pub use message::{
     Details, FailedTest, Finished, Message, Notice, Picture, ReportLink, Tone, failure_picture,
-    message, notice_for,
+    failure_picture_in, message, message_in, notice_for, notice_for_in,
 };
 
 /// Name of the notification settings file in the project folder.
@@ -120,11 +121,17 @@ pub enum NotifyChannel {
 impl NotifyChannel {
     pub const ALL: [Self; 3] = [Self::Slack, Self::Telegram, Self::Email];
 
-    pub fn name(self) -> &'static str {
+    /// The channel's name in the process language.
+    pub fn name(self) -> String {
+        self.name_in(&language())
+    }
+
+    /// The channel's name in `lang`.
+    pub fn name_in(self, lang: &str) -> String {
         match self {
-            Self::Slack => "Slack",
-            Self::Telegram => "Telegram",
-            Self::Email => "Email",
+            Self::Slack => "Slack".into(),
+            Self::Telegram => "Telegram".into(),
+            Self::Email => tr_in!(lang, "Email"),
         }
     }
 
@@ -147,33 +154,67 @@ impl NotifyChannel {
 }
 
 /// Why a message wasn't sent, in a sentence for the user.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotifyError {
-    #[error("{file} can't be read: {reason}")]
-    Unreadable { file: String, reason: String },
-    #[error("{reason}")]
-    Rejected { reason: String },
-    #[error("{file} can't be saved: {reason}")]
-    Unwritable { file: String, reason: String },
-    #[error("{} isn't set up in this project", channel.name())]
-    NotSetUp { channel: NotifyChannel },
-    #[error("{}", missing_secret(*channel))]
-    NoSecret { channel: NotifyChannel },
-    #[error("{reason}")]
-    Failed { reason: String },
+    Unreadable {
+        file: String,
+        reason: String,
+    },
+    /// `reason` is already a sentence for the user.
+    Rejected {
+        reason: String,
+    },
+    Unwritable {
+        file: String,
+        reason: String,
+    },
+    NotSetUp {
+        channel: NotifyChannel,
+    },
+    NoSecret {
+        channel: NotifyChannel,
+    },
+    /// `reason` is already a sentence for the user.
+    Failed {
+        reason: String,
+    },
 }
 
-fn missing_secret(channel: NotifyChannel) -> String {
-    let what = match channel {
-        NotifyChannel::Slack => "the Slack webhook",
-        NotifyChannel::Telegram => "the Telegram bot token",
-        NotifyChannel::Email => "the mail password",
-    };
-    format!(
-        "{what} isn't on this Mac; add it in JEVision Settings → Notifications or set {}",
-        channel.variable()
-    )
+impl NotifyError {
+    /// The sentence for the user in `lang`.
+    pub fn text_in(&self, lang: &str) -> String {
+        match self {
+            Self::Unreadable { file, reason } => {
+                tr_in!(lang, "%@ can’t be read: %@", file, reason)
+            }
+            Self::Unwritable { file, reason } => {
+                tr_in!(lang, "%@ can’t be saved: %@", file, reason)
+            }
+            Self::NotSetUp { channel } => {
+                tr_in!(lang, "notify.error.notSetUp", channel.name_in(lang))
+            }
+            Self::NoSecret { channel } => {
+                let variable = channel.variable();
+                match channel {
+                    NotifyChannel::Slack => tr_in!(lang, "notify.error.noSecret.slack", variable),
+                    NotifyChannel::Telegram => {
+                        tr_in!(lang, "notify.error.noSecret.telegram", variable)
+                    }
+                    NotifyChannel::Email => tr_in!(lang, "notify.error.noSecret.email", variable),
+                }
+            }
+            Self::Rejected { reason } | Self::Failed { reason } => reason.clone(),
+        }
+    }
 }
+
+impl std::fmt::Display for NotifyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.text_in(&language()))
+    }
+}
+
+impl std::error::Error for NotifyError {}
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -227,7 +268,7 @@ impl NotificationSettings {
         migrate(&mut value)?;
         let file: File = serde_json::from_value(value).map_err(|e| e.to_string())?;
         if file.format != FORMAT {
-            return Err(format!("\"format\" must be 1 or {FORMAT}"));
+            return Err(tr!("notify.settings.format", FORMAT));
         }
         let settings = Self {
             unattended_only: file.unattended_only,
@@ -244,26 +285,23 @@ impl NotificationSettings {
         if let Some(telegram) = &self.telegram
             && telegram.chat.trim().is_empty()
         {
-            return Err("Telegram needs the id of the chat to post to".into());
+            return Err(tr!("notify.settings.telegramChat"));
         }
         if let Some(email) = &self.email {
             if email.server.trim().is_empty() {
-                return Err("Email needs the address of the mail server".into());
+                return Err(tr!("notify.settings.mailServer"));
             }
             if email.port == 0 {
-                return Err("Email needs the mail server's port, such as 465 or 587".into());
+                return Err(tr!("notify.settings.mailPort"));
             }
             if !is_address(&email.from) {
-                return Err(format!(
-                    "\"{}\" isn't an email address to send from",
-                    email.from
-                ));
+                return Err(tr!("notify.settings.badFrom", &email.from));
             }
             if email.to.is_empty() {
-                return Err("Email needs at least one address to send to".into());
+                return Err(tr!("notify.settings.noRecipients"));
             }
             if let Some(bad) = email.to.iter().find(|a| !is_address(a)) {
-                return Err(format!("\"{bad}\" isn't an email address to send to"));
+                return Err(tr!("notify.settings.badTo", bad));
             }
         }
         Ok(())
@@ -411,6 +449,11 @@ pub struct Sent {
 /// their settings ask for it: one message about a single run, one summary about several. The
 /// channels that aren't due get nothing, and nothing at all goes out when none is.
 pub fn notify(project: &Path, dirs: &[PathBuf]) -> Result<Vec<Sent>, NotifyError> {
+    notify_in(&language(), project, dirs)
+}
+
+/// [`notify`] with the message in `lang`.
+pub fn notify_in(lang: &str, project: &Path, dirs: &[PathBuf]) -> Result<Vec<Sent>, NotifyError> {
     let settings = NotificationSettings::load(project)?;
     if settings.channels().is_empty() {
         return Ok(Vec::new());
@@ -429,11 +472,11 @@ pub fn notify(project: &Path, dirs: &[PathBuf]) -> Result<Vec<Sent>, NotifyError
     let name = project
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    let Some(mut notice) = notice_for(&settings, &name, &runs, unattended) else {
+    let Some(mut notice) = notice_for_in(lang, &settings, &name, &runs, unattended) else {
         return Ok(Vec::new());
     };
     if notice.channels.contains(&NotifyChannel::Email) {
-        notice.message.details.picture = failure_picture(&runs);
+        notice.message.details.picture = failure_picture_in(lang, &runs);
     }
     Ok(send_all(
         &settings,
@@ -462,16 +505,19 @@ pub fn send_all(
 
 /// A message to show that `channel` works, for the Send Test button.
 pub fn test_message(project: &Path) -> Message {
+    test_message_in(&language(), project)
+}
+
+/// [`test_message`] in `lang`.
+pub fn test_message_in(lang: &str, project: &Path) -> Message {
     let name = project
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    Message::new(
-        "JEVision test message".into(),
+    Message::new_in(
+        lang,
+        tr_in!(lang, "notify.test.title"),
         Details {
-            lead: Some(format!(
-                "Messages about runs of the tests in “{name}” will come here, as the project's \
-                 notification settings say."
-            )),
+            lead: Some(tr_in!(lang, "notify.test.lead", name)),
             ..Details::default()
         },
     )
@@ -522,7 +568,7 @@ fn post(url: &str, body: &Value, service: &str) -> Result<(u16, String), NotifyE
         .post(url)
         .content_type("application/json")
         .send(body.to_string())
-        .map_err(|_| failed(format!("{service} can't be reached")))?;
+        .map_err(|_| failed(tr!("notify.error.unreachable", service)))?;
     let status = response.status().as_u16();
     let answer = response.body_mut().read_to_string().unwrap_or_default();
     Ok((status, answer))
@@ -530,9 +576,7 @@ fn post(url: &str, body: &Value, service: &str) -> Result<(u16, String), NotifyE
 
 fn slack(webhook: &str, message: &Message) -> Result<(), NotifyError> {
     if !webhook.starts_with("https://") && !webhook.starts_with("http://127.0.0.1") {
-        return Err(failed(
-            "the Slack webhook should start with https://hooks.slack.com/",
-        ));
+        return Err(failed(tr!("notify.error.slackAddress")));
     }
     let rich = render::slack(message);
     let (mut status, mut answer) = post(webhook, &rich, "Slack")?;
@@ -542,12 +586,10 @@ fn slack(webhook: &str, message: &Message) -> Result<(), NotifyError> {
     }
     match status {
         200 => Ok(()),
-        403 | 404 | 410 => Err(failed(format!(
-            "Slack didn't accept the webhook ({}); make a new one for the channel",
-            answer.trim()
-        ))),
-        _ => Err(failed(format!(
-            "Slack answered with error {status}: {}",
+        403 | 404 | 410 => Err(failed(tr!("notify.error.slackRejected", answer.trim()))),
+        _ => Err(failed(tr!(
+            "notify.error.slackStatus",
+            status,
             answer.trim()
         ))),
     }
@@ -569,8 +611,8 @@ fn telegram_call(api: &str, token: &str, method: &str, body: &Value) -> Result<V
     }
     let description = answer["description"].as_str().unwrap_or_default();
     Err(failed(match status {
-        401 | 404 => "Telegram didn't accept the bot token".into(),
-        _ if description.is_empty() => format!("Telegram answered with error {status}"),
+        401 | 404 => tr!("notify.error.telegramToken"),
+        _ if description.is_empty() => tr!("notify.error.telegramStatus", status),
         _ => format!("Telegram: {description}"),
     }))
 }
@@ -587,7 +629,7 @@ fn mail(
     use lettre::transport::smtp::client::{Certificate, CertificateStore, Tls, TlsParameters};
     use lettre::{SmtpTransport, Transport};
 
-    let broken = |e: &dyn std::fmt::Display| failed(format!("Email: {e}"));
+    let broken = |e: &dyn std::fmt::Display| failed(format!("{}: {e}", tr!("Email")));
     let mailbox = |a: &str| a.parse::<Mailbox>().map_err(|e| broken(&e));
     let mut builder = MessageBuilder::new()
         .from(mailbox(&email.from)?)
@@ -642,13 +684,13 @@ fn mail(
 fn mail_failure(e: &lettre::transport::smtp::Error, server: &str) -> NotifyError {
     let text = e.to_string();
     failed(if e.status().is_some_and(|c| c.to_string() == "535") {
-        "the mail server didn't accept the user name or password".into()
+        tr!("notify.error.mailSignIn")
     } else if e.is_tls() || text.contains("certificate") {
         // A failed handshake comes as a network error.
         let reason = text.trim_start_matches("network error: ");
-        format!("Email: a secure connection to {server} couldn't be made: {reason}")
+        tr!("notify.error.mailTls", server, reason)
     } else {
-        format!("Email: {text}")
+        format!("{}: {text}", tr!("Email"))
     })
 }
 

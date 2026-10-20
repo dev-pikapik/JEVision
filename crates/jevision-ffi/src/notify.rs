@@ -181,7 +181,7 @@ pub fn find_telegram_chats(project: String) -> Result<FoundChats, NotifyError> {
     jevision_notify::find_chats(jevision_notify::TELEGRAM_API, &token)
 }
 
-/// Why a message wasn't sent, in English, for the command line.
+/// Why a message wasn't sent, in the current language, for the command line.
 #[uniffi::export]
 pub fn notify_error_message(error: NotifyError) -> String {
     error.to_string()

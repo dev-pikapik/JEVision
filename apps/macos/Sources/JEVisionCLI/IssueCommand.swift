@@ -24,7 +24,7 @@ struct IssueCommand {
     do {
       let (project, dir) = try locate()
       guard var report = try draftBugReport(project: project, dir: dir, secrets: StoredSecrets()) else {
-        Console.standardError.line("jevision: the run in \(dir) didn’t fail, so there is no bug to report")
+        Console.standardError.line("jevision: " + words("cli.issue.notFailed", dir))
         return .failure
       }
       if let title = request.title { report.title = title }
@@ -49,21 +49,19 @@ struct IssueCommand {
     output.line(report.body)
     if !report.screenshots.isEmpty {
       output.line()
-      output.line("Screenshots:")
+      output.line(words("cli.issue.screenshots"))
       for shot in report.screenshots { output.line("  \(shot.label): \(shot.path)") }
     }
     output.line()
-    output.line("Nothing is sent. File it on GitHub with: jevision issue \"\(dir)\" --send")
+    output.line(words("cli.issue.nothingSent", dir))
   }
 
   private func send(_ report: BugReport, project: String, dir: String) throws -> ExitStatus {
     if request.commentOn == nil, !request.newIssue,
       let open = try githubOpenBugReport(project: project, fingerprint: report.fingerprint)
     {
-      Console.standardError.line(
-        "jevision: issue #\(open.number) “\(open.title)” about this failure is open: \(open.url)")
-      Console.standardError.line(
-        "Add this run to it with --comment-on \(open.number), or open a new issue with --new.")
+      Console.standardError.line("jevision: " + words("cli.issue.alreadyOpen", open.number, open.title, open.url))
+      Console.standardError.line(words("cli.issue.commentOrNew", open.number))
       return .problems
     }
     let url = try githubSendBugReport(
@@ -75,13 +73,13 @@ struct IssueCommand {
   /// The project folder and the folder of the run to report, as real paths.
   private func locate() throws -> (project: String, dir: String) {
     let target = try request.target.map { path in
-      guard let real = Self.realPath(path) else { throw UsageError(message: "there is no file or folder “\(path)”") }
+      guard let real = Self.realPath(path) else { throw UsageError(message: words("cli.error.noFileOrFolder", path)) }
       return real
     }
     let project: String
     if let given = request.project {
       guard let real = Self.realPath(given), isFolder(real) else {
-        throw UsageError(message: "there is no folder “\(given)”")
+        throw UsageError(message: words("cli.error.noFolder", given))
       }
       project = real
     } else if let found = MCPCommand.defaultProject(
@@ -90,13 +88,13 @@ struct IssueCommand {
     {
       project = found
     } else {
-      throw UsageError(message: "name the project folder with --project")
+      throw UsageError(message: words("cli.error.nameProject"))
     }
     if let target, FileManager.default.fileExists(atPath: target + "/report.json") {
       return (project, target)
     }
     if let target, isFolder(target) {
-      throw UsageError(message: "“\(target)” is neither a test file nor the folder of a run")
+      throw UsageError(message: words("cli.error.notTestOrRun", target))
     }
     let file = target.map { target -> String in
       target.hasPrefix(project + "/") ? String(target.dropFirst(project.count + 1)) : target
@@ -105,7 +103,7 @@ struct IssueCommand {
       $0.report.verdict == .failed && (file == nil || $0.report.file == file)
     }
     guard let failed else {
-      throw UsageError(message: file.map { "no run of \($0) has failed" } ?? "no run in \(project) has failed")
+      throw UsageError(message: file.map { words("cli.issue.noFailedRunOf", $0) } ?? words("cli.issue.noFailedRun", project))
     }
     return (project, failed.dir)
   }
@@ -119,19 +117,19 @@ struct IssueCommand {
   static func message(_ error: GitError) -> String {
     switch error {
     case .NoGitHubCli, .GitHubSignedOut, .SignIn:
-      "GitHub isn’t connected: sign in to GitHub in JEVision (Settings → Git), or set GH_TOKEN"
+      words("cli.issue.signedOut")
     case .NotRepository, .NoCommits, .NoRemote, .NotGitHub:
-      "the project isn’t on GitHub, so the bug can’t be filed there; print the report without --send to file it elsewhere"
+      words("cli.issue.notOnGitHub")
     case .NoPermission:
-      "this GitHub account can’t open issues in the project’s repository"
+      words("cli.issue.noPermission")
     case .Unreachable:
-      "GitHub can’t be reached; check the internet connection"
+      words("cli.issue.unreachable")
     case .EmptyMessage:
-      "the title is empty"
+      words("cli.issue.emptyTitle")
     case .Failed(let message):
       message
     default:
-      "GitHub didn’t take the bug report (\(error))"
+      words("cli.issue.notTaken", "\(error)")
     }
   }
 }

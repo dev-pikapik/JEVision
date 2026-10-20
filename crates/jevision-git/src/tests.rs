@@ -1632,3 +1632,33 @@ fn an_issue_or_pull_request_tells_its_title_and_state() {
     assert!(requests[0].starts_with("GET /repos/acme/qa/issues/12 "));
     assert!(requests.iter().all(|r| r.contains("Bearer secret-token")));
 }
+
+#[test]
+fn errors_are_told_in_the_language_asked_for() {
+    let conflict = GitError::Conflict {
+        paths: vec!["a.flow.json".into(), "b.flow.json".into()],
+    };
+    assert_eq!(
+        conflict.text_in("en"),
+        "the same lines changed here and on the server: a.flow.json, b.flow.json"
+    );
+    assert_eq!(
+        conflict.text_in("ru"),
+        "одни и те же строки изменены и здесь, и на сервере: a.flow.json, b.flow.json"
+    );
+    let unpushed = GitError::NotPushed {
+        branch: "feat/login".into(),
+    };
+    assert_eq!(
+        unpushed.text_in("en"),
+        "branch `feat/login` has commits that are not on GitHub"
+    );
+    assert_eq!(
+        unpushed.text_in("ru"),
+        "в ветке «feat/login» есть коммиты, которых нет на GitHub"
+    );
+    let failed = GitError::Failed {
+        message: "fatal: bad object".into(),
+    };
+    assert_eq!(failed.text_in("ru"), "fatal: bad object");
+}

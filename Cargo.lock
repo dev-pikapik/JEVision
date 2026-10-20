@@ -1675,6 +1675,7 @@ name = "jevision-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "jevision-l10n",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -1687,6 +1688,7 @@ dependencies = [
  "base64 0.23.1",
  "jevision-core",
  "jevision-git",
+ "jevision-l10n",
  "jevision-notify",
  "jevision-remote",
  "jevision-runner",
@@ -1706,16 +1708,24 @@ name = "jevision-git"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
+ "jevision-l10n",
  "security-framework",
  "serde_json",
- "thiserror 2.0.21",
  "ureq",
+]
+
+[[package]]
+name = "jevision-l10n"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]
 name = "jevision-mobile"
 version = "0.1.0"
 dependencies = [
+ "jevision-l10n",
  "jevision-remote",
  "jevision-runner",
  "p256",
@@ -1729,13 +1739,13 @@ name = "jevision-notify"
 version = "0.1.0"
 dependencies = [
  "jevision-core",
+ "jevision-l10n",
  "jevision-runner",
  "lettre",
  "rustls",
  "security-framework",
  "serde",
  "serde_json",
- "thiserror 2.0.21",
  "ureq",
 ]
 
@@ -1747,6 +1757,7 @@ dependencies = [
  "iroh",
  "iroh-mdns-address-lookup",
  "jevision-core",
+ "jevision-l10n",
  "jevision-runner",
  "libc",
  "p256",
@@ -1754,7 +1765,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "subtle",
- "thiserror 2.0.21",
  "tokio",
 ]
 
@@ -1764,6 +1774,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "jevision-core",
+ "jevision-l10n",
  "jevision-vision",
  "libc",
  "png",
@@ -1782,6 +1793,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "jevision-core",
+ "jevision-l10n",
  "png",
  "serde_json",
  "ureq",

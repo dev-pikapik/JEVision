@@ -67,8 +67,48 @@ pub use stats::*;
 /// The text is not a readable test file.
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum FlowError {
-    #[error("test file cannot be read")]
+    #[error("{}", jevision_l10n::tr!("flow.file.unreadable"))]
     Invalid { issues: Vec<Issue> },
+}
+
+/// Sets the language of every text the core writes, such as `ru` or `en-GB`. A language the
+/// catalog has no translation for falls back to English.
+#[uniffi::export]
+pub fn set_language(tag: String) {
+    jevision_l10n::set_language(&tag);
+}
+
+/// The language the core writes its texts in, such as `ru`; English until `set_language`.
+#[uniffi::export]
+pub fn current_language() -> String {
+    jevision_l10n::language()
+}
+
+/// The languages the catalog has translations for, English first.
+#[uniffi::export]
+pub fn catalog_languages() -> Vec<String> {
+    jevision_l10n::languages().to_vec()
+}
+
+/// A value a localized text refers to: text goes into `%@`, a number into `%lld` and decides the
+/// plural form.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum TextArg {
+    Text { value: String },
+    Number { value: i64 },
+}
+
+/// The text of a catalog key in the current language, with its values filled in.
+#[uniffi::export]
+pub fn localized_text(key: String, args: Vec<TextArg>) -> String {
+    let args: Vec<jevision_l10n::Arg> = args
+        .into_iter()
+        .map(|a| match a {
+            TextArg::Text { value } => jevision_l10n::Arg::Text(value),
+            TextArg::Number { value } => jevision_l10n::Arg::Number(value),
+        })
+        .collect();
+    jevision_l10n::text(&key, &args)
 }
 
 /// File format version written by this build.
@@ -102,7 +142,7 @@ pub fn validate_flow_in(flow: Flow, folder: String) -> Vec<Issue> {
     jevision_core::validate_in(&flow, std::path::Path::new(&folder))
 }
 
-/// English sentence for a problem, saying which block and field it concerns.
+/// A sentence for a problem in the current language, saying which block and field it concerns.
 #[uniffi::export]
 pub fn describe_issue(issue: Issue) -> String {
     jevision_core::describe(&issue)
@@ -1212,5 +1252,25 @@ mod tests {
     fn unreadable_text_reports_issues() {
         let FlowError::Invalid { issues } = load_flow("{".to_owned()).unwrap_err();
         assert_eq!(issues[0].code, "flow.json.syntax");
+    }
+
+    #[test]
+    fn the_catalog_has_english_first_and_russian() {
+        let languages = catalog_languages();
+        assert_eq!(languages.first().map(String::as_str), Some("en"));
+        assert!(languages.iter().any(|l| l == "ru"));
+    }
+
+    #[test]
+    fn a_picture_outside_the_run_reads_in_russian_and_english() {
+        let path = "/tmp/other.png";
+        assert_eq!(
+            jevision_l10n::tr_in!("en", "bug.picture.notInRun", path),
+            "/tmp/other.png isn’t a picture of this run"
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "bug.picture.notInRun", path),
+            "/tmp/other.png — не снимок этого прогона"
+        );
     }
 }

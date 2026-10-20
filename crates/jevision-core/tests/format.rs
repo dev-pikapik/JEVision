@@ -514,8 +514,8 @@ fn parameters_are_checked() {
     assert_eq!(issues[0].param("placeholder"), Some("${home.X}"));
     assert_eq!(issues[10].param("provider"), Some("skynet"));
     assert_eq!(
-        describe(&issues[10]),
-        "Block \"h\", field \"reference.provider\": \"skynet\" isn't an AI provider; use one of: \
+        describe_in("en", &issues[10]),
+        "Block “h”, field “reference.provider”: “skynet” isn’t an AI JEVision knows. Use one of: \
          anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible."
     );
 }
@@ -706,8 +706,8 @@ fn a_target_described_in_words_round_trips_and_must_say_something() {
         .collect();
     assert_eq!(found, [("flow.field.empty", Some("target.description"))]);
     assert_eq!(
-        describe(&issues[0]),
-        "Block \"a\", field \"target.description\": can't be empty."
+        describe_in("en", &issues[0]),
+        "Block “a”, field “target.description”: This can’t be empty."
     );
 }
 
@@ -894,8 +894,11 @@ fn a_missing_package_says_which_version_and_where_to_get_it() {
         found[0].param("source"),
         Some("https://github.com/acme/sign-in")
     );
-    let text = describe(&found[0]);
-    assert!(text.contains("the block com.acme.sign-in 1.2.0,"), "{text}");
+    let text = describe_in("en", &found[0]);
+    assert!(
+        text.contains("the block “com.acme.sign-in 1.2.0”,"),
+        "{text}"
+    );
     assert!(
         text.contains("`jevision blocks install https://github.com/acme/sign-in`"),
         "{text}"
@@ -905,8 +908,8 @@ fn a_missing_package_says_which_version_and_where_to_get_it() {
     assert_eq!(codes(&without), ["flow.block.notInstalled"]);
     assert_eq!(without[0].param("version"), None);
     assert_eq!(without[0].param("source"), None);
-    let text = describe(&without[0]);
-    assert!(text.contains("the block com.acme.sign-in,"), "{text}");
+    let text = describe_in("en", &without[0]);
+    assert!(text.contains("the block “com.acme.sign-in”,"), "{text}");
     assert!(
         text.contains("`jevision blocks install <folder, .zip file or https address>`"),
         "{text}"
@@ -1019,12 +1022,12 @@ fn missing_files_are_warnings_next_to_the_test() {
         ]
     );
     assert_eq!(
-        describe(&issues[1]),
-        "Block \"done\", field \"reference.image\": refs/done.png doesn't exist yet; the first run will save the screen there as the reference."
+        describe_in("en", &issues[1]),
+        "Block “done”, field “reference.image”: refs/done.png doesn’t exist yet. The first run will save the screen there as the reference."
     );
     assert_eq!(
-        describe(&issues[4]),
-        "Block \"spinner\", field \"until.disappears.image\": refs/spinner.png doesn't exist; the run will stop at this block until it's added."
+        describe_in("en", &issues[4]),
+        "Block “spinner”, field “until.disappears.image”: refs/spinner.png doesn’t exist. The run will stop at this block until it’s added."
     );
 }
 
@@ -1082,7 +1085,7 @@ fn parse_errors_read_as_sentences() {
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "Field \"app\": required, but missing. Block \"a\", field \"colour\": not a known field."
+        "Field “app”: “app” is missing. Block “a”, field “colour”: “colour” isn’t a known setting."
     );
 }
 
@@ -1320,7 +1323,7 @@ fn malformed_notes_are_reported_and_unsafe_ones_are_flagged() {
     );
     let all = validate(&parse(&bad(r#""block": "b""#, r#""block": "zzz""#)).unwrap());
     assert_eq!(all[0].severity, Severity::Warning);
-    assert!(describe(&all[0]).contains("zzz"));
+    assert!(describe_in("en", &all[0]).contains("zzz"));
 }
 
 /// The blocks that work without the screen, plus an `if` that branches on a saved value.
@@ -1461,8 +1464,8 @@ fn dependencies_round_trip_and_are_validated() {
         ]
     );
     assert_eq!(
-        describe(&issues[2]),
-        "Field \"dependsOn\": cart.flow.json is listed twice."
+        describe_in("en", &issues[2]),
+        "Field “dependsOn”: “cart.flow.json” is listed twice in Runs After."
     );
 }
 

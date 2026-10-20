@@ -1119,6 +1119,26 @@ fn error_codes_have_stable_keys() {
         serde_json::to_string(&RemoteError::DeclinedOnMac).unwrap(),
         "\"declinedOnMac\""
     );
+    assert_eq!(
+        RemoteError::OfferWrongScheme.key(),
+        RemoteError::OfferMalformed.key()
+    );
+}
+
+#[test]
+fn errors_are_told_in_the_language_asked_for() {
+    assert_eq!(
+        RemoteError::MacLocked.text_in("en"),
+        "The Mac’s screen is locked."
+    );
+    assert_eq!(
+        RemoteError::MacLocked.text_in("ru"),
+        "Экран Mac заблокирован."
+    );
+    assert_eq!(
+        RemoteError::OfferWrongScheme.text_in("ru"),
+        "Это не код подключения JEVision."
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

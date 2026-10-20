@@ -29,6 +29,7 @@ fn full() -> Message {
                 label: "Report".into(),
                 target: "https://github.com/acme/shop/actions/runs/7".into(),
                 is_link: true,
+                system: "GitHub Actions".into(),
             }),
             picture: None,
         },
@@ -90,6 +91,7 @@ fn slack_gets_blocks_for_each_part_with_the_markup_escaped() {
         label: "Report on the Mac that ran it".into(),
         target: "/runs/a`b".into(),
         is_link: false,
+        system: String::new(),
     });
     let body = render::slack(&on_the_mac);
     assert_eq!(
@@ -202,6 +204,7 @@ fn the_html_has_each_part_with_the_markup_escaped() {
         label: "Report".into(),
         target: "/runs/\"><script>".into(),
         is_link: false,
+        system: String::new(),
     });
     let html = render::html(&hostile);
     assert!(!html.contains("<script>"), "{html}");
@@ -400,5 +403,35 @@ fn only_a_small_png_inside_the_run_folder_is_attached() {
         )
         .unwrap())
         .is_none()
+    );
+}
+
+#[test]
+fn a_ci_link_names_its_system_and_the_layout_speaks_the_message_language() {
+    let mut gitlab = full();
+    gitlab.lang = "ru".into();
+    gitlab.details.report = Some(ReportLink {
+        label: "Отчёт".into(),
+        target: "https://gitlab.com/acme/shop/-/pipelines/9".into(),
+        is_link: true,
+        system: "GitLab CI".into(),
+    });
+    let blocks = &render::slack(&gitlab)["blocks"];
+    assert_eq!(
+        blocks[5]["elements"][0]["text"],
+        "Отчёт: <https://gitlab.com/acme/shop/-/pipelines/9|Открыть прогон в GitLab CI>"
+    );
+    assert_eq!(blocks[4]["text"]["text"], "*Исправлены:* Profile");
+    assert!(
+        blocks[3]["text"]["text"]
+            .as_str()
+            .unwrap()
+            .ends_with("\nи ещё 3")
+    );
+    let html = render::html(&gitlab);
+    assert!(html.contains("<html lang=\"ru\">"), "{html}");
+    assert!(
+        html.contains("<strong>Исправлены:</strong> Profile"),
+        "{html}"
     );
 }

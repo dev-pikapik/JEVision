@@ -6,6 +6,7 @@ struct JEVisionRemoteApp: App {
   @Environment(\.scenePhase) private var scenePhase
 
   init() {
+    CoreLanguage.apply()
     let key = DeviceKey()
     let lock = AppLock()
     let model = AppModel(client: CoreRemoteClient(signer: key), lock: lock)

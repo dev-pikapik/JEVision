@@ -83,7 +83,7 @@ struct RunHistoryTests {
     let real = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .failed,
       attempts: [1, 2, 3].map { Self.attempt($0, .failed, failure: "run.check.mismatch") })
-    #expect(RunHistory.retryVerdict(real.report) == String(localized: "Failed 3 times in a row — a real failure, not flakiness."))
+    #expect(RunHistory.retryVerdict(real.report) == "Failed 3 times in a row — a real failure, not flakiness.")
     #expect(real.status == .failed)
     var quarantined = real
     quarantined.report.quarantined = true
@@ -92,13 +92,13 @@ struct RunHistoryTests {
     let flakyPass = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .passed, flaky: true,
       attempts: [Self.attempt(1, .failed, failure: "run.waitFor.timeout"), Self.attempt(2, .failed, failure: "run.waitFor.timeout"), Self.attempt(3, .passed)])
-    #expect(RunHistory.retryVerdict(flakyPass.report) == String(localized: "Passed on retry 2 after failing — the test is flaky."))
+    #expect(RunHistory.retryVerdict(flakyPass.report) == "Passed on retry 2 after failing — the test is flaky.")
     #expect(flakyPass.status == .flaky)
 
     let mixed = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .failed, flaky: true,
       attempts: [Self.attempt(1, .failed, failure: "run.waitFor.timeout"), Self.attempt(2, .failed, failure: "run.check.mismatch")])
-    #expect(RunHistory.retryVerdict(mixed.report) == String(localized: "Failed 2 of 2 times, each time differently — the test may be flaky."))
+    #expect(RunHistory.retryVerdict(mixed.report) == "Failed 2 times, each time differently — the test may be flaky.")
     #expect(mixed.status == .failed)
   }
 

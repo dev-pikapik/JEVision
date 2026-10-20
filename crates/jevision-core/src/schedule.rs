@@ -10,9 +10,11 @@ use std::fmt::Write as _;
 use std::path::Path;
 use std::{fs, io};
 
+use jevision_l10n::tr;
 use serde::{Deserialize, Serialize};
 
 use crate::env::is_environment_name;
+use crate::issue::json_problem;
 
 /// Name of the schedule file in the project folder.
 pub const SCHEDULE_FILE: &str = "jevision.schedule.json";
@@ -135,7 +137,7 @@ impl TryFrom<String> for TimeOfDay {
     type Error = String;
 
     fn try_from(text: String) -> Result<Self, String> {
-        let bad = || format!("\"{text}\" isn't a time of day; write it as HH:MM, such as 09:30");
+        let bad = || tr!("schedule.time.invalid", &text);
         let (hour, minute) = text.split_once(':').ok_or_else(bad)?;
         let number = |part: &str| {
             (part.len() == 2 && part.bytes().all(|b| b.is_ascii_digit()))
@@ -167,40 +169,34 @@ impl Schedule {
     pub fn problem(&self) -> Option<String> {
         let name = &self.name;
         if name.trim().is_empty() {
-            return Some("a schedule has no name".to_owned());
+            return Some(tr!("schedule.name.missing"));
         }
         if name.trim() != name
             || name.chars().count() > MAX_NAME_LEN
             || name.chars().any(char::is_control)
         {
-            return Some(format!(
-                "\"{name}\" isn't a valid schedule name; use up to {MAX_NAME_LEN} characters without spaces around them"
-            ));
+            return Some(tr!("schedule.name.invalid", name, MAX_NAME_LEN));
         }
-        let problem = |what: String| Some(format!("schedule \"{name}\": {what}"));
+        let problem = |what: String| Some(tr!("schedule.problem", name, what));
         match &self.tests {
             ScheduleTests::All => {}
             ScheduleTests::Folder(folder) => {
                 if !is_relative_path(folder) {
-                    return problem(format!(
-                        "\"{folder}\" isn't a folder inside the project; write it relative to the project folder"
-                    ));
+                    return problem(tr!("schedule.folder.invalid", folder));
                 }
             }
             ScheduleTests::Files(files) => {
                 if files.is_empty() {
-                    return problem("\"files\" names no tests".to_owned());
+                    return problem(tr!("schedule.files.empty"));
                 }
                 if let Some(file) = files
                     .iter()
                     .find(|f| !is_relative_path(f) || !f.ends_with(".flow.json"))
                 {
-                    return problem(format!(
-                        "\"{file}\" isn't a test file (*.flow.json) inside the project; write it relative to the project folder"
-                    ));
+                    return problem(tr!("schedule.file.invalid", file));
                 }
                 if files.iter().collect::<BTreeSet<_>>().len() != files.len() {
-                    return problem("a test is listed twice".to_owned());
+                    return problem(tr!("schedule.files.twice"));
                 }
             }
         }
@@ -208,19 +204,16 @@ impl Schedule {
             Repeat::Daily => {}
             Repeat::Days(days) => {
                 if days.is_empty() {
-                    return problem("\"days\" names no days".to_owned());
+                    return problem(tr!("schedule.days.empty"));
                 }
                 if days.iter().collect::<BTreeSet<_>>().len() != days.len() {
-                    return problem("a day is listed twice".to_owned());
+                    return problem(tr!("schedule.days.twice"));
                 }
             }
             Repeat::EveryHours(hours) => {
                 if !EVERY_HOURS.contains(hours) {
                     let allowed: Vec<_> = EVERY_HOURS.iter().map(u8::to_string).collect();
-                    return problem(format!(
-                        "\"everyHours\" must be one of {}, not {hours}",
-                        allowed.join(", ")
-                    ));
+                    return problem(tr!("schedule.everyHours", allowed.join(", "), *hours));
                 }
             }
         }
@@ -229,18 +222,17 @@ impl Schedule {
             .as_deref()
             .filter(|e| !is_environment_name(e))
         {
-            return problem(format!(
-                "\"{environment}\" isn't a valid environment name; use letters, digits, - and _"
-            ));
+            return problem(tr!("env.name.invalid", environment));
         }
         if let Some(video) = self
             .video
             .as_deref()
             .filter(|v| !SCHEDULE_VIDEO_MODES.contains(v))
         {
-            return problem(format!(
-                "\"video\" must be {}, not \"{video}\"",
-                SCHEDULE_VIDEO_MODES.join(", ")
+            return problem(tr!(
+                "schedule.video",
+                SCHEDULE_VIDEO_MODES.join(", "),
+                video
             ));
         }
         None
@@ -307,25 +299,19 @@ fn check(schedules: &[Schedule]) -> Result<(), String> {
         .iter()
         .find(|s| !names.insert(s.name.to_lowercase()))
     {
-        return Err(format!(
-            "two schedules are named \"{}\"; give each its own name",
-            twice.name
-        ));
+        return Err(tr!("schedule.name.twice", &twice.name));
     }
     Ok(())
 }
 
 /// Reads the text of a schedule file; `Err` says what is wrong with it.
 pub fn parse_schedules(text: &str) -> Result<Vec<Schedule>, String> {
-    let file: File = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
     if file.format > SCHEDULE_FORMAT {
-        return Err(format!(
-            "the file has format {}, this version reads up to {SCHEDULE_FORMAT}",
-            file.format
-        ));
+        return Err(tr!("project.format.tooNew", file.format, SCHEDULE_FORMAT));
     }
     if file.format < 1 {
-        return Err(format!("\"format\" must be {SCHEDULE_FORMAT}"));
+        return Err(tr!("project.format.invalid", SCHEDULE_FORMAT));
     }
     check(&file.schedules)?;
     Ok(file.schedules)
@@ -878,5 +864,47 @@ mod tests {
         assert!(!project.join(SCHEDULE_FILE).exists());
         assert!(load_schedules(&project).unwrap().is_empty());
         fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn problems_name_the_schedule_and_count_characters_in_words() {
+        assert_eq!(
+            parse_schedules(
+                r#"{"format":1,"schedules":[{"name":"A","tests":"all","repeat":{"everyHours":5},"at":"00:00"}]}"#
+            )
+            .unwrap_err(),
+            "schedule “A”: “everyHours” must be one of 1, 2, 3, 4, 6, 8, 12, not 5"
+        );
+        let name =
+            |lang: &str, n: usize| jevision_l10n::tr_in!(lang, "schedule.name.invalid", " x ", n);
+        assert_eq!(
+            name("en", 1),
+            "“ x ” isn’t a valid schedule name; use up to 1 character without spaces around it"
+        );
+        for n in [2, 5] {
+            assert_eq!(
+                name("en", n),
+                format!(
+                    "“ x ” isn’t a valid schedule name; use up to {n} characters without spaces around them"
+                )
+            );
+        }
+        let ru = |n: usize, chars: &str| {
+            format!(
+                "« x » не подходит как имя расписания: используйте до {n} {chars} без пробелов по краям"
+            )
+        };
+        assert_eq!(name("ru", 1), ru(1, "символа"));
+        assert_eq!(name("ru", 2), ru(2, "символов"));
+        assert_eq!(name("ru", 5), ru(5, "символов"));
+        assert_eq!(
+            jevision_l10n::tr_in!(
+                "ru",
+                "schedule.problem",
+                "Ночь",
+                jevision_l10n::tr_in!("ru", "schedule.everyHours", "1, 2", 5)
+            ),
+            "расписание «Ночь»: «everyHours» должно быть одним из: 1, 2, а не 5"
+        );
     }
 }

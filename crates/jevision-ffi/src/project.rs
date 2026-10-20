@@ -4,6 +4,8 @@
 
 use std::path::Path;
 
+use jevision_l10n::tr;
+
 use jevision_core::{
     AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETRIES, PROJECT_FILE,
     ProjectSettings, Quarantined, Rect, RunMode, default_quarantine_until,
@@ -12,11 +14,11 @@ use jevision_core::{
 /// The project settings file can't be read or written, or the change isn't allowed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum ProjectSettingsError {
-    #[error("{file} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .file, .reason))]
     Unreadable { file: String, reason: String },
     #[error("{reason}")]
     Rejected { reason: String },
-    #[error("{file} can't be saved: {reason}")]
+    #[error("{}", tr!("project.file.unwritable", .file, .reason))]
     Unwritable { file: String, reason: String },
 }
 
@@ -111,7 +113,7 @@ pub fn set_quarantine_threshold(
     change(&project, |s| {
         if after.is_some_and(|n| !(1..=MAX_QUARANTINE_AFTER).contains(&n)) {
             return Err(ProjectSettingsError::Rejected {
-                reason: format!("Quarantine is suggested after 1 to {MAX_QUARANTINE_AFTER} runs."),
+                reason: tr!("project.quarantineAfter.limit", MAX_QUARANTINE_AFTER),
             });
         }
         s.suggest_quarantine_after = after;
@@ -129,7 +131,7 @@ pub fn set_default_retries(
     change(&project, |s| {
         if retries.is_some_and(|r| r > MAX_RETRIES) {
             return Err(ProjectSettingsError::Rejected {
-                reason: format!("Retries must be from 0 to {MAX_RETRIES}."),
+                reason: tr!("project.retries.limit", MAX_RETRIES),
             });
         }
         s.retries = retries;

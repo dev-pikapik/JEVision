@@ -9,6 +9,8 @@
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+use jevision_l10n::{tr, tr_in};
+
 mod github;
 mod notes;
 mod signin;
@@ -22,67 +24,104 @@ pub use github::{
 pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, forget_token, save_token};
 
 /// Why a git operation didn't happen. Nothing on disk changed unless the variant says so.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GitError {
-    #[error("git is not installed")]
     NotInstalled,
-    #[error("the project is not tracked by git")]
     NotRepository,
-    #[error("nothing has been committed yet")]
     NoCommits,
-    #[error("the repository has no server to sync with")]
     NoRemote,
-    #[error("branch `{branch}` is not on the server yet")]
-    NoUpstream { branch: String },
-    #[error("no branch is checked out")]
+    NoUpstream {
+        branch: String,
+    },
     Detached,
-    #[error("the server did not accept the sign-in")]
     SignIn,
-    #[error("the repository was not found on the server")]
     RemoteNotFound,
-    #[error("the server cannot be reached")]
     Unreachable,
-    #[error("the server has commits that are not here yet")]
     Rejected,
-    #[error("the same lines changed here and on the server: {}", paths.join(", "))]
-    Conflict { paths: Vec<String> },
-    #[error("uncommitted changes would be overwritten: {}", paths.join(", "))]
-    LocalChanges { paths: Vec<String> },
-    #[error("git does not know the author's name and email")]
+    Conflict {
+        paths: Vec<String>,
+    },
+    LocalChanges {
+        paths: Vec<String>,
+    },
     NoIdentity,
-    #[error("the message is empty")]
     EmptyMessage,
-    #[error("there is nothing to commit")]
     NothingToCommit,
-    #[error("`{name}` cannot be a branch name")]
-    BadBranchName { name: String },
-    #[error("branch `{name}` already exists")]
-    BranchExists { name: String },
-    #[error("`{path}` is not in that commit")]
-    NotInCommit { path: String },
-    #[error("GitHub CLI is not installed")]
+    BadBranchName {
+        name: String,
+    },
+    BranchExists {
+        name: String,
+    },
+    NotInCommit {
+        path: String,
+    },
     NoGitHubCli,
-    #[error("not signed in to GitHub")]
     GitHubSignedOut,
-    #[error("the sign-in code expired before it was entered on GitHub")]
     SignInExpired,
-    #[error("the sign-in was declined on GitHub")]
     SignInDenied,
-    #[error("signing in to GitHub in the browser isn't set up: check the OAuth app's Client ID")]
     SignInUnavailable,
-    #[error("the repository's server is not GitHub")]
     NotGitHub,
-    #[error("the GitHub account is not allowed to do that")]
     NoPermission,
-    #[error("branch `{branch}` has commits that are not on GitHub")]
-    NotPushed { branch: String },
-    #[error("a pull request for this branch is already open")]
+    NotPushed {
+        branch: String,
+    },
     PullRequestExists,
-    #[error("the branch has no commits that `{base}` doesn't have")]
-    NothingToPropose { base: String },
-    #[error("{message}")]
-    Failed { message: String },
+    NothingToPropose {
+        base: String,
+    },
+    /// `message` is already in words: git's own, or one of ours in the process language.
+    Failed {
+        message: String,
+    },
 }
+
+impl GitError {
+    /// What went wrong, in `lang`.
+    pub fn text_in(&self, lang: &str) -> String {
+        match self {
+            Self::NotInstalled => tr_in!(lang, "git.error.notInstalled"),
+            Self::NotRepository => tr_in!(lang, "git.error.notRepository"),
+            Self::NoCommits => tr_in!(lang, "git.error.noCommits"),
+            Self::NoRemote => tr_in!(lang, "git.error.noRemote"),
+            Self::NoUpstream { branch } => tr_in!(lang, "git.error.noUpstream", branch),
+            Self::Detached => tr_in!(lang, "git.error.detached"),
+            Self::SignIn => tr_in!(lang, "git.error.signIn"),
+            Self::RemoteNotFound => tr_in!(lang, "git.error.remoteNotFound"),
+            Self::Unreachable => tr_in!(lang, "git.error.unreachable"),
+            Self::Rejected => tr_in!(lang, "git.error.rejected"),
+            Self::Conflict { paths } => tr_in!(lang, "git.error.conflict", paths.join(", ")),
+            Self::LocalChanges { paths } => {
+                tr_in!(lang, "git.error.localChanges", paths.join(", "))
+            }
+            Self::NoIdentity => tr_in!(lang, "git.error.noIdentity"),
+            Self::EmptyMessage => tr_in!(lang, "git.error.emptyMessage"),
+            Self::NothingToCommit => tr_in!(lang, "git.error.nothingToCommit"),
+            Self::BadBranchName { name } => tr_in!(lang, "git.error.badBranchName", name),
+            Self::BranchExists { name } => tr_in!(lang, "git.error.branchExists", name),
+            Self::NotInCommit { path } => tr_in!(lang, "git.error.notInCommit", path),
+            Self::NoGitHubCli => tr_in!(lang, "git.error.noGitHubCli"),
+            Self::GitHubSignedOut => tr_in!(lang, "git.error.gitHubSignedOut"),
+            Self::SignInExpired => tr_in!(lang, "git.error.signInExpired"),
+            Self::SignInDenied => tr_in!(lang, "git.error.signInDenied"),
+            Self::SignInUnavailable => tr_in!(lang, "git.error.signInUnavailable"),
+            Self::NotGitHub => tr_in!(lang, "git.error.notGitHub"),
+            Self::NoPermission => tr_in!(lang, "git.error.noPermission"),
+            Self::NotPushed { branch } => tr_in!(lang, "git.error.notPushed", branch),
+            Self::PullRequestExists => tr_in!(lang, "git.error.pullRequestExists"),
+            Self::NothingToPropose { base } => tr_in!(lang, "git.error.nothingToPropose", base),
+            Self::Failed { message } => message.clone(),
+        }
+    }
+}
+
+impl std::fmt::Display for GitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.text_in(&jevision_l10n::language()))
+    }
+}
+
+impl std::error::Error for GitError {}
 
 /// What happened to a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -548,7 +587,7 @@ impl Repo {
         if !merging {
             self.check(merge)?;
             return Err(GitError::Failed {
-                message: format!("the commits of `{upstream}` are already here"),
+                message: tr!("git.error.alreadyMerged", &upstream),
             });
         }
         let finish = || -> Result<String, GitError> {
@@ -911,7 +950,7 @@ fn pathspec(path: &str) -> Result<&str, GitError> {
         .all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
     if !inside {
         return Err(GitError::Failed {
-            message: format!("`{path}` is outside the project"),
+            message: tr!("git.error.outsideProject", path),
         });
     }
     Ok(if path.is_empty() { "." } else { path })

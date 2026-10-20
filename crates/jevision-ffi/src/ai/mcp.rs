@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use jevision_l10n::tr;
 use serde_json::{Value, json};
 
 /// Protocol version asked for; servers may answer with an older one they speak.
@@ -70,28 +71,28 @@ pub struct McpTool {
 /// Why a server could not be used.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum McpError {
-    #[error("the command is empty")]
+    #[error("{}", tr!("ai.mcp.noCommand"))]
     NoCommand,
-    #[error("{url} is not a web address")]
+    #[error("{}", tr!("ai.mcp.badAddress", .url))]
     BadAddress { url: String },
-    #[error("{command} could not be started: {reason}")]
+    #[error("{}", tr!("ai.mcp.cannotStart", .command, .reason))]
     CannotStart { command: String, reason: String },
     /// The program ended; `output` is the end of what it wrote to its error output.
-    #[error("the server stopped: {output}")]
+    #[error("{}", tr!("ai.mcp.stopped", .output))]
     Stopped { output: String },
-    #[error("{url} cannot be reached")]
+    #[error("{}", tr!("ai.mcp.unreachable", .url))]
     Unreachable { url: String },
-    #[error("the server did not accept the access token")]
+    #[error("{}", tr!("ai.mcp.unauthorized"))]
     Unauthorized,
-    #[error("the server did not answer within {seconds} s")]
+    #[error("{}", tr!("ai.mcp.timeout", *.seconds))]
     Timeout { seconds: u64 },
-    #[error("the server answered with HTTP {status}: {message}")]
+    #[error("{}", tr!("ai.mcp.http", *.status, .message))]
     Http { status: u16, message: String },
     /// The server answered a request with a JSON-RPC error.
-    #[error("the server answered with error {code}: {message}")]
+    #[error("{}", tr!("ai.mcp.rpc", *.code, .message))]
     Rpc { code: i64, message: String },
     /// The server's answer does not follow the protocol.
-    #[error("the server's answer can't be read: {message}")]
+    #[error("{}", tr!("ai.mcp.protocol", .message))]
     Protocol { message: String },
 }
 

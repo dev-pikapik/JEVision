@@ -2,6 +2,7 @@
 
 use std::fmt::Write as _;
 
+use jevision_l10n::tr_in;
 use serde_json::{Value, json};
 
 use crate::message::{Message, Tone, clip};
@@ -26,7 +27,7 @@ pub(crate) fn slack_escape(text: &str) -> String {
 /// The body of a Slack webhook post: blocks for the heading, the facts, the failures and the
 /// report, and the plain text that notifications and screen readers use.
 pub(crate) fn slack(message: &Message) -> Value {
-    let d = &message.details;
+    let (d, lang) = (&message.details, message.lang.as_str());
     let section = |text: String| json!({"type": "section", "text": {"type": "mrkdwn", "text": clip(&text, TEXT)}});
     let mut blocks = vec![json!({
         "type": "header",
@@ -57,22 +58,28 @@ pub(crate) fn slack(message: &Message) -> Value {
             })
             .collect();
         if d.unlisted > 0 {
-            lines.push(format!("and {} more", d.unlisted));
+            lines.push(tr_in!(lang, "and %lld more", d.unlisted));
         }
         blocks.push(section(lines.join("\n")));
     }
     if !d.fixed.is_empty() {
         blocks.push(section(format!(
-            "*Fixed:* {}",
+            "*{}:* {}",
+            slack_escape(&tr_in!(lang, "notify.fixed")),
             slack_escape(&d.fixed.join(", "))
         )));
     }
     if let Some(report) = &d.report {
         let target = slack_escape(&report.target);
         let text = if report.is_link {
+            let open = match report.system.as_str() {
+                "GitHub Actions" => tr_in!(lang, "notify.report.openOnGitHub"),
+                system => tr_in!(lang, "notify.report.openIn", system),
+            };
             format!(
-                "{}: <{target}|Open the run on GitHub>",
-                slack_escape(&report.label)
+                "{}: <{target}|{}>",
+                slack_escape(&report.label),
+                slack_escape(&open)
             )
         } else {
             format!("{}: `{target}`", slack_escape(&report.label))
@@ -95,7 +102,7 @@ fn html_escape(text: &str) -> String {
 /// The mail's HTML: a coloured heading, the facts, the failures and, when the message has a
 /// screenshot, the picture inline. Styles are inline because mail programs ignore the rest.
 pub(crate) fn html(message: &Message) -> String {
-    let d = &message.details;
+    let (d, lang) = (&message.details, message.lang.as_str());
     let colour = match d.tone {
         Tone::Bad => "#b3261e",
         Tone::Good => "#1e7a34",
@@ -103,13 +110,14 @@ pub(crate) fn html(message: &Message) -> String {
     };
     let muted = "color:#636366";
     let mut page = format!(
-        "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">\
+        "<!doctype html>\n<html lang=\"{lang}\"><head><meta charset=\"utf-8\">\
          <meta name=\"color-scheme\" content=\"light\"><title>{title}</title></head>\n\
          <body style=\"margin:0;padding:24px;background:#f2f2f7;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#1c1c1e\">\n\
          <div style=\"max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #d1d1d6;border-radius:12px;overflow:hidden\">\n\
          <h1 style=\"margin:0;padding:18px 24px;background:{colour};color:#ffffff;font-size:20px;line-height:1.3\">{title}</h1>\n\
          <div style=\"padding:20px 24px;font-size:15px;line-height:1.5\">\n",
         title = html_escape(&message.title),
+        lang = html_escape(lang),
     );
     if let Some(lead) = &d.lead {
         let _ = writeln!(
@@ -134,8 +142,8 @@ pub(crate) fn html(message: &Message) -> String {
         if d.unlisted > 0 {
             let _ = writeln!(
                 page,
-                "<li style=\"list-style:none;{muted}\">and {} more</li>",
-                d.unlisted
+                "<li style=\"list-style:none;{muted}\">{}</li>",
+                html_escape(&tr_in!(lang, "and %lld more", d.unlisted))
             );
         }
         page.push_str("</ul>\n");
@@ -143,7 +151,8 @@ pub(crate) fn html(message: &Message) -> String {
     if !d.fixed.is_empty() {
         let _ = writeln!(
             page,
-            "<p style=\"margin:0 0 16px\"><strong>Fixed:</strong> {}</p>",
+            "<p style=\"margin:0 0 16px\"><strong>{}:</strong> {}</p>",
+            html_escape(&tr_in!(lang, "notify.fixed")),
             html_escape(&d.fixed.join(", "))
         );
     }

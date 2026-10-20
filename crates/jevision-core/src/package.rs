@@ -13,10 +13,11 @@ use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 
+use jevision_l10n::{language, tr, tr_in};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::issue::{Issue, ParseError, describe};
+use crate::issue::{Issue, ParseError, describe, json_problem};
 use crate::model::{
     BlockKind, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
 };
@@ -282,11 +283,17 @@ pub fn block_with_version(id: &str, version: &str) -> String {
     }
 }
 
-/// The command that installs the package at `source`; without an address it says what to give.
+/// [`install_command_in`] in the process language.
 pub fn install_command(source: &str) -> String {
+    install_command_in(&language(), source)
+}
+
+/// The command that installs the package at `source`; without an address it says, in `lang`,
+/// what to give.
+pub fn install_command_in(lang: &str, source: &str) -> String {
     let plain = |b: u8| b.is_ascii_alphanumeric() || b"-._~:/%@+=".contains(&b);
     let source = if source.is_empty() {
-        "<folder, .zip file or https address>".to_owned()
+        tr_in!(lang, "package.install.anySource")
     } else if source.bytes().all(plain) {
         source.to_owned()
     } else {
@@ -809,7 +816,7 @@ pub struct PackageLock {
 impl PackageLock {
     /// Reads the text of the lock file.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        let value: Value = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
         let sources = match value.get("sources") {
             None => BTreeMap::new(),
             Some(Value::Object(map)) => map
@@ -818,10 +825,10 @@ impl PackageLock {
                     source
                         .as_str()
                         .map(|s| (id.clone(), s.to_owned()))
-                        .ok_or_else(|| format!("the source of {id} must be text"))
+                        .ok_or_else(|| tr!("package.lock.sourceType", id))
                 })
                 .collect::<Result<_, _>>()?,
-            Some(_) => return Err("\"sources\" must be an object".to_owned()),
+            Some(_) => return Err(tr!("package.lock.sources")),
         };
         Ok(Self { sources })
     }

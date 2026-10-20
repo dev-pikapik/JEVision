@@ -20,7 +20,7 @@ use jevision_core::{
 use crate::control::{Cancelled, PauseReason};
 use crate::report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, UsedPackage, Verdict,
-    VisionAnswer, percent, summarize,
+    VisionAnswer, kept_percent, summarize,
 };
 use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
@@ -2882,8 +2882,8 @@ fn mismatch(id: &str, r: &Reference, e: &Evaluation) -> Failure {
         "image",
         e.reference.as_ref().map_or("", |l| l.name.as_str()),
     )
-    .with("similarity", percent(comparison.similarity))
-    .with("threshold", percent(threshold));
+    .with("similarity", kept_percent(comparison.similarity))
+    .with("threshold", kept_percent(threshold));
     match density {
         Some(expected) => failure
             .with("expected", size(expected))
