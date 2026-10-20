@@ -2,8 +2,10 @@
 //! on the screen. The server lives in the process the assistant started and the app in its
 //! own, so they talk through a folder both reach:
 //!
-//! - `sessions/NAME-PID-START.json`: one file per connection, written only by the server that
-//!   holds it, which touches it every [`HEARTBEAT`] while the assistant is connected.
+//! - `sessions/NAME-PID-START-N.json`: one file per connection, written only by the server that
+//!   holds it, which touches it every [`HEARTBEAT`] while the assistant is connected. An
+//!   assistant that comes over the network (`remote`) is held by the app itself, which writes
+//!   the same files, so the app lists and asks about it like about any other.
 //! - `asks/ID.json`: a question for the person; `asks/ID.answer`: `allow` or `deny`.
 //! - `listening`: the app touches it while it is open and can ask.
 
@@ -46,6 +48,8 @@ struct Session {
 
 pub(super) struct Agents {
     folder: PathBuf,
+    /// The computer the assistant works on, when it comes over the network.
+    remote: Option<String>,
     session: Mutex<Option<Session>>,
     /// How long the person has to answer.
     pub(super) timeout: Duration,
@@ -55,8 +59,17 @@ impl Agents {
     pub(super) fn new(folder: &str) -> Self {
         Self {
             folder: PathBuf::from(folder),
+            remote: None,
             session: Mutex::new(None),
             timeout: ASK_TIMEOUT,
+        }
+    }
+
+    /// For an assistant that comes over the network from the computer called `computer`.
+    pub(super) fn remote(folder: &str, computer: &str) -> Self {
+        Self {
+            remote: Some(computer.to_owned()),
+            ..Self::new(folder)
         }
     }
 
@@ -82,16 +95,19 @@ impl Agents {
             })
             .take(40)
             .collect();
-        let file = self
-            .folder
-            .join("sessions")
-            .join(format!("{slug}-{}-{start}.json", std::process::id()));
+        static NEXT: AtomicU32 = AtomicU32::new(0);
+        let file = self.folder.join("sessions").join(format!(
+            "{slug}-{}-{start}-{}.json",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
         let session = Session {
             file,
             record: json!({
                 "name": name,
                 "title": title,
                 "version": text("version"),
+                "remote": self.remote,
                 "started": start / 1000,
                 "calls": 0,
                 "lastCall": null,
@@ -166,6 +182,7 @@ impl Agents {
                 &json!({
                     "id": id,
                     "assistant": assistant,
+                    "remote": self.remote,
                     "project": ask.project,
                     "tests": ask.tests,
                     "apps": ask.apps,
@@ -226,6 +243,9 @@ pub struct ConnectedAssistant {
     /// What to show: the title the assistant gave, or its name.
     pub title: String,
     pub version: String,
+    /// The computer it works on, when it is connected over the network; `None` for an
+    /// assistant on this Mac.
+    pub remote: Option<String>,
     /// Unix seconds.
     pub first_connected_at: i64,
     pub last_connected_at: i64,
@@ -249,6 +269,8 @@ pub struct AssistantRequest {
     pub id: String,
     /// What the assistant calls itself.
     pub assistant: String,
+    /// The computer it works on, when it is connected over the network.
+    pub remote: Option<String>,
     pub project: String,
     /// Test files it wants to run, relative to the project.
     pub tests: Vec<String>,
@@ -272,6 +294,7 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
             continue;
         }
         let text = |key: &str| record[key].as_str().unwrap_or_default().to_owned();
+        let remote = record["remote"].as_str().map(str::to_owned);
         let started = record["started"].as_i64().unwrap_or_default();
         let connected = record["ended"].is_null() && age <= STALE;
         let calls = record["calls"].as_u64().unwrap_or_default();
@@ -286,7 +309,10 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
         let call_at = record["lastCall"]["atMicros"]
             .as_i64()
             .or_else(|| record["lastCall"]["at"].as_i64().map(|s| s * 1_000_000));
-        match found.iter_mut().find(|(a, _)| a.name == text("name")) {
+        match found
+            .iter_mut()
+            .find(|(a, _)| a.name == text("name") && a.remote == remote)
+        {
             Some((a, latest)) => {
                 a.first_connected_at = a.first_connected_at.min(started);
                 a.connected |= connected;
@@ -306,6 +332,7 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
                     name: text("name"),
                     title: text("title"),
                     version: text("version"),
+                    remote,
                     first_connected_at: started,
                     last_connected_at: started,
                     connected,
@@ -318,10 +345,11 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
     }
     let mut found: Vec<ConnectedAssistant> = found.into_iter().map(|(a, _)| a).collect();
     found.sort_by(|a, b| {
-        (b.connected, b.last_connected_at, &a.name).cmp(&(
+        (b.connected, b.last_connected_at, &a.name, &a.remote).cmp(&(
             a.connected,
             a.last_connected_at,
             &b.name,
+            &b.remote,
         ))
     });
     found
@@ -385,6 +413,7 @@ pub fn pending_assistant_requests(folder: String) -> Vec<AssistantRequest> {
             AssistantRequest {
                 id: text("id"),
                 assistant: text("assistant"),
+                remote: r["remote"].as_str().map(str::to_owned),
                 project: text("project"),
                 tests: list("tests"),
                 apps: list("apps"),

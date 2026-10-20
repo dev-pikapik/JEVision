@@ -16,7 +16,16 @@ const ACTIVITY_OLD: &str = "activity.1.jsonl";
 /// files together stay under twice this.
 const ACTIVITY_LIMIT: u64 = 512 * 1024;
 
-/// A phone paired with this Mac.
+/// What a paired device is: the iPhone app, or an AI assistant on another computer.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DeviceKind {
+    #[default]
+    Phone,
+    Assistant,
+}
+
+/// A device paired with this Mac.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {
@@ -25,7 +34,15 @@ pub struct Device {
     pub name: String,
     /// The phone's P-256 public key, SEC1 uncompressed, hex.
     pub public_key: String,
+    /// Devices saved before assistants existed are phones.
+    #[serde(default)]
+    pub kind: DeviceKind,
+    /// What a phone may do. An assistant has no such level: its tools are limited by the
+    /// assistant settings of the app, and by [`Device::assistant`].
     pub permission: Permission,
+    /// Whether the owner lets this assistant use the Mac's tools. Always off for a phone.
+    #[serde(default)]
+    pub assistant: bool,
     /// Seconds since 1970.
     pub paired_at: i64,
     /// When the phone last signed in, in seconds since 1970.
@@ -61,6 +78,8 @@ pub enum ActivityKind {
     Denied,
     PermissionChanged,
     Revoked,
+    /// An assistant called a tool; the subject is the tool's name, never its arguments.
+    AssistantCalled,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

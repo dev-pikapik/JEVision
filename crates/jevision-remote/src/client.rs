@@ -6,16 +6,17 @@ use std::time::Duration;
 use iroh::endpoint::{Connection, ConnectionError, RecvStream, VarInt};
 use iroh::{Endpoint, EndpointAddr, EndpointId, RelayUrl, SecretKey};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::pairing::{auth_transcript, code_bytes, pair_transcript};
 use crate::wire::{
-    self, CLOSE_DONE, CLOSE_REVOKED, Hello, HostHello, MAX_PICTURE, Proof, Reply, Request,
-    Response, Welcome,
+    self, AssistantReply, AssistantRequest, CLOSE_DISABLED, CLOSE_DONE, CLOSE_REVOKED, Hello,
+    HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, Proof, Reply, Request, Response, Welcome,
 };
 use crate::{
-    ALPN, DeviceSigner, Network, PairingOffer, Permission, ProjectInfo, RemoteError, RunList,
-    RunReport, RunStatus, RunUpdate, TestEntry, TestSummary, bind, hex, random, unhex,
+    ALPN, ALPN_V2, DeviceSigner, Network, PairingOffer, Permission, ProjectInfo, RemoteError,
+    RunList, RunReport, RunStatus, RunUpdate, TestEntry, TestSummary, bind, hex, random, unhex,
 };
 
 /// Time to reach the Mac and finish signing in.
@@ -39,6 +40,7 @@ pub struct HostRecord {
 /// connection drops, for example when the phone wakes up or changes networks.
 pub struct Client {
     endpoint: Endpoint,
+    alpn: &'static [u8],
     signer: Arc<dyn DeviceSigner>,
     host: EndpointId,
     record: Mutex<HostRecord>,
@@ -50,6 +52,16 @@ impl Client {
     /// Pairs with the Mac whose QR code was scanned. `device_name` is how the Mac lists this
     /// phone.
     pub async fn pair(
+        offer: PairingOffer,
+        device_name: String,
+        signer: Arc<dyn DeviceSigner>,
+        network: Network,
+    ) -> Result<Self, RemoteError> {
+        Self::pair_on(ALPN, offer, device_name, signer, network).await
+    }
+
+    async fn pair_on(
+        alpn: &'static [u8],
         offer: PairingOffer,
         device_name: String,
         signer: Arc<dyn DeviceSigner>,
@@ -67,7 +79,7 @@ impl Client {
             relay_url: offer.relay_url,
             addrs: offer.addrs,
         };
-        let client = Self::new(host, record, signer, &network).await?;
+        let client = Self::new(alpn, host, record, signer, &network).await?;
         let device_key = client.signer.public_key();
         let phone = client.endpoint.id();
         let signature = client
@@ -91,12 +103,13 @@ impl Client {
         network: Network,
     ) -> Result<Self, RemoteError> {
         let host: EndpointId = record.host_id.parse().map_err(|_| RemoteError::Protocol)?;
-        let client = Self::new(host, record, signer, &network).await?;
+        let client = Self::new(ALPN, host, record, signer, &network).await?;
         client.connection().await?;
         Ok(client)
     }
 
     async fn new(
+        alpn: &'static [u8],
         host: EndpointId,
         record: HostRecord,
         signer: Arc<dyn DeviceSigner>,
@@ -106,6 +119,7 @@ impl Client {
         let endpoint = bind(SecretKey::from_bytes(&random()), network, Vec::new()).await?;
         Ok(Self {
             endpoint,
+            alpn,
             signer,
             host,
             record: Mutex::new(record),
@@ -292,7 +306,7 @@ impl Client {
         let attempt = async {
             let conn = self
                 .endpoint
-                .connect(addr, ALPN)
+                .connect(addr, self.alpn)
                 .await
                 .map_err(|_| RemoteError::HostOffline)?;
             let welcome = self.greet(&conn, hello).await;
@@ -367,6 +381,149 @@ impl Client {
     }
 }
 
+/// Why an assistant's request failed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AssistantFailure {
+    /// The Mac or the connection to it said no, or could not be reached.
+    Remote(RemoteError),
+    /// The MCP server on the Mac said no: a JSON-RPC error code and message, such as for an
+    /// unknown tool.
+    Rejected { code: i64, message: String },
+}
+
+impl From<RemoteError> for AssistantFailure {
+    fn from(error: RemoteError) -> Self {
+        Self::Remote(error)
+    }
+}
+
+/// An assistant's connection to one Mac, over [`ALPN_V2`]. Like [`Client`] it signs in again on
+/// its own after the connection drops. Results are what the Mac's MCP server returns.
+pub struct AssistantClient {
+    pub(crate) client: Client,
+    /// The `initialize` params, sent again on a new connection so the Mac still knows who asks.
+    hello: Mutex<Option<Value>>,
+    /// The connection the Mac was last told who asks on.
+    greeted: AsyncMutex<Option<usize>>,
+}
+
+impl AssistantClient {
+    /// Pairs with the Mac whose assistant link was entered, see
+    /// [`PairingOffer::parse_assistant`]. `device_name` is how the Mac lists this computer.
+    pub async fn pair(
+        offer: PairingOffer,
+        device_name: String,
+        signer: Arc<dyn DeviceSigner>,
+        network: Network,
+    ) -> Result<Self, RemoteError> {
+        let client = Client::pair_on(ALPN_V2, offer, device_name, signer, network).await?;
+        Ok(Self::wrap(client))
+    }
+
+    /// Prepares a paired Mac. Nothing is sent until the first request, which signs in; a Mac
+    /// that is not there yet fails that request, not this call.
+    pub async fn open(
+        record: HostRecord,
+        signer: Arc<dyn DeviceSigner>,
+        network: Network,
+    ) -> Result<Self, RemoteError> {
+        let host: EndpointId = record.host_id.parse().map_err(|_| RemoteError::Protocol)?;
+        let client = Client::new(ALPN_V2, host, record, signer, &network).await?;
+        Ok(Self::wrap(client))
+    }
+
+    fn wrap(client: Client) -> Self {
+        Self {
+            client,
+            hello: Mutex::new(None),
+            greeted: AsyncMutex::new(None),
+        }
+    }
+
+    /// The Mac as last seen, to save.
+    pub fn record(&self) -> HostRecord {
+        self.client.record()
+    }
+
+    /// Says who is asking: the MCP `initialize` params. Returns the MCP `initialize` result.
+    pub async fn hello(&self, params: Value) -> Result<Value, AssistantFailure> {
+        self.send(&AssistantRequest::Hello { params }).await
+    }
+
+    /// The MCP `tools/list` result.
+    pub async fn tools(&self) -> Result<Value, AssistantFailure> {
+        self.send(&AssistantRequest::Tools).await
+    }
+
+    /// Calls a tool and returns the MCP `tools/call` result. `project` names a project the Mac
+    /// shares; without it the Mac uses the only one it shares. A call that was cut off is not
+    /// repeated, as the tool may have done its work.
+    pub async fn call(
+        &self,
+        tool: String,
+        arguments: Value,
+        project: Option<String>,
+    ) -> Result<Value, AssistantFailure> {
+        self.send(&AssistantRequest::Call {
+            tool,
+            arguments,
+            project,
+        })
+        .await
+    }
+
+    /// Disconnects and releases the network.
+    pub async fn close(&self) {
+        self.client.close().await;
+    }
+
+    async fn send(&self, request: &AssistantRequest) -> Result<Value, AssistantFailure> {
+        let attempts = if request.is_idempotent() { 2 } else { 1 };
+        let mut attempt = 1;
+        loop {
+            let conn = self.client.connection().await?;
+            let greeted = match request {
+                AssistantRequest::Hello { .. } => Ok(()),
+                _ => self.greet(&conn).await,
+            };
+            let result = match greeted {
+                Ok(()) => exchange_assistant(&conn, request).await,
+                Err(error) => Err(error),
+            };
+            match result {
+                Err(AssistantFailure::Remote(RemoteError::HostOffline)) => {
+                    let error = lost(&conn);
+                    if error != RemoteError::HostOffline || attempt == attempts {
+                        return Err(error.into());
+                    }
+                    attempt += 1;
+                }
+                Ok(result) => {
+                    if let AssistantRequest::Hello { params } = request {
+                        *lock(&self.hello) = Some(params.clone());
+                        *self.greeted.lock().await = Some(conn.stable_id());
+                    }
+                    return Ok(result);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
+    /// Tells the Mac who asks, once per connection.
+    async fn greet(&self, conn: &Connection) -> Result<(), AssistantFailure> {
+        let Some(params) = lock(&self.hello).clone() else {
+            return Ok(());
+        };
+        let mut greeted = self.greeted.lock().await;
+        if *greeted != Some(conn.stable_id()) {
+            exchange_assistant(conn, &AssistantRequest::Hello { params }).await?;
+            *greeted = Some(conn.stable_id());
+        }
+        Ok(())
+    }
+}
+
 /// Updates of one watched run, ending after it finishes.
 pub struct RunWatch {
     first: Mutex<Option<RunUpdate>>,
@@ -410,6 +567,22 @@ async fn exchange(
     }
 }
 
+async fn exchange_assistant(
+    conn: &Connection,
+    request: &AssistantRequest,
+) -> Result<Value, AssistantFailure> {
+    let (mut send, mut recv) = conn.open_bi().await.map_err(|_| RemoteError::HostOffline)?;
+    wire::send(&mut send, request).await?;
+    let _ = send.finish();
+    match wire::expect_within::<AssistantReply>(&mut recv, MAX_ASSISTANT_REPLY).await? {
+        AssistantReply::Ok { result } => Ok(result),
+        AssistantReply::Rejected { code, message } => {
+            Err(AssistantFailure::Rejected { code, message })
+        }
+        AssistantReply::Error { error } => Err(error.into()),
+    }
+}
+
 /// Why the connection is gone.
 fn lost(conn: &Connection) -> RemoteError {
     match conn.close_reason() {
@@ -417,6 +590,11 @@ fn lost(conn: &Connection) -> RemoteError {
             if close.error_code == VarInt::from_u32(CLOSE_REVOKED) =>
         {
             RemoteError::Revoked
+        }
+        Some(ConnectionError::ApplicationClosed(close))
+            if close.error_code == VarInt::from_u32(CLOSE_DISABLED) =>
+        {
+            RemoteError::NotAllowed
         }
         _ => RemoteError::HostOffline,
     }

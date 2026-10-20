@@ -1,15 +1,20 @@
-//! Remote access from paired phones. The app turns it on, shows pairing codes and manages the
-//! devices; a run a phone asks for starts through the app like any other, and every run on
-//! this Mac is reported live to the phones watching it.
+//! Remote access from paired phones and assistants. The app turns it on, shows pairing codes and
+//! manages the devices; a run a phone asks for starts through the app like any other, and every
+//! run on this Mac is reported live to the phones watching it. An assistant on another computer
+//! gets the same tools as one on this Mac, through the same [`AssistantHost`].
 
 use std::path::Path;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use jevision_remote::{self as remote, Activity, ActivityKind, HostStatus, Relay, RemoteError};
+use jevision_remote::{
+    self as remote, Activity, ActivityKind, DeviceKind, HostRecord, HostStatus, Relay, RemoteError,
+};
 use jevision_runner::{PauseReason, Verdict};
+use serde_json::Value;
 
+use crate::mcp::{AssistantHost, Assistants};
 use crate::run::{Failure, RunEvent, RunListener, RunOutcome, ScreenHolder};
 
 /// Time a run a phone asked for has to create its folder before the phone hears it failed.
@@ -58,16 +63,20 @@ impl From<remote::Permission> for DevicePermission {
     }
 }
 
-/// A phone paired with this Mac.
+/// A phone or an assistant on another computer paired with this Mac.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct PairedDevice {
     pub id: String,
-    /// The name the phone gave itself, such as `Anna's iPhone`.
+    /// The name the device gave itself, such as `Anna's iPhone`.
     pub name: String,
+    pub kind: DeviceKind,
+    /// What a phone may do; an assistant has none, see `assistant`.
     pub permission: DevicePermission,
+    /// Whether the owner lets this assistant use the Mac's tools. Always off for a phone.
+    pub assistant: bool,
     /// Seconds since 1970.
     pub paired_at: i64,
-    /// When the phone last signed in, in seconds since 1970.
+    /// When the device last signed in, in seconds since 1970.
     pub last_seen: Option<i64>,
 }
 
@@ -76,7 +85,9 @@ impl From<remote::Device> for PairedDevice {
         Self {
             id: d.id,
             name: d.name,
+            kind: d.kind,
             permission: d.permission.into(),
+            assistant: d.assistant,
             paired_at: d.paired_at,
             last_seen: d.last_seen,
         }
@@ -141,11 +152,14 @@ pub struct RemoteHost {
 
 #[uniffi::export]
 impl RemoteHost {
-    /// Loads the paired devices from `config.state_dir`.
+    /// Loads the paired devices from `config.state_dir`. `assistants` is what assistants that
+    /// connect over the network use: the same host the app gives the servers of the assistants
+    /// on this Mac.
     #[uniffi::constructor]
     pub fn new(
         config: RemoteConfig,
         delegate: Arc<dyn RemoteDelegate>,
+        assistants: Arc<dyn AssistantHost>,
     ) -> Result<Arc<Self>, RemoteError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -157,6 +171,7 @@ impl RemoteHost {
         let bridge = Bridge {
             app: delegate,
             runs: Arc::clone(&runs),
+            assistants: Assistants::new(assistants),
         };
         let config = remote::HostConfig {
             secret_key: config.secret_key,
@@ -202,6 +217,19 @@ impl RemoteHost {
         })
     }
 
+    /// A new one-time pairing code for an assistant on another computer, working for five
+    /// minutes: it is typed in the terminal there as `jevision mcp --pair`. It replaces the
+    /// code shown before. The assistant may use the Mac's tools from the moment it pairs, until
+    /// [`set_assistant_enabled`](Self::set_assistant_enabled) turns it off.
+    pub fn create_assistant_offer(&self) -> Result<PairingCode, RemoteError> {
+        let _runtime = self.runtime.enter();
+        let offer = self.host.create_assistant_offer()?;
+        Ok(PairingCode {
+            url: offer.to_assistant_url(),
+            expires_at: offer.expires_at,
+        })
+    }
+
     /// Makes the code shown stop working.
     pub fn cancel_offer(&self) {
         self.host.cancel_offer();
@@ -217,6 +245,17 @@ impl RemoteHost {
         permission: DevicePermission,
     ) -> Result<(), RemoteError> {
         self.host.set_permission(&device_id, permission.into())
+    }
+
+    /// Lets an assistant use the Mac's tools or not. Turning it off disconnects it at once and
+    /// stops what it started.
+    pub fn set_assistant_enabled(
+        &self,
+        device_id: String,
+        enabled: bool,
+    ) -> Result<(), RemoteError> {
+        let _runtime = self.runtime.enter();
+        self.host.set_assistant(&device_id, enabled)
     }
 
     /// Forgets the device and disconnects it at once.
@@ -299,6 +338,7 @@ impl Runs {
 struct Bridge {
     app: Arc<dyn RemoteDelegate>,
     runs: Arc<Runs>,
+    assistants: Assistants,
 }
 
 impl remote::HostDelegate for Bridge {
@@ -359,6 +399,30 @@ impl remote::HostDelegate for Bridge {
             Some((root, status)) if *root == project_root => vec![status.clone()],
             _ => Vec::new(),
         }
+    }
+
+    fn assistant_hello(&self, session: String, device: remote::Device, params: Value) -> Value {
+        self.assistants.hello(&session, &device, params)
+    }
+
+    fn assistant_tools(&self) -> Value {
+        self.assistants.tools()
+    }
+
+    fn assistant_call(
+        &self,
+        session: String,
+        device: remote::Device,
+        project_root: String,
+        tool: String,
+        arguments: Value,
+    ) -> Result<Value, remote::AssistantRejection> {
+        self.assistants
+            .call(&session, &device, &project_root, tool, arguments)
+    }
+
+    fn assistant_ended(&self, session: String) {
+        self.assistants.ended(&session);
     }
 }
 
@@ -612,6 +676,25 @@ pub enum ActivityKind {
     Denied,
     PermissionChanged,
     Revoked,
+    AssistantCalled,
+}
+
+/// A Mac an assistant on this computer is paired with.
+#[uniffi::remote(Record)]
+pub struct HostRecord {
+    /// The Mac's endpoint id, hex.
+    pub host_id: String,
+    pub name: String,
+    /// This computer's id on that Mac.
+    pub device_id: String,
+    pub relay_url: Option<String>,
+    pub addrs: Vec<String>,
+}
+
+#[uniffi::remote(Enum)]
+pub enum DeviceKind {
+    Phone,
+    Assistant,
 }
 
 /// Why something about remote access didn't happen; the app shows the text of its
@@ -660,8 +743,15 @@ mod tests {
     use jevision_remote::{Client, DeviceSigner, PairingOffer, RunUpdate};
     use p256::ecdsa::signature::Signer;
     use p256::ecdsa::{Signature, SigningKey};
+    use serde_json::json;
 
     use super::*;
+    use crate::mcp::network::{pair, serve};
+    use crate::mcp::tests::{Host, Project, app_answers, sign_in};
+    use crate::mcp::{
+        AssistantKey, AssistantPermissions, AssistantServerError, Backend, Server,
+        connected_assistants, pending_assistant_requests,
+    };
     use crate::run::tests::{Fake, Secrets};
     use crate::{DataRowRange, RunOptions, TestRun};
 
@@ -799,6 +889,7 @@ mod tests {
                 global_discovery: false,
             },
             app.clone(),
+            Arc::new(Host::default()),
         )
         .unwrap();
         app.host.set(Arc::downgrade(&host)).unwrap();
@@ -957,6 +1048,7 @@ mod tests {
                 global_discovery: false,
             },
             Arc::new(App::default()),
+            Arc::new(Host::default()),
         )
         .unwrap();
         let listener = host.run_listener("/project".into());
@@ -1001,5 +1093,464 @@ mod tests {
             timeout_ms: None,
         });
         assert_eq!(waiting(), None);
+    }
+
+    /// The key of the computer an assistant works on.
+    struct Laptop(SigningKey);
+
+    impl Laptop {
+        fn new(seed: u8) -> Arc<Self> {
+            Arc::new(Self(SigningKey::from_slice(&[seed; 32]).unwrap()))
+        }
+    }
+
+    impl AssistantKey for Laptop {
+        fn public_key(&self) -> Vec<u8> {
+            self.0.verifying_key().to_sec1_bytes().to_vec()
+        }
+
+        fn sign(&self, message: Vec<u8>) -> Option<Vec<u8>> {
+            let signature: Signature = self.0.sign(&message);
+            Some(signature.to_der().as_bytes().to_vec())
+        }
+    }
+
+    /// A Mac with remote access on that shares the project `Demo` and has an app that lets
+    /// assistants in the way the person set it.
+    struct Mac {
+        remote: Arc<RemoteHost>,
+        app: Arc<Host>,
+        project: Project,
+        _scratch: Scratch,
+    }
+
+    impl Mac {
+        fn start() -> Self {
+            static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+            let scratch = Scratch(std::env::temp_dir().join(format!(
+                "jevision-ffi-assistants-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            )));
+            let project = Project::new();
+            project.write("login/sign-in.flow.json", &sign_in());
+            let app = Arc::new(Host::default());
+            let remote = RemoteHost::new(
+                RemoteConfig {
+                    secret_key: generate_remote_key(),
+                    name: "Studio Mac".into(),
+                    state_dir: scratch.0.join("state").to_string_lossy().into_owned(),
+                    relay: Relay::Disabled,
+                    local_discovery: false,
+                    global_discovery: false,
+                },
+                Arc::new(App::default()),
+                app.clone(),
+            )
+            .unwrap();
+            remote.set_projects(vec![RemoteProject {
+                name: "Demo".into(),
+                root: project.0.to_string_lossy().into_owned(),
+            }]);
+            remote.start().unwrap();
+            Self {
+                remote,
+                app,
+                project,
+                _scratch: scratch,
+            }
+        }
+
+        /// Where the app and the servers meet.
+        fn folder(&self) -> String {
+            self.app.shared_folder()
+        }
+
+        /// Pairs a computer with the code the Mac shows, as typed in its terminal.
+        fn pair(&self, key: &Arc<Laptop>) -> HostRecord {
+            let code = self.remote.create_assistant_offer().unwrap();
+            let mut offer = PairingOffer::parse_assistant(&code.url).unwrap();
+            offer.addrs = loopback(&offer.addrs);
+            let mut mac = pair(
+                offer.to_assistant_url(),
+                "Dev laptop".into(),
+                key.clone(),
+                offline(),
+            )
+            .unwrap();
+            mac.addrs = loopback(&mac.addrs);
+            mac
+        }
+
+        fn assistant(&self) -> PairedDevice {
+            let devices = self.remote.devices();
+            assert_eq!(devices.len(), 1);
+            devices.into_iter().next().unwrap()
+        }
+
+        fn allow(&self, permissions: AssistantPermissions) {
+            *self.app.permissions.lock().unwrap() = permissions;
+        }
+    }
+
+    /// An assistant's terminal: it writes lines to `jevision mcp --remote` and reads its
+    /// replies.
+    struct Terminal {
+        lines: Option<std::io::PipeWriter>,
+        replies: std::io::BufReader<std::io::PipeReader>,
+        bridge: Option<std::thread::JoinHandle<Result<(), AssistantServerError>>>,
+        next: i64,
+    }
+
+    impl Terminal {
+        fn open(mac: &HostRecord, key: &Arc<Laptop>) -> Self {
+            let (input, lines) = std::io::pipe().unwrap();
+            let (replies, output) = std::io::pipe().unwrap();
+            let (mac, key) = (mac.clone(), key.clone());
+            let bridge = std::thread::spawn(move || {
+                serve(
+                    mac,
+                    key,
+                    None,
+                    offline(),
+                    std::io::BufReader::new(input),
+                    output,
+                )
+            });
+            Self {
+                lines: Some(lines),
+                replies: std::io::BufReader::new(replies),
+                bridge: Some(bridge),
+                next: 0,
+            }
+        }
+
+        /// The reply to a request.
+        fn ask(&mut self, method: &str, params: Value) -> Value {
+            use std::io::{BufRead, Write};
+
+            self.next += 1;
+            let request = json!({
+                "jsonrpc": "2.0", "id": self.next, "method": method, "params": params,
+            });
+            writeln!(self.lines.as_mut().unwrap(), "{request}").unwrap();
+            let mut line = String::new();
+            self.replies.read_line(&mut line).unwrap();
+            let reply: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(reply["id"], self.next);
+            reply
+        }
+
+        /// The assistant says who it is, as an MCP client does first.
+        fn initialize(&mut self) -> Value {
+            self.ask(
+                "initialize",
+                json!({
+                    "protocolVersion": "2025-06-18",
+                    "clientInfo": { "name": "claude-code", "title": "Claude Code", "version": "2.1" },
+                }),
+            )
+        }
+
+        /// Calls a tool: whether it failed, and its text.
+        fn call(&mut self, tool: &str, arguments: Value) -> (bool, String) {
+            let reply = self.ask(
+                "tools/call",
+                json!({ "name": tool, "arguments": arguments }),
+            );
+            let result = &reply["result"];
+            let text: Vec<&str> = result["content"]
+                .as_array()
+                .unwrap_or_else(|| panic!("no content in {reply}"))
+                .iter()
+                .filter_map(|c| c["text"].as_str())
+                .collect();
+            (result["isError"] == true, text.join("\n"))
+        }
+
+        /// The assistant quits.
+        fn close(mut self) {
+            drop(self.lines.take());
+            self.bridge.take().unwrap().join().unwrap().unwrap();
+        }
+    }
+
+    fn eventually(what: &str, mut done: impl FnMut() -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !done() {
+            assert!(Instant::now() < deadline, "{what}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    #[test]
+    fn an_assistant_over_the_network_gets_what_one_on_this_mac_gets() {
+        let mac = Mac::start();
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        let device = mac.assistant();
+        assert_eq!(device.kind, DeviceKind::Assistant);
+        assert_eq!(device.name, "Dev laptop");
+        assert!(device.assistant);
+
+        let hello = terminal.initialize();
+        assert_eq!(hello["result"]["serverInfo"]["name"], "jevision");
+        assert_eq!(hello["result"]["protocolVersion"], "2025-06-18");
+
+        // Same tools, same answers: the Mac's own server gives them.
+        let local = Server::new(&mac.project.0, mac.app.clone()).unwrap();
+        let tools = terminal.ask("tools/list", json!({}));
+        assert_eq!(tools["result"], local.tools().unwrap());
+        let listed = terminal.ask(
+            "tools/call",
+            json!({ "name": "list_tests", "arguments": {} }),
+        );
+        let params = json!({ "name": "list_tests", "arguments": {} });
+        assert_eq!(listed["result"], local.call(&params).unwrap());
+        assert!(
+            listed["result"]
+                .to_string()
+                .contains("login/sign-in.flow.json")
+        );
+        local.finish();
+
+        // The server's own errors arrive as they are.
+        let unknown = terminal.ask("tools/call", json!({ "name": "nope", "arguments": {} }));
+        assert_eq!(unknown["error"]["code"], -32602);
+        assert_eq!(unknown["error"]["message"], "Unknown tool: nope");
+        let wrong = terminal.ask(
+            "tools/call",
+            json!({ "name": "list_tests", "arguments": [] }),
+        );
+        assert_eq!(wrong["error"]["code"], -32602);
+
+        // The app lists it as an assistant connected over the network.
+        let found: Vec<_> = connected_assistants(mac.folder())
+            .into_iter()
+            .filter(|a| a.remote.is_some())
+            .collect();
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].name, "claude-code");
+        assert_eq!(found[0].title, "Claude Code");
+        assert_eq!(found[0].remote.as_deref(), Some("Dev laptop"));
+        assert!(found[0].connected);
+        assert_eq!(found[0].calls, 2);
+
+        // The log keeps the tool, never what it was given.
+        let log = mac.remote.activity(20);
+        assert!(log.iter().any(|a| {
+            a.kind == ActivityKind::AssistantCalled && a.subject.as_deref() == Some("list_tests")
+        }));
+
+        terminal.close();
+        eventually("the app never saw the assistant leave", || {
+            connected_assistants(mac.folder())
+                .iter()
+                .all(|a| !a.connected)
+        });
+    }
+
+    #[test]
+    fn an_assistant_that_is_not_paired_is_told_so() {
+        let mac = Mac::start();
+        let paired = Laptop::new(3);
+        let record = mac.pair(&paired);
+        let stranger = Laptop::new(4);
+        let mut terminal = Terminal::open(&record, &stranger);
+        let reply = terminal.initialize();
+        assert!(
+            reply["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("isn't paired"),
+            "{reply}"
+        );
+        let (failed, text) = terminal.call("list_tests", json!({}));
+        assert!(failed && text.contains("isn't paired"), "{text}");
+        terminal.close();
+        assert!(connected_assistants(mac.folder()).is_empty());
+    }
+
+    #[test]
+    fn a_revoked_assistant_is_turned_away() {
+        let mac = Mac::start();
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        terminal.initialize();
+        assert!(!terminal.call("list_tests", json!({})).0);
+
+        mac.remote.revoke(mac.assistant().id).unwrap();
+        let (failed, text) = terminal.call("list_tests", json!({}));
+        assert!(failed && text.contains("the Mac removed it"), "{text}");
+        let again = terminal.ask("tools/list", json!({}));
+        assert!(again["error"]["message"].is_string(), "{again}");
+        terminal.close();
+    }
+
+    #[test]
+    fn an_assistant_the_owner_turned_off_opens_no_tools() {
+        let mac = Mac::start();
+        mac.allow(AssistantPermissions {
+            run_tests: true,
+            screenshots: true,
+            ask_first: false,
+        });
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        terminal.initialize();
+        assert!(!terminal.call("list_tests", json!({})).0);
+
+        // Turned off, it is cut off at once and nothing it asks for happens.
+        let id = mac.assistant().id;
+        mac.remote.set_assistant_enabled(id.clone(), false).unwrap();
+        assert!(!mac.assistant().assistant);
+        let tools = terminal.ask("tools/list", json!({}));
+        assert!(
+            tools["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("doesn't let this computer"),
+            "{tools}"
+        );
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(
+            failed && text.contains("doesn't let this computer"),
+            "{text}"
+        );
+        assert_eq!(mac.app.runs.load(std::sync::atomic::Ordering::Relaxed), 0);
+
+        mac.remote.set_assistant_enabled(id, true).unwrap();
+        assert!(!terminal.call("list_tests", json!({})).0);
+        terminal.close();
+    }
+
+    #[test]
+    fn an_assistant_over_the_network_needs_the_same_permissions_and_an_unlocked_screen() {
+        use std::sync::atomic::Ordering;
+
+        let mac = Mac::start();
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        terminal.initialize();
+
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(
+            failed && text.contains("Allow assistants to run tests"),
+            "{text}"
+        );
+        let (failed, text) = terminal.call("screenshot", json!({ "app": "com.example.mail" }));
+        assert!(
+            failed && text.contains("Allow assistants to take screenshots"),
+            "{text}"
+        );
+
+        mac.allow(AssistantPermissions {
+            run_tests: true,
+            screenshots: true,
+            ask_first: false,
+        });
+        let reply = terminal.ask(
+            "tools/call",
+            json!({ "name": "screenshot", "arguments": { "app": "com.example.mail" } }),
+        );
+        assert_eq!(reply["result"]["content"][1]["type"], "image");
+
+        // The screen is locked: nothing is clicked on it.
+        *mac.app.problem.lock().unwrap() = Some("The screen of this Mac is locked.".into());
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(
+            failed && text.contains("can't run tests right now") && text.contains("locked"),
+            "{text}"
+        );
+        assert_eq!(mac.app.runs.load(Ordering::Relaxed), 0);
+
+        *mac.app.problem.lock().unwrap() = None;
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(!failed, "{text}");
+        assert_eq!(mac.app.runs.load(Ordering::Relaxed), 1);
+        terminal.close();
+    }
+
+    #[test]
+    fn a_run_an_assistant_over_the_network_asks_for_waits_for_the_owner() {
+        use std::sync::atomic::Ordering;
+
+        let mac = Mac::start();
+        mac.allow(AssistantPermissions {
+            run_tests: true,
+            screenshots: false,
+            ask_first: true,
+        });
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        terminal.initialize();
+        let folder = mac.folder();
+
+        // The app is not open: nobody can allow it, so nothing runs.
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(failed && text.contains("JEVision isn't open"), "{text}");
+
+        // The owner sees which assistant on which computer asks, and allows it.
+        pending_assistant_requests(folder.clone());
+        let (outcome, seen) = std::thread::scope(|scope| {
+            let app = scope.spawn(|| app_answers(&folder, true));
+            let outcome = terminal.call("run_test", json!({ "path": "login" }));
+            (outcome, app.join().unwrap())
+        });
+        assert!(!outcome.0, "{}", outcome.1);
+        assert_eq!(seen.assistant, "Claude Code");
+        assert_eq!(seen.remote.as_deref(), Some("Dev laptop"));
+        assert_eq!(seen.tests, ["login/sign-in.flow.json"]);
+        assert_eq!(mac.app.runs.load(Ordering::Relaxed), 1);
+        terminal.call("get_run", json!({ "run": "1", "wait": 60 }));
+
+        // The owner says no: the assistant is told, and nothing runs.
+        let (outcome, _) = std::thread::scope(|scope| {
+            let app = scope.spawn(|| app_answers(&folder, false));
+            let outcome = terminal.call("run_test", json!({ "path": "login" }));
+            (outcome, app.join().unwrap())
+        });
+        assert!(
+            outcome.0 && outcome.1.contains("didn't allow"),
+            "{}",
+            outcome.1
+        );
+        assert_eq!(mac.app.runs.load(Ordering::Relaxed), 1);
+        terminal.close();
+    }
+
+    #[test]
+    fn turning_an_assistant_off_stops_the_run_it_started() {
+        use std::sync::atomic::Ordering;
+
+        let mac = Mac::start();
+        mac.allow(AssistantPermissions {
+            run_tests: true,
+            screenshots: false,
+            ask_first: false,
+        });
+        // The run waits at its first block, so only stopping it ends it.
+        mac.app.stepping.store(true, Ordering::Relaxed);
+        let key = Laptop::new(3);
+        let mut terminal = Terminal::open(&mac.pair(&key), &key);
+        terminal.initialize();
+        let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
+        assert!(!failed, "{text}");
+        assert_eq!(mac.app.runs.load(Ordering::Relaxed), 1);
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(mac.app.ended.load(Ordering::Relaxed), 0);
+
+        mac.remote
+            .set_assistant_enabled(mac.assistant().id, false)
+            .unwrap();
+        eventually("the run kept going", || {
+            mac.app.ended.load(Ordering::Relaxed) == 1
+        });
+        eventually("the app never saw the assistant leave", || {
+            connected_assistants(mac.folder())
+                .iter()
+                .all(|a| !a.connected)
+        });
+        terminal.close();
     }
 }
