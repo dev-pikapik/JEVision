@@ -585,10 +585,16 @@ fn jev_finds_an_element_by_description() {
     let absent = found.replace("0.97", "0.2");
     let server = serve(vec![(200, found), (200, absent)]);
     let c = client(Provider::Jev, &server.address);
-    let located = c
-        .locate(&SHOT_PICTURE, " the blue Save button ")
-        .unwrap()
-        .unwrap();
+    let search = c.locate(&SHOT_PICTURE, " the blue Save button ").unwrap();
+    // The tokens count too, whether or not the element is there.
+    assert_eq!(
+        search.usage,
+        Usage {
+            input_tokens: 1874,
+            output_tokens: 6
+        }
+    );
+    let located = search.found.unwrap();
     assert_eq!(
         located.area,
         Rect {
@@ -600,10 +606,9 @@ fn jev_finds_an_element_by_description() {
     );
     assert_eq!(located.confidence, 0.92);
     // A box always comes back; whether the element is there is a question of its own.
-    assert_eq!(
-        c.locate(&SHOT_PICTURE, "the blue Save button").unwrap(),
-        None
-    );
+    let absent = c.locate(&SHOT_PICTURE, "the blue Save button").unwrap();
+    assert_eq!(absent.found, None);
+    assert_eq!(absent.usage.input_tokens, 1874);
 
     let sent = server.requests.lock().unwrap()[0].clone();
     assert!(sent.starts_with("POST /v1/systemone "));
@@ -637,11 +642,11 @@ fn a_box_on_the_padding_of_a_long_screenshot_is_off_the_screen() {
             r#"{{"answers": {{"visible": {{"noul": 0.9}}, "where": {{"box": {{"top": 0.1, "bottom": 0.3, "left": {left}, "right": {right}}}}}}}}}"#
         )
     };
-    let inside = located(&answer(0.1, 0.4), fill).unwrap().unwrap();
+    let inside = located(&answer(0.1, 0.4), fill).unwrap().found.unwrap();
     assert_eq!(inside.area.x, 0.2);
     assert!((inside.area.width - 0.6).abs() < 1e-9);
     assert_eq!(inside.confidence, 0.9);
-    assert_eq!(located(&answer(0.6, 0.9), fill).unwrap(), None);
+    assert_eq!(located(&answer(0.6, 0.9), fill).unwrap().found, None);
     assert!(matches!(
         located(&answer(0.4, 0.1), fill),
         Err(VisionError::BadAnswer { .. })

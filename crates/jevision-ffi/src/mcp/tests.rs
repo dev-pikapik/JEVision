@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use jevision_core::{
     FORMAT_VERSION, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit,
 };
 use serde_json::{Value, json};
 
-use super::{AssistantHost, AssistantPermissions, Server};
+use super::{
+    AssistantHost, AssistantPermissions, AssistantRequest, Server, answer_assistant_request,
+    connected_assistants, forget_assistants, pending_assistant_requests,
+};
 use crate::{Hands, HandsError, Openable, RunOptions, SecretSource, TestRun};
 use jevision_core::{WindowPosition, WindowSize};
 use jevision_runner::Screenshot;
@@ -38,6 +42,12 @@ impl Project {
 
     fn read(&self, rel: &str) -> Option<String> {
         std::fs::read_to_string(self.0.join(rel)).ok()
+    }
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -151,6 +161,8 @@ impl SecretSource for Secrets {
 
 #[derive(Default)]
 struct Host {
+    /// Where the server and the app meet.
+    shared: Project,
     permissions: Mutex<AssistantPermissions>,
     hands: Arc<FakeHands>,
     runs: AtomicU32,
@@ -179,6 +191,9 @@ impl AssistantHost for Host {
     }
     fn capture(&self, _: String) -> Result<Screenshot, HandsError> {
         Ok(screen())
+    }
+    fn shared_folder(&self) -> String {
+        self.shared.0.display().to_string()
     }
 }
 
@@ -874,4 +889,187 @@ fn a_failed_run_is_drafted_as_a_bug_report_and_sent_with_secrets_masked() {
         .to_string_lossy()
         .into();
     assert!(crate::bug::send(&hub, &repo, &project.0, &dir, &outside, None, &Secrets).is_err());
+}
+
+fn hello(server: &Server, name: &str, title: Option<&str>) {
+    let mut info = json!({ "name": name, "version": "2.1" });
+    if let Some(title) = title {
+        info["title"] = json!(title);
+    }
+    let request = json!({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": { "protocolVersion": "2025-06-18", "clientInfo": info },
+    });
+    server.handle(&request.to_string()).unwrap();
+    // A connection's file is named after the millisecond it began.
+    std::thread::sleep(Duration::from_millis(2));
+}
+
+#[test]
+fn connected_assistants_are_listed_with_their_last_call() {
+    let (_project, host, server) = setup();
+    let folder = host.shared_folder();
+    assert!(connected_assistants(folder.clone()).is_empty());
+
+    hello(&server, "claude-code", Some("Claude Code"));
+    call(&server, "list_tests", json!({}));
+    call(
+        &server,
+        "validate_test",
+        json!({ "path": "login/sign-in.flow.json" }),
+    );
+    let other = Server::new(&_project.0, host.clone()).unwrap();
+    hello(&other, "cursor", None);
+
+    let listed = connected_assistants(folder.clone());
+    assert_eq!(
+        listed.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(),
+        ["claude-code", "cursor"]
+    );
+    let claude = &listed[0];
+    assert_eq!(
+        (claude.title.as_str(), claude.version.as_str(), claude.calls),
+        ("Claude Code", "2.1", 2)
+    );
+    assert!(claude.connected);
+    assert_eq!(claude.last_call.as_ref().unwrap().tool, "validate_test");
+    assert!(claude.first_connected_at > 1_700_000_000);
+    // Without a title the name is shown; without a call, none is shown.
+    assert_eq!(listed[1].title, "cursor");
+    assert_eq!(listed[1].last_call, None);
+
+    // The same assistant connecting again is one entry with both connections' calls.
+    let again = Server::new(&_project.0, host.clone()).unwrap();
+    hello(&again, "claude-code", Some("Claude Code"));
+    call(&again, "list_tests", json!({}));
+    let listed = connected_assistants(folder.clone());
+    assert_eq!(listed.len(), 2);
+    let claude = listed.iter().find(|a| a.name == "claude-code").unwrap();
+    assert_eq!(claude.calls, 3);
+    assert_eq!(claude.last_call.as_ref().unwrap().tool, "list_tests");
+
+    // One that hung up, or went quiet, isn't connected any more, and can be forgotten.
+    server.agents.end();
+    let quiet = std::fs::read_dir(host.shared.0.join("sessions"))
+        .unwrap()
+        .flatten()
+        .find(|e| e.file_name().to_string_lossy().starts_with("cursor"))
+        .unwrap();
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(quiet.path())
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - Duration::from_secs(120))
+        .unwrap();
+    let listed = connected_assistants(folder.clone());
+    let state: Vec<_> = listed
+        .iter()
+        .map(|a| (a.name.as_str(), a.connected))
+        .collect();
+    assert_eq!(state, [("claude-code", true), ("cursor", false)]);
+    server.agents.end();
+    again.agents.end();
+    assert!(
+        connected_assistants(folder.clone())
+            .iter()
+            .all(|a| !a.connected)
+    );
+    forget_assistants(folder.clone());
+    assert!(connected_assistants(folder).is_empty());
+}
+
+/// What the app does: polls for questions, keeps what it saw, and answers.
+fn app_answers(folder: &str, allow: bool) -> AssistantRequest {
+    for _ in 0..100 {
+        if let Some(request) = pending_assistant_requests(folder.to_owned())
+            .into_iter()
+            .next()
+        {
+            assert!(answer_assistant_request(
+                folder.to_owned(),
+                request.id.clone(),
+                allow
+            ));
+            return request;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    panic!("the assistant never asked");
+}
+
+#[test]
+fn a_run_an_assistant_starts_waits_for_the_person() {
+    let (project, host, mut server) = setup();
+    *host.permissions.lock().unwrap() = AssistantPermissions {
+        run_tests: true,
+        screenshots: false,
+        ask_first: true,
+    };
+    let folder = host.shared_folder();
+    hello(&server, "claude-code", Some("Claude Code"));
+
+    // With the app closed nobody can answer: no waiting, no run.
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(failed && text.contains("JEVision isn't open"), "{text}");
+    assert_eq!(host.runs.load(Ordering::Relaxed), 0);
+
+    // The person allows it and sees what the assistant wants to do.
+    pending_assistant_requests(folder.clone());
+    let (allowed, seen) = std::thread::scope(|scope| {
+        let app = scope.spawn(|| app_answers(&folder, true));
+        let outcome = call(&server, "run_test", json!({ "path": "login" }));
+        (outcome, app.join().unwrap())
+    });
+    assert!(!allowed.0, "{}", allowed.1);
+    assert_eq!(seen.assistant, "Claude Code");
+    assert_eq!(
+        seen.project,
+        std::fs::canonicalize(&project.0)
+            .unwrap()
+            .display()
+            .to_string()
+    );
+    assert_eq!(seen.tests, ["login/sign-in.flow.json"]);
+    assert_eq!(seen.apps, ["com.example.mail"]);
+    assert_eq!(seen.environment, None);
+    call(&server, "get_run", json!({ "run": "1", "wait": 60 }));
+    assert_eq!(host.runs.load(Ordering::Relaxed), 1);
+    assert!(pending_assistant_requests(folder.clone()).is_empty());
+
+    // The person says no: the assistant is told, and nothing runs.
+    let (denied, _) = std::thread::scope(|scope| {
+        let app = scope.spawn(|| app_answers(&folder, false));
+        let outcome = call(&server, "run_test", json!({ "path": "login" }));
+        (outcome, app.join().unwrap())
+    });
+    assert!(
+        denied.0 && denied.1.contains("didn't allow"),
+        "{}",
+        denied.1
+    );
+    assert_eq!(host.runs.load(Ordering::Relaxed), 1);
+
+    // Nobody answers: that is a no too, and the question is withdrawn.
+    server.agents.timeout = Duration::from_secs(1);
+    pending_assistant_requests(folder.clone());
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(
+        failed && text.contains("didn't answer within 1 seconds"),
+        "{text}"
+    );
+    assert_eq!(host.runs.load(Ordering::Relaxed), 1);
+    assert!(pending_assistant_requests(folder.clone()).is_empty());
+
+    // An answer to a question that is gone, or isn't one, changes nothing.
+    assert!(!answer_assistant_request(
+        folder.clone(),
+        "1-2-3".into(),
+        true
+    ));
+    assert!(!answer_assistant_request(folder, "../../x".into(), true));
+
+    // Turned off, assistants run tests without asking.
+    host.permissions.lock().unwrap().ask_first = false;
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(!failed, "{text}");
 }

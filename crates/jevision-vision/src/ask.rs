@@ -4,7 +4,7 @@
 use base64::Engine;
 use serde_json::{Value, json};
 
-use crate::{Client, MaskedImage, Provider, VisionError};
+use crate::{Client, MaskedImage, Provider, Usage, VisionError};
 
 /// Longest answer a model may write, in tokens: a whole test fits.
 const MAX_TOKENS: u32 = 8192;
@@ -45,13 +45,13 @@ impl Provider {
 
 impl Client {
     /// The model's next answer in the conversation `messages`, which follows `system`: one JSON
-    /// object, of the shape `schema` where the provider can enforce one.
+    /// object, of the shape `schema` where the provider can enforce one, and the tokens it cost.
     pub fn ask(
         &self,
         system: &str,
         messages: &[Message],
         schema: &Value,
-    ) -> Result<Value, VisionError> {
+    ) -> Result<(Value, Usage), VisionError> {
         let c = &self.config;
         if c.model.trim().is_empty() {
             return Err(VisionError::NoModel);
@@ -85,13 +85,15 @@ impl Client {
             other => other,
         };
         let answer = answer(c.provider, &text).map_err(mask)?;
+        let used = serde_json::from_str(&text)
+            .map_or_else(|_| Usage::default(), |v| crate::usage(c.provider, &v));
         match c.key() {
             // A model that repeats the key gets it masked, wherever it put it.
             Some(key) if answer.to_string().contains(key) => {
                 let masked = answer.to_string().replace(key, crate::MASK);
-                Ok(serde_json::from_str(&masked).unwrap_or(answer))
+                Ok((serde_json::from_str(&masked).unwrap_or(answer), used))
             }
-            _ => Ok(answer),
+            _ => Ok((answer, used)),
         }
     }
 }

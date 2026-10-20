@@ -153,12 +153,17 @@
   "retries": 2,
   "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42" } ],
   "localOnly": true,
-  "hide": [ { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 } ]
+  "hide": [ { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 } ],
+  "ai": {
+    "screen": { "provider": "ollama", "model": "qwen2.5vl:7b" },
+    "text": { "provider": "anthropic" }
+  }
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>. A file from a newer JEVision is refused instead of being misread.</li>
   <li><code>retries</code> (optional), 0 to 10, and <code>quarantine</code> (optional): see <a href="retries.html#project-file">Project settings file</a>.</li>
   <li><code>localOnly</code> (optional, <code>false</code> when left out): <code>true</code> sends the project's screenshots only to AI models on this Mac, and never to assistants.</li>
+  <li><code>ai</code> (optional): the AI the project asks, instead of the one chosen in each person's Settings → AI. <code>screen</code> is for checks by meaning, <code>text</code> for drafting tests and explaining failures. Each has a <code>provider</code>, one of <code>anthropic</code>, <code>openai</code>, <code>gemini</code>, <code>jev</code>, <code>ollama</code>, <code>lmstudio</code> or <code>openai-compatible</code> (not <code>jev</code> for <code>text</code>), and an optional <code>model</code> that, when left out, is the model chosen for that provider in Settings. A check that names its own <code>provider</code> or <code>model</code> comes first. The file never holds an API key or an address. See <a href="checks.html#which-ai">Which AI answers</a>.</li>
   <li><code>hide</code> (optional): areas of the window, as <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 from its top-left corner, painted over in grey in every screenshot before it is saved in a report or sent to an AI model or an assistant. Each area must have a size and end inside the window.</li>
 </ul>
 <p>Unknown keys are an error, so a typo doesn't go unnoticed. See <a href="retries.html#privacy">Screenshots and privacy</a>.</p>

@@ -20,13 +20,14 @@ pub use triage::*;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
-use jevision_runner::{VisionClient, VisionJudge};
+use jevision_runner::{LimitState, UsageBook, VisionClient, VisionJudge};
 use jevision_vision::Message;
 use serde_json::{Value, json};
 
 use crate::run::Failure;
-use crate::vision::VisionSettings;
+use crate::vision::{AiUsageSettings, VisionSettings};
 
 /// Most tool calls in one session.
 const MAX_CALLS: usize = 10;
@@ -92,6 +93,18 @@ pub enum AiError {
     Cancelled,
 }
 
+/// What stands behind a session's provider.
+#[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
+pub struct AiSafeguards {
+    /// Answers in place of the provider when it can't be reached, is busy, or has used up its
+    /// limit. A provider that is set up wrong is not covered up.
+    #[uniffi(default = None)]
+    pub fallback: Option<VisionSettings>,
+    /// Where the session's calls are logged and held to the limits.
+    #[uniffi(default = None)]
+    pub usage: Option<AiUsageSettings>,
+}
+
 /// A conversation with the model about one task.
 #[derive(uniffi::Object)]
 pub struct AiSession {
@@ -101,6 +114,8 @@ pub struct AiSession {
 
 struct State {
     client: VisionClient,
+    fallback: Option<VisionClient>,
+    book: Option<UsageBook>,
     servers: Vec<McpServer>,
     /// Open once the first step needs them.
     connections: Option<Vec<Connection>>,
@@ -133,6 +148,14 @@ impl Job {
         }
     }
 
+    /// The test and block the job's calls are logged under; empty when it isn't about one.
+    fn logged_under(&self) -> (&str, &str) {
+        match self {
+            Self::Draft(_) => ("", ""),
+            Self::Triage(j) => j.logged_under(),
+        }
+    }
+
     fn schema(&self) -> Value {
         match self {
             Self::Draft(_) => draft::schema(),
@@ -156,22 +179,31 @@ impl Job {
 impl AiSession {
     fn new(
         settings: &VisionSettings,
+        safeguards: Option<AiSafeguards>,
         servers: Vec<McpServer>,
         job: Job,
         messages: Vec<Message>,
     ) -> Result<Arc<Self>, AiError> {
-        let client = settings.client().map_err(|_| AiError::UnknownProvider {
-            provider: settings.provider.clone(),
-        })?;
-        let provider = client.config().provider;
-        if !provider.converses() {
-            return Err(AiError::OnlyChecks {
-                provider: provider.name().to_owned(),
-            });
-        }
+        let converser = |s: &VisionSettings| {
+            let client = s.client().map_err(|_| AiError::UnknownProvider {
+                provider: s.provider.clone(),
+            })?;
+            let provider = client.config().provider;
+            if provider.converses() {
+                Ok(client)
+            } else {
+                Err(AiError::OnlyChecks {
+                    provider: provider.name().to_owned(),
+                })
+            }
+        };
+        let client = converser(settings)?;
+        let AiSafeguards { fallback, usage } = safeguards.unwrap_or_default();
         Ok(Arc::new(Self {
             state: Mutex::new(State {
                 client,
+                fallback: fallback.as_ref().map(converser).transpose()?,
+                book: usage.map(AiUsageSettings::book),
                 servers,
                 connections: None,
                 unavailable: Vec::new(),
@@ -207,10 +239,7 @@ impl AiSession {
             self.check()?;
             let system = system(&state.job, state.connections.as_deref().unwrap_or_default());
             let schema = answer_schema(state.job.schema(), state.has_tools());
-            let answer = state
-                .client
-                .ask(&system, &state.messages, &schema)
-                .map_err(|e| provider_error(&state.client, &e))?;
+            let answer = state.ask(&system, &schema)?;
             self.check()?;
             state.messages.push(Message::answered(answer.to_string()));
             if let Some(call) = answer.get("tool").filter(|t| t.is_object()) {
@@ -305,6 +334,52 @@ impl AiSession {
 }
 
 impl State {
+    /// The model's next answer: from the provider, or from the fallback when the provider is
+    /// down or busy or has used up its limit.
+    fn ask(&self, system: &str, schema: &Value) -> Result<Value, AiError> {
+        let first = self.ask_of(&self.client, system, schema);
+        match (first, &self.fallback) {
+            (Err((_, true)), Some(f)) if f.provider_id() != self.client.provider_id() => {
+                self.ask_of(f, system, schema)
+            }
+            (first, _) => first,
+        }
+        .map_err(|(e, _)| e)
+    }
+
+    /// `client`'s answer, unless its limit is used up; logs the call. `Err` says whether another
+    /// provider may answer in its place.
+    fn ask_of(
+        &self,
+        client: &VisionClient,
+        system: &str,
+        schema: &Value,
+    ) -> Result<Value, (AiError, bool)> {
+        let stopped = |failure: jevision_runner::Failure, unavailable| {
+            let message = jevision_runner::describe_vision(&failure);
+            let failure = failure.into();
+            (AiError::Provider { failure, message }, unavailable)
+        };
+        if let Some(book) = &self.book {
+            let now = SystemTime::now();
+            match book.limit_state(client.provider_id(), client.provider(), now) {
+                Ok(LimitState::Reached(f)) => return Err(stopped(f, true)),
+                Ok(_) => {}
+                Err(e) => return Err(stopped(book.journal_failure(&e), false)),
+            }
+        }
+        let (answer, usage) = client
+            .ask(system, &self.messages, schema)
+            .map_err(|e| (provider_error(client, &e), e.unavailable()))?;
+        if let Some(book) = &self.book {
+            let (test, block) = self.job.logged_under();
+            let model = client.model();
+            book.log(client.provider_id(), model, test, block, usage)
+                .map_err(|e| stopped(book.journal_failure(&e), false))?;
+        }
+        Ok(answer)
+    }
+
     /// The call of `tool` as the person sees it; allowed when it only reads, unless `allowed`
     /// says otherwise.
     fn record(

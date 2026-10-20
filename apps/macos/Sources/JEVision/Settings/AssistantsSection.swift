@@ -1,3 +1,4 @@
+import JEVisionCore
 import JEVisionHands
 import SwiftUI
 
@@ -7,6 +8,8 @@ struct AssistantsSection: View {
   @Environment(ProjectStore.self) private var project
   @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
   @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
+  @AppStorage(AISettings.assistantsAskFirstKey) private var askFirst = true
+  @State private var assistants: [ConnectedAssistant] = []
   private let tool = CommandLineTool.bundled
 
   var body: some View {
@@ -15,6 +18,13 @@ struct AssistantsSection: View {
         RowLabel(Text("Allow assistants to run tests"), Text("Tests open apps, click and type on this Mac. Press Esc twice to stop one."))
       }
       .settingAnchor("assistantsRun")
+      Toggle(isOn: $askFirst) {
+        RowLabel(
+          Text("Ask before an assistant runs a test"),
+          Text("You see what it wants to do and allow it or not. Without an answer in a minute, the test isn’t run."))
+      }
+      .disabled(!mayRun)
+      .settingAnchor("assistantsAskFirst")
       Toggle(isOn: $mayCapture) {
         RowLabel(
           Text("Allow assistants to take screenshots"),
@@ -28,6 +38,28 @@ struct AssistantsSection: View {
         .font(.callout)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
+    }
+    Section {
+      if assistants.isEmpty {
+        Text("No assistant has connected yet. Once you add JEVision to one, it is listed here.")
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      ForEach(assistants, id: \.name) { AssistantRow(assistant: $0) }
+      if assistants.contains(where: { !$0.connected }) {
+        Button("Forget the Ones Not Connected") {
+          forgetAssistants(folder: AISettings.assistantsFolder.path)
+          Task { await reload() }
+        }
+      }
+    } header: {
+      Text("Connected Assistants")
+    }
+    .task {
+      while !Task.isCancelled {
+        await reload()
+        try? await Task.sleep(for: .seconds(2))
+      }
     }
     Section {
       if let reason = tool.unavailableReason {
@@ -59,6 +91,12 @@ struct AssistantsSection: View {
     }
   }
 
+  private func reload() async {
+    let folder = AISettings.assistantsFolder.path
+    let found = await Task.detached { connectedAssistants(folder: folder) }.value
+    if found != assistants { assistants = found }
+  }
+
   /// The `mcpServers` entry most assistants read, with the installed command when there is one.
   private var configuration: String {
     var command = tool.tool.path
@@ -68,5 +106,65 @@ struct AssistantsSection: View {
     let entry: [String: Any] = ["mcpServers": ["jevision": ["command": command, "args": args]]]
     let data = try? JSONSerialization.data(withJSONObject: entry, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     return data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+  }
+}
+
+/// One assistant that connected: who it is, whether it is connected, and what it did last.
+private struct AssistantRow: View {
+  let assistant: ConnectedAssistant
+
+  var body: some View {
+    LabeledContent {
+      if assistant.connected {
+        Label("Connected", systemImage: "circle.fill")
+          .foregroundStyle(.green)
+          .labelStyle(.titleAndIcon)
+      } else {
+        Text("Not connected")
+          .foregroundStyle(.secondary)
+      }
+    } label: {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(verbatim: assistant.version.isEmpty ? assistant.title : "\(assistant.title) \(assistant.version)")
+        Text("First connected \(Self.when(assistant.firstConnectedAt))")
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+        Text(lastCall)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  private var lastCall: String {
+    guard let call = assistant.lastCall else { return String(localized: "Hasn’t used JEVision yet") }
+    return String(localized: "Last: \(Self.action(call.tool)), \(Self.when(call.at))")
+  }
+
+  private static func when(_ seconds: Int64) -> String {
+    Date(timeIntervalSince1970: TimeInterval(seconds)).formatted(.relative(presentation: .named))
+  }
+
+  /// What a tool of the server does, in words for the person; an unknown one keeps its name.
+  static func action(_ tool: String) -> String {
+    switch tool {
+    case "list_tests": String(localized: "looked for tests")
+    case "read_test": String(localized: "read a test")
+    case "write_test": String(localized: "wrote a test")
+    case "add_blocks": String(localized: "added blocks")
+    case "remove_block": String(localized: "removed a block")
+    case "validate_test": String(localized: "checked a test")
+    case "list_block_types": String(localized: "read the guide to blocks")
+    case "run_test": String(localized: "ran a test")
+    case "get_run": String(localized: "looked at a run")
+    case "stop_run": String(localized: "stopped a run")
+    case "get_report": String(localized: "read a report")
+    case "screenshot": String(localized: "took a screenshot")
+    case "draft_bug_report": String(localized: "drafted a bug report")
+    case "send_bug_report": String(localized: "sent a bug report")
+    default: tool
+    }
   }
 }

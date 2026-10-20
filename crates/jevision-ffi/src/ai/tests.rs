@@ -190,7 +190,8 @@ fn a_draft_is_a_valid_test_and_a_broken_one_goes_back_to_the_model() {
         says(json!({ "answer": { "test": broken, "summary": "" } })),
         says(json!({ "answer": { "test": good_test(), "summary": "Saves the document." } })),
     ]);
-    let session = AiSession::draft_test(settings(&model), Vec::new(), request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(settings(&model), Vec::new(), request(&folder), None).unwrap();
     let AiStep::Drafted { draft } = session.step().unwrap() else {
         panic!("expected a draft");
     };
@@ -222,7 +223,8 @@ fn a_draft_that_stays_broken_fails_in_words() {
     let folder = Folder::new();
     let broken = says(json!({ "answer": { "test": "not a test", "summary": "" } }));
     let model = model(vec![broken.clone(), broken.clone(), broken]);
-    let session = AiSession::draft_test(settings(&model), Vec::new(), request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(settings(&model), Vec::new(), request(&folder), None).unwrap();
     assert!(matches!(session.step(), Err(AiError::Unusable { .. })));
     assert_eq!(model.requests().len(), 3);
 }
@@ -240,7 +242,7 @@ fn a_rework_shows_the_model_its_draft_and_what_to_change() {
         feedback: "Close the window at the end".to_owned(),
         ..request(&folder)
     };
-    let session = AiSession::draft_test(settings(&model), Vec::new(), request).unwrap();
+    let session = AiSession::draft_test(settings(&model), Vec::new(), request, None).unwrap();
     assert!(matches!(session.step(), Ok(AiStep::Drafted { .. })));
     let sent = &model.requests()[0];
     assert!(sent.contains("The first draft"));
@@ -258,7 +260,7 @@ fn local_only_projects_get_no_checks_by_meaning_from_a_cloud_model() {
     let local = model(vec![says(
         json!({ "answer": { "test": good_test(), "summary": "" } }),
     )]);
-    let session = AiSession::draft_test(settings(&local), Vec::new(), request).unwrap();
+    let session = AiSession::draft_test(settings(&local), Vec::new(), request, None).unwrap();
     session.step().unwrap();
     assert!(local.requests()[0].contains("Prefer"));
 
@@ -270,7 +272,8 @@ fn local_only_projects_get_no_checks_by_meaning_from_a_cloud_model() {
         pictures: false,
         ..settings(&blind)
     };
-    let session = AiSession::draft_test(text_only, Vec::new(), self::request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(text_only, Vec::new(), self::request(&folder), None).unwrap();
     session.step().unwrap();
     assert!(blind.requests()[0].contains("never use"));
 
@@ -296,8 +299,13 @@ fn tools_that_read_run_at_once_and_tools_that_change_wait_for_the_person() {
         ),
         says(json!({ "answer": { "test": good_test(), "summary": "Saves." } })),
     ]);
-    let session =
-        AiSession::draft_test(settings(&model), vec![tracker(&log)], request(&folder)).unwrap();
+    let session = AiSession::draft_test(
+        settings(&model),
+        vec![tracker(&log)],
+        request(&folder),
+        None,
+    )
+    .unwrap();
     let AiStep::Approve { call } = session.step().unwrap() else {
         panic!("expected a call to allow");
     };
@@ -338,8 +346,13 @@ fn an_allowed_call_runs() {
         says(json!({ "tool": { "server": "tracker", "name": "create_issue", "arguments": {} } })),
         says(json!({ "answer": { "test": good_test(), "summary": "" } })),
     ]);
-    let session =
-        AiSession::draft_test(settings(&model), vec![tracker(&log)], request(&folder)).unwrap();
+    let session = AiSession::draft_test(
+        settings(&model),
+        vec![tracker(&log)],
+        request(&folder),
+        None,
+    )
+    .unwrap();
     assert!(matches!(session.step(), Ok(AiStep::Approve { .. })));
     assert!(matches!(session.decide(true), Ok(AiStep::Drafted { .. })));
     assert!(
@@ -362,7 +375,8 @@ fn a_server_that_fails_is_left_out() {
             command: "echo no such server >&2; exit 3".to_owned(),
         },
     };
-    let session = AiSession::draft_test(settings(&model), vec![broken], request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(settings(&model), vec![broken], request(&folder), None).unwrap();
     let AiStep::Drafted { draft } = session.step().unwrap() else {
         panic!("expected a draft");
     };
@@ -379,7 +393,8 @@ fn a_server_that_fails_is_left_out() {
 fn provider_errors_keep_their_code() {
     let folder = Folder::new();
     let model = model(vec![(404, r#"{"error":"model not found"}"#.to_owned())]);
-    let session = AiSession::draft_test(settings(&model), Vec::new(), request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(settings(&model), Vec::new(), request(&folder), None).unwrap();
     let Err(AiError::Provider { failure, message }) = session.step() else {
         panic!("expected a provider error");
     };
@@ -395,7 +410,7 @@ fn a_provider_that_only_checks_screenshots_is_not_asked() {
         provider: "jev".to_owned(),
         ..settings(&model)
     };
-    let Err(error) = AiSession::draft_test(jev, Vec::new(), request(&folder)) else {
+    let Err(error) = AiSession::draft_test(jev, Vec::new(), request(&folder), None) else {
         panic!("expected the provider to be refused");
     };
     assert!(matches!(error, AiError::OnlyChecks { .. }), "{error}");
@@ -406,7 +421,8 @@ fn a_provider_that_only_checks_screenshots_is_not_asked() {
 fn a_cancelled_session_stops() {
     let folder = Folder::new();
     let model = model(Vec::new());
-    let session = AiSession::draft_test(settings(&model), Vec::new(), request(&folder)).unwrap();
+    let session =
+        AiSession::draft_test(settings(&model), Vec::new(), request(&folder), None).unwrap();
     session.cancel();
     assert_eq!(session.step(), Err(AiError::Cancelled));
     assert!(model.requests().is_empty());
@@ -477,9 +493,14 @@ fn a_failed_run_is_explained_with_its_screenshots() {
         "fix": "updateReference",
     } }))]);
     let request = failure_request(&project, run, false);
-    let session =
-        AiSession::explain_failure(settings(&model), Vec::new(), request, "English".to_owned())
-            .unwrap();
+    let session = AiSession::explain_failure(
+        settings(&model),
+        Vec::new(),
+        request,
+        "English".to_owned(),
+        None,
+    )
+    .unwrap();
     let AiStep::Explained { explanation } = session.step().unwrap() else {
         panic!("expected an explanation");
     };
@@ -511,7 +532,7 @@ fn a_model_that_reads_only_text_gets_no_screenshots() {
     };
     let request = failure_request(&project, run, false);
     let session =
-        AiSession::explain_failure(blind, Vec::new(), request, "English".to_owned()).unwrap();
+        AiSession::explain_failure(blind, Vec::new(), request, "English".to_owned(), None).unwrap();
     let AiStep::Explained { explanation } = session.step().unwrap() else {
         panic!("expected an explanation");
     };
@@ -552,8 +573,13 @@ fn a_missing_run_cannot_be_explained() {
         local_only: false,
         flaky: None,
     };
-    let result =
-        AiSession::explain_failure(settings(&model), Vec::new(), request, "English".into());
+    let result = AiSession::explain_failure(
+        settings(&model),
+        Vec::new(),
+        request,
+        "English".into(),
+        None,
+    );
     assert!(matches!(result, Err(AiError::NoReport { .. })));
 }
 
@@ -662,4 +688,264 @@ fn tools_are_listed_over_stdio_across_pages() {
         .map(|t| (t.name.as_str(), t.read_only))
         .collect();
     assert_eq!(names, [("find_issue", true), ("create_issue", false)]);
+}
+
+/// A reply of a local model saying `answer` and how many tokens it took.
+fn says_using(answer: Value, input: u64, output: u64) -> (u16, String) {
+    (
+        200,
+        json!({
+            "message": { "role": "assistant", "content": answer.to_string() },
+            "done": true,
+            "prompt_eval_count": input,
+            "eval_count": output,
+        })
+        .to_string(),
+    )
+}
+
+/// A reply of an OpenAI-compatible server saying `answer`.
+fn says_openai(answer: Value) -> (u16, String) {
+    (
+        200,
+        json!({
+            "choices": [{ "message": { "role": "assistant", "content": answer.to_string() } }],
+            "usage": { "prompt_tokens": 700, "completion_tokens": 90 },
+        })
+        .to_string(),
+    )
+}
+
+fn backup(model: &Model) -> VisionSettings {
+    VisionSettings {
+        provider: "lmstudio".to_owned(),
+        model: "backup-model".to_owned(),
+        ..settings(model)
+    }
+}
+
+fn usage_in(folder: &Folder, daily: Option<f64>) -> AiUsageSettings {
+    AiUsageSettings {
+        journal: folder.0.join("usage.jsonl").display().to_string(),
+        prices: vec![jevision_runner::Price {
+            provider: "ollama".to_owned(),
+            model: String::new(),
+            input: 1.0,
+            output: 2.0,
+        }],
+        limits: vec![jevision_runner::Limit {
+            provider: "ollama".to_owned(),
+            daily,
+            monthly: None,
+        }],
+    }
+}
+
+#[test]
+fn a_session_logs_every_call_with_its_tokens() {
+    let folder = Folder::new();
+    let broken = json!({ "name": "x", "start": "a", "blocks": { "a": { "type": "fly" } } });
+    let model = model(vec![
+        says_using(
+            json!({ "answer": { "test": broken, "summary": "" } }),
+            1200,
+            300,
+        ),
+        says_using(
+            json!({ "answer": { "test": good_test(), "summary": "Saves." } }),
+            1500,
+            800,
+        ),
+    ]);
+    let usage = usage_in(&folder, Some(100.0));
+    let safeguards = AiSafeguards {
+        usage: Some(usage.clone()),
+        ..AiSafeguards::default()
+    };
+    let session = AiSession::draft_test(
+        settings(&model),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards),
+    )
+    .unwrap();
+    assert!(matches!(session.step(), Ok(AiStep::Drafted { .. })));
+    // The first answer was sent back to be fixed: both calls cost tokens.
+    let records = usage.book().records().unwrap();
+    let seen: Vec<_> = records
+        .iter()
+        .map(|r| {
+            (
+                r.provider.as_str(),
+                r.model.as_str(),
+                r.input_tokens,
+                r.output_tokens,
+            )
+        })
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            ("ollama", "test-model", 1200, 300),
+            ("ollama", "test-model", 1500, 800)
+        ]
+    );
+}
+
+#[test]
+fn a_failure_analysis_is_logged_under_its_test_and_block() {
+    let (project, run) = failed_run();
+    let model = model(vec![says_using(
+        json!({ "answer": {
+            "cause": "environment",
+            "explanation": "The Mac was busy.",
+            "fix": "none",
+        } }),
+        2000,
+        100,
+    )]);
+    let usage = usage_in(&project, None);
+    let safeguards = AiSafeguards {
+        usage: Some(usage.clone()),
+        ..AiSafeguards::default()
+    };
+    let session = AiSession::explain_failure(
+        settings(&model),
+        Vec::new(),
+        failure_request(&project, run, false),
+        "English".to_owned(),
+        Some(safeguards),
+    )
+    .unwrap();
+    assert!(matches!(session.step(), Ok(AiStep::Explained { .. })));
+    let records = usage.book().records().unwrap();
+    assert_eq!(records.len(), 1);
+    assert_eq!(
+        (records[0].test.as_str(), records[0].block.as_str()),
+        ("save.flow.json", "saved")
+    );
+    assert_eq!(
+        (records[0].input_tokens, records[0].output_tokens),
+        (2000, 100)
+    );
+}
+
+#[test]
+fn a_provider_at_its_limit_is_not_asked() {
+    let folder = Folder::new();
+    let main = model(Vec::new());
+    let usage = usage_in(&folder, Some(0.0));
+    let safeguards = AiSafeguards {
+        usage: Some(usage),
+        ..AiSafeguards::default()
+    };
+    let session = AiSession::draft_test(
+        settings(&main),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards),
+    )
+    .unwrap();
+    let Err(AiError::Provider { failure, message }) = session.step() else {
+        panic!("expected the limit to stop the session");
+    };
+    assert_eq!(failure.code, "run.vision.limitReached");
+    assert!(message.contains("daily limit"), "{message}");
+    assert!(main.requests().is_empty());
+}
+
+#[test]
+fn the_fallback_answers_when_the_provider_is_down_or_at_its_limit() {
+    let folder = Folder::new();
+    let down = model(vec![(503, r#"{"error":"overloaded"}"#.to_owned())]);
+    let spare = model(vec![says_openai(
+        json!({ "answer": { "test": good_test(), "summary": "Saves." } }),
+    )]);
+    let usage = usage_in(&folder, Some(100.0));
+    let safeguards = AiSafeguards {
+        fallback: Some(backup(&spare)),
+        usage: Some(usage.clone()),
+    };
+    let session = AiSession::draft_test(
+        settings(&down),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards.clone()),
+    )
+    .unwrap();
+    assert!(matches!(session.step(), Ok(AiStep::Drafted { .. })));
+    assert_eq!(down.requests().len(), 1);
+    assert_eq!(spare.requests().len(), 1);
+    let records = usage.book().records().unwrap();
+    assert_eq!(records.len(), 1, "only the call that was answered");
+    assert_eq!(
+        (
+            records[0].provider.as_str(),
+            records[0].model.as_str(),
+            records[0].input_tokens
+        ),
+        ("lmstudio", "backup-model", 700)
+    );
+
+    // A provider at its limit isn't asked at all.
+    let main = model(Vec::new());
+    let spare = model(vec![says_openai(
+        json!({ "answer": { "test": good_test(), "summary": "Saves." } }),
+    )]);
+    let safeguards = AiSafeguards {
+        fallback: Some(backup(&spare)),
+        usage: Some(usage_in(&folder, Some(0.0))),
+    };
+    let session = AiSession::draft_test(
+        settings(&main),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards),
+    )
+    .unwrap();
+    assert!(matches!(session.step(), Ok(AiStep::Drafted { .. })));
+    assert!(main.requests().is_empty());
+    assert_eq!(spare.requests().len(), 1);
+}
+
+#[test]
+fn a_setup_mistake_is_shown_not_covered_up_by_the_fallback() {
+    let folder = Folder::new();
+    let wrong = model(vec![(404, r#"{"error":"model not found"}"#.to_owned())]);
+    let spare = model(Vec::new());
+    let safeguards = AiSafeguards {
+        fallback: Some(backup(&spare)),
+        ..AiSafeguards::default()
+    };
+    let session = AiSession::draft_test(
+        settings(&wrong),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards),
+    )
+    .unwrap();
+    let Err(AiError::Provider { failure, .. }) = session.step() else {
+        panic!("expected a provider error");
+    };
+    assert_eq!(failure.code, "run.vision.unknownModel");
+    assert!(spare.requests().is_empty());
+
+    // A fallback that can't hold a conversation is refused up front.
+    let jev = VisionSettings {
+        provider: "jev".to_owned(),
+        ..backup(&spare)
+    };
+    let safeguards = AiSafeguards {
+        fallback: Some(jev),
+        ..AiSafeguards::default()
+    };
+    let Err(error) = AiSession::draft_test(
+        settings(&wrong),
+        Vec::new(),
+        request(&folder),
+        Some(safeguards),
+    ) else {
+        panic!("expected the fallback to be refused");
+    };
+    assert!(matches!(error, AiError::OnlyChecks { .. }), "{error}");
 }

@@ -168,7 +168,7 @@ impl VisionJudge for NamedJudge {
         &self,
         screenshot: &jevision_runner::MaskedImage,
         what: &str,
-    ) -> Result<Option<jevision_runner::Located>, jevision_runner::VisionError> {
+    ) -> Result<jevision_runner::Search, jevision_runner::VisionError> {
         self.client().locate(screenshot, what)
     }
 }

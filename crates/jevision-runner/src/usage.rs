@@ -14,7 +14,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::{DateTime, Datelike, Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 
+use crate::Usage;
 use crate::report::Failure;
+use crate::run::rfc3339;
 
 /// Share of a limit after which AI steps warn that it is close.
 pub const WARN_SHARE: f64 = 0.8;
@@ -168,6 +170,34 @@ pub struct UsageBook {
 }
 
 impl UsageBook {
+    /// Adds a call that just got its answer, with the tokens it used.
+    pub fn log(
+        &self,
+        provider: &str,
+        model: &str,
+        test: &str,
+        block: &str,
+        usage: Usage,
+    ) -> io::Result<()> {
+        self.record(&UsageRecord {
+            time: rfc3339(SystemTime::now()),
+            provider: provider.to_owned(),
+            model: model.to_owned(),
+            test: test.to_owned(),
+            block: block.to_owned(),
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+        })
+    }
+
+    /// The failure for a journal that can't be read or written, so spending can't be kept to
+    /// its limits.
+    pub fn journal_failure(&self, e: &io::Error) -> Failure {
+        Failure::new("run.vision.journalFailed")
+            .with("path", self.journal.display())
+            .with("reason", e.to_string())
+    }
+
     /// Adds a call to the journal.
     pub fn record(&self, record: &UsageRecord) -> io::Result<()> {
         if let Some(folder) = self.journal.parent() {

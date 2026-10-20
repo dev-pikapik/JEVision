@@ -272,6 +272,15 @@ pub struct Located {
     pub confidence: f64,
 }
 
+/// What a search for an element described in words came back with, and what it cost, whether
+/// or not the element was there.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Search {
+    /// `None` when the element is more likely not on the screenshot.
+    pub found: Option<Located>,
+    pub usage: Usage,
+}
+
 /// Why a question got no verdict. [`code`](Self::code) and [`params`](Self::params) name a
 /// localizable text.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -312,6 +321,15 @@ pub enum VisionError {
 }
 
 impl VisionError {
+    /// The provider is down or busy for now, rather than set up wrong: another may answer.
+    pub fn unavailable(&self) -> bool {
+        match self {
+            Self::Unreachable { .. } | Self::Timeout { .. } | Self::RateLimited { .. } => true,
+            Self::Service { status, .. } => *status >= 500,
+            _ => false,
+        }
+    }
+
     pub fn code(&self) -> &'static str {
         match self {
             Self::NoPictures => "run.vision.noPictures",
@@ -377,12 +395,8 @@ pub trait VisionJudge: Send + Sync {
     /// Pictures stay on this computer.
     fn is_local(&self) -> bool;
     fn judge(&self, question: &Question<'_>) -> Result<Judgement, VisionError>;
-    /// Finds the element `what` describes on `screenshot`; `None` when it isn't there.
-    fn locate(
-        &self,
-        _screenshot: &MaskedImage,
-        _what: &str,
-    ) -> Result<Option<Located>, VisionError> {
+    /// Finds the element `what` describes on `screenshot`.
+    fn locate(&self, _screenshot: &MaskedImage, _what: &str) -> Result<Search, VisionError> {
         Err(VisionError::CannotLocate)
     }
 }
@@ -641,7 +655,7 @@ impl VisionJudge for Client {
         Ok(judgement)
     }
 
-    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Option<Located>, VisionError> {
+    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Search, VisionError> {
         let c = &self.config;
         if c.provider != Provider::Jev {
             return Err(VisionError::CannotLocate);
@@ -939,17 +953,19 @@ fn jev_fitted(png: &[u8]) -> (std::borrow::Cow<'_, [u8]>, (f64, f64)) {
     }
 }
 
-/// Reads where JEV saw the element from a successful response body; `None` when it is more
-/// likely not on the screenshot. `fill` is the share of the sent picture the screenshot fills.
-fn located(body: &str, (fill_x, fill_y): (f64, f64)) -> Result<Option<Located>, VisionError> {
+/// Reads where JEV saw the element from a successful response body, and the tokens it used.
+/// `fill` is the share of the sent picture the screenshot fills.
+fn located(body: &str, (fill_x, fill_y): (f64, f64)) -> Result<Search, VisionError> {
     let bad = || VisionError::BadAnswer {
         answer: body.to_owned(),
     };
     let v: Value = serde_json::from_str(body).map_err(|_| bad())?;
+    let usage = usage(Provider::Jev, &v);
+    let found = |found| Ok(Search { found, usage });
     let fraction = |v: &Value| v.as_f64().filter(|p| (0.0..=1.0).contains(p));
     let visible = fraction(&v["answers"]["visible"]["noul"]).ok_or_else(bad)?;
     if visible < 0.5 {
-        return Ok(None);
+        return found(None);
     }
     let answer = &v["answers"]["where"];
     let edge = |name: &str| fraction(&answer["box"][name]).ok_or_else(bad);
@@ -968,9 +984,9 @@ fn located(body: &str, (fill_x, fill_y): (f64, f64)) -> Result<Option<Located>, 
     };
     if area.width <= 0.0 || area.height <= 0.0 {
         // The box lies on the padding, off the screenshot.
-        return Ok(None);
+        return found(None);
     }
-    Ok(Some(Located {
+    found(Some(Located {
         area,
         confidence: fraction(&answer["confidence"]).unwrap_or(visible),
     }))
@@ -988,7 +1004,7 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
 }
 
 /// The tokens a successful response says it used.
-fn usage(provider: Provider, v: &Value) -> Usage {
+pub(crate) fn usage(provider: Provider, v: &Value) -> Usage {
     let count = |v: &Value| v.as_u64().unwrap_or_default();
     let (input, output) = match provider {
         Provider::Anthropic | Provider::Jev => {

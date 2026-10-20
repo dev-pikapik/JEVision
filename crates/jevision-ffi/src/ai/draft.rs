@@ -7,7 +7,9 @@ use jevision_core::{FORMAT_VERSION, Flow, Issue, Severity, describe, parse, vali
 use jevision_vision::Message;
 use serde_json::{Value, json};
 
-use super::{AiError, AiSession, AiStep, AiToolCall, Finished, Job, McpProblem, McpServer};
+use super::{
+    AiError, AiSafeguards, AiSession, AiStep, AiToolCall, Finished, Job, McpProblem, McpServer,
+};
 use crate::vision::VisionSettings;
 
 /// What to draft.
@@ -47,11 +49,12 @@ pub struct TestDraft {
 impl AiSession {
     /// Drafts a test from `request`, with the tools of `servers`. Nothing is sent before
     /// [`AiSession::step`].
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(safeguards = None))]
     pub fn draft_test(
         settings: VisionSettings,
         servers: Vec<McpServer>,
         request: DraftRequest,
+        safeguards: Option<AiSafeguards>,
     ) -> Result<Arc<Self>, AiError> {
         // Checks by meaning send screenshots to the model, which must see them and be allowed to.
         let meaning = settings.pictures
@@ -63,7 +66,7 @@ impl AiSession {
             folder: PathBuf::from(request.folder),
             meaning,
         };
-        Self::new(&settings, servers, Job::Draft(job), messages)
+        Self::new(&settings, safeguards, servers, Job::Draft(job), messages)
     }
 }
 

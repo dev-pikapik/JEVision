@@ -56,7 +56,9 @@ pub use merge::{
     ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
-pub use project::{FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use project::{
+    AiChoice, AiTask, FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined,
+};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
