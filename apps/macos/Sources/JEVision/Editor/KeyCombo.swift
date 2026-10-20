@@ -18,12 +18,16 @@ enum KeyCombo {
     "up": "↑", "down": "↓", "left": "←", "right": "→",
   ]
 
-  /// `cmd+shift+s` → `⇧⌘S`, with the letter the keyboard layout prints on that key: `⇧⌘Ы` on a
-  /// Russian one. Without a layout, the key's name on a US keyboard.
-  static func display(_ keys: String, layout: Data? = ActiveKeyboard.shared.layout) -> String {
+  /// `cmd+shift+s` → `⇧⌘S`, with the letter the keyboard layout prints on that key: `⇧S` and `Ы`
+  /// on a Russian one. With ⌘ held it is the key of the Latin layout, `⇧⌘S`, as macOS menus spell
+  /// shortcuts (`⌘М` reads as ⌘M, Minimize). Without a layout, the key's name on a US keyboard.
+  static func display(
+    _ keys: String, layout: Data? = ActiveKeyboard.shared.layout, latinLayout: Data? = ActiveKeyboard.shared.latinLayout
+  ) -> String {
     let parts = keys.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
     guard let key = parts.last else { return keys }
     let held = symbols.filter { parts.dropLast().contains($0.name) }.map(\.symbol).joined()
+    let layout = parts.dropLast().contains("cmd") ? latinLayout : layout
     let name = key == "space" ? String(localized: "Space") : keySymbols[key] ?? printed(key, on: layout) ?? key.uppercased()
     return held + name
   }
