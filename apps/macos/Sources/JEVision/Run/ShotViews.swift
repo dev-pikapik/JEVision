@@ -77,11 +77,19 @@ struct Comparison: View {
   private func similarityText(_ similarity: Double) -> String {
     // The failure states both numbers the way the runner rounded them.
     let params = step.failure?.params ?? [:]
-    let matched = params["similarity"] ?? BlockSummary.percent(similarity)
+    let matched = params["similarity"].flatMap(Self.share) ?? BlockSummary.percent(similarity)
     if let threshold = params["threshold"] {
-      return String(localized: "Matches by \(matched), needs \(threshold)")
+      return String(localized: "Matches by \(matched), needs \(Self.share(threshold) ?? threshold)")
     }
     return String(localized: "Matches by \(matched)")
+  }
+
+  /// A share the runner kept in the report, like `81.0%`, written the way the Mac writes percentages
+  /// with the digits the runner gave it. `nil` for anything else.
+  private static func share(_ kept: String) -> String? {
+    guard kept.hasSuffix("%"), let value = Double(kept.dropLast()) else { return nil }
+    let digits = kept.split(separator: ".").dropFirst().first.map { $0.count - 1 } ?? 0
+    return (value / 100).formatted(.percent.precision(.fractionLength(digits)))
   }
 }
 

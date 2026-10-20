@@ -57,19 +57,19 @@ func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -
     guard canonical != text else { continue }
     changed += 1
     if check {
-      output.line("\(file): not formatted")
+      output.line(words("cli.fmt.notFormatted", file))
       status = max(status, .problems)
     } else {
       do {
         try writeAtomically(canonical, to: file)
-        output.line("\(file): formatted")
+        output.line(words("cli.fmt.formatted", file))
       } catch {
-        status = max(status, ioFailure(file, "write", error))
+        status = max(status, ioFailure(words("cli.error.cannotWrite", file, describe(error))))
       }
     }
   }
   if !files.isEmpty {
-    output.line("\(files.count) test\(files.count == 1 ? "" : "s") checked, \(changed) \(check ? "not formatted" : "formatted")")
+    output.line(check ? words("cli.fmt.summaryCheck", files.count, changed) : words("cli.fmt.summary", files.count, changed))
   }
   return status
 }
@@ -79,12 +79,14 @@ private func isValid(_ issues: [Issue]) -> Bool {
 }
 
 private func printIssues(_ issues: [Issue], of file: String, to output: Console) {
-  guard !issues.isEmpty else { return output.line("\(file): ok") }
+  guard !issues.isEmpty else { return output.line(words("cli.validate.ok", file)) }
   let errors = issues.count { $0.severity == .error }
   let warnings = issues.count - errors
-  output.line("\(file): \(errors) error\(errors == 1 ? "" : "s"), \(warnings) warning\(warnings == 1 ? "" : "s")")
+  output.line(words("cli.validate.counts", file, words("cli.validate.errors", errors), words("cli.validate.warnings", warnings)))
+  let (error, warning) = (words("cli.validate.error"), words("cli.validate.warning"))
+  let width = max(error.count, warning.count)
   for issue in issues {
-    let level = issue.severity == .error ? "error  " : "warning"
+    let level = (issue.severity == .error ? error : warning).padding(toLength: width, withPad: " ", startingAt: 0)
     output.line("  \(level) \(describeIssue(issue: issue))")
   }
 }
@@ -116,11 +118,11 @@ func collectTests(_ paths: [String], reportingEmptyFolders: Bool = false) -> (fi
       let found = files.count
       try walk(path, into: &files)
       if reportingEmptyFolders && files.count == found {
-        Console.standardError.line("jevision: there are no tests (*.flow.json files) in \(path)")
+        Console.standardError.line("jevision: " + words("cli.error.noTests", path))
         status = .failure
       }
     } catch {
-      status = max(status, ioFailure(path, "read", error))
+      status = max(status, ioFailure(words("cli.error.cannotRead", path, describe(error))))
     }
   }
   return (files, status)
@@ -159,7 +161,7 @@ private func read(_ file: String, status: inout ExitStatus) -> String? {
     }
     return text
   } catch {
-    status = max(status, ioFailure(file, "read", error))
+    status = max(status, ioFailure(words("cli.error.cannotRead", file, describe(error))))
     return nil
   }
 }
@@ -180,8 +182,9 @@ private func writeAtomically(_ text: String, to path: String) throws {
   }
 }
 
-private func ioFailure(_ path: String, _ action: String, _ error: Error) -> ExitStatus {
-  Console.standardError.line("\(path): cannot \(action): \(describe(error))")
+/// Says on standard error that a file can't be read or written.
+private func ioFailure(_ message: String) -> ExitStatus {
+  Console.standardError.line(message)
   return .failure
 }
 
@@ -190,6 +193,6 @@ func describe(_ error: Error) -> String {
   let error = error as NSError
   let posix = error.domain == NSPOSIXErrorDomain ? error : error.userInfo[NSUnderlyingErrorKey] as? NSError
   if let posix, posix.domain == NSPOSIXErrorDomain { return String(cString: strerror(Int32(posix.code))) }
-  if error.code == CocoaError.fileReadInapplicableStringEncoding.rawValue { return "the file is not UTF-8 text" }
+  if error.code == CocoaError.fileReadInapplicableStringEncoding.rawValue { return words("cli.error.notUTF8") }
   return error.localizedDescription
 }

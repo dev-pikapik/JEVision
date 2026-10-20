@@ -9,9 +9,22 @@ use jevision_runner::{
     MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
     RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot, ScrollDirection,
     ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage, VIDEO_FILE, Verdict, VideoMode,
-    VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize, describe, html, junit_xml,
-    prune_videos,
+    VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize, describe_in, html_in,
+    junit_xml_in, prune_videos,
 };
+
+// The tests read reports in English whatever language the machine runs in.
+fn describe(failure: &jevision_runner::Failure) -> String {
+    describe_in("en", failure)
+}
+
+fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
+    html_in("en", report, run_dir, video)
+}
+
+fn junit_xml(reports: &[RunReport]) -> String {
+    junit_xml_in("en", reports)
+}
 
 const SECRET: &str = "s3cr3t-pa55";
 const APP: &str = "com.example.App";
@@ -663,6 +676,25 @@ fn a_window_that_will_not_take_its_size_stops_the_run_with_a_clear_reason() {
 }
 
 #[test]
+fn a_platform_error_reads_as_the_catalog_sentence_without_a_block() {
+    assert_eq!(
+        HandsError::PermissionDenied("screenRecording".into()).to_string(),
+        "JEVision isn’t allowed to use Screen Recording. Turn it on in Settings → Permissions."
+    );
+    assert_eq!(
+        HandsError::WindowDiffers {
+            app: APP.into(),
+            what: "position".into(),
+            wanted: "40, 60".into(),
+            actual: "0, 25".into(),
+        }
+        .to_string(),
+        format!("The position of the window of {APP} should be 40, 60 but is 0, 25.")
+    );
+    assert_eq!(HandsError::Failed("busy".into()).to_string(), "busy");
+}
+
+#[test]
 fn hover_moves_the_pointer_onto_the_target() {
     let p = Project::new();
     p.write("refs/help.png", solid([9, 9, 9])).test(
@@ -1130,7 +1162,7 @@ fn use_data_types_each_row() {
         ]
     );
     assert_eq!(
-        run.report.rows_summary().as_deref(),
+        run.report.rows_summary_in("en").as_deref(),
         Some("2 of 2 rows passed")
     );
     assert!(events.iter().any(|e| matches!(e,
@@ -1170,7 +1202,10 @@ fn data_rows_run_one_by_one_with_their_own_retries() {
             (3, 1, Verdict::Passed)
         ]
     );
-    assert_eq!(report.rows_summary().as_deref(), Some("2 of 3 rows passed"));
+    assert_eq!(
+        report.rows_summary_in("en").as_deref(),
+        Some("2 of 3 rows passed")
+    );
     assert_eq!(&hands.typed()[..2], ["hi Ann", "Ann"]);
     // A row keeps a fingerprint of its values, the same for each of its attempts.
     let hashes: Vec<_> = report
@@ -1185,7 +1220,7 @@ fn data_rows_run_one_by_one_with_their_own_retries() {
     assert_eq!(cases[1].test, "T [Row 2: Bo]");
     assert_eq!(cases[1].attempts.len(), 2);
     assert_eq!(cases[1].verdict, Verdict::Failed);
-    let junit = jevision_runner::junit_xml(std::slice::from_ref(&report));
+    let junit = junit_xml(std::slice::from_ref(&report));
     assert!(junit.contains("tests=\"3\""), "{junit}");
     assert!(junit.contains("name=\"T [Row 2: Bo]\""), "{junit}");
     let page = html(&report, &run.dir, None);
@@ -1200,7 +1235,10 @@ fn data_rows_run_one_by_one_with_their_own_retries() {
     };
     let hands = Fake::new(solid([0, 0, 0]));
     let report = run_with(&p, &hands, RunControl::new(), &options).0.report;
-    assert_eq!(report.rows_summary().as_deref(), Some("1 of 2 rows passed"));
+    assert_eq!(
+        report.rows_summary_in("en").as_deref(),
+        Some("1 of 2 rows passed")
+    );
     assert_eq!(hands.typed(), ["hi Bo", "Bo", "hi Cy", "Cy"]);
 }
 
@@ -1518,7 +1556,7 @@ fn project_retries_and_quarantine_apply_to_runs() {
     assert_eq!(
         RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
             .unwrap()
-            .describe(),
+            .describe_in("en"),
         "Failed 3 times in a row — a real failure, not flakiness."
     );
     let xml = junit_xml(std::slice::from_ref(&report));
@@ -1579,8 +1617,21 @@ fn retry_verdicts_say_flaky_or_real() {
         Some(RetryVerdict::FailedDifferently { attempts: 2 })
     );
     assert_eq!(
-        RetryVerdict::PassedOnRetry { retry: 1 }.describe(),
+        RetryVerdict::PassedOnRetry { retry: 1 }.describe_in("en"),
         "Passed on retry 1 after failing — the test is flaky."
+    );
+    let mixed = RetryVerdict::FailedDifferently { attempts: 2 };
+    assert_eq!(
+        mixed.describe_in("en"),
+        "Failed 2 of 2 times, each time differently — the test may be flaky."
+    );
+    assert_eq!(
+        mixed.describe_in("ru"),
+        "Упал 2 раза из 2, каждый раз по-разному — тест может быть нестабилен."
+    );
+    assert_eq!(
+        RetryVerdict::FailedDifferently { attempts: 5 }.describe_in("ru"),
+        "Упал 5 раз из 5, каждый раз по-разному — тест может быть нестабилен."
     );
 }
 
@@ -1670,8 +1721,60 @@ fn click_by_image_fails_when_target_is_not_on_screen() {
     );
     assert!(
         html(&report, Path::new("/nonexistent"), None)
-            .contains("refs/button.png was not found on screen")
+            .contains("refs/button.png wasn’t found on the screen")
     );
+}
+
+#[test]
+fn a_report_is_read_in_the_language_asked_for_and_stores_no_phrases() {
+    let p = Project::new();
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""click":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
+        "click",
+        2,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let run = run(&p, &hands);
+    let report = run.report;
+    // The saved file holds codes and parameters; the words are made when the report is shown.
+    let saved = std::fs::read_to_string(run.dir.join("report.json")).unwrap();
+    assert!(saved.contains("run.target.notFound"));
+    assert!(!saved.contains("wasn’t found"));
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(
+        describe_in("ru", failure),
+        "Блок «click»: картинка refs/button.png не найдена на экране."
+    );
+    let page = html_in("ru", &report, &run.dir, None);
+    assert!(page.contains("картинка refs/button.png не найдена на экране"));
+    assert!(page.contains("lang=\"ru\""));
+    assert!(html_in("en", &report, &run.dir, None).contains("lang=\"en\""));
+    let xml = junit_xml_in("ru", std::slice::from_ref(&report));
+    assert!(xml.contains("не найдена на экране"));
+    assert_well_formed_xml(&xml);
+    // Retries are told by the plural rules of the language.
+    assert_eq!(
+        RetryVerdict::PassedOnRetry { retry: 2 }.describe_in("ru"),
+        "Прошёл с повтора 2 после сбоя — тест нестабилен."
+    );
+}
+
+#[test]
+fn a_failure_saved_before_the_languages_were_added_is_still_read() {
+    let old = r#"{"code":"run.check.mismatch","params":{"block":"inbox","image":"refs/inbox.png","similarity":"81.0%","threshold":"95.0%"}}"#;
+    let failure: jevision_runner::Failure = serde_json::from_str(old).unwrap();
+    assert_eq!(
+        describe_in("en", &failure),
+        "Block “inbox”: the screen matches refs/inbox.png by 81.0%, and at least 95.0% is needed."
+    );
+    assert_eq!(
+        describe_in("ru", &failure),
+        "Блок «inbox»: экран совпадает с refs/inbox.png на 81,0\u{a0}%, а нужно не меньше 95,0\u{a0}%."
+    );
+    // A code this version doesn't know is shown as it is, not lost.
+    let unknown: jevision_runner::Failure =
+        serde_json::from_str(r#"{"code":"run.from.thefuture","params":{}}"#).unwrap();
+    assert!(describe_in("ru", &unknown).contains("run.from.thefuture"));
 }
 
 #[test]
@@ -1745,7 +1848,7 @@ fn if_takes_the_first_matching_case_or_else() {
         let step = &report.attempts[0].steps[0];
         assert_eq!(step.branch.as_deref(), Some(branch));
         assert_eq!(step.branches, Some(4));
-        assert_eq!(step.branch_text().as_deref(), Some(text));
+        assert_eq!(step.branch_text_in("en").as_deref(), Some(text));
         assert!(
             step.similarity.is_some(),
             "{branch}: the comparison is in the report"
@@ -1952,8 +2055,8 @@ fn a_missing_package_is_reported_with_the_version_and_address_the_test_recorded(
     assert_eq!(failure.param("version"), "1.2.0");
     assert_eq!(failure.param("source"), "https://github.com/acme/sign-in");
     assert_eq!(
-        jevision_runner::describe(&failure),
-        "Block sub: the package com.acme.sign-in 1.2.0 is not installed; install it with \
+        describe(&failure),
+        "Block “sub”: the community block com.acme.sign-in 1.2.0 isn’t installed; install it with \
          `jevision blocks install https://github.com/acme/sign-in`, then run the test again."
     );
 
@@ -1962,7 +2065,7 @@ fn a_missing_package_is_reported_with_the_version_and_address_the_test_recorded(
     let report = run(&p, &hands).report;
     let failure = report.attempts.last().unwrap().failure.clone().unwrap();
     assert_eq!(failure.param("version"), "");
-    assert!(jevision_runner::describe(&failure).contains("com.acme.sign-in is not installed"));
+    assert!(describe(&failure).contains("com.acme.sign-in isn’t installed"));
 }
 
 #[test]
@@ -2230,7 +2333,7 @@ fn an_expectation_needs_no_reference_and_if_follows_the_verdict() {
     assert_eq!(report.verdict, Verdict::Passed);
     assert_eq!(report.attempts[0].steps[0].branch.as_deref(), Some("else"));
     assert_eq!(
-        report.attempts[0].steps[0].branch_text().as_deref(),
+        report.attempts[0].steps[0].branch_text_in("en").as_deref(),
         Some("Took “No”")
     );
     assert!(judge.asked.lock().unwrap()[0].reference.is_none());
@@ -2238,7 +2341,7 @@ fn an_expectation_needs_no_reference_and_if_follows_the_verdict() {
 
     let report = run_judged(&p, &hands, Some(&Judge::says(true)), false).report;
     assert_eq!(
-        report.attempts[0].steps[0].branch_text().as_deref(),
+        report.attempts[0].steps[0].branch_text_in("en").as_deref(),
         Some("Took “Yes: A dialog is open”")
     );
 }
@@ -2378,8 +2481,8 @@ fn vision_problems_are_localizable_failures() {
     );
     assert_eq!(failure.param("seconds"), "120");
     assert_eq!(
-        jevision_runner::describe(&failure),
-        "Block wait: Test Vision did not answer within 120 s."
+        describe(&failure),
+        "Block “wait”: Test Vision didn’t answer within 120 s."
     );
 
     // A model that keeps saying no: the wait times out on the expectation, the last answer kept.
@@ -2658,9 +2761,9 @@ fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
     let failure = run(&p, &hands).report.attempts[0].failure.clone().unwrap();
     assert_eq!(failure.code, "run.test.unreadable");
     assert_eq!(
-        jevision_runner::describe(&failure),
-        "Test file t.flow.json cannot be read: Field \"app\": required, but missing. \
-         Block \"a\", field \"colour\": not a known field."
+        describe(&failure),
+        "Can’t read the test file t.flow.json: Field “app”: “app” is missing. \
+         Block “a”, field “colour”: “colour” isn’t a known setting."
     );
 }
 
@@ -3015,7 +3118,7 @@ fn scripts_and_commands_hand_values_to_later_blocks() {
     assert_eq!(steps[0].outputs["who"], "••••");
     assert_eq!(steps[1].outputs["out"], "3");
     assert_eq!(
-        steps[2].branch_text().as_deref(),
+        steps[2].branch_text_in("en").as_deref(),
         Some("Took “Yes: ${var.out} > 2”")
     );
     let all = outputs(&run, &events);
@@ -3516,7 +3619,8 @@ fn the_date_names_follow_the_language_and_the_time_zone() {
     assert_eq!(out("east"), "+1400");
     assert_eq!(out("west"), "-1100 SST");
 
-    // Without a language of the run the names are English.
+    // Without a language of the run the names follow the process language, English unless a host
+    // set another (no test here does: the setting is shared by every test of the process).
     let report = run(&p, &hands).report;
     assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
     let app = &last_steps(&report)[2].outputs["app"];
@@ -3859,7 +3963,7 @@ fn a_described_element_that_is_not_on_screen_fails_with_its_description() {
     assert_eq!(failure.param("description"), "the blue Save button");
     assert_eq!(
         describe(&failure),
-        "Block save: “the blue Save button” was not found on screen."
+        "Block “save”: “the blue Save button” wasn’t found on the screen."
     );
     assert!(report.attempts[0].steps[0].before.is_some());
     assert!(hands.log().is_empty());

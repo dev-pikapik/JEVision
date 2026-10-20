@@ -33,8 +33,7 @@ struct MCPCommand {
 
   private func serveHere() -> ExitStatus {
     guard let folder = project ?? Self.defaultProject() else {
-      Console.standardError.line(
-        "jevision: name the project folder with --project: the assistant started jevision in /, which is no project.")
+      Console.standardError.line("jevision: " + words("cli.mcp.noProject"))
       return .failure
     }
     do {
@@ -42,7 +41,7 @@ struct MCPCommand {
         project: folder, host: MacAssistantHost(readiness: { Readiness.problem() }))
       return .ok
     } catch AssistantServerError.NoProject(let path) {
-      Console.standardError.line("jevision: there is no folder “\(path)”")
+      Console.standardError.line("jevision: " + words("cli.error.noFolder", path))
     } catch {
       Console.standardError.line("jevision: \(error.localizedDescription)")
     }
@@ -54,15 +53,7 @@ struct MCPCommand {
       let key = try ComputerKey.existingOrNew()
       let mac = try pairRemoteAssistant(link: link, computerName: Self.computerName, key: key)
       try RemoteMacs.standard.save(mac)
-      Console.standardOutput.line(
-        """
-        Paired with “\(mac.name)”. Add it to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with:
-
-          jevision mcp --remote \(shellWord(mac.name))
-
-        The assistant can then use the tools of that Mac as far as the person there allows it in
-        JEVision → Settings → iPhone & Remote and Settings → AI → Assistants.
-        """)
+      Console.standardOutput.line(words("cli.mcp.paired", mac.name, "jevision mcp --remote \(shellWord(mac.name))"))
       return .ok
     } catch {
       Console.standardError.line("jevision: \(error.localizedDescription)")
@@ -74,8 +65,7 @@ struct MCPCommand {
     do {
       guard let mac = try pairedMac(name) else { return .failure }
       guard let key = ComputerKey.existing() else {
-        Console.standardError.line(
-          "jevision: the key of this computer isn’t in the Keychain anymore. Pair it again with `jevision mcp --pair`.")
+        Console.standardError.line("jevision: " + words("cli.mcp.noKey"))
         return .failure
       }
       try serveRemoteAssistant(mac: mac, key: key, project: project)
@@ -91,8 +81,7 @@ struct MCPCommand {
       guard let mac = try pairedMac(name) else { return .failure }
       try RemoteMacs.standard.remove(mac)
       if try RemoteMacs.standard.all().isEmpty { try ComputerKey.remove() }
-      Console.standardOutput.line(
-        "Forgot “\(mac.name)”. The Mac still lists this computer until the person there disconnects it in JEVision → Settings → iPhone & Remote.")
+      Console.standardOutput.line(words("cli.mcp.forgot", mac.name))
       return .ok
     } catch {
       Console.standardError.line("jevision: \(error.localizedDescription)")
@@ -106,9 +95,10 @@ struct MCPCommand {
     let macs = try RemoteMacs.standard.matching(name)
     if macs.count == 1 { return macs[0] }
     Console.standardError.line(
-      macs.isEmpty
-        ? "jevision: this computer isn’t paired with a Mac called “\(name)”. Pair it in JEVision on that Mac: Settings → iPhone & Remote → Add an assistant."
-        : "jevision: several paired Macs are called “\(name)”. Name one by the start of its id: \(macs.map { String($0.hostId.prefix(8)) }.joined(separator: ", ")).")
+      "jevision: "
+        + (macs.isEmpty
+          ? words("cli.mcp.notPaired", name)
+          : words("cli.mcp.severalMacs", name, macs.map { String($0.hostId.prefix(8)) }.joined(separator: ", "))))
     return nil
   }
 

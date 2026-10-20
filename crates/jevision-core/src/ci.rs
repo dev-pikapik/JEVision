@@ -4,6 +4,8 @@ use std::fs;
 use std::io::{ErrorKind, Write as _};
 use std::path::{Path, PathBuf};
 
+use jevision_l10n::tr;
+
 /// The workflow file, relative to the top of the repository.
 pub const CI_WORKFLOW_FILE: &str = ".github/workflows/jevision.yml";
 
@@ -14,9 +16,9 @@ pub const CI_ARTIFACT: &str = "jevision-reports";
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CiWorkflowError {
     /// GitHub reads workflows only from the repository's top folder.
-    #[error("the project folder isn't inside a git repository")]
+    #[error("{}", tr!("ci.notInRepository"))]
     NotInRepository,
-    #[error("{CI_WORKFLOW_FILE} already exists")]
+    #[error("{}", tr!("ci.exists", CI_WORKFLOW_FILE))]
     Exists,
     #[error("{0}")]
     Unwritable(String),
@@ -269,5 +271,21 @@ mod tests {
         );
         assert!(!dir.join(".github").exists());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn errors_read_in_the_language_asked_for() {
+        assert_eq!(
+            CiWorkflowError::Exists.to_string(),
+            format!("{CI_WORKFLOW_FILE} already exists")
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "ci.exists", CI_WORKFLOW_FILE),
+            format!("{CI_WORKFLOW_FILE} уже существует")
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "ci.notInRepository"),
+            "папка проекта не находится внутри git-репозитория"
+        );
     }
 }

@@ -693,3 +693,24 @@ fn only_jev_finds_elements_and_only_from_version_1_14() {
         VisionError::NoKey
     );
 }
+
+#[test]
+fn jev_says_how_sure_it_is_in_each_language() {
+    use jevision_l10n::tr_in;
+    assert_eq!(
+        tr_in!("en", "vision.jev.failed", 96),
+        "JEV is 96% sure the screenshot does not meet the expectation."
+    );
+    assert_eq!(
+        tr_in!("ru", "vision.jev.failed", 96),
+        "JEV на 96% уверен, что снимок экрана не соответствует ожиданию."
+    );
+    assert_eq!(
+        tr_in!(
+            "ru",
+            "vision.error.onlyChecksScreenshots",
+            Provider::Jev.name()
+        ),
+        "JEV (TypeSafe AI) умеет только проверять снимки экрана"
+    );
+}

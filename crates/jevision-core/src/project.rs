@@ -13,10 +13,12 @@ use std::path::{Component, Path};
 use std::{fs, io};
 
 use chrono::{Days, NaiveDate};
+use jevision_l10n::tr;
 use serde::{Deserialize, Serialize};
 
 use crate::Rect;
 use crate::batch::{DEFAULT_PARALLEL, MAX_PARALLEL, RunMode};
+use crate::issue::json_problem;
 use crate::model::{AI_PROVIDERS, TEST_SUFFIX};
 use crate::validate::{MAX_RETRIES, rect_fits};
 
@@ -83,17 +85,15 @@ impl AiTask {
     fn check(self, choice: &AiChoice) -> Result<(), String> {
         let key = self.key();
         if !AI_PROVIDERS.contains(&choice.provider.as_str()) {
-            return Err(format!(
-                "\"{}\" in \"ai\" → \"{key}\" isn't an AI provider; use one of {}",
-                choice.provider,
+            return Err(tr!(
+                "project.ai.unknownProvider",
+                &choice.provider,
+                key,
                 AI_PROVIDERS.join(", ")
             ));
         }
         if self == Self::Text && choice.provider == "jev" {
-            return Err(format!(
-                "\"jev\" in \"ai\" → \"{key}\" can't write tests or explain failures, it only \
-                 checks screenshots; choose another provider"
-            ));
+            return Err(tr!("project.ai.jevText", key));
         }
         Ok(())
     }
@@ -226,58 +226,41 @@ impl FileAi {
 impl ProjectSettings {
     /// Reads the text of a project settings file; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let file: File = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
         if file.format > PROJECT_FORMAT {
-            return Err(format!(
-                "the file has format {}, this version reads up to {PROJECT_FORMAT}",
-                file.format
-            ));
+            return Err(tr!("project.format.tooNew", file.format, PROJECT_FORMAT));
         }
         if file.format < 1 {
-            return Err(format!("\"format\" must be {PROJECT_FORMAT}"));
+            return Err(tr!("project.format.invalid", PROJECT_FORMAT));
         }
         if let Some(retries) = file.retries.filter(|r| *r > MAX_RETRIES) {
-            return Err(format!(
-                "\"retries\" is {retries}; it must be from 0 to {MAX_RETRIES}"
-            ));
+            return Err(tr!("project.retries.range", retries, MAX_RETRIES));
         }
         if let Some(after) = file
             .suggest_quarantine_after
             .filter(|n| !(1..=MAX_QUARANTINE_AFTER).contains(n))
         {
-            return Err(format!(
-                "\"suggestQuarantineAfter\" is {after}; it must be from 1 to {MAX_QUARANTINE_AFTER}"
+            return Err(tr!(
+                "project.quarantineAfter.range",
+                after,
+                MAX_QUARANTINE_AFTER
             ));
         }
         let mut quarantine = file.quarantine;
         for entry in &quarantine {
             if !is_test_path(&entry.test) {
-                return Err(format!(
-                    "\"{}\" in \"quarantine\" isn't a test file of the project; write its path \
-                     from the project folder, such as login/sign-in{TEST_SUFFIX}",
-                    entry.test
-                ));
+                return Err(tr!("project.quarantine.notTest", &entry.test, TEST_SUFFIX));
             }
             if entry.reason.as_deref().is_some_and(|r| r.trim().is_empty()) {
-                return Err(format!(
-                    "the reason for \"{}\" in \"quarantine\" is empty; write why or leave it out",
-                    entry.test
-                ));
+                return Err(tr!("project.quarantine.emptyReason", &entry.test));
             }
             if let Some(until) = entry.until.as_deref().filter(|u| date(u).is_none()) {
-                return Err(format!(
-                    "\"until\" of \"{}\" in \"quarantine\" is \"{until}\"; write a date such as \
-                     2026-11-03",
-                    entry.test
-                ));
+                return Err(tr!("project.quarantine.until", &entry.test, until));
             }
         }
         quarantine.sort_by(|a, b| a.test.cmp(&b.test));
         if let Some(twice) = quarantine.windows(2).find(|w| w[0].test == w[1].test) {
-            return Err(format!(
-                "\"{}\" is in \"quarantine\" more than once",
-                twice[0].test
-            ));
+            return Err(tr!("project.quarantine.twice", &twice[0].test));
         }
         check_hide(&file.hide)?;
         for (task, choice) in [
@@ -294,10 +277,7 @@ impl ProjectSettings {
         }
         run_modes.sort_by(|a, b| a.folder.cmp(&b.folder));
         if let Some(twice) = run_modes.windows(2).find(|w| w[0].folder == w[1].folder) {
-            return Err(format!(
-                "the folder \"{}\" is in \"runModes\" more than once",
-                twice[0].folder
-            ));
+            return Err(tr!("project.runModes.twice", &twice[0].folder));
         }
         Ok(Self {
             retries: file.retries,
@@ -383,12 +363,10 @@ impl ProjectSettings {
         until: Option<&str>,
     ) -> Result<(), String> {
         if !is_test_path(test) {
-            return Err(format!("\"{test}\" isn't a test file of the project"));
+            return Err(tr!("project.test.invalid", test));
         }
         if let Some(until) = until.filter(|u| date(u).is_none()) {
-            return Err(format!(
-                "\"{until}\" isn't a date; write one such as 2026-11-03"
-            ));
+            return Err(tr!("project.date.invalid", until));
         }
         let entry = Quarantined {
             test: test.to_owned(),
@@ -511,12 +489,7 @@ pub fn default_quarantine_until(today: &str) -> Option<String> {
 
 fn check_hide(hide: &[Rect]) -> Result<(), String> {
     match hide.iter().position(|r| !rect_fits(r)) {
-        Some(i) => Err(format!(
-            "area {} in \"hide\" doesn't fit the window; x, y, width and height are \
-             fractions from 0 to 1 of the window, and the area must have a size and end \
-             inside it",
-            i + 1
-        )),
+        Some(i) => Err(tr!("project.hide.area", i + 1)),
         None => Ok(()),
     }
 }
@@ -530,24 +503,21 @@ fn run_mode(entry: RunModeEntry) -> Result<FolderRunMode, String> {
                 .components()
                 .all(|c| matches!(c, Component::Normal(_))));
     if !valid {
-        return Err(format!(
-            "\"{}\" in \"runModes\" isn't a folder of the project; write its path from the \
-             project folder, such as checkout, or . for the project folder",
-            entry.folder
-        ));
+        return Err(tr!("project.runModes.folder", &entry.folder));
     }
     let mode = match (entry.run, entry.limit) {
         (RunKind::Sequential, None) => RunMode::Sequential,
         (RunKind::Sequential, Some(_)) => {
-            return Err(format!(
-                "\"limit\" of \"{folder}\" in \"runModes\" works only with \"run\": \"parallel\""
-            ));
+            return Err(tr!("project.runModes.limitSequential", folder));
         }
         (RunKind::Parallel, limit) => {
             let limit = limit.unwrap_or(DEFAULT_PARALLEL);
             if !(2..=MAX_PARALLEL).contains(&limit) {
-                return Err(format!(
-                    "\"limit\" of \"{folder}\" in \"runModes\" is {limit}; it must be from 2 to {MAX_PARALLEL}"
+                return Err(tr!(
+                    "project.runModes.limitRange",
+                    folder,
+                    limit,
+                    MAX_PARALLEL
                 ));
             }
             RunMode::Parallel { limit }
@@ -602,30 +572,30 @@ mod tests {
     fn rejects_bad_files() {
         for (text, says) in [
             (r#"{"format":2}"#, "reads up to 1"),
-            (r#"{"format":0}"#, "\"format\" must be 1"),
+            (r#"{"format":0}"#, "“format” must be 1"),
             (r#"{"format":1,"retries":11}"#, "from 0 to 10"),
             (r#"{"format":1,"other":1}"#, "unknown field"),
             (r#"{"format":1,"localOnly":"yes"}"#, "expected a boolean"),
             (
                 r#"{"format":1,"hide":[{"x":0.5,"y":0,"width":0.6,"height":0.1}]}"#,
-                "area 1 in \"hide\"",
+                "area 1 in “hide”",
             ),
             (
                 r#"{"format":1,"hide":[{"x":0,"y":0,"width":0,"height":0.1}]}"#,
-                "area 1 in \"hide\"",
+                "area 1 in “hide”",
             ),
             (r#"{"format":1,"hide":[{"x":0,"y":0}]}"#, "missing field"),
             (
                 r#"{"format":1,"quarantine":[{"test":"../x.flow.json"}]}"#,
-                "isn't a test file",
+                "isn’t a test file",
             ),
             (
                 r#"{"format":1,"quarantine":[{"test":"/x.flow.json"}]}"#,
-                "isn't a test file",
+                "isn’t a test file",
             ),
             (
                 r#"{"format":1,"quarantine":[{"test":"notes.txt"}]}"#,
-                "isn't a test file",
+                "isn’t a test file",
             ),
             (
                 r#"{"format":1,"quarantine":[{"test":"x.flow.json","reason":" "}]}"#,
@@ -830,7 +800,7 @@ mod tests {
         for (bad, says) in [
             (
                 r#"{"format":1,"ai":{"screen":{"provider":"nope"}}}"#,
-                "isn't an AI provider",
+                "isn’t an AI provider",
             ),
             (
                 r#"{"format":1,"ai":{"text":{"provider":"jev"}}}"#,
@@ -923,5 +893,18 @@ mod tests {
         settings.save(&dir).unwrap();
         assert_eq!(ProjectSettings::load(&dir).unwrap(), settings);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn problems_read_in_the_language_asked_for() {
+        let text = r#"{"format":1,"quarantine":[{"test":"x.flow.json","until":"soon"}]}"#;
+        assert_eq!(
+            ProjectSettings::parse(text).unwrap_err(),
+            "“until” of “x.flow.json” in “quarantine” is “soon”; write a date such as 2026-11-03"
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "project.quarantine.until", "x.flow.json", "soon"),
+            "«until» у «x.flow.json» в «quarantine» — «soon»; напишите дату, например 2026-11-03"
+        );
     }
 }

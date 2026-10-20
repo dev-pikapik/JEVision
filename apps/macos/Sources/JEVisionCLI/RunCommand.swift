@@ -33,12 +33,12 @@ struct RunCommand {
       throw UsageError(message: "jevision: \(error.message)")
     }
     if plan.filteredOut > 0 {
-      progress.line(progress.paint("The filter leaves out \(plan.filteredOut) of \(plan.filteredOut + plan.tests.count) tests.", .dim))
+      progress.line(progress.paint(words("cli.run.filteredOut", plan.filteredOut + plan.tests.count, plan.filteredOut), .dim))
     }
     let ai = AISettings.app
     let vision = ai.settings(provider: request.provider, model: request.model)
     if request.model != nil, vision == nil {
-      throw UsageError(message: "jevision: --model needs an AI provider: choose one with --provider or in the app (Settings → AI)")
+      throw UsageError(message: "jevision: " + words("cli.error.modelNeedsProvider"))
     }
     if let problem = Readiness.problem() {
       throw UsageError(message: problem)
@@ -58,12 +58,12 @@ struct RunCommand {
     }
     // Esc Esc stops the run right on the watcher's thread.
     guard input.start(onEmergencyStop: { [session] in session.stop() }) else {
-      throw UsageError(message: "jevision: macOS didn’t let jevision watch the keyboard, so Esc Esc couldn’t stop a run.")
+      throw UsageError(message: "jevision: " + words("cli.run.noKeyboardWatch"))
     }
     defer { input.stop() }
     let interrupts = Interrupts.install { [session, progress] in
       session.stop()
-      progress.line(progress.paint("Press Ctrl-C again to quit at once.", .dim))
+      progress.line(progress.paint(words("cli.run.pressAgain"), .dim))
     }
     return withExtendedLifetime(interrupts) { session.runAll() }
   }
@@ -80,24 +80,23 @@ struct RunCommand {
     for path in request.paths {
       // The app lists tests without the suffix, so `notes/add-milk` runs notes/add-milk.flow.json.
       guard let real = realPath(path) ?? realPath(path + ".flow.json") else {
-        throw UsageError(message: "there is no file or folder “\(path)”")
+        throw UsageError(message: words("cli.error.noFileOrFolder", path))
       }
       targets.append(real)
     }
     var (tests, _) = collectTests(targets)
     guard !tests.isEmpty else {
-      throw UsageError(message: "there are no tests (*.flow.json files) in \(request.paths.joined(separator: ", "))")
+      throw UsageError(message: words("cli.error.noTests", request.paths.joined(separator: ", ")))
     }
     let project: String
     if let given = request.project {
-      guard let real = realPath(given), isFolder(real) else { throw UsageError(message: "there is no folder “\(given)”") }
+      guard let real = realPath(given), isFolder(real) else { throw UsageError(message: words("cli.error.noFolder", given)) }
       project = real
     } else {
       project = defaultProject(for: targets[0], tests: tests)
     }
     if let outside = tests.first(where: { !isInside($0, project) }) {
-      throw UsageError(
-        message: "“\(outside)” is outside the project folder \(project). Choose a folder that holds all the tests with --project.")
+      throw UsageError(message: words("cli.error.outsideProject", outside, project))
     }
     let named = tests.count
     tests = try chosen(tests, by: request.filter, in: project)
@@ -124,7 +123,7 @@ struct RunCommand {
     }
     let kept = filterTests(filter: filter, cards: cards).map { tests[Int($0)] }
     guard !kept.isEmpty else {
-      throw UsageError(message: "no test fits the filter (\(tests.count) tests named); check --type, --priority, --status, --author and --flaky")
+      throw UsageError(message: words("cli.error.noTestFits", tests.count))
     }
     return kept
   }
@@ -135,10 +134,9 @@ struct RunCommand {
     let all = try readEnvironments(in: project) { try projectEnvironments(project: project) }
     guard !all.contains(where: { $0.name == name }) else { return }
     if all.isEmpty {
-      throw UsageError(message: "there is no environment “\(name)”: the project has no \(file) in \(project)")
+      throw UsageError(message: words("cli.error.noEnvironmentsFile", name, file, project))
     }
-    throw UsageError(
-      message: "there is no environment “\(name)” in \(file); use one of: \(all.map(\.name).joined(separator: ", "))")
+    throw UsageError(message: words("cli.error.noEnvironment", name, file, all.map(\.name).joined(separator: ", ")))
   }
 
   /// What `read` gets from the environments file of `project`, or why the file can't be read.
@@ -147,9 +145,9 @@ struct RunCommand {
     do {
       return try read()
     } catch EnvironmentsError.Unreadable(_, let reason) {
-      throw UsageError(message: "\(file) in \(project) can’t be read: \(reason)")
+      throw UsageError(message: words("cli.error.environmentsUnreadable", file, project, reason))
     } catch {
-      throw UsageError(message: "\(file) in \(project) can’t be read: \(error.localizedDescription)")
+      throw UsageError(message: words("cli.error.environmentsUnreadable", file, project, error.localizedDescription))
     }
   }
 
@@ -193,9 +191,9 @@ struct RunCommand {
     if let junit = request.junit {
       do {
         try exportJunit(dirs: runs, to: junit, includeQuarantinedFailures: request.includeQuarantinedFailures)
-        progress.line(progress.paint("JUnit report: \(junit)", .dim))
+        progress.line(progress.paint(words("cli.run.junitReport", junit), .dim))
       } catch {
-        Console.standardError.line("\(junit): cannot write: \(error)")
+        Console.standardError.line(words("cli.error.cannotWrite", junit, "\(error)"))
         status = .failure
       }
     }
@@ -205,9 +203,9 @@ struct RunCommand {
         for dir in runs {
           try exportHtml(dir: dir, to: (folder as NSString).appendingPathComponent((dir as NSString).lastPathComponent + ".html"))
         }
-        if !runs.isEmpty { progress.line(progress.paint("HTML reports: \(folder)", .dim)) }
+        if !runs.isEmpty { progress.line(progress.paint(words("cli.run.htmlReports", folder), .dim)) }
       } catch {
-        Console.standardError.line("\(folder): cannot write: \(error)")
+        Console.standardError.line(words("cli.error.cannotWrite", folder, "\(error)"))
         status = .failure
       }
     }
@@ -357,7 +355,7 @@ final class TestSession: @unchecked Sendable {
     }
     runs.forEach { $0.cancel() }
     guard !wasStopped else { return }
-    emit("\n" + progress.paint("Stopping…", .yellow) + "\n")
+    emit("\n" + progress.paint(words("cli.run.stopping"), .yellow) + "\n")
   }
 
   /// Writes `text` in one piece, so it doesn't mix with what another test prints.
@@ -367,7 +365,6 @@ final class TestSession: @unchecked Sendable {
 
   func runAll() -> [TestResult] {
     let started = Date()
-    let count = tests.count == 1 ? "1 test" : "\(tests.count) tests"
     let mode: RunMode = request.parallel.map { .parallel(limit: $0) } ?? .sequential
     let batch = TestBatch(
       project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: mode)
@@ -376,14 +373,14 @@ final class TestSession: @unchecked Sendable {
     let limit = request.parallel ?? 1
     let sideBySide = limit > 1 && entries.count > 1 && entries.contains { !$0.usesScreen }
     emit(
-      "Running \(count) in \(project)" + (sideBySide ? ", up to \(limit) at a time" : "")
-        + ". Press Esc twice or Ctrl-C to stop.\n")
+      (sideBySide
+        ? words("cli.run.startingSideBySide", tests.count, project, limit) : words("cli.run.starting", tests.count, project)) + "\n")
     if limit > 1, entries.count > 1, !sideBySide {
-      emit(progress.paint("Every test uses the screen, so they run one at a time.", .dim) + "\n")
+      emit(progress.paint(words("cli.run.screenOneAtATime"), .dim) + "\n")
     }
     let added = entries.filter(\.added).map(\.name)
     if !added.isEmpty {
-      emit(progress.paint("Also running, because other tests depend on them: \(added.joined(separator: ", "))", .dim) + "\n")
+      emit(progress.paint(words("cli.run.addedDependencies", added.joined(separator: ", ")), .dim) + "\n")
     }
     lock.withLock { outcomes = Array(repeating: nil, count: entries.count) }
     func saveBlockedTests() {
@@ -460,10 +457,10 @@ final class TestSession: @unchecked Sendable {
     defer { emit(text) }
     switch outcome {
     case .finished(let dir, let html, let report):
-      text += "  " + progress.paint("Report: \(html ?? dir)", .dim) + "\n"
+      text += "  " + progress.paint(words("cli.run.report", html ?? dir), .dim) + "\n"
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason):
-      text += "  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red) + "\n"
+      text += "  " + progress.paint("✗ " + words("cli.run.notSaved", reason), .red) + "\n"
       return .error(reason)
     }
   }
@@ -499,10 +496,10 @@ final class TestSession: @unchecked Sendable {
       printVerdict(report, dir: dir, html: html ?? dir, to: console)
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
-      console.line("  " + console.paint("✗ The run couldn’t be saved: \(reason)", .red))
+      console.line("  " + console.paint("✗ " + words("cli.run.notSaved", reason), .red))
       return .error(reason)
     case nil:
-      return .error("The run ended without a result.")
+      return .error(words("cli.run.noResult"))
     }
   }
 
@@ -514,13 +511,13 @@ final class TestSession: @unchecked Sendable {
     do {
       lines = try notifyRuns(project: project, dirs: dirs).map { sent in
         let channel = notifyChannelName(channel: sent.channel)
-        guard let failure = sent.failure else { return "  Message sent to \(channel)" }
-        return "  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red)
+        guard let failure = sent.failure else { return "  " + words("cli.run.messageSent", channel) }
+        return "  " + progress.paint("✗ " + words("cli.run.messageFailed", channel, notifyErrorMessage(error: failure)), .red)
       }
     } catch let error as NotifyError {
-      lines = ["  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red)]
+      lines = ["  " + progress.paint("✗ " + words("cli.run.noMessages", notifyErrorMessage(error: error)), .red)]
     } catch {
-      lines = ["  " + progress.paint("✗ No messages sent: \(error)", .red)]
+      lines = ["  " + progress.paint("✗ " + words("cli.run.noMessages", "\(error)"), .red)]
     }
     if !lines.isEmpty { progress.line() }
     lines.forEach { progress.line($0) }
@@ -535,62 +532,64 @@ final class TestSession: @unchecked Sendable {
     let line =
       switch report.verdict {
       case .passed where report.nothingChecked:
-        console.paint("Finished in \(took), but nothing was checked: the test has no check or wait block that looks at the screen", .yellow)
+        console.paint(nothingChecked(), .yellow) + "  " + console.paint(took, .dim)
       case .passed:
-        console.paint(
-          report.flaky ? "Passed on attempt \(attempts) in \(took). It failed before, so it may be flaky." : "Passed in \(took)",
-          .green)
-      case .failed where report.quarantined: console.paint("Failed in \(took), in quarantine", .yellow)
-      case .failed: console.paint("Failed in \(took)", .red)
-      case .cancelled: console.paint("Stopped", .yellow)
-      case .blocked: console.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
-      case .unknown: console.paint("Unknown status", .yellow)
+        console.paint(report.flaky ? words("cli.run.passedFlaky", attempts, took) : words("cli.run.passed", took), .green)
+      case .failed where report.quarantined: console.paint(words("cli.run.failedQuarantined", took), .yellow)
+      case .failed: console.paint(words("cli.run.failed", took), .red)
+      case .cancelled: console.paint(words("cli.run.stopped"), .yellow)
+      case .blocked: console.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? words("report.status.blocked"), .yellow)
+      case .unknown: console.paint(words("report.status.unknown"), .yellow)
       }
     console.line("  " + line)
     if !report.rows.isEmpty {
       let passed = report.rows.count { $0.verdict == .passed }
-      let rows = report.rows.count == 1 ? "1 row" : "\(report.rows.count) rows"
-      console.line("  \(passed) of \(rows) passed")
+      console.line("  " + words("cli.run.rowsPassed", report.rows.count, passed))
       for row in report.rows where row.verdict != .passed {
-        let color: Console.Style = row.verdict == .cancelled ? .yellow : .red
-        let verdict = row.verdict == .cancelled ? "stopped" : "failed"
-        console.line("    " + console.paint("\(row.row.title) \(verdict)", color))
+        let stopped = row.verdict == .cancelled
+        console.line(
+          "    " + console.paint(stopped ? words("cli.run.rowStopped", row.row.title) : words("cli.run.rowFailed", row.row.title), stopped ? .yellow : .red))
       }
     }
     if report.verdict == .failed, let verdict = retryVerdict(report: report) {
       console.line("  " + describeRetryVerdict(verdict: verdict))
     }
     if report.quarantined {
-      let reason = report.quarantineReason.map { " (\($0))" } ?? ""
-      console.line(
-        "  In quarantine\(reason): "
-          + (request.includeQuarantinedFailures ? "its failures count." : "its failures don't fail the run."))
+      let counts = request.includeQuarantinedFailures
+      let text =
+        switch report.quarantineReason {
+        case let reason?: counts ? words("cli.run.quarantineCountsBecause", reason) : words("cli.run.quarantineHoldsBecause", reason)
+        case nil: counts ? words("cli.run.quarantineCounts") : words("cli.run.quarantineHolds")
+        }
+      console.line("  " + text)
     }
     if !report.baselinesCreated.isEmpty {
-      console.line("  New reference images: \(report.baselinesCreated.joined(separator: ", ")). Look at them and commit them.")
+      console.line("  " + words("cli.run.newReferences", report.baselinesCreated.joined(separator: ", ")))
     }
-    console.line("  " + console.paint("Report: \(html)", .dim))
+    console.line("  " + console.paint(words("cli.run.report", html), .dim))
     if let video = report.video {
-      console.line("  " + console.paint("Video: \(URL(filePath: dir).appending(path: video).path)", .dim))
+      console.line("  " + console.paint(words("cli.run.video", URL(filePath: dir).appending(path: video).path), .dim))
     }
   }
 
   private func printSummary(_ results: [TestResult], duration seconds: TimeInterval) {
     let count = { (verdict: String) in results.count { $0.verdict == verdict } }
     var parts: [String] = []
-    if count("passed") > 0 { parts.append(progress.paint("\(count("passed")) passed", .green)) }
-    if count("nothingChecked") > 0 { parts.append(progress.paint("\(count("nothingChecked")) checked nothing", .yellow)) }
-    if count("failed") > 0 { parts.append(progress.paint("\(count("failed")) failed", .red)) }
+    if count("passed") > 0 { parts.append(progress.paint(words("cli.summary.passed", count("passed")), .green)) }
+    if count("nothingChecked") > 0 { parts.append(progress.paint(words("cli.summary.nothingChecked", count("nothingChecked")), .yellow)) }
+    if count("failed") > 0 { parts.append(progress.paint(words("cli.summary.failed", count("failed")), .red)) }
     if count("quarantined") > 0 {
-      parts.append(progress.paint("\(count("quarantined")) failed in quarantine", request.includeQuarantinedFailures ? .red : .yellow))
+      parts.append(
+        progress.paint(words("cli.summary.quarantined", count("quarantined")), request.includeQuarantinedFailures ? .red : .yellow))
     }
-    if count("blocked") > 0 { parts.append(progress.paint("\(count("blocked")) blocked", .yellow)) }
-    if count("cancelled") > 0 { parts.append(progress.paint("\(count("cancelled")) stopped", .yellow)) }
-    if count("notRun") > 0 { parts.append(progress.paint("\(count("notRun")) not run", .yellow)) }
-    if count("error") > 0 { parts.append(progress.paint("\(count("error")) couldn’t be saved", .red)) }
-    let total = results.count == 1 ? "1 test" : "\(results.count) tests"
+    if count("blocked") > 0 { parts.append(progress.paint(words("cli.summary.blocked", count("blocked")), .yellow)) }
+    if count("cancelled") > 0 { parts.append(progress.paint(words("cli.summary.stopped", count("cancelled")), .yellow)) }
+    if count("notRun") > 0 { parts.append(progress.paint(words("cli.summary.notRun", count("notRun")), .yellow)) }
+    if count("error") > 0 { parts.append(progress.paint(words("cli.summary.notSaved", count("error")), .red)) }
     progress.line()
-    progress.line(progress.paint("\(total) in \(duration(UInt64(seconds * 1000))): ", .bold) + parts.joined(separator: ", "))
+    progress.line(
+      progress.paint(words("cli.summary.total", results.count, duration(UInt64(seconds * 1000))), .bold) + " "
+        + parts.joined(separator: ", "))
   }
 }
 
@@ -631,10 +630,10 @@ private final class Progress: RunListener, @unchecked Sendable {
     case .rowStarted(let row, let rows, let label):
       closeLine()
       let title = DataRow(number: row, label: label).title
-      console.line("  " + console.paint("\(title) (\(row) of \(rows))", .bold))
+      console.line("  " + console.paint(words("cli.run.rowProgress", title, row, rows), .bold))
     case .attemptStarted(let attempt):
       failureShown = false
-      if attempt > 1 { console.line("  Attempt \(attempt) of \(maxAttempts)") }
+      if attempt > 1 { console.line("  " + words("cli.run.attempt", attempt, maxAttempts)) }
     case .stepStarted(_, let seq, let test, let block, let type, _, _):
       guard console.live else { return }
       console.write("  " + console.paint("…", .dim) + " " + label(seq, block, type, test))
@@ -652,7 +651,7 @@ private final class Progress: RunListener, @unchecked Sendable {
       var text = "  \(mark) \(label(step.seq, step.block, step.blockType, step.test))  "
       text += console.paint(duration(step.durationMs), .dim)
       if step.status == .baselineCreated, let reference = step.reference {
-        text += "  new reference \(reference)"
+        text += "  " + words("cli.run.newReference", reference)
       }
       if let branch = branchText(step: step) {
         text += "  " + branch
@@ -668,21 +667,19 @@ private final class Progress: RunListener, @unchecked Sendable {
     case .paused(_, let reason, _):
       closeLine()
       guard reason == .userInput else { return }
-      console.line(
-        console.paint(
-          "  Paused: someone used the mouse or keyboard. The test goes on when they rest for \(Int(InputWatcher.idleTime)) seconds.",
-          .yellow))
+      console.line("  " + console.paint(words("cli.run.paused", Int(InputWatcher.idleTime)), .yellow))
       paused()
     case .resumed:
-      console.line("  Going on")
+      console.line("  " + words("cli.run.resumed"))
     case .waitingForScreen(let holder):
       closeLine()
-      var text = "  Screen busy: another run is using it. Waiting for it."
+      var text = words("cli.run.screenBusy")
       if let holder {
-        let since = Date(timeIntervalSince1970: TimeInterval(holder.since)).formatted(date: .omitted, time: .shortened)
-        text = "  Screen busy: \(holder.process), test \(holder.test), since \(since). Waiting for it."
+        let since = Date(timeIntervalSince1970: TimeInterval(holder.since))
+          .formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(Locale(identifier: currentLanguage())))
+        text = words("cli.run.screenBusyWith", holder.process, holder.test, since)
       }
-      console.line(console.paint(text, .yellow))
+      console.line("  " + console.paint(text, .yellow))
     case .attemptFinished(_, _, let failure):
       closeLine()
       if let failure, !failureShown {
@@ -701,8 +698,8 @@ private final class Progress: RunListener, @unchecked Sendable {
 
   private func label(_ seq: UInt32, _ block: String, _ type: String, _ test: String) -> String {
     let number = blockCount.map { "\(seq)/\($0)" } ?? "\(seq)"
-    var text = "\(number) \(block) " + console.paint("· \(Self.names[type] ?? type)", .dim)
-    if test != file { text += console.paint("  in \(test)", .dim) }
+    var text = "\(number) \(block) " + console.paint("· \(Self.name(of: type))", .dim)
+    if test != file { text += console.paint("  " + words("cli.run.inTest", test), .dim) }
     return text
   }
 
@@ -713,21 +710,44 @@ private final class Progress: RunListener, @unchecked Sendable {
     lineOpen = false
   }
 
-  private static let names = [
-    "openApp": "open app", "openFile": "open file", "click": "click", "hover": "hover", "drag": "drag",
-    "scroll": "scroll", "type": "type text",
-    "pressKeys": "press keys", "waitFor": "wait", "pause": "pause", "check": "check", "if": "if", "repeat": "repeat",
-    "useData": "use data", "runTest": "run test", "script": "script", "command": "command", "http": "http",
-    "checkFile": "wait for file", "database": "database", "clipboard": "clipboard", "dateTime": "date and time",
-  ]
+  /// The block type in words, as the steps of a run list it.
+  private static func name(of type: String) -> String {
+    switch type {
+    case "openApp": words("cli.block.openApp")
+    case "openFile": words("cli.block.openFile")
+    case "click": words("cli.block.click")
+    case "hover": words("cli.block.hover")
+    case "drag": words("cli.block.drag")
+    case "scroll": words("cli.block.scroll")
+    case "type": words("cli.block.type")
+    case "pressKeys": words("cli.block.pressKeys")
+    case "waitFor": words("cli.block.waitFor")
+    case "pause": words("cli.block.pause")
+    case "check": words("cli.block.check")
+    case "if": words("cli.block.if")
+    case "repeat": words("cli.block.repeat")
+    case "useData": words("cli.block.useData")
+    case "runTest": words("cli.block.runTest")
+    case "script": words("cli.block.script")
+    case "command": words("cli.block.command")
+    case "http": words("cli.block.http")
+    case "checkFile": words("cli.block.checkFile")
+    case "database": words("cli.block.database")
+    case "clipboard": words("cli.block.clipboard")
+    case "dateTime": words("cli.block.dateTime")
+    default: type
+    }
+  }
 }
 
-/// `1.4 s`, `12 s`, `2 min 5 s`.
+/// `1.4 s`, `12 s`, `2 min 5 s`, in the language of the command line.
 func duration(_ milliseconds: UInt64) -> String {
   switch milliseconds {
-  case ..<10_000: String(format: "%.1f s", Double(milliseconds) / 1000)
-  case ..<60_000: "\(milliseconds / 1000) s"
-  default: "\(milliseconds / 60_000) min \(milliseconds / 1000 % 60) s"
+  case ..<10_000:
+    let seconds = (Double(milliseconds) / 1000).formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: currentLanguage())))
+    return words("report.duration.s", seconds)
+  case ..<60_000: return words("report.duration.s", String(milliseconds / 1000))
+  default: return words("notify.duration.minutes", milliseconds / 60_000, milliseconds / 1000 % 60)
   }
 }
 
@@ -751,7 +771,7 @@ enum Interrupts {
 
 extension DataRow {
   /// "Row 2: anna", or "Row 2" when the row has no label.
-  var title: String { label.isEmpty ? "Row \(number)" : "Row \(number): \(label)" }
+  var title: String { label.isEmpty ? words("report.row.titleBare", number) : words("report.row.title", number, label) }
 }
 
 extension RowResult {

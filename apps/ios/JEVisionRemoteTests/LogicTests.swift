@@ -1,4 +1,5 @@
 import Foundation
+import func JEVisionMobile.currentLanguage
 import LocalAuthentication
 import Testing
 
@@ -432,7 +433,18 @@ struct CardAndQueueTextTests {
     let since = Date(timeIntervalSince1970: 1_800_000_000)
     let holder = ScreenHolder(process: "jevision", test: "Sign in", since: since)
     let time = since.formatted(date: .omitted, time: .shortened)
-    #expect(RunText.screenBusy(holder) == String(localized: "screen.busy", defaultValue: "Screen busy: \("jevision"), test \("Sign in"), since \(time)"))
-    #expect(RunText.screenBusy(nil) == String(localized: "screen.busy.unknown", defaultValue: "Screen busy: another run is using it."))
+    CoreLanguage.apply(["en"])
+    #expect(RunText.screenBusy(holder) == "Screen busy: jevision, test Sign in, since \(time)")
+    #expect(RunText.screenBusy(nil) == "Screen busy: another run is using it.")
+  }
+
+  @Test func theCoreWordsFailuresInTheLanguageOfThePhone() {
+    CoreLanguage.apply(["en-GB"])
+    #expect(currentLanguage() == "en")
+    let failure = Failure(code: "run.target.notFound", params: ["block": "open", "image": "x.png"])
+    #expect(RunText.failure(failure) == "Block “open”: x.png wasn’t found on the screen.")
+    #expect(RunText.branch("then", branches: 2, condition: nil) == "Took “Yes”")
+    #expect(RunText.branch("then", branches: 3, condition: "An empty document") == "Took “Condition 1: An empty document”")
+    #expect(VisionText.failure(Failure(code: "run.vision.noModel", params: ["provider": "Ollama"])).contains("Ollama"))
   }
 }

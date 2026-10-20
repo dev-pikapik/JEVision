@@ -65,7 +65,7 @@ fn bring_in(
 ) -> Result<usize, GitError> {
     if artifact.size > LARGEST {
         return Err(GitError::Failed {
-            message: "The files from the CI run are too large to download".into(),
+            message: jevision_l10n::tr!("git.error.artifactTooLarge"),
         });
     }
     let folder = project.join(".jevision");

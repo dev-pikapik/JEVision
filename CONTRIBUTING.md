@@ -45,10 +45,39 @@ apps/macos/build/JEVision.app/Contents/Helpers/jevision validate examples
 CI also builds the core for Swift on its own and tests the generated bindings:
 `scripts/build-core-apple.sh && swift test --package-path build/apple/JEVisionCore`.
 
-Every text the app shows lives in
-[`Localizable.xcstrings`](apps/macos/Resources/Localizable.xcstrings), translated into every
-language. `build.sh` runs `apps/macos/scripts/check-localization.py`, which fails when a text is
-missing there, a key is no longer used or a translation doesn't match.
+## Languages and localization
+
+Every text a person reads lives in one file,
+[`Localizable.xcstrings`](apps/macos/Resources/Localizable.xcstrings): the Mac app, the reports,
+bug drafts, notifications, the command line and the iPhone app all take their words from it.
+English is the source language and Russian is translated; a key with no text in a language is
+an error, not a blank.
+
+- The Rust core never holds a phrase in code, only a key and its values: a failed block is
+  `run.check.mismatch` with `block`, `image`, `similarity` and `threshold`. Whoever shows
+  it builds the words in the language it was asked for: `tr!("key", …)` in the current language,
+  `tr_in!(lang, "key", …)` in a given one (crate `jevision-l10n`). The saved report keeps
+  codes and values, so a report written in one language can be read in another.
+- A key is either dotted (`run.secret.missing`) with an `en` text of its own, or the English
+  text itself (`%@ is connected with %lld tools.`). Arguments are `%@` for text and `%lld` for
+  numbers, `%1$@` to reorder them. A text with a count is a plural with the forms the language
+  needs (`one`, `few`, `many`, `other` for Russian), and the first number in the arguments picks
+  the form.
+- The app uses its own language setting, the command line takes `--lang en|ru` (the system
+  language when it is not given, English in CI), and the core reads the language it is handed.
+  Dates and numbers follow the system formatting; don't write them into a text. Each of them
+  also hands the core the decimal and grouping separators of that language in the system's
+  region (`set_number_format`), and `jevision_l10n::decimal` writes numbers in the current
+  language with them; until then, and in any other language, a number has the language's own
+  decimal separator and no grouping.
+- `apps/macos/scripts/check-localization.py` runs in `build.sh` and in CI. It fails when a text
+  or a key the core asks for is missing from the catalog, a key is no longer used by the app or
+  the core, a language lacks a translation or a plural form, or the arguments of a translation
+  differ from the English text. Write every key out in full: the check rejects a key built with `format!`.
+- To add a language, add its translation of every text to the catalog (Xcode's String Catalog
+  editor works). The check, the language picker and the core pick it up; a language whose
+  plural forms are not `one`/`other` also needs its rule in `plural_category`
+  (`crates/jevision-l10n`) and in `PLURALS` of `check-localization.py`.
 
 ## Test files
 

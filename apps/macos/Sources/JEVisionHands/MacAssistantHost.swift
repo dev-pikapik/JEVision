@@ -59,8 +59,7 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
     let input = InputWatcher()
     // Esc Esc stops the run right on the watcher's thread.
     guard input.start(onEmergencyStop: { run.cancel() }) else {
-      throw HandsError.Failed(
-        reason: "macOS didn’t let jevision watch the keyboard, so pressing Esc twice couldn’t stop the test. The person at this Mac can allow Accessibility for the app that runs jevision.")
+      throw HandsError.Failed(reason: handsWords("hands.keyboard.watchRefused"))
     }
     lock.withLock { self.input = input }
     return MacHands(input: input, isCancelled: { run.isCancelled() })

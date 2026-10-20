@@ -5,7 +5,8 @@ use std::fs;
 use std::path::{Component, Path};
 
 use jevision_core::BlockReason;
-use jevision_runner::{Run, RunReport, StepStatus, Verdict, describe};
+use jevision_l10n::{decimal, language, tr_in};
+use jevision_runner::{CiOrigin, Run, RunReport, StepStatus, Verdict, describe_in};
 
 use crate::{NotificationSettings, NotifyChannel, NotifyWhen};
 
@@ -26,15 +27,23 @@ pub struct Message {
     pub body: String,
     /// The same things in parts, for Slack and mail to lay out their own way.
     pub details: Details,
+    /// The language the message is written in, like `en`.
+    pub lang: String,
 }
 
 impl Message {
-    /// A message with the plain text made from `details`.
+    /// A message with the plain text made from `details`, in the process language.
     pub fn new(title: String, details: Details) -> Self {
+        Self::new_in(&language(), title, details)
+    }
+
+    /// [`Message::new`] in `lang`.
+    pub fn new_in(lang: &str, title: String, details: Details) -> Self {
         Self {
             title,
-            body: details.text(),
+            body: details.text(lang),
             details,
+            lang: lang.to_owned(),
         }
     }
 
@@ -74,17 +83,18 @@ pub struct Details {
 }
 
 impl Details {
-    fn text(&self) -> String {
+    fn text(&self, lang: &str) -> String {
         let mut lines: Vec<String> = self.lead.iter().cloned().collect();
         lines.extend(self.failures.iter().map(|f| match f.reason.as_str() {
             "" => format!("• {}", f.test),
             reason => format!("• {}: {reason}", f.test),
         }));
         if self.unlisted > 0 {
-            lines.push(format!("and {} more", self.unlisted));
+            lines.push(tr_in!(lang, "and %lld more", self.unlisted));
         }
         if !self.fixed.is_empty() {
-            lines.push(format!("Fixed: {}", self.fixed.join(", ")));
+            let fixed = tr_in!(lang, "notify.fixed");
+            lines.push(format!("{fixed}: {}", self.fixed.join(", ")));
         }
         if !self.facts.is_empty() {
             let facts: Vec<String> = self
@@ -118,6 +128,8 @@ pub struct ReportLink {
     pub target: String,
     /// `target` is a web address.
     pub is_link: bool,
+    /// The CI system whose page `target` is, like `GitHub Actions`; empty for a path.
+    pub system: String,
 }
 
 /// A screenshot as the report keeps it: private areas already covered.
@@ -215,6 +227,17 @@ pub fn notice_for(
     runs: &[Finished],
     unattended: bool,
 ) -> Option<Notice> {
+    notice_for_in(&language(), settings, project, runs, unattended)
+}
+
+/// [`notice_for`] with the message in `lang`.
+pub fn notice_for_in(
+    lang: &str,
+    settings: &NotificationSettings,
+    project: &str,
+    runs: &[Finished],
+    unattended: bool,
+) -> Option<Notice> {
     if runs.is_empty()
         || (settings.unattended_only && !unattended)
         || runs
@@ -229,7 +252,7 @@ pub fn notice_for(
         .filter(|c| settings.when(*c).is_some_and(|when| when.due(runs)))
         .collect();
     (!channels.is_empty()).then(|| Notice {
-        message: message(project, runs),
+        message: message_in(lang, project, runs),
         channels,
     })
 }
@@ -237,44 +260,57 @@ pub fn notice_for(
 /// The message about `runs`: for one, what happened, why, how long it took and where the
 /// report is; for several, how many passed, failed, were skipped or blocked, and which failed.
 pub fn message(project: &str, runs: &[Finished]) -> Message {
+    message_in(&language(), project, runs)
+}
+
+/// [`message`] in `lang`.
+pub fn message_in(lang: &str, project: &str, runs: &[Finished]) -> Message {
     match runs {
-        [one] => single(one),
-        _ => summary(project, runs),
+        [one] => single(lang, one),
+        _ => summary(lang, project, runs),
     }
 }
 
-fn single(finished: &Finished) -> Message {
+fn single(lang: &str, finished: &Finished) -> Message {
     let run = &finished.run;
     let report = &run.report;
-    let (outcome, tone) = match report.verdict {
-        Verdict::Failed => ("Failed", Tone::Bad),
-        Verdict::Passed if finished.fixed() => ("Fixed", Tone::Good),
-        Verdict::Passed => ("Passed", Tone::Good),
-        Verdict::Cancelled => ("Stopped", Tone::Neutral),
-        Verdict::Blocked => ("Blocked", Tone::Neutral),
-        Verdict::Unknown => ("Unknown status", Tone::Neutral),
+    let name = finished.name();
+    let (title, tone) = match report.verdict {
+        Verdict::Failed => (tr_in!(lang, "notify.single.failed", &name), Tone::Bad),
+        Verdict::Passed if finished.fixed() => {
+            (tr_in!(lang, "notify.single.fixed", &name), Tone::Good)
+        }
+        Verdict::Passed => (tr_in!(lang, "notify.single.passed", &name), Tone::Good),
+        Verdict::Cancelled => (tr_in!(lang, "notify.single.stopped", &name), Tone::Neutral),
+        Verdict::Blocked => (tr_in!(lang, "notify.single.blocked", &name), Tone::Neutral),
+        Verdict::Unknown => (tr_in!(lang, "notify.single.unknown", &name), Tone::Neutral),
     };
     let mut facts = vec![
-        ("Took".to_owned(), duration(report.duration_ms)),
-        ("File".to_owned(), report.file.clone()),
+        (
+            tr_in!(lang, "notify.fact.took"),
+            duration(lang, report.duration_ms),
+        ),
+        (tr_in!(lang, "File"), report.file.clone()),
     ];
-    facts.extend(context(std::slice::from_ref(report)));
-    Message::new(
-        format!("{outcome}: {}", finished.name()),
+    facts.extend(context(lang, std::slice::from_ref(report)));
+    Message::new_in(
+        lang,
+        title,
         Details {
             tone,
-            lead: reason(report),
+            lead: reason(lang, report),
             facts,
             report: Some(report_link(
+                lang,
                 &run.dir.join("report.html"),
-                "Report on the Mac that ran it",
+                tr_in!(lang, "notify.report.onMac"),
             )),
             ..Details::default()
         },
     )
 }
 
-fn summary(project: &str, runs: &[Finished]) -> Message {
+fn summary(lang: &str, project: &str, runs: &[Finished]) -> Message {
     let total = runs.len();
     let (mut passed, mut failed, mut skipped, mut blocked) = (0, 0, 0, 0);
     for run in runs {
@@ -294,44 +330,48 @@ fn summary(project: &str, runs: &[Finished]) -> Message {
     let failures: Vec<&Finished> = runs.iter().filter(|r| r.failed()).collect();
 
     let (title, tone) = if failed > 0 {
-        (format!("Failed: {failed} of {}", tests(total)), Tone::Bad)
+        (
+            tr_in!(lang, "notify.summary.failed", total, failed),
+            Tone::Bad,
+        )
     } else if blocked > 0 {
         (
-            format!("Blocked: {blocked} of {}", tests(total)),
+            tr_in!(lang, "notify.summary.blocked", total, blocked),
             Tone::Neutral,
         )
     } else if !fixed.is_empty() {
         (
-            format!("Fixed: {} passing again", tests(fixed.len())),
+            tr_in!(lang, "notify.summary.fixed", fixed.len()),
             Tone::Good,
         )
     } else {
-        (format!("Passed: {}", tests(total)), Tone::Good)
+        (tr_in!(lang, "notify.summary.passed", total), Tone::Good)
     };
 
     let mut facts = vec![
-        ("Passed".to_owned(), passed.to_string()),
-        ("Failed".to_owned(), failed.to_string()),
+        (tr_in!(lang, "notify.fact.passed"), passed.to_string()),
+        (tr_in!(lang, "notify.fact.failed"), failed.to_string()),
     ];
     if skipped > 0 {
-        facts.push(("Skipped".to_owned(), skipped.to_string()));
+        facts.push((tr_in!(lang, "notify.fact.skipped"), skipped.to_string()));
     }
     if blocked > 0 {
-        facts.push(("Blocked".to_owned(), blocked.to_string()));
+        facts.push((tr_in!(lang, "notify.fact.blocked"), blocked.to_string()));
     }
     let took = runs.iter().map(|r| r.report().duration_ms).sum();
-    facts.push(("Took".to_owned(), duration(took)));
+    facts.push((tr_in!(lang, "notify.fact.took"), duration(lang, took)));
     if !project.is_empty() {
-        facts.push(("Project".to_owned(), project.to_owned()));
+        facts.push((tr_in!(lang, "notify.fact.project"), project.to_owned()));
     }
     let reports: Vec<RunReport> = runs.iter().map(|r| r.report().clone()).collect();
-    facts.extend(context(&reports));
+    facts.extend(context(lang, &reports));
 
     let runs_folder = runs
         .first()
         .and_then(|r| r.run.dir.parent())
         .unwrap_or(Path::new(""));
-    Message::new(
+    Message::new_in(
+        lang,
         title,
         Details {
             tone,
@@ -342,51 +382,52 @@ fn summary(project: &str, runs: &[Finished]) -> Message {
                 .take(MAX_LISTED)
                 .map(|f| FailedTest {
                     test: f.name(),
-                    reason: clip(&reason(f.report()).unwrap_or_default(), MAX_REASON),
+                    reason: clip(&reason(lang, f.report()).unwrap_or_default(), MAX_REASON),
                 })
                 .collect(),
             unlisted: failures.len().saturating_sub(MAX_LISTED),
             fixed,
-            report: Some(report_link(runs_folder, "Reports on the Mac that ran them")),
+            report: Some(report_link(
+                lang,
+                runs_folder,
+                tr_in!(lang, "notify.report.onMacMany"),
+            )),
             picture: None,
         },
     )
 }
 
 /// The schedule and environment the runs went by, as facts.
-fn context(reports: &[RunReport]) -> Vec<(String, String)> {
+fn context(lang: &str, reports: &[RunReport]) -> Vec<(String, String)> {
     let first =
         |pick: fn(&RunReport) -> &Option<String>| reports.iter().find_map(|r| pick(r).clone());
     [
-        ("Schedule", first(|r| &r.schedule)),
-        ("Environment", first(|r| &r.environment)),
+        (tr_in!(lang, "Schedule"), first(|r| &r.schedule)),
+        (
+            tr_in!(lang, "report.fact.environment"),
+            first(|r| &r.environment),
+        ),
     ]
     .into_iter()
-    .filter_map(|(label, value)| Some((label.to_owned(), value?)))
+    .filter_map(|(label, value)| Some((label, value?)))
     .collect()
 }
 
-/// The CI run's page when the runs are part of one; otherwise `path` on this Mac.
-fn report_link(path: &Path, on_this_mac: &str) -> ReportLink {
-    match ci_run_url() {
-        Some(url) => ReportLink {
-            label: "Report".into(),
+/// The page of the CI run when the runs are part of one; otherwise `path` on this Mac.
+fn report_link(lang: &str, path: &Path, on_this_mac: String) -> ReportLink {
+    match CiOrigin::from_env().and_then(|ci| Some((ci.run_url?, ci.system))) {
+        Some((url, system)) => ReportLink {
+            label: tr_in!(lang, "notify.report.label"),
             is_link: url.starts_with("https://") || url.starts_with("http://"),
             target: url,
+            system,
         },
         None => ReportLink {
-            label: on_this_mac.into(),
+            label: on_this_mac,
             target: path.display().to_string(),
             is_link: false,
+            system: String::new(),
         },
-    }
-}
-
-/// `1 test` or `3 tests`.
-fn tests(n: usize) -> String {
-    match n {
-        1 => "1 test".into(),
-        n => format!("{n} tests"),
     }
 }
 
@@ -399,29 +440,33 @@ pub(crate) fn clip(text: &str, max: usize) -> String {
 }
 
 /// Why the run failed or didn't run, or that it passed only on a retry, in one sentence.
-pub(crate) fn reason(report: &RunReport) -> Option<String> {
+fn reason(lang: &str, report: &RunReport) -> Option<String> {
     if report.verdict == Verdict::Passed {
         return jevision_runner::RetryVerdict::of(
             report.verdict,
             report.flaky,
             report.attempts.len(),
         )
-        .map(jevision_runner::RetryVerdict::describe);
+        .map(|verdict| verdict.describe_in(lang));
     }
     if let Some(blocker) = &report.blocked {
-        return Some(blocker.describe());
+        return Some(blocker.describe_in(lang));
     }
     let rows = report.rows();
     if let Some(row) = rows.iter().find(|r| r.verdict == Verdict::Failed) {
-        let why = row.failure.as_ref().map(describe).unwrap_or_default();
+        let why = row
+            .failure
+            .as_ref()
+            .map(|f| describe_in(lang, f))
+            .unwrap_or_default();
         let total = rows.len();
         let failed = rows.iter().filter(|r| r.verdict == Verdict::Failed).count();
         let more = match failed {
             1 => String::new(),
-            n => format!(" ({n} of {total} rows failed)"),
+            n => format!(" {}", tr_in!(lang, "notify.rowsFailed", total, n)),
         };
         return Some(
-            format!("{}: {why}{more}", row.row.title())
+            format!("{}: {why}{more}", row.row.title_in(lang))
                 .trim()
                 .to_owned(),
         );
@@ -430,33 +475,36 @@ pub(crate) fn reason(report: &RunReport) -> Option<String> {
         .attempts
         .last()
         .and_then(|a| a.failure.as_ref())
-        .map(describe)
+        .map(|f| describe_in(lang, f))
 }
 
 /// `850 ms`, `12.3 s` or `2 min 5 s`.
-pub(crate) fn duration(ms: u64) -> String {
+pub(crate) fn duration(lang: &str, ms: u64) -> String {
     match ms {
-        0..1_000 => format!("{ms} ms"),
-        1_000..60_000 => format!("{:.1} s", ms as f64 / 1000.0),
-        _ => format!("{} min {} s", ms / 60_000, ms % 60_000 / 1000),
+        0..1_000 => tr_in!(lang, "report.duration.ms", ms),
+        1_000..60_000 => tr_in!(
+            lang,
+            "report.duration.s",
+            decimal(lang, ms as f64 / 1000.0, 1)
+        ),
+        _ => tr_in!(
+            lang,
+            "notify.duration.minutes",
+            ms / 60_000,
+            ms % 60_000 / 1000
+        ),
     }
-}
-
-/// The page of the GitHub Actions run this is part of, where its reports are kept.
-pub(crate) fn ci_run_url() -> Option<String> {
-    let var = |name| std::env::var(name).ok().filter(|v| !v.is_empty());
-    Some(format!(
-        "{}/{}/actions/runs/{}",
-        var("GITHUB_SERVER_URL")?,
-        var("GITHUB_REPOSITORY")?,
-        var("GITHUB_RUN_ID")?
-    ))
 }
 
 /// The screenshot of the step where the first failed test of `runs` failed, as that run's
 /// report keeps it. The report only ever holds pictures with the areas the project hides, and
 /// password fields, already covered, so nothing private leaves in a mail.
 pub fn failure_picture(runs: &[Finished]) -> Option<Picture> {
+    failure_picture_in(&language(), runs)
+}
+
+/// [`failure_picture`] with the caption in `lang`.
+pub fn failure_picture_in(lang: &str, runs: &[Finished]) -> Option<Picture> {
     let failed = runs.iter().find(|r| r.failed())?;
     let report = failed.report();
     let attempt = report.deciding_attempt()?;
@@ -469,10 +517,7 @@ pub fn failure_picture(runs: &[Finished]) -> Option<Picture> {
     let png = read_inside(&failed.run.dir, name)?;
     Some(Picture {
         png,
-        caption: format!(
-            "{}: the step where it failed, with private areas covered",
-            failed.name()
-        ),
+        caption: tr_in!(lang, "notify.picture.caption", failed.name()),
     })
 }
 

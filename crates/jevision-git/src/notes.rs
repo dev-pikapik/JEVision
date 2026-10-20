@@ -1,5 +1,7 @@
 //! What notes need from git: the people to mention and Git LFS for large attached files.
 
+use jevision_l10n::tr;
+
 use crate::{GitError, Repo, pathspec};
 
 /// How many of the latest commits are read to find the people who work on the project.
@@ -45,12 +47,12 @@ impl Repo {
         let spec = pathspec(path)?;
         if spec.contains(['*', '?', '[', ']', '\\', '\n', '\r']) {
             return Err(GitError::Failed {
-                message: format!("`{path}` can't be told apart from a pattern for Git LFS"),
+                message: tr!("git.error.lfsPattern", path),
             });
         }
         if !self.lfs_available() {
             return Err(GitError::Failed {
-                message: "Git LFS is not installed".to_owned(),
+                message: tr!("git.error.noLfs"),
             });
         }
         self.run(&["lfs", "install", "--local"])?;

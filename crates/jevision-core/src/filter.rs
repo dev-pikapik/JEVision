@@ -1,5 +1,7 @@
 //! Choosing tests by the fields of their cards, for the sidebar and Run All.
 
+use jevision_l10n::tr;
+
 use crate::decode::{PRIORITIES, STATUSES, TEST_TYPES};
 use crate::model::{Flow, Priority, TestStatus, TestType};
 
@@ -54,9 +56,15 @@ impl TestFilter {
         flaky: bool,
     ) -> Result<Self, String> {
         Ok(Self {
-            test_type: word("type", test_type, TEST_TYPES)?,
-            priority: word("priority", priority, PRIORITIES)?,
-            status: word("status", status, STATUSES)?,
+            test_type: word(test_type, TEST_TYPES, |text, some, last| {
+                tr!("project.filter.type", text, some, last)
+            })?,
+            priority: word(priority, PRIORITIES, |text, some, last| {
+                tr!("project.filter.priority", text, some, last)
+            })?,
+            status: word(status, STATUSES, |text, some, last| {
+                tr!("project.filter.status", text, some, last)
+            })?,
             author: author
                 .map(str::trim)
                 .filter(|a| !a.is_empty())
@@ -90,7 +98,13 @@ impl TestFilter {
     }
 }
 
-fn word<T: Copy>(what: &str, text: Option<&str>, names: &[(&str, T)]) -> Result<Option<T>, String> {
+/// The value `text` names among `names`; `Err` is what `unknown` says about it, given the text
+/// and the names to use instead.
+fn word<T: Copy>(
+    text: Option<&str>,
+    names: &[(&str, T)],
+    unknown: impl FnOnce(&str, String, &str) -> String,
+) -> Result<Option<T>, String> {
     let Some(text) = text.map(str::trim).filter(|t| !t.is_empty()) else {
         return Ok(None);
     };
@@ -100,10 +114,10 @@ fn word<T: Copy>(what: &str, text: Option<&str>, names: &[(&str, T)]) -> Result<
         .map(|&(_, value)| Some(value))
         .ok_or_else(|| {
             let known: Vec<&str> = names.iter().map(|(name, _)| *name).collect();
-            format!(
-                "\"{text}\" isn't a test {what}; use {} or {}",
+            unknown(
+                text,
                 known[..known.len() - 1].join(", "),
-                known[known.len() - 1]
+                known[known.len() - 1],
             )
         })
 }
@@ -195,7 +209,17 @@ mod tests {
         );
         assert_eq!(
             TestFilter::from_words(None, Some("urgent"), None, None, false),
-            Err("\"urgent\" isn't a test priority; use critical, high, medium or low".into())
+            Err("“urgent” isn’t a test priority; use critical, high, medium or low".into())
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!(
+                "ru",
+                "project.filter.priority",
+                "urgent",
+                "critical, high, medium",
+                "low"
+            ),
+            "«urgent» — не приоритет теста; используйте critical, high, medium или low"
         );
     }
 

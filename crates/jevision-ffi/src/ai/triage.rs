@@ -13,7 +13,7 @@ use super::{
     AiError, AiSafeguards, AiSession, AiStep, AiToolCall, Finished, Job, McpProblem, McpServer,
 };
 use crate::vision::VisionSettings;
-use crate::{Edited, FlakyEvidence, Step, deciding_attempt, describe_failure};
+use crate::{Edited, Failure, FlakyEvidence, Step, deciding_attempt};
 
 /// Longer side of a picture sent with the question, in pixels.
 const PICTURE_SIDE: u32 = 1568;
@@ -230,7 +230,7 @@ impl TriageJob {
             text.push_str(&format!("Environment: {env}.\n"));
         }
         if let Some(reason) = attempt.as_ref().and_then(|a| a.failure.clone()) {
-            text.push_str(&format!("Why it stopped: {}\n", describe_failure(reason)));
+            text.push_str(&format!("Why it stopped: {}\n", english(reason)));
         }
         text.push_str("\nThe steps of the deciding try:\n");
         for step in steps {
@@ -432,10 +432,15 @@ fn step_line(step: &Step) -> String {
         line.push_str(&format!(", the AI check said: {}", vision.reason));
     }
     if let Some(failure) = &step.failure {
-        line.push_str(&format!(". {}", describe_failure(failure.clone())));
+        line.push_str(&format!(". {}", english(failure.clone())));
     }
     line.push('\n');
     line
+}
+
+/// The failure's sentence in English, the language of the question to the model.
+fn english(failure: Failure) -> String {
+    jevision_runner::describe_in(jevision_l10n::SOURCE_LANGUAGE, &failure.into())
 }
 
 /// The saved screenshot `path` of the run in `dir`, scaled for sending. Reports are saved with

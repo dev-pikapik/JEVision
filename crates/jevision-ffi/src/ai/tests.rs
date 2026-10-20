@@ -949,3 +949,19 @@ fn a_setup_mistake_is_shown_not_covered_up_by_the_fallback() {
     };
     assert!(matches!(error, AiError::OnlyChecks { .. }), "{error}");
 }
+
+#[test]
+fn too_many_calls_reads_in_russian_and_english() {
+    for (n, en, ru) in [
+        (1, "more than 1 tool call", "больше 1 вызова"),
+        (2, "more than 2 tool calls", "больше 2 вызовов"),
+        (5, "more than 5 tool calls", "больше 5 вызовов"),
+    ] {
+        assert!(jevision_l10n::tr_in!("en", "ai.error.tooManyCalls", n).ends_with(en));
+        assert!(jevision_l10n::tr_in!("ru", "ai.error.tooManyCalls", n).contains(ru));
+    }
+    assert_eq!(
+        AiError::TooManyCalls { limit: 10 }.to_string(),
+        "the AI asked for more than 10 tool calls"
+    );
+}

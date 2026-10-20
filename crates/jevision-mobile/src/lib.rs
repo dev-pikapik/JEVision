@@ -15,8 +15,10 @@ uniffi::setup_scaffolding!();
 mod model;
 #[cfg(test)]
 mod tests;
+mod text;
 
 pub use model::*;
+pub use text::*;
 
 /// Runs the network: iroh's endpoint tasks and every request. Two threads are plenty for one
 /// connection and keep the phone's footprint small.

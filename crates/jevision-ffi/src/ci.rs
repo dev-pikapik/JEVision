@@ -19,10 +19,10 @@ pub struct CiWorkflowFile {
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum CiError {
     /// GitHub reads workflows only from the top folder of a repository.
-    #[error("the project folder isn't inside a git repository")]
+    #[error("{}", jevision_l10n::tr!("ci.notInRepository"))]
     NotInRepository,
     /// A workflow with this name is there and wasn't to be replaced.
-    #[error("the repository already has this workflow")]
+    #[error("{}", jevision_l10n::tr!("ci.workflow.exists"))]
     Exists,
     #[error("{reason}")]
     Unwritable { reason: String },

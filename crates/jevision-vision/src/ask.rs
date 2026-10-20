@@ -68,7 +68,10 @@ impl Client {
             schema,
         ) else {
             return Err(VisionError::Refused {
-                message: format!("{} only checks screenshots", c.provider.name()),
+                message: jevision_l10n::tr!(
+                    "vision.error.onlyChecksScreenshots",
+                    c.provider.name()
+                ),
             });
         };
         let (status, text) = self.send(&url, Some(&body))?;

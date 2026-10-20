@@ -159,7 +159,7 @@ fn index(i: usize) -> u32 {
     u32::try_from(i).unwrap_or(u32::MAX)
 }
 
-/// English sentence for a blocked test, such as `Blocked: Login failed`.
+/// The sentence for a blocked test in the current language, such as `Blocked: Login failed`.
 #[uniffi::export]
 pub fn describe_blocker(blocker: &Blocker) -> String {
     blocker.describe()

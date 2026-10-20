@@ -6,6 +6,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use jevision_l10n::tr;
 use jevision_runner::{Event, PauseReason, Verdict, describe_screen_holder};
 use serde_json::{Value, json};
 
@@ -41,10 +42,7 @@ impl Jobs {
     ) -> Result<Arc<Job>, String> {
         let mut all = lock(&self.all);
         if let Some(going) = all.iter().find(|j| !j.lock().finished) {
-            return Err(format!(
-                "Run {} is still going. Wait for it with get_run, or stop it with stop_run.",
-                going.id
-            ));
+            return Err(tr!("mcp.run.stillGoing", &going.id));
         }
         let job = Arc::new(Job {
             id: (all.len() + 1).to_string(),
@@ -57,7 +55,7 @@ impl Jobs {
         let thread = std::thread::Builder::new()
             .name("jevision-assistant-run".into())
             .spawn(move || worker.work(&project, &choices, &host))
-            .map_err(|e| format!("The run couldn't start: {e}."))?;
+            .map_err(|e| tr!("mcp.run.cannotStart", e.to_string()))?;
         all.push(job.clone());
         lock(&self.threads).push(thread);
         Ok(job)
@@ -71,10 +69,8 @@ impl Jobs {
             None => all.last(),
         };
         found.cloned().ok_or_else(|| match id {
-            Some(id) => {
-                format!("There is no run {id}. Runs started with run_test have ids 1, 2 and so on.")
-            }
-            None => "No run has started yet. Start one with run_test.".to_owned(),
+            Some(id) => tr!("mcp.run.notFound", id),
+            None => tr!("mcp.run.none"),
         })
     }
 
@@ -168,9 +164,7 @@ impl Job {
                 running["rowLabel"] = json!(now.label);
             }
             if now.paused {
-                running["paused"] = json!(
-                    "A person is using the mouse or keyboard. The test goes on once they stop."
-                );
+                running["paused"] = json!(tr!("mcp.run.paused"));
             }
             if let Some(waiting) = &now.waiting {
                 running["waiting"] = json!(waiting);
@@ -326,7 +320,7 @@ fn outcome_json(file: &str, outcome: RunOutcome) -> Value {
             })
         }
         RunOutcome::Failed { reason } => {
-            json!({ "path": file, "verdict": "error", "error": format!("The run couldn't be saved: {reason}") })
+            json!({ "path": file, "verdict": "error", "error": tr!("mcp.run.notSaved", reason) })
         }
     }
 }

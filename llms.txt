@@ -25,6 +25,7 @@ It is written in Rust (the core: file format, validation, runner, reports, MCP s
 
 ## Command line
 - `jevision run <tests> [--env NAME] [--rows 2-4] [--retries N] [--type T] [--priority P] [--status S] [--author NAME] [--flaky] [--parallel [N]] [--junit FILE] [--html DIR] [--video MODE] [--json]`: run tests and save reports; `--parallel` runs tests that leave the screen alone side by side (tests that use it take turns). The filters keep only tests whose card says so. Exit status 0 passed, 1 failed, 2 can't run.
+- Every command takes `--lang CODE`: the language of its messages and of the reports it writes (`en`, `ru`, any language of the app's string catalog). Without it: the Mac's language, English when the `CI` variable is set. JSON output, issue codes and option names never change with the language.
 - `jevision validate <tests>`: report errors and warnings.
 - `jevision fmt <tests> [--check]`: rewrite files in canonical form.
 - `jevision blocks list | install <folder, .zip or https address> [--only ID,…] [--yes] [--force] | update [ID] [--yes] [--force] | remove ID [--force] | restore [--only ID,…] [--yes] [--force] [--project DIR]`: manage blocks others shared; `install` prints what each block of the source does and installs only with `--yes`; `restore` installs again what `jevision.blocks.json` lists and the project lacks, printing the plan without `--yes` ("Everything in jevision.blocks.json is installed already." when there is nothing to do).

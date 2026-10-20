@@ -20,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 
+use jevision_l10n::tr;
 use serde_json::{Value, json};
 
 pub use agents::*;
@@ -73,7 +74,7 @@ pub trait AssistantHost: Send + Sync {
 /// The server could not start or lost its input or output.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum AssistantServerError {
-    #[error("there is no folder {path}")]
+    #[error("{}", tr!("mcp.error.noProject", .path))]
     NoProject { path: String },
     #[error("{reason}")]
     Io { reason: String },
@@ -344,37 +345,10 @@ fn text(text: impl Into<String>) -> Value {
 /// What went wrong on the Mac's side, in words for the assistant to pass on.
 fn hands_message(e: &HandsError) -> String {
     match e {
-        HandsError::PermissionDenied { permission } => {
-            let (can, list) = if permission == "screenRecording" {
-                ("record the screen", "Screen & System Audio Recording")
-            } else {
-                ("control the computer", "Accessibility")
-            };
-            format!(
-                "macOS hasn't allowed the app that started jevision to {can}. The person at this Mac can allow it in System Settings → Privacy & Security → {list}."
-            )
+        HandsError::PermissionDenied { permission } if permission == "screenRecording" => {
+            tr!("mcp.hands.screenRecording")
         }
-        HandsError::AppNotFound { app } => format!("The app {app} isn't installed on this Mac."),
-        HandsError::NoWindow { app } => {
-            format!("{app} has no open window. Open it, or run a test that opens it, first.")
-        }
-        HandsError::CannotOpen { item } => format!("{item} can't be opened."),
-        HandsError::ScreenLocked => {
-            "The screen of this Mac is locked. The person at it needs to unlock it first."
-                .to_owned()
-        }
-        HandsError::StillRunning { app } => format!(
-            "{app} didn't quit, so it can't start over. Close it, or answer what it asks, and try again."
-        ),
-        HandsError::WindowFixed { app } => {
-            format!("The window of {app} doesn't allow its size or position to be changed.")
-        }
-        HandsError::WindowDiffers {
-            app,
-            what,
-            wanted,
-            actual,
-        } => format!("The {what} of the window of {app} should be {wanted} but is {actual}."),
-        HandsError::Failed { reason } => reason.clone(),
+        HandsError::PermissionDenied { .. } => tr!("mcp.hands.accessibility"),
+        other => other.to_string(),
     }
 }

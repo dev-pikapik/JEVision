@@ -13,6 +13,7 @@ host = ["dep:jevision-core"]
 client = []
 
 [dependencies]
+jevision-l10n.workspace = true
 jevision-core = { workspace = true, optional = true }
 jevision-runner.workspace = true
 getrandom = "0.4"
@@ -23,7 +24,6 @@ serde.workspace = true
 serde_json.workspace = true
 sha2 = { version = "0.11", default-features = false }
 subtle = "2.6"
-thiserror.workspace = true
 tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 
 # libc 0.2.190 limited `in6_ifreq` and the interface statistics types to macOS, which breaks

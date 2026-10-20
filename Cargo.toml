@@ -12,6 +12,7 @@ repository = "https://github.com/dev-pikapik/JEVision"
 [workspace.dependencies]
 jevision-core = { path = "crates/jevision-core" }
 jevision-git = { path = "crates/jevision-git" }
+jevision-l10n = { path = "crates/jevision-l10n" }
 jevision-notify = { path = "crates/jevision-notify" }
 jevision-remote = { path = "crates/jevision-remote" }
 jevision-runner = { path = "crates/jevision-runner" }

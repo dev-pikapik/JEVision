@@ -15,6 +15,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 use jevision_core::{MANIFEST_FILE, PackageError, parse_manifest};
+use jevision_l10n::tr;
 use serde_json::Value;
 use zip::ZipArchive;
 use zip::write::SimpleFileOptions;
@@ -102,7 +103,7 @@ pub fn zip_package(folder: &Path, to: &Path) -> Result<(), PackageError> {
     let top = folder
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
-        .ok_or_else(|| failed(&"the package has no name"))?;
+        .ok_or_else(|| failed(&tr!("package.export.noName")))?;
     let partial = to.with_extension("zip.partial");
     let result = (|| -> io::Result<()> {
         let mut writer = zip::ZipWriter::new(fs::File::create(&partial)?);
@@ -514,7 +515,7 @@ fn fetch_zip(url: &str, network: &Network) -> Result<Vec<u8>, PackageError> {
     if status != 200 {
         return Err(failed_download(
             url,
-            &format!("the server answered {status}"),
+            &tr!("package.download.status", status),
         ));
     }
     Ok(body)
@@ -627,7 +628,7 @@ fn code_zip<'a>(
         if status != 404 || split == path.len() {
             return Err(failed_download(
                 &url,
-                &format!("the server answered {status}"),
+                &tr!("package.download.status", status),
             ));
         }
     }
@@ -654,13 +655,13 @@ fn release_zips(
     match status {
         200 => {
             let release: Value = serde_json::from_slice(&body)
-                .map_err(|_| failed_download(&api, "GitHub sent an answer that can't be read"))?;
+                .map_err(|_| failed_download(&api, &tr!("git.error.githubUnreadable")))?;
             let zips = release_files(&release)
-                .ok_or_else(|| failed_download(&api, "the release has no files to download"))?;
+                .ok_or_else(|| failed_download(&api, &tr!("package.download.noFiles")))?;
             if zips.len() > MAX_RELEASE_FILES {
                 return Err(failed_download(
                     &api,
-                    &format!("the release has more than {MAX_RELEASE_FILES} block files"),
+                    &tr!("package.download.tooManyFiles", MAX_RELEASE_FILES),
                 ));
             }
             Ok(zips)
@@ -669,11 +670,8 @@ fn release_zips(
             Some(tag) => code_url(owner, repo, &format!("refs/tags/{tag}"), network),
             None => code_url(owner, repo, "HEAD", network),
         }]),
-        403 | 429 => Err(failed_download(
-            &api,
-            "GitHub is limiting requests from this computer; try again in a few minutes",
-        )),
-        other => Err(failed_download(&api, &format!("GitHub answered {other}"))),
+        403 | 429 => Err(failed_download(&api, &tr!("package.download.rateLimited"))),
+        other => Err(failed_download(&api, &tr!("git.error.githubStatus", other))),
     }
 }
 
@@ -1438,6 +1436,11 @@ mod tests {
                 .contains("more than 20")
         );
         server.join().unwrap();
+        let limit = |lang| jevision_l10n::tr_in!(lang, "package.download.tooManyFiles", 20);
+        assert_eq!(limit("en"), "the release has more than 20 block files");
+        assert_eq!(limit("ru"), "в релизе больше 20 файлов блоков");
+        let one = jevision_l10n::tr_in!("ru", "package.download.tooManyFiles", 21);
+        assert_eq!(one, "в релизе больше 21 файла блоков");
     }
 
     #[test]

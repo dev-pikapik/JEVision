@@ -10,9 +10,11 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+use jevision_l10n::tr;
 use serde_json::{Map, Value};
 
 use crate::index::RectIndex;
+use crate::issue::json_problem;
 use crate::layout::GRID;
 use crate::model::{Point, Rect};
 
@@ -279,17 +281,18 @@ impl BoardNode {
 }
 
 impl Board {
-    /// Reads the text of a board file; `Err` says, in English, what is wrong with it.
+    /// Reads the text of a board file; `Err` says, in the app language, what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        let value: Value = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
         let Value::Object(mut top) = value else {
-            return Err("a board file holds one JSON object with \"nodes\" and \"edges\"".into());
+            return Err(tr!("board.file.notObject"));
         };
         let nodes = take_list(&mut top, "nodes")?;
         let edges = take_list(&mut top, "edges")?;
-        let mut ours = take_ours(&mut top, "the board")?;
-        let all_tests = take_flag(&mut ours, "allTests", "the board")?;
-        no_more(&ours, "the board")?;
+        let board_what = tr!("board.what.board");
+        let mut ours = take_ours(&mut top, &board_what)?;
+        let all_tests = take_flag(&mut ours, "allTests", &board_what)?;
+        no_more(&ours, &board_what)?;
 
         let mut board = Board {
             nodes: Vec::with_capacity(nodes.len()),
@@ -301,7 +304,7 @@ impl Board {
         for (n, node) in nodes.into_iter().enumerate() {
             let node = parse_node(node, n)?;
             if !ids.insert(node.id.clone()) {
-                return Err(format!("the id \"{}\" is used more than once", node.id));
+                return Err(tr!("board.id.duplicate", &node.id));
             }
             board.nodes.push(node);
         }
@@ -310,14 +313,11 @@ impl Board {
             let edge = parse_edge(edge, n)?;
             for end in [&edge.from, &edge.to] {
                 if !node_ids.contains(end) {
-                    return Err(format!(
-                        "arrow \"{}\" leads to \"{end}\", which isn't a node of the board",
-                        edge.id
-                    ));
+                    return Err(tr!("board.edge.unknownEnd", &edge.id, end));
                 }
             }
             if !ids.insert(edge.id.clone()) {
-                return Err(format!("the id \"{}\" is used more than once", edge.id));
+                return Err(tr!("board.id.duplicate", &edge.id));
             }
             board.edges.push(edge);
         }
@@ -989,7 +989,7 @@ fn take_list(top: &mut Map<String, Value>, key: &str) -> Result<Vec<Value>, Stri
     match top.remove(key) {
         None | Some(Value::Null) => Ok(Vec::new()),
         Some(Value::Array(list)) => Ok(list),
-        Some(_) => Err(format!("\"{key}\" must be a list")),
+        Some(_) => Err(tr!("board.list", key)),
     }
 }
 
@@ -997,7 +997,7 @@ fn take_ours(object: &mut Map<String, Value>, what: &str) -> Result<Map<String, 
     match object.remove(OURS) {
         None => Ok(Map::new()),
         Some(Value::Object(ours)) => Ok(ours),
-        Some(_) => Err(format!("\"{OURS}\" of {what} must be an object")),
+        Some(_) => Err(tr!("board.ours.notObject", OURS, what)),
     }
 }
 
@@ -1005,16 +1005,13 @@ fn take_flag(ours: &mut Map<String, Value>, key: &str, what: &str) -> Result<boo
     match ours.remove(key) {
         None => Ok(false),
         Some(Value::Bool(flag)) => Ok(flag),
-        Some(_) => Err(format!("\"{key}\" of {what} must be true or false")),
+        Some(_) => Err(tr!("board.flag", key, what)),
     }
 }
 
 fn no_more(ours: &Map<String, Value>, what: &str) -> Result<(), String> {
     match ours.keys().next() {
-        Some(key) => Err(format!(
-            "\"{key}\" in \"{OURS}\" of {what} is unknown; it may come from a newer version \
-             of JEVision"
-        )),
+        Some(key) => Err(tr!("board.ours.unknown", key, OURS, what)),
         None => Ok(()),
     }
 }
@@ -1028,15 +1025,15 @@ fn take_text(
     match object.remove(key) {
         Some(Value::String(text)) => Ok(text),
         None if !required => Ok(String::new()),
-        None => Err(format!("{what} has no \"{key}\"")),
-        Some(_) => Err(format!("\"{key}\" of {what} must be text")),
+        None => Err(tr!("board.text.missing", what, key)),
+        Some(_) => Err(tr!("board.text.type", key, what)),
     }
 }
 
 fn take_number(object: &mut Map<String, Value>, key: &str, what: &str) -> Result<f64, String> {
     match object.remove(key).as_ref().and_then(Value::as_f64) {
         Some(n) if n.is_finite() => Ok(n.round()),
-        _ => Err(format!("\"{key}\" of {what} must be a number")),
+        _ => Err(tr!("board.number", key, what)),
     }
 }
 
@@ -1048,9 +1045,7 @@ fn check_color(color: &str, what: &str) -> Result<(), String> {
     if preset || hex {
         Ok(())
     } else {
-        Err(format!(
-            "the color \"{color}\" of {what} must be 1 to 6 or a color such as #ff8800"
-        ))
+        Err(tr!("board.color", color, what))
     }
 }
 
@@ -1068,13 +1063,13 @@ fn extra_map(extra: &str) -> BTreeMap<String, Value> {
 
 fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
     let Value::Object(mut object) = value else {
-        return Err(format!("node {} must be an object", n + 1));
+        return Err(tr!("board.node.notObject", n + 1));
     };
     let id = match object.remove("id") {
         Some(Value::String(id)) if !id.trim().is_empty() => id,
-        _ => return Err(format!("node {} has no \"id\"", n + 1)),
+        _ => return Err(tr!("board.node.noId", n + 1)),
     };
-    let what = format!("node \"{id}\"");
+    let what = tr!("board.what.node", &id);
     let kind = take_text(&mut object, "type", &what, true)?;
     let mut ours = take_ours(&mut object, &what)?;
     let mut open = false;
@@ -1085,7 +1080,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
         "file" => {
             let file = take_text(&mut object, "file", &what, true)?;
             if file.trim().is_empty() {
-                return Err(format!("\"file\" of {what} is empty"));
+                return Err(tr!("board.file.empty", &what));
             }
             open = take_flag(&mut ours, "open", &what)?;
             BoardNodeKind::File { file }
@@ -1099,7 +1094,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
             let folder = match ours.remove("folder") {
                 None => None,
                 Some(Value::String(folder)) => Some(folder),
-                Some(_) => return Err(format!("\"folder\" of {what} must be text")),
+                Some(_) => return Err(tr!("board.text.type", "folder", &what)),
             };
             BoardNodeKind::Group {
                 label,
@@ -1108,9 +1103,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
             }
         }
         other => {
-            return Err(format!(
-                "{what} has the type \"{other}\"; a node is text, file, link or group"
-            ));
+            return Err(tr!("board.node.type", &what, other));
         }
     };
     no_more(&ours, &what)?;
@@ -1121,7 +1114,7 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
         height: take_number(&mut object, "height", &what)?,
     };
     if rect.width <= 0.0 || rect.height <= 0.0 {
-        return Err(format!("{what} must have a width and a height above 0"));
+        return Err(tr!("board.node.size", &what));
     }
     let color = take_text(&mut object, "color", &what, false)?;
     check_color(&color, &what)?;
@@ -1137,21 +1130,19 @@ fn parse_node(value: Value, n: usize) -> Result<BoardNode, String> {
 
 fn parse_edge(value: Value, n: usize) -> Result<BoardEdge, String> {
     let Value::Object(mut object) = value else {
-        return Err(format!("arrow {} must be an object", n + 1));
+        return Err(tr!("board.edge.notObject", n + 1));
     };
     let id = match object.remove("id") {
         Some(Value::String(id)) if !id.trim().is_empty() => id,
-        _ => return Err(format!("arrow {} has no \"id\"", n + 1)),
+        _ => return Err(tr!("board.edge.noId", n + 1)),
     };
-    let what = format!("arrow \"{id}\"");
+    let what = tr!("board.what.arrow", &id);
     let mut side = |key: &str| -> Result<String, String> {
         let side = take_text(&mut object, key, &what, false)?;
         if side.is_empty() || SIDES.contains(&side.as_str()) {
             Ok(side)
         } else {
-            Err(format!(
-                "\"{key}\" of {what} is \"{side}\"; it must be top, right, bottom or left"
-            ))
+            Err(tr!("board.edge.side", key, &what, side))
         }
     };
     let (from_side, to_side) = (side("fromSide")?, side("toSide")?);
@@ -1160,9 +1151,7 @@ fn parse_edge(value: Value, n: usize) -> Result<BoardEdge, String> {
         match end.as_str() {
             "" => Ok(default),
             _ if ENDS.contains(&end.as_str()) => Ok(end == "arrow"),
-            _ => Err(format!(
-                "\"{key}\" of {what} is \"{end}\"; it must be none or arrow"
-            )),
+            _ => Err(tr!("board.edge.end", key, &what, end)),
         }
     };
     let (from_arrow, to_arrow) = (end("fromEnd", false)?, end("toEnd", true)?);
@@ -1397,19 +1386,19 @@ mod tests {
     fn rejects_broken_boards_with_a_reason() {
         let bad = [
             ("[]", "one JSON object"),
-            (r#"{"nodes":{}}"#, "\"nodes\" must be a list"),
-            (r#"{"nodes":[{"type":"text"}]}"#, "node 1 has no \"id\""),
+            (r#"{"nodes":{}}"#, "“nodes” must be a list"),
+            (r#"{"nodes":[{"type":"text"}]}"#, "node 1 has no “id”"),
             (
                 r#"{"nodes":[{"id":"a","type":"shape","x":0,"y":0,"width":1,"height":1}]}"#,
-                "the type \"shape\"",
+                "the type “shape”",
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","x":0,"y":0,"width":1,"height":1}]}"#,
-                "has no \"text\"",
+                "has no “text”",
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":"0","y":0,"width":1,"height":1}]}"#,
-                "\"x\" of node \"a\" must be a number",
+                "“x” of node “a” must be a number",
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":0,"height":1}]}"#,
@@ -1421,7 +1410,7 @@ mod tests {
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1,"color":"red"}]}"#,
-                "the color \"red\"",
+                "the color “red”",
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1},{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1}]}"#,
@@ -1429,7 +1418,7 @@ mod tests {
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1}],"edges":[{"id":"e","fromNode":"a","toNode":"b"}]}"#,
-                "isn't a node of the board",
+                "isn’t a node of the board",
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1}],"edges":[{"id":"e","fromNode":"a","toNode":"a","fromSide":"up"}]}"#,
@@ -1441,7 +1430,7 @@ mod tests {
             ),
             (
                 r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1,"jevision":{"collapsed":true}}]}"#,
-                "\"collapsed\" in \"jevision\" of node \"a\" is unknown",
+                "“collapsed” in “jevision” of node “a” is unknown",
             ),
             (r#"{"nodes":[],"jevision":{"zoom":2}}"#, "newer version"),
         ];
@@ -1987,7 +1976,7 @@ mod tests {
     #[test]
     fn open_marks_only_belong_to_tests() {
         let group = r#"{"nodes":[{"id":"g","type":"group","x":0,"y":0,"width":160,"height":160,"jevision":{"open":true}}],"edges":[]}"#;
-        assert!(Board::parse(group).unwrap_err().contains("\"open\""));
+        assert!(Board::parse(group).unwrap_err().contains("“open”"));
         let card = r#"{"nodes":[{"id":"c","type":"file","file":"a.flow.json","x":0,"y":0,"width":400,"height":300,"jevision":{"open":"yes"}}],"edges":[]}"#;
         assert!(Board::parse(card).unwrap_err().contains("true or false"));
     }
@@ -2022,5 +2011,19 @@ mod tests {
         let board = Board::parse(OBSIDIAN).unwrap();
         let frames: Vec<bool> = board.layout().nodes.iter().map(|n| n.frame).collect();
         assert_eq!(frames, [true, false, false, false]);
+    }
+
+    #[test]
+    fn problems_read_in_the_language_asked_for() {
+        let text = r#"{"nodes":[{"id":"a","type":"text","text":"","x":0,"y":0,"width":1,"height":1}],"edges":[{"id":"e","fromNode":"a","toNode":"a","toSide":"up"}]}"#;
+        assert_eq!(
+            Board::parse(text).unwrap_err(),
+            "“toSide” of arrow “e” is “up”; it must be top, right, bottom or left"
+        );
+        let what = jevision_l10n::tr_in!("ru", "board.what.arrow", "e");
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "board.edge.side", "toSide", what, "up"),
+            "«toSide» у стрелки «e» — «up», а должно быть top, right, bottom или left"
+        );
     }
 }

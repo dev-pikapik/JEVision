@@ -223,16 +223,7 @@ enum RunHistory {
 
   /// What the retries say about a failure: a real one, or a flaky test. `nil` for a single try.
   static func retryVerdict(_ report: RunReport) -> String? {
-    switch JEVisionCore.retryVerdict(report: report) {
-    case .passedOnRetry(let retry)?:
-      String(localized: "Passed on retry \(retry) after failing — the test is flaky.")
-    case .failedDifferently(let attempts)?:
-      String(localized: "Failed \(attempts) of \(attempts) times, each time differently — the test may be flaky.")
-    case .failedEveryTime(let attempts)?:
-      String(localized: "Failed \(attempts) times in a row — a real failure, not flakiness.")
-    case nil:
-      nil
-    }
+    JEVisionCore.retryVerdict(report: report).map { describeRetryVerdict(verdict: $0) }
   }
 
   /// Why a test counts as flaky, from its runs of the last 30 days.

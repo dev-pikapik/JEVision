@@ -176,10 +176,10 @@ impl VisionJudge for NamedJudge {
 /// Why a vision model could not be asked.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum VisionCallError {
-    #[error("unknown vision provider `{provider}`")]
+    #[error("{}", jevision_l10n::tr!("vision.error.unknownProvider", .provider))]
     UnknownProvider { provider: String },
     /// A `run.vision.*` code with its values, as in run reports but without a block, and the
-    /// English sentence for when the app has no translation.
+    /// The sentence for it in the current language.
     #[error("{message}")]
     Failed { failure: Failure, message: String },
 }
@@ -322,7 +322,7 @@ pub fn ai_usage_summary(
 /// Why the usage journal couldn't be read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum AiUsageError {
-    #[error("the AI usage journal can't be read: {reason}")]
+    #[error("{}", jevision_l10n::tr!("vision.error.usageUnreadable", .reason))]
     Unreadable { reason: String },
 }
 
@@ -465,7 +465,7 @@ pub(crate) mod tests {
         let error = vision_models(settings("ollama", "ftp://localhost", None)).unwrap_err();
         assert_eq!(
             error.to_string(),
-            "ftp://localhost is not a web address; it should start with http:// or https://."
+            "“ftp://localhost” isn’t a web address. It should start with http:// or https://."
         );
         assert_eq!(
             vision_test(settings("nope", "", None)),

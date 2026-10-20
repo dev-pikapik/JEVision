@@ -5,9 +5,11 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use jevision_core::Blocker;
+use jevision_l10n::{decimal, tr_in};
 use serde::{Deserialize, Serialize};
 
 use crate::CiOrigin;
+use crate::words::describe_in;
 
 /// Version of the `report.json` layout.
 pub const REPORT_FORMAT: u32 = 1;
@@ -115,19 +117,37 @@ impl RunReport {
     }
 
     /// Where the run ran, for the report's header: `Virtual machine` or `Physical Mac`, then the
-    /// display, such as `Retina display (2×)`; `None` when the report doesn't say.
+    /// display, such as `Retina display (2×)`; `None` when the report doesn't say. In the
+    /// language set with `jevision_l10n::set_language`.
     pub fn machine(&self) -> Option<String> {
-        let computer = self
-            .virtual_machine
-            .map(|v| if v { "Virtual machine" } else { "Physical Mac" });
+        self.machine_in(&jevision_l10n::language())
+    }
+
+    /// [`RunReport::machine`] in `lang`.
+    pub fn machine_in(&self, lang: &str) -> Option<String> {
+        let computer = self.virtual_machine.map(|v| {
+            if v {
+                tr_in!(lang, "report.machine.virtual")
+            } else {
+                tr_in!(lang, "report.machine.physical")
+            }
+        });
         let display = self.display_scale.map(|scale| {
-            let density = if scale >= 2.0 { "Retina" } else { "Standard" };
-            format!("{density} display ({scale}×)")
+            let written = if scale.fract() == 0.0 {
+                format!("{scale:.0}")
+            } else {
+                decimal(lang, scale, 1)
+            };
+            if scale >= 2.0 {
+                tr_in!(lang, "report.machine.retina", written)
+            } else {
+                tr_in!(lang, "report.machine.standard", written)
+            }
         });
         match (computer, display) {
             (None, None) => None,
             (computer, display) => Some(
-                [computer.map(str::to_owned), display]
+                [computer, display]
                     .into_iter()
                     .flatten()
                     .collect::<Vec<_>>()
@@ -166,18 +186,21 @@ impl RetryVerdict {
         }
     }
 
-    /// The verdict in one English sentence, for the HTML report and the command line.
+    /// The verdict in one sentence, for the HTML report and the command line, in the language set
+    /// with `jevision_l10n::set_language`.
     pub fn describe(self) -> String {
+        self.describe_in(&jevision_l10n::language())
+    }
+
+    /// [`RetryVerdict::describe`] in `lang`.
+    pub fn describe_in(self, lang: &str) -> String {
         match self {
-            Self::PassedOnRetry { retry } => {
-                format!("Passed on retry {retry} after failing — the test is flaky.")
-            }
+            Self::PassedOnRetry { retry } => tr_in!(lang, "retry.passedOnRetry", retry),
+            // Every attempt failed: "failed 2 of 2 times".
             Self::FailedDifferently { attempts } => {
-                format!("Failed {attempts} times, each time differently — the test may be flaky.")
+                tr_in!(lang, "retry.failedDifferently", attempts, attempts)
             }
-            Self::FailedEveryTime { attempts } => {
-                format!("Failed {attempts} times in a row — a real failure, not flakiness.")
-            }
+            Self::FailedEveryTime { attempts } => tr_in!(lang, "retry.failedEveryTime", attempts),
         }
     }
 }
@@ -228,12 +251,18 @@ pub struct DataRow {
 }
 
 impl DataRow {
-    /// `Row 2: anna@example.com`, or `Row 2` when the label is empty.
+    /// `Row 2: anna@example.com`, or `Row 2` when the label is empty, in the language set with
+    /// `jevision_l10n::set_language`.
     pub fn title(&self) -> String {
+        self.title_in(&jevision_l10n::language())
+    }
+
+    /// [`DataRow::title`] in `lang`.
+    pub fn title_in(&self, lang: &str) -> String {
         if self.label.is_empty() {
-            format!("Row {}", self.number)
+            tr_in!(lang, "report.row.titleBare", self.number)
         } else {
-            format!("Row {}: {}", self.number, self.label)
+            tr_in!(lang, "report.row.title", self.number, &self.label)
         }
     }
 }
@@ -268,22 +297,31 @@ impl RunReport {
             .collect()
     }
 
-    /// `4 of 5 rows passed` for a run with a data table.
+    /// `4 of 5 rows passed` for a run with a data table, in the language set with
+    /// `jevision_l10n::set_language`.
     pub fn rows_summary(&self) -> Option<String> {
+        self.rows_summary_in(&jevision_l10n::language())
+    }
+
+    /// [`RunReport::rows_summary`] in `lang`.
+    pub fn rows_summary_in(&self, lang: &str) -> Option<String> {
         let rows = self.rows();
         if rows.is_empty() {
             return None;
         }
         let passed = rows.iter().filter(|r| r.verdict == Verdict::Passed).count();
-        Some(match rows.len() {
-            1 => format!("{passed} of 1 row passed"),
-            n => format!("{passed} of {n} rows passed"),
-        })
+        Some(tr_in!(lang, "report.rowsSummary", rows.len(), passed))
     }
 
     /// The report of each data row on its own, named like `Login [Row 2: anna]`; just the
-    /// report for a run without a data table.
+    /// report for a run without a data table. In the language set with
+    /// `jevision_l10n::set_language`.
     pub fn split_rows(&self) -> Vec<RunReport> {
+        self.split_rows_in(&jevision_l10n::language())
+    }
+
+    /// [`RunReport::split_rows`] in `lang`.
+    pub fn split_rows_in(&self, lang: &str) -> Vec<RunReport> {
         let rows = self.rows();
         if rows.is_empty() {
             return vec![self.clone()];
@@ -297,7 +335,7 @@ impl RunReport {
                     .cloned()
                     .collect();
                 RunReport {
-                    test: format!("{} [{}]", self.test, r.row.title()),
+                    test: format!("{} [{}]", self.test, r.row.title_in(lang)),
                     duration_ms: attempts.iter().map(|a| a.duration_ms).sum(),
                     verdict: r.verdict,
                     flaky: r.flaky,
@@ -445,10 +483,16 @@ pub struct Failure {
 }
 
 impl Step {
-    /// Which way an `if` went, in English: `Took “Condition 2: Inbox is empty”`,
-    /// `Took “Otherwise”`. `None` for other blocks.
+    /// Which way an `if` went: `Took “Condition 2: Inbox is empty”`, `Took “Otherwise”`. `None`
+    /// for other blocks. In the language set with `jevision_l10n::set_language`.
     pub fn branch_text(&self) -> Option<String> {
-        branch_text(
+        self.branch_text_in(&jevision_l10n::language())
+    }
+
+    /// [`Step::branch_text`] in `lang`.
+    pub fn branch_text_in(&self, lang: &str) -> Option<String> {
+        branch_text_in(
+            lang,
             self.branch.as_deref()?,
             self.branches,
             self.branch_condition.as_deref(),
@@ -458,19 +502,29 @@ impl Step {
 
 /// [`Step::branch_text`] from its parts, named as the editor names the ways out of an `if`.
 pub fn branch_text(branch: &str, branches: Option<u32>, condition: Option<&str>) -> Option<String> {
+    branch_text_in(&jevision_l10n::language(), branch, branches, condition)
+}
+
+/// [`branch_text`] in `lang`.
+pub fn branch_text_in(
+    lang: &str,
+    branch: &str,
+    branches: Option<u32>,
+    condition: Option<&str>,
+) -> Option<String> {
     let index = jevision_core::else_if_index(branch);
     let plain = branches.map_or(index.is_none(), |n| n <= 2);
     let name = match (branch, index) {
-        (jevision_core::THEN, _) if plain => "Yes".to_owned(),
-        (jevision_core::THEN, _) => "Condition 1".to_owned(),
-        (jevision_core::ELSE, _) if plain => "No".to_owned(),
-        (jevision_core::ELSE, _) => "Otherwise".to_owned(),
-        (_, Some(n)) => format!("Condition {}", n + 2),
+        (jevision_core::THEN, _) if plain => tr_in!(lang, "report.branch.yes"),
+        (jevision_core::THEN, _) => tr_in!(lang, "report.branch.condition", 1),
+        (jevision_core::ELSE, _) if plain => tr_in!(lang, "report.branch.no"),
+        (jevision_core::ELSE, _) => tr_in!(lang, "report.branch.otherwise"),
+        (_, Some(n)) => tr_in!(lang, "report.branch.condition", n + 2),
         _ => return None,
     };
     Some(match condition {
-        Some(c) => format!("Took “{name}: {c}”"),
-        None => format!("Took “{name}”"),
+        Some(c) => tr_in!(lang, "report.branch.tookWithCondition", name, c),
+        None => tr_in!(lang, "report.branch.took", name),
     })
 }
 
@@ -492,468 +546,22 @@ impl Failure {
     }
 }
 
-/// English sentence for a failure, for exports that have no localization at hand.
-pub fn describe(f: &Failure) -> String {
-    let p = |name| f.param(name);
-    match f.code.as_str() {
-        "run.test.unreadable" => {
-            let reason = p("reason").trim_end_matches('.');
-            format!("Test file {} cannot be read: {reason}.", p("test"))
-        }
-        "run.test.invalid" => format!(
-            "Test file {} has {} errors; fix them in the editor first.",
-            p("test"),
-            p("errors")
-        ),
-        "run.block.notInstalled" => format!(
-            "Block {}: the package {} is not installed; install it with `{}`, then run the test again.",
-            p("block"),
-            jevision_core::block_with_version(p("package"), p("version")),
-            jevision_core::install_command(p("source"))
-        ),
-        "run.block.needsNewer" => format!(
-            "Block {}: the package {} needs JEVision {} or newer, and this is {}.",
-            p("block"),
-            p("package"),
-            p("needs"),
-            p("have")
-        ),
-        "run.start.unknownBlock" => format!("There is no block {} to start from.", p("block")),
-        "run.secret.missing" => format!("Secret {} is not set.", p("name")),
-        "run.input.missing" => format!(
-            "The block reads the input {}, but the test that runs it gives no value for it.",
-            p("name")
-        ),
-        "run.env.notChosen" => format!(
-            "The test reads the environment value {}, but no environment was chosen.",
-            p("name")
-        ),
-        "run.env.missing" => format!(
-            "Environment {} has no value {}.",
-            p("environment"),
-            p("name")
-        ),
-        "run.env.unknown" => format!(
-            "There is no environment {} in {}.",
-            p("environment"),
-            p("file")
-        ),
-        "run.environments.unreadable" | "run.project.unreadable" => {
-            format!("{} can't be read: {}.", p("file"), p("reason"))
-        }
-        "run.data.noRow" => format!(
-            "Block {}: {} has {} rows, so there is no row {}.",
-            p("block"),
-            p("file"),
-            p("rows"),
-            p("row")
-        ),
-        "run.path.outsideProject" => format!(
-            "Block {}: {} is outside the project folder.",
-            p("block"),
-            p("path")
-        ),
-        "run.file.missing" => format!("Block {}: file {} does not exist.", p("block"), p("file")),
-        "run.file.copyFailed" => format!(
-            "Block {}: file {} cannot be copied: {}.",
-            p("block"),
-            p("file"),
-            p("reason")
-        ),
-        "run.target.notFound" => format!(
-            "Block {}: {} was not found on screen.",
-            p("block"),
-            p("image")
-        ),
-        "run.target.descriptionNotFound" => format!(
-            "Block {}: “{}” was not found on screen.",
-            p("block"),
-            p("description")
-        ),
-        "run.target.noLocator" => format!(
-            "Block {}: finding an element by its description needs JEV (TypeSafe AI). Set it up in JEVision Settings → AI.",
-            p("block")
-        ),
-        "run.reference.missing" => format!(
-            "Block {}: reference image {} does not exist.",
-            p("block"),
-            p("image")
-        ),
-        "run.reference.unreadable" => format!(
-            "Block {}: image {} cannot be read: {}.",
-            p("block"),
-            p("image"),
-            p("reason")
-        ),
-        "run.screenshot.unreadable" => format!(
-            "Block {}: the screenshot cannot be read: {}.",
-            p("block"),
-            p("reason")
-        ),
-        "run.compare.shapeMismatch" => format!(
-            "Block {}: the window is {} but reference {} is {}.",
-            p("block"),
-            p("actual"),
-            p("image"),
-            p("expected")
-        ),
-        "run.compare.meaningUnavailable" => format!(
-            "Block {}: comparing by meaning needs an AI model. Choose one in JEVision Settings → AI.",
-            p("block")
-        ),
-        "run.click.noChange" => format!(
-            "Block {}: the screen did not change within {} s after the click.",
-            p("block"),
-            p("seconds")
-        ),
-        "run.action.noChange" => format!(
-            "Block {}: the screen did not change within {} s after this step.",
-            p("block"),
-            p("seconds")
-        ),
-        "run.waitFor.timeout" => {
-            let dark = match p("dark") {
-                "" => String::new(),
-                name => format!(
-                    " The window is in dark appearance and only the light picture exists; save the dark one as {name}."
-                ),
-            };
-            format!(
-                "Block {}: {} did not happen within {} s.{dark}",
-                p("block"),
-                wait_target(p("target")),
-                p("seconds")
-            )
-        }
-        "run.check.mismatch" => format!(
-            "Block {}: the screen matches {} by {}, at least {} is required.",
-            p("block"),
-            p("image"),
-            p("similarity"),
-            p("threshold")
-        ),
-        "run.check.mismatchDensity" => format!(
-            "Block {}: the screen matches {} by {}, at least {} is required. The reference is {} \
-             pixels and the screen {}: the reference was saved on a display with a different \
-             pixel density (Retina or not), where text and edges are drawn differently. Run on a \
-             display like the one the reference was saved on, or save the reference again.",
-            p("block"),
-            p("image"),
-            p("similarity"),
-            p("threshold"),
-            p("expected"),
-            p("actual")
-        ),
-        "run.data.unreadable" => format!(
-            "Block {}: table {} cannot be read: {}.",
-            p("block"),
-            p("file"),
-            p("reason")
-        ),
-        "run.data.unknownColumn" => format!(
-            "Block {}: no table column {} is available here.",
-            p("block"),
-            p("column")
-        ),
-        "run.var.missing" => format!(
-            "Block {}: there is no value {} yet. A block before this one must save it.",
-            p("block"),
-            p("name")
-        ),
-        "run.value.notNumber" => format!(
-            "Block {}: “{}” is not a number, so it cannot be compared as one.",
-            p("block"),
-            p("value")
-        ),
-        "run.process.notFound" => format!(
-            "Block {}: {} is not installed on this computer.",
-            p("block"),
-            p("program")
-        ),
-        "run.process.cannotStart" => format!(
-            "Block {}: {} cannot start: {}.",
-            p("block"),
-            p("program"),
-            p("reason")
-        ),
-        "run.process.timeout" => format!(
-            "Block {}: it did not finish within {} s and was stopped.",
-            p("block"),
-            p("seconds")
-        ),
-        "run.script.failed" => format!(
-            "Block {}: the script stopped with exit code {}{}",
-            p("block"),
-            p("code"),
-            because(p("reason"))
-        ),
-        "run.script.missingOutput" => format!(
-            "Block {}: the script did not write {} to $JEV_OUTPUT.",
-            p("block"),
-            p("name")
-        ),
-        "run.script.badInput" => format!(
-            "Block {}: the input {} should be {}, but it is “{}”.",
-            p("block"),
-            p("name"),
-            value_kind(p("type")),
-            p("value")
-        ),
-        "run.script.badOutput" => format!(
-            "Block {}: {} should be {}, but the script wrote “{}”.",
-            p("block"),
-            p("name"),
-            value_kind(p("type")),
-            p("value")
-        ),
-        "run.clipboard.mismatch" => format!(
-            "Block {}: the clipboard holds “{}”, which {} “{}” after {} s.",
-            p("block"),
-            p("actual"),
-            match p("test") {
-                "notEquals" => "is not different from",
-                "contains" => "does not contain",
-                "greaterThan" => "is not greater than",
-                "lessThan" => "is not less than",
-                _ => "is not equal to",
-            },
-            p("expected"),
-            p("seconds")
-        ),
-        "run.dateTime.failed" => format!("Block {}: {}.", p("block"), p("reason")),
-        "run.command.exitCode" => format!(
-            "Block {}: the command ended with exit code {} instead of {}{}",
-            p("block"),
-            p("actual"),
-            p("expected"),
-            because(p("reason"))
-        ),
-        "run.http.failed" => format!(
-            "Block {}: {} did not answer: {}.",
-            p("block"),
-            p("url"),
-            p("reason")
-        ),
-        "run.http.status" => format!(
-            "Block {}: {} answered with status {} instead of {}.",
-            p("block"),
-            p("url"),
-            p("status"),
-            p("expected")
-        ),
-        "run.http.noValue" => format!("Block {}: the answer has no {}.", p("block"), p("from")),
-        "run.file.timeout" => {
-            let what = match p("state") {
-                "exists" => "did not appear".to_owned(),
-                "missing" => "did not disappear".to_owned(),
-                "changed" => "did not change".to_owned(),
-                _ => format!("does not contain “{}”", p("text")),
-            };
-            format!(
-                "Block {}: {} {what} within {} s.",
-                p("block"),
-                p("path"),
-                p("seconds")
-            )
-        }
-        "run.database.failed" => format!(
-            "Block {}: the database query failed: {}.",
-            p("block"),
-            p("reason")
-        ),
-        "run.database.value" => format!(
-            "Block {}: the query returned “{}” instead of “{}” within {} s.",
-            p("block"),
-            p("actual"),
-            p("expected"),
-            p("seconds")
-        ),
-        "run.database.rows" => format!(
-            "Block {}: the query returned {} rows instead of {} within {} s.",
-            p("block"),
-            p("actual"),
-            p("expected"),
-            p("seconds")
-        ),
-        "run.runTest.recursion" => format!(
-            "Block {}: test {} is already running; a test cannot run itself.",
-            p("block"),
-            p("test")
-        ),
-        "run.io.writeFailed" => format!("{} cannot be saved: {}.", p("path"), p("reason")),
-        "run.hands.permissionDenied" => format!(
-            "Block {}: permission {} is not granted.",
-            p("block"),
-            p("permission")
-        ),
-        "run.hands.appNotFound" => format!(
-            "Block {}: application {} is not installed.",
-            p("block"),
-            p("app")
-        ),
-        "run.hands.noWindow" => format!(
-            "Block {}: application {} has no open window.",
-            p("block"),
-            p("app")
-        ),
-        "run.hands.cannotOpen" => format!("Block {}: {} cannot be opened.", p("block"), p("file")),
-        "run.hands.screenLocked" => format!(
-            "Block {}: the screen is locked. Unlock it and run the test again.",
-            p("block")
-        ),
-        "run.hands.stillRunning" => format!(
-            "Block {}: application {} did not quit, so it cannot start over. Close it, or answer what it asks, and run the test again.",
-            p("block"),
-            p("app")
-        ),
-        "run.hands.windowFixed" => format!(
-            "Block {}: the window of {} does not allow its size or position to be changed. Remove the window size and position from this block.",
-            p("block"),
-            p("app")
-        ),
-        "run.hands.windowDiffers" if p("what") == "position" => format!(
-            "Block {}: the window of {} should be at {} but is at {}. The screen may be too small, or the app keeps its window where it likes.",
-            p("block"),
-            p("app"),
-            p("wanted"),
-            p("actual")
-        ),
-        "run.hands.windowDiffers" => format!(
-            "Block {}: the window of {} should be {} points but is {}. The app may have its own limits, or the screen may be too small.",
-            p("block"),
-            p("app"),
-            p("wanted"),
-            p("actual")
-        ),
-        "run.hands.failed" => format!("Block {}: {}.", p("block"), p("reason")),
-        "run.check.meaningMismatch" => format!(
-            "Block {}: the screen does not show what is expected. {}: {}",
-            p("block"),
-            p("provider"),
-            p("reason")
-        ),
-        "run.vision.cloudBlocked" => format!(
-            "Block {}: only local models are allowed, and {} is a cloud service.",
-            p("block"),
-            p("provider")
-        ),
-        code if code.starts_with("run.vision.") => {
-            format!("Block {}: {}", p("block"), describe_vision(f))
-        }
-        _ => {
-            let params: Vec<String> = f.params.iter().map(|(k, v)| format!("{k}={v}")).collect();
-            format!("{} ({})", f.code, params.join(", "))
-        }
-    }
+/// Why a run that passed without looking at the screen isn't a pass.
+pub fn nothing_checked_in(lang: &str) -> String {
+    tr_in!(lang, "report.nothingChecked")
 }
-
-/// English sentence for a problem with a vision model, without the block.
-pub fn describe_vision(f: &Failure) -> String {
-    let p = |name| f.param(name);
-    let provider = p("provider");
-    match f.code.as_str() {
-        "run.vision.noPictures" => format!(
-            "The AI model for {provider} doesn't understand pictures, so it can't check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
-        ),
-        "run.vision.noModel" => format!("No model is chosen for {provider}."),
-        "run.vision.noKey" => format!("The API key for {provider} is not set."),
-        "run.vision.badAddress" => format!(
-            "{} is not a web address; it should start with http:// or https://.",
-            p("address")
-        ),
-        "run.vision.unreachable" => format!("{provider} cannot be reached at {}.", p("address")),
-        "run.vision.timeout" => {
-            format!("{provider} did not answer within {} s.", p("seconds"))
-        }
-        "run.vision.badKey" => format!("{provider} did not accept the API key."),
-        "run.vision.unknownModel" => format!("{provider} has no model {}.", p("model")),
-        "run.vision.rateLimited" => format!(
-            "{provider} has had too many requests or the quota ran out: {}",
-            p("message")
-        ),
-        "run.vision.serviceError" => format!(
-            "{provider} answered with error {}: {}",
-            p("status"),
-            p("message")
-        ),
-        "run.vision.refused" => {
-            format!("{provider} declined to judge the screen: {}", p("message"))
-        }
-        "run.vision.limitReached" | "run.vision.limitNear" => {
-            let period = if p("period") == "month" {
-                "monthly"
-            } else {
-                "daily"
-            };
-            let spent = format!(
-                "{provider} has used ${} of its {period} limit of ${}",
-                p("spent"),
-                p("limit")
-            );
-            if f.code.ends_with("Reached") {
-                format!("{spent}; AI steps with it stop until the limit resets or is raised.")
-            } else {
-                format!("{spent}.")
-            }
-        }
-        "run.vision.journalFailed" => format!(
-            "The AI usage journal {} cannot be read or written, so spending can't be kept to its limits: {}",
-            p("path"),
-            p("reason")
-        ),
-        "run.vision.badAnswer" => {
-            format!(
-                "{provider} gave an answer that cannot be read: {}",
-                p("answer")
-            )
-        }
-        "run.vision.cannotLocate" => {
-            format!("{provider} can't find elements by description; only JEV (TypeSafe AI) can.")
-        }
-        "run.vision.modelCannotLocate" => format!(
-            "The JEV model {} can't find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI.",
-            p("model")
-        ),
-        code => code.to_owned(),
-    }
-}
-
-/// What a script value of this kind (the name of a `ValueKind`) looks like, after “should be”.
-fn value_kind(kind: &str) -> &'static str {
-    match kind {
-        "number" => "a number",
-        "image" => "the path of a PNG picture",
-        "area" => "an area written as x,y,width,height in fractions of the window",
-        "text" => "text",
-        _ => "true or false",
-    }
-}
-
-/// `: what the program said.`, or just `.` when it said nothing.
-fn because(reason: &str) -> String {
-    if reason.is_empty() {
-        ".".to_owned()
-    } else {
-        format!(": {reason}")
-    }
-}
-
-pub(crate) fn wait_target(target: &str) -> String {
-    match target {
-        "screenStable" => "the screen settling".to_owned(),
-        image => format!("the wait for {image}"),
-    }
-}
-
-/// Why a run that passed without looking at the screen isn't a pass, in English.
-pub const NOTHING_CHECKED: &str = "Finished, but nothing was checked: the test has no check or wait block that looks at the screen, so it can't catch a wrong result.";
 
 /// JUnit XML for one or more runs, one test case each. Retries use the Surefire elements
 /// `flakyFailure` (failed, then passed) and `rerunFailure` (failed again). A failure of a test
 /// in quarantine is reported as skipped, with the reason and the failure in its message, and so
 /// is a run that passed without checking anything, so CI doesn't count it as a pass.
 pub fn junit_xml(reports: &[RunReport]) -> String {
-    let reports: Vec<RunReport> = reports.iter().flat_map(RunReport::split_rows).collect();
+    junit_xml_in(&jevision_l10n::language(), reports)
+}
+
+/// [`junit_xml`] with its messages in `lang`.
+pub fn junit_xml_in(lang: &str, reports: &[RunReport]) -> String {
+    let reports: Vec<RunReport> = reports.iter().flat_map(|r| r.split_rows_in(lang)).collect();
     let failed = reports
         .iter()
         .filter(|r| r.verdict == Verdict::Failed && !r.is_quarantined_failure())
@@ -995,7 +603,7 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             .into_iter()
             .flat_map(|a| &a.steps)
             .flat_map(|s| {
-                let branch = s.branch_text().map(|b| format!("{}: {b}", s.block));
+                let branch = s.branch_text_in(lang).map(|b| format!("{}: {b}", s.block));
                 let saved = s
                     .outputs
                     .iter()
@@ -1016,28 +624,31 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
             let _ = writeln!(
                 out,
                 "      <{tag} message=\"{}\" type=\"{}\"/>",
-                xml(&describe(f)),
+                xml(&describe_in(lang, f)),
                 xml(&f.code)
             );
         };
         match r.verdict {
             Verdict::Failed if r.quarantined => {
-                let failed = failures
-                    .last()
-                    .map_or_else(|| "The test failed.".to_owned(), |f| describe(f));
-                let reason = r
-                    .quarantine_reason
-                    .as_deref()
-                    .map_or_else(String::new, |reason| format!(" ({reason})"));
-                let _ = writeln!(
-                    out,
-                    "      <skipped message=\"{}\"/>",
-                    xml(&format!("Quarantined{reason}. {failed}"))
+                let failed = failures.last().map_or_else(
+                    || tr_in!(lang, "report.junit.testFailed"),
+                    |f| describe_in(lang, f),
                 );
+                let message = match r.quarantine_reason.as_deref() {
+                    Some(reason) => {
+                        tr_in!(lang, "report.junit.quarantinedBecause", reason, failed)
+                    }
+                    None => tr_in!(lang, "report.junit.quarantined", failed),
+                };
+                let _ = writeln!(out, "      <skipped message=\"{}\"/>", xml(&message));
             }
             Verdict::Passed => {
                 if r.nothing_checked {
-                    let _ = writeln!(out, "      <skipped message=\"{NOTHING_CHECKED}\"/>");
+                    let _ = writeln!(
+                        out,
+                        "      <skipped message=\"{}\"/>",
+                        xml(&nothing_checked_in(lang))
+                    );
                 }
                 failures
                     .iter()
@@ -1050,19 +661,35 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
                         .iter()
                         .for_each(|f| element(&mut out, "rerunFailure", f));
                 }
-                None => out.push_str("      <failure message=\"The test failed.\"/>\n"),
+                None => {
+                    let _ = writeln!(
+                        out,
+                        "      <failure message=\"{}\"/>",
+                        xml(&tr_in!(lang, "report.junit.testFailed"))
+                    );
+                }
             },
             Verdict::Cancelled => {
-                out.push_str("      <skipped message=\"The run was cancelled.\"/>\n")
+                let _ = writeln!(
+                    out,
+                    "      <skipped message=\"{}\"/>",
+                    xml(&tr_in!(lang, "report.junit.cancelled"))
+                );
             }
             Verdict::Blocked => {
-                let reason = r
-                    .blocked
-                    .as_ref()
-                    .map_or_else(|| "Blocked.".to_owned(), |b| format!("{}.", b.describe()));
+                let reason = r.blocked.as_ref().map_or_else(
+                    || tr_in!(lang, "report.junit.blocked"),
+                    |b| format!("{}.", b.describe_in(lang)),
+                );
                 let _ = writeln!(out, "      <skipped message=\"{}\"/>", xml(&reason));
             }
-            Verdict::Unknown => out.push_str("      <skipped message=\"Unknown status.\"/>\n"),
+            Verdict::Unknown => {
+                let _ = writeln!(
+                    out,
+                    "      <skipped message=\"{}\"/>",
+                    xml(&tr_in!(lang, "report.junit.unknown"))
+                );
+            }
         }
         if !paths.is_empty() {
             let _ = writeln!(
@@ -1082,27 +709,42 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
 /// seen from where the page is saved; videos are too large to embed, so the page links it and
 /// every step with a time seeks it.
 pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
+    html_in(&jevision_l10n::language(), report, run_dir, video)
+}
+
+/// [`html`] written in `lang`.
+pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     let mut o = String::new();
     let (badge, label) = match (report.verdict, report.flaky) {
-        (Verdict::Passed, _) if report.nothing_checked => ("skip", "Nothing checked"),
-        (Verdict::Passed, false) => ("pass", "Passed"),
-        (Verdict::Passed, true) => ("flaky", "Passed, flaky"),
-        (Verdict::Failed, _) if report.quarantined => ("skip", "Failed, quarantined"),
-        (Verdict::Failed, false) => ("fail", "Failed"),
-        (Verdict::Failed, true) => ("fail", "Failed, flaky"),
-        (Verdict::Cancelled, _) => ("skip", "Cancelled"),
-        (Verdict::Blocked, _) => ("skip", "Blocked"),
-        (Verdict::Unknown, _) => ("skip", "Unknown status"),
+        (Verdict::Passed, _) if report.nothing_checked => {
+            ("skip", tr_in!(lang, "report.status.nothingChecked"))
+        }
+        (Verdict::Passed, false) => ("pass", tr_in!(lang, "report.status.passed")),
+        (Verdict::Passed, true) => ("flaky", tr_in!(lang, "report.status.passedFlaky")),
+        (Verdict::Failed, _) if report.quarantined => {
+            ("skip", tr_in!(lang, "report.status.failedQuarantined"))
+        }
+        (Verdict::Failed, false) => ("fail", tr_in!(lang, "report.status.failed")),
+        (Verdict::Failed, true) => ("fail", tr_in!(lang, "report.status.failedFlaky")),
+        (Verdict::Cancelled, _) => ("skip", tr_in!(lang, "report.status.cancelled")),
+        (Verdict::Blocked, _) => ("skip", tr_in!(lang, "report.status.blocked")),
+        (Verdict::Unknown, _) => ("skip", tr_in!(lang, "report.status.unknown")),
     };
+    let language = jevision_l10n::base_language(lang);
     let _ = write!(
         o,
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n\
+        "<!DOCTYPE html>\n<html lang=\"{language}\">\n<head>\n<meta charset=\"utf-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{title} — {label}</title>\n<style>{CSS}</style>\n</head>\n<body>\n<main>\n\
          <header><h1>{title}</h1><span class=\"badge {badge}\">{label}</span></header>\n\
-         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}{packages}{machine}\
-         <dt>Started</dt><dd>{started}</dd><dt>Duration</dt><dd>{duration}</dd>\
-         <dt>Attempts</dt><dd>{attempts}</dd></dl>\n",
+         <dl class=\"facts\"><dt>{test_file}</dt><dd>{file}</dd><dt>{application}</dt><dd>{app}</dd>{environment}{packages}{machine}\
+         <dt>{started_label}</dt><dd>{started}</dd><dt>{duration_label}</dt><dd>{duration}</dd>\
+         <dt>{attempts_label}</dt><dd>{attempts}</dd></dl>\n",
+        test_file = xml(&tr_in!(lang, "report.fact.testFile")),
+        application = xml(&tr_in!(lang, "report.fact.application")),
+        started_label = xml(&tr_in!(lang, "report.fact.started")),
+        duration_label = xml(&tr_in!(lang, "report.fact.duration")),
+        attempts_label = xml(&tr_in!(lang, "report.fact.attempts")),
         title = xml(&report.test),
         file = xml(&report.file),
         app = xml(&report.app),
@@ -1110,7 +752,8 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             .environment
             .as_deref()
             .map_or_else(String::new, |e| format!(
-                "<dt>Environment</dt><dd>{}</dd>",
+                "<dt>{}</dt><dd>{}</dd>",
+                xml(&tr_in!(lang, "report.fact.environment")),
                 xml(e)
             )),
         packages = if report.packages.is_empty() {
@@ -1119,45 +762,74 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             let list = report
                 .packages
                 .iter()
-                .map(|p| format!("{} {} by {} ({})", p.name, p.version, p.author, p.id))
+                .map(|p| {
+                    tr_in!(
+                        lang,
+                        "report.html.package",
+                        &p.name,
+                        &p.version,
+                        &p.author,
+                        &p.id
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
-            format!("<dt>Community blocks</dt><dd>{}</dd>", xml(&list))
+            format!(
+                "<dt>{}</dt><dd>{}</dd>",
+                xml(&tr_in!(lang, "report.fact.communityBlocks")),
+                xml(&list)
+            )
         },
-        machine = report.machine().map_or_else(String::new, |m| format!(
-            "<dt>Computer</dt><dd>{}</dd>",
-            xml(&m)
-        )),
+        machine = report
+            .machine_in(lang)
+            .map_or_else(String::new, |m| format!(
+                "<dt>{}</dt><dd>{}</dd>",
+                xml(&tr_in!(lang, "report.fact.computer")),
+                xml(&m)
+            )),
         started = xml(&report.started_at.replace('T', " ")),
-        duration = duration(report.duration_ms),
+        duration = duration(lang, report.duration_ms),
         attempts = report.attempts.len(),
     );
     if report.nothing_checked {
-        let _ = writeln!(o, "<p class=\"note\">{NOTHING_CHECKED}</p>");
+        let _ = writeln!(
+            o,
+            "<p class=\"note\">{}</p>",
+            xml(&nothing_checked_in(lang))
+        );
     }
     let rows = report.rows();
     if rows.is_empty() {
         if let Some(verdict) = RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
         {
-            let _ = writeln!(o, "<p class=\"note\">{}</p>", xml(&verdict.describe()));
+            let _ = writeln!(
+                o,
+                "<p class=\"note\">{}</p>",
+                xml(&verdict.describe_in(lang))
+            );
         }
     } else {
         let _ = writeln!(
             o,
             "<p class=\"note\">{}.</p>\n<ol class=\"steps\">",
-            xml(&report.rows_summary().unwrap_or_default())
+            xml(&report.rows_summary_in(lang).unwrap_or_default())
         );
         for r in &rows {
             let (class, status) = match r.verdict {
-                Verdict::Passed if r.flaky => ("pass", "Passed, flaky"),
-                Verdict::Passed => ("pass", "Passed"),
-                Verdict::Failed => ("fail", "Failed"),
-                Verdict::Cancelled | Verdict::Blocked => ("skip", "Cancelled"),
-                Verdict::Unknown => ("skip", "Unknown status"),
+                Verdict::Passed if r.flaky => ("pass", tr_in!(lang, "report.status.passedFlaky")),
+                Verdict::Passed => ("pass", tr_in!(lang, "report.status.passed")),
+                Verdict::Failed => ("fail", tr_in!(lang, "report.status.failed")),
+                Verdict::Cancelled | Verdict::Blocked => {
+                    ("skip", tr_in!(lang, "report.status.cancelled"))
+                }
+                Verdict::Unknown => ("skip", tr_in!(lang, "report.status.unknown")),
             };
             let tries = match r.attempts {
                 1 => String::new(),
-                n => format!("<span class=\"type\">{n} attempts</span>"),
+                n => format!(
+                    "<span class=\"type\">{}</span>",
+                    xml(&tr_in!(lang, "report.html.rowAttempts", n))
+                ),
             };
             let _ = writeln!(
                 o,
@@ -1172,31 +844,37 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     if let Some(blocked) = &report.blocked {
         let _ = writeln!(
             o,
-            "<p class=\"reason\">{}. The test didn’t run, so this says nothing about it.</p>",
-            xml(&blocked.describe())
+            "<p class=\"reason\">{}</p>",
+            xml(&tr_in!(
+                lang,
+                "report.html.notRun",
+                blocked.describe_in(lang)
+            ))
         );
     }
     if report.added_as_dependency {
         let _ = writeln!(
             o,
-            "<p class=\"note\">Added to the run because other tests depend on it.</p>"
+            "<p class=\"note\">{}</p>",
+            xml(&tr_in!(lang, "report.html.addedAsDependency"))
         );
     }
     if report.quarantined {
-        let reason = report
-            .quarantine_reason
-            .as_deref()
-            .map_or_else(String::new, |reason| format!(": {}", xml(reason)));
-        let _ = writeln!(
-            o,
-            "<p class=\"note\">The test is in quarantine{reason}. Its failures don’t fail Run All, the command line or the JUnit report.</p>"
-        );
+        let note = match report.quarantine_reason.as_deref() {
+            Some(reason) => tr_in!(lang, "report.html.quarantineBecause", reason),
+            None => tr_in!(lang, "report.html.quarantine"),
+        };
+        let _ = writeln!(o, "<p class=\"note\">{}</p>", xml(&note));
     }
     if !report.baselines_created.is_empty() {
         let _ = writeln!(
             o,
-            "<p class=\"note\">New reference images were saved: {}. Review them before relying on this test.</p>",
-            xml(&report.baselines_created.join(", "))
+            "<p class=\"note\">{}</p>",
+            xml(&tr_in!(
+                lang,
+                "report.html.newBaselines",
+                report.baselines_created.join(", ")
+            ))
         );
     }
     if let Some(src) = video {
@@ -1209,24 +887,26 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     for a in &report.attempts {
         let _ = writeln!(
             o,
-            "<section>\n<h2>{}Attempt {} <small>{}</small></h2>",
+            "<section>\n<h2>{}{} <small>{}</small></h2>",
             a.row
                 .as_ref()
-                .map_or_else(String::new, |r| format!("{} · ", xml(&r.title()))),
-            a.number,
-            duration(a.duration_ms)
+                .map_or_else(String::new, |r| format!("{} · ", xml(&r.title_in(lang)))),
+            xml(&tr_in!(lang, "report.html.attempt", a.number)),
+            duration(lang, a.duration_ms)
         );
         if let Some(f) = &a.failure {
-            let _ = writeln!(o, "<p class=\"reason\">{}</p>", xml(&describe(f)));
+            let _ = writeln!(o, "<p class=\"reason\">{}</p>", xml(&describe_in(lang, f)));
         }
         o.push_str("<ol class=\"steps\">\n");
         for s in &a.steps {
             let (class, status) = match s.status {
-                StepStatus::Passed => ("pass", "Passed"),
-                StepStatus::Failed => ("fail", "Failed"),
-                StepStatus::BaselineCreated => ("new", "Reference saved"),
-                StepStatus::Cancelled => ("skip", "Cancelled"),
-                StepStatus::Unknown => ("skip", "Unknown status"),
+                StepStatus::Passed => ("pass", tr_in!(lang, "report.status.passed")),
+                StepStatus::Failed => ("fail", tr_in!(lang, "report.status.failed")),
+                StepStatus::BaselineCreated => {
+                    ("new", tr_in!(lang, "report.status.baselineCreated"))
+                }
+                StepStatus::Cancelled => ("skip", tr_in!(lang, "report.status.cancelled")),
+                StepStatus::Unknown => ("skip", tr_in!(lang, "report.status.unknown")),
             };
             let _ = write!(
                 o,
@@ -1237,9 +917,13 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 xml(&s.block_type)
             );
             if s.test != report.file {
-                let _ = write!(o, "<span class=\"type\">in {}</span>", xml(&s.test));
+                let _ = write!(
+                    o,
+                    "<span class=\"type\">{}</span>",
+                    xml(&tr_in!(lang, "report.html.inTest", &s.test))
+                );
             }
-            if let Some(b) = s.branch_text() {
+            if let Some(b) = s.branch_text_in(lang) {
                 let _ = write!(o, "<span class=\"type\">{}</span>", xml(&b));
             }
             for (name, value) in &s.outputs {
@@ -1251,25 +935,30 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 );
             }
             if let Some(sim) = s.similarity {
-                let _ = write!(o, "<span class=\"type\">{} alike</span>", percent(sim));
+                let _ = write!(
+                    o,
+                    "<span class=\"type\">{}</span>",
+                    xml(&tr_in!(lang, "report.html.alike", percent(lang, sim)))
+                );
             }
             let _ = write!(
                 o,
                 "<span class=\"status\">{status}</span><span class=\"time\">{}</span>",
-                duration(s.duration_ms)
+                duration(lang, s.duration_ms)
             );
             if let (Some(_), Some(ms)) = (video, s.video_at_ms) {
                 let _ = write!(
                     o,
-                    "<button class=\"seek\" data-t=\"{:.3}\" title=\"Show this step in the video\">▶ {}</button>",
+                    "<button class=\"seek\" data-t=\"{:.3}\" title=\"{}\">▶ {}</button>",
                     ms as f64 / 1000.0,
+                    xml(&tr_in!(lang, "report.html.showInVideo")),
                     clock(ms)
                 );
             }
             o.push_str("</div>");
             match (&s.failure, &s.vision) {
                 (Some(f), _) => {
-                    let _ = write!(o, "<p class=\"reason\">{}</p>", xml(&describe(f)));
+                    let _ = write!(o, "<p class=\"reason\">{}</p>", xml(&describe_in(lang, f)));
                 }
                 (None, Some(v)) => {
                     let _ = write!(
@@ -1283,15 +972,15 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 (None, None) => {}
             }
             let sent = if s.sent_masked {
-                "Sent to the AI model, masked before sending"
+                tr_in!(lang, "report.html.sentMasked")
             } else {
-                "Sent to the AI model"
+                tr_in!(lang, "report.html.sent")
             };
-            let images: Vec<(&str, &String, &[jevision_core::Rect])> = [
-                ("Before", &s.before, &[][..]),
-                ("After", &s.after, &[]),
-                ("Expected", &s.expected, &[]),
-                ("Differences", &s.diff, &[]),
+            let images: Vec<(String, &String, &[jevision_core::Rect])> = [
+                (tr_in!(lang, "report.html.before"), &s.before, &[][..]),
+                (tr_in!(lang, "report.html.after"), &s.after, &[]),
+                (tr_in!(lang, "report.html.expected"), &s.expected, &[]),
+                (tr_in!(lang, "report.html.differences"), &s.diff, &[]),
                 (sent, &s.sent, &s.found),
             ]
             .into_iter()
@@ -1302,8 +991,9 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 .filter_map(|(name, path, found)| {
                     let bytes = std::fs::read(run_dir.join(path)).ok()?;
                     Some(format!(
-                        "<figure>{}<figcaption>{name}</figcaption></figure>",
-                        picture(name, &bytes, found)
+                        "<figure>{}<figcaption>{}</figcaption></figure>",
+                        picture(&xml(name), &bytes, found),
+                        xml(name)
                     ))
                 })
                 .collect();
@@ -1398,16 +1088,27 @@ fn clock(ms: u64) -> String {
     format!("{}:{:02}", seconds / 60, seconds % 60)
 }
 
-pub(crate) fn duration(ms: u64) -> String {
+/// A length of time for a person: `340 ms`, `2.5 s`.
+pub(crate) fn duration(lang: &str, ms: u64) -> String {
     if ms < 1000 {
-        format!("{ms} ms")
+        tr_in!(lang, "report.duration.ms", ms)
     } else {
-        format!("{:.1} s", ms as f64 / 1000.0)
+        tr_in!(
+            lang,
+            "report.duration.s",
+            decimal(lang, ms as f64 / 1000.0, 1)
+        )
     }
 }
 
-pub(crate) fn percent(share: f64) -> String {
+/// A share the way a saved report keeps it, the same in every language: `87.5%`.
+pub(crate) fn kept_percent(share: f64) -> String {
     format!("{:.1}%", share * 100.0)
+}
+
+/// A share as a percentage in `lang`: `87.5%`.
+pub(crate) fn percent(lang: &str, share: f64) -> String {
+    tr_in!(lang, "report.percent", decimal(lang, share * 100.0, 1))
 }
 
 /// Escapes text for XML and HTML content and attribute values.
@@ -1460,12 +1161,54 @@ mod tests {
         .unwrap();
         assert_eq!(step.branches, None);
         assert_eq!(step.branch_condition, None);
-        assert_eq!(step.branch_text().as_deref(), Some("Took “Yes”"));
+        assert_eq!(step.branch_text_in("en").as_deref(), Some("Took “Yes”"));
         assert_eq!(
-            branch_text("elseIf2", None, None).as_deref(),
+            branch_text_in("en", "elseIf2", None, None).as_deref(),
             Some("Took “Condition 3”")
         );
-        assert_eq!(branch_text("next", Some(2), None), None);
+        assert_eq!(branch_text_in("en", "next", Some(2), None), None);
+    }
+
+    #[test]
+    fn branches_and_retries_are_told_in_the_language_asked_for() {
+        assert_eq!(
+            branch_text_in("ru", "then", None, None).as_deref(),
+            Some("Выбран путь «Да»")
+        );
+        assert_eq!(
+            branch_text_in("ru", "elseIf2", None, None).as_deref(),
+            Some("Выбран путь «Условие 3»")
+        );
+        assert_eq!(
+            branch_text_in("en", "then", Some(2), Some("a > b")).as_deref(),
+            Some("Took “Yes: a > b”")
+        );
+        // The count picks the form: 1, 2, 5, 21 and 11 in Russian.
+        for (n, en, ru) in [
+            (1, "Failed 1 time in a row", "Упал 1 раз подряд"),
+            (2, "Failed 2 times in a row", "Упал 2 раза подряд"),
+            (5, "Failed 5 times in a row", "Упал 5 раз подряд"),
+            (21, "Failed 21 times in a row", "Упал 21 раз подряд"),
+            (11, "Failed 11 times in a row", "Упал 11 раз подряд"),
+        ] {
+            let verdict = RetryVerdict::FailedEveryTime { attempts: n };
+            assert!(verdict.describe_in("en").starts_with(en), "{n}");
+            assert!(verdict.describe_in("ru").starts_with(ru), "{n}");
+        }
+        assert_eq!(
+            RetryVerdict::PassedOnRetry { retry: 2 }.describe_in("ru"),
+            "Прошёл с повтора 2 после сбоя — тест нестабилен."
+        );
+    }
+
+    #[test]
+    fn durations_and_shares_use_the_decimal_mark_of_the_language() {
+        assert_eq!(duration("en", 340), "340 ms");
+        assert_eq!(duration("ru", 340), "340 мс");
+        assert_eq!(duration("en", 2500), "2.5 s");
+        assert_eq!(duration("ru", 2500), "2,5 с");
+        assert_eq!(percent("en", 0.875), "87.5%");
+        assert_eq!(percent("ru", 0.875), "87,5\u{a0}%");
     }
 
     #[test]

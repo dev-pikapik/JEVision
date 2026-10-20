@@ -62,6 +62,9 @@ struct RunStateTests {
     let text = RunText.screenBusy(holder)
     #expect(text.hasPrefix("Screen busy: JEVision, test Sign in, since "))
     #expect(RunText.screenBusy(nil) == "Screen busy: another run is using it.")
+    // The command-line tool is not named by its program name.
+    let terminal = ScreenHolder(process: "jevision", pid: 32, test: "Checkout", since: 1_700_000_000)
+    #expect(RunText.screenBusy(terminal).hasPrefix("Screen busy: JEVision in a terminal, test Checkout, since "))
     #expect(RunHUD.status(of: run([.waitingForScreen(holder: nil)])) == "Waiting for the screen")
   }
 
@@ -236,6 +239,8 @@ struct RunTextTests {
     #expect(RunText.failure(missing) == "The secret PASSWORD isn’t set. Set it in Test details.")
     let settle = Failure(code: "run.waitFor.timeout", params: ["block": "w", "target": "screenStable", "seconds": "10"])
     #expect(RunText.failure(settle) == "Block “w”: the screen didn’t settle within 10 s.")
+    // Beside the block itself the message names it the way the canvas does, not by its id.
+    #expect(RunText.failure(settle, blockType: "waitFor") == "Block “Wait For”: the screen didn’t settle within 10 s.")
   }
 
   @Test func describesClipboardAndAreaFailures() {

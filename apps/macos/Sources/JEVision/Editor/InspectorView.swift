@@ -19,7 +19,7 @@ struct InspectorView: View {
       let type = block.kind.typeName
       Form {
         if let failure {
-          failureBanner(failure)
+          failureBanner(failure, blockType: type)
         }
         Section {
           HStack(alignment: .top, spacing: 12) {
@@ -42,8 +42,8 @@ struct InspectorView: View {
     }
   }
 
-  private func failureBanner(_ failure: BlockFailure) -> some View {
-    let reason = failure.failure.map(RunText.failure) ?? String(localized: "The block failed.")
+  private func failureBanner(_ failure: BlockFailure, blockType: String) -> some View {
+    let reason = failure.failure.map { RunText.failure($0, blockType: blockType) } ?? String(localized: "The block failed.")
     return Section {
       VStack(alignment: .leading, spacing: 10) {
         Label {

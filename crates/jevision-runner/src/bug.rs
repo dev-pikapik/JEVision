@@ -9,10 +9,12 @@ use jevision_core::{
     Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
     is_block_path,
 };
+use jevision_l10n::{text_in, tr_in};
 use sha2::{Digest, Sha256};
 
-use crate::report::{duration, percent, wait_target};
+use crate::report::{duration, percent};
 use crate::system::sign;
+use crate::words::{share, wait_target};
 use crate::{Attempt, Failure, RetryVerdict, RunReport, SECRET_MASK, Step, StepStatus, Verdict};
 
 /// What the report says about the computer and the app, besides what the run saved.
@@ -43,9 +45,22 @@ pub struct BugDraft {
 /// A screenshot of the failed step, relative to the run folder.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BugPicture {
-    /// `Expected`, `Actual` or `Difference`.
+    /// `Expected`, `Actual` or `Difference`: names of files and of the pictures a client asks
+    /// for, so they are the same in every language. Never shown as it is: people read
+    /// [`picture_caption_in`].
     pub label: String,
     pub path: String,
+}
+
+/// The caption of the picture with `label` (see [`BugPicture::label`]) in `lang`.
+pub fn picture_caption_in(lang: &str, label: &str) -> String {
+    let key = match label {
+        "Expected" => "bug.picture.expected",
+        "Actual" => "bug.picture.actual",
+        "Difference" => "bug.picture.difference",
+        other => return other.to_owned(),
+    };
+    text_in(lang, key, &[])
 }
 
 /// Most steps a report lists: the last ones, those that led to the failure.
@@ -63,9 +78,20 @@ impl RunReport {
     }
 }
 
-/// The bug report of a failed run; `None` for a run that didn't fail. `flows` are the tests the
-/// run's steps belong to, by file relative to the project folder, for describing the blocks.
+/// [`bug_report_in`] in the language set with `jevision_l10n::set_language`.
 pub fn bug_report(
+    report: &RunReport,
+    flows: &HashMap<String, Flow>,
+    context: &BugContext,
+) -> Option<BugDraft> {
+    bug_report_in(&jevision_l10n::language(), report, flows, context)
+}
+
+/// The bug report of a failed run in `lang`; `None` for a run that didn't fail. `flows` are the
+/// tests the run's steps belong to, by file relative to the project folder, for describing the
+/// blocks.
+pub fn bug_report_in(
+    lang: &str,
     report: &RunReport,
     flows: &HashMap<String, Flow>,
     context: &BugContext,
@@ -89,62 +115,80 @@ pub fn bug_report(
         &report.test
     };
     let title = match failed {
-        Some(step) => format!(
-            "{name} fails at {} “{}”",
-            type_title(&step.block_type),
-            step.block
+        Some(step) => tr_in!(
+            lang,
+            "bug.title.at",
+            name,
+            type_title(lang, &step.block_type),
+            &step.block
         ),
-        None => format!("{name} fails"),
+        None => tr_in!(lang, "bug.title.fails", name),
     };
 
     let mut body = String::new();
     if let Some(failure) = failure {
-        let _ = writeln!(body, "**Cause:** {}\n", crate::describe(failure));
+        let cause = tr_in!(lang, "bug.cause", crate::describe_in(lang, failure));
+        let _ = writeln!(body, "{cause}\n");
     }
     if let Some(verdict) = RetryVerdict::of(report.verdict, report.flaky, report.attempts.len()) {
-        let _ = writeln!(body, "{}\n", verdict.describe());
+        let _ = writeln!(body, "{}\n", verdict.describe_in(lang));
     }
 
-    body.push_str("### Steps to reproduce\n\n");
+    let _ = write!(body, "{}\n\n", tr_in!(lang, "bug.heading.steps"));
     if let Some(row) = &attempt.row {
-        let _ = writeln!(body, "With data {}.\n", row.title());
+        let _ = writeln!(
+            body,
+            "{}\n",
+            tr_in!(lang, "bug.steps.withData", row.title_in(lang))
+        );
     }
     let skipped = attempt.steps.len().saturating_sub(MAX_STEPS);
     if skipped > 0 {
-        let _ = writeln!(body, "{skipped} earlier steps passed and are left out.\n");
+        let _ = writeln!(body, "{}\n", tr_in!(lang, "bug.steps.skipped", skipped));
     }
     for (n, step) in attempt.steps.iter().enumerate().skip(skipped) {
-        let mut text = step_text(step, flows, &report.app);
+        let mut text = step_text(lang, step, flows, &report.app);
         if step.test != report.file {
-            let _ = write!(text, " (in `{}`)", step.test);
+            let _ = write!(text, " {}", tr_in!(lang, "bug.steps.inTest", &step.test));
         }
-        if let Some(branch) = step.branch_text() {
+        if let Some(branch) = step.branch_text_in(lang) {
             let _ = write!(text, " — {branch}");
         }
         if failed.is_some_and(|f| f.seq == step.seq) {
-            let _ = writeln!(body, "{}. **{text} — fails here**", n + 1);
+            let _ = writeln!(
+                body,
+                "{}. **{}**",
+                n + 1,
+                tr_in!(lang, "bug.steps.failsHere", text)
+            );
         } else {
             let _ = writeln!(body, "{}. {text}", n + 1);
         }
     }
 
     if let Some(failure) = failure {
-        let (expected, actual) = expected_and_actual(failure, block);
+        let (expected, actual) = expected_and_actual(lang, failure, block);
         let _ = write!(
             body,
-            "\n### Expected\n\n{expected}\n\n### Actual\n\n{actual}\n"
+            "\n{}\n\n{expected}\n\n{}\n\n{actual}\n",
+            tr_in!(lang, "bug.heading.expected"),
+            tr_in!(lang, "bug.heading.actual"),
         );
     }
 
-    body.push_str("\n### Environment\n\n| | |\n|---|---|\n");
+    let _ = write!(
+        body,
+        "\n{}\n\n| | |\n|---|---|\n",
+        tr_in!(lang, "bug.heading.environment")
+    );
     let mut fact = |name: &str, value: &str| {
         let _ = writeln!(body, "| {name} | {} |", value.replace('|', "\\|"));
     };
     if !context.macos.is_empty() {
         fact("macOS", &context.macos);
     }
-    if let Some(machine) = report.machine() {
-        fact("Computer", &machine);
+    if let Some(machine) = report.machine_in(lang) {
+        fact(&tr_in!(lang, "report.fact.computer"), &machine);
     }
     if !context.jevision.is_empty() {
         fact("JEVision", &context.jevision);
@@ -153,27 +197,23 @@ pub fn bug_report(
         Some(version) => format!("`{}` {version}", report.app),
         None => format!("`{}`", report.app),
     };
-    fact("App under test", &app);
+    fact(&tr_in!(lang, "bug.fact.app"), &app);
     if let Some(environment) = &report.environment {
-        fact("Environment", environment);
+        fact(&tr_in!(lang, "report.fact.environment"), environment);
     }
-    let tries = match report.attempts.len() {
-        1 => String::new(),
-        n => format!(", {n} tries"),
+    let started = report.started_at.replace('T', " ");
+    let started = started.trim_end_matches('Z');
+    let took = duration(lang, report.duration_ms);
+    let run = match report.attempts.len() {
+        1 => tr_in!(lang, "bug.run.took", started, took),
+        n => tr_in!(lang, "bug.run.tookTries", started, took, n),
     };
-    fact(
-        "Run",
-        &format!(
-            "{} UTC, took {}{tries}",
-            report.started_at.replace('T', " ").trim_end_matches('Z'),
-            duration(report.duration_ms)
-        ),
-    );
+    fact(&tr_in!(lang, "bug.fact.run"), &run);
     let test = match &context.test_url {
         Some(url) => format!("[{}]({url})", report.file),
         None => format!("`{}`", report.file),
     };
-    fact("Test", &test);
+    fact(&tr_in!(lang, "bug.fact.test"), &test);
 
     let pictures = failed.map_or_else(Vec::new, |step| {
         [
@@ -207,6 +247,7 @@ pub fn bug_report(
 }
 
 /// Hex of the first 8 bytes of SHA-256 over the test, the block it failed at and the reason.
+/// Made of identifiers only, so it is the same in every language.
 fn fingerprint(report: &RunReport, step: Option<&Step>, failure: Option<&Failure>) -> String {
     let mut hash = Sha256::new();
     for part in [
@@ -243,61 +284,73 @@ fn block_of<'a>(step: &Step, flows: &'a HashMap<String, Flow>) -> Option<&'a Blo
         .map(|b| &b.kind)
 }
 
-/// The type of a block in words, such as `Wait for`.
-fn type_title(block_type: &str) -> String {
-    match block_type {
-        "openApp" => "Open App".to_owned(),
-        "openFile" => "Open File".to_owned(),
-        "click" => "Click".to_owned(),
-        "hover" => "Hover".to_owned(),
-        "drag" => "Drag".to_owned(),
-        "scroll" => "Scroll".to_owned(),
-        "type" => "Type".to_owned(),
-        "pressKeys" => "Press Keys".to_owned(),
-        "waitFor" => "Wait For".to_owned(),
-        "pause" => "Pause".to_owned(),
-        "check" => "Check".to_owned(),
-        "if" => "If".to_owned(),
-        "repeat" => "Repeat".to_owned(),
-        "useData" => "Use Data".to_owned(),
-        "runTest" => "Run Test".to_owned(),
-        "script" => "Script".to_owned(),
-        "command" => "Command".to_owned(),
-        "http" => "HTTP Request".to_owned(),
-        "checkFile" => "Check File".to_owned(),
-        "database" => "Database".to_owned(),
-        "clipboard" => "Clipboard".to_owned(),
-        "dateTime" => "Date And Time".to_owned(),
-        other => other.to_owned(),
-    }
+/// The type of a block in words, such as `Wait For`.
+fn type_title(lang: &str, block_type: &str) -> String {
+    let key = match block_type {
+        "openApp" => "bug.type.openApp",
+        "openFile" => "bug.type.openFile",
+        "click" => "bug.type.click",
+        "hover" => "bug.type.hover",
+        "drag" => "bug.type.drag",
+        "scroll" => "bug.type.scroll",
+        "type" => "bug.type.type",
+        "pressKeys" => "bug.type.pressKeys",
+        "waitFor" => "bug.type.waitFor",
+        "pause" => "bug.type.pause",
+        "check" => "bug.type.check",
+        "if" => "bug.type.if",
+        "repeat" => "bug.type.repeat",
+        "useData" => "bug.type.useData",
+        "runTest" => "bug.type.runTest",
+        "script" => "bug.type.script",
+        "command" => "bug.type.command",
+        "http" => "bug.type.http",
+        "checkFile" => "bug.type.checkFile",
+        "database" => "bug.type.database",
+        "clipboard" => "bug.type.clipboard",
+        "dateTime" => "bug.type.dateTime",
+        other => return other.to_owned(),
+    };
+    text_in(lang, key, &[])
 }
 
 /// What a step did, in one line.
-fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
+fn step_text(lang: &str, step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
     match block_of(step, flows) {
-        Some(kind) => describe_block(kind, app),
-        None => format!("{} “{}”", type_title(&step.block_type), step.block),
+        Some(kind) => describe_block_in(lang, kind, app),
+        None => tr_in!(
+            lang,
+            "bug.step.unknown",
+            type_title(lang, &step.block_type),
+            &step.block
+        ),
     }
 }
 
-/// What the block `kind` does, in one English line, for a person who hasn't seen the test:
-/// `app` is the application under test, which an open-app block without one opens.
+/// [`describe_block_in`] in the language set with `jevision_l10n::set_language`.
 pub fn describe_block(kind: &BlockKind, app: &str) -> String {
+    describe_block_in(&jevision_l10n::language(), kind, app)
+}
+
+/// What the block `kind` does, in one line in `lang`, for a person who hasn't seen the test:
+/// `app` is the application under test, which an open-app block without one opens.
+pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
     let target = |t: &Target| match t {
-        Target::Image(image) => format!("“{image}”"),
-        Target::Point(p) => format!(
-            "the point at {} across, {} down the window",
-            percent(p.x),
-            percent(p.y)
+        Target::Image(image) => tr_in!(lang, "bug.target.image", image),
+        Target::Point(p) => tr_in!(
+            lang,
+            "bug.target.point",
+            percent(lang, p.x),
+            percent(lang, p.y)
         ),
-        Target::Description(what) => format!("{} (found by description)", what.trim()),
-        Target::Area(area) => format!("the middle of the area {area}"),
+        Target::Description(what) => tr_in!(lang, "bug.target.description", what.trim()),
+        Target::Area(area) => tr_in!(lang, "bug.target.area", area.to_string()),
     };
     match kind {
         BlockKind::OpenApp { app: other, .. } => {
-            format!("Open `{}`", other.as_deref().unwrap_or(app))
+            tr_in!(lang, "bug.block.openApp", other.as_deref().unwrap_or(app))
         }
-        BlockKind::OpenFile { files, .. } => format!("Open {}", files.join(", ")),
+        BlockKind::OpenFile { files, .. } => tr_in!(lang, "bug.block.openFile", files.join(", ")),
         BlockKind::Click {
             target: t,
             button,
@@ -305,19 +358,22 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             modifiers,
             ..
         } => {
-            let verb = match (button, double) {
-                (jevision_core::MouseButton::Right, _) => "Right-click",
-                (jevision_core::MouseButton::Middle, _) => "Middle-click",
-                (_, true) => "Double-click",
-                _ => "Click",
+            let at = target(t);
+            let text = match (button, double) {
+                (jevision_core::MouseButton::Right, _) => tr_in!(lang, "bug.block.rightClick", at),
+                (jevision_core::MouseButton::Middle, _) => {
+                    tr_in!(lang, "bug.block.middleClick", at)
+                }
+                (_, true) => tr_in!(lang, "bug.block.doubleClick", at),
+                _ => tr_in!(lang, "bug.block.click", at),
             };
-            format!("{verb} {}{}", target(t), holding(modifiers))
+            text + &holding(lang, modifiers)
         }
         BlockKind::Hover {
             target: t,
             modifiers,
             ..
-        } => format!("Hover over {}{}", target(t), holding(modifiers)),
+        } => tr_in!(lang, "bug.block.hover", target(t)) + &holding(lang, modifiers),
         BlockKind::Drag {
             from,
             to,
@@ -325,17 +381,15 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             modifiers,
             ..
         } => {
-            let with = match button {
-                jevision_core::MouseButton::Left => "",
-                jevision_core::MouseButton::Right => " with the right button",
-                jevision_core::MouseButton::Middle => " with the middle button",
+            let (from, to) = (target(from), target(to));
+            let text = match button {
+                jevision_core::MouseButton::Left => tr_in!(lang, "bug.block.drag", from, to),
+                jevision_core::MouseButton::Right => tr_in!(lang, "bug.block.dragRight", from, to),
+                jevision_core::MouseButton::Middle => {
+                    tr_in!(lang, "bug.block.dragMiddle", from, to)
+                }
             };
-            format!(
-                "Drag from {} to {}{with}{}",
-                target(from),
-                target(to),
-                holding(modifiers)
-            )
+            text + &holding(lang, modifiers)
         }
         BlockKind::Scroll {
             direction,
@@ -346,53 +400,64 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             ..
         } => {
             let direction = match direction {
-                jevision_core::ScrollDirection::Up => "up",
-                jevision_core::ScrollDirection::Down => "down",
-                jevision_core::ScrollDirection::Left => "left",
-                jevision_core::ScrollDirection::Right => "right",
+                jevision_core::ScrollDirection::Up => text_in(lang, "bug.direction.up", &[]),
+                jevision_core::ScrollDirection::Down => text_in(lang, "bug.direction.down", &[]),
+                jevision_core::ScrollDirection::Left => text_in(lang, "bug.direction.left", &[]),
+                jevision_core::ScrollDirection::Right => text_in(lang, "bug.direction.right", &[]),
             };
-            let unit = match (unit, amount) {
-                (jevision_core::ScrollUnit::Lines, 1) => "line",
-                (jevision_core::ScrollUnit::Lines, _) => "lines",
-                (jevision_core::ScrollUnit::Pixels, 1) => "point",
-                (jevision_core::ScrollUnit::Pixels, _) => "points",
+            let place = at
+                .as_ref()
+                .map_or_else(|| text_in(lang, "bug.place.window", &[]), target);
+            let text = match unit {
+                jevision_core::ScrollUnit::Lines => {
+                    tr_in!(lang, "bug.block.scrollLines", *amount, direction, place)
+                }
+                jevision_core::ScrollUnit::Pixels => {
+                    tr_in!(lang, "bug.block.scrollPoints", *amount, direction, place)
+                }
             };
-            let place = at.as_ref().map_or_else(|| "the window".to_owned(), target);
-            format!(
-                "Scroll {direction} {amount} {unit} over {place}{}",
-                holding(modifiers)
-            )
+            text + &holding(lang, modifiers)
         }
         BlockKind::Type { text, into, .. } => match into {
-            Some(t) => format!("Type “{text}” into {}", target(t)),
-            None => format!("Type “{text}”"),
+            Some(t) => tr_in!(lang, "bug.block.typeInto", text, target(t)),
+            None => tr_in!(lang, "bug.block.type", text),
         },
-        BlockKind::PressKeys { keys, .. } => format!("Press {keys}"),
+        BlockKind::PressKeys { keys, .. } => tr_in!(lang, "bug.block.pressKeys", keys),
         BlockKind::WaitFor {
             until, timeout_ms, ..
         } => {
             let what = match until {
-                WaitUntil::Appears(r) => format!("“{}” appears", r.image),
-                WaitUntil::Disappears(r) => format!("“{}” disappears", r.image),
-                WaitUntil::ScreenStable => "the screen settles".to_owned(),
+                WaitUntil::Appears(r) => tr_in!(lang, "bug.wait.appears", &r.image),
+                WaitUntil::Disappears(r) => tr_in!(lang, "bug.wait.disappears", &r.image),
+                WaitUntil::ScreenStable => text_in(lang, "bug.wait.screenStable", &[]),
             };
-            format!("Wait up to {} until {what}", format_duration(*timeout_ms))
+            tr_in!(
+                lang,
+                "bug.block.waitFor",
+                format_duration(*timeout_ms),
+                what
+            )
         }
         BlockKind::Pause { duration_ms, .. } => {
-            format!("Pause for {}", format_duration(*duration_ms))
+            tr_in!(lang, "bug.block.pause", format_duration(*duration_ms))
         }
-        BlockKind::Check { reference, .. } => format!("Check that {}", looks_like(reference)),
+        BlockKind::Check { reference, .. } => {
+            tr_in!(lang, "bug.block.check", looks_like(lang, reference))
+        }
         BlockKind::If { condition, .. } => match condition {
-            Condition::Screen(reference) => format!("If {}", looks_like(reference)),
-            Condition::Value(v) => format!("If `{}` {} `{}`", v.of, sign(v.is), v.to),
+            Condition::Screen(reference) => {
+                tr_in!(lang, "bug.block.ifScreen", looks_like(lang, reference))
+            }
+            Condition::Value(v) => tr_in!(lang, "bug.block.ifValue", &v.of, sign(v.is), &v.to),
         },
-        BlockKind::Repeat { times, .. } => format!("Repeat {times} times"),
-        BlockKind::UseData { file, .. } => format!("For each row of {file}"),
+        BlockKind::Repeat { times, .. } => tr_in!(lang, "bug.block.repeat", *times),
+        BlockKind::UseData { file, .. } => tr_in!(lang, "bug.block.useData", file),
         BlockKind::RunTest { test, .. } if is_block_path(test) => {
-            format!("Run the custom block `{test}`")
+            tr_in!(lang, "bug.block.runBlock", test)
         }
-        BlockKind::RunTest { test, .. } => format!("Run test `{test}`"),
+        BlockKind::RunTest { test, .. } => tr_in!(lang, "bug.block.runTest", test),
         BlockKind::Script { language, .. } => {
+            // Names of languages and tools are the same in every language.
             let language = match language {
                 ScriptLanguage::Sh => "sh",
                 ScriptLanguage::Zsh => "zsh",
@@ -400,38 +465,39 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
                 ScriptLanguage::Node => "Node.js",
                 ScriptLanguage::AppleScript => "AppleScript",
             };
-            format!("Run a {language} script")
+            tr_in!(lang, "bug.block.script", language)
         }
-        BlockKind::Command { command, .. } => format!("Run `{command}`"),
-        BlockKind::Http { method, url, .. } => {
-            format!("Send {} {url}", format!("{method:?}").to_uppercase())
-        }
-        BlockKind::CheckFile { path, until, .. } => {
-            let state = match until {
-                FileState::Exists => "exists".to_owned(),
-                FileState::Missing => "is gone".to_owned(),
-                FileState::Changed => "changes".to_owned(),
-                FileState::Contains(text) => format!("contains “{text}”"),
-            };
-            format!("Wait until `{path}` {state}")
-        }
-        BlockKind::Database { file, query, .. } => format!("Query `{file}`: `{query}`"),
+        BlockKind::Command { command, .. } => tr_in!(lang, "bug.block.command", command),
+        BlockKind::Http { method, url, .. } => tr_in!(
+            lang,
+            "bug.block.http",
+            format!("{method:?}").to_uppercase(),
+            url
+        ),
+        BlockKind::CheckFile { path, until, .. } => match until {
+            FileState::Exists => tr_in!(lang, "bug.block.fileExists", path),
+            FileState::Missing => tr_in!(lang, "bug.block.fileMissing", path),
+            FileState::Changed => tr_in!(lang, "bug.block.fileChanged", path),
+            FileState::Contains(text) => tr_in!(lang, "bug.block.fileContains", path, text),
+        },
+        BlockKind::Database { file, query, .. } => tr_in!(lang, "bug.block.database", file, query),
         BlockKind::Clipboard { action, .. } => match action {
-            ClipboardAction::Put { text } => format!("Put “{text}” on the clipboard"),
+            ClipboardAction::Put { text } => tr_in!(lang, "bug.block.clipboardPut", text),
             ClipboardAction::PutImage { image } => {
-                format!("Put the picture “{image}” on the clipboard")
+                tr_in!(lang, "bug.block.clipboardPutImage", image)
             }
-            ClipboardAction::Read { save_as, content } => {
-                let what = match content {
-                    ClipboardContent::Text => "the clipboard",
-                    ClipboardContent::Image => "the picture on the clipboard",
-                    ClipboardContent::Files => "the files on the clipboard",
-                };
-                format!("Read {what} into `{save_as}`")
-            }
-            ClipboardAction::Check { is, to, .. } => {
-                format!("Check that the clipboard {} `{to}`", test_words(*is))
-            }
+            ClipboardAction::Read { save_as, content } => match content {
+                ClipboardContent::Text => tr_in!(lang, "bug.block.clipboardRead", save_as),
+                ClipboardContent::Image => tr_in!(lang, "bug.block.clipboardReadImage", save_as),
+                ClipboardContent::Files => tr_in!(lang, "bug.block.clipboardReadFiles", save_as),
+            },
+            ClipboardAction::Check { is, to, .. } => match is {
+                ValueTest::Equals => tr_in!(lang, "bug.block.clipboardIs", to),
+                ValueTest::NotEquals => tr_in!(lang, "bug.block.clipboardIsNot", to),
+                ValueTest::Contains => tr_in!(lang, "bug.block.clipboardContains", to),
+                ValueTest::GreaterThan => tr_in!(lang, "bug.block.clipboardGreater", to),
+                ValueTest::LessThan => tr_in!(lang, "bug.block.clipboardLess", to),
+            },
         },
         BlockKind::DateTime {
             save_as,
@@ -441,79 +507,78 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             shift,
             ..
         } => {
-            let moved = shift.as_ref().map_or_else(String::new, |s| {
-                let unit = match s.unit {
-                    TimeUnit::Seconds => "second",
-                    TimeUnit::Minutes => "minute",
-                    TimeUnit::Hours => "hour",
-                    TimeUnit::Days => "day",
-                    TimeUnit::Weeks => "week",
-                    TimeUnit::Months => "month",
-                    TimeUnit::Years => "year",
-                };
-                let plural = if s.amount.abs() == 1 { "" } else { "s" };
-                format!(", moved by {} {unit}{plural}", s.amount)
-            });
-            let language = language
-                .as_ref()
-                .map_or_else(String::new, |l| format!(", month and day names in `{l}`"));
-            let zone = time_zone
-                .as_ref()
-                .map_or_else(String::new, |z| format!(", time zone `{z}`"));
-            format!(
-                "Save the date and time as `{save_as}` in the form `{format}`{language}{zone}{moved}"
-            )
+            let moved = match shift {
+                Some(s) => {
+                    let (count, minus) =
+                        (s.amount.unsigned_abs(), if s.amount < 0 { "-" } else { "" });
+                    let moved = match s.unit {
+                        TimeUnit::Seconds => tr_in!(lang, "bug.shift.seconds", count, minus),
+                        TimeUnit::Minutes => tr_in!(lang, "bug.shift.minutes", count, minus),
+                        TimeUnit::Hours => tr_in!(lang, "bug.shift.hours", count, minus),
+                        TimeUnit::Days => tr_in!(lang, "bug.shift.days", count, minus),
+                        TimeUnit::Weeks => tr_in!(lang, "bug.shift.weeks", count, minus),
+                        TimeUnit::Months => tr_in!(lang, "bug.shift.months", count, minus),
+                        TimeUnit::Years => tr_in!(lang, "bug.shift.years", count, minus),
+                    };
+                    tr_in!(lang, "bug.dateTime.moved", moved)
+                }
+                None => String::new(),
+            };
+            tr_in!(lang, "bug.block.dateTime", save_as, format)
+                + &language
+                    .as_ref()
+                    .map_or_else(String::new, |l| tr_in!(lang, "bug.dateTime.language", l))
+                + &time_zone
+                    .as_ref()
+                    .map_or_else(String::new, |z| tr_in!(lang, "bug.dateTime.zone", z))
+                + &moved
         }
     }
 }
 
-/// How a clipboard check compares, in words.
-fn test_words(test: ValueTest) -> &'static str {
-    match test {
-        ValueTest::Equals => "is",
-        ValueTest::NotEquals => "is not",
-        ValueTest::Contains => "contains",
-        ValueTest::GreaterThan => "is greater than",
-        ValueTest::LessThan => "is less than",
-    }
-}
-
-/// The keys held down during a click, drag, hover or scroll, as a phrase that ends a sentence, or nothing.
-fn holding(modifiers: &Modifiers) -> String {
+/// The keys held down during a click, drag, hover or scroll, as a phrase that ends the sentence,
+/// or nothing.
+fn holding(lang: &str, modifiers: &Modifiers) -> String {
     if modifiers.is_empty() {
         String::new()
     } else {
-        format!(" holding {}", modifiers.names().join("+"))
+        tr_in!(lang, "bug.holding", modifiers.names().join("+"))
     }
 }
 
 /// What the screen should look like for `reference` to match.
-fn looks_like(reference: &Reference) -> String {
+fn looks_like(lang: &str, reference: &Reference) -> String {
     match &reference.compare {
         Compare::Meaning { expect, .. } if !expect.is_empty() => {
-            format!("the screen shows {expect}")
+            tr_in!(lang, "bug.screen.meaning", expect)
         }
-        Compare::Meaning { .. } => format!("the screen means the same as “{}”", reference.image),
-        Compare::Exact => format!("the screen is exactly “{}”", reference.image),
-        Compare::Similar { threshold } => format!(
-            "the screen matches “{}” by at least {}",
-            reference.image,
-            percent(*threshold)
+        Compare::Meaning { .. } => tr_in!(lang, "bug.screen.sameMeaning", &reference.image),
+        Compare::Exact => tr_in!(lang, "bug.screen.exact", &reference.image),
+        Compare::Similar { threshold } => tr_in!(
+            lang,
+            "bug.screen.similar",
+            &reference.image,
+            percent(lang, *threshold)
         ),
     }
 }
 
 /// What should have happened and what did, for the failure of a block.
-fn expected_and_actual(failure: &Failure, block: Option<&BlockKind>) -> (String, String) {
+fn expected_and_actual(
+    lang: &str,
+    failure: &Failure,
+    block: Option<&BlockKind>,
+) -> (String, String) {
     let p = |name| failure.param(name);
     match failure.code.as_str() {
         "run.check.mismatch" | "run.check.mismatchDensity" => (
-            format!(
-                "The screen matches “{}” by at least {}.",
+            tr_in!(
+                lang,
+                "bug.expected.mismatch",
                 p("image"),
-                p("threshold")
+                share(lang, p("threshold"))
             ),
-            format!("It matches by {}.", p("similarity")),
+            tr_in!(lang, "bug.actual.mismatch", share(lang, p("similarity"))),
         ),
         "run.check.meaningMismatch" => {
             let expected = match block {
@@ -524,31 +589,32 @@ fn expected_and_actual(failure: &Failure, block: Option<&BlockKind>) -> (String,
                         ..
                     },
                 ) => {
-                    format!("{}.", capitalized(&looks_like(reference)))
+                    format!("{}.", capitalized(&looks_like(lang, reference)))
                 }
-                _ => "The screen shows what the check expects.".to_owned(),
+                _ => text_in(lang, "bug.expected.meaningDefault", &[]),
             };
             (expected, format!("{}: {}", p("provider"), p("reason")))
         }
         "run.waitFor.timeout" => (
-            format!(
-                "{} within {} s.",
-                capitalized(&wait_target(p("target"))),
+            tr_in!(
+                lang,
+                "bug.expected.waitFor",
+                capitalized(&wait_target(lang, p("target"))),
                 p("seconds")
             ),
-            "It did not happen in time.".to_owned(),
+            text_in(lang, "bug.actual.waitFor", &[]),
         ),
         "run.target.notFound" => (
-            format!("“{}” is on the screen.", p("image")),
-            "It was not found.".to_owned(),
+            tr_in!(lang, "bug.expected.targetFound", p("image")),
+            text_in(lang, "bug.actual.targetNotFound", &[]),
         ),
         "run.click.noChange" => (
-            "The screen changes after the click.".to_owned(),
-            format!("Nothing changed within {} s.", p("seconds")),
+            text_in(lang, "bug.expected.clickChanges", &[]),
+            tr_in!(lang, "bug.actual.clickNoChange", p("seconds")),
         ),
         _ => (
-            format!("Step “{}” passes.", p("block")),
-            crate::describe(failure),
+            tr_in!(lang, "bug.expected.stepPasses", p("block")),
+            crate::describe_in(lang, failure),
         ),
     }
 }
@@ -607,11 +673,11 @@ mod tests {
     #[test]
     fn a_bug_report_says_what_was_done_expected_and_seen() {
         let flows = HashMap::from([("mail/sign-in.flow.json".to_owned(), flow())]);
-        let draft = bug_report(&report(), &flows, &context()).unwrap();
+        let draft = bug_report_in("en", &report(), &flows, &context()).unwrap();
         assert_eq!(draft.title, "Sign in fails at Check “inbox”");
         let body = &draft.body;
         for line in [
-            "**Cause:** Block inbox: the screen matches refs/inbox.png by 81.0%, at least 95.0% is required.",
+            "**Cause:** Block “inbox”: the screen matches refs/inbox.png by 81.0%, and at least 95.0% is needed.",
             "Failed 2 times in a row — a real failure, not flakiness.",
             "1. Open `com.example.Mail`\n",
             "2. Type “${secret.password}” into “refs/field.png”\n",
@@ -662,7 +728,7 @@ mod tests {
                 r#"{{"seq":1,"test":"t.flow.json","block":"{block}","type":"x","status":"passed","durationMs":1}}"#
             ))
             .unwrap();
-            step_text(&step, &flows, "app")
+            step_text("en", &step, &flows, "app")
         };
         assert_eq!(
             told("a"),
@@ -683,8 +749,9 @@ mod tests {
     #[test]
     fn the_same_failure_has_the_same_fingerprint() {
         let flows = HashMap::new();
-        let draft =
-            |report: &RunReport| bug_report(report, &flows, &BugContext::default()).unwrap();
+        let draft = |report: &RunReport| {
+            bug_report_in("en", report, &flows, &BugContext::default()).unwrap()
+        };
         let first = draft(&report());
         assert_eq!(first.fingerprint.len(), 16);
         // Another run, another day, another similarity: the same bug.
@@ -702,7 +769,10 @@ mod tests {
 
         let mut passed = report();
         passed.verdict = Verdict::Passed;
-        assert_eq!(bug_report(&passed, &flows, &BugContext::default()), None);
+        assert_eq!(
+            bug_report_in("en", &passed, &flows, &BugContext::default()),
+            None
+        );
     }
 
     #[test]
@@ -711,7 +781,7 @@ mod tests {
         let steps = &mut long.attempts[1].steps;
         let first = steps[0].clone();
         steps.splice(0..0, (0..40).map(|_| first.clone()));
-        let draft = bug_report(&long, &HashMap::new(), &BugContext::default()).unwrap();
+        let draft = bug_report_in("en", &long, &HashMap::new(), &BugContext::default()).unwrap();
         assert!(
             draft
                 .body
@@ -728,5 +798,70 @@ mod tests {
             mask_secrets("typed hunter2, then hunter", &secrets),
             format!("typed {SECRET_MASK}, then {SECRET_MASK}")
         );
+    }
+
+    #[test]
+    fn a_bug_report_is_written_in_the_language_asked_for() {
+        let flows = HashMap::from([("mail/sign-in.flow.json".to_owned(), flow())]);
+        let (en, ru) = (
+            bug_report_in("en", &report(), &flows, &context()).unwrap(),
+            bug_report_in("ru", &report(), &flows, &context()).unwrap(),
+        );
+        assert_eq!(ru.title, "Sign in падает на шаге «inbox» (Проверка)");
+        for line in [
+            "### Шаги воспроизведения",
+            "1. Открыть `com.example.Mail`\n",
+            "**Причина:** Блок «inbox»: экран совпадает с refs/inbox.png на 81,0\u{a0}%, а нужно не меньше 95,0\u{a0}%.",
+            "### Ожидалось",
+            "### Получилось",
+            "| Тестируемое приложение | `com.example.Mail` 16.0 |",
+            "| Прогон | 2026-10-18 12:00:00.000 UTC, длительность 4,2 с, попыток: 2 |",
+        ] {
+            assert!(ru.body.contains(line), "{line}\n---\n{}", ru.body);
+        }
+        // What identifies the report doesn't depend on how it is told.
+        assert_eq!(ru.fingerprint, en.fingerprint);
+        assert_eq!(ru.pictures, en.pictures);
+        assert_ne!(ru.body, en.body);
+    }
+
+    #[test]
+    fn counts_in_a_report_follow_the_plural_rules_of_the_language() {
+        let flow = jevision_core::parse(
+            r#"{"format": 1, "name": "T", "app": "com.example.Mail", "start": "a",
+            "blocks": {
+              "a": {"type": "scroll", "direction": "down", "amount": 1, "unit": "lines", "next": "b"},
+              "b": {"type": "scroll", "direction": "up", "amount": 2, "unit": "lines", "next": "c"},
+              "c": {"type": "repeat", "times": 5, "body": "a", "next": "d"},
+              "d": {"type": "dateTime", "saveAs": "day", "format": "%F", "shift": {"amount": 21, "unit": "days"}}
+            }}"#,
+        )
+        .unwrap();
+        let flows = HashMap::from([("t.flow.json".to_owned(), flow)]);
+        let told = |lang: &str, block: &str| {
+            let step: Step = serde_json::from_str(&format!(
+                r#"{{"seq":1,"test":"t.flow.json","block":"{block}","type":"x","status":"passed","durationMs":1}}"#
+            ))
+            .unwrap();
+            step_text(lang, &step, &flows, "app")
+        };
+        assert_eq!(told("en", "a"), "Scroll down 1 line over the window");
+        assert_eq!(told("en", "b"), "Scroll up 2 lines over the window");
+        assert_eq!(told("ru", "a"), "Прокрутить вниз на 1 строку: окно");
+        assert_eq!(told("ru", "b"), "Прокрутить вверх на 2 строки: окно");
+        assert_eq!(told("en", "c"), "Repeat 5 times");
+        assert_eq!(told("ru", "c"), "Повторить 5 раз");
+        assert_eq!(
+            told("ru", "d"),
+            "Сохранить дату и время как `day` в формате `%F`, сдвиг: 21 день"
+        );
+    }
+
+    #[test]
+    fn pictures_keep_their_label_and_are_captioned_in_the_language() {
+        assert_eq!(picture_caption_in("en", "Difference"), "Difference");
+        assert_eq!(picture_caption_in("ru", "Difference"), "Разница");
+        assert_eq!(picture_caption_in("ru", "Expected"), "Ожидается");
+        assert_eq!(picture_caption_in("ru", "Other"), "Other");
     }
 }

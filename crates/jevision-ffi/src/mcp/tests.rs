@@ -300,7 +300,7 @@ fn lists_only_the_tests_a_card_filter_chooses() {
     );
     assert!(listed(json!({ "testType": "smoke" })).starts_with("No test matches."));
     for (arguments, said) in [
-        (json!({ "priority": "urgent" }), "isn't a test priority"),
+        (json!({ "priority": "urgent" }), "isn’t a test priority"),
         (json!({ "flaky": "yes" }), "must be true or false"),
     ] {
         let (failed, text) = call(&server, "list_tests", arguments);
@@ -397,7 +397,7 @@ fn write_test_explains_what_is_wrong_and_saves_nothing() {
         json!({ "path": "new.flow.json", "test": "{ \"format\": 1,\n  \"name\": " }),
     );
     assert!(failed);
-    assert!(text.contains("not valid JSON at line 2"), "{text}");
+    assert!(text.contains("isn’t valid JSON. Check line 2"), "{text}");
     assert!(project.read("new.flow.json").is_none());
 
     let mut test: Value = serde_json::from_str(&sign_in()).unwrap();
@@ -409,7 +409,7 @@ fn write_test_explains_what_is_wrong_and_saves_nothing() {
         json!({ "path": "new.flow.json", "test": test }),
     );
     assert!(failed);
-    assert!(text.contains("Block \"password\""), "{text}");
+    assert!(text.contains("Block “password”"), "{text}");
     assert!(project.read("new.flow.json").is_none());
 
     let (failed, text) = call(
@@ -437,7 +437,7 @@ fn missing_reference_images_are_reported_next_to_the_test() {
     );
     assert!(!failed, "{text}");
     assert!(
-        text.contains("- warning: Block \"done\", field \"reference.image\": refs/none.png doesn't exist yet; the first run will save the screen there as the reference."),
+        text.contains("- warning: Block “done”, field “reference.image”: refs/none.png doesn’t exist yet. The first run will save the screen there as the reference."),
         "{text}"
     );
 
@@ -480,7 +480,7 @@ fn edits_blocks_in_place() {
         json!({ "path": path, "after": "nope", "blocks": [{ "type": "pressKeys", "keys": "a" }] }),
     );
     assert!(
-        failed && text.contains("There is no block \"nope\""),
+        failed && text.contains("There is no block “nope”"),
         "{text}"
     );
     let (failed, text) = call(
@@ -489,7 +489,7 @@ fn edits_blocks_in_place() {
         json!({ "path": path, "blocks": [{ "type": "pressKeys" }] }),
     );
     assert!(
-        failed && text.contains("blocks[0]") && text.contains("\"keys\""),
+        failed && text.contains("blocks[0]") && text.contains("“keys”"),
         "{text}"
     );
 
@@ -518,7 +518,7 @@ fn stays_inside_the_project() {
     ] {
         let (failed, text) = call(&server, "read_test", json!({ "path": path }));
         assert!(
-            failed && text.contains("isn't inside the project folder"),
+            failed && text.contains("isn’t inside the project folder"),
             "{path}: {text}"
         );
         let (failed, _) = call(
@@ -892,7 +892,7 @@ fn a_failed_run_is_drafted_as_a_bug_report_and_sent_with_secrets_masked() {
     // Not on GitHub: nothing is sent, and the person is told why.
     let (failed, text) = call(&server, "send_bug_report", json!({ "report": name }));
     assert!(
-        failed && text.contains("isn't in a git repository"),
+        failed && text.contains("isn’t in a git repository"),
         "{text}"
     );
 
@@ -1064,7 +1064,7 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
 
     // With the app closed nobody can answer: no waiting, no run.
     let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
-    assert!(failed && text.contains("JEVision isn't open"), "{text}");
+    assert!(failed && text.contains("JEVision isn’t open"), "{text}");
     assert_eq!(host.runs.load(Ordering::Relaxed), 0);
 
     // The person allows it and sees what the assistant wants to do.
@@ -1097,7 +1097,7 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
         (outcome, app.join().unwrap())
     });
     assert!(
-        denied.0 && denied.1.contains("didn't allow"),
+        denied.0 && denied.1.contains("didn’t allow"),
         "{}",
         denied.1
     );
@@ -1108,7 +1108,7 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
     pending_assistant_requests(folder.clone());
     let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
     assert!(
-        failed && text.contains("didn't answer within 1 seconds"),
+        failed && text.contains("didn’t answer within 1 second,"),
         "{text}"
     );
     assert_eq!(host.runs.load(Ordering::Relaxed), 1);
@@ -1126,4 +1126,41 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
     host.permissions.lock().unwrap().ask_first = false;
     let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
     assert!(!failed, "{text}");
+}
+
+#[test]
+fn pairing_and_tool_errors_read_in_russian_and_english() {
+    use jevision_l10n::tr_in;
+    assert_eq!(
+        tr_in!("en", "mcp.pairing.codeExpired"),
+        "The pairing code has expired. Show a new one in JEVision → Settings → iPhone & Remote."
+    );
+    assert_eq!(
+        tr_in!("ru", "mcp.pairing.codeExpired"),
+        "Срок действия кода подключения истёк. Покажите новый в JEVision → «Настройки» → «iPhone и удалённо»."
+    );
+    assert_eq!(
+        tr_in!("en", "mcp.block.notFound", "nope", "open, waitFor"),
+        "There is no block “nope”. The blocks are: open, waitFor."
+    );
+    assert_eq!(
+        tr_in!("ru", "mcp.block.notFound", "nope", "open, waitFor"),
+        "Блока «nope» нет. Есть блоки: open, waitFor."
+    );
+    for (n, en, ru) in [
+        (1, "within 1 second,", "за 1 секунду,"),
+        (2, "within 2 seconds,", "за 2 секунды,"),
+        (5, "within 5 seconds,", "за 5 секунд,"),
+    ] {
+        assert!(tr_in!("en", "mcp.ask.timeout", n).contains(en));
+        assert!(tr_in!("ru", "mcp.ask.timeout", n).contains(ru));
+    }
+    for (n, en, ru) in [
+        (1, "the first 1 screenshot is", "только первый 1 снимок"),
+        (2, "the first 2 screenshots are", "только первые 2 снимка"),
+        (5, "the first 5 screenshots are", "только первые 5 снимков"),
+    ] {
+        assert!(tr_in!("en", "mcp.report.tooManyImages", n).contains(en));
+        assert!(tr_in!("ru", "mcp.report.tooManyImages", n).contains(ru));
+    }
 }
