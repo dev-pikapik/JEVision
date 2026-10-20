@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>File formats — JEVision</title>
-<meta name="description" content="The files JEVision reads and writes: tests, environments, project settings, schedules and data tables.">
+<meta name="description" content="The files JEVision reads and writes: tests, custom blocks and packages, environments, project settings, schedules and data tables.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <script src="search.js" defer></script>
@@ -34,6 +34,7 @@
     <li><a href="checks.html">Checks and references</a></li>
     <li><a href="environments.html">Environments and secrets</a></li>
     <li><a href="data-driven.html">Data-driven tests</a></li>
+    <li><a href="custom-blocks.html">Custom blocks</a></li>
   </ul>
   <p class="nav-group" id="nav-run-tests">Run tests</p>
   <ul aria-labelledby="nav-run-tests">
@@ -65,6 +66,7 @@
     <li><a href="#overview">Files in a project</a></li>
     <li><a href="#test">Test files</a></li>
     <li><a href="#canvas">The canvas</a></li>
+    <li><a href="#blocks">Custom blocks and packages</a></li>
     <li><a href="#references">Reference images</a></li>
     <li><a href="#environments">Environments</a></li>
     <li><a href="#project">Project settings</a></li>
@@ -83,6 +85,9 @@
   <thead><tr><th scope="col">File</th><th scope="col">What it holds</th><th scope="col">In git</th></tr></thead>
   <tbody>
     <tr><td><code>*.flow.json</code></td><td>One test each</td><td>Yes</td></tr>
+    <tr><td><code>blocks/*.block.json</code></td><td>Your own <a href="custom-blocks.html">custom blocks</a>: steps that tests run as one</td><td>Yes</td></tr>
+    <tr><td><code>blocks/*.jevblock/</code></td><td>Blocks installed from other people: <code>block.json</code>, <code>flow.json</code> and pictures</td><td>Yes</td></tr>
+    <tr><td><code>jevision.blocks.json</code></td><td>Where the installed blocks came from</td><td>Yes</td></tr>
     <tr><td>Images, such as <code>refs/inbox.png</code></td><td>Reference images and the pictures of click targets</td><td>Yes</td></tr>
     <tr><td><code>*.csv</code></td><td>Tables for <a href="data-driven.html">data-driven tests</a></td><td>Yes</td></tr>
     <tr><td><code>jevision.environments.json</code></td><td><a href="environments.html">Environments</a></td><td>Yes</td></tr>
@@ -131,6 +136,24 @@
 </table>
 </div>
 <p>Whole numbers are written without a decimal point, so moving a block by a whole point changes one short line in the diff.</p>
+
+<h2 id="blocks">Custom blocks and packages</h2>
+<p>A <a href="custom-blocks.html">custom block</a> is a test that other tests run with a <a href="writing-tests.html#runTest"><code>runTest</code></a> block, which may give it values in <code>inputs</code>. There are two kinds of files:</p>
+<ul>
+  <li><code>blocks/<var>Name</var>.block.json</code>, a block you made. It is a test file in every way (see <a href="#test">Test files</a>) that reads its values as <code>${input.NAME}</code>, and isn't run on its own.</li>
+  <li><code>blocks/<var>id</var>.jevblock/</code>, a package from someone else: a folder with <code>block.json</code> (who made it, its version and its inputs), <code>flow.json</code> (the steps, a test file) and the pictures the steps use.</li>
+</ul>
+<pre><code>{
+  "format": 1,
+  "id": "com.acme.sign-in",
+  "name": "Sign in",
+  "version": "1.2.0",
+  "author": "Acme QA",
+  "license": "MIT",
+  "inputs": [ { "name": "email" }, { "name": "password" } ]
+}</code></pre>
+<p><code>jevision.blocks.json</code>, in the project folder, keeps the address each package was installed from: <code>{ "sources": { "com.acme.sign-in": "https://github.com/acme/sign-in-block" } }</code>. Packages installed from a file have no entry.</p>
+<p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="schemas/block.schema.json">JSON Schema</a> is part of this documentation.</p>
 
 <h2 id="references">Reference images</h2>
 <p>References and click targets are PNG images of part of the app's window, saved by the app next to the tests, usually in a <code>refs</code> folder. A reference for dark appearance has the same name with <code>.dark</code> before <code>.png</code>, such as <code>refs/inbox.dark.png</code>. See <a href="checks.html#dark">Dark appearance</a>. Paths in tests are relative to the test file and use <code>/</code>.</p>
@@ -231,6 +254,7 @@
 
 <h2 id="versions">Format versions</h2>
 <p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
+<p><code>block.json</code> of a package has a <code>"format"</code> of its own, at <code>1</code>. A JEVision that finds a newer one refuses the package.</p>
 <p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, the <code>clipboard</code> and <code>dateTime</code> blocks, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
 </main>
 </div>
