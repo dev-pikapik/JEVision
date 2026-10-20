@@ -52,7 +52,7 @@ enum ProjectScanner {
         tests.append(ProjectItem(
           id: id, name: testName(name), url: url, kind: .test, children: [], testCount: 1,
           modified: values.contentModificationDate,
-          keywords: summary?.keywords ?? "", markedFlaky: summary?.flaky ?? false))
+          keywords: summary?.keywords ?? "", markedFlaky: summary?.flaky ?? false, card: summary?.card ?? JEVisionCore.TestCard()))
       }
     }
     let byName: (ProjectItem, ProjectItem) -> Bool = { $0.name.localizedStandardCompare($1.name) == .orderedAscending }

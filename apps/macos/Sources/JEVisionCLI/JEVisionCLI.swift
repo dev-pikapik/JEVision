@@ -82,6 +82,8 @@ struct RunRequest: Equatable {
   var schedule: String?
   /// Failures of tests in quarantine count toward the exit status and the JUnit report.
   var includeQuarantinedFailures = false
+  /// Which of the named tests to run, by the fields of their cards; asks nothing by default.
+  var filter = TestFilter()
   /// Send the messages jevision.notifications.json asks for after each test.
   var notify = true
   var json = false
@@ -124,8 +126,11 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify"],
-        values: ["--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video"],
+        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify", "--flaky"],
+        values: [
+          "--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video",
+          "--type", "--priority", "--status", "--author",
+        ],
         optionalNumbers: ["--parallel"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
@@ -169,6 +174,15 @@ enum Command: Equatable {
         request.video = mode
       }
       request.includeQuarantinedFailures = options.flags.contains("--include-quarantined-failures")
+      do {
+        request.filter = try parseTestFilter(
+          testType: options.values["--type"], priority: options.values["--priority"], status: options.values["--status"],
+          author: options.values["--author"], flaky: options.flags.contains("--flaky"))
+      } catch TestFilterError.Invalid(let reason) {
+        throw UsageError(message: reason, command: name)
+      } catch {
+        throw UsageError(message: "\(error)", command: name)
+      }
       request.notify = !options.flags.contains("--no-notify")
       request.json = options.flags.contains("--json")
       if options.flags.contains("--parallel") {
@@ -350,11 +364,23 @@ enum Help {
         --video <when>      Record a video of the app: off, on-failure (keep it only
                             when the test fails) or always. Default: as chosen in the
                             app (Settings → Advanced), otherwise on-failure
+        --type <type>       Run only the named tests whose card says this type: smoke,
+                            regression or acceptance
+        --priority <level>  Run only tests with this priority: critical, high, medium
+                            or low
+        --status <status>   Run only tests with this status: draft, ready or outdated
+        --author <name>     Run only tests written by this author (case doesn't matter)
+        --flaky             Run only flaky tests: marked flaky in their card, or found
+                            flaky from their runs of the last 30 days. Filters combine:
+                            each test must fit all of them. A test whose card doesn't
+                            say a field the filter asks for isn't run. Fails when no
+                            test fits
         --include-quarantined-failures
                             Count failures of tests in quarantine (listed in
-                            jevision.project.json) like any other failure. Without it
-                            they still run, but don't change the exit status and are
-                            skipped in the JUnit report
+                            jevision.project.json, until the date set there, if any)
+                            like any other failure. Without it they still run, but
+                            don't change the exit status and are skipped in the JUnit
+                            report. Once the date is past, the test counts again
         --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a
                             number, one per core of this Mac) instead of one after
                             another. Tests that click, type, look at the screen or use

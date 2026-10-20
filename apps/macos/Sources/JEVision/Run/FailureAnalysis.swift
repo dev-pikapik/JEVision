@@ -43,7 +43,7 @@ struct FailureAnalysisCard: View {
     .padding(18)
     .background(.background, in: .rect(cornerRadius: 18))
     .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.separator))
-    .quarantineAlert($quarantining)
+    .quarantineSheet($quarantining)
     .onDisappear { conversation.stop() }
   }
 
@@ -190,7 +190,8 @@ struct FailureAnalysisCard: View {
       // The core offers this fix while a failed test is retried fewer than two times.
       project.document?.updateFlow(field: "retries") { $0.retries = 2 }
     case .quarantine:
-      quarantining = QuarantineRequest(file: explanation.test, name: run.report.test)
+      quarantining = QuarantineRequest(
+        file: explanation.test, name: run.report.test, entry: project.quarantine(of: explanation.test))
     case .runAgain:
       runAgain()
     case .openBlock:

@@ -26,11 +26,14 @@ struct RunCommand {
 
   /// Runs the tests one after another; the error is what to tell when they can't start.
   func runTests() throws(UsageError) -> [TestResult] {
-    let plan: (project: String, tests: [String], environment: String?)
+    let plan: (project: String, tests: [String], environment: String?, filteredOut: Int)
     do {
       plan = try Self.plan(request)
     } catch {
       throw UsageError(message: "jevision: \(error.message)")
+    }
+    if plan.filteredOut > 0 {
+      progress.line(progress.paint("The filter leaves out \(plan.filteredOut) of \(plan.filteredOut + plan.tests.count) tests.", .dim))
     }
     let ai = AISettings.app
     let vision = ai.settings(provider: request.provider, model: request.model)
@@ -69,7 +72,10 @@ struct RunCommand {
 
   /// The project folder and the test files to run, as real absolute paths, and the environment
   /// to run in: the one asked for, otherwise the default of the project's environments file.
-  static func plan(_ request: RunRequest) throws(UsageError) -> (project: String, tests: [String], environment: String?) {
+  /// `filteredOut` counts the named tests the request's filter leaves out.
+  static func plan(_ request: RunRequest) throws(UsageError) -> (
+    project: String, tests: [String], environment: String?, filteredOut: Int
+  ) {
     var targets: [String] = []
     for path in request.paths {
       // The app lists tests without the suffix, so `notes/add-milk` runs notes/add-milk.flow.json.
@@ -78,7 +84,7 @@ struct RunCommand {
       }
       targets.append(real)
     }
-    let (tests, _) = collectTests(targets)
+    var (tests, _) = collectTests(targets)
     guard !tests.isEmpty else {
       throw UsageError(message: "there are no tests (*.flow.json files) in \(request.paths.joined(separator: ", "))")
     }
@@ -93,11 +99,34 @@ struct RunCommand {
       throw UsageError(
         message: "“\(outside)” is outside the project folder \(project). Choose a folder that holds all the tests with --project.")
     }
+    let named = tests.count
+    tests = try chosen(tests, by: request.filter, in: project)
     guard let environment = request.environment else {
-      return (project, tests, try readEnvironments(in: project) { try defaultEnvironment(project: project) })
+      return (project, tests, try readEnvironments(in: project) { try defaultEnvironment(project: project) }, named - tests.count)
     }
     try checkEnvironment(environment, in: project)
-    return (project, tests, environment)
+    return (project, tests, environment, named - tests.count)
+  }
+
+  /// The `tests` whose cards `filter` chooses; all of them for a filter that asks nothing. Flaky
+  /// counts as in the app: marked in the card, or found from the runs saved in `project`.
+  static func chosen(_ tests: [String], by filter: TestFilter, in project: String) throws(UsageError) -> [String] {
+    guard !testFilterIsEmpty(filter: filter) else { return tests }
+    var flaky: Set<String> = []
+    if filter.flaky, let runs = try? listRuns(project: project), !runs.isEmpty {
+      flaky = Set(flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)).keys)
+    }
+    let cards = tests.map { file -> TestCard in
+      var card = (try? String(contentsOfFile: file, encoding: .utf8)).map { testSummary(json: $0).card } ?? TestCard()
+      let relative = file.hasPrefix(project + "/") ? String(file.dropFirst(project.count + 1)) : file
+      if flaky.contains(relative) { card.flaky = true }
+      return card
+    }
+    let kept = filterTests(filter: filter, cards: cards).map { tests[Int($0)] }
+    guard !kept.isEmpty else {
+      throw UsageError(message: "no test fits the filter (\(tests.count) tests named); check --type, --priority, --status, --author and --flaky")
+    }
+    return kept
   }
 
   /// Fails unless the project has the environment `name`, saying which ones it has.

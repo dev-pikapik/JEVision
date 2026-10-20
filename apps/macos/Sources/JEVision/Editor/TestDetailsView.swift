@@ -114,7 +114,7 @@ struct TestDetailsView: View {
               HealthView(test: file, health: testHealth(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)))
             }
           }
-          QuarantineSection(file: file, name: flow.name)
+          QuarantineSection(file: file)
         }
         let files = DataColumns.files(in: flow)
         if !files.isEmpty {

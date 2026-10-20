@@ -106,10 +106,10 @@ struct AppCommands: Commands {
           .disabled(!canRun || project.document?.selection == nil)
         Button("Run All Tests") {
           guard let root = project.rootURL else { return }
-          runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
+          runs.runAll(project.chosen(from: project.items).map(\.url), in: root, title: project.runAllTitle)
         }
         .keyboardShortcut(Shortcuts.runAll)
-        .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.items.isEmpty)
+        .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.chosen(from: project.items).isEmpty)
         Button("Schedules…") { project.schedules.isShowingSheet = true }
           .disabled(project.status != .ready)
         Divider()

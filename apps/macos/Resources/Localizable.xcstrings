@@ -3295,12 +3295,32 @@
         }
       }
     },
+    "Any" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все"
+          }
+        }
+      }
+    },
     "Any Status" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Любой статус"
+          }
+        }
+      }
+    },
+    "Anyone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все авторы"
           }
         }
       }
@@ -4425,6 +4445,16 @@
         }
       }
     },
+    "Change Quarantine…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить карантин…"
+          }
+        }
+      }
+    },
     "Change anything you like. Secret values are replaced with •••• before sending." : {
       "localizations" : {
         "ru" : {
@@ -5001,6 +5031,16 @@
         }
       }
     },
+    "Clear Filter" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить фильтр"
+          }
+        }
+      }
+    },
     "Click" : {
       "localizations" : {
         "ru" : {
@@ -5213,6 +5253,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Объединение"
+          }
+        }
+      }
+    },
+    "Come back to the results on a day" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть в общий результат в указанный день"
           }
         }
       }
@@ -6155,6 +6205,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Данные и система"
+          }
+        }
+      }
+    },
+    "Data row: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строка данных: %@."
           }
         }
       }
@@ -7525,6 +7585,16 @@
         }
       }
     },
+    "Failed after passing, nothing changed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Упал после успешного прогона, хотя тест не менялся"
+          }
+        }
+      }
+    },
     "Failed in Quarantine" : {
       "localizations" : {
         "ru" : {
@@ -7733,12 +7803,42 @@
         }
       }
     },
+    "Filter Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фильтр тестов"
+          }
+        }
+      }
+    },
     "Filter runs by test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Фильтр прогонов по тесту"
+          }
+        }
+      }
+    },
+    "Filter: %@ — showing %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фильтр: %1$@ — показано %2$lld из %3$lld"
+          }
+        }
+      }
+    },
+    "Filtered tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отфильтрованные тесты"
           }
         }
       }
@@ -7889,6 +7989,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нестабилен"
+          }
+        }
+      }
+    },
+    "Flaky Only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только нестабильные"
           }
         }
       }
@@ -8695,6 +8805,16 @@
         }
       }
     },
+    "How many times in a week a test may be unreliable before JEVision suggests quarantine: it passed only on a retry, or failed after it passed with nothing changed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько раз за неделю тест может вести себя нестабильно, прежде чем JEVision предложит карантин: прошёл только с повтора или упал после успешного прогона, хотя тест не менялся."
+          }
+        }
+      }
+    },
     "How often" : {
       "localizations" : {
         "ru" : {
@@ -8891,6 +9011,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В карантине"
+          }
+        }
+      }
+    },
+    "In quarantine until" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантине до"
+          }
+        }
+      }
+    },
+    "In quarantine until %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантине до %@"
+          }
+        }
+      }
+    },
+    "In quarantine until %@: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В карантине до %1$@: %2$@"
           }
         }
       }
@@ -10944,6 +11094,16 @@
         }
       }
     },
+    "No test has a card that fits the filter: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни у одного теста карточка не подходит под фильтр: %@."
+          }
+        }
+      }
+    },
     "No tests" : {
       "localizations" : {
         "ru" : {
@@ -11208,6 +11368,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ничего не проверили: %lld"
+          }
+        }
+      }
+    },
+    "Nothing in the test changed, yet its result did. In quarantine its failures stop failing Run All while you look into it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест не менялся, а результат менялся. В карантине его провалы не делают провальным «Запустить все», пока вы разбираетесь."
           }
         }
       }
@@ -11830,6 +12000,16 @@
         }
       }
     },
+    "Open its menu to put it in quarantine." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте его меню, чтобы отправить тест в карантин."
+          }
+        }
+      }
+    },
     "Open on GitHub" : {
       "localizations" : {
         "ru" : {
@@ -11926,6 +12106,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть отчёт последнего прогона"
+          }
+        }
+      }
+    },
+    "Open the report of this run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть отчёт об этом прогоне"
           }
         }
       }
@@ -12368,6 +12558,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пройден с попытки %lld, значит тест нестабильный: до этого он падал."
+          }
+        }
+      }
+    },
+    "Passed only on a retry" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошёл только с повтора"
           }
         }
       }
@@ -13138,6 +13338,26 @@
         }
       }
     },
+    "Put in Quarantine for Two Weeks (Suggested)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить в карантин на две недели (рекомендуется)"
+          }
+        }
+      }
+    },
+    "Put in Quarantine until %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправить в карантин до %@"
+          }
+        }
+      }
+    },
     "Put the Test in Quarantine…" : {
       "localizations" : {
         "ru" : {
@@ -13236,12 +13456,32 @@
         }
       }
     },
-    "Quarantine “%@”?" : {
+    "Quarantine ended %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отправить «%@» в карантин?"
+            "value" : "Карантин закончился %@"
+          }
+        }
+      }
+    },
+    "Quarantine ended %@: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карантин закончился %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "Quarantine “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карантин для «%@»"
           }
         }
       }
@@ -13352,6 +13592,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готов"
+          }
+        }
+      }
+    },
+    "Reason" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Причина"
           }
         }
       }
@@ -15026,6 +15276,16 @@
         }
       }
     },
+    "Runs the tests the sidebar filter chooses, in turn." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускает по очереди тесты, выбранные фильтром в боковой панели."
+          }
+        }
+      }
+    },
     "Runs this test first" : {
       "localizations" : {
         "ru" : {
@@ -16182,6 +16442,16 @@
         }
       }
     },
+    "Show and run only the tests that match their card: priority, type, status, author or flaky" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать и запускать только тесты, которые подходят по карточке: важность, тип, состояние, автор или нестабильность"
+          }
+        }
+      }
+    },
     "Show everything on the board (⌘0)" : {
       "localizations" : {
         "en" : {
@@ -17070,6 +17340,16 @@
         }
       }
     },
+    "Suggest quarantine after" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предлагать карантин после"
+          }
+        }
+      }
+    },
     "Switch already on but still ✕? Press Reset and Allow, then turn JEVision on again." : {
       "localizations" : {
         "ru" : {
@@ -17894,6 +18174,16 @@
         }
       }
     },
+    "The day after %@ the test counts again: its failures fail Run All, the command line and the JUnit report." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Со следующего дня после %@ тест снова учитывается: его провалы делают провальными «Запустить все», командную строку и отчёт JUnit."
+          }
+        }
+      }
+    },
     "The device disconnects now. To use it again, pair it with a new code." : {
       "localizations" : {
         "ru" : {
@@ -18622,6 +18912,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест берёт эти значения из окружения, а в проекте окружений пока нет."
+          }
+        }
+      }
+    },
+    "The test stays in quarantine until you release it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест остаётся в карантине, пока вы не вернёте его."
           }
         }
       }
@@ -19772,6 +20072,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Неизвестная проблема: %@"
+          }
+        }
+      }
+    },
+    "Unreliable %lld times in the last 7 days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unreliable %lld time in the last 7 days"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unreliable %lld times in the last 7 days"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Нестабилен %lld раз за последние 7 дней"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Нестабилен %lld раза за последние 7 дней"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Нестабилен %lld раз за последние 7 дней"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Нестабилен %lld раза за последние 7 дней"
+                }
+              }
+            }
           }
         }
       }
@@ -21266,6 +21618,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "доска url веб адрес"
+          }
+        }
+      }
+    },
+    "by %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "автор: %@"
           }
         }
       }
