@@ -7,6 +7,8 @@ use std::path::Path;
 use jevision_core::Blocker;
 use serde::{Deserialize, Serialize};
 
+use crate::CiOrigin;
+
 /// Version of the `report.json` layout.
 pub const REPORT_FORMAT: u32 = 1;
 
@@ -44,6 +46,9 @@ pub struct RunReport {
     /// started.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schedule: Option<String>,
+    /// The CI job that started the run; absent for a run started anywhere else.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ci: Option<CiOrigin>,
     /// Environment of the project the run used; absent when it used none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,

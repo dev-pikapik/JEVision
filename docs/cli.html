@@ -268,12 +268,19 @@ jevision run tests/ --parallel 4</code></pre>
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui-test-reports
+          name: jevision-reports
+          include-hidden-files: true
+          overwrite: true
           path: |
             junit.xml
-            reports/</code></pre>
+            reports/
+            tests/.jevision/runs/</code></pre>
 <p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
 <p>The app can write the workflow for you: <strong>Settings → Advanced → Continuous Integration → Add to Project…</strong>. It shows the file first, with the secrets your tests use, and saves it as <code>.github/workflows/jevision.yml</code> at the top of the git repository your project is in. It replaces an existing file only after you confirm, and it doesn't commit or push anything.</p>
+<h3 id="ci-runs">CI runs in the app</h3>
+<p>The artifact <code>jevision-reports</code> also carries the run reports, with their screenshots, from <code>.jevision/runs</code>. In a CI job, <code>jevision run</code> writes where the run came from into each report: the CI system, the repository, the branch, the commit, the pull request and the page of the run. GitHub Actions, GitLab CI, Buildkite, CircleCI and Jenkins are recognized.</p>
+<p>When you are signed in to GitHub (<strong>Settings → Git and GitHub</strong>) and the project's repository is on GitHub, the app fetches the artifacts of the newest runs each time you open <strong>Runs</strong>, and when you click the refresh button above the list. It adds the runs to the project's history, each artifact once, even if you fetch again or delete a run. They are marked <strong>CI · pull request #482</strong> or <strong>CI · branch main</strong>, and the report links to the run on GitHub. The filter above the list (<strong>This Mac</strong>, <strong>Schedule</strong>, <strong>iPhone</strong>, <strong>CI</strong>) shows only the runs started that way. Without a sign-in nothing is fetched, and the CI filter says how to sign in. The sign-in is kept in the Keychain and is never written to the project or to a log.</p>
+<p>An artifact is at most 512 MB, and the app looks at the 20 newest. Artifacts of an older workflow, which was named <code>ui-test-reports</code> and had no run reports, aren't read: add the workflow to the project again.</p>
 <p>To be told in Slack, Telegram or email when the run fails, set up <a href="notifications.html">Notifications</a> in the app and commit <code>jevision.notifications.json</code>; <code>jevision run</code> sends one summary when it finishes, and on CI reads the secrets from environment variables.</p>
 </main>
 </div>

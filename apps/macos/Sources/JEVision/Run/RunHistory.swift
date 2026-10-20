@@ -83,11 +83,49 @@ extension HealthMark {
   }
 }
 
+/// Where a run was started, to filter the history by.
+enum RunSource: CaseIterable, Identifiable {
+  case thisMac, schedule, phone, ci
+
+  var id: Self { self }
+
+  var title: String {
+    switch self {
+    case .thisMac: String(localized: "This Mac")
+    case .schedule: String(localized: "Schedule")
+    case .phone: String(localized: "iPhone")
+    case .ci: String(localized: "CI")
+    }
+  }
+
+  var symbol: String {
+    switch self {
+    case .thisMac: "desktopcomputer"
+    case .schedule: "calendar.badge.clock"
+    case .phone: "iphone"
+    case .ci: "gearshape.2"
+    }
+  }
+
+  init(_ report: RunReport) {
+    if report.ci != nil {
+      self = .ci
+    } else if report.requestedBy != nil {
+      self = .phone
+    } else if report.schedule != nil {
+      self = .schedule
+    } else {
+      self = .thisMac
+    }
+  }
+}
+
 extension SavedRun: @retroactive Identifiable {
   public var id: String { dir }
   var url: URL { URL(filePath: dir, directoryHint: .isDirectory) }
   var status: RunStatus { RunStatus(report) }
   var startedAt: Date { RunHistory.date(report.startedAt) }
+  var source: RunSource { RunSource(report) }
 }
 
 /// Runs of the project in the order and groups the sidebar shows them.
@@ -106,11 +144,15 @@ enum RunHistory {
       ?? .distantPast
   }
 
-  /// Runs of tests whose name contains `query`, newest first, by day.
-  static func days(_ runs: [SavedRun], matching query: String = "", calendar: Calendar = .current) -> [Day] {
+  /// Runs of tests whose name contains `query`, started from `source` (any when `nil`), newest
+  /// first, by day.
+  static func days(
+    _ runs: [SavedRun], matching query: String = "", from source: RunSource? = nil, calendar: Calendar = .current
+  ) -> [Day] {
     let query = query.trimmingCharacters(in: .whitespaces)
     // Each time is read once: reading them inside the sort took most of a keystroke.
     let shown = runs
+      .filter { source == nil || $0.source == source }
       .filter { query.isEmpty || $0.report.test.localizedStandardContains(query) }
       .map { (run: $0, date: $0.startedAt) }
       .sorted { ($0.date, $0.run.dir) > ($1.date, $1.run.dir) }
@@ -124,6 +166,24 @@ enum RunHistory {
       }
     }
     return days
+  }
+
+  /// Who started the run, for its row: the phone's name, the schedule, the CI job or this Mac.
+  static func origin(_ report: RunReport) -> String {
+    if let ci = report.ci {
+      if let number = ci.pullRequest { return String(localized: "CI · pull request #\(number)") }
+      if let branch = ci.branch { return String(localized: "CI · branch \(branch)") }
+      return String(localized: "CI")
+    }
+    if let phone = report.requestedBy { return phone }
+    if let schedule = report.schedule { return String(localized: "Schedule · \(schedule)") }
+    return String(localized: "This Mac")
+  }
+
+  /// The page of the CI run. A report from CI is not trusted: only a web address is opened.
+  static func link(_ ci: CiOrigin) -> URL? {
+    guard let text = ci.runUrl, let url = URL(string: text), url.scheme == "https", url.host() != nil else { return nil }
+    return url
   }
 
   /// "Today", "Yesterday" or the date, for a section header.

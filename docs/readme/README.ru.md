@@ -495,20 +495,30 @@ jobs:
         env:
           ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
         run: jevision run tests --junit junit.xml --html reports
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-test-reports
-          path: |
-            junit.xml
-            reports/
-```
+comes first, and an existing file is replaced only after you confirm. Nothing is committed or
+pushed.
+
+The artifact `jevision-reports` also carries the run reports with their screenshots. Once you are
+signed in to GitHub (Settings › Git and GitHub) and the project's repository is on GitHub, the
+app fetches the newest ones each time you open **Runs**, and with the refresh button there, and
+adds them to the history, each once. A run from CI is marked “CI · pull request #482” or “CI ·
+branch main”, its report links to the run on GitHub, and the filter above the list shows only
+those. Without a sign-in nothing is fetched and the list says so. Artifacts made by an older
+workflow, which had no run reports, need the workflow added again.
 
 Набирать это не обязательно: **Настройки › Дополнительно › Непрерывная интеграция › Добавить в
 проект…** показывает этот файл для открытого проекта, с секретами, которые используют ваши тесты,
 и записывает его как `.github/workflows/jevision.yml` в корне git-репозитория, где лежит проект.
 Сначала показывается предпросмотр, а существующий файл заменяется только после вашего
 подтверждения. Ничего не коммитится и не отправляется.
+
+Артефакт `jevision-reports` несёт и отчёты о прогонах со снимками экрана. Когда вы вошли в GitHub
+(Настройки › Git и GitHub), а репозиторий проекта лежит на GitHub, приложение забирает самые
+свежие из них при каждом открытии **Прогонов** и по кнопке обновления там же и добавляет в историю,
+каждый ровно один раз. Прогон из CI помечен «CI · пул-реквест #482» или «CI · ветка main», его
+отчёт ссылается на прогон на GitHub, а фильтр над списком показывает только такие. Без входа
+ничего не загружается, и список говорит об этом. Артефакты старого workflow, без отчётов о
+прогонах, требуют добавить workflow заново.
 
 </details>
 

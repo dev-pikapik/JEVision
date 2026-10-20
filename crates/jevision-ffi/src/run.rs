@@ -10,8 +10,8 @@ use jevision_core::{
     WindowSize,
 };
 use jevision_runner::{
-    PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
-    VideoMask, VideoMode, VideoWindow, VisionJudge,
+    CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus,
+    Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
 use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
@@ -175,6 +175,21 @@ pub trait Hands: Send + Sync {
     fn start_video(&self, app: String, path: String, hide: Vec<Rect>) -> Result<(), HandsError>;
     /// Stops the recording and finishes the file; a recording without a picture leaves none.
     fn stop_video(&self) -> Result<(), HandsError>;
+}
+
+/// The CI job a run came from.
+#[uniffi::remote(Record)]
+pub struct CiOrigin {
+    /// The CI system, such as `GitHub Actions`.
+    pub system: String,
+    /// `owner/name` of the repository.
+    pub repository: Option<String>,
+    pub branch: Option<String>,
+    pub commit: Option<String>,
+    /// Number of the pull request the run is for.
+    pub pull_request: Option<u64>,
+    /// The page of the CI run.
+    pub run_url: Option<String>,
 }
 
 #[uniffi::remote(Record)]
@@ -422,6 +437,7 @@ fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
         local_only: options.local_only,
         requested_by: options.requested_by.clone(),
         schedule: options.schedule.clone(),
+        ci: CiOrigin::from_env(),
         video: options.video,
         keep_videos_for: options
             .keep_videos_days
@@ -846,6 +862,10 @@ pub struct RunReport {
     /// Name of the schedule that started the run; `None` for a run someone started.
     #[uniffi(default = None)]
     pub schedule: Option<String>,
+    /// The CI job that started the run, or that the run was brought in from; `None` for a run
+    /// started anywhere else.
+    #[uniffi(default = None)]
+    pub ci: Option<CiOrigin>,
     /// Environment of the project the run used.
     #[uniffi(default = None)]
     pub environment: Option<String>,
@@ -938,6 +958,7 @@ impl From<jevision_runner::RunReport> for RunReport {
             nothing_checked: r.nothing_checked,
             requested_by: r.requested_by,
             schedule: r.schedule,
+            ci: r.ci,
             environment: r.environment,
             video: r.video,
             file_hash: r.file_hash,

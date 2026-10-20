@@ -116,6 +116,92 @@ struct RunHistoryTests {
     #expect(RunHistory.failedStep(report)?.block == "click")
     #expect(RunHistory.failedStep(Self.run("b", at: "2026-10-18T09:00:00Z").report) == nil)
   }
+
+  private static func ci(pullRequest: UInt64? = nil, branch: String? = "main", url: String? = nil) -> CiOrigin {
+    CiOrigin(
+      system: "GitHub Actions", repository: "acme/qa", branch: branch, commit: "abc1234def", pullRequest: pullRequest,
+      runUrl: url)
+  }
+
+  private static func started(_ run: SavedRun, by change: (inout RunReport) -> Void) -> SavedRun {
+    var report = run.report
+    change(&report)
+    return SavedRun(dir: run.dir, report: report)
+  }
+
+  @Test func runsAreToldApartByWhereTheyWereStarted() {
+    let base = Self.run("login", at: "2026-10-18T09:00:00.000Z")
+    let phone = Self.started(base) { $0.requestedBy = "Anna’s iPhone" }
+    let schedule = Self.started(base) { $0.schedule = "Nightly" }
+    let ci = Self.started(base) { $0.ci = Self.ci(pullRequest: 482) }
+    // A report from CI says so even when it also names a schedule.
+    let both = Self.started(base) {
+      $0.ci = Self.ci()
+      $0.schedule = "Nightly"
+    }
+    #expect([base, phone, schedule, ci, both].map(\.source) == [.thisMac, .phone, .schedule, .ci, .ci])
+
+    let runs = [base, phone, schedule, ci, both].enumerated().map { index, run in
+      SavedRun(dir: "/p/.jevision/runs/\(index)", report: run.report)
+    }
+    let shown = { (source: RunSource?) in RunHistory.days(runs, from: source, calendar: Self.utc).flatMap(\.runs).map(\.dir) }
+    #expect(shown(nil).count == 5)
+    #expect(shown(.thisMac) == ["/p/.jevision/runs/0"])
+    #expect(shown(.phone) == ["/p/.jevision/runs/1"])
+    #expect(shown(.schedule) == ["/p/.jevision/runs/2"])
+    #expect(Set(shown(.ci)) == ["/p/.jevision/runs/3", "/p/.jevision/runs/4"])
+    #expect(RunHistory.days(runs, matching: "nothing", from: .ci).isEmpty)
+    #expect(RunHistory.days(runs, matching: "login", from: .ci).flatMap(\.runs).count == 2)
+  }
+
+  @Test func rowsNameTheSourceOfTheRun() {
+    var report = Self.run("login", at: "2026-10-18T09:00:00.000Z").report
+    #expect(RunHistory.origin(report) == "This Mac")
+    report.schedule = "Nightly"
+    #expect(RunHistory.origin(report) == "Schedule · Nightly")
+    report.requestedBy = "Anna’s iPhone"
+    #expect(RunHistory.origin(report) == "Anna’s iPhone")
+    report.ci = Self.ci(pullRequest: 482, branch: "feat/login")
+    #expect(RunHistory.origin(report) == "CI · pull request #482")
+    report.ci = Self.ci(branch: "main")
+    #expect(RunHistory.origin(report) == "CI · branch main")
+    report.ci = Self.ci(branch: nil)
+    #expect(RunHistory.origin(report) == "CI")
+  }
+
+  @Test func onlyAWebAddressOfTheCIRunIsOpened() {
+    #expect(RunHistory.link(Self.ci(url: "https://github.com/acme/qa/actions/runs/9")) == URL(string: "https://github.com/acme/qa/actions/runs/9"))
+    for unsafe in ["file:///etc/passwd", "javascript:alert(1)", "http://github.com/acme/qa", "not a url", "https:///nohost", ""] {
+      #expect(RunHistory.link(Self.ci(url: unsafe)) == nil, "\(unsafe)")
+    }
+    #expect(RunHistory.link(Self.ci(url: nil)) == nil)
+  }
+
+  @MainActor @Test func theFetchOfCIRunsEndsInSomethingToSayNotAnAlert() {
+    let found = CiRefresh(imported: 2, artifacts: 3, failed: 0)
+    #expect(ProjectCI.state(after: .success(found)) == .done(found))
+    #expect(ProjectCI.state(after: .failure(GitError.GitHubSignedOut)) == .needsSignIn)
+    for notThere: GitError in [.NotInstalled, .NotRepository, .NoRemote, .NotGitHub] {
+      #expect(ProjectCI.state(after: .failure(notThere)) == .notOnGitHub)
+    }
+    guard case .failed(let message) = ProjectCI.state(after: .failure(GitError.Unreachable)) else {
+      Issue.record("an unreachable GitHub is a failure")
+      return
+    }
+    #expect(!message.isEmpty)
+    #expect(ProjectCI.problem(in: .needsSignIn) == nil)
+    #expect(ProjectCI.problem(in: .notOnGitHub) == nil)
+    #expect(ProjectCI.problem(in: .done(found)) == nil)
+    #expect(ProjectCI.problem(in: .done(CiRefresh(imported: 0, artifacts: 1, failed: 1))) != nil)
+    #expect(ProjectCI.problem(in: .failed("No network")) == "No network")
+  }
+
+  @Test func ciRunsDoNotChangeWhatTheTestsHereShow() {
+    let local = Self.run("login", at: "2026-10-18T09:00:00.000Z", .failed)
+    let fromCI = Self.started(Self.run("login", at: "2026-10-18T12:00:00.000Z")) { $0.ci = Self.ci() }
+    let history = ProjectMap.latestRuns([local, fromCI].filter { $0.report.ci == nil })
+    #expect(history["login.flow.json"]?.report.verdict == .failed)
+  }
 }
 
 struct BaselineTests {

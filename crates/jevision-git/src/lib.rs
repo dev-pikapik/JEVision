@@ -15,7 +15,7 @@ mod signin;
 mod tests;
 
 pub use github::{
-    API, ATTACHMENTS_BRANCH, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, PullRequest,
+    API, ATTACHMENTS_BRANCH, Artifact, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, PullRequest,
     PullRequestChanges, PullRequestDraft,
 };
 pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, forget_token, save_token};

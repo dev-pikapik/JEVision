@@ -4,6 +4,7 @@
 //! The token comes from [`crate::signin::token`] whenever GitHub is called, and is kept only in
 //! memory for that call.
 
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
@@ -15,6 +16,8 @@ use crate::{FileChange, Git, GitError, Repo, display_url, find_tool};
 pub const API: &str = "https://api.github.com";
 
 const TIMEOUT: Duration = Duration::from_secs(30);
+/// A download of a workflow run's files may take far longer than a question to GitHub.
+const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
 /// Lists longer than this many pages of 100 are cut short.
 const MAX_PAGES: usize = 10;
 
@@ -121,6 +124,21 @@ pub struct GitHubIssue {
     pub url: String,
 }
 
+/// A file a GitHub Actions run saved, such as the reports of a test run.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Artifact {
+    pub id: u64,
+    /// The workflow run that made it.
+    pub run: u64,
+    /// The branch the run was for.
+    pub branch: String,
+    pub commit: String,
+    /// Bytes of the zip it downloads as.
+    pub size: u64,
+    /// Seconds since 1970.
+    pub created: i64,
+}
+
 /// Branch of the project's repository that keeps the screenshots of bug reports, apart from
 /// the project's own history.
 pub const ATTACHMENTS_BRANCH: &str = "jevision-attachments";
@@ -179,6 +197,81 @@ impl GitHub {
             ));
         }
         Ok(self.pages(&path)?.iter().map(pull_request).collect())
+    }
+
+    /// The latest `limit` artifacts of the repository's workflow runs named `name`, the newest
+    /// first; those that have expired are left out.
+    pub fn artifacts(
+        &self,
+        repo: &GitHubRepo,
+        name: &str,
+        limit: usize,
+    ) -> Result<Vec<Artifact>, GitError> {
+        let path = repo_path(
+            repo,
+            &format!(
+                "/actions/artifacts?name={}&per_page={}",
+                encode(name),
+                limit.clamp(1, 100)
+            ),
+        );
+        let answer = self.get(&path)?;
+        let Some(found) = answer["artifacts"].as_array() else {
+            return Err(unreadable());
+        };
+        Ok(found
+            .iter()
+            .filter(|a| !a["expired"].as_bool().unwrap_or(false))
+            .map(artifact)
+            .collect())
+    }
+
+    /// Writes the zip of an artifact into `to`. An artifact larger than `limit` bytes is
+    /// refused, with what was written so far left in `to`.
+    pub fn download_artifact(
+        &self,
+        repo: &GitHubRepo,
+        id: u64,
+        to: &mut impl Write,
+        limit: u64,
+    ) -> Result<(), GitError> {
+        let url = format!(
+            "{}{}",
+            self.api,
+            repo_path(repo, &format!("/actions/artifacts/{id}/zip"))
+        );
+        // GitHub answers with a redirect to where the file is kept. The token goes to GitHub
+        // only: the client doesn't pass it on to another host.
+        let mut response = self
+            .agent
+            .get(&url)
+            .config()
+            .timeout_global(Some(DOWNLOAD_TIMEOUT))
+            .build()
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .call()
+            .map_err(|_| GitError::Unreachable)?;
+        let status = response.status().as_u16();
+        if status != 200 {
+            let body = response.body_mut().read_to_string().unwrap_or_default();
+            return Err(error(status, &body));
+        }
+        // One byte past the limit is enough to know the file is too large.
+        let mut body = response
+            .body_mut()
+            .with_config()
+            .limit(u64::MAX)
+            .reader()
+            .take(limit.saturating_add(1));
+        let written = std::io::copy(&mut body, to).map_err(|_| GitError::Unreachable)?;
+        if written > limit {
+            return Err(GitError::Failed {
+                message: "The files from the CI run are too large to download".into(),
+            });
+        }
+        Ok(())
     }
 
     /// Opens a pull request proposing `head` for `base`, with exactly the user's words.
@@ -634,6 +727,17 @@ fn pull_request(v: &Value) -> PullRequest {
         base_commit: text(&v["base"]["sha"]),
         draft: v["draft"].as_bool().unwrap_or(false),
         updated: v["updated_at"].as_str().map_or(0, seconds),
+    }
+}
+
+fn artifact(v: &Value) -> Artifact {
+    Artifact {
+        id: v["id"].as_u64().unwrap_or(0),
+        run: v["workflow_run"]["id"].as_u64().unwrap_or(0),
+        branch: text(&v["workflow_run"]["head_branch"]),
+        commit: text(&v["workflow_run"]["head_sha"]),
+        size: v["size_in_bytes"].as_u64().unwrap_or(0),
+        created: v["created_at"].as_str().map_or(0, seconds),
     }
 }
 

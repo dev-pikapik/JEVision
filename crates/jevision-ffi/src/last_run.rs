@@ -179,6 +179,7 @@ mod tests {
             nothing_checked: false,
             requested_by: None,
             schedule: None,
+            ci: None,
             environment: None,
             video: None,
             file_hash: None,

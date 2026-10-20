@@ -5,7 +5,7 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
+    CiOrigin, DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
     MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
     RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot, ScrollDirection,
     ScrollUnit, Search, StepStatus, Usage, UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer,
@@ -915,6 +915,46 @@ fn check_creates_baseline_then_passes_then_fails() {
     assert_eq!(history.len(), 3);
     assert_eq!(history[0].report, third.report, "newest first");
     assert_eq!(Run::load(&third.dir).unwrap().report, third.report);
+}
+
+#[test]
+fn a_run_from_ci_says_where_it_came_from_and_older_reports_still_read() {
+    let p = Project::new();
+    p.test(r#""a":{"type":"pressKeys","keys":"a"}"#, "a", 0);
+    let ci = CiOrigin {
+        system: "GitHub Actions".into(),
+        repository: Some("acme/qa".into()),
+        branch: Some("feat/login".into()),
+        commit: Some("abc1234".into()),
+        pull_request: Some(482),
+        run_url: Some("https://github.com/acme/qa/actions/runs/9".into()),
+    };
+    let from_ci = RunOptions {
+        ci: Some(ci.clone()),
+        ..options()
+    };
+    let run = run_with(
+        &p,
+        &Fake::new(solid([0, 0, 0])),
+        RunControl::new(),
+        &from_ci,
+    )
+    .0;
+    assert_eq!(Run::load(&run.dir).unwrap().report.ci, Some(ci));
+
+    let local = run_with(
+        &p,
+        &Fake::new(solid([0, 0, 0])),
+        RunControl::new(),
+        &options(),
+    )
+    .0;
+    let text = std::fs::read_to_string(local.dir.join("report.json")).unwrap();
+    assert!(
+        !text.contains("\"ci\""),
+        "a run on a Mac has no origin: {text}"
+    );
+    assert_eq!(Run::load(&local.dir).unwrap().report.ci, None);
 }
 
 #[test]

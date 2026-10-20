@@ -7,6 +7,9 @@ use std::path::{Path, PathBuf};
 /// The workflow file, relative to the top of the repository.
 pub const CI_WORKFLOW_FILE: &str = ".github/workflows/jevision.yml";
 
+/// The name of the artifact the workflow uploads: the app looks for it to bring CI runs in.
+pub const CI_ARTIFACT: &str = "jevision-reports";
+
 /// The workflow can't be put into the repository.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CiWorkflowError {
@@ -122,18 +125,24 @@ pub fn ci_workflow_text(tests_path: &str, secrets: &[String]) -> String {
         "          jevision run {} --junit junit.xml --html reports",
         shell_word(tests_path)
     ));
-    lines.extend(
-        [
-            "      - uses: actions/upload-artifact@v4",
-            "        if: always()",
-            "        with:",
-            "          name: ui-test-reports",
-            "          path: |",
-            "            junit.xml",
-            "            reports/",
-        ]
-        .map(str::to_owned),
-    );
+    // The run reports live in a hidden folder, which the action skips unless told to include
+    // it. A re-run of the same workflow run makes a new artifact under the same name.
+    let runs = match tests_path {
+        "." => ".jevision/runs/".to_owned(),
+        _ => format!("{tests_path}/.jevision/runs/"),
+    };
+    lines.extend([
+        "      - uses: actions/upload-artifact@v4".to_owned(),
+        "        if: always()".to_owned(),
+        "        with:".to_owned(),
+        format!("          name: {CI_ARTIFACT}"),
+        "          include-hidden-files: true".to_owned(),
+        "          overwrite: true".to_owned(),
+        "          path: |".to_owned(),
+        "            junit.xml".to_owned(),
+        "            reports/".to_owned(),
+        format!("            {runs}"),
+    ]);
     lines.join("\n") + "\n"
 }
 
@@ -181,7 +190,17 @@ mod tests {
         assert!(spaced.contains(
             "        env:\n          API_KEY: ${{ secrets.API_KEY }}\n          PASSWORD: ${{ secrets.PASSWORD }}\n"
         ));
-        assert!(spaced.ends_with("            reports/\n"));
+        assert!(spaced.ends_with("            ui tests/it's/.jevision/runs/\n"));
+    }
+
+    #[test]
+    fn the_workflow_uploads_the_run_reports_even_when_tests_fail() {
+        let step = "      - uses: actions/upload-artifact@v4\n        if: always()\n        with:\n          name: jevision-reports\n          include-hidden-files: true\n          overwrite: true\n          path: |\n            junit.xml\n            reports/\n";
+        let top = ci_workflow_text(".", &[]);
+        assert!(top.ends_with(&format!("{step}            .jevision/runs/\n")));
+        let nested = ci_workflow_text("tests", &[]);
+        assert!(nested.ends_with(&format!("{step}            tests/.jevision/runs/\n")));
+        assert_eq!(CI_ARTIFACT, "jevision-reports");
     }
 
     #[test]

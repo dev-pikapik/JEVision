@@ -9,8 +9,10 @@
 //! another thread.
 
 mod bug;
+mod ci;
 mod control;
 mod env;
+mod import;
 mod machine;
 mod report;
 mod run;
@@ -22,7 +24,9 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 pub use bug::{BugContext, BugDraft, BugPicture, bug_report, mask_secrets};
+pub use ci::CiOrigin;
 pub use control::{PauseReason, RunControl};
+pub use import::{import_ci_artifact, imported_ci_artifacts};
 pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{
     Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit, WindowPosition, WindowSize,
