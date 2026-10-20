@@ -437,14 +437,20 @@ private final class Scratch {
 /// `jevision run` with hands that wait until the run is cancelled.
 @Suite(.serialized)
 struct CommandLineRunTests {
-  /// The second run has every thread of the system's shared queue stuck, as a busy machine, or a
-  /// test running beside this one, leaves them: the run must not wait for one to be free.
+  /// The run starts with every thread of the system's shared queue stuck, as a busy machine, or a
+  /// test running beside this one, leaves them: it must not wait for one to be free. They are let
+  /// go as soon as it has started: stuck for longer, they would stop the tests beside this one.
   @Test(arguments: [false, true])
   func interruptCancelsTheRunAndReportsIt(whileTheSharedQueueIsBusy busy: Bool) throws {
     let stuck = busy ? 300 : 0
     let release = DispatchSemaphore(value: 0)
+    var stuckNow = stuck
+    func letGo() {
+      for _ in 0..<stuckNow { release.signal() }
+      stuckNow = 0
+    }
     for _ in 0..<stuck { DispatchQueue.global().async { release.wait() } }
-    defer { for _ in 0..<stuck { release.signal() } }
+    defer { letGo() }
     let dir = try Scratch()
     let test = try dir.file(
       "wait.flow.json",
@@ -471,6 +477,7 @@ struct CommandLineRunTests {
       finished.signal()
     }
     try #require(opening.wait(timeout: .now() + hangGuard) == .success, "the test never reached its first block")
+    letGo()
     kill(getpid(), SIGINT)
     try #require(finished.wait(timeout: .now() + hangGuard) == .success, "Ctrl-C didn’t stop the run")
 
