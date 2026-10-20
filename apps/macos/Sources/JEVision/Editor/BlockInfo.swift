@@ -63,10 +63,10 @@ enum BlockInfo {
     switch type {
     case "openApp": String(localized: "Launches an app and brings it to the front.")
     case "openFile": String(localized: "Opens files or web pages. Each file opens from a fresh copy, so the original stays intact.")
-    case "click": String(localized: "Clicks an element found by how it looks, or a fixed point in the window.")
+    case "click": String(localized: "Clicks an element found by how it looks, a fixed point or the middle of an area in the window.")
     case "hover": String(localized: "Moves the pointer onto an element and leaves it there, to show a tooltip or a menu that opens on hover.")
     case "drag": String(localized: "Presses on one place, moves while holding the button and lets go on another: to move, resize or drop something.")
-    case "scroll": String(localized: "Turns the scroll wheel over the window or over an element, by lines or by pixels.")
+    case "scroll": String(localized: "Turns the scroll wheel over the window or over an element, by lines or by pixels. With ⌘ held, most apps zoom instead.")
     case "type": String(localized: "Types text, optionally clicking into a field first.")
     case "pressKeys": String(localized: "Presses one key combination.")
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
@@ -81,8 +81,8 @@ enum BlockInfo {
     case "checkFile": String(localized: "Waits until a file appears, disappears, changes or contains a text.")
     case "command": String(localized: "Runs a Terminal command with your permissions and checks how it ended.")
     case "script": String(localized: "Runs a short program in sh, zsh, Python, JavaScript or AppleScript, with your permissions.")
-    case "clipboard": String(localized: "Puts a text on the clipboard, saves what is on it for later blocks, or waits until it holds a text.")
-    case "dateTime": String(localized: "Saves the current date and time, optionally moved back or forward, in the format you choose.")
+    case "clipboard": String(localized: "Puts a text or a picture on the clipboard, saves what is on it for later blocks (a text, a picture or the copied files), or waits until it holds a text.")
+    case "dateTime": String(localized: "Saves the current date and time, optionally moved back or forward, in the format, language and time zone you choose.")
     default: ""
     }
   }
@@ -110,7 +110,7 @@ enum BlockInfo {
     case "checkFile": String(localized: "Waits for a file to change")
     case "command": String(localized: "Runs a Terminal command")
     case "script": String(localized: "Runs a short program")
-    case "clipboard": String(localized: "Puts text on the clipboard or reads it")
+    case "clipboard": String(localized: "Puts text or a picture on the clipboard or reads it")
     case "dateTime": String(localized: "Saves today’s date or the time")
     default: ""
     }

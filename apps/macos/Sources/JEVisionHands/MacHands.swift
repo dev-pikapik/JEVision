@@ -203,8 +203,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     let (window, point) = try place(app, at)
     clicking(window)
     defer { clicking(nil) }
-    let (down, up, mouse): (CGEventType, CGEventType, CGMouseButton) =
-      button == .left ? (.leftMouseDown, .leftMouseUp, .left) : (.rightMouseDown, .rightMouseUp, .right)
+    let (down, _, up, mouse) = Self.events(of: button)
     // Whatever happens on the way, the keys don't stay pressed.
     defer { release(modifiers) }
     let flags = try press(modifiers)
@@ -223,11 +222,14 @@ public final class MacHands: Hands, @unchecked Sendable {
     }
   }
 
-  public func hover(app: String, at: Point) throws(HandsError) {
+  public func hover(app: String, at: Point, modifiers: Modifiers) throws(HandsError) {
     let (window, point) = try place(app, at)
     clicking(window)
     defer { clicking(nil) }
-    try mouse(.mouseMoved, at: point)
+    // Whatever happens on the way, the keys don't stay pressed.
+    defer { release(modifiers) }
+    let flags = try press(modifiers)
+    try mouse(.mouseMoved, at: point, flags: flags)
     usleep(50_000)
   }
 
@@ -237,8 +239,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     let points = path.map { CGPoint(x: window.minX + $0.x, y: window.minY + $0.y) }
     clicking(window)
     defer { clicking(nil) }
-    let (down, dragged, up): (CGEventType, CGEventType, CGEventType) =
-      button == .left ? (.leftMouseDown, .leftMouseDragged, .leftMouseUp) : (.rightMouseDown, .rightMouseDragged, .rightMouseUp)
+    let (down, dragged, up, _) = Self.events(of: button)
     // Whatever happens on the way, the keys don't stay pressed.
     defer { release(modifiers) }
     let flags = try press(modifiers)
@@ -259,11 +260,16 @@ public final class MacHands: Hands, @unchecked Sendable {
     usleep(100_000)
   }
 
-  public func scroll(app: String, at: Point, direction: ScrollDirection, amount: UInt32, unit: ScrollUnit) throws(HandsError) {
+  public func scroll(
+    app: String, at: Point, direction: ScrollDirection, amount: UInt32, unit: ScrollUnit, modifiers: Modifiers
+  ) throws(HandsError) {
     let (window, point) = try place(app, at)
     clicking(window)
     defer { clicking(nil) }
-    try mouse(.mouseMoved, at: point)
+    // Whatever happens on the way, the keys don't stay pressed.
+    defer { release(modifiers) }
+    let flags = try press(modifiers)
+    try mouse(.mouseMoved, at: point, flags: flags)
     usleep(50_000)
     // A line a turn, as a wheel does; pixels in small steps, as a trackpad does.
     let step = unit == .lines ? 1 : Self.pixelsPerScroll
@@ -284,6 +290,7 @@ public final class MacHands: Hands, @unchecked Sendable {
         scrollWheelEvent2Source: SyntheticInput.source, units: unit == .lines ? .line : .pixel, wheelCount: 2,
         wheel1: vertical, wheel2: horizontal, wheel3: 0)
       event?.location = point
+      event?.flags = flags
       if unit == .pixels { event?.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1) }
       try post(event)
       usleep(unit == .lines ? 30_000 : 10_000)
@@ -309,12 +316,22 @@ public final class MacHands: Hands, @unchecked Sendable {
     window.offsetBy(dx: -display.minX, dy: -display.minY)
   }
 
+  /// The events a press, a move and a release of `button` send, and the button they name. The
+  /// middle button is the first of the others: the system numbers it 2.
+  static func events(of button: MouseButton) -> (down: CGEventType, dragged: CGEventType, up: CGEventType, button: CGMouseButton) {
+    switch button {
+    case .left: (.leftMouseDown, .leftMouseDragged, .leftMouseUp, .left)
+    case .right: (.rightMouseDown, .rightMouseDragged, .rightMouseUp, .right)
+    case .middle: (.otherMouseDown, .otherMouseDragged, .otherMouseUp, .center)
+    }
+  }
+
   private func mouse(
     _ type: CGEventType, at point: CGPoint, button: MouseButton = .left, flags: CGEventFlags = []
   ) throws(HandsError) {
     let event = CGEvent(
       mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point,
-      mouseButton: button == .left ? .left : .right)
+      mouseButton: Self.events(of: button).button)
     if type != .mouseMoved { event?.setIntegerValueField(.mouseEventClickState, value: 1) }
     event?.flags = flags
     try post(event)
@@ -374,6 +391,30 @@ public final class MacHands: Hands, @unchecked Sendable {
     pasteboard.clearContents()
     guard pasteboard.setString(text, forType: .string) else {
       throw .Failed(reason: "The clipboard didn’t take the text.")
+    }
+  }
+
+  public func clipboardImage() throws(HandsError) -> Data? {
+    let pasteboard = NSPasteboard.general
+    if let png = pasteboard.data(forType: .png) { return png }
+    // Screenshots and many apps put the picture only as TIFF; runs keep pictures as PNG.
+    return pasteboard.data(forType: .tiff).flatMap { NSBitmapImageRep(data: $0)?.representation(using: .png, properties: [:]) }
+  }
+
+  public func clipboardFiles() throws(HandsError) -> [String] {
+    let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
+    return (urls ?? []).map(\.standardizedFileURL.path)
+  }
+
+  public func setClipboardImage(png: Data) throws(HandsError) {
+    guard let tiff = NSBitmapImageRep(data: png)?.tiffRepresentation else {
+      throw .Failed(reason: "The file isn’t a picture the clipboard can hold.")
+    }
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    // PNG for apps that take it, TIFF for the older ones that read only that.
+    guard pasteboard.setData(png, forType: .png), pasteboard.setData(tiff, forType: .tiff) else {
+      throw .Failed(reason: "The clipboard didn’t take the picture.")
     }
   }
 

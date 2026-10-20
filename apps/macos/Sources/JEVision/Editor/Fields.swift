@@ -21,6 +21,24 @@ struct FieldContext {
       return f == field || f.hasPrefix(field + ".")
     }
   }
+
+  /// Names of the values blocks of the test save as `kind`, such as the pictures and areas a
+  /// target or a reference can take as `${var.NAME}`.
+  @MainActor
+  func variables(of kind: ValueKind) -> [String] {
+    var names = Set<String>()
+    for block in document.flow?.blocks ?? [] {
+      switch block.kind {
+      case .script(_, _, _, let outputs, _, _):
+        names.formUnion(outputs.filter { $0.kind == kind }.map(\.name))
+      case .clipboard(.read(let saveAs, let content), _) where (content == .image ? .image : .text) == kind:
+        names.insert(saveAs)
+      default:
+        break
+      }
+    }
+    return names.filter { !$0.isEmpty }.sorted()
+  }
 }
 
 /// Problems shown right under the field they are about.
@@ -55,9 +73,13 @@ struct FilePathField: View {
   let context: FieldContext
   /// Whether a dark-mode variant of the file, such as `inbox.dark.png`, counts as the file.
   var appearanceVariants = false
+  /// Names of the pictures blocks save, which can stand in for the file as `${var.NAME}`.
+  var pictures: [String] = []
 
   private var url: URL { RelativePath.resolve(path, in: context.folder) }
   private var isWebAddress: Bool { path.hasPrefix("http://") || path.hasPrefix("https://") }
+  /// A path with a placeholder names its file only once a run fills it in.
+  private var isPlaceholder: Bool { path.contains("${") }
 
   var body: some View {
     LabeledContent {
@@ -72,7 +94,24 @@ struct FilePathField: View {
     } label: {
       label
     }
-    if !path.isEmpty, !isWebAddress, path.first != "/" {
+    if !pictures.isEmpty {
+      LabeledContent {
+        Menu {
+          ForEach(pictures, id: \.self) { name in
+            Button(name) { path = "${var.\(name)}" }
+          }
+        } label: {
+          Text("Choose")
+        }
+        .fixedSize()
+        .accessibilityLabel(Text("Use a Saved Picture"))
+        .help(Text("Takes the picture a block saves earlier in the run, such as a screenshot a script makes."))
+      } label: {
+        Text("Or a picture a block saves")
+          .foregroundStyle(.secondary)
+      }
+    }
+    if !path.isEmpty, !isWebAddress, !isPlaceholder, path.first != "/" {
       if AppearanceImage.url(path, in: context.folder, dark: false, variants: appearanceVariants) == nil {
         Warning(text: Text("There’s no such file next to the test."))
       } else if let root = context.projectRoot, !RelativePath.isInside(url, folder: root) {
@@ -85,13 +124,14 @@ struct FilePathField: View {
     let panel = NSOpenPanel()
     panel.allowedContentTypes = types
     panel.allowsMultipleSelection = false
-    panel.directoryURL = path.isEmpty || isWebAddress ? context.folder : url.deletingLastPathComponent()
+    panel.directoryURL = path.isEmpty || isWebAddress || isPlaceholder ? context.folder : url.deletingLastPathComponent()
     guard panel.runModal() == .OK, let chosen = panel.url else { return }
     path = RelativePath.from(context.folder, to: chosen)
   }
 }
 
-private struct Warning: View {
+/// A note in orange under a field, about something that will go wrong.
+struct Warning: View {
   let text: Text
 
   var body: some View {
@@ -304,7 +344,7 @@ struct PointsField: View {
   }
 }
 
-/// The keys held down during a click or a drag.
+/// The keys held down while a block clicks, drags, hovers or scrolls.
 struct ModifiersField: View {
   @Binding var modifiers: Modifiers
 
@@ -422,16 +462,25 @@ struct ReferenceEditor: View {
   }
 
   var body: some View {
+    let isSaved = reference.image.contains("${")
     FilePathField(
-      label: Text("Reference Image"), path: $reference.image, types: [.png], context: context, appearanceVariants: true)
+      label: Text("Reference Image"), path: $reference.image, types: [.png], context: context, appearanceVariants: true,
+      pictures: context.variables(of: .image))
     IssueList(issues: context.issues(field + ".image"))
     ReferenceThumbnail(picture: picture, reference: reference) { isEditing = true }
     LabeledContent {
       // Without an image the editor captures or chooses one first.
       Button(reference.image.isEmpty ? "Add Reference…" : "Edit Reference…") { isEditing = true }
+        .disabled(isSaved)
         .sheet(isPresented: $isEditing) { ReferenceAreaEditor(reference: $reference, field: field, context: context) }
     } label: {
-      if !reference.image.isEmpty { AreaLegend(reference: reference) }
+      if isSaved {
+        Text("A saved picture is known only during the run, so its areas can’t be marked here.")
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      } else if !reference.image.isEmpty {
+        AreaLegend(reference: reference)
+      }
     }
     .task(id: "\(reference.image)#\(context.folder.path)#\(project.referenceChanges)#\(colorScheme)") {
       picture = AppearanceImage.url(reference.image, in: context.folder, dark: colorScheme == .dark, variants: true)
@@ -492,8 +541,8 @@ struct ReferenceEditor: View {
   }
 }
 
-/// Where to click: an element found by its picture or by JEV from a description, or a fixed
-/// point in the window.
+/// Where to click: an element found by its picture or by JEV from a description, a fixed point
+/// in the window, or the middle of an area.
 struct TargetEditor: View {
   @Binding var target: Target
   let field: String
@@ -502,7 +551,7 @@ struct TargetEditor: View {
   /// JEV has an API key; read from the Keychain when a description is shown, not on every redraw.
   @State private var finderReady = true
 
-  private enum Way { case look, description, position }
+  private enum Way { case look, description, position, area }
 
   private var way: Binding<Way> {
     Binding(
@@ -511,6 +560,7 @@ struct TargetEditor: View {
         case .image: .look
         case .description: .description
         case .point: .position
+        case .area: .area
         }
       },
       set: {
@@ -518,8 +568,15 @@ struct TargetEditor: View {
         case .look: target = .image("")
         case .description: target = .description("")
         case .position: target = .point(Point(x: 0.5, y: 0.5))
+        case .area: target = .area("")
         }
       })
+  }
+
+  private var area: Binding<String> {
+    Binding(
+      get: { if case .area(let area) = target { area } else { "" } },
+      set: { target = .area($0) })
   }
 
   private var description: Binding<String> {
@@ -550,13 +607,13 @@ struct TargetEditor: View {
       Text("By Look").tag(Way.look)
       Text("By Description").tag(Way.description)
       Text("By Position").tag(Way.position)
+      Text("By Area").tag(Way.area)
     } label: {
       Text("Find")
     }
-    .pickerStyle(.segmented)
     switch way.wrappedValue {
     case .look:
-      FilePathField(label: Text("Image"), path: image, types: [.png], context: context)
+      FilePathField(label: Text("Image"), path: image, types: [.png], context: context, pictures: context.variables(of: .image))
       ImagePreview(path: image.wrappedValue, context: context)
     case .description:
       TextField(text: description, prompt: Text("The blue Save button"), axis: .vertical) { Text("Element") }
@@ -583,6 +640,31 @@ struct TargetEditor: View {
     case .position:
       PercentField(label: Text("From Left"), value: coordinate(\.x))
       PercentField(label: Text("From Top"), value: coordinate(\.y))
+    case .area:
+      TextField(text: area, prompt: Text(verbatim: "0.1,0.2,0.5,0.3")) { Text("Area") }
+        .font(.body.monospaced())
+        .autocorrectionDisabled()
+      let areas = context.variables(of: .area)
+      if !areas.isEmpty {
+        LabeledContent {
+          Menu {
+            ForEach(areas, id: \.self) { name in
+              Button(name) { area.wrappedValue = "${var.\(name)}" }
+            }
+          } label: {
+            Text("Choose")
+          }
+          .fixedSize()
+          .accessibilityLabel(Text("Use a Saved Area"))
+        } label: {
+          Text("Or an area a block saves")
+            .foregroundStyle(.secondary)
+        }
+      }
+      Text("Four fractions of the window from 0 to 1: from the left, from the top, the width and the height. The pointer goes to the middle of the area. A script can find the area and save it for this block.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
     }
     IssueList(issues: context.issues(field))
   }

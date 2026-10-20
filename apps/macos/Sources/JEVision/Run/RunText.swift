@@ -160,6 +160,14 @@ enum RunText {
       return String(localized: "run.script.badInput", defaultValue: "Block “\(block)”: the input \(p("name")) should be \(outputKind(p("type"))), but it is “\(p("value"))”.", bundle: .app, locale: .app)
     case "run.clipboard.mismatch":
       return String(localized: "run.clipboard.mismatch", defaultValue: "Block “\(block)”: waited \(p("seconds")) s for this to be true: \(clipboardExpectation(p("test"), p("expected"))). The clipboard holds “\(p("actual"))”.", bundle: .app, locale: .app)
+    case "run.clipboard.notPicture":
+      return String(localized: "run.clipboard.notPicture", defaultValue: "Block “\(block)”: \(p("image")) isn’t a PNG picture, so it can’t go on the clipboard.", bundle: .app, locale: .app)
+    case "run.clipboard.noImage":
+      return String(localized: "run.clipboard.noImage", defaultValue: "Block “\(block)”: the clipboard holds no picture.", bundle: .app, locale: .app)
+    case "run.clipboard.noFiles":
+      return String(localized: "run.clipboard.noFiles", defaultValue: "Block “\(block)”: the clipboard holds no copied files.", bundle: .app, locale: .app)
+    case "run.target.badArea":
+      return String(localized: "run.target.badArea", defaultValue: "Block “\(block)”: “\(p("value"))” isn’t an area. It must be four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3.", bundle: .app, locale: .app)
     case "run.dateTime.failed":
       return String(localized: "run.dateTime.failed", defaultValue: "Block “\(block)”: \(p("reason")).", bundle: .app, locale: .app)
     case "run.command.exitCode":

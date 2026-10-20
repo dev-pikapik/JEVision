@@ -218,6 +218,7 @@ extension InspectorView {
     Section {
       Picker(selection: bind("action", ClipboardMode(action)) { make($0.action(from: action)) }) {
         Text("Put Text on the Clipboard").tag(ClipboardMode.put)
+        Text("Put a Picture on the Clipboard").tag(ClipboardMode.putImage)
         Text("Read the Clipboard").tag(ClipboardMode.read)
         Text("Wait Until It Holds").tag(ClipboardMode.check)
       } label: {
@@ -235,17 +236,45 @@ extension InspectorView {
         Text("Replaces what is on the clipboard. The text stays there after the run.")
           .foregroundStyle(.secondary)
       }
-    case .read(let saveAs):
+    case .putImage(let image):
       Section {
-        TextField(text: bind("saveAs", saveAs) { make(.read(saveAs: $0)) }, prompt: Text(verbatim: "copied")) {
+        FilePathField(
+          label: Text("Picture"), path: bind("image", image) { make(.putImage(image: $0)) }, types: [.png], context: context,
+          pictures: context.variables(of: .image))
+        ImagePreview(path: image, context: context)
+        IssueList(issues: context.issues("image"))
+      } footer: {
+        Text("Replaces what is on the clipboard with a PNG picture of the project or one a block saves. The picture stays there after the run.")
+          .foregroundStyle(.secondary)
+      }
+    case .read(let saveAs, let content):
+      Section {
+        Picker(selection: bind("content", content) { make(.read(saveAs: saveAs, content: $0)) }) {
+          Text("Text").tag(ClipboardContent.text)
+          Text("Picture").tag(ClipboardContent.image)
+          Text("Files").tag(ClipboardContent.files)
+        } label: {
+          Text("What to Read")
+        }
+        IssueList(issues: context.issues("content"))
+        TextField(text: bind("saveAs", saveAs) { make(.read(saveAs: $0, content: content)) }, prompt: Text(verbatim: "copied")) {
           Text("Save As")
         }
         .font(.body.monospaced())
         .autocorrectionDisabled()
         IssueList(issues: context.issues("saveAs"))
       } footer: {
-        Text("Later blocks read it as ${var.NAME}; it’s empty when the clipboard holds no text. The saved text shows in the run’s values, so don’t read the clipboard while it holds something private.")
-          .foregroundStyle(.secondary)
+        Group {
+          switch content {
+          case .text:
+            Text("Later blocks read it as ${var.NAME}; it’s empty when the clipboard holds no text. The saved text shows in the run’s values, so don’t read the clipboard while it holds something private.")
+          case .image:
+            Text("Later blocks can look for the picture or compare the screen with it as ${var.NAME}; a script gets the path of a PNG file. The run stops here when the clipboard holds no picture.")
+          case .files:
+            Text("Later blocks read the paths of the copied files as ${var.NAME}, one per line. The run stops here when the clipboard holds no files.")
+          }
+        }
+        .foregroundStyle(.secondary)
       }
     case .check(let test, let to, let timeoutMs):
       Section {
@@ -271,9 +300,12 @@ extension InspectorView {
   }
 
   @ViewBuilder
-  func dateTimeFields(saveAs: String, format: String, shift: TimeShift?, next: String?, context: FieldContext) -> some View {
+  func dateTimeFields(
+    saveAs: String, format: String, language: String?, timeZone: String?, shift: TimeShift?, next: String?,
+    context: FieldContext
+  ) -> some View {
     let make = { (saveAs: String, format: String, shift: TimeShift?) in
-      BlockKind.dateTime(saveAs: saveAs, format: format, shift: shift, next: next)
+      BlockKind.dateTime(saveAs: saveAs, format: format, language: language, timeZone: timeZone, shift: shift, next: next)
     }
     Section {
       TextField(text: bind("saveAs", saveAs) { make($0, format, shift) }, prompt: Text(verbatim: "today")) {
@@ -291,7 +323,35 @@ extension InspectorView {
       .autocorrectionDisabled()
       IssueList(issues: context.issues("format"))
     } footer: {
-      Text("Later blocks read it as ${var.NAME}. In the format, \("%Y") is the year, \("%m") the month, \("%d") the day, \("%H") the hour, \("%M") the minute and \("%S") the second. Names of months and days are in English.")
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Later blocks read it as ${var.NAME}. In the format, \("%Y") is the year, \("%m") the month, \("%d") the day, \("%H") the hour, \("%M") the minute and \("%S") the second.")
+        Text("\("%B") is the name of the month, \("%A") of the day of the week, \("%b") and \("%a") their short forms, and \("%^B") writes a name in capitals. In Russian, \("%B") is the month as said after a day (31 марта) and \("%OB") the month on its own (март 2026).")
+      }
+      .foregroundStyle(.secondary)
+    }
+    Section {
+      Picker(
+        selection: bind("language", language) {
+          .dateTime(saveAs: saveAs, format: format, language: $0, timeZone: timeZone, shift: shift, next: next)
+        }
+      ) {
+        Text("Same as the App").tag(String?.none)
+        Divider()
+        ForEach(dateLanguages(), id: \.self) { Text(verbatim: AppLanguage.name($0)).tag(String?.some($0)) }
+      } label: {
+        Text("Names In")
+      }
+      .accessibilityHint(Text("The language of the names of months and days"))
+      IssueList(issues: context.issues("language"))
+      TimeZoneField(
+        timeZone: bind("timeZone", timeZone) {
+          .dateTime(saveAs: saveAs, format: format, language: language, timeZone: $0, shift: shift, next: next)
+        }
+      )
+      .id(context.block)
+      IssueList(issues: context.issues("timeZone"))
+    } footer: {
+      Text("“Same as the App” follows the language chosen in Settings → General. Without a time zone, the block tells the time of this Mac.")
         .foregroundStyle(.secondary)
     }
     Section {
@@ -421,11 +481,12 @@ struct NamedValuesEditor: View {
 
 /// What a clipboard block does, as the inspector's picker offers it.
 private enum ClipboardMode: Hashable {
-  case put, read, check
+  case put, putImage, read, check
 
   init(_ action: ClipboardAction) {
     switch action {
     case .put: self = .put
+    case .putImage: self = .putImage
     case .read: self = .read
     case .check: self = .check
     }
@@ -437,12 +498,14 @@ private enum ClipboardMode: Hashable {
       switch old {
       case .put(let text): text
       case .check(_, let to, _): to
-      case .read: ""
+      case .read, .putImage: ""
       }
     switch (self, old) {
     case (.put, _): return .put(text: text)
+    case (.putImage, .putImage): return old
+    case (.putImage, _): return .putImage(image: "")
     case (.read, .read): return old
-    case (.read, _): return .read(saveAs: "")
+    case (.read, _): return .read(saveAs: "", content: .text)
     case (.check, .check): return old
     case (.check, _): return .check(is: .equals, to: text, timeoutMs: 10_000)
     }
@@ -461,6 +524,45 @@ private struct ValueKindPicker: View {
     }
     .labelsHidden()
     .fixedSize()
+  }
+}
+
+/// The time zone a date block tells the time in, by its name such as Europe/Berlin; empty for
+/// the Mac's own. Only a name a run knows reaches the test, so a half-typed or misspelt one
+/// stays in the field with a hint.
+struct TimeZoneField: View {
+  @Binding var timeZone: String?
+  @State private var text = ""
+
+  /// The names a run knows, for suggestions while typing.
+  private static let names = TimeZone.knownTimeZoneIdentifiers.filter { timeZoneKnown(name: $0) }
+
+  private var name: String { text.trimmingCharacters(in: .whitespaces) }
+  private var isKnown: Bool { name.isEmpty || timeZoneKnown(name: name) }
+
+  private var suggestions: [String] {
+    guard !name.isEmpty, !Self.names.contains(name) else { return [] }
+    return Array(Self.names.filter { $0.localizedCaseInsensitiveContains(name) }.prefix(20))
+  }
+
+  var body: some View {
+    TextField(text: $text, prompt: Text(verbatim: TimeZone.current.identifier)) { Text("Time Zone") }
+      .autocorrectionDisabled()
+      .textInputSuggestions {
+        ForEach(suggestions, id: \.self) { Text(verbatim: $0).textInputCompletion($0) }
+      }
+      .accessibilityHint(Text("A name like Europe/Berlin. Leave it empty for the time of this Mac."))
+      .onAppear { text = timeZone ?? "" }
+      .onChange(of: timeZone) { _, new in
+        if (new ?? "") != name { text = new ?? "" }
+      }
+      .onChange(of: text) {
+        let wanted = name.isEmpty ? nil : name
+        if wanted != timeZone, isKnown { timeZone = wanted }
+      }
+    if !isKnown {
+      Warning(text: Text("There’s no time zone “\(name)”. Write a name like Europe/Berlin or America/New_York, or leave the field empty for the time of this Mac."))
+    }
   }
 }
 

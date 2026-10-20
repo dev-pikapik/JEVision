@@ -226,6 +226,62 @@ struct ModifiersTests {
     board.clearContents()
     #expect(try hands.clipboard() == "")
   }
+
+  @Test func putsAPictureAndReadsPicturesAndFiles() throws {
+    let board = NSPasteboard.general
+    let saved = board.string(forType: .string)
+    defer {
+      board.clearContents()
+      if let saved { board.setString(saved, forType: .string) }
+    }
+    let hands = MacHands(input: InputWatcher(), isCancelled: { false })
+    let picture = try #require(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 3, pixelsHigh: 2, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    let png = try #require(picture.representation(using: .png, properties: [:]))
+    try hands.setClipboardImage(png: png)
+    #expect(try hands.clipboardImage().flatMap(NSBitmapImageRep.init(data:))?.pixelsWide == 3)
+    #expect(try hands.clipboardFiles().isEmpty)
+    #expect(throws: HandsError.self) { try hands.setClipboardImage(png: Data("not a picture".utf8)) }
+
+    // Screenshots put a picture only as TIFF; it still reads as PNG.
+    board.clearContents()
+    board.setData(picture.tiffRepresentation, forType: .tiff)
+    let fromTIFF = try #require(try hands.clipboardImage())
+    #expect(fromTIFF.starts(with: [0x89, 0x50, 0x4E, 0x47]))
+
+    let file = FileManager.default.temporaryDirectory.appending(path: "copied file.txt")
+    board.clearContents()
+    board.writeObjects([file as NSURL])
+    #expect(try hands.clipboardFiles() == [file.standardizedFileURL.path])
+    #expect(try hands.clipboardImage() == nil)
+  }
+}
+
+struct MouseButtonTests {
+  @Test func theMiddleButtonIsTheOtherButton() {
+    let middle = MacHands.events(of: .middle)
+    #expect([middle.down, middle.dragged, middle.up] == [.otherMouseDown, .otherMouseDragged, .otherMouseUp])
+    #expect(middle.button == .center)
+    #expect(MacHands.events(of: .right).down == .rightMouseDown)
+    #expect(MacHands.events(of: .left).button == .left)
+    #expect(Recorder.button(of: .otherMouseUp) == .middle)
+    #expect(Recorder.button(of: .rightMouseDown) == .right)
+    #expect(Recorder.button(of: .leftMouseUp) == .left)
+  }
+}
+
+struct RunLanguageTests {
+  @Test func followsTheAppsChoiceOfLanguage() throws {
+    let suite = "RunLanguageTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    defaults.set(["ru-RU"], forKey: "AppleLanguages")
+    #expect(RunLanguage.language(defaults) == "ru")
+    defaults.set(["de-DE", "en-GB"], forKey: "AppleLanguages")
+    #expect(RunLanguage.language(defaults) == "en")
+  }
 }
 
 struct TemplateMatcherTests {
