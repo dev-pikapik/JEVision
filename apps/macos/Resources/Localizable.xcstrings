@@ -1719,6 +1719,16 @@
         }
       }
     },
+    "A fixed size and position keep pictures of the window the same on every run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированные размер и положение делают картинки окна одинаковыми при каждом прогоне."
+          }
+        }
+      }
+    },
     "A message after every run, passed or failed." : {
       "localizations" : {
         "ru" : {
@@ -7715,6 +7725,26 @@
         }
       }
     },
+    "Fixed Window Position" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированное положение окна"
+          }
+        }
+      }
+    },
+    "Fixed Window Size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированный размер окна"
+          }
+        }
+      }
+    },
     "Flakiness %@: the result changed %lld times in %lld runs without the test changing" : {
       "localizations" : {
         "ru" : {
@@ -8018,7 +8048,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Слева"
+            "value" : "От левого края"
           }
         }
       }
@@ -8048,7 +8078,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сверху"
+            "value" : "От верхнего края"
           }
         }
       }
@@ -8325,6 +8355,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Здоровье"
+          }
+        }
+      }
+    },
+    "Height" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Высота"
           }
         }
       }
@@ -13022,6 +13062,16 @@
         }
       }
     },
+    "Quits the app if it is running, then opens it without the windows it had last time." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывает приложение, если оно запущено, и открывает его без окон, которые были в прошлый раз."
+          }
+        }
+      }
+    },
     "Read the Clipboard" : {
       "localizations" : {
         "ru" : {
@@ -16456,6 +16506,16 @@
         }
       }
     },
+    "Start Fresh" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить с нуля"
+          }
+        }
+      }
+    },
     "Start Recording" : {
       "localizations" : {
         "ru" : {
@@ -19858,6 +19918,16 @@
         }
       }
     },
+    "Waiting for the screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт экран"
+          }
+        }
+      }
+    },
     "Waiting: %@, %@" : {
       "localizations" : {
         "ru" : {
@@ -20254,12 +20324,42 @@
         }
       }
     },
+    "Width" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ширина"
+          }
+        }
+      }
+    },
     "Width, px" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ширина, пикс."
+          }
+        }
+      }
+    },
+    "Window Position" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положение окна"
+          }
+        }
+      }
+    },
+    "Window Size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Размер окна"
           }
         }
       }
@@ -22386,6 +22486,16 @@
         }
       }
     },
+    "points" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пунктов"
+          }
+        }
+      }
+    },
     "preferences options" : {
       "localizations" : {
         "ru" : {
@@ -23552,6 +23662,70 @@
         }
       }
     },
+    "run.hands.stillRunning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t quit, so it can’t start over. Close it, or answer what it asks, and run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не закрылось, поэтому его нельзя запустить заново. Закройте его или ответьте на его вопрос и запустите тест ещё раз."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.position" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ should be at %@ but is at %@. The screen may be too small, or the app keeps its window where it likes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть в точке %3$@, а оно в %4$@. Возможно, экран слишком мал или приложение само выбирает, где держать окно."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.size" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ should be %@ points but is %@. The app may have its own limits, or the screen may be too small."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть %3$@ пунктов, а получилось %4$@. У приложения могут быть свои ограничения, или экран слишком мал."
+          }
+        }
+      }
+    },
+    "run.hands.windowFixed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ doesn’t allow its size or position to be changed. Turn off the fixed size and position in this block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ не даёт менять размер или положение. Отключите фиксированные размер и положение в этом блоке."
+          }
+        }
+      }
+    },
     "run.http.failed" : {
       "localizations" : {
         "en" : {
@@ -24336,6 +24510,22 @@
         }
       }
     },
+    "run.waitFor.timeout.dark" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: waited %@ s for %@, but it didn’t happen. The window is dark and only the light picture exists; save the dark one as %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались. Окно тёмное, а есть только светлая картинка; сохраните тёмную как %4$@."
+          }
+        }
+      }
+    },
     "run.waitFor.timeout.screenStable" : {
       "localizations" : {
         "en" : {
@@ -24374,6 +24564,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "сохранено: %@"
+          }
+        }
+      }
+    },
+    "screen.busy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen busy: %@, test %@, since %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: %1$@, тест %2$@, с %3$@"
+          }
+        }
+      }
+    },
+    "screen.busy.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen busy: another run is using it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: его использует другой прогон."
           }
         }
       }

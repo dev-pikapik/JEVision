@@ -12,7 +12,8 @@ enum IndicatorState: Equatable {
     switch run {
     case .running: self = .running
     case .paused: self = .paused
-    case .finished, nil:
+    // A run that waits for the screen leaves the Mac to its owner.
+    case .finished, .waitingForScreen, nil:
       guard isRecording else { return nil }
       self = recordingPaused ? .recordingPaused : .recording
     }

@@ -36,6 +36,53 @@ struct SyntheticInputTests {
   }
 }
 
+struct WindowCoordinateTests {
+  @Test func pointsInTheWindowFollowItToAnyDisplay() {
+    // A display left of the main one has negative x; one above it, negative y.
+    let left = CGRect(x: -1440, y: 80, width: 900, height: 600)
+    #expect(MacHands.screenPoint(Point(x: 10, y: 20), in: left) == CGPoint(x: -1430, y: 100))
+    let above = CGRect(x: 200, y: -900, width: 900, height: 600)
+    #expect(MacHands.screenPoint(Point(x: 450, y: 300), in: above) == CGPoint(x: 650, y: -600))
+  }
+
+  @Test func theCaptureCropsToTheWindowOfItsOwnDisplay() {
+    let display = CGRect(x: -1440, y: 0, width: 1440, height: 900)
+    let window = CGRect(x: -1300, y: 120, width: 800, height: 500)
+    #expect(MacHands.sourceRect(of: window, on: display) == CGRect(x: 140, y: 120, width: 800, height: 500))
+  }
+}
+
+struct WindowPlacementTests {
+  private let size = WindowSize(width: 900, height: 600)
+  private let position = WindowPosition(x: 40, y: 60)
+
+  @Test func aWindowAsWantedNeedsNothing() {
+    let frame = CGRect(x: 40, y: 60, width: 900, height: 600)
+    #expect(WindowPlacement.difference(size: size, position: position, frame: frame) == nil)
+    // Apps round to whole points.
+    let rounded = CGRect(x: 41, y: 59.4, width: 899.2, height: 601)
+    #expect(WindowPlacement.difference(size: size, position: position, frame: rounded) == nil)
+    // Nothing wanted, nothing to differ.
+    #expect(WindowPlacement.difference(size: nil, position: nil, frame: .zero) == nil)
+  }
+
+  @Test func aWindowThatKeptItsOwnLimitsSaysWhat() throws {
+    let narrow = CGRect(x: 40, y: 60, width: 900, height: 480)
+    let wrongSize = try #require(WindowPlacement.difference(size: size, position: position, frame: narrow))
+    #expect(wrongSize == (what: "size", wanted: "900 × 600", actual: "900 × 480"))
+    // Only what was asked for is checked.
+    #expect(WindowPlacement.difference(size: nil, position: position, frame: narrow) == nil)
+
+    let pushedDown = CGRect(x: 40, y: 25, width: 900, height: 600)
+    let wrongPlace = try #require(WindowPlacement.difference(size: size, position: position, frame: pushedDown))
+    #expect(wrongPlace == (what: "position", wanted: "40, 60", actual: "40, 25"))
+  }
+
+  @Test func aFreshStartTellsTheAppToForgetItsLastWindows() {
+    #expect(MacHands.forgetLastSession == ["-ApplePersistenceIgnoreState", "YES"])
+  }
+}
+
 struct FrontWindowTests {
   @Test func skipsTinyHelperWindows() {
     let helper = (id: CGWindowID(2), bounds: CGRect(x: 447, y: 81, width: 66, height: 20), title: String?("Window"))

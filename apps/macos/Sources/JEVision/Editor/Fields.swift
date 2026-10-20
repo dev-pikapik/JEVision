@@ -279,6 +279,26 @@ struct TimeoutField: View {
   }
 }
 
+/// A whole number of points, such as the width of a window.
+struct PointsField: View {
+  let label: Text
+  @Binding var value: Int
+
+  var body: some View {
+    LabeledContent {
+      HStack(spacing: 6) {
+        TextField(value: $value, format: .number.grouping(.never)) { label }
+          .labelsHidden()
+          .multilineTextAlignment(.trailing)
+          .frame(width: 64)
+        Text("points")
+      }
+    } label: {
+      label
+    }
+  }
+}
+
 /// The keys held down during a click or a drag.
 struct ModifiersField: View {
   @Binding var modifiers: Modifiers

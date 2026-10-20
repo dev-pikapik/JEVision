@@ -11,6 +11,8 @@ struct IndicatorStateTests {
 
   @Test func runAndRecordingStates() {
     #expect(IndicatorState(run: .running, isRecording: false, recordingPaused: false) == .running)
+    // A run waiting for the screen leaves the Mac to whoever has it.
+    #expect(IndicatorState(run: .waitingForScreen(nil), isRecording: false, recordingPaused: false) == nil)
     #expect(IndicatorState(run: .paused(.userInput), isRecording: false, recordingPaused: false) == .paused)
     #expect(IndicatorState(run: nil, isRecording: true, recordingPaused: false) == .recording)
     #expect(IndicatorState(run: nil, isRecording: true, recordingPaused: true) == .recordingPaused)

@@ -187,6 +187,8 @@ enum IssueText {
     switch field.split(separator: ".").first.map(String.init) {
     case "name": String(localized: "Name")
     case "app": String(localized: "App")
+    case "windowSize": String(localized: "Window Size")
+    case "windowPosition": String(localized: "Window Position")
     case "text": String(localized: "Text")
     case "keys": String(localized: "Keys")
     case "files": String(localized: "Files")
