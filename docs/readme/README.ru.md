@@ -495,16 +495,17 @@ jobs:
         env:
           ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
         run: jevision run tests --junit junit.xml --html reports
-comes first, and an existing file is replaced only after you confirm. Nothing is committed or
-pushed.
-
-The artifact `jevision-reports` also carries the run reports with their screenshots. Once you are
-signed in to GitHub (Settings › Git and GitHub) and the project's repository is on GitHub, the
-app fetches the newest ones each time you open **Runs**, and with the refresh button there, and
-adds them to the history, each once. A run from CI is marked “CI · pull request #482” or “CI ·
-branch main”, its report links to the run on GitHub, and the filter above the list shows only
-those. Without a sign-in nothing is fetched and the list says so. Artifacts made by an older
-workflow, which had no run reports, need the workflow added again.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jevision-reports
+          include-hidden-files: true
+          overwrite: true
+          path: |
+            junit.xml
+            reports/
+            tests/.jevision/runs/
+```
 
 Набирать это не обязательно: **Настройки › Дополнительно › Непрерывная интеграция › Добавить в
 проект…** показывает этот файл для открытого проекта, с секретами, которые используют ваши тесты,
