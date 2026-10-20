@@ -51,6 +51,7 @@ struct MainView: View {
     .sheet(isPresented: Binding(get: { project.bugReportRun != nil }, set: { if !$0 { project.bugReportRun = nil } })) {
       if let dir = project.bugReportRun { BugReportSheet(dir: dir) }
     }
+    .sheet(item: $project.referenceWizard) { ReferenceWizardView(wizard: $0, undoManager: undoManager) }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
     .sheet(isPresented: $git.isComposingPullRequest) { NewPullRequestView() }
     .sheet(isPresented: Binding(get: { git.conflicts != nil }, set: { if !$0 { git.conflicts = nil } })) {
