@@ -273,6 +273,18 @@ fn hands_message(e: &HandsError) -> String {
             "The screen of this Mac is locked. The person at it needs to unlock it first."
                 .to_owned()
         }
+        HandsError::StillRunning { app } => format!(
+            "{app} didn't quit, so it can't start over. Close it, or answer what it asks, and try again."
+        ),
+        HandsError::WindowFixed { app } => {
+            format!("The window of {app} doesn't allow its size or position to be changed.")
+        }
+        HandsError::WindowDiffers {
+            app,
+            what,
+            wanted,
+            actual,
+        } => format!("The {what} of the window of {app} should be {wanted} but is {actual}."),
         HandsError::Failed { reason } => reason.clone(),
     }
 }
