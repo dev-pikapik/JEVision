@@ -3,9 +3,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use jevision_remote::{Device, Host, HostConfig, HostDelegate, Project};
+use jevision_remote::{AssistantRejection, Device, Host, HostConfig, HostDelegate, Project};
 use p256::ecdsa::signature::Signer as _;
 use p256::ecdsa::{Signature, SigningKey};
+use serde_json::{Value, json};
 
 use super::*;
 
@@ -127,6 +128,30 @@ impl HostDelegate for Fake {
     fn active_runs(&self, _project_root: String) -> Vec<RunStatus> {
         self.active.lock().unwrap().values().cloned().collect()
     }
+
+    fn assistant_hello(&self, _session: String, _device: Device, _params: Value) -> Value {
+        json!({})
+    }
+
+    fn assistant_tools(&self) -> Value {
+        json!({ "tools": [] })
+    }
+
+    fn assistant_call(
+        &self,
+        _session: String,
+        _device: Device,
+        _project_root: String,
+        _tool: String,
+        _arguments: Value,
+    ) -> Result<Value, AssistantRejection> {
+        Err(AssistantRejection {
+            code: -32601,
+            message: "Phones don't use tools".into(),
+        })
+    }
+
+    fn assistant_ended(&self, _session: String) {}
 }
 
 /// Direct connections on this computer only: no relays, no discovery services.
