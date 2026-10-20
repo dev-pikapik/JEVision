@@ -65,6 +65,14 @@ struct RunStateTests {
     #expect(RunHUD.status(of: run([.waitingForScreen(holder: nil)])) == "Waiting for the screen")
   }
 
+  @MainActor @Test func aWaitingRunHasAHeaderIconOfItsOwn() {
+    let waiting = RunHUD.icon(of: run([.waitingForScreen(holder: nil)]))
+    let paused = RunHUD.icon(of: run([.paused(block: "b", reason: .requested, variables: [:])]))
+    let running = RunHUD.icon(of: RunState())
+    #expect(Set([waiting.symbol, paused.symbol, running.symbol]).count == 3)
+    #expect(Set([waiting.color, paused.color, running.color]).count == 3)
+  }
+
   @Test func remembersTheWaysOutTheIfsTook() {
     let state = run([
       .stepFinished(attempt: 1, step: Self.choice("elseIf1", of: 3, saw: "Inbox is empty")),
