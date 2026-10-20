@@ -349,24 +349,6 @@ fn hands_message(e: &HandsError) -> String {
             tr!("mcp.hands.screenRecording")
         }
         HandsError::PermissionDenied { .. } => tr!("mcp.hands.accessibility"),
-        HandsError::AppNotFound { app } => tr!("mcp.hands.appNotFound", app),
-        HandsError::NoWindow { app } => tr!("mcp.hands.noWindow", app),
-        HandsError::CannotOpen { item } => tr!("mcp.hands.cannotOpen", item),
-        HandsError::ScreenLocked => tr!("mcp.hands.screenLocked"),
-        HandsError::StillRunning { app } => tr!("mcp.hands.stillRunning", app),
-        HandsError::WindowFixed { app } => tr!("mcp.hands.windowFixed", app),
-        HandsError::WindowDiffers {
-            app,
-            what,
-            wanted,
-            actual,
-        } if what == "position" => tr!("mcp.hands.windowDiffers.position", app, wanted, actual),
-        HandsError::WindowDiffers {
-            app,
-            wanted,
-            actual,
-            ..
-        } => tr!("mcp.hands.windowDiffers.size", app, wanted, actual),
-        HandsError::Failed { reason } => reason.clone(),
+        other => other.to_string(),
     }
 }

@@ -45,9 +45,21 @@ pub struct BugDraft {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BugPicture {
     /// `Expected`, `Actual` or `Difference`: names of files and of the pictures a client asks
-    /// for, so they are the same in every language.
+    /// for, so they are the same in every language. Never shown as it is: people read
+    /// [`picture_caption_in`].
     pub label: String,
     pub path: String,
+}
+
+/// The caption of the picture with `label` (see [`BugPicture::label`]) in `lang`.
+pub fn picture_caption_in(lang: &str, label: &str) -> String {
+    let key = match label {
+        "Expected" => "bug.picture.expected",
+        "Actual" => "bug.picture.actual",
+        "Difference" => "bug.picture.difference",
+        other => return other.to_owned(),
+    };
+    text_in(lang, key, &[])
 }
 
 /// Most steps a report lists: the last ones, those that led to the failure.
@@ -815,5 +827,13 @@ mod tests {
             told("ru", "d"),
             "Сохранить дату и время как `day` в формате `%F`, сдвиг: 21 день"
         );
+    }
+
+    #[test]
+    fn pictures_keep_their_label_and_are_captioned_in_the_language() {
+        assert_eq!(picture_caption_in("en", "Difference"), "Difference");
+        assert_eq!(picture_caption_in("ru", "Difference"), "Разница");
+        assert_eq!(picture_caption_in("ru", "Expected"), "Ожидается");
+        assert_eq!(picture_caption_in("ru", "Other"), "Other");
     }
 }

@@ -6,7 +6,7 @@ import JEVisionHands
 @main
 enum JEVisionCLI {
   static func main() {
-    setLanguage(tag: CLILanguage.resolve(environment: ProcessInfo.processInfo.environment, preferred: Locale.preferredLanguages))
+    CLILanguage.apply(CLILanguage.resolve(environment: ProcessInfo.processInfo.environment, preferred: Locale.preferredLanguages))
     exit(execute(Array(CommandLine.arguments.dropFirst())).rawValue)
   }
 
@@ -15,7 +15,7 @@ enum JEVisionCLI {
     let command: Command
     do {
       let (language, rest) = try CLILanguage.extract(arguments)
-      if let language { setLanguage(tag: language) }
+      if let language { CLILanguage.apply(language) }
       command = try Command.parse(rest)
     } catch {
       Console.standardError.line("jevision: \(error.message)")

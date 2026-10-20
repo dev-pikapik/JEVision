@@ -36,8 +36,9 @@ final class AppLanguage: Observable, Sendable {
   private let domain: String
   private let system: @Sendable () -> [String]
   private let main: Bundle
-  /// Hands the language in use to the core, which words its messages, reports and issues in it.
-  private let apply: @Sendable (String) -> Void
+  /// Hands the language in use and the separators its numbers are written with to the core,
+  /// which words its messages, reports and issues in it.
+  private let apply: @Sendable (_ language: String, _ decimal: String, _ grouping: String) -> Void
 
   /// The language of the choice or, for "System", of the Mac's list that the app has texts for.
   /// `available` are the languages the app has texts for.
@@ -56,13 +57,17 @@ final class AppLanguage: Observable, Sendable {
   }
 
   /// `domain` is where `defaults` keeps the app's settings; `system` lists the Mac's languages;
-  /// `apply` receives the language in use at launch and at every change.
+  /// `apply` receives the language in use and the decimal and grouping separators of `locale` at
+  /// launch and at every change.
   init(
     main: Bundle = .main,
     defaults: UserDefaults = .standard,
     domain: String = Bundle.main.bundleIdentifier ?? "",
     system: @escaping @Sendable () -> [String] = AppLanguage.systemLanguages,
-    apply: @escaping @Sendable (String) -> Void = { setLanguage(tag: $0) }
+    apply: @escaping @Sendable (String, String, String) -> Void = {
+      setLanguage(tag: $0)
+      setNumberFormat(decimal: $1, grouping: $2)
+    }
   ) {
     self.main = main
     self.apply = apply
@@ -116,15 +121,16 @@ final class AppLanguage: Observable, Sendable {
     let saved = (defaults.persistentDomain(forName: domain)?[Self.key] as? [String])?.first ?? ""
     let language = Self.resolve(saved: saved, system: system(), available: Self.languages(in: main))
     let folder = main.path(forResource: language, ofType: "lproj").flatMap { Bundle(path: $0) }
+    let locale = Self.locale(language: language, in: .autoupdatingCurrent)
     registrar.withMutation(of: self, keyPath: \.locale) {
       state.withLock {
         $0.saved = saved
         $0.language = language
-        $0.locale = Self.locale(language: language, in: .autoupdatingCurrent)
+        $0.locale = locale
         $0.bundle = folder
       }
     }
-    apply(language)
+    apply(language, locale.decimalSeparator ?? ".", locale.groupingSeparator ?? "")
   }
 
   /// The Mac's languages in order of preference, as set now rather than when the app opened.

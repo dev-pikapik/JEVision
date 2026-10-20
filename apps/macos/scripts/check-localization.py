@@ -135,6 +135,10 @@ TEST_MODULE = re.compile(r'#\[cfg\(test\)\]\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+\w+
 KEY_FIRST = re.compile(r'(?:\btr!|\bl10n::text|\bPhrase::new)\s*\(\s*\Z')
 FAILURE_CODE = re.compile(r'\bFailure::new\s*\(\s*\Z')
 KEY_AFTER_LANGUAGE = re.compile(r'(?:\btr_in!|\btext_in)\s*\([^,;]*,\s*\Z')
+# A key written as `format!(...)`: it never appears whole in the code, so nothing can tell
+# whether the catalog has it.
+FORMATTED_KEY = re.compile(
+    r'(?:\btr!\s*\(|\bl10n::text(?:_in)?\s*\(|\bPhrase::new\s*\(|\btr_in!\s*\([^,;]*,|\btext_in\s*\([^,;]*,)\s*&?\s*format!')
 
 
 def unescape(text):
@@ -225,6 +229,9 @@ def rust_keys(catalog_keys):
                for value, _ in found}
     problems = []
     for where, source in sources:
+        for match in FORMATTED_KEY.finditer(source):
+            line = source.count('\n', 0, match.start()) + 1
+            problems.append(f'{where}:{line}: a key built with format!; write every key as a literal')
         for value, offset in literals[where]:
             if value in catalog_keys or not value:
                 continue

@@ -659,6 +659,25 @@ fn a_window_that_will_not_take_its_size_stops_the_run_with_a_clear_reason() {
 }
 
 #[test]
+fn a_platform_error_reads_as_the_catalog_sentence_without_a_block() {
+    assert_eq!(
+        HandsError::PermissionDenied("screenRecording".into()).to_string(),
+        "JEVision isn’t allowed to use Screen Recording. Turn it on in Settings → Permissions."
+    );
+    assert_eq!(
+        HandsError::WindowDiffers {
+            app: APP.into(),
+            what: "position".into(),
+            wanted: "40, 60".into(),
+            actual: "0, 25".into(),
+        }
+        .to_string(),
+        format!("The position of the window of {APP} should be 40, 60 but is 0, 25.")
+    );
+    assert_eq!(HandsError::Failed("busy".into()).to_string(), "busy");
+}
+
+#[test]
 fn hover_moves_the_pointer_onto_the_target() {
     let p = Project::new();
     p.write("refs/help.png", solid([9, 9, 9])).test(
@@ -1583,6 +1602,19 @@ fn retry_verdicts_say_flaky_or_real() {
     assert_eq!(
         RetryVerdict::PassedOnRetry { retry: 1 }.describe_in("en"),
         "Passed on retry 1 after failing — the test is flaky."
+    );
+    let mixed = RetryVerdict::FailedDifferently { attempts: 2 };
+    assert_eq!(
+        mixed.describe_in("en"),
+        "Failed 2 of 2 times, each time differently — the test may be flaky."
+    );
+    assert_eq!(
+        mixed.describe_in("ru"),
+        "Упал 2 раза из 2, каждый раз по-разному — тест может быть нестабилен."
+    );
+    assert_eq!(
+        RetryVerdict::FailedDifferently { attempts: 5 }.describe_in("ru"),
+        "Упал 5 раз из 5, каждый раз по-разному — тест может быть нестабилен."
     );
 }
 

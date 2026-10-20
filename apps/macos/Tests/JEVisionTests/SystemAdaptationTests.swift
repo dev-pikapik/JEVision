@@ -48,7 +48,7 @@ struct AppLanguageTests {
   @Test func choosingALanguageAppliesAtOnceAndIsKept() throws {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
-    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { _ in })
+    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { _, _, _ in })
     #expect(language.saved == "")
     #expect(language.language == "en")
     language.choose("ru")
@@ -68,10 +68,23 @@ struct AppLanguageTests {
     defer { suite.removePersistentDomain(forName: name) }
     let sent = Mutex<[String]>([])
     let language = AppLanguage(
-      main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { tag in sent.withLock { $0.append(tag) } })
+      main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] }, apply: { tag, _, _ in sent.withLock { $0.append(tag) } })
     language.choose("ru")
     language.choose("")
     #expect(sent.withLock { $0 } == ["en", "ru", "en"])
+  }
+
+  @Test func numbersGoToTheCoreWithTheSeparatorsOfTheLocaleInUse() throws {
+    let (suite, name) = try defaults()
+    defer { suite.removePersistentDomain(forName: name) }
+    let sent = Mutex<[String]>([])
+    let language = AppLanguage(
+      main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] },
+      apply: { tag, decimal, grouping in sent.withLock { $0 = [tag, decimal, grouping] } })
+    language.choose("ru")
+    let locale = language.locale
+    #expect(locale.language.languageCode == .russian)
+    #expect(sent.withLock { $0 } == ["ru", locale.decimalSeparator ?? ".", locale.groupingSeparator ?? ""])
   }
 
   /// A tag the catalog has no texts for, so that no wording elsewhere changes while it is set.
@@ -79,7 +92,10 @@ struct AppLanguageTests {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
     let before = currentLanguage()
-    defer { setLanguage(tag: before) }
+    defer {
+      setLanguage(tag: before)
+      setNumberFormat(decimal: "", grouping: "")
+    }
     _ = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] })
     #expect(currentLanguage() == "en")
     let other = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { ["en-US"] })
@@ -98,7 +114,7 @@ struct AppLanguageTests {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
     let languages = SystemLanguages()
-    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { languages.list.withLock { $0 } }, apply: { _ in })
+    let language = AppLanguage(main: try appWithTexts(), defaults: suite, domain: name, system: { languages.list.withLock { $0 } }, apply: { _, _, _ in })
     language.start()
     #expect(language.language == "en")
     languages.list.withLock { $0 = ["ru-RU"] }
@@ -111,7 +127,7 @@ struct AppLanguageTests {
     let (suite, name) = try defaults()
     defer { suite.removePersistentDomain(forName: name) }
     let empty = try #require(Bundle(url: FileManager.default.temporaryDirectory))
-    let language = AppLanguage(main: empty, defaults: suite, domain: name, system: { ["ru"] }, apply: { _ in })
+    let language = AppLanguage(main: empty, defaults: suite, domain: name, system: { ["ru"] }, apply: { _, _, _ in })
     #expect(language.bundle == nil)
   }
 }

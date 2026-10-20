@@ -50,10 +50,19 @@ struct IssueCommand {
     if !report.screenshots.isEmpty {
       output.line()
       output.line(words("cli.issue.screenshots"))
-      for shot in report.screenshots { output.line("  \(shot.label): \(shot.path)") }
+      for shot in report.screenshots { output.line("  \(caption(shot.label)): \(shot.path)") }
     }
     output.line()
     output.line(words("cli.issue.nothingSent", dir))
+  }
+
+  private func caption(_ label: String) -> String {
+    switch label {
+    case "Expected": words("bug.picture.expected")
+    case "Actual": words("bug.picture.actual")
+    case "Difference": words("bug.picture.difference")
+    default: label
+    }
   }
 
   private func send(_ report: BugReport, project: String, dir: String) throws -> ExitStatus {

@@ -196,8 +196,9 @@ impl RetryVerdict {
     pub fn describe_in(self, lang: &str) -> String {
         match self {
             Self::PassedOnRetry { retry } => tr_in!(lang, "retry.passedOnRetry", retry),
+            // Every attempt failed: "failed 2 of 2 times".
             Self::FailedDifferently { attempts } => {
-                tr_in!(lang, "retry.failedDifferently", attempts)
+                tr_in!(lang, "retry.failedDifferently", attempts, attempts)
             }
             Self::FailedEveryTime { attempts } => tr_in!(lang, "retry.failedEveryTime", attempts),
         }

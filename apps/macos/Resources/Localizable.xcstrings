@@ -27762,6 +27762,54 @@
         }
       }
     },
+    "bug.picture.actual" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actual"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получено"
+          }
+        }
+      }
+    },
+    "bug.picture.difference" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difference"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разница"
+          }
+        }
+      }
+    },
+    "bug.picture.expected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expected"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидается"
+          }
+        }
+      }
+    },
     "bug.picture.notInRun" : {
       "localizations" : {
         "en" : {
@@ -38566,6 +38614,70 @@
         }
       }
     },
+    "package.download.noFiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the release has no files to download"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "в релизе нет файлов для скачивания"
+          }
+        }
+      }
+    },
+    "package.download.rateLimited" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub is limiting requests from this computer; try again in a few minutes"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub ограничивает запросы с этого компьютера; попробуйте снова через несколько минут"
+          }
+        }
+      }
+    },
+    "package.download.status" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the server answered with error %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сервер ответил ошибкой %lld"
+          }
+        }
+      }
+    },
+    "package.export.noName" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the package has no name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "у пакета нет имени"
+          }
+        }
+      }
+    },
     "package.file.notFile" : {
       "localizations" : {
         "en" : {
@@ -40874,13 +40986,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Failed %lld time, each time differently — the test may be flaky."
+                  "value" : "Failed %lld of %lld time, each time differently — the test may be flaky."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Failed %lld times, each time differently — the test may be flaky."
+                  "value" : "Failed %lld of %lld times, each time differently — the test may be flaky."
                 }
               }
             }
@@ -40892,25 +41004,25 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Упал %lld раз, каждый раз по-разному — тест может быть нестабилен."
+                  "value" : "Упал %1$lld раз из %2$lld, каждый раз по-разному — тест может быть нестабилен."
                 }
               },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Упал %lld раза, каждый раз по-разному — тест может быть нестабилен."
+                  "value" : "Упал %1$lld раза из %2$lld, каждый раз по-разному — тест может быть нестабилен."
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Упал %lld раз, каждый раз по-разному — тест может быть нестабилен."
+                  "value" : "Упал %1$lld раз из %2$lld, каждый раз по-разному — тест может быть нестабилен."
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Упал %lld раза, каждый раз по-разному — тест может быть нестабилен."
+                  "value" : "Упал %1$lld раза из %2$lld, каждый раз по-разному — тест может быть нестабилен."
                 }
               }
             }

@@ -150,12 +150,7 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
         "run.runTest.recursion" => Phrase::new(key, &[block, p("test")]),
         "run.io.writeFailed" => Phrase::new(key, &[p("path"), reason()]),
         "run.hands.permissionDenied" => {
-            let name = match p("permission") {
-                "screenRecording" => text_in(lang, "run.permission.screenRecording", &[]),
-                "accessibility" => text_in(lang, "run.permission.accessibility", &[]),
-                other => other.to_owned(),
-            };
-            Phrase::new(key, &[&name])
+            Phrase::new(key, &[&permission_name(lang, p("permission"))])
         }
         "run.hands.appNotFound"
         | "run.hands.noWindow"
@@ -291,6 +286,15 @@ pub(crate) fn share(lang: &str, kept: &str) -> String {
     kept.strip_suffix('%')
         .and_then(|n| n.trim().parse::<f64>().ok())
         .map_or_else(|| kept.to_owned(), |n| percent(lang, n / 100.0))
+}
+
+/// The name of a system permission (`screenRecording`, `accessibility`) as System Settings shows it.
+pub(crate) fn permission_name(lang: &str, permission: &str) -> String {
+    match permission {
+        "screenRecording" => text_in(lang, "run.permission.screenRecording", &[]),
+        "accessibility" => text_in(lang, "run.permission.accessibility", &[]),
+        other => other.to_owned(),
+    }
 }
 
 /// What a script value of this kind (the name of a `ValueKind`) looks like, after “should be”.

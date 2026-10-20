@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
 use jevision_core::{MANIFEST_FILE, PackageError, parse_manifest};
+use jevision_l10n::tr;
 use serde_json::Value;
 use zip::ZipArchive;
 use zip::write::SimpleFileOptions;
@@ -75,7 +76,7 @@ pub fn zip_package(folder: &Path, to: &Path) -> Result<(), PackageError> {
     let top = folder
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
-        .ok_or_else(|| failed(&"the package has no name"))?;
+        .ok_or_else(|| failed(&tr!("package.export.noName")))?;
     let partial = to.with_extension("zip.partial");
     let result = (|| -> io::Result<()> {
         let mut writer = zip::ZipWriter::new(fs::File::create(&partial)?);
@@ -373,7 +374,7 @@ fn download_package(url: &str, network: &Network) -> Result<Vec<u8>, PackageErro
     if status != 200 {
         return Err(failed_download(
             &zip_url,
-            &format!("the server answered {status}"),
+            &tr!("package.download.status", status),
         ));
     }
     Ok(body)
@@ -487,19 +488,16 @@ fn github_zip(
     match status {
         200 => {
             let release: Value = serde_json::from_slice(&body)
-                .map_err(|_| failed_download(&api, "GitHub sent an answer that can't be read"))?;
+                .map_err(|_| failed_download(&api, &tr!("git.error.githubUnreadable")))?;
             release_zip(&release)
-                .ok_or_else(|| failed_download(&api, "the release has no files to download"))
+                .ok_or_else(|| failed_download(&api, &tr!("package.download.noFiles")))
         }
         404 => Ok(match what {
             Pick::Release(tag) => code(&format!("refs/tags/{tag}")),
             _ => code("HEAD"),
         }),
-        403 | 429 => Err(failed_download(
-            &api,
-            "GitHub is limiting requests from this computer; try again in a few minutes",
-        )),
-        other => Err(failed_download(&api, &format!("GitHub answered {other}"))),
+        403 | 429 => Err(failed_download(&api, &tr!("package.download.rateLimited"))),
+        other => Err(failed_download(&api, &tr!("git.error.githubStatus", other))),
     }
 }
 

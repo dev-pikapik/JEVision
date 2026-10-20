@@ -38,6 +38,18 @@ enum CLILanguage {
     if environment["CI"].map({ !$0.isEmpty }) == true { return "en" }
     return Bundle.preferredLocalizations(from: available, forPreferences: preferred).first ?? "en"
   }
+
+  /// Makes `language` the language of what is printed, its numbers written the way `language` is
+  /// written in the Mac's region, as the app does.
+  static func apply(_ language: String, region: Locale = .current) {
+    setLanguage(tag: language)
+    var spoken = Locale.Language.Components(identifier: language)
+    spoken.region = region.region ?? spoken.region
+    var parts = Locale.Components(locale: region)
+    parts.languageComponents = spoken
+    let locale = Locale(components: parts)
+    setNumberFormat(decimal: locale.decimalSeparator ?? ".", grouping: locale.groupingSeparator ?? "")
+  }
 }
 
 /// The text of the catalog key in the language of the command line. Whole numbers count for

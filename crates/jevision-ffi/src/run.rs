@@ -16,39 +16,53 @@ use jevision_runner::{
 
 use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
 
-/// Why the operating system layer could not do something.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+/// Why the operating system layer could not do something. `Display` is the runner's sentence for
+/// it, in the process language.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Error)]
 pub enum HandsError {
     /// `permission` is `screenRecording` or `accessibility`.
-    #[error("permission `{permission}` is not granted")]
-    PermissionDenied { permission: String },
-    #[error("application `{app}` is not installed")]
-    AppNotFound { app: String },
-    #[error("application `{app}` has no open window")]
-    NoWindow { app: String },
-    #[error("cannot open `{item}`")]
-    CannotOpen { item: String },
+    PermissionDenied {
+        permission: String,
+    },
+    AppNotFound {
+        app: String,
+    },
+    NoWindow {
+        app: String,
+    },
+    CannotOpen {
+        item: String,
+    },
     /// The screen is locked: nothing to look at, and keys would go to the lock screen.
-    #[error("the screen is locked")]
     ScreenLocked,
     /// The application did not quit when asked to, so it cannot start over.
-    #[error("application `{app}` is still running")]
-    StillRunning { app: String },
+    StillRunning {
+        app: String,
+    },
     /// The window does not let its size or position be changed.
-    #[error("the window of `{app}` cannot be resized or moved")]
-    WindowFixed { app: String },
+    WindowFixed {
+        app: String,
+    },
     /// The window took another size or position than asked. `what` is `size` or `position`,
     /// `wanted` and `actual` are written `900 × 600` and `40, 60`.
-    #[error("the {what} of the window of `{app}` should be {wanted} but is {actual}")]
     WindowDiffers {
         app: String,
         what: String,
         wanted: String,
         actual: String,
     },
-    #[error("{reason}")]
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
+
+impl std::fmt::Display for HandsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        jevision_runner::HandsError::from(self.clone()).fmt(f)
+    }
+}
+
+impl std::error::Error for HandsError {}
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for HandsError {
     fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {

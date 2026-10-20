@@ -65,7 +65,11 @@ an error, not a blank.
   the form.
 - The app uses its own language setting, the command line takes `--lang en|ru` (the system
   language when it is not given, English in CI), and the core reads the language it is handed.
-  Dates and numbers follow the system formatting; don't write them into a text.
+  Dates and numbers follow the system formatting; don't write them into a text. Each of them
+  also hands the core the decimal and grouping separators of that language in the system's
+  region (`set_number_format`), and `jevision_l10n::decimal` writes numbers in the current
+  language with them; until then, and in any other language, a number has the language's own
+  decimal separator and no grouping.
 - `apps/macos/scripts/check-localization.py` runs in `build.sh` and in CI. It fails when a text
   or a key the core asks for is missing from the catalog, a key is no longer used by the app or
   the core, a language lacks a translation or a plural form, or the arguments of a translation

@@ -98,7 +98,7 @@ struct RunHistoryTests {
     let mixed = Self.run(
       "a", at: "2026-10-18T09:00:00Z", .failed, flaky: true,
       attempts: [Self.attempt(1, .failed, failure: "run.waitFor.timeout"), Self.attempt(2, .failed, failure: "run.check.mismatch")])
-    #expect(RunHistory.retryVerdict(mixed.report) == "Failed 2 times, each time differently — the test may be flaky.")
+    #expect(RunHistory.retryVerdict(mixed.report) == "Failed 2 of 2 times, each time differently — the test may be flaky.")
     #expect(mixed.status == .failed)
   }
 

@@ -498,7 +498,9 @@ struct ReferenceAreaEditor: View {
       Problem(message: String(localized: "\(app) has no open window. Open it on the screen the test checks, then try again."))
     case .ScreenLocked:
       Problem(message: String(localized: "The screen is locked. Unlock it and try again."))
-    case .CannotOpen, .Failed, .StillRunning, .WindowFixed, .WindowDiffers:
+    case .Failed(let reason):
+      Problem(message: String(localized: "The picture couldn’t be taken: \(reason)"))
+    case .CannotOpen, .StillRunning, .WindowFixed, .WindowDiffers:
       Problem(message: String(localized: "The picture couldn’t be taken: \(error.localizedDescription)"))
     }
   }

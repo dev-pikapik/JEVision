@@ -78,6 +78,14 @@ pub fn set_language(tag: String) {
     jevision_l10n::set_language(&tag);
 }
 
+/// Sets how numbers are written in the language of [`set_language`]: the system's decimal
+/// separator and the one between groups of thousands, such as `,` and a no-break space. An empty
+/// `decimal` goes back to the language's own separator.
+#[uniffi::export]
+pub fn set_number_format(decimal: String, grouping: String) {
+    jevision_l10n::set_number_format(&decimal, &grouping);
+}
+
 /// The language the core writes its texts in, such as `ru`; English until `set_language`.
 #[uniffi::export]
 pub fn current_language() -> String {

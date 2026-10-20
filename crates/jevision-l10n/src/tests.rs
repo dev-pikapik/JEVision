@@ -136,24 +136,38 @@ fn the_shipped_plural_phrase_changes_with_the_count() {
     assert!(text_in("ru", key, &["Claude".into(), 5.into()]).ends_with("5 инструментов."));
 }
 
+// The language and the number format are one for the whole process, so this is the only test
+// that sets them, and it puts them back.
 #[test]
-fn writes_decimals_the_way_the_language_does() {
-    assert_eq!(decimal("en", 1.5, 1), "1.5");
+fn the_language_and_its_numbers_follow_what_the_host_sets() {
+    assert_eq!(language(), "en");
+    assert_eq!(decimal("en", 1234.5, 1), "1234.5");
     assert_eq!(decimal("ru", 1.5, 1), "1,5");
     assert_eq!(decimal("ru-RU", 12.0, 0), "12");
-}
 
-#[test]
-fn the_language_defaults_to_english_until_set() {
-    assert_eq!(language(), "en");
     set_language("ru_RU");
     assert_eq!(language(), "ru");
     assert_eq!(
         tr!("run.secret.missing", "A"),
         tr_in!("ru", "run.secret.missing", "A")
     );
+    assert_eq!(decimal("ru", 1234.5, 1), "1234,5");
+    set_number_format(",", "\u{a0}");
+    assert_eq!(decimal("ru", -12345.25, 2), "-12\u{a0}345,25");
+    assert_eq!(decimal("ru_RU.UTF-8", 999.0, 0), "999");
+    // The host's separators are for its own language only.
+    assert_eq!(decimal("en", 1234.5, 1), "1234.5");
+
+    set_language("en-US");
+    set_number_format(".", ",");
+    assert_eq!(decimal("en", 1234567.0, 0), "1,234,567");
+    assert_eq!(decimal("en", 0.25, 2), "0.25");
+    assert_eq!(decimal("ru", 1234.5, 1), "1234,5");
+
+    set_number_format("", "");
     set_language("");
     assert_eq!(language(), "en");
+    assert_eq!(decimal("en", 1234.5, 1), "1234.5");
 }
 
 #[test]

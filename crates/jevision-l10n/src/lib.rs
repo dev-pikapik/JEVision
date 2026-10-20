@@ -258,15 +258,50 @@ macro_rules! tr {
     };
 }
 
-/// A decimal number the way `lang` writes it: `1.5` or `1,5`.
-pub fn decimal(lang: &str, value: f64, digits: usize) -> String {
-    let written = format!("{value:.digits$}");
-    match base_language(lang).as_str() {
-        "ru" | "uk" | "be" | "de" | "fr" | "es" | "it" | "pt" | "pl" | "cs" | "tr" => {
-            written.replace('.', ",")
-        }
-        _ => written,
+static NUMBER_FORMAT: RwLock<Option<(String, String)>> = RwLock::new(None);
+
+/// Sets how numbers in the process language are written: the system's decimal separator and
+/// the one between groups of thousands, such as `,` and a no-break space; an empty `grouping`
+/// writes no groups. An empty `decimal` goes back to the language's own separator, without
+/// groups.
+pub fn set_number_format(decimal: &str, grouping: &str) {
+    if let Ok(mut format) = NUMBER_FORMAT.write() {
+        *format = (!decimal.is_empty()).then(|| (decimal.to_owned(), grouping.to_owned()));
     }
+}
+
+/// A decimal number the way `lang` writes it: `1.5` or `1,5`. In the process language it has
+/// the separators set with [`set_number_format`], such as `12 345,5`; in any other language, or
+/// before they are set, the language's own decimal separator and no groups.
+pub fn decimal(lang: &str, value: f64, digits: usize) -> String {
+    let lang = base_language(lang);
+    let host = if lang == language() {
+        NUMBER_FORMAT.read().ok().and_then(|f| f.clone())
+    } else {
+        None
+    };
+    let (point, grouping) = host.unwrap_or_else(|| {
+        let point = match lang.as_str() {
+            "ru" | "uk" | "be" | "de" | "fr" | "es" | "it" | "pt" | "pl" | "cs" | "tr" => ",",
+            _ => ".",
+        };
+        (point.to_owned(), String::new())
+    });
+    let written = format!("{value:.digits$}");
+    let (whole, fraction) = written.split_once('.').unwrap_or((&written, ""));
+    let (sign, whole) = whole.strip_prefix('-').map_or(("", whole), |w| ("-", w));
+    let mut out = sign.to_owned();
+    for (i, c) in whole.chars().enumerate() {
+        if i > 0 && (whole.len() - i) % 3 == 0 {
+            out.push_str(&grouping);
+        }
+        out.push(c);
+    }
+    if !fraction.is_empty() {
+        out.push_str(&point);
+        out.push_str(fraction);
+    }
+    out
 }
 
 /// The plural form `lang` uses for the whole number `n`.
