@@ -380,12 +380,15 @@ struct ReferenceEditor: View {
   }
 }
 
-/// Where to click: an element found by its picture or by AI from a description, or a fixed
+/// Where to click: an element found by its picture or by JEV from a description, or a fixed
 /// point in the window.
 struct TargetEditor: View {
   @Binding var target: Target
   let field: String
   let context: FieldContext
+  @Environment(\.openSettings) private var openSettings
+  /// JEV has an API key; read from the Keychain when a description is shown, not on every redraw.
+  @State private var finderReady = true
 
   private enum Way { case look, description, position }
 
@@ -445,9 +448,26 @@ struct TargetEditor: View {
       ImagePreview(path: image.wrappedValue, context: context)
     case .description:
       TextField(text: description, prompt: Text("The blue Save button"), axis: .vertical) { Text("Element") }
-      Text("JEV finds it on the screen. Set up JEV in Settings → AI.")
-        .font(.caption)
+        .lineLimit(1...4)
+      HStack(alignment: .firstTextBaseline) {
+        Text(
+          finderReady
+            ? "Describe the element in plain words. JEV (TypeSafe AI) finds it on the screen, and the pointer goes to its middle."
+            : "Finding an element by its description needs JEV (TypeSafe AI) and its API key."
+        )
         .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        if !finderReady {
+          Spacer(minLength: 4)
+          Button("Set Up JEV…") {
+            UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            openSettings()
+          }
+          .buttonStyle(.link)
+        }
+      }
+      .font(.callout)
+      .task { finderReady = AISettings.provider(AISettings.finder).map(AISettings.hasKey) ?? false }
     case .position:
       PercentField(label: Text("From Left"), value: coordinate(\.x))
       PercentField(label: Text("From Top"), value: coordinate(\.y))

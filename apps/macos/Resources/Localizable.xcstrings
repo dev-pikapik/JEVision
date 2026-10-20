@@ -2161,6 +2161,16 @@
         }
       }
     },
+    "Describe the element in plain words. JEV (TypeSafe AI) finds it on the screen, and the pointer goes to its middle." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите элемент простыми словами. JEV (TypeSafe AI) найдёт его на экране, и указатель попадёт в его середину."
+          }
+        }
+      }
+    },
     "Element" : {
       "localizations" : {
         "ru" : {
@@ -2171,32 +2181,72 @@
         }
       }
     },
+    "Finding an element by its description needs JEV (TypeSafe AI) and its API key." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы найти элемент по описанию, нужен JEV (TypeSafe AI) и его ключ API."
+          }
+        }
+      }
+    },
+    "Finding by Description: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск по описанию: %@"
+          }
+        }
+      }
+    },
+    "Only models on this Mac are allowed, so finding by description stops with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешены только модели на этом Mac, поэтому поиск по описанию остановится с сообщением."
+          }
+        }
+      }
+    },
+    "Screenshots never go to a cloud service. Checks and finding by description that would need one stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки и поиск по описанию, которым такой сервис нужен, останавливаются с сообщением."
+          }
+        }
+      }
+    },
+    "Set Up JEV…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить JEV…"
+          }
+        }
+      }
+    },
+    "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. %@ finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты могут кликать, наводить указатель, перетаскивать, прокручивать и вводить текст в элемент, описанный словами, например «синяя кнопка Сохранить». Его находит %@, какой бы провайдер ни проверял по смыслу, и получает снимок окна и описание; поля паролей и области, которые скрывает проект, закрашиваются. Для поиска нужна модель jev-1.14.0 или новее либо jev-latest."
+          }
+        }
+      }
+    },
     "The blue Save button" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Синяя кнопка «Сохранить»"
-          }
-        }
-      }
-    },
-    "JEV finds it on the screen. Set up JEV in Settings → AI." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "JEV найдёт его на экране. Настройте JEV в Настройках → ИИ."
-          }
-        }
-      }
-    },
-    "an element described in words" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "элемент по описанию"
           }
         }
       }
@@ -9508,16 +9558,6 @@
         }
       }
     },
-    "Screenshots never go to a cloud service. Checks that would need one stop with a message." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
-          }
-        }
-      }
-    },
     "Scroll" : {
       "localizations" : {
         "ru" : {
@@ -10820,6 +10860,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снимок не сделан"
+          }
+        }
+      }
+    },
+    "The red outline shows where JEV found the element." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Красная рамка показывает, где JEV нашёл элемент."
           }
         }
       }
@@ -12550,12 +12600,12 @@
         }
       }
     },
-    "Without a provider, checks compare pictures only. JEVision sends nothing anywhere." : {
+    "Without a provider, checks compare pictures only and send nothing anywhere." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Без провайдера проверки сравнивают только картинки. JEVision ничего никуда не отправляет."
+            "value" : "Без провайдера проверки сравнивают только картинки и ничего никуда не отправляют."
           }
         }
       }

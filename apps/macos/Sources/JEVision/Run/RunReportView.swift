@@ -460,10 +460,16 @@ private struct StepRow: View {
       if let sent = images.sent {
         ShotImage(
           url: sent,
+          found: step.found,
           label: step.sentMasked
             ? String(localized: "Sent to the AI model, masked before sending")
             : String(localized: "Sent to the AI model"),
           preview: preview)
+        if !step.found.isEmpty {
+          Text("The red outline shows where JEV found the element.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
       }
     }
   }
