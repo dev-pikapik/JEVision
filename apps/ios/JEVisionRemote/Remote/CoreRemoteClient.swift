@@ -281,8 +281,8 @@ extension RunUpdate {
       switch event {
       case .attemptStarted(let attempt):
         self = .event(.attemptStarted(attempt: Int(attempt)))
-      case .blockStarted(_, _, let test, let block, let kind):
-        self = .event(.blockStarted(test: test, block: block, kind: kind))
+      case .blockStarted(_, _, let test, let block, let kind, let title):
+        self = .event(.blockStarted(test: test, block: block, kind: kind, title: title))
       case .blockFinished(_, _, let test, let block, let status, _, let failure, let branch, let branches, let condition):
         self = .event(
           .blockFinished(

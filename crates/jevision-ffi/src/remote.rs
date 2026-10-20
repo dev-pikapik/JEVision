@@ -537,6 +537,7 @@ impl RunListener for RunReporter {
                 test,
                 block,
                 block_type,
+                variables,
                 ..
             } => {
                 self.update(&run, |s| {
@@ -546,12 +547,14 @@ impl RunListener for RunReporter {
                         s.block = Some(block.clone());
                     }
                 });
+                let title = remote::running_title(Path::new(&self.root), &test, &block, &variables);
                 remote::RunEvent::BlockStarted {
                     attempt,
                     seq,
                     test,
                     block,
                     block_type,
+                    title,
                 }
             }
             RunEvent::StepFinished { attempt, step } => remote::RunEvent::BlockFinished {
@@ -1016,7 +1019,18 @@ mod tests {
             std::thread::sleep(Duration::from_millis(10));
         }
         app.run().resume();
-        while phone.block_on(watch.next()).unwrap().is_some() {}
+        let mut titles = Vec::new();
+        while let Some(update) = phone.block_on(watch.next()).unwrap() {
+            if let RunUpdate::Event {
+                event: remote::RunEvent::BlockStarted { block, title, .. },
+            } = update
+                && block == "type"
+            {
+                titles.push(title);
+            }
+        }
+        // The phone shows what the block types for the row picked, not the placeholder.
+        assert_eq!(titles, [Some("Bo".to_owned())]);
         let report = phone
             .block_on(client.report("Demo".into(), run.clone()))
             .unwrap();

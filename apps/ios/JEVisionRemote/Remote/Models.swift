@@ -163,7 +163,9 @@ enum RunUpdate: Hashable, Sendable {
 enum RunEvent: Hashable, Sendable {
   case attemptStarted(attempt: Int)
   /// `test` is the file the block belongs to; it differs from the run's test inside `runTest`.
-  case blockStarted(test: String, block: String, kind: String)
+  /// `title` is what the block works with, its placeholders filled for this run, such as the
+  /// data row's name; `nil` from Macs that don't send it.
+  case blockStarted(test: String, block: String, kind: String, title: String? = nil)
   /// `branch` is the way out an `if` took, `branches` how many it had and `branchCondition`
   /// what the way taken looks for; `nil` for other blocks.
   case blockFinished(

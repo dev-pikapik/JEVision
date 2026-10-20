@@ -332,6 +332,9 @@ pub enum RunEvent {
         test: String,
         block: String,
         block_type: String,
+        /// What the block works with, its placeholders filled with the values of this run, such
+        /// as the data row's: `Hello, Anna!`. `None` from Macs that don't send it.
+        title: Option<String>,
     },
     BlockFinished {
         attempt: u32,
@@ -376,12 +379,14 @@ impl From<jevision_remote::RunEvent> for RunEvent {
                 test,
                 block,
                 block_type,
+                title,
             } => Self::BlockStarted {
                 attempt,
                 seq,
                 test,
                 block,
                 block_type,
+                title,
             },
             E::BlockFinished {
                 attempt,

@@ -54,10 +54,10 @@ struct TestsView: View {
         List(children) { entry in
           if entry.isFolder {
             NavigationLink(value: Route.tests(host, project: project, folder: entry.path)) {
-              Label {
-                Text(entry.name)
-              } icon: {
+              // Laid out like a test's row, so names line up at every text size.
+              HStack(spacing: 12) {
                 IconTile(symbol: "folder.fill", color: .gray)
+                Text(entry.name)
               }
             }
           } else {
