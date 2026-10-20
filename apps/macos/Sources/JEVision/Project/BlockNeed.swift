@@ -10,10 +10,19 @@ struct BlockNeed: Hashable, Sendable {
   /// The address the block can be installed from; `nil` when the test doesn't know it.
   let source: String?
 
-  /// What the validation of a test says about a step whose block isn't installed.
+  /// What the validation of a test says about a step whose block, or a block that one needs, isn't
+  /// installed.
   init?(_ issue: Issue) {
-    guard issue.code == "flow.block.notInstalled", let id = issue.param("id") else { return nil }
-    self.init(id: id, version: issue.param("version") ?? "", source: issue.param("source"))
+    switch issue.code {
+    case "flow.block.notInstalled":
+      guard let id = issue.param("id") else { return nil }
+      self.init(id: id, version: issue.param("version") ?? "", source: issue.param("source"))
+    case "flow.block.dependencyUnmet":
+      guard let id = issue.param("dependency") else { return nil }
+      self.init(id: id, source: issue.param("source"))
+    default:
+      return nil
+    }
   }
 
   /// What a run says about a step whose block isn't installed.

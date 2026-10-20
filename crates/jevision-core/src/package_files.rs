@@ -5,7 +5,8 @@
 //! Nothing here runs anything: a package is read as data, copied file by file without the
 //! permission to run them, and checked before it is let into the project.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -16,7 +17,7 @@ use crate::model::{BLOCK_SUFFIX, BlockKind, Flow, TEST_SUFFIX, dark_variant};
 use crate::package::{
     BlockManifest, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_LOCK_FILE, PACKAGE_SUFFIX,
     PackageError, PackageInput, PackageLock, Version, app_version, check_package, is_package_id,
-    package_of_path, parse_manifest, visit_files,
+    package_of_path, parse_manifest, unmet, visit_files,
 };
 use crate::validate::{is_relative_path, placeholders};
 use crate::{parse, resolve_test, to_canonical_json};
@@ -379,9 +380,16 @@ pub fn install_folder(
         return Err(io_failure("block.install.failed", &id, &e));
     }
     match source {
-        Some(source) => lock.sources.insert(id.clone(), source.to_owned()),
-        None => lock.sources.remove(&id),
-    };
+        Some(source) => {
+            lock.sources.insert(id.clone(), source.to_owned());
+            lock.versions
+                .insert(id.clone(), package.manifest.version.clone());
+        }
+        None => {
+            lock.sources.remove(&id);
+            lock.versions.remove(&id);
+        }
+    }
     write_lock(project, &lock)?;
     Ok(Installed {
         folder: format!("{BLOCKS_FOLDER}/{id}{PACKAGE_SUFFIX}"),
@@ -398,14 +406,15 @@ pub fn remove_package(project: &Path, id: &str) -> Result<(), PackageError> {
     fs::remove_dir_all(package_folder(project, id))
         .map_err(|e| io_failure("block.remove.failed", id, &e))?;
     let mut lock = read_lock(project)?;
-    if lock.sources.remove(id).is_some() {
+    let had_source = lock.sources.remove(id).is_some();
+    if lock.versions.remove(id).is_some() || had_source {
         write_lock(project, &lock)?;
     }
     Ok(())
 }
 
-/// The tests and blocks of `project`, as files relative to it, that run the package `id`, sorted.
-pub fn usage(project: &Path, id: &str) -> Vec<String> {
+/// The tests and blocks of `project`, as files relative to it, sorted.
+fn project_tests(project: &Path) -> Vec<String> {
     fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<String>) {
         let Ok(entries) = fs::read_dir(dir) else {
             return;
@@ -419,7 +428,7 @@ pub fn usage(project: &Path, id: &str) -> Vec<String> {
             };
             let path = format!("{prefix}{name}");
             if kind.is_dir() {
-                // Packages hold their own steps and can't run other packages.
+                // The packages a package runs are in its block.json.
                 let skip = name.starts_with('.')
                     || name == "node_modules"
                     || name.ends_with(PACKAGE_SUFFIX)
@@ -436,26 +445,313 @@ pub fn usage(project: &Path, id: &str) -> Vec<String> {
     }
     let mut files = Vec::new();
     walk(project, "", 0, &mut files);
-    let wanted = package_flow_path(id);
-    let mut users: Vec<String> = files
+    files.sort();
+    files
+}
+
+fn read_flow(project: &Path, file: &str) -> Option<Flow> {
+    fs::read_to_string(project.join(file))
+        .ok()
+        .and_then(|text| parse(&text).ok())
+}
+
+/// Whether `test`, a step of the file `file`, runs the package `id`.
+fn runs_package(file: &str, test: &str, id: &str) -> bool {
+    package_of_path(test) == Some(id)
+        && resolve_test(file, test).as_deref() == Some(package_flow_path(id).as_str())
+}
+
+/// The tests and blocks of `project`, as files relative to it, that run the package `id`, sorted.
+pub fn usage(project: &Path, id: &str) -> Vec<String> {
+    project_tests(project)
         .into_iter()
         .filter(|file| {
-            fs::read_to_string(project.join(file))
-                .ok()
-                .and_then(|text| parse(&text).ok())
-                .is_some_and(|flow| {
-                    flow.blocks.iter().any(|b| match &b.kind {
-                        BlockKind::RunTest { test, .. } => {
-                            package_of_path(test) == Some(id)
-                                && resolve_test(file, test).as_deref() == Some(wanted.as_str())
-                        }
-                        _ => false,
-                    })
+            read_flow(project, file).is_some_and(|flow| {
+                flow.blocks.iter().any(|b| {
+                    matches!(&b.kind, BlockKind::RunTest { test, .. } if runs_package(file, test, id))
                 })
+            })
         })
+        .collect()
+}
+
+/// The installed packages of `project` that need the package `id`, by id.
+pub fn block_dependents(project: &Path, id: &str) -> Vec<String> {
+    let mut found: Vec<String> = list_installed(project)
+        .into_iter()
+        .filter(|i| i.manifest.dependencies.iter().any(|d| d.id == id))
+        .map(|i| i.manifest.id)
         .collect();
-    users.sort();
-    users
+    found.sort();
+    found
+}
+
+/// What the installed package `id` of `project` needs, and what those need in turn, that isn't
+/// installed in a version that fits: `block.dependency.missing` and `block.dependency.unmet`.
+pub fn unmet_dependencies(project: &Path, id: &str) -> Vec<Issue> {
+    unmet_in(&project.join(BLOCKS_FOLDER), id)
+}
+
+/// [`unmet_dependencies`] of the package `id` in the folder `blocks`.
+pub(crate) fn unmet_in(blocks: &Path, id: &str) -> Vec<Issue> {
+    let read = |id: &str| {
+        read_text(&blocks.join(format!("{id}{PACKAGE_SUFFIX}")), MANIFEST_FILE)
+            .ok()
+            .and_then(|text| parse_manifest(&text).ok())
+            .filter(|m| m.id == id)
+    };
+    let mut out = Vec::new();
+    let mut seen = vec![id.to_owned()];
+    let mut next: Vec<BlockManifest> = read(id).into_iter().collect();
+    while let Some(manifest) = next.pop() {
+        for d in &manifest.dependencies {
+            let found = read(&d.id);
+            out.extend(unmet(d, found.as_ref().map(|m| &m.version), &manifest.id));
+            if let Some(found) = found.filter(|m| !seen.contains(&m.id)) {
+                seen.push(found.id.clone());
+                next.push(found);
+            }
+        }
+    }
+    out
+}
+
+/// A package that [`PACKAGE_LOCK_FILE`] names and `project` doesn't have, or has in another
+/// version than the one the lock keeps.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestoreEntry {
+    pub id: String,
+    /// The address it was installed from.
+    pub source: String,
+    /// `None` in a lock written before versions were kept.
+    pub locked_version: Option<Version>,
+}
+
+/// The packages to install again so that `project` has what its lock file says, by id.
+pub fn restore_entries(project: &Path) -> Result<Vec<RestoreEntry>, PackageError> {
+    let lock = read_lock(project)?;
+    let installed = list_installed(project);
+    Ok(lock
+        .sources
+        .into_iter()
+        .filter_map(|(id, source)| {
+            let locked_version = lock.versions.get(&id).cloned();
+            let current = installed.iter().any(|i| {
+                i.manifest.id == id
+                    && locked_version
+                        .as_ref()
+                        .is_none_or(|v| *v == i.manifest.version)
+            });
+            (!current).then_some(RestoreEntry {
+                id,
+                source,
+                locked_version,
+            })
+        })
+        .collect())
+}
+
+/// A copy of an installed package among the blocks of the project, made by [`make_own_block`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnBlock {
+    /// Relative to the project: `blocks/NAME.block.json`.
+    pub file: String,
+    pub name: String,
+}
+
+/// Copies the installed package `id` of `project` into the project's own blocks, where it can be
+/// changed, the way the app saves a block: `blocks/NAME.block.json` after the name of the block,
+/// `NAME 2` and on when that is taken. The images and files it uses go to `blocks/images` and
+/// `blocks/files`, under another name when one with other contents is there already; steps that
+/// run another package keep running it. The package stays installed.
+pub fn make_own_block(project: &Path, id: &str) -> Result<OwnBlock, PackageError> {
+    let Some(package) = installed(project, id).filter(|_| is_package_id(id)) else {
+        return Err(failure("block.notInstalled", &[("id", id)]));
+    };
+    let home = package_flow_path(id);
+    let mut flow = parse(&read_text(&package_folder(project, id), PACKAGE_FLOW_FILE)?)?;
+    let blocks = project.join(BLOCKS_FOLDER);
+    let stem = file_stem(&package.manifest.name);
+    let name = std::iter::once(stem.clone())
+        .chain((2..).map(|n| format!("{stem} {n}")))
+        .find(|name| !blocks.join(format!("{name}{BLOCK_SUFFIX}")).exists())
+        .expect("a free name always exists");
+    let file = format!("{BLOCKS_FOLDER}/{name}{BLOCK_SUFFIX}");
+    for b in &mut flow.blocks {
+        let BlockKind::RunTest { test, .. } = &mut b.kind else {
+            continue;
+        };
+        if !is_relative_path(test) || !placeholders(test).is_empty() {
+            continue;
+        }
+        match resolve_test(&home, test) {
+            Some(to)
+                if package_of_path(&to).is_some_and(|p| p != id && package_flow_path(p) == to) =>
+            {
+                *test = relative(&file, &to);
+            }
+            _ => return Err(failure("block.copy.nested", &[("test", test)])),
+        }
+    }
+
+    // Where each file goes, relative to `blocks`, and from where it comes.
+    let mut copies: Vec<(PathBuf, PathBuf)> = Vec::new();
+    let mut taken: HashMap<String, PathBuf> = HashMap::new();
+    visit_files(&mut flow, |_, image, path| {
+        if !is_relative_path(path) || !placeholders(path).is_empty() {
+            return;
+        }
+        let Some(inside) = resolve_test(&home, path) else {
+            return;
+        };
+        let from = project.join(&inside);
+        let name = path.rsplit('/').next().unwrap_or(path);
+        let wanted = format!("{}/{name}", if image { "images" } else { "files" });
+        let mut chosen = wanted.clone();
+        for n in 2.. {
+            let fits = match taken.get(&chosen) {
+                Some(other) => *other == from,
+                None => {
+                    free_for(&from, &blocks.join(&chosen))
+                        && (!image
+                            || free_for(
+                                &project.join(dark_variant(&inside)),
+                                &blocks.join(dark_variant(&chosen)),
+                            ))
+                }
+            };
+            if fits {
+                break;
+            }
+            chosen = numbered(&wanted, n);
+        }
+        if taken.insert(chosen.clone(), from.clone()).is_none() {
+            if image {
+                copies.push((
+                    project.join(dark_variant(&inside)),
+                    blocks.join(dark_variant(&chosen)),
+                ));
+            }
+            copies.push((from, blocks.join(&chosen)));
+        }
+        *path = chosen;
+    });
+    flow.name = package.manifest.name.clone();
+    flow.description = package.manifest.description.clone();
+    flow.icon = package.manifest.icon.clone();
+
+    let mut written = Vec::new();
+    let result = (|| -> io::Result<()> {
+        for (from, to) in &copies {
+            if from.is_file() && !to.exists() {
+                write_file(from, to)?;
+                written.push(to.clone());
+            }
+        }
+        fs::create_dir_all(&blocks)?;
+        fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(project.join(&file))?
+            .write_all(to_canonical_json(&flow).as_bytes())
+    })();
+    if let Err(e) = result {
+        for file in written {
+            let _ = fs::remove_file(file);
+        }
+        return Err(io_failure("block.copy.failed", id, &e));
+    }
+    Ok(OwnBlock {
+        file,
+        name: flow.name,
+    })
+}
+
+/// Makes the tests and blocks of `project` that run the package `id` run `own_file`, its copy
+/// from [`make_own_block`], instead; an input a step leaves out gets the default the package
+/// gave it. The files changed, sorted.
+pub fn switch_tests_to_copy(
+    project: &Path,
+    id: &str,
+    own_file: &str,
+) -> Result<Vec<String>, PackageError> {
+    if !is_relative_path(own_file)
+        || !own_file.ends_with(BLOCK_SUFFIX)
+        || (own_file.split('/')).any(|part| part == ".." || part.ends_with(PACKAGE_SUFFIX))
+        || !project.join(own_file).is_file()
+    {
+        return Err(failure("block.export.notBlock", &[("path", own_file)]));
+    }
+    let defaults = input_defaults(&project.join(package_flow_path(id)));
+    let mut changed = Vec::new();
+    for file in project_tests(project) {
+        let Some(mut flow) = read_flow(project, &file) else {
+            continue;
+        };
+        let mut uses = false;
+        for b in &mut flow.blocks {
+            let BlockKind::RunTest {
+                test,
+                package,
+                inputs,
+                ..
+            } = &mut b.kind
+            else {
+                continue;
+            };
+            if runs_package(&file, test, id) {
+                *test = relative(&file, own_file);
+                *package = None;
+                for (name, value) in &defaults {
+                    inputs.entry(name.clone()).or_insert_with(|| value.clone());
+                }
+                uses = true;
+            }
+        }
+        if uses {
+            fs::write(project.join(&file), to_canonical_json(&flow))
+                .map_err(|e| io_failure("block.copy.failed", id, &e))?;
+            changed.push(file);
+        }
+    }
+    Ok(changed)
+}
+
+/// The name of the file of a block called `name`, as the app writes it: characters a file name
+/// can't hold become dashes.
+fn file_stem(name: &str) -> String {
+    let clean = name.trim().replace(['/', ':', '\\'], "-");
+    match clean.trim_matches('.') {
+        "" => "Untitled".to_owned(),
+        clean => clean.to_owned(),
+    }
+}
+
+/// The path from the folder of `file` to `to`, both relative to the project.
+fn relative(file: &str, to: &str) -> String {
+    let from: Vec<&str> = file.split('/').collect();
+    let from = &from[..from.len() - 1];
+    let to: Vec<&str> = to.split('/').collect();
+    let shared = from.iter().zip(&to).take_while(|(a, b)| a == b).count();
+    let mut parts = vec![".."; from.len() - shared];
+    parts.extend(&to[shared..]);
+    parts.join("/")
+}
+
+/// `images/go.png` as `images/go-2.png`, for the `n`-th file that wants that name.
+fn numbered(path: &str, n: usize) -> String {
+    match path.rsplit_once('.') {
+        Some((stem, ending)) => format!("{stem}-{n}.{ending}"),
+        None => format!("{path}-{n}"),
+    }
+}
+
+/// Whether a copy of `from` can be put at `to`: nothing is there, or the same contents.
+fn free_for(from: &Path, to: &Path) -> bool {
+    !to.exists()
+        || (fs::read(from).ok())
+            .zip(fs::read(to).ok())
+            .is_some_and(|(a, b)| a == b)
 }
 
 /// What the author says about a block they share, beside what the block itself holds.
@@ -490,7 +786,9 @@ pub struct Exported {
 /// Writes the block `block_file` of `project` (like `blocks/Sign in.block.json`) as a package in
 /// a new folder `ID.jevblock` inside `destination`, replacing one with that name. The images and
 /// files the block uses go with it; those from outside the block's own folder are gathered in
-/// `images` and `files`, and the steps are changed to name them there.
+/// `images` and `files`, and the steps are changed to name them there. A step that runs an
+/// installed package makes it a dependency; one that runs any other test or block refuses the
+/// export.
 pub fn export_package(
     project: &Path,
     block_file: &str,
@@ -514,13 +812,31 @@ pub fn export_package(
     };
     let text = fs::read_to_string(project.join(block_file)).map_err(|e| unreadable(&e))?;
     let mut flow = parse(&text)?;
-    if let Some(test) = flow.blocks.iter().find_map(|b| match &b.kind {
-        BlockKind::RunTest { test, .. } => Some(test.as_str()),
-        _ => None,
-    }) {
-        return Err(failure("block.export.nested", &[("test", test)]));
+    // A step that runs an installed package keeps running it from beside this one, which then
+    // needs it in the version installed here or a later one that keeps to it.
+    let mut needs: BTreeMap<String, serde_json::Value> = BTreeMap::new();
+    let sources = read_lock(project).unwrap_or_default().sources;
+    for b in &mut flow.blocks {
+        let BlockKind::RunTest { test, .. } = &mut b.kind else {
+            continue;
+        };
+        let package = (resolve_test(block_file, test).filter(|_| placeholders(test).is_empty()))
+            .and_then(|to| {
+                let id = package_of_path(&to)?.to_owned();
+                (package_flow_path(&id) == to).then(|| installed(project, &id))?
+            });
+        let Some(package) = package else {
+            return Err(failure("block.export.nested", &[("test", test)]));
+        };
+        let id = package.manifest.id;
+        *test = format!("../{id}{PACKAGE_SUFFIX}/{PACKAGE_FLOW_FILE}");
+        let mut need = json!({ "id": id, "version": format!("^{}", package.manifest.version) });
+        if let Some(source) = sources.get(&id) {
+            need["source"] = json!(source);
+        }
+        needs.insert(id, need);
     }
-    let manifest = export_manifest(&flow, meta)?;
+    let manifest = export_manifest(&flow, meta, needs.into_values().collect())?;
 
     flow.name = manifest.name.clone();
     flow.description = manifest.description.clone();
@@ -555,10 +871,7 @@ pub fn export_package(
         let mut chosen = wanted.clone();
         let mut n = 2;
         while taken.get(&chosen).is_some_and(|other| *other != source) {
-            chosen = match wanted.rsplit_once('.') {
-                Some((stem, ending)) => format!("{stem}-{n}.{ending}"),
-                None => format!("{wanted}-{n}"),
-            };
+            chosen = numbered(&wanted, n);
             n += 1;
         }
         if taken.insert(chosen.clone(), source.clone()).is_none() {
@@ -623,7 +936,11 @@ pub fn export_package(
 
 /// The `block.json` for sharing `flow` as `meta` says, through the same reading that checks every
 /// package, so what an author types is held to the rules of the format.
-fn export_manifest(flow: &Flow, meta: &ExportMeta) -> Result<BlockManifest, PackageError> {
+fn export_manifest(
+    flow: &Flow,
+    meta: &ExportMeta,
+    dependencies: Vec<serde_json::Value>,
+) -> Result<BlockManifest, PackageError> {
     let mut inputs: Vec<PackageInput> = Vec::new();
     for name in crate::required_inputs(flow) {
         let given = meta.inputs.iter().find(|i| i.name == name);
@@ -662,6 +979,9 @@ fn export_manifest(flow: &Flow, meta: &ExportMeta) -> Result<BlockManifest, Pack
     });
     if let Some(description) = description {
         object["description"] = json!(description);
+    }
+    if !dependencies.is_empty() {
+        object["dependencies"] = json!(dependencies);
     }
     if let Some(icon) = flow.icon.as_ref().filter(|i| !i.is_empty()) {
         object["icon"] = json!(icon);

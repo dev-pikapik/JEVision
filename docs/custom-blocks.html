@@ -68,8 +68,12 @@
     <li><a href="#make">Making your own block</a></li>
     <li><a href="#share">Sharing a block</a></li>
     <li><a href="#install">Installing a block</a></li>
+    <li><a href="#several">Several blocks from one place</a></li>
     <li><a href="#safety">What you see before you install</a></li>
+    <li><a href="#dependencies">Blocks that use other blocks</a></li>
     <li><a href="#manage">Updating and removing blocks</a></li>
+    <li><a href="#edit-installed">Changing an installed block</a></li>
+    <li><a href="#restore">Installing a project's blocks again</a></li>
     <li><a href="#reports">Runs and reports</a></li>
     <li><a href="#package">The package format</a></li>
     <li><a href="#publish">Publishing on GitHub</a></li>
@@ -109,7 +113,9 @@
 <p>Choose <strong>File → Custom Blocks…</strong>, find the block under <strong>My blocks</strong> and click <strong>Share…</strong>. Fill in who made it, its version and its license, and choose a zip file or a folder.</p>
 <ul>
   <li>The <strong>block id</strong> is suggested from your name and the block's name, like <code>com.anna-smith.sign-in</code>. Change it to one you own, such as one starting with a domain name written backwards.</li>
+  <li>For each value the block asks for, you can write a <strong>label</strong>, shown in the editor instead of the name, and a <strong>default</strong>, the value a test gets when it leaves that one out.</li>
   <li>Only the steps of the block and the pictures they use go in the package. Nothing else of your project does.</li>
+  <li>If a step runs a block you installed from someone else, the window shows it as <strong>Needs</strong> and the package says so too, so the person who installs yours gets the other one as well. See <a href="#dependencies">Blocks that use other blocks</a>.</li>
   <li>The window lists what it left out or what looks wrong, such as a picture that is missing.</li>
 </ul>
 <p>Send the file to a colleague, or <a href="#publish">publish it on GitHub</a>. Packages are plain files, so you can also write one by hand: see <a href="#package">The package format</a>.</p>
@@ -119,7 +125,7 @@
 <ul>
   <li>Choose a block <strong>folder</strong> or a <strong>.zip file</strong> with <strong>Choose File or Folder…</strong>.</li>
   <li><strong>Drop</strong> a folder or a .zip file onto the JEVision window, or a link to one.</li>
-  <li>Paste an <strong>address</strong>: a GitHub repository, a GitHub release or a link to a .zip file. Only <code>https</code> addresses work.</li>
+  <li>Paste an <strong>address</strong>: a GitHub repository, a folder in one, a GitHub release or a link to a .zip file. Only <code>https</code> addresses work.</li>
 </ul>
 <p>Nothing is installed at this point. JEVision reads the block and shows <a href="#safety">what it does</a>; you choose <strong>Install</strong> after reading. The block goes into the <code>blocks</code> folder of the open project, so tests of this project can run it. Commit that folder and <code>jevision.blocks.json</code> to git, and the whole team has the block.</p>
 <p>If a block with the same id is installed already, the window says which version it is and offers:</p>
@@ -130,6 +136,15 @@
   <li><strong>Keep Version…</strong> or <strong>Cancel</strong> to change nothing.</li>
 </ul>
 <p>A block that needs a newer JEVision than yours (its <code>minVersion</code>), has a file that is broken, or asks for a value its steps never use, says so, and a block with an error can't be installed.</p>
+
+<h2 id="several">Several blocks from one place</h2>
+<p>A folder, a .zip file or an address can hold more than one block, such as a repository with a <code>blocks</code> folder of <code>.jevblock</code> folders, or a release with a <code>.jevblock.zip</code> file for each block. See <a href="#publish">Publishing on GitHub</a> for the addresses that work.</p>
+<p>The window then lists every block it found, each with a check box, its name, version and author, and <a href="#safety">what it does</a>. Untick the blocks you don't want and choose <strong>Install</strong>.</p>
+<ul>
+  <li>When a ticked block <a href="#dependencies">needs another block</a> from the same list, that block is installed with it. Blocks are installed in an order that puts the blocks they need first.</li>
+  <li>When a ticked block needs one that is neither installed nor in the list, the window names it. If the block says where to get it, the window offers to fetch it from there; otherwise the block can't be installed until you install the one it needs.</li>
+  <li>Two blocks with the same id in one list are an error, because a project holds one version of an id.</li>
+</ul>
 
 <h2 id="safety">What you see before you install</h2>
 <p>A block can do more than click and type in the app under test. So the window first tells you, step by step and in plain words, <strong>what this block does</strong>, such as the text it types or the keys it presses. Below it, <strong>Needs your attention</strong> lists the steps that reach beyond the app under test, each with exactly what it does:</p>
@@ -147,14 +162,104 @@
 </table>
 </div>
 <p>The most worrying kinds come first, and the clipboard is listed more quietly than the rest. <strong>Install a block only from people you trust.</strong> A script in a block can do anything you can do on your Mac.</p>
+<p>Packages aren't signed: the id and the author are what a package says about itself, not proof of who made it, so judge a block by the place you install it from.</p>
 <p>Installing only copies files. JEVision doesn't run anything from a package until a test that uses the block runs, and then only the steps you were shown.</p>
+
+<h2 id="dependencies">Blocks that use other blocks</h2>
+<p>A block can run another installed block as one of its steps, so a “Send a message” block can start with the “Sign in” block instead of repeating its steps. It lists the blocks it needs under <code>dependencies</code> in its <a href="#manifest">block.json</a>:</p>
+<pre><code>"dependencies": [
+  { "id": "com.acme.sign-in", "version": "^1.2.0", "source": "https://github.com/acme/blocks/tree/main/blocks" }
+]</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>Yes</td><td>The id of the block it needs, written like any block id.</td></tr>
+    <tr><td><code>version</code></td><td>No</td><td>The versions that work, as a <a href="#ranges">range</a>. Left out, any version does.</td></tr>
+    <tr><td><code>source</code></td><td>No</td><td>An <code>https</code> address to install the block from when it is missing.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>A block lists up to 50 others. It can't list itself, or the same block twice.</p>
+<p><strong>Share…</strong> lists the installed blocks your block runs here by itself, each with the version you have installed, written as <code>^</code> that version, and the address you installed it from. It refuses a block with a step that runs one of your own blocks or a test, because those aren't in the package: make that block a package too, or write the package by hand, as in the <a href="#example">example</a>.</p>
+
+<h3 id="calling">Running the other block</h3>
+<p>A step runs the other block with a <a href="writing-tests.html#runTest"><code>runTest</code></a> block. Its <code>test</code> is the path from this block's <code>flow.json</code> to the other block's: installed blocks sit side by side in <code>blocks/</code>, so the path is <code>../ID.jevblock/flow.json</code>.</p>
+<pre><code>"signIn": {
+  "type": "runTest",
+  "test": "../com.acme.sign-in.jevblock/flow.json",
+  "next": "compose"
+}</code></pre>
+<ul>
+  <li>A step may leave the block's folder only this way, and only for a block listed in <code>dependencies</code>. Running a block that isn't listed is an error that names it: “runs ../com.acme.other.jevblock/flow.json, the block com.acme.other, which block.json doesn't list under dependencies; add it there.” Any other path with <code>..</code> is an error too.</li>
+  <li>A listed block that no step runs is fine.</li>
+</ul>
+
+<h3 id="ranges">Version ranges</h3>
+<p><code>version</code> says which versions of the other block work, the way <a href="https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html">Cargo</a> and npm write it:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Range</th><th scope="col">Versions that fit</th></tr></thead>
+  <tbody>
+    <tr><td><code>*</code></td><td>Any version. The same as leaving <code>version</code> out.</td></tr>
+    <tr><td><code>1.2.3</code> or <code>=1.2.3</code></td><td>Only 1.2.3.</td></tr>
+    <tr><td><code>^1.2.3</code></td><td>1.2.3 and newer, before 2.0.0. Before version 1, the next minor version is the limit: <code>^0.2.3</code> is 0.2.3 up to 0.3.0, and <code>^0.0.3</code> only 0.0.3.</td></tr>
+    <tr><td><code>~1.2.3</code></td><td>1.2.3 and newer, before 1.3.0.</td></tr>
+    <tr><td><code>1.x</code> or <code>1</code></td><td>Any 1.something version.</td></tr>
+    <tr><td><code>1.2.x</code> or <code>1.2</code></td><td>Any 1.2.something version.</td></tr>
+    <tr><td><code>&gt;=1.2.0</code>, <code>&gt;1.2.0</code>, <code>&lt;2.0.0</code>, <code>&lt;=1.4.0</code></td><td>The same or newer, newer, older, the same or older.</td></tr>
+    <tr><td><code>&gt;=1.2.0 &lt;2.0.0</code></td><td>Every part must fit. Separate the parts with spaces or commas.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>A pre-release, such as <code>2.0.0-beta.1</code>, fits only a range that names a pre-release of the same version, such as <code>&gt;=2.0.0-beta.1</code>. So <code>^1.2.0</code> never picks a beta.</p>
+
+<h3 id="dependency-checks">When JEVision checks them</h3>
+<ul>
+  <li><strong>Reading a package</strong>, before anything is installed, checks that every block the steps run is listed. Whether the listed blocks are there is a question for the project the block goes into.</li>
+  <li><strong>Installing</strong> needs every listed block to be installed, or in the same <a href="#several">list</a>, in a version that fits. Otherwise the block isn't installed, and the message says what to do, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, which isn't installed; install it with `jevision blocks install https://github.com/acme/blocks/tree/main/blocks`.” or “…, but com.acme.sign-in 1.0.0 is installed; install a version that fits.”</li>
+  <li>Blocks that need each other in a circle can't be installed: “the blocks need each other in a circle: com.acme.a → com.acme.b → com.acme.a. Remove one of these dependencies.”</li>
+  <li><strong>A test</strong> that runs a block whose dependencies, or theirs in turn, aren't installed in a version that fits gets an error on its <code>runTest</code> block, while you edit and in <code>jevision validate</code>, with the command that installs what is missing.</li>
+  <li><strong>Updating and removing</strong> a block that others need asks first: see <a href="#manage">Updating and removing blocks</a>.</li>
+</ul>
 
 <h2 id="manage">Updating and removing blocks</h2>
 <p><strong>File → Custom Blocks…</strong> lists the blocks from the community with their version, author and where they came from.</p>
 <ul>
   <li><strong>Update</strong> appears for a block installed from an address. It fetches the address again and shows what changed before it replaces anything, as an installation does. Blocks installed from a file have no address to update from.</li>
-  <li><strong>Remove</strong> deletes the block. If tests use it, the window names them and asks first, because they would stop with a message that the block is missing. A block is never removed behind your back.</li>
+  <li>When another installed block needs the one you update in a version that the new one isn't, the window says so before anything changes, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, and this brings com.acme.sign-in 2.0.0; update com.acme.messages as well, or go ahead knowing it may stop working.” Updating both from one address together is fine.</li>
+  <li><strong>Remove</strong> deletes the block. If tests or other installed blocks use it, the window names them and asks first, because they would stop with a message that the block is missing. A block is never removed behind your back.</li>
 </ul>
+
+<h2 id="edit-installed">Changing an installed block</h2>
+<p>An installed block is read-only, because its next update would replace your changes. <strong>Open Block</strong> in the inspector of a <code>runTest</code> block, and <strong>Open</strong> beside the block in <strong>Custom Blocks…</strong>, show it on the canvas to read. A bar above it says so and has the button <strong>Make This a Block of the Project…</strong>; <strong>Make a Copy…</strong> in <strong>Custom Blocks…</strong> does the same. It copies the block into your own blocks, where you can change it:</p>
+<ul>
+  <li>You choose the name of the copy, which starts as the block's name. The copy is <code>blocks/NAME.block.json</code>. Its pictures and files go to <code>blocks/images</code> and <code>blocks/files</code>, under another name when a different file of that name is there already.</li>
+  <li>Steps that run another installed block keep running it.</li>
+  <li>A tick box, on by default, says <strong>Use the copy in the tests that use it</strong> and names them. If it is on, each of their <code>runTest</code> blocks runs the copy, and a value a test left out gets the default the block gave it, so the tests do what they did before. If it is off, the tests keep using the installed block. A test that is open with changes you haven't saved is left alone, and the window names it.</li>
+  <li>The installed block stays. Remove it in <strong>Custom Blocks…</strong> once nothing uses it.</li>
+</ul>
+<p>A block whose steps run another file from inside its own package can't be copied, and says so. The pictures a package's checks compare with can't be replaced with <strong>Accept as New Reference</strong> either: make the block your own first.</p>
+
+<h2 id="restore">Installing a project's blocks again</h2>
+<p><a href="#lock"><code>jevision.blocks.json</code></a> remembers each block installed from an address: the address and the version. Commit it with the tests, and anyone who opens the project, on a new Mac or after a fresh clone, can get the same blocks again.</p>
+<ul>
+  <li><strong>In the app</strong>, opening a project with blocks in <code>jevision.blocks.json</code> that aren't installed, or are installed in another version, offers to install them. The offer opens the <strong>Install Block</strong> window with those blocks <a href="#several">in a list</a>: you read what each one does and choose which to install, as for any address.</li>
+  <li><strong>On the command line</strong>, <a href="cli.html#blocks"><code>jevision blocks restore</code></a> prints the same plan, and installs it with <code>--yes</code>.</li>
+</ul>
+<p>Each address is fetched once, even when it holds several of the blocks. For each block, JEVision compares what it finds there with <code>jevision.blocks.json</code>:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">What the address has</th><th scope="col">What happens</th></tr></thead>
+  <tbody>
+    <tr><td>The version in <code>jevision.blocks.json</code></td><td>Ready to install.</td></tr>
+    <tr><td>Another version</td><td>Shown as changed, and installed only if you tick it in the app or add <code>--force</code>. The version your team checked must not change without anyone noticing.</td></tr>
+    <tr><td>No block with that id</td><td>Shown as missing; nothing to install.</td></tr>
+    <tr><td>Nothing: the address can't be reached</td><td>Shown with the reason; nothing to install from it.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Blocks are installed the usual way, the blocks they need first, and <code>jevision.blocks.json</code> is updated. A block listed without a version, in a file written before versions were kept, counts as installed in any version.</p>
 
 <h2 id="reports">Runs and reports</h2>
 <ul>
@@ -185,6 +290,9 @@
   "inputs": [
     { "name": "email", "label": "Email address", "default": "qa@example.com" },
     { "name": "password" }
+  ],
+  "dependencies": [
+    { "id": "com.acme.open-app", "version": "^1.0.0", "source": "https://github.com/acme/open-app" }
   ]
 }</code></pre>
 <div class="table-wrap">
@@ -201,6 +309,7 @@
     <tr><td><code>license</code></td><td>Yes</td><td>The name of its license, such as <code>MIT</code>.</td></tr>
     <tr><td><code>minVersion</code></td><td>No</td><td>The oldest JEVision that can run the block. An older JEVision refuses to install or run it.</td></tr>
     <tr><td><code>inputs</code></td><td>No</td><td>What a test gives the block, up to 50 entries. Each has a <code>name</code> (letters, digits and underscores, not starting with a digit), an optional <code>label</code> to show in the editor instead of the name, and an optional <code>default</code>, the value for a test that leaves it out.</td></tr>
+    <tr><td><code>dependencies</code></td><td>No</td><td>The other blocks its steps run, up to 50 entries, each with an <code>id</code>, an optional <code>version</code> range and an optional <code>source</code> address. See <a href="#dependencies">Blocks that use other blocks</a>.</td></tr>
   </tbody>
 </table>
 </div>
@@ -210,17 +319,25 @@
 <p>The steps are a test file as in <a href="file-formats.html#test">Test files</a>, with these rules:</p>
 <ul>
   <li>Every <code>${input.NAME}</code> the steps read is listed in <code>inputs</code>. An input that no step reads is a warning.</li>
-  <li>Pictures and files are named relative to <code>flow.json</code> and stay inside the package folder: a path with <code>..</code> is an error.</li>
+  <li>Pictures and files are named relative to <code>flow.json</code> and stay inside the package folder: a path with <code>..</code> is an error. The one way out is a <code>runTest</code> step that runs a block listed in <code>dependencies</code>, as <code>../ID.jevblock/flow.json</code>: see <a href="#calling">Running the other block</a>.</li>
   <li>The <code>app</code> is the application the steps act on. A block rarely has a <code>check</code>; the tests that use it do.</li>
 </ul>
 
 <h3 id="lock">jevision.blocks.json</h3>
-<p>The project keeps where each package came from in <code>jevision.blocks.json</code>, in the project folder, so the team can update them:</p>
-<pre><code>{ "sources": { "com.acme.sign-in": "https://github.com/acme/sign-in-block" } }</code></pre>
-<p>Packages installed from a file or folder have no entry.</p>
+<p>The project keeps where each package came from, and which version was installed, in <code>jevision.blocks.json</code>, in the project folder, so the team can update them and <a href="#restore">install them again</a>:</p>
+<pre><code>{
+  "format": 1,
+  "sources": {
+    "com.acme.sign-in": "https://github.com/acme/sign-in-block"
+  },
+  "versions": {
+    "com.acme.sign-in": "1.2.0"
+  }
+}</code></pre>
+<p>JEVision writes both entries when it installs or updates a block from an address, and removes them when the block is removed or installed again from a file or folder: packages installed from a file or folder have no entry. A file without <code>versions</code>, written by an older JEVision, still works.</p>
 
 <h3 id="example">An example</h3>
-<p>The <a href="https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit/blocks/org.jevision.add-line.jevblock">example package</a> in the repository types a line into TextEdit. The test <code>add-a-line-with-a-block.flow.json</code> next to it uses it. Copy the <code>.jevblock</code> folder anywhere and install it from there.</p>
+<p>The <a href="https://github.com/dev-pikapik/JEVision/tree/main/examples/textedit/blocks">examples</a> in the repository hold two packages side by side. <code>org.jevision.add-line</code> types a line into TextEdit, and the test <code>add-a-line-with-a-block.flow.json</code> uses it. <code>org.jevision.add-date</code> keeps today's date and runs <code>org.jevision.add-line</code> to type it, so it lists that block under <code>dependencies</code>. Copy the <code>blocks</code> folder anywhere and install it from there: both blocks appear in one list, and <code>org.jevision.add-line</code> is installed first.</p>
 
 <h2 id="publish">Publishing on GitHub</h2>
 <p>People install from a repository or a release by pasting its address into <strong>Install Block…</strong> or giving it to <code>jevision blocks install</code>:</p>
@@ -231,17 +348,20 @@
     <tr><td><code>https://github.com/OWNER/REPO</code>, <code>…/releases</code>, <code>…/releases/latest</code></td><td>The latest release: its file ending in <code>.jevblock.zip</code> if it has one, otherwise the code of the release. A repository with no release gives its main branch.</td></tr>
     <tr><td><code>https://github.com/OWNER/REPO/releases/tag/TAG</code></td><td>That release, in the same way.</td></tr>
     <tr><td><code>https://github.com/OWNER/REPO/tree/BRANCH</code></td><td>The code of that branch or tag.</td></tr>
+    <tr><td><code>https://github.com/OWNER/REPO/tree/BRANCH/PATH</code></td><td>Only the folder <var>PATH</var> of that branch or tag, such as <code>…/tree/main/blocks</code>. A branch with <code>/</code> in its name, such as <code>feature/login</code>, works too.</td></tr>
     <tr><td><code>https://…/NAME.zip</code></td><td>That zip file, on GitHub or anywhere else.</td></tr>
   </tbody>
 </table>
 </div>
-<p><code>github.com/OWNER/REPO</code> works too. The package is found where <code>block.json</code> is: at the top of the repository, or in a folder up to three levels down, as long as there is one package. A repository with several packages needs a zip file of one of them, such as a release file. To publish: put the <code>.jevblock</code> folder (or its contents) in a repository, and attach <code>com.acme.sign-in.jevblock.zip</code> to each release. Raise <code>version</code> for each release so that <strong>Update</strong> can tell.</p>
+<p><code>github.com/OWNER/REPO</code> works too. Packages are found where <code>block.json</code> is. If the top of the repository, folder or zip file is a package, that is the one. Otherwise JEVision looks for package folders up to three levels down, without looking inside a package, and installs all it finds <a href="#several">as a list</a>, up to 100. A release with several files ending in <code>.jevblock.zip</code>, up to 20, gives all of them as one list.</p>
+<p>To publish one block: put the <code>.jevblock</code> folder (or its contents) in a repository, and attach <code>com.acme.sign-in.jevblock.zip</code> to each release. To publish several: put them in a <code>blocks</code> folder, one <code>.jevblock</code> folder each, or attach one <code>.jevblock.zip</code> file per block to the release. Blocks that <a href="#dependencies">use each other</a> are best published together, with the address of that place as the <code>source</code> of each dependency. Raise <code>version</code> for each release so that <strong>Update</strong> can tell.</p>
 
 <h2 id="limits">How packages are kept safe</h2>
 <ul>
   <li>Nothing in a package runs while it is read or installed. Files are copied one by one, without permission to run, and every path is checked first.</li>
   <li>A zip file can't write outside its own folder: one with a name that has <code>..</code> in it or starts with <code>/</code> is refused as a whole, and links in it are left out.</li>
   <li>A download is at most 64 MB, a zip unpacks to at most 256 MB and 20,000 entries, and a package holds at most 1,000 files and 64 MB. A download that takes longer than two minutes stops.</li>
+  <li>For several blocks from one place, the limits on unpacking count all of them together, the files of a release are at most 128 MB together, and a zip file that one of them would refuse refuses the whole list.</li>
   <li>Addresses must be <code>https</code>, and so must every redirect they lead to.</li>
   <li>An address that isn't a GitHub repository, release, branch or a link to a .zip file is refused rather than guessed at.</li>
 </ul>

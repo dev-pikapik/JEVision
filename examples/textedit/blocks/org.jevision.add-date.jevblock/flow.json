@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "name": "Add today's date",
+  "description": "Types today's date as a line at the end of the document in front, in TextEdit, with the block Add a line.",
+  "icon": "calendar.badge.plus",
+  "app": "com.apple.TextEdit",
+  "start": "today",
+  "blocks": {
+    "today": {
+      "type": "dateTime",
+      "saveAs": "today",
+      "format": "%d %B %Y",
+      "next": "add"
+    },
+    "add": {
+      "type": "runTest",
+      "test": "../org.jevision.add-line.jevblock/flow.json",
+      "inputs": {
+        "line": "${var.today}"
+      }
+    }
+  }
+}

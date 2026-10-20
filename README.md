@@ -382,12 +382,16 @@ version, author, license, the inputs it asks for) and a `flow.json` with the ste
 they use, as a folder or a .zip file. Put it in a GitHub repository or release for others.
 
 To use one, choose **File → Install Block…**, drop a folder or a .zip file on the window, or paste an
-https address. Before anything is installed, a sheet says what the block does in plain words, and
+https address; a folder, repository or release with several blocks shows them as a list to pick
+from. Before anything is installed, a sheet says what the block does in plain words, and
 marks scripts, network requests, database queries, opened applications and typed keys, so you know
 what you let into your project. Installed blocks appear in the library under **Community** with
 their author and version, and reports name the package and its version. **Update** fetches the
 newest version of a block installed from an address, and **Remove** names the tests that still use a
-block instead of removing it behind their back. A test that uses a block you haven't installed names
+block instead of removing it behind their back. A block can run other blocks it lists under
+`dependencies`, and those are installed first. Installed blocks are read-only; **Make this a block of
+the project** copies one into your own blocks to change it. Opening a project offers to install the
+blocks its `jevision.blocks.json` lists and the Mac lacks. A test that uses a block you haven't installed names
 it with its version and offers **Install…** right in the error; `jevision validate` and `jevision run`
 print the same message with the `jevision blocks install` command.
 
@@ -397,6 +401,7 @@ jevision blocks install ./sign-in.zip     # show what the block does; add --yes 
 jevision blocks install https://github.com/acme/sign-in --yes
 jevision blocks update                    # newest version of every block installed from an address
 jevision blocks remove com.acme.sign-in   # --force when tests use it
+jevision blocks restore --yes             # install what jevision.blocks.json lists and the project lacks
 ```
 
 Installing never runs anything and unpacking never leaves the project's folder. The format is in

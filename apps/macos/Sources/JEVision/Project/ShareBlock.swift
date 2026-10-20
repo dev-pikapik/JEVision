@@ -12,6 +12,14 @@ struct ShareBlockDraft: Equatable {
   var customId: String?
   /// The inputs the block asks for, as `${input.NAME}` names.
   let inputs: [String]
+  /// What the person installing the block sees for an input instead of its name; empty is left out.
+  var labels: [String: String]
+  /// The value an input has when a test leaves it out; empty is left out.
+  var defaults: [String: String]
+
+  /// The most characters a package takes for the label and for the default value of an input.
+  static let labelLimit = 60
+  static let defaultLimit = 500
 
   init(entry: LibraryEntry, author: String = "", license: String = "MIT") {
     name = entry.name
@@ -19,6 +27,8 @@ struct ShareBlockDraft: Equatable {
     self.author = author
     self.license = license
     inputs = entry.inputs
+    labels = entry.labels
+    defaults = entry.defaults
   }
 
   /// Like `com.acme.sign-in`.
@@ -29,13 +39,30 @@ struct ShareBlockDraft: Equatable {
   /// Everything a package needs is filled in; the core checks the rest.
   var canShare: Bool {
     [name, author, version, license].allSatisfy { !$0.trimmingCharacters(in: .whitespaces).isEmpty } && hasValidId
+      && inputs.allSatisfy { !labelTooLong($0) && !defaultTooLong($0) }
+  }
+
+  func labelTooLong(_ input: String) -> Bool {
+    (Self.clean(labels[input]) ?? "").unicodeScalars.count > Self.labelLimit
+  }
+
+  func defaultTooLong(_ input: String) -> Bool {
+    (Self.clean(defaults[input]) ?? "").unicodeScalars.count > Self.defaultLimit
   }
 
   var share: BlockShare {
     func clean(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
     return BlockShare(
       id: id, name: clean(name), description: clean(description), author: clean(author), version: clean(version),
-      license: clean(license), inputs: inputs.map { BlockPackageInput(name: $0, label: nil, defaultValue: nil) })
+      license: clean(license),
+      inputs: inputs.map {
+        BlockPackageInput(name: $0, label: Self.clean(labels[$0]), defaultValue: Self.clean(defaults[$0]))
+      })
+  }
+
+  /// `text` without the spaces around it; `nil` when nothing is left.
+  private static func clean(_ text: String?) -> String? {
+    text.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap { $0.isEmpty ? nil : $0 }
   }
 
   /// The name of the zip file to start from, like `com.acme.sign-in-1.0.0.zip`.
@@ -105,7 +132,28 @@ struct ShareBlockSheet: View {
         }
         .pickerStyle(.segmented)
         if !draft.inputs.isEmpty {
-          LabeledContent("Asks for") { Text(draft.inputs.joined(separator: ", ")) }
+          Section {
+            ForEach(draft.inputs, id: \.self) { input in
+              LabeledContent {
+                HStack {
+                  TextField(text: text(\.labels, input), prompt: Text("Label")) { Text("Label of \(input)") }
+                  TextField(text: text(\.defaults, input), prompt: Text("Default value")) {
+                    Text("Default value of \(input)")
+                  }
+                }
+                .labelsHidden()
+              } label: {
+                Text(verbatim: input)
+              }
+              if draft.labelTooLong(input) { tooLong(ShareBlockDraft.labelLimit) }
+              if draft.defaultTooLong(input) { tooLong(ShareBlockDraft.defaultLimit) }
+            }
+          } header: {
+            Text("Asks for")
+          } footer: {
+            Text("People see the label instead of the name. The default value is used when a test leaves the input empty.")
+              .foregroundStyle(.secondary)
+          }
         }
       }
       .formStyle(.grouped)
@@ -138,6 +186,11 @@ struct ShareBlockSheet: View {
       }
       Text("\(result.files.count) files · \(BlockPackageText.size(Int64(result.bytes)))")
         .foregroundStyle(.secondary)
+      ForEach(result.manifest.dependencies, id: \.id) { dependency in
+        Label("Needs: \(dependency.id) \(dependency.version)", systemImage: "shippingbox")
+          .font(.callout)
+          .textSelection(.enabled)
+      }
       ForEach(result.warnings, id: \.self) { issue in
         Label(IssueText.message(issue), systemImage: "exclamationmark.triangle.fill")
           .foregroundStyle(.orange)
@@ -154,6 +207,17 @@ struct ShareBlockSheet: View {
           .keyboardShortcut(.defaultAction)
       }
     }
+  }
+
+  /// The text of `input` in `labels` or `defaults` of the draft.
+  private func text(_ field: WritableKeyPath<ShareBlockDraft, [String: String]>, _ input: String) -> Binding<String> {
+    Binding(get: { draft[keyPath: field][input] ?? "" }, set: { draft[keyPath: field][input] = $0 })
+  }
+
+  private func tooLong(_ limit: Int) -> some View {
+    Text("Write at most \(limit) characters.")
+      .font(.callout)
+      .foregroundStyle(.red)
   }
 
   private func write() {

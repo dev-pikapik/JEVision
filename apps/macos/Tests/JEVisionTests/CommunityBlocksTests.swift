@@ -65,17 +65,17 @@ struct CommunityBlocksTests {
     let (mine, theirs) = try projects()
     let model = BlockInstallModel(project: theirs)
     var installed: String?
-    model.onInstalled = { installed = $0.manifest.id }
+    model.onInstalled = { installed = $0.first?.manifest.id }
     await model.read(try zip("1.0.0", from: mine))
     let staged = try #require(model.preview).folder
     await model.install()
 
     #expect(installed == "com.anna.sign-in")
-    guard case .installed(let block) = model.phase else {
+    guard case .installed(let blocks) = model.phase else {
       Issue.record("Expected the block to be installed, got \(model.phase)")
       return
     }
-    #expect(block.manifest.version == "1.0.0")
+    #expect(blocks.map(\.manifest.version) == ["1.0.0"])
     #expect(!FileManager.default.fileExists(atPath: staged), "What was unpacked for reading is gone")
 
     let entry = try #require(ProjectLibrary.communityEntries(theirs).first)
@@ -345,5 +345,163 @@ struct CommunityBlocksTests {
     let found = CommandPalette.search("community", in: CommandPalette.entries(state)).map(\.action)
     #expect(found.contains(.installBlock))
     #expect(found.contains(.customBlocks))
+  }
+
+  /// `theirs` with the block of `mine` installed as `com.anna.sign-in`, its package in the blocks folder.
+  private func installed() throws -> URL {
+    let (mine, theirs) = try projects()
+    _ = try exportBlockPackage(
+      project: mine.path, blockFile: Self.blockFile, share: share("1.0.0"),
+      destination: theirs.appending(path: "blocks").path, asZip: false)
+    return theirs
+  }
+
+  /// The file the step `a` of `document` runs.
+  private func runs(_ document: FlowDocument) -> String? {
+    guard case .runTest(let test, _, _, _) = document.block("a")?.kind else { return nil }
+    return test
+  }
+
+  @Test func anInstalledBlockOpensReadOnlyAndIsNeverWritten() throws {
+    let theirs = try installed()
+    let file = theirs.appending(path: "blocks/com.anna.sign-in.jevblock/flow.json")
+    let before = try Data(contentsOf: file)
+    let document = FlowDocument(url: file, project: theirs)
+    let undo = UndoManager()
+    document.undoManager = undo
+    let flow = try #require(document.flow)
+    #expect(document.isReadOnly)
+
+    document.selection = "a"
+    #expect(!document.startLink())
+    document.insert("check", at: nil)
+    document.addCondition()
+    document.remove([.block(id: "a")])
+    document.updateFlow(field: "app") { $0.app = "com.apple.Safari" }
+    var draft = flow
+    draft.name = "Draft"
+    document.showDraft(draft)
+
+    #expect(document.flow == flow)
+    #expect(document.pendingRemoval == nil)
+    #expect(!document.hasUnsavedChanges)
+    #expect(!undo.canUndo)
+    #expect(try Data(contentsOf: file) == before)
+    #expect(try !userTest(in: theirs, package: "").isReadOnly)
+  }
+
+  @Test func makingABlockOwnCopiesItAndSwitchesTheTestsToTheCopy() throws {
+    let theirs = try installed()
+    let test = try userTest(in: theirs, package: "")
+    let model = OwnBlockModel(project: theirs, id: "com.anna.sign-in", name: "Sign in")
+    var opened: String?
+    model.onMade = { opened = $0 }
+    #expect(model.name == "Sign in")
+    #expect(model.tests == ["t.flow.json"])
+    #expect(model.switchesTests)
+
+    model.make(open: [test])
+
+    #expect(model.error == nil)
+    #expect(model.made == MadeOwnBlock(file: "blocks/Sign in.block.json", skipped: []))
+    #expect(opened == "blocks/Sign in.block.json")
+    #expect(runs(test) == "blocks/Sign in.block.json", "The open test shows the copy at once")
+    #expect(FileManager.default.fileExists(atPath: theirs.appending(path: "blocks/com.anna.sign-in.jevblock").path))
+    #expect(!model.canMake, "Made once")
+  }
+
+  @Test func theCopyTakesTheNameGivenAndCanLeaveTheTestsAlone() throws {
+    let theirs = try installed()
+    try Self.block.write(to: theirs.appending(path: Self.blockFile), atomically: true, encoding: .utf8)
+    let test = try userTest(in: theirs, package: "")
+    let model = OwnBlockModel(project: theirs, id: "com.anna.sign-in", name: "Sign in")
+    #expect(model.name == "Sign in 2", "The project has a Sign in block of its own")
+
+    model.name = "  Log in "
+    model.switchesTests = false
+    model.make(open: [test])
+
+    #expect(model.made == MadeOwnBlock(file: "blocks/Log in.block.json", skipped: []))
+    let copy = try loadFlow(json: String(contentsOf: theirs.appending(path: "blocks/Log in.block.json"), encoding: .utf8))
+    #expect(copy.name == "Log in")
+    #expect(!FileManager.default.fileExists(atPath: theirs.appending(path: "blocks/Sign in 2.block.json").path))
+    #expect(runs(test) == "blocks/com.anna.sign-in.jevblock/flow.json")
+    #expect(ProjectLibrary.communityEntries(theirs).count == 1, "The installed block stays")
+  }
+
+  @Test func aTestWithChangesNotInItsFileKeepsTheInstalledBlock() throws {
+    let theirs = try installed()
+    let test = try userTest(in: theirs, package: "")
+    let other = theirs.appending(path: "u.flow.json")
+    try FileManager.default.copyItem(at: test.url, to: other)
+    let before = try Data(contentsOf: test.url)
+    var draft = try #require(test.flow)
+    draft.name = "Draft"
+    test.showDraft(draft)
+    #expect(test.hasUnsavedChanges)
+
+    let model = OwnBlockModel(project: theirs, id: "com.anna.sign-in", name: "Sign in")
+    model.make(open: [test])
+
+    #expect(model.made?.skipped == ["t.flow.json"])
+    #expect(try Data(contentsOf: test.url) == before)
+    #expect(test.flow?.name == "Draft", "The draft is still shown")
+    #expect(runs(FlowDocument(url: other)) == "blocks/Sign in.block.json", "A test that isn't open switches")
+  }
+
+  @Test func aBlockThatNeedsAMissingBlockOffersToInstallIt() throws {
+    let (mine, theirs) = try projects()
+    _ = try exportBlockPackage(
+      project: mine.path, blockFile: Self.blockFile, share: share("1.0.0"),
+      destination: mine.appending(path: "blocks").path, asZip: false)
+    let wrap = """
+      {"format": 1, "name": "Wrap", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "runTest", "test": "com.anna.sign-in.jevblock/flow.json", "inputs": {"email": "a@b.c"}}}}
+      """
+    try wrap.write(to: mine.appending(path: "blocks/Wrap.block.json"), atomically: true, encoding: .utf8)
+    var meta = share("1.0.0")
+    meta.id = "com.anna.wrap"
+    meta.inputs = []
+    let exported = try exportBlockPackage(
+      project: mine.path, blockFile: "blocks/Wrap.block.json", share: meta,
+      destination: theirs.appending(path: "blocks").path, asZip: false)
+    #expect(exported.manifest.dependencies.map(\.id) == ["com.anna.sign-in"])
+    let test = """
+      {"format": 1, "name": "T", "app": "com.apple.TextEdit", "start": "a", "blocks": {
+        "a": {"type": "runTest", "test": "blocks/com.anna.wrap.jevblock/flow.json"}}}
+      """
+    let file = theirs.appending(path: "t.flow.json")
+    try test.write(to: file, atomically: true, encoding: .utf8)
+
+    let document = FlowDocument(url: file, project: theirs)
+    let issue = try #require(document.issues(of: "a").first { $0.code == "flow.block.dependencyUnmet" })
+    #expect(BlockNeed(issue) == BlockNeed(id: "com.anna.sign-in"))
+  }
+
+  @Test func sharingGivesTheInputsTheirLabelsAndDefaults() throws {
+    let (mine, _) = try projects()
+    let entry = LibraryEntry(
+      kind: .block, id: Self.blockFile, name: "Sign in", detail: "", symbol: "person", text: nil, url: nil,
+      inputs: ["email"], labels: ["email": "Email"])
+    var draft = ShareBlockDraft(entry: entry)
+    draft.author = "Anna"
+    #expect(draft.labels["email"] == "Email")
+    draft.labels["email"] = "  E-mail "
+    draft.defaults["email"] = "me@example.com"
+    let out = mine.appending(path: "out").path
+    let shared = try exportBlockPackage(
+      project: mine.path, blockFile: Self.blockFile, share: draft.share, destination: out, asZip: false)
+    #expect(shared.manifest.inputs == [BlockPackageInput(name: "email", label: "E-mail", defaultValue: "me@example.com")])
+
+    draft.labels["email"] = " "
+    draft.defaults["email"] = ""
+    #expect(draft.share.inputs == [BlockPackageInput(name: "email", label: nil, defaultValue: nil)])
+    let plain = try exportBlockPackage(
+      project: mine.path, blockFile: Self.blockFile, share: draft.share, destination: out, asZip: false)
+    #expect(plain.manifest.inputs == [BlockPackageInput(name: "email", label: nil, defaultValue: nil)])
+
+    draft.labels["email"] = String(repeating: "x", count: ShareBlockDraft.labelLimit + 1)
+    #expect(draft.labelTooLong("email"))
+    #expect(!draft.canShare, "The core takes 60 characters at most")
   }
 }
