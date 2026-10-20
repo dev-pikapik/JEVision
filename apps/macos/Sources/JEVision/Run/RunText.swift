@@ -185,6 +185,8 @@ enum RunText {
         return String(localized: "The test didn’t run: a test it depends on didn’t pass.")
       }
       return String(localized: "\(Self.blocker(blocker)). The test didn’t run.")
+    case .unknown:
+      return String(localized: "A newer version of JEVision saved this run. Update the app to see how it ended.")
     case .failed:
       let attempt = decidingAttempt(report: report)
       let text = attempt?.failure.map(failure) ?? String(localized: "The test failed.")

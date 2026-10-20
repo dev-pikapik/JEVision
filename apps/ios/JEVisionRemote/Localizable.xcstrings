@@ -2308,6 +2308,26 @@
           }
         }
       }
+    },
+    "Unknown status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестный статус"
+          }
+        }
+      }
+    },
+    "The Mac reported a result this version of the app doesn’t know. Update the app to see it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac сообщил результат, который эта версия приложения не знает. Обновите приложение, чтобы его увидеть."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -130,6 +130,8 @@ enum RunText {
         return String(localized: "The test didn’t run: a test it depends on didn’t pass.")
       }
       return String(localized: "Blocked: \(name) didn’t pass. The test didn’t run.")
+    case .unknown:
+      return String(localized: "The Mac reported a result this version of the app doesn’t know. Update the app to see it.")
     case .failed:
       return report.attempts.last?.failure.map(failure) ?? String(localized: "The test failed.")
     case .passed:

@@ -86,8 +86,10 @@ impl RunReport {
     /// Reported as skipped rather than passed: the run was cancelled, failed in quarantine or
     /// passed without checking anything.
     fn is_skipped(&self) -> bool {
-        matches!(self.verdict, Verdict::Cancelled | Verdict::Blocked)
-            || self.is_quarantined_failure()
+        matches!(
+            self.verdict,
+            Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown
+        ) || self.is_quarantined_failure()
             || self.nothing_checked
     }
 
@@ -139,7 +141,7 @@ impl RetryVerdict {
             }),
             Verdict::Failed if flaky => Some(Self::FailedDifferently { attempts }),
             Verdict::Failed => Some(Self::FailedEveryTime { attempts }),
-            Verdict::Cancelled | Verdict::Blocked => None,
+            Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown => None,
         }
     }
 
@@ -168,6 +170,9 @@ pub enum Verdict {
     /// Not run: a test it depends on didn't pass. Only a whole run is blocked, never an
     /// attempt.
     Blocked,
+    /// A verdict this version doesn't know, written by a newer one. Never produced here.
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -372,6 +377,9 @@ pub enum StepStatus {
     /// There was no reference yet; the screenshot became the reference.
     BaselineCreated,
     Cancelled,
+    /// A status this version doesn't know, written by a newer one. Never produced here.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a run failed: a localization key and the values its text refers to, e.g.
@@ -757,6 +765,7 @@ pub fn junit_xml(reports: &[RunReport]) -> String {
                     .map_or_else(|| "Blocked.".to_owned(), |b| format!("{}.", b.describe()));
                 let _ = writeln!(out, "      <skipped message=\"{}\"/>", xml(&reason));
             }
+            Verdict::Unknown => out.push_str("      <skipped message=\"Unknown status.\"/>\n"),
         }
         if !paths.is_empty() {
             let _ = writeln!(
@@ -786,6 +795,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
         (Verdict::Failed, true) => ("fail", "Failed, flaky"),
         (Verdict::Cancelled, _) => ("skip", "Cancelled"),
         (Verdict::Blocked, _) => ("skip", "Blocked"),
+        (Verdict::Unknown, _) => ("skip", "Unknown status"),
     };
     let _ = write!(
         o,
@@ -835,6 +845,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 Verdict::Passed => ("pass", "Passed"),
                 Verdict::Failed => ("fail", "Failed"),
                 Verdict::Cancelled | Verdict::Blocked => ("skip", "Cancelled"),
+                Verdict::Unknown => ("skip", "Unknown status"),
             };
             let tries = match r.attempts {
                 1 => String::new(),
@@ -907,6 +918,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 StepStatus::Failed => ("fail", "Failed"),
                 StepStatus::BaselineCreated => ("new", "Reference saved"),
                 StepStatus::Cancelled => ("skip", "Cancelled"),
+                StepStatus::Unknown => ("skip", "Unknown status"),
             };
             let _ = write!(
                 o,

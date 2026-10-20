@@ -211,6 +211,7 @@ pub enum Verdict {
     Failed,
     Cancelled,
     Blocked,
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]
@@ -220,6 +221,7 @@ pub enum StepStatus {
     /// There was no reference yet; the screenshot became the reference.
     BaselineCreated,
     Cancelled,
+    Unknown,
 }
 
 /// Why a run waits.

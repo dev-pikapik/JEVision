@@ -946,6 +946,7 @@ pub enum Verdict {
     Failed,
     Cancelled,
     Blocked,
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]
@@ -954,6 +955,7 @@ pub enum StepStatus {
     Failed,
     BaselineCreated,
     Cancelled,
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]

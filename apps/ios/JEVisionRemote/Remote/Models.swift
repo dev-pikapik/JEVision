@@ -47,6 +47,8 @@ enum Verdict: Hashable, Sendable {
   case cancelled
   /// Didn't run: a test it depends on didn't pass.
   case blocked
+  /// Sent by a newer Mac; this version doesn't know what it means.
+  case unknown
 }
 
 /// A test as the Mac lays it out, for drawing only. Geometry is in canvas points.
@@ -153,6 +155,8 @@ enum StepStatus: Hashable, Sendable {
   /// There was no reference yet; the screenshot became the reference.
   case baselineCreated
   case cancelled
+  /// Sent by a newer Mac; this version doesn't know what it means.
+  case unknown
 }
 
 /// Why something failed: a localization key from the core and the values its text refers to.

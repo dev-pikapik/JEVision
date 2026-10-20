@@ -145,6 +145,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   "failed": 1,
   "quarantined": 0,
   "cancelled": 0,
+  "blocked": 0,
   "notRun": 0,
   "errors": 0,
   "tests": [
@@ -155,6 +156,8 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
       "flaky": false,
       "quarantined": false,
       "quarantineReason": null,
+      "blockedBy": null,
+      "addedAsDependency": false,
       "attempts": 3,
       "rows": [],
       "durationMs": 18234,
@@ -167,7 +170,8 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   ]
 }</code></pre>
 <ul>
-  <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>blocked</code> (didn't run because a test it depends on didn't pass; <code>blockedBy</code> says which and why), <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>addedAsDependency</code> is <code>true</code> for a test you didn't choose that ran because a chosen test depends on it.</li>
   <li><code>file</code> is relative to the project folder. <code>newReferences</code> lists the reference images this run saved for the first time.</li>
   <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>.</li>
 </ul>

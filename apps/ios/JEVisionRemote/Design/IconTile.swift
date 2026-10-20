@@ -78,6 +78,7 @@ struct VerdictStyle {
     case .failed: (title, symbol, color) = (String(localized: "Failed"), "xmark.square.fill", .red)
     case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
     case .blocked: (title, symbol, color) = (String(localized: "Blocked"), "minus.circle.fill", .yellow)
+    case .unknown: (title, symbol, color) = (String(localized: "Unknown status"), "questionmark.circle.fill", .secondary)
     }
   }
 
@@ -88,6 +89,7 @@ struct VerdictStyle {
     case .baselineCreated:
       (title, symbol, color) = (String(localized: "New reference saved"), "plus.circle.fill", .blue)
     case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    case .unknown: (title, symbol, color) = (String(localized: "Unknown status"), "questionmark.circle.fill", .secondary)
     }
   }
 

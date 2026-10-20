@@ -15183,6 +15183,26 @@
           }
         }
       }
+    },
+    "Unknown Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестный статус"
+          }
+        }
+      }
+    },
+    "A newer version of JEVision saved this run. Update the app to see how it ended." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот прогон сохранила более новая версия JEVision. Обновите приложение, чтобы увидеть, чем он закончился."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

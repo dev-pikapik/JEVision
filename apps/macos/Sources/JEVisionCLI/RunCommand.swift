@@ -226,6 +226,7 @@ struct TestResult {
       case .failed: report.quarantined ? "quarantined" : "failed"
       case .cancelled: "cancelled"
       case .blocked: "blocked"
+      case .unknown: "unknown"
       }
     case .error: "error"
     case .notRun: "notRun"
@@ -356,7 +357,7 @@ final class TestSession: @unchecked Sendable {
     switch report.verdict {
     case .passed: return .passed
     case .cancelled: return .cancelled
-    case .blocked: return .notRun
+    case .blocked, .unknown: return .notRun
     // A failure in quarantine still means the test didn't do what the ones after it need.
     case .failed: return .failed
     }
@@ -456,6 +457,7 @@ final class TestSession: @unchecked Sendable {
       case .failed: progress.paint("Failed in \(took)", .red)
       case .cancelled: progress.paint("Stopped", .yellow)
       case .blocked: progress.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
+      case .unknown: progress.paint("Unknown status", .yellow)
       }
     progress.line("  " + line)
     if !report.rows.isEmpty {
@@ -549,6 +551,7 @@ private final class Progress: RunListener, @unchecked Sendable {
         case .baselineCreated: console.paint("✓", .green)
         case .failed: console.paint("✗", .red)
         case .cancelled: console.paint("–", .yellow)
+        case .unknown: console.paint("?", .yellow)
         }
       var text = "  \(mark) \(label(step.seq, step.block, step.blockType, step.test))  "
       text += console.paint(duration(step.durationMs), .dim)
