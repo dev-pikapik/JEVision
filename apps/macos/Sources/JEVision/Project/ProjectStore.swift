@@ -85,6 +85,7 @@ final class ProjectStore {
       selection = selected.flatMap { FileManager.default.fileExists(atPath: url.appending(path: $0).path) ? $0 : nil }
     } else {
       status = .unavailable
+      AppLog.error("The project folder from last time can’t be opened", "project")
     }
   }
 
@@ -165,6 +166,26 @@ final class ProjectStore {
     if rootURL == nil { try openDefaultFolder() }
     guard let rootURL else { return }
     selection = try DemoTest.write(into: rootURL)
+  }
+
+  /// Copies the example project into a folder the person chooses and opens the copy; nothing
+  /// happens when they cancel.
+  func openExample() throws {
+    guard let source = ExampleProject.bundled() else { throw ExampleProject.Failure.missing }
+    let panel = NSOpenPanel()
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = false
+    panel.allowsMultipleSelection = false
+    panel.canCreateDirectories = true
+    panel.message = String(localized: "Choose where to put a copy of the example project")
+    panel.directoryURL = URL.documentsDirectory
+    panel.prompt = String(localized: "Copy Here")
+    guard panel.runModal() == .OK, let parent = panel.url else { return }
+    let copy = try ExampleProject.copy(source, into: parent)
+    AppLog.info("Example project copied to \(copy.path)", "project")
+    save(copy)
+    open(copy)
+    selection = ExampleProject.firstTest
   }
 
   /// Renames the test file and the name inside it.
@@ -377,6 +398,7 @@ final class ProjectStore {
   private func open(_ url: URL) {
     accessedURL?.stopAccessingSecurityScopedResource()
     accessedURL = url.startAccessingSecurityScopedResource() ? url : nil
+    AppLog.info("Project opened: \(url.path)", "project")
     rootURL = url
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil

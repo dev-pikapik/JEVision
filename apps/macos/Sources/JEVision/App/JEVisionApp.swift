@@ -15,6 +15,8 @@ struct JEVisionApp: App {
   @State private var updates = Updates()
 
   init() {
+    AppLog.started()
+    if CrashReports.isEnabled { CrashCollector.apply(enabled: true) }
     _ = AppLanguage.atLaunch
     Appearance.saved.apply()
     let project = ProjectStore()

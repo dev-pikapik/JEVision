@@ -71,6 +71,7 @@
     <li><a href="#keychain">macOS asks about the Keychain</a></li>
     <li><a href="#newer">“format 2 is from a newer JEVision”</a></li>
     <li><a href="#gitignore">What to commit</a></li>
+    <li><a href="#logs">Logs and crash reports</a></li>
     <li><a href="#other-apps">Questions about testing</a></li>
   </ul>
 </nav>
@@ -145,6 +146,10 @@
 
 <h2 id="gitignore">What to commit</h2>
 <p>Commit the tests, their images and CSV files, and the <code>jevision.*.json</code> files. Leave out the <code>.jevision</code> folder: it holds run results and history for one Mac. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>. See <a href="file-formats.html#overview">Files in a project</a>.</p>
+
+<h2 id="logs">Logs and crash reports</h2>
+<p>JEVision writes a log on your Mac, in <code>~/Library/Logs/JEVision</code>: the project opened, a run started and how it ended, and what went wrong. Open the folder with <strong>Settings → Advanced → Logs → Show in Finder</strong>, and attach <code>JEVision.log</code> to a bug report if it helps. <strong>Log detail</strong> chooses <em>Errors only</em>, <em>Normal</em> (the default) or <em>Detailed</em>, which adds every step of a run. The log keeps about 2 MB and deletes the oldest lines. It never holds typed text or secrets, and anything that looks like a key, a token or a password is hidden.</p>
+<p>If JEVision crashes, it can keep the report on your Mac. Turn on <strong>Settings → Advanced → Save crash reports</strong>. The next time JEVision starts, macOS hands it the report (up to a day later), and JEVision keeps the last 20 in <code>~/Library/Application Support/JEVision/Crash Reports</code>. Nothing is sent anywhere. To include one in a bug report, choose <strong>Add a Crash Report</strong> in the bug report window: its summary goes into the description, where you can read and change it before sending.</p>
 
 <h2 id="other-apps">Questions about testing</h2>
 <dl>
