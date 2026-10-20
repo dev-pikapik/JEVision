@@ -58,6 +58,7 @@ impl BlockKind {
             },
             "hover" => Self::Hover {
                 target: Target::Image(String::new()),
+                modifiers: Modifiers::default(),
                 wait_for_change: false,
                 next: None,
             },
@@ -74,6 +75,7 @@ impl BlockKind {
                 amount: DEFAULT_SCROLL_LINES,
                 unit: ScrollUnit::Lines,
                 at: None,
+                modifiers: Modifiers::default(),
                 wait_for_change: false,
                 next: None,
             },
@@ -170,6 +172,8 @@ impl BlockKind {
             "dateTime" => Self::DateTime {
                 save_as: String::new(),
                 format: DEFAULT_DATE_FORMAT.to_owned(),
+                language: None,
+                time_zone: None,
                 shift: None,
                 next: None,
             },

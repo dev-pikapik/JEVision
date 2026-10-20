@@ -67,7 +67,10 @@ public final class Recorder: @unchecked Sendable {
     }
     thread.name = "JEVision recorder pictures"
     thread.start()
-    guard tap.start([.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .scrollWheel, .keyDown]) else {
+    let types: [CGEventType] = [
+      .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp, .scrollWheel, .keyDown,
+    ]
+    guard tap.start(types) else {
       lock.withLock { running = false }
       return false
     }
@@ -136,6 +139,8 @@ public final class Recorder: @unchecked Sendable {
       return (self.ignoring, latest)
     }
     let ignoring = state.ignoring, frame = state.frame
+    // Of the other buttons only the middle one has a block to repeat it; the rest go back and forward.
+    if type == .otherMouseDown || type == .otherMouseUp, event.getIntegerValueField(.mouseEventButtonNumber) != 2 { return }
     if type == .keyDown {
       var length = 0
       var units = [UniChar](repeating: 0, count: 8)
@@ -151,9 +156,9 @@ public final class Recorder: @unchecked Sendable {
         characters: String(utf16CodeUnits: units, count: length), modifiers: modifiers,
         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, time: now)
       queue.async { [self] in key(press, ignoring: ignoring, frame: frame) }
-    } else if type == .leftMouseUp || type == .rightMouseUp {
+    } else if type == .leftMouseUp || type == .rightMouseUp || type == .otherMouseUp {
       let location = event.location
-      let button: MouseButton = type == .rightMouseUp ? .right : .left
+      let button = Self.button(of: type)
       queue.async { [self] in release(at: location, button: button) }
     } else if type == .scrollWheel {
       let location = event.location
@@ -172,7 +177,7 @@ public final class Recorder: @unchecked Sendable {
       }
     } else {
       let location = event.location
-      let button: MouseButton = type == .rightMouseDown ? .right : .left
+      let button = Self.button(of: type)
       let count = Int(event.getIntegerValueField(.mouseEventClickState))
       let modifiers = Modifiers(flags: event.flags)
       // Whose window is under the pointer now, before the click changes anything.
@@ -180,6 +185,15 @@ public final class Recorder: @unchecked Sendable {
       queue.async { [self] in
         click(at: location, button: button, modifiers: modifiers, count: count, owner: owner, ignoring: ignoring, frame: frame)
       }
+    }
+  }
+
+  /// The button a press or a release of `type` is about.
+  static func button(of type: CGEventType) -> MouseButton {
+    switch type {
+    case .rightMouseDown, .rightMouseUp: .right
+    case .otherMouseDown, .otherMouseUp: .middle
+    default: .left
     }
   }
 

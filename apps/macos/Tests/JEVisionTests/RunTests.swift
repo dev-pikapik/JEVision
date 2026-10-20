@@ -230,6 +230,18 @@ struct RunTextTests {
     #expect(RunText.failure(settle) == "Block “w”: the screen didn’t settle within 10 s.")
   }
 
+  @Test func describesClipboardAndAreaFailures() {
+    let text = { (code: String, params: [String: String]) in RunText.failure(Failure(code: code, params: params)) }
+    #expect(
+      text("run.clipboard.notPicture", ["block": "p", "image": "refs/logo.jpg"])
+        == "Block “p”: refs/logo.jpg isn’t a PNG picture, so it can’t go on the clipboard.")
+    #expect(text("run.clipboard.noImage", ["block": "r"]) == "Block “r”: the clipboard holds no picture.")
+    #expect(text("run.clipboard.noFiles", ["block": "r"]) == "Block “r”: the clipboard holds no copied files.")
+    #expect(
+      text("run.target.badArea", ["block": "c", "value": "wide"])
+        == "Block “c”: “wide” isn’t an area. It must be four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3.")
+  }
+
   @Test func pointsToTheMissingPermission() {
     let denied = Failure(code: "run.hands.permissionDenied", params: ["block": "c", "permission": "screenRecording"])
     #expect(RunText.permission(of: denied) == .screenRecording)

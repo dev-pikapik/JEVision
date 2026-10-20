@@ -149,6 +149,14 @@ enum IssueText {
       return String(
         localized: "flow.script.inputKind",
         defaultValue: "The input \(p("name")) takes \(kindName(p("type"))), but \(p("variable")) is saved as \(p("from").split(separator: ", ").map { kindName(String($0)) }.joined(separator: ", ")).", bundle: .app, locale: .app)
+    case "flow.var.kind":
+      return String(
+        localized: "flow.var.kind",
+        defaultValue: "This field takes \(kindName(p("type"))), but \(p("variable")) is saved as \(p("from").split(separator: ", ").map { kindName(String($0)) }.joined(separator: ", ")).", bundle: .app, locale: .app)
+    case "flow.target.area":
+      return String(
+        localized: "flow.target.area",
+        defaultValue: "“\(p("value"))” isn’t an area. Write four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3, or use a saved area.", bundle: .app, locale: .app)
     case "flow.dateTime.format":
       return String(
         localized: "flow.dateTime.format",
@@ -200,6 +208,9 @@ enum IssueText {
     case "windowSize": String(localized: "Window Size")
     case "windowPosition": String(localized: "Window Position")
     case "text": String(localized: "Text")
+    case "image": String(localized: "Picture")
+    case "content": String(localized: "What to Read")
+    case "timeZone": String(localized: "Time Zone")
     case "keys": String(localized: "Keys")
     case "files": String(localized: "Files")
     case "target": String(localized: "Target")
