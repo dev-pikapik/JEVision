@@ -70,15 +70,18 @@ pub use notes::{
     note_timeline,
 };
 pub use package::{
-    BlockManifest, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
-    PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, app_version,
-    block_with_version, check_package, install_command, is_block_path, is_package_id,
-    package_issue, package_of_path, parse_manifest, risky_steps, suggest_id,
+    BlockManifest, Dependency, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
+    PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, VersionReq,
+    app_version, block_with_version, check_package, describe_package_issue, install_command,
+    install_order, is_block_path, is_package_id, package_issue, package_of_path, parse_manifest,
+    risky_steps, suggest_id,
 };
 pub use package_files::{
     BLOCKS_FOLDER, Change, ExportMeta, Exported, Installed, MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES,
-    Package, PackageFile, change_for, export_package, input_defaults, install_folder, installed,
-    list_installed, package_flow_path, package_folder, read_package, remove_package, usage,
+    OwnBlock, Package, PackageFile, RestoreEntry, block_dependents, change_for, export_package,
+    input_defaults, install_folder, installed, list_installed, make_own_block, package_flow_path,
+    package_folder, read_package, remove_package, restore_entries, switch_tests_to_copy,
+    unmet_dependencies, usage,
 };
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,

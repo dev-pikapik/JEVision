@@ -245,6 +245,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     }
     for b in &blocks {
         if let BlockKind::RunTest { test, inputs, .. } = &b.kind {
+            out.extend(dependencies_unmet(dir, &b.id, test));
             for name in block_inputs(dir, test) {
                 if !inputs.contains_key(&name) {
                     out.push(
@@ -261,6 +262,38 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     out.extend(crate::data::validate_data(flow, dir));
     out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
     out
+}
+
+/// The packages that the package in `path`, relative to `dir`, needs, or those need in turn, and
+/// that aren't installed in a version that fits; `block` is the step that runs it.
+fn dependencies_unmet(dir: &Path, block: &str, path: &str) -> Vec<Issue> {
+    let file = dir.join(path);
+    let (Some(id), Some(blocks)) = (
+        package_of_path(path).filter(|_| is_relative_path(path) && placeholders(path).is_empty()),
+        file.parent().and_then(Path::parent),
+    ) else {
+        return Vec::new();
+    };
+    crate::package_files::unmet_in(blocks, id)
+        .into_iter()
+        .map(|found| {
+            let p = |name| found.param(name).unwrap_or_default();
+            let mut issue = Issue::error("flow.block.dependencyUnmet")
+                .with("block", block)
+                .with("field", "test")
+                .with("path", path)
+                .with("id", id)
+                .with("by", p("by"))
+                .with("dependency", p("id"))
+                .with("range", p("range"));
+            for name in ["installed", "source"] {
+                if let Some(value) = found.param(name) {
+                    issue = issue.with(name, value);
+                }
+            }
+            issue
+        })
+        .collect()
 }
 
 /// Inputs the custom block in `path`, relative to `dir`, reads and has no default for; none for a
@@ -350,10 +383,8 @@ pub fn required_inputs(flow: &Flow) -> Vec<String> {
 fn placeholder_names(flow: &Flow, namespace: &str) -> Vec<String> {
     let mut names = BTreeSet::new();
     for b in &flow.blocks {
-        // Values given to a custom block are read by the block, in the caller's place.
-        let own =
-            |(field, _): &(String, &str)| !field.starts_with("inputs.") || namespace != "input";
-        for (_, value) in placeholder_fields(&b.kind).into_iter().filter(own) {
+        // The values a step gives a custom block are filled in where the step runs.
+        for (_, value) in placeholder_fields(&b.kind) {
             for p in placeholders(value).into_iter().flatten() {
                 if p.0 == namespace {
                     names.insert(p.1.to_owned());

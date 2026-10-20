@@ -105,7 +105,7 @@ pub fn validate_flow_in(flow: Flow, folder: String) -> Vec<Issue> {
 /// English sentence for a problem, saying which block and field it concerns.
 #[uniffi::export]
 pub fn describe_issue(issue: Issue) -> String {
-    jevision_core::describe(&issue)
+    jevision_core::describe_package_issue(&issue).unwrap_or_else(|| jevision_core::describe(&issue))
 }
 
 /// Writes a test in canonical form, ready to be saved to its `*.flow.json` file.
