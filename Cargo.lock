@@ -1724,6 +1724,7 @@ dependencies = [
 name = "jevision-notify"
 version = "0.1.0"
 dependencies = [
+ "jevision-core",
  "jevision-runner",
  "lettre",
  "rustls",

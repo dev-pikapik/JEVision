@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io};
 
+use jevision_core::BlockReason;
 use jevision_runner::{RetryVerdict, Run, RunReport, Verdict, describe};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -335,6 +336,11 @@ pub fn message_for(
         (Verdict::Cancelled, _) => false,
         (_, NotifyWhen::Every) => true,
         (Verdict::Failed, _) => !report.quarantined,
+        // A failed dependency sends its own message; a missing one or a circle sends none.
+        (Verdict::Blocked, _) => report
+            .blocked
+            .as_ref()
+            .is_some_and(|b| matches!(b.reason, BlockReason::Missing | BlockReason::Cycle { .. })),
         (Verdict::Passed, NotifyWhen::FailedOrFixed) => fixed,
         (Verdict::Passed, NotifyWhen::Failed) => false,
     };
@@ -349,6 +355,7 @@ pub fn message(run: &Run, fixed: bool) -> Message {
         Verdict::Passed if fixed => "Fixed",
         Verdict::Passed => "Passed",
         Verdict::Cancelled => "Stopped",
+        Verdict::Blocked => "Blocked",
     };
     let mut lines = Vec::new();
     if let Some(reason) = reason(report) {
@@ -376,11 +383,14 @@ pub fn message(run: &Run, fixed: bool) -> Message {
     }
 }
 
-/// Why the run failed, or that it passed only on a retry, in one sentence.
+/// Why the run failed or was blocked, or that it passed only on a retry, in one sentence.
 fn reason(report: &RunReport) -> Option<String> {
     if report.verdict == Verdict::Passed {
         return RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
             .map(RetryVerdict::describe);
+    }
+    if let Some(blocker) = &report.blocked {
+        return Some(blocker.describe());
     }
     let rows = report.rows();
     if let Some(row) = rows.iter().find(|r| r.verdict == Verdict::Failed) {
@@ -444,7 +454,9 @@ pub fn previous(project: &Path, run: &Run) -> Option<RunReport> {
         .iter()
         .filter_map(|n| Run::load(&project.join(".jevision").join("runs").join(n)).ok())
         .map(|r| r.report)
-        .find(|r| r.file == run.report.file && r.verdict != Verdict::Cancelled)
+        .find(|r| {
+            r.file == run.report.file && !matches!(r.verdict, Verdict::Cancelled | Verdict::Blocked)
+        })
 }
 
 /// `login` of a run folder named `20261019-093000-login` or `20261019-093000-login-2`.
