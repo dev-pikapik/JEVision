@@ -49,8 +49,10 @@ struct CoreMappingTests {
 
   @Test func followsTheEventsTheScreensShow() {
     let started = JEVisionMobile.RunUpdate.event(
-      event: .blockStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "open", blockType: "openApp"))
-    #expect(JEVisionRemote.RunUpdate(started) == .event(.blockStarted(test: "a.flow.json", block: "open", kind: "openApp")))
+      event: .blockStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "greet", blockType: "type", title: "Hello, Boris!"))
+    #expect(
+      JEVisionRemote.RunUpdate(started)
+        == .event(.blockStarted(test: "a.flow.json", block: "greet", kind: "type", title: "Hello, Boris!")))
     let attemptEnd = JEVisionMobile.RunUpdate.event(event: .attemptFinished(attempt: 1, verdict: .failed, failure: nil))
     #expect(JEVisionRemote.RunUpdate(attemptEnd) == nil)
   }

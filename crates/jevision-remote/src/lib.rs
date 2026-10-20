@@ -44,6 +44,8 @@ pub use host::{AssistantRejection, Host, HostConfig, HostDelegate, HostStatus, P
 pub use jevision_runner::{Failure, RunReport, StepStatus, Verdict};
 pub use pairing::{DeviceSigner, PairingOffer};
 #[cfg(feature = "host")]
+pub use project::running_title;
+#[cfg(feature = "host")]
 pub use store::{Activity, ActivityKind, Device, DeviceKind};
 pub use wire::{
     Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, PauseReason, Position, ProjectInfo,

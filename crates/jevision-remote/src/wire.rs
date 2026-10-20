@@ -438,6 +438,10 @@ pub enum RunEvent {
         test: String,
         block: String,
         block_type: String,
+        /// What the block works with, its placeholders filled with the values of this run, such
+        /// as the data row's: `Hello, Anna!`. Absent from Macs that don't send it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
     },
     BlockFinished {
         attempt: u32,

@@ -296,6 +296,7 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
             test: "login/sign-in.flow.json".into(),
             block: "open".into(),
             block_type: "openApp".into(),
+            title: Some("com.example.Mail".into()),
         },
         jevision_remote::RunEvent::BlockFinished {
             attempt: 1,
@@ -319,8 +320,8 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
     assert!(matches!(
         watcher.next().await,
         Ok(Some(RunUpdate::Event {
-            event: RunEvent::BlockStarted { seq: 1, .. }
-        }))
+            event: RunEvent::BlockStarted { seq: 1, title: Some(title), .. }
+        })) if title == "com.example.Mail"
     ));
     let Ok(Some(RunUpdate::Event {
         event:

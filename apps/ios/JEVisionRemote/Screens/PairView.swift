@@ -43,7 +43,9 @@ struct PairView: View {
         .padding(24)
       }
       .scrollBounceBehavior(.basedOnSize)
-      .safeAreaInset(edge: .bottom) { actions.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
+      // Text scrolling under the buttons is cut off, so it never reads through them.
+      .scrollEdgeEffectStyle(.hard, for: .bottom)
+      .safeAreaBar(edge: .bottom) { actions.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           if case .paired = step {

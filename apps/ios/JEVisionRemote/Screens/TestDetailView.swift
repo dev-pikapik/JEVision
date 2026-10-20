@@ -27,10 +27,20 @@ struct TestDetailView: View {
           if !facts.isEmpty {
             VStack(spacing: 0) {
               ForEach(facts) { fact in
-                LabeledContent {
-                  Text(verbatim: fact.value)
-                } label: {
-                  Text(verbatim: fact.label)
+                // Side by side while both fit on one line; with large text, the value goes under
+                // its name rather than breaking words.
+                ViewThatFits(in: .horizontal) {
+                  LabeledContent {
+                    Text(verbatim: fact.value)
+                  } label: {
+                    Text(verbatim: fact.label)
+                  }
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: fact.label)
+                    Text(verbatim: fact.value).foregroundStyle(.secondary)
+                  }
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .accessibilityElement(children: .combine)
                 }
                 .padding(.vertical, 10)
                 if fact != facts.last { Divider() }
@@ -68,7 +78,9 @@ struct TestDetailView: View {
         .padding(.vertical)
       }
       .refreshable { await load() }
-      .safeAreaInset(edge: .bottom) { runBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
+      // Text scrolling under the buttons is cut off, so it never reads through them.
+      .scrollEdgeEffectStyle(.hard, for: .bottom)
+      .safeAreaBar(edge: .bottom) { runBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
     }
     .navigationTitle(flow.value?.name ?? "")
     .navigationBarTitleDisplayMode(.inline)
