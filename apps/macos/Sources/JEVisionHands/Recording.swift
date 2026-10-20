@@ -86,6 +86,10 @@ public enum ClickTarget: Sendable {
 public enum RecordedStep: Sendable {
   case openApp
   case click(ClickTarget, button: MouseButton, double: Bool)
+  /// Both places as the window looked when the button went down.
+  case drag(ClickTarget, to: ClickTarget)
+  /// Turns of the wheel in one direction, joined; over a place in the window.
+  case scroll(ScrollDirection, amount: UInt32, unit: ScrollUnit, at: Point)
   case type(String, into: ClickTarget?)
   /// Typing into a password field: the test types the secret, the recording never keeps the text.
   case secret(String, into: ClickTarget?)
@@ -105,6 +109,10 @@ public struct Recording: Sendable {
   public static let waitTimeoutMs: UInt64 = 10_000
   /// Share of a window that must change for the next step to wait for the new look.
   static let changedShare = 0.2
+  /// The most a scroll block turns, as the format allows.
+  static let maxScroll: UInt32 = 10_000
+  /// How far, in points, the pointer must move with the button down to be a drag, not a click.
+  static let dragDistance = 6.0
 
   public private(set) var steps: [RecordedStep] = []
   /// Names of the secrets the recording types.
@@ -124,6 +132,8 @@ public struct Recording: Sendable {
   private var escape = EscapeDetector()
   /// The Esc press just recorded, while it may still be the first of Esc Esc.
   private var escapeStep: Int?
+  /// The left click just recorded, while letting go of the button elsewhere may make it a drag.
+  private var press: (point: CGPoint, frame: WindowFrame, step: Int)?
 
   /// `opensApp` starts the test by opening the app; `appName` goes into the names of secrets.
   public init(appName: String, opensApp: Bool) {
@@ -145,6 +155,7 @@ public struct Recording: Sendable {
   ) -> ClickResult {
     guard inApp else { return .ignored }
     escapeStep = nil
+    press = nil
     guard let frame, frame.bounds.contains(point) else { return .outsideWindow }
     if count == 2, case .click(let target, button, false) = steps.last, !typing {
       steps[steps.count - 1] = .click(target, button: button, double: true)
@@ -158,9 +169,57 @@ public struct Recording: Sendable {
       steps.append(.secret(secretName(element), into: target))
     } else {
       steps.append(.click(target, button: button, double: false))
+      if button == .left { press = (point, frame, steps.count - 1) }
     }
     typing = false
     clickedField = button == .left && (element?.takesText ?? false)
+    return .recorded
+  }
+
+  /// The left button let go at `point` (global points). Far enough from where it went down, the
+  /// click just recorded becomes a drag; let go outside the window, a drag a test can't repeat.
+  public mutating func release(at point: CGPoint, element: ElementInfo?) -> ClickResult {
+    guard let press, press.step == steps.count - 1, case .click(let from, .left, false) = steps[press.step] else {
+      return .ignored
+    }
+    self.press = nil
+    guard hypot(point.x - press.point.x, point.y - press.point.y) >= Self.dragDistance else { return .ignored }
+    guard press.frame.bounds.contains(point) else {
+      dropLast()
+      clickedField = false
+      return .outsideWindow
+    }
+    steps[press.step] = .drag(from, to: Self.target(at: point, in: press.frame, element: element))
+    clickedField = false
+    return .recorded
+  }
+
+  /// A turn of the scroll wheel at `point` (global points): `vertical` above zero brings what is
+  /// above into sight, `horizontal` above zero what is to the left; in pixels from a trackpad, in
+  /// lines from a wheel. Turns in the same direction one after another make one step.
+  public mutating func scroll(
+    at point: CGPoint, vertical: Int, horizontal: Int, pixels: Bool, inApp: Bool, frame: WindowFrame?
+  ) -> ClickResult {
+    guard inApp, vertical != 0 || horizontal != 0 else { return .ignored }
+    escapeStep = nil
+    press = nil
+    guard let frame, frame.bounds.contains(point) else { return .outsideWindow }
+    let direction: ScrollDirection =
+      abs(vertical) >= abs(horizontal) ? (vertical > 0 ? .up : .down) : (horizontal > 0 ? .left : .right)
+    let turned = UInt32(clamping: max(abs(vertical), abs(horizontal)))
+    let unit: ScrollUnit = pixels ? .pixels : .lines
+    if case .scroll(direction, let amount, unit, let at) = steps.last {
+      steps[steps.count - 1] = .scroll(direction, amount: min(amount &+ turned, Self.maxScroll), unit: unit, at: at)
+    } else {
+      settle(frame)
+      let at = Point(
+        x: (point.x - frame.bounds.minX) / frame.bounds.width, y: (point.y - frame.bounds.minY) / frame.bounds.height)
+      steps.append(.scroll(direction, amount: min(turned, Self.maxScroll), unit: unit, at: at))
+    }
+    // The page moved because of this step: the next one waits only for what comes after it.
+    previous = frame
+    typing = false
+    clickedField = false
     return .recorded
   }
 
@@ -503,6 +562,9 @@ extension Recording {
     case .openApp: .openApp(app: nil, next: nil)
     case .click(let t, let button, let double):
       .click(target: try target(t), button: button, double: double, waitForChange: false, next: nil)
+    case .drag(let from, let to): .drag(from: try target(from), to: try target(to), waitForChange: false, next: nil)
+    case .scroll(let direction, let amount, let unit, let at):
+      .scroll(direction: direction, amount: amount, unit: unit, at: .point(at), waitForChange: false, next: nil)
     case .type(let text, let into): .type(text: text, into: try into.map(target), next: nil)
     case .secret(let name, let into): .type(text: "${secret.\(name)}", into: try into.map(target), next: nil)
     case .pressKeys(let keys): .pressKeys(keys: keys, next: nil)

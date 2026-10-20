@@ -82,6 +82,8 @@ enum IssueText {
         defaultValue: "\(p("path")) has no column “\(p("column"))”. Its columns are: \(p("columns")).")
     case "flow.keys.invalid":
       return String(localized: "flow.keys.invalid", defaultValue: "“\(p("value"))” isn’t a key combination. Record the keys again.")
+    case "flow.drag.samePlace":
+      return String(localized: "flow.drag.samePlace", defaultValue: "The drag ends where it starts. Choose another place to drop on.")
     case "flow.point.invalid":
       return String(localized: "flow.point.invalid", defaultValue: "The point must be inside the window.")
     case "flow.area.invalid":
@@ -143,6 +145,10 @@ enum IssueText {
     case "files": String(localized: "Files")
     case "target": String(localized: "Target")
     case "into": String(localized: "Field")
+    case "from": String(localized: "Drag From")
+    case "to": String(localized: "Drop On")
+    case "at": String(localized: "Over an element")
+    case "amount": String(localized: "Amount")
     case "until", "reference": String(localized: "Reference")
     case "timeout": String(localized: "Time Limit")
     case "times": String(localized: "Times")

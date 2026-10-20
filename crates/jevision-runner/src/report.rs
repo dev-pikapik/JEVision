@@ -526,6 +526,11 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("seconds")
         ),
+        "run.action.noChange" => format!(
+            "Block {}: the screen did not change within {} s after this step.",
+            p("block"),
+            p("seconds")
+        ),
         "run.waitFor.timeout" => format!(
             "Block {}: {} did not happen within {} s.",
             p("block"),
@@ -615,6 +620,9 @@ pub fn describe_vision(f: &Failure) -> String {
     let p = |name| f.param(name);
     let provider = p("provider");
     match f.code.as_str() {
+        "run.vision.noPictures" => format!(
+            "The AI model for {provider} doesn't understand pictures, so it can't check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+        ),
         "run.vision.noModel" => format!("No model is chosen for {provider}."),
         "run.vision.noKey" => format!("The API key for {provider} is not set."),
         "run.vision.badAddress" => format!(

@@ -499,6 +499,58 @@
         }
       }
     },
+    "%lld lines" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строку"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строк"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld other files" : {
       "localizations" : {
         "en" : {
@@ -547,6 +599,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld px" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld пкс"
           }
         }
       }
@@ -915,6 +977,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ИИ-ассистенты на этом Mac всегда могут находить, читать, изменять и проверять тесты проекта и читать его отчёты. Значения секретов и API-ключи им никогда не выдаются, а файлы за пределами проекта для них закрыты."
+          }
+        }
+      }
+    },
+    "Amount" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько"
           }
         }
       }
@@ -2671,12 +2743,32 @@
         }
       }
     },
+    "Choose what to drag and where" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, что и куда перетащить"
+          }
+        }
+      }
+    },
     "Choose what to look for" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите, что искать"
+          }
+        }
+      }
+    },
+    "Choose what to point at" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, на что навести"
           }
         }
       }
@@ -2741,12 +2833,12 @@
         }
       }
     },
-    "Click, type and press keys in %@. Each action becomes a step." : {
+    "Click, drag, scroll, type and press keys in %@. Each action becomes a step." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нажимайте, вводите текст и жмите клавиши в %@. Каждое действие станет шагом."
+            "value" : "Нажимайте, перетаскивайте, прокручивайте, вводите текст и жмите клавиши в %@. Каждое действие станет шагом."
           }
         }
       }
@@ -3701,6 +3793,16 @@
         }
       }
     },
+    "Direction" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Направление"
+          }
+        }
+      }
+    },
     "Discard Changes" : {
       "localizations" : {
         "ru" : {
@@ -3841,12 +3943,42 @@
         }
       }
     },
+    "Drag" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивание"
+          }
+        }
+      }
+    },
+    "Drag %@ to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащить %1$@ на %2$@"
+          }
+        }
+      }
+    },
     "Drag a frame around the part of the screen the test should check" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обведите рамкой часть экрана, которую должен проверять тест"
+          }
+        }
+      }
+    },
+    "Drag From" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откуда"
           }
         }
       }
@@ -3877,6 +4009,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обведите рамкой часть окна приложения, чтобы проверить её."
+          }
+        }
+      }
+    },
+    "Drags that end outside the app’s window can’t be recorded. Drop inside the window." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивание, которое заканчивается за окном приложения, записать нельзя. Отпустите внутри окна."
           }
         }
       }
@@ -3931,12 +4073,32 @@
         }
       }
     },
+    "Drags from one place to another" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивает из одного места в другое"
+          }
+        }
+      }
+    },
     "Draw" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рисовать"
+          }
+        }
+      }
+    },
+    "Drop On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда"
           }
         }
       }
@@ -4645,6 +4807,22 @@
         }
       }
     },
+    "flow.drag.samePlace" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The drag ends where it starts. Choose another place to drop on."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивание заканчивается там же, где начинается. Выберите другое место, куда отпустить."
+          }
+        }
+      }
+    },
     "Folder" : {
       "localizations" : {
         "ru" : {
@@ -4911,6 +5089,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Объединяет блоки в раздел с названием"
+          }
+        }
+      }
+    },
+    "Hover" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведение"
           }
         }
       }
@@ -5658,6 +5846,16 @@
         }
       }
     },
+    "Lines" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки"
+          }
+        }
+      }
+    },
     "Link %@ of %@ to a block" : {
       "localizations" : {
         "ru" : {
@@ -5924,6 +6122,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переместить в Корзину"
+          }
+        }
+      }
+    },
+    "Moves the pointer onto an element and leaves it there, to show a tooltip or a menu that opens on hover." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наводит указатель на элемент и оставляет его там — чтобы показать подсказку или меню, которое открывается при наведении."
           }
         }
       }
@@ -7102,6 +7310,16 @@
         }
       }
     },
+    "Over an element" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Над элементом"
+          }
+        }
+      }
+    },
     "Overlay" : {
       "localizations" : {
         "ru" : {
@@ -7448,6 +7666,36 @@
         }
       }
     },
+    "Pixels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пиксели"
+          }
+        }
+      }
+    },
+    "Point at %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Навести на %@"
+          }
+        }
+      }
+    },
+    "Points at something without clicking" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наводит указатель без клика"
+          }
+        }
+      }
+    },
     "Position" : {
       "localizations" : {
         "ru" : {
@@ -7524,6 +7772,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нажимает сочетание клавиш"
+          }
+        }
+      }
+    },
+    "Presses on one place, moves while holding the button and lets go on another: to move, resize or drop something." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажимает в одном месте, ведёт с зажатой кнопкой и отпускает в другом — чтобы передвинуть, изменить размер или бросить что-то."
           }
         }
       }
@@ -8874,6 +9132,22 @@
         }
       }
     },
+    "run.action.noChange" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the screen didn’t change within %@ s after this step."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: экран не изменился за %2$@ с после этого шага."
+          }
+        }
+      }
+    },
     "Running" : {
       "localizations" : {
         "ru" : {
@@ -9190,6 +9464,170 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
+          }
+        }
+      }
+    },
+    "Scroll" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутка"
+          }
+        }
+      }
+    },
+    "Scroll down %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вниз на %@"
+          }
+        }
+      }
+    },
+    "Scroll down %@ over %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вниз на %1$@ над %2$@"
+          }
+        }
+      }
+    },
+    "Scroll left %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить влево на %@"
+          }
+        }
+      }
+    },
+    "Scroll left %@ over %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить влево на %1$@ над %2$@"
+          }
+        }
+      }
+    },
+    "Scroll right %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вправо на %@"
+          }
+        }
+      }
+    },
+    "Scroll right %@ over %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вправо на %1$@ над %2$@"
+          }
+        }
+      }
+    },
+    "Scroll up %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вверх на %@"
+          }
+        }
+      }
+    },
+    "Scroll up %@ over %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутить вверх на %1$@ над %2$@"
+          }
+        }
+      }
+    },
+    "scroll.down" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Down"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вниз"
+          }
+        }
+      }
+    },
+    "scroll.left" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влево"
+          }
+        }
+      }
+    },
+    "scroll.right" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вправо"
+          }
+        }
+      }
+    },
+    "scroll.up" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вверх"
+          }
+        }
+      }
+    },
+    "Scrolls the page or a list" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокручивает страницу или список"
           }
         }
       }
@@ -11462,6 +11900,16 @@
         }
       }
     },
+    "Turn off for a text-only model. Checks that send screenshots then stop with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключите для модели, которая читает только текст. Проверки, которые отправляют снимки экрана, тогда остановятся с сообщением."
+          }
+        }
+      }
+    },
     "Turn On" : {
       "localizations" : {
         "ru" : {
@@ -11478,6 +11926,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включение…"
+          }
+        }
+      }
+    },
+    "Turns the scroll wheel over the window or over an element, by lines or by pixels." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крутит колесо прокрутки над окном или над элементом — на строки или на пиксели."
           }
         }
       }
@@ -11552,6 +12010,16 @@
         }
       }
     },
+    "Understands pictures" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понимает картинки"
+          }
+        }
+      }
+    },
     "Undo" : {
       "localizations" : {
         "ru" : {
@@ -11568,6 +12036,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отменить шаг"
+          }
+        }
+      }
+    },
+    "Unit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Единицы"
           }
         }
       }
@@ -12038,6 +12516,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без пароля администратора"
+          }
+        }
+      }
+    },
+    "Without an element, the wheel turns over the middle of the window." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без элемента колесо крутится над серединой окна."
           }
         }
       }
@@ -14466,6 +14954,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Для %@ не выбрана модель. Выберите её в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.noPictures" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI model for %@ doesn’t understand pictures, so it can’t check this screen. Turn on “Understands pictures” in Settings → AI or pick another provider."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель ИИ для %@ не понимает картинки, поэтому не может проверить этот экран. Включите «Понимает картинки» в Настройках → ИИ или выберите другого провайдера."
           }
         }
       }
