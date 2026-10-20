@@ -5,17 +5,25 @@ import Synchronization
 
 /// The keyboard layout in use, so a key is written as what is printed on it for this person: the
 /// file names keys by their place on a US keyboard, which on another layout carries another letter.
-/// Views that show a key combination redraw when the layout is switched.
+/// Next to it, the layout macOS reads ⌘ shortcuts from: the latest Latin one. Views that show a key
+/// combination redraw when the layout is switched.
 final class ActiveKeyboard: Observable, Sendable {
   static let shared = ActiveKeyboard()
 
   private let registrar = ObservationRegistrar()
-  private let current = Mutex<Data?>(nil)
+  private let current = Mutex<(layout: Data?, latin: Data?)>((nil, nil))
 
   /// The layout's data for `UCKeyTranslate`; `nil` before `start()`.
   var layout: Data? {
     registrar.access(self, keyPath: \.layout)
-    return current.withLock { $0 }
+    return current.withLock { $0.layout }
+  }
+
+  /// The data of the Latin layout behind ⌘ shortcuts, which macOS spells in Latin letters on any
+  /// layout (⌘V in the Edit menu on a Russian one); `nil` before `start()`.
+  var latinLayout: Data? {
+    registrar.access(self, keyPath: \.latinLayout)
+    return current.withLock { $0.latin }
   }
 
   /// Reads the layout now and follows its changes. Called once, at launch, on the main thread.
@@ -27,8 +35,11 @@ final class ActiveKeyboard: Observable, Sendable {
   }
 
   private func update() {
-    let data = KeyboardLayout.data(of: TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue())
-    registrar.withMutation(of: self, keyPath: \.layout) { current.withLock { $0 = data } }
+    let layout = KeyboardLayout.data(of: TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue())
+    let latin = KeyboardLayout.data(of: TISCopyCurrentASCIICapableKeyboardLayoutInputSource().takeRetainedValue())
+    registrar.withMutation(of: self, keyPath: \.layout) {
+      registrar.withMutation(of: self, keyPath: \.latinLayout) { current.withLock { $0 = (layout, latin) } }
+    }
   }
 }
 

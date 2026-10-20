@@ -149,7 +149,9 @@ struct TestDetailView: View {
     } label: {
       Label {
         Text(row.map { Self.rowTitle(number: $0 + 1, label: rows[$0]) } ?? String(localized: "Data Rows: All \(rows.count)"))
-          .lineLimit(1)
+          // One line at the usual sizes; the largest ones wrap it rather than cut which rows are chosen.
+          .lineLimit(1...3)
+          .multilineTextAlignment(.center)
       } icon: {
         Image(systemName: "tablecells")
       }

@@ -138,6 +138,9 @@ final class BoardTestDocuments {
     return document
   }
 
+  /// The tests open on the board.
+  var open: [FlowDocument] { Array(documents.values) }
+
   /// Reads the tests again, for changes made elsewhere.
   func reload() {
     for document in documents.values { document.reload() }

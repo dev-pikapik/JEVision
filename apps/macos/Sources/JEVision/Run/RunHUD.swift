@@ -5,7 +5,9 @@ import SwiftUI
 
 /// A floating glass panel shown while the window is away: during a run or a recording. It stays
 /// above every app, never takes the focus from the app under test and keeps to a corner of the
-/// screen that window doesn't cover.
+/// screen that window doesn't cover. Never being the key window, it would draw its texts and
+/// controls as those of a window in the background, so its content is given the look of one in
+/// front; the buttons that carry a colour use `HUDButtonStyle`, as glass drops its tint here.
 @MainActor
 final class GlassPanel {
   private let panel: NSPanel
@@ -13,7 +15,7 @@ final class GlassPanel {
 
   /// `height` defaults to what `content` needs.
   init(_ content: some View, width: Double, height: Double? = nil) {
-    let view = FirstMouseHostingView(rootView: content)
+    let view = FirstMouseHostingView(rootView: content.environment(\.controlActiveState, .key))
     size = NSSize(width: width, height: height ?? view.fittingSize.height)
     panel = HUDPanel(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
@@ -120,9 +122,10 @@ struct RunHUD: View {
     let document = center.running?.document
     let (step, total) = Self.step(of: state, in: document)
     HStack(spacing: 8) {
-      Image(systemName: state.isWaitingForScreen ? "hourglass.circle.fill" : state.isPaused ? "pause.circle.fill" : "play.circle.fill")
+      let icon = Self.icon(of: state)
+      Image(systemName: icon.symbol)
         .font(.title2)
-        .foregroundStyle(state.isWaitingForScreen || state.isPaused ? .orange : .green)
+        .foregroundStyle(icon.color)
         .contentTransition(.symbolEffect(.replace))
         .accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 0) {
@@ -200,24 +203,22 @@ struct RunHUD: View {
         .adaptiveGlass(tint: .orange.opacity(0.35), in: .rect(cornerRadius: 12))
     }
 
-    HStack(spacing: 8) {
+    HUDButtonRow {
       if state.isPaused {
         Button("Resume", systemImage: "play.fill", action: center.resume)
-          .buttonStyle(.glassProminent)
+          .buttonStyle(HUDButtonStyle(tint: .accentColor))
       } else {
         Button("Pause", systemImage: "pause.fill", action: center.pause)
-          .buttonStyle(.glass)
           .disabled(state.isWaitingForScreen)
       }
       Button("Step", systemImage: "forward.frame.fill", action: center.step)
-        .buttonStyle(.glass)
         .disabled(state.isWaitingForScreen)
         .help(Text("Run one block, then pause"))
-      Spacer(minLength: 0)
+    } trailing: {
       Button("Stop", systemImage: "stop.fill", role: .destructive, action: center.stop)
-        .buttonStyle(.glass)
-        .tint(.red)
+        .buttonStyle(HUDButtonStyle(tint: .red))
     }
+    .buttonStyle(HUDButtonStyle())
     .labelStyle(.titleAndIcon)
 
     hints
@@ -411,6 +412,13 @@ struct RunHUD: View {
   static func step(of state: RunState, in document: FlowDocument?) -> (current: Int, total: Int) {
     let total = max(document?.order.count ?? 0, 1)
     return (min(state.done + 1, total), total)
+  }
+
+  /// The header's icon: a run going, one paused, or one held back until another lets go of the screen.
+  static func icon(of state: RunState) -> (symbol: String, color: Color) {
+    if state.isWaitingForScreen { return ("hourglass.circle.fill", .indigo) }
+    if state.isPaused { return ("pause.circle.fill", .orange) }
+    return ("play.circle.fill", .green)
   }
 
   /// What the run is doing, in a few words.

@@ -87,6 +87,8 @@ final class ProjectStore {
   /// Why the project's settings file can't be read.
   private(set) var settingsProblem: String?
 
+  /// The tests open on the board while it is shown; the board owns them.
+  @ObservationIgnored weak var boardDocuments: BoardTestDocuments?
   @ObservationIgnored private var watcher: FolderWatcher?
   @ObservationIgnored private var scanTask: Task<([ProjectItem], History), any Error>?
   @ObservationIgnored private var accessedURL: URL?
@@ -167,6 +169,10 @@ final class ProjectStore {
     model.onChange = { [weak self] in self?.blocksChanged() }
     return model
   }
+
+  /// The tests shown for editing, in the editor and on the board: a change of a test's file must not
+  /// overwrite what they show.
+  var openDocuments: [FlowDocument] { [document].compactMap { $0 } + (boardDocuments?.open ?? []) }
 
   /// A sheet model that copies the installed block `id` among the project's own blocks and opens the copy.
   func makeOwnBlockModel(of id: String) -> OwnBlockModel? {

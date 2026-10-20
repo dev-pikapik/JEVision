@@ -449,6 +449,28 @@ struct CommunityBlocksTests {
     #expect(runs(FlowDocument(url: other)) == "blocks/Sign in.block.json", "A test that isn't open switches")
   }
 
+  @Test func aTestOpenOnTheBoardWithChangesKeepsTheInstalledBlockToo() throws {
+    let theirs = try installed()
+    _ = try userTest(in: theirs, package: "")
+    let board = BoardTestDocuments()
+    let store = ProjectStore()
+    store.boardDocuments = board
+    let shown = board.document(of: "t.flow.json", in: theirs)
+    #expect(store.openDocuments.contains { $0 === shown }, "The board's tests count as open")
+    let before = try Data(contentsOf: shown.url)
+    var draft = try #require(shown.flow)
+    draft.name = "Draft"
+    shown.showDraft(draft)
+    #expect(shown.hasUnsavedChanges)
+
+    let model = OwnBlockModel(project: theirs, id: "com.anna.sign-in", name: "Sign in")
+    model.make(open: store.openDocuments)
+
+    #expect(model.made?.skipped == ["t.flow.json"], "The sheet names it")
+    #expect(try Data(contentsOf: shown.url) == before)
+    #expect(shown.flow?.name == "Draft", "The draft is still shown")
+  }
+
   @Test func aBlockThatNeedsAMissingBlockOffersToInstallIt() throws {
     let (mine, theirs) = try projects()
     _ = try exportBlockPackage(

@@ -20,6 +20,8 @@ struct RunsList: View {
             HealthView(test: test, health: testHealth(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)))
           } header: {
             Text("\(runs[0].report.test.isEmpty ? ProjectScanner.testName((test as NSString).lastPathComponent) : runs[0].report.test) · health")
+              .lineLimit(nil)
+              .fixedSize(horizontal: false, vertical: true)
           }
         }
       }
@@ -261,15 +263,9 @@ struct HealthView: View {
       }
       HealthBars(marks: health.recent)
       if let flaky = health.flaky {
-        Label {
-          Text(RunHistory.flakyEvidence(flaky))
-            .foregroundStyle(.secondary)
-        } icon: {
-          Image(systemName: RunStatus.flaky.symbol)
-            .foregroundStyle(RunStatus.flaky.color)
-        }
-        .font(.caption)
-        .fixedSize(horizontal: false, vertical: true)
+        Text("\(Text(Image(systemName: RunStatus.flaky.symbol)).foregroundStyle(RunStatus.flaky.color)) \(Text(verbatim: RunHistory.flakyEvidence(flaky)).foregroundStyle(.secondary))")
+          .font(.caption)
+          .fixedSize(horizontal: false, vertical: true)
       }
       if let point = health.failsMostAt {
         Text("Fails most often at \(place(point))")
@@ -291,6 +287,8 @@ struct HealthView: View {
       .font(.caption)
       .help(Text("Pass rate, durations, trend and where it fails, over every run of the test"))
     }
+    // A sidebar row keeps its text to one line unless told otherwise; these notes name blocks and dates.
+    .lineLimit(nil)
     .padding(.vertical, 4)
   }
 

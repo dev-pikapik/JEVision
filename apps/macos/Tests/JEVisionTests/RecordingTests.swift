@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import JEVisionCore
+import Synchronization
 import Testing
 
 @testable import JEVision
@@ -154,6 +155,19 @@ struct RecordingTests {
     r.focusMoved(to: password, frame: Self.tiles())
     r.focusMoved(to: password, frame: Self.tiles())
     #expect(Self.describe(r.steps) == ["secret MAIL_PASSWORD"])
+  }
+
+  @Test func aBurstOfPressesKeepsEveryCharacter() {
+    var r = Recording(appName: "TextEdit", opensApp: false)
+    let frame = Self.tiles()
+    // As a tool types: one key code for every letter, all at once, then a held key and a press
+    // that carries a whole string.
+    let presses =
+      "- молоко".map { KeyPress(code: 0, characters: String($0)) }
+      + [KeyPress(code: 0, characters: "о", isRepeat: true), KeyPress(code: 0, characters: "о", isRepeat: true)]
+      + [KeyPress(code: 0, characters: " и сыр")]
+    for press in presses { #expect(r.key(press, inApp: true, frame: frame, focus: nil) == .recorded) }
+    #expect(Self.describe(r.steps) == ["type - молокооо и сыр"])
   }
 
   @Test func shortcutsAndSpecialKeysArePressKeys() {
@@ -408,5 +422,82 @@ struct RecordingTests {
 
     undo.undo()
     #expect(!exists(files[0]))
+  }
+}
+
+/// The recorder between the event tap and the recording, with Accessibility made up.
+struct RecorderTests {
+  /// Which process of the app is in front and what has its keyboard, changed by a test while the
+  /// recorder asks.
+  final class Desk: Sendable {
+    let front = Mutex<pid_t?>(42)
+    let focus = Mutex(ElementInfo(role: "AXTextArea"))
+    /// How many times Accessibility was asked.
+    let asked = Mutex(0)
+
+    /// A recorder that finds Accessibility as slow as a busy app.
+    func recorder() -> Recorder {
+      Recorder(
+        app: "com.apple.TextEdit", appName: "TextEdit", opensApp: false, front: { self.front.withLock { $0 } },
+        focusedElement: { _ in
+          self.asked.withLock { $0 += 1 }
+          usleep(20_000)
+          return self.focus.withLock { $0 }
+        })
+    }
+  }
+
+  /// A press of key `code` typing `text`, as the event tap hands it over.
+  static func keyDown(_ text: String, code: CGKeyCode = 0) -> CGEvent {
+    let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true)!
+    event.flags = []
+    let units = Array(text.utf16)
+    event.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+    return event
+  }
+
+  static func type(_ text: String, into recorder: Recorder) {
+    for character in text {
+      recorder.receive(.keyDown, keyDown(String(character), code: character == "-" ? 27 : character == " " ? 49 : 0))
+    }
+  }
+
+  static func finish(_ recorder: Recorder) async -> Recording {
+    await withCheckedContinuation { done in recorder.finish { done.resume(returning: $0) } }
+  }
+
+  @Test func keysTypedFasterThanTheRecorderKeepsUpAllCount() async {
+    let desk = Desk()
+    let recorder = desk.recorder()
+    let text = String(repeating: "- молоко", count: 5)
+    Self.type(text, into: recorder)
+    // The person moves on to another app before the recorder has caught up.
+    desk.front.withLock { $0 = nil }
+    let recording = await Self.finish(recorder)
+    #expect(RecordingTests.describe(recording.steps) == ["type \(text)"])
+    // Presses that came in together share an answer instead of each waiting for its own.
+    #expect(desk.asked.withLock { $0 } < text.count / 2)
+  }
+
+  @Test func aPressCarryingAWholeStringKeepsAllOfIt() async {
+    let desk = Desk()
+    let recorder = desk.recorder()
+    let text = String(repeating: "- молоко", count: 4)
+    recorder.receive(.keyDown, Self.keyDown(text))
+    #expect(RecordingTests.describe(await Self.finish(recorder).steps) == ["type \(text)"])
+  }
+
+  @Test func keysPressedAfterAPasswordFieldTakesTheKeyboardStayOut() async {
+    let desk = Desk()
+    let recorder = desk.recorder()
+    Self.type("name", into: recorder)
+    desk.focus.withLock {
+      $0 = ElementInfo(role: "AXTextField", subrole: "AXSecureTextField", label: "Password")
+    }
+    Self.type("secret", into: recorder)
+    let steps = RecordingTests.describe(await Self.finish(recorder).steps)
+    // Some of the name may be taken for the password too, but none of the password for text.
+    #expect(steps.last == "secret TEXTEDIT_PASSWORD")
+    #expect(steps.dropLast().allSatisfy { $0.hasPrefix("type ") && "name".hasPrefix($0.dropFirst(5)) })
   }
 }

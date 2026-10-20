@@ -29,9 +29,15 @@ public final class Recorder: @unchecked Sendable {
   static let focusDelay: TimeInterval = 0.25
 
   private let app: String
+  /// The app's process when it has the keyboard, `nil` when another app is in front.
+  private let front: @Sendable () -> pid_t?
+  /// The control that has the keyboard in a process.
+  private let focusedElement: @Sendable (pid_t) -> ElementInfo?
   private let queue = DispatchQueue(label: "JEVision recorder", qos: .userInitiated)
   /// Touched only on `queue`.
   private var recording: Recording
+  /// The last answer to what has the keyboard, and when it was asked. Touched only on `queue`.
+  private var lastFocus: (pid: pid_t, asked: TimeInterval, element: ElementInfo?)?
 
   private let lock = NSLock()
   private var tap: EventTap?
@@ -44,8 +50,20 @@ public final class Recorder: @unchecked Sendable {
   private var onStop: (@Sendable () -> Void)?
 
   /// Records in the app with bundle id `app`; see `Recording.init` for the rest.
-  public init(app: String, appName: String, opensApp: Bool) {
+  public convenience init(app: String, appName: String, opensApp: Bool) {
+    self.init(
+      app: app, appName: appName, opensApp: opensApp,
+      front: { MacHands.runningApps(app).first(where: \.isActive)?.processIdentifier },
+      focusedElement: { Accessibility.focusedElement(pid: $0) })
+  }
+
+  init(
+    app: String, appName: String, opensApp: Bool, front: @escaping @Sendable () -> pid_t?,
+    focusedElement: @escaping @Sendable (pid_t) -> ElementInfo?
+  ) {
     self.app = app
+    self.front = front
+    self.focusedElement = focusedElement
     recording = Recording(appName: appName, opensApp: opensApp)
   }
 
@@ -131,7 +149,7 @@ public final class Recorder: @unchecked Sendable {
 
   // MARK: Input
 
-  private func receive(_ type: CGEventType, _ event: CGEvent) {
+  func receive(_ type: CGEventType, _ event: CGEvent) {
     guard !SyntheticInput.isSynthetic(event) else { return }
     let now = ProcessInfo.processInfo.systemUptime
     let state: (ignoring: Bool, frame: WindowFrame?) = lock.withLock {
@@ -142,9 +160,13 @@ public final class Recorder: @unchecked Sendable {
     // Of the other buttons only the middle one has a block to repeat it; the rest go back and forward.
     if type == .otherMouseDown || type == .otherMouseUp, event.getIntegerValueField(.mouseEventButtonNumber) != 2 { return }
     if type == .keyDown {
+      // A tool or an input method may put a whole string into one press: read all of it.
+      var units: [UniChar] = []
       var length = 0
-      var units = [UniChar](repeating: 0, count: 8)
-      event.keyboardGetUnicodeString(maxStringLength: units.count, actualStringLength: &length, unicodeString: &units)
+      repeat {
+        units = [UniChar](repeating: 0, count: max(16, units.count * 2))
+        event.keyboardGetUnicodeString(maxStringLength: units.count, actualStringLength: &length, unicodeString: &units)
+      } while length == units.count
       let flags = event.flags
       var modifiers: KeyPress.Modifiers = []
       if flags.contains(.maskCommand) { modifiers.insert(.command) }
@@ -155,7 +177,10 @@ public final class Recorder: @unchecked Sendable {
         code: CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode)),
         characters: String(utf16CodeUnits: units, count: length), modifiers: modifiers,
         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, time: now)
-      queue.async { [self] in key(press, ignoring: ignoring, frame: frame) }
+      // Whose press it is, decided now: keys typed faster than the queue handles them would
+      // otherwise count for whichever app is in front by the time their turn comes.
+      let front = ignoring ? nil : front()
+      queue.async { [self] in key(press, front: front, frame: frame) }
     } else if type == .leftMouseUp || type == .rightMouseUp || type == .otherMouseUp {
       let location = event.location
       let button = Self.button(of: type)
@@ -222,10 +247,10 @@ public final class Recorder: @unchecked Sendable {
     }
   }
 
-  private func key(_ press: KeyPress, ignoring: Bool, frame: WindowFrame?) {
-    let front = MacHands.runningApps(app).first(where: \.isActive)
-    let inApp = !ignoring && front != nil
-    let focus = front.flatMap { Accessibility.focusedElement(pid: $0.processIdentifier) }
+  /// `front`: the app's process that had the keyboard at the press, `nil` for another app.
+  private func key(_ press: KeyPress, front: pid_t?, frame: WindowFrame?) {
+    let inApp = front != nil
+    let focus = front.flatMap { focus(of: $0, at: press.time) }
     switch recording.key(press, inApp: inApp, frame: frame, focus: focus) {
     case .stop:
       lock.withLock { onStop }?()
@@ -237,11 +262,22 @@ public final class Recorder: @unchecked Sendable {
     }
   }
 
+  /// What has the keyboard of `pid` for a press at `time`. Any answer asked after the press is as
+  /// good as a fresh one, and closer to the press: keys typed faster than Accessibility answers
+  /// share one answer instead of each waiting for its own, and a password field that has the
+  /// keyboard at the press is still seen.
+  private func focus(of pid: pid_t, at time: TimeInterval) -> ElementInfo? {
+    if let last = lastFocus, last.pid == pid, last.asked >= time { return last.element }
+    let asked = ProcessInfo.processInfo.systemUptime
+    let element = focusedElement(pid)
+    lastFocus = (pid, asked, element)
+    return element
+  }
+
   /// A password field that takes the keyboard becomes a secret even though its keys stay hidden.
   private func checkFocusSoon() {
     queue.asyncAfter(deadline: .now() + Self.focusDelay) { [self] in
-      guard let front = MacHands.runningApps(app).first(where: \.isActive),
-        let focus = Accessibility.focusedElement(pid: front.processIdentifier), focus.isSecure
+      guard let front = front(), let focus = focusedElement(front), focus.isSecure
       else { return }
       let count = recording.steps.count
       recording.focusMoved(to: focus, frame: lock.withLock { frames.last?.frame })

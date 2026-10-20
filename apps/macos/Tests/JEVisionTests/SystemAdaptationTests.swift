@@ -142,10 +142,26 @@ struct KeyboardLayoutTests {
   }
 
   @Test func aKeyShowsWhatTheLayoutPrintsOnIt() throws {
-    #expect(KeyCombo.display("cmd+s", layout: try layout("US")) == "⌘S")
-    #expect(KeyCombo.display("cmd+s", layout: try layout("Russian")) == "⌘Ы")
-    #expect(KeyCombo.display("cmd+shift+s", layout: try layout("Dvorak")) == "⇧⌘O")
-    #expect(KeyCombo.display("cmd+.", layout: try layout("Russian")) == "⌘Ю")
+    #expect(KeyCombo.display("s", layout: try layout("US")) == "S")
+    #expect(KeyCombo.display("s", layout: try layout("Russian")) == "Ы")
+    #expect(KeyCombo.display("shift+s", layout: try layout("Dvorak")) == "⇧O")
+    #expect(KeyCombo.display("ctrl+.", layout: try layout("Russian")) == "⌃Ю")
+  }
+
+  @Test func aCommandShortcutShowsTheLatinLetterOnAnyLayout() throws {
+    let russian = try layout("Russian"), us = try layout("US")
+    #expect(KeyCombo.display("cmd+a", layout: russian, latinLayout: us) == "⌘A")
+    #expect(KeyCombo.display("cmd+v", layout: russian, latinLayout: us) == "⌘V")
+    #expect(KeyCombo.display("cmd+q", layout: russian, latinLayout: us) == "⌘Q")
+    #expect(KeyCombo.display("cmd+.", layout: russian, latinLayout: us) == "⌘.")
+    #expect(KeyCombo.display("cmd+shift+s", layout: russian, latinLayout: try layout("Dvorak")) == "⇧⌘O")
+    #expect(KeyCombo.display("cmd+s", layout: nil, latinLayout: nil) == "⌘S")
+  }
+
+  @Test func theLatinLayoutIsReadWithTheCurrentOne() {
+    let keyboard = ActiveKeyboard()
+    keyboard.start()
+    #expect(keyboard.latinLayout != nil)
   }
 
   @Test func specialKeysKeepTheirSystemSymbolsOnEveryLayout() throws {
