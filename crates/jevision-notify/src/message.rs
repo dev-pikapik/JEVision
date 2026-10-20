@@ -207,7 +207,8 @@ pub struct Notice {
 
 /// The message about `runs`, one batch of a project called `project`, when some channel of the
 /// settings asks for one. `unattended` says a schedule or CI started them. A stopped run, or a
-/// batch with one, sends nothing.
+/// batch with one, sends nothing; nor does a verdict only a newer version knows, which is never
+/// this version's own run.
 pub fn notice_for(
     settings: &NotificationSettings,
     project: &str,
@@ -218,7 +219,7 @@ pub fn notice_for(
         || (settings.unattended_only && !unattended)
         || runs
             .iter()
-            .any(|r| r.report().verdict == Verdict::Cancelled)
+            .any(|r| matches!(r.report().verdict, Verdict::Cancelled | Verdict::Unknown))
     {
         return None;
     }
@@ -251,6 +252,7 @@ fn single(finished: &Finished) -> Message {
         Verdict::Passed => ("Passed", Tone::Good),
         Verdict::Cancelled => ("Stopped", Tone::Neutral),
         Verdict::Blocked => ("Blocked", Tone::Neutral),
+        Verdict::Unknown => ("Unknown status", Tone::Neutral),
     };
     let mut facts = vec![
         ("Took".to_owned(), duration(report.duration_ms)),
