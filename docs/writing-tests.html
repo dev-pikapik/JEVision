@@ -122,10 +122,10 @@
   <tbody>
     <tr><td><a href="#openApp"><code>openApp</code></a></td><td>Actions</td><td>Opens the application under test, or another one</td><td><code>next</code></td></tr>
     <tr><td><a href="#openFile"><code>openFile</code></a></td><td>Actions</td><td>Opens files or web addresses</td><td><code>next</code></td></tr>
-    <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture or description, or a point, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
-    <tr><td><a href="#hover"><code>hover</code></a></td><td>Actions</td><td>Points at an element without clicking</td><td><code>next</code></td></tr>
-    <tr><td><a href="#drag"><code>drag</code></a></td><td>Actions</td><td>Drags from one place to another with either button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
-    <tr><td><a href="#scroll"><code>scroll</code></a></td><td>Actions</td><td>Turns the scroll wheel by lines or pixels</td><td><code>next</code></td></tr>
+    <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture or description, a point or the middle of an area, with any button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
+    <tr><td><a href="#hover"><code>hover</code></a></td><td>Actions</td><td>Points at an element without clicking, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
+    <tr><td><a href="#drag"><code>drag</code></a></td><td>Actions</td><td>Drags from one place to another with any button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
+    <tr><td><a href="#scroll"><code>scroll</code></a></td><td>Actions</td><td>Turns the scroll wheel by lines or pixels, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
     <tr><td><a href="#type"><code>type</code></a></td><td>Actions</td><td>Types text, optionally into a field</td><td><code>next</code></td></tr>
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
     <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
@@ -135,8 +135,8 @@
     <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Sub-tests</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
     <tr><td><a href="#useData"><code>useData</code></a></td><td>Data</td><td>Runs its body once for every row of a CSV table</td><td><code>body</code>, <code>next</code></td></tr>
     <tr><td><a href="#script"><code>script</code></a></td><td>Data and System</td><td>Runs a script with typed inputs and outputs</td><td><code>next</code></td></tr>
-    <tr><td><a href="#clipboard"><code>clipboard</code></a></td><td>Data and System</td><td>Puts text on the clipboard, reads it into a variable or checks it</td><td><code>next</code></td></tr>
-    <tr><td><a href="#dateTime"><code>dateTime</code></a></td><td>Data and System</td><td>Keeps the current date and time, moved if you like, as a variable</td><td><code>next</code></td></tr>
+    <tr><td><a href="#clipboard"><code>clipboard</code></a></td><td>Data and System</td><td>Puts text or a picture on the clipboard, reads its text, picture or files into a variable, or checks its text</td><td><code>next</code></td></tr>
+    <tr><td><a href="#dateTime"><code>dateTime</code></a></td><td>Data and System</td><td>Keeps the current date and time, moved if you like, in a language and time zone of your choice, as a variable</td><td><code>next</code></td></tr>
   </tbody>
 </table>
 </div>
@@ -174,15 +174,15 @@
 <pre><code>{ "type": "openFile", "files": ["note.txt"], "app": "com.apple.TextEdit", "next": "end" }</code></pre>
 
 <h3 id="click">click: click on the screen</h3>
-<p>Brings the application to the front and clicks a <a href="#target">target</a>: an element found by its picture or by its description in words, or a fixed point of the window.</p>
+<p>Brings the application to the front and clicks a <a href="#target">target</a>: an element found by its picture or by its description in words, a fixed point of the window or the middle of an area.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>target</code></td><td>Yes</td><td>Where to click: a <a href="#target">target</a>.</td></tr>
-    <tr><td><code>button</code></td><td>No</td><td><code>"left"</code> (default) or <code>"right"</code>.</td></tr>
+    <tr><td><code>button</code></td><td>No</td><td><code>"left"</code> (default), <code>"right"</code> or <code>"middle"</code>.</td></tr>
     <tr><td><code>double</code></td><td>No</td><td><code>true</code> for a double click. Default: <code>false</code>.</td></tr>
-    <tr><td><code>modifiers</code></td><td>No</td><td>Keys to hold down during the click: a list of <code>"ctrl"</code>, <code>"option"</code>, <code>"shift"</code> and <code>"cmd"</code>, each at most once. For ⌘-click, ⇧-click to select a range, or ⌥-click. Default: none. See <a href="#modifiers">Keys held during a click or drag</a>.</td></tr>
+    <tr><td><code>modifiers</code></td><td>No</td><td>Keys to hold down during the click: a list of <code>"ctrl"</code>, <code>"option"</code>, <code>"shift"</code> and <code>"cmd"</code>, each at most once. For ⌘-click, ⇧-click to select a range, or ⌥-click. Default: none. See <a href="#modifiers">Keys held while the mouse works</a>.</td></tr>
     <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait, after clicking, until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
   </tbody>
 </table>
@@ -197,11 +197,13 @@
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>target</code></td><td>Yes</td><td>What to point at: a <a href="#target">target</a>.</td></tr>
+    <tr><td><code>modifiers</code></td><td>No</td><td>Keys to hold down while the pointer moves, as for <a href="#click"><code>click</code></a>: for menus and buttons that show something else while a key is held, such as <code>"option"</code>. Default: none.</td></tr>
     <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "hover", "target": { "image": "refs/help-button.png" }, "next": "tooltip" }</code></pre>
+<pre><code>{ "type": "hover", "target": { "image": "refs/help-button.png" }, "next": "tooltip" }
+{ "type": "hover", "target": { "image": "refs/share-button.png" }, "modifiers": ["option"], "next": "other-choices" }</code></pre>
 
 <h3 id="drag">drag: drag and drop</h3>
 <p>Brings the application to the front, presses a mouse button on one <a href="#target">target</a>, moves to another in small steps holding the button down, and lets go there: to move a file to a folder, reorder a list, resize a panel or select text. Both places are found on the screen as it is before the drag. The button and the keys of <code>modifiers</code> are let go even when the run is stopped halfway. Recording turns a press, a move and a release inside the window into this block, with the keys that were held and the button that was used.</p>
@@ -211,7 +213,7 @@
   <tbody>
     <tr><td><code>from</code></td><td>Yes</td><td>Where to press: a <a href="#target">target</a>.</td></tr>
     <tr><td><code>to</code></td><td>Yes</td><td>Where to let go: a <a href="#target">target</a>. It can't be the same place as <code>from</code>.</td></tr>
-    <tr><td><code>button</code></td><td>No</td><td><code>"left"</code> (default) or <code>"right"</code>.</td></tr>
+    <tr><td><code>button</code></td><td>No</td><td><code>"left"</code> (default), <code>"right"</code> or <code>"middle"</code>.</td></tr>
     <tr><td><code>modifiers</code></td><td>No</td><td>Keys to hold down during the drag, as for <a href="#click"><code>click</code></a>: to copy instead of move (<code>"option"</code>), or to add to a selection (<code>"cmd"</code>). Default: none.</td></tr>
     <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait, after letting go, until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
   </tbody>
@@ -230,11 +232,13 @@
     <tr><td><code>amount</code></td><td>Yes</td><td>How far: a whole number from 1 to 10000.</td></tr>
     <tr><td><code>unit</code></td><td>No</td><td><code>"lines"</code> (default), as a mouse wheel turns, or <code>"pixels"</code>, as a trackpad scrolls.</td></tr>
     <tr><td><code>at</code></td><td>No</td><td>A <a href="#target">target</a> to scroll over, such as one list of several. Default: the middle of the window.</td></tr>
+    <tr><td><code>modifiers</code></td><td>No</td><td>Keys to hold down while the wheel turns, as for <a href="#click"><code>click</code></a>: with <code>"cmd"</code> most applications zoom instead of scrolling. Default: none.</td></tr>
     <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait, after scrolling, until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "scroll", "direction": "down", "amount": 5, "unit": "lines", "next": "footer" }</code></pre>
+<pre><code>{ "type": "scroll", "direction": "down", "amount": 5, "unit": "lines", "next": "footer" }
+{ "type": "scroll", "direction": "up", "amount": 3, "at": { "area": "0.2,0.2,0.6,0.6" }, "modifiers": ["cmd"], "next": "zoomed" }</code></pre>
 
 <h3 id="type">type: type text</h3>
 <p>Brings the application to the front and types text, as if on the keyboard. With <code>into</code>, it first clicks that field. A line break in the text (<code>\n</code> in JSON) presses Return and a tab (<code>\t</code>) presses Tab.</p>
@@ -277,6 +281,7 @@
 
 <h3 id="check">check: check the screen</h3>
 <p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
+<p>The reference picture can also be one the test made itself, such as a picture a <a href="#script"><code>script</code></a> or <a href="#clipboard"><code>clipboard</code></a> block kept: <code>"image": "${var.expected}"</code> names a variable of type <a href="#value-types"><code>image</code></a>. Such a picture is used as it is, with no <code>.dark</code> version, and it is never saved from the screen: if the file isn't there, the block fails.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
@@ -384,17 +389,19 @@
   <li><code>image</code>: a PNG file, written as an absolute path, a path from the home folder (<code>~/shot.png</code>) or a path relative to the test file. The script gets the absolute path, and the file has to exist when the block runs.</li>
   <li><code>area</code>: a rectangle in fractions (0 to 1) of the window, as <code>x,y,width,height</code>: <code>0.1,0.2,0.5,0.3</code> is a box starting a tenth from the left and a fifth from the top.</li>
 </ul>
-<p>JEVision checks the type wherever it can: a value written out in full has to fit its type, and an input that is just <code>${var.NAME}</code> has to take a variable of a type it can use (text takes any; another type takes the same type or text). A value that is only known when the test runs is checked then, and the block fails with a message that names the input.</p>
+<p>JEVision checks the type wherever it can: a value written out in full has to fit its type, and an input that is just <code>${var.NAME}</code> has to take a variable of a type it can use (text takes any; another type takes the same type or text). A value that is only known when the test runs is checked then, and the block fails with a message that names the input. The same goes for the picture or area of a <a href="#target">target</a>, the picture of a reference and the picture a <code>clipboard</code> block puts: <code>${var.NAME}</code> there has to be a variable of type <code>image</code> or <code>area</code>, or text.</p>
 
 <h3 id="clipboard">clipboard: put, read or check the clipboard</h3>
-<p>Works with the text on the Mac's clipboard. Put copies text there as if someone had pressed <kbd>⌘</kbd><kbd>C</kbd>, so the next <kbd>⌘</kbd><kbd>V</kbd> in the application pastes it; read keeps what is there as a variable; check waits until it matches. Only text is handled. <code>action</code> says which one the block is, and each has its own fields.</p>
+<p>Works with the Mac's clipboard. Put copies text or a picture there as if someone had pressed <kbd>⌘</kbd><kbd>C</kbd>, so the next <kbd>⌘</kbd><kbd>V</kbd> in the application pastes it; read keeps its text, its picture or the files copied in the Finder as a variable; check waits until its text matches. <code>action</code> says which one the block is, and each has its own fields.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>action</code></td><td>Yes</td><td><code>"put"</code>, <code>"read"</code> or <code>"check"</code>.</td></tr>
-    <tr><td><code>text</code></td><td>For <code>put</code></td><td>The text to put. May hold <a href="#placeholders">placeholders</a>, including secrets.</td></tr>
-    <tr><td><code>saveAs</code></td><td>For <code>read</code></td><td>Name of the variable that gets the text, used as <code>${var.NAME}</code>.</td></tr>
+    <tr><td><code>text</code></td><td>For <code>put</code>, or <code>image</code></td><td>The text to put. May hold <a href="#placeholders">placeholders</a>, including secrets.</td></tr>
+    <tr><td><code>image</code></td><td>For <code>put</code>, or <code>text</code></td><td>The picture to put: a PNG file, by a <a href="#paths">path</a> such as <code>refs/logo.png</code>, or <code>${var.NAME}</code> of a variable of type <a href="#value-types"><code>image</code></a>. A file that isn't a PNG fails the block.</td></tr>
+    <tr><td><code>saveAs</code></td><td>For <code>read</code></td><td>Name of the variable that gets what was read, used as <code>${var.NAME}</code>.</td></tr>
+    <tr><td><code>content</code></td><td>No, for <code>read</code></td><td>What to read: <code>"text"</code> (default); <code>"image"</code>, the picture, saved as a PNG file with the run and kept as a variable of type <a href="#value-types"><code>image</code></a> that holds its full path; or <code>"files"</code>, the full paths of the files copied, one to a line. The block fails if the clipboard holds no picture or no files.</td></tr>
     <tr><td><code>is</code></td><td>For <code>check</code></td><td><code>"equals"</code>, <code>"notEquals"</code>, <code>"contains"</code>, <code>"greaterThan"</code> or <code>"lessThan"</code>. The last two read both sides as numbers.</td></tr>
     <tr><td><code>to</code></td><td>For <code>check</code></td><td>What to compare with. May hold placeholders.</td></tr>
     <tr><td><code>timeout</code></td><td>For <code>check</code></td><td>How long to wait for the clipboard to match before failing the block.</td></tr>
@@ -403,22 +410,28 @@
 </div>
 <pre><code>{ "type": "clipboard", "action": "put", "text": "order ${data.id}", "next": "paste" }
 { "type": "clipboard", "action": "read", "saveAs": "copied", "next": "same" }
+{ "type": "clipboard", "action": "put", "image": "refs/logo.png", "next": "paste-logo" }
+{ "type": "clipboard", "action": "read", "content": "image", "saveAs": "pasted", "next": "compare" }
 { "type": "clipboard", "action": "check", "is": "contains", "to": "${var.copied}", "timeout": "5s", "next": "done" }</code></pre>
 <p>The clipboard is shared by everything on the Mac: put replaces what was there, and the text stays there after the run, so don't put secrets on it unless you have to. A text with a secret in it is hidden in reports. For this reason, a test with a clipboard block doesn't run at the same time as another test that uses the screen. If the application you copy from or paste into belongs to another vendor, macOS may ask once whether it may read the clipboard.</p>
 
 <h3 id="dateTime">dateTime: keep the date and time</h3>
-<p>Keeps the current date and time, in the Mac's time zone, as a variable, written the way you choose and moved forward or back if you like: a unique name for each run, yesterday's date to type into a form, a deadline a month ahead. It doesn't use the screen. Read it as <code>${var.NAME}</code> in a later block.</p>
+<p>Keeps the current date and time, in the Mac's time zone or one you name, as a variable, written the way you choose and moved forward or back if you like: a unique name for each run, yesterday's date to type into a form, a deadline a month ahead. It doesn't use the screen. Read it as <code>${var.NAME}</code> in a later block.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>saveAs</code></td><td>Yes</td><td>Name of the variable that gets the text.</td></tr>
-    <tr><td><code>format</code></td><td>No</td><td>How to write it: <code>%Y</code> year, <code>%m</code> month, <code>%d</code> day, <code>%H</code> hour (00–23), <code>%M</code> minute, <code>%S</code> second, <code>%B</code> month name, <code>%A</code> day name, <code>%s</code> seconds since 1970, and the others <code>strftime</code> knows. Month and day names are in English. Default: <code>"%Y-%m-%d %H:%M:%S"</code>, such as <code>2026-03-31 14:05:09</code>.</td></tr>
+    <tr><td><code>format</code></td><td>No</td><td>How to write it: <code>%Y</code> year, <code>%m</code> month, <code>%d</code> day, <code>%H</code> hour (00–23), <code>%M</code> minute, <code>%S</code> second, <code>%B</code> month name, <code>%A</code> day name, <code>%s</code> seconds since 1970, and the others <code>strftime</code> knows. Month and day names follow <code>language</code>: <code>%B</code> and <code>%b</code> the month in full and short, <code>%A</code> and <code>%a</code> the day in full and short; in Russian <code>%B</code> is the month as it is said after a day (<code>31 марта</code>) and <code>%OB</code> the month by itself (<code>март 2026</code>). With <code>^</code>, such as <code>%^B</code>, a name is in capitals. Default: <code>"%Y-%m-%d %H:%M:%S"</code>, such as <code>2026-03-31 14:05:09</code>.</td></tr>
+    <tr><td><code>language</code></td><td>No</td><td>The language of month and day names: <code>"en"</code> (English) or <code>"ru"</code> (Russian). Default: the language of the JEVision app; English when the test runs from the command line.</td></tr>
+    <tr><td><code>timeZone</code></td><td>No</td><td>The time zone to tell the time in, by its IANA name, such as <code>"Europe/Berlin"</code>, <code>"America/New_York"</code> or <code>"UTC"</code>. Default: the time zone of the Mac.</td></tr>
     <tr><td><code>shift</code></td><td>No</td><td><code>{ "amount": -2, "unit": "days" }</code>: a whole number, negative to go back, of <code>seconds</code>, <code>minutes</code>, <code>hours</code>, <code>days</code>, <code>weeks</code>, <code>months</code> or <code>years</code>. Moving by months or years keeps the day, or the last day of a shorter month.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "dateTime", "saveAs": "deadline", "format": "%d.%m.%Y", "shift": { "amount": 1, "unit": "months" }, "next": "fill" }</code></pre>
+<pre><code>{ "type": "dateTime", "saveAs": "deadline", "format": "%d.%m.%Y", "shift": { "amount": 1, "unit": "months" }, "next": "fill" }
+{ "type": "dateTime", "saveAs": "today", "format": "%A, %-d %B %Y", "language": "ru", "timeZone": "Europe/Moscow", "next": "type-date" }</code></pre>
+<p>On 31 March 2026, <code>%A, %-d %B %Y</code> is <code>Tuesday, 31 March 2026</code> in English and <code>вторник, 31 марта 2026</code> in Russian; <code>%OB %Y</code> is <code>March 2026</code> and <code>март 2026</code>. A <code>language</code> or <code>timeZone</code> JEVision doesn't know makes the test unreadable.</p>
 
 <h2 id="shapes">Targets, areas, durations and paths</h2>
 
@@ -428,7 +441,9 @@
   <li><code>{ "image": "refs/button.png" }</code>: the element that looks like this picture, found on the current screen. This keeps working when the window moves or changes size.</li>
   <li><code>{ "description": "the blue Save button" }</code>: the element described in words, found on the current screen by JEV (TypeSafe AI) and clicked in its middle. JEV must be set up in Settings → AI, even when another provider checks by meaning; the screenshot is masked before it is sent, as for <a href="checks.html">checks by meaning</a>, and finding needs model jev-1.14.0 or newer, or jev-latest.</li>
   <li><code>{ "point": { "x": 0.5, "y": 0.2 } }</code>: a fixed point, in fractions of the window from its top-left corner. <code>x</code> and <code>y</code> go from 0 to 1.</li>
+  <li><code>{ "area": "0.1,0.2,0.3,0.1" }</code>: the middle of an area, written <code>x,y,width,height</code> in fractions of the window as for the <a href="#value-types"><code>area</code></a> type, or <code>${var.NAME}</code> of a variable of that type, such as one a <a href="#script"><code>script</code></a> reports. A <code>drag</code> between two areas goes from the middle of one to the middle of the other. An area that isn't four numbers inside the window is an error, or fails the block when it comes from a variable.</li>
 </ul>
+<p>The picture can also be one the test made itself: <code>{ "image": "${var.shot}" }</code> names a variable of type <a href="#value-types"><code>image</code></a>, a PNG file given by an absolute path, a path from the home folder (<code>~/shot.png</code>) or a path relative to the test file. Such a picture is used as it is, with no <code>.dark</code> version.</p>
 
 <h3 id="rect">Area</h3>
 <p><code>{ "x": 0.8, "y": 0, "width": 0.2, "height": 0.1 }</code>: a rectangle in fractions (0 to 1) of the window or picture, from its top-left corner. Width and height are above 0, and the rectangle fits inside: <code>x + width</code> and <code>y + height</code> are at most 1. Areas are used by <a href="checks.html#areas">references</a>.</p>
@@ -437,7 +452,7 @@
 <p>Text with a whole number and a unit: <code>500ms</code>, <code>10s</code> or <code>2m</code>.</p>
 
 <h3 id="paths">Paths</h3>
-<p>Pictures, files, data tables and other tests are named by paths relative to the folder of the test file, written with <code>/</code>, such as <code>refs/inbox.png</code>. A path can't start with <code>/</code> or <code>~</code>, and the files must stay inside the project folder. Keeping paths relative means the tests work on any Mac that has the project.</p>
+<p>Pictures, files, data tables and other tests are named by paths relative to the folder of the test file, written with <code>/</code>, such as <code>refs/inbox.png</code>. A path can't start with <code>/</code> or <code>~</code>, and the files must stay inside the project folder. Only a picture named by a variable, <code>${var.NAME}</code>, may be anywhere on the Mac. Keeping paths relative means the tests work on any Mac that has the project.</p>
 
 <h2 id="placeholders">Placeholders</h2>
 <p>Some fields can hold values that are filled in when the test runs:</p>
@@ -456,8 +471,8 @@
 </ul>
 <p>Examples: <code>cmd+s</code>, <code>cmd+shift+s</code>, <code>return</code>, <code>ctrl+option+f5</code>. For a capital letter, add <code>shift</code>; to type text, use a <a href="#type"><code>type</code></a> block.</p>
 
-<h3 id="modifiers">Keys held during a click or drag</h3>
-<p>The <code>modifiers</code> of a <a href="#click"><code>click</code></a> or <a href="#drag"><code>drag</code></a> is a list of the keys held down while the mouse works: <code>"ctrl"</code> (⌃), <code>"option"</code> (⌥), <code>"shift"</code> (⇧) and <code>"cmd"</code> (⌘). In the file they are always written in the order <code>cmd</code>, <code>shift</code>, <code>option</code>, <code>ctrl</code>, and an empty list is left out. The keys are pressed before the mouse moves and let go after the button is up, even when the run is stopped.</p>
+<h3 id="modifiers">Keys held while the mouse works</h3>
+<p>The <code>modifiers</code> of a <a href="#click"><code>click</code></a>, <a href="#hover"><code>hover</code></a>, <a href="#drag"><code>drag</code></a> or <a href="#scroll"><code>scroll</code></a> is a list of the keys held down while the mouse works: <code>"ctrl"</code> (⌃), <code>"option"</code> (⌥), <code>"shift"</code> (⇧) and <code>"cmd"</code> (⌘). In the file they are always written in the order <code>cmd</code>, <code>shift</code>, <code>option</code>, <code>ctrl</code>, and an empty list is left out. The keys are pressed before the mouse moves and let go when the mouse is done, after the button is up, the pointer has arrived or the wheel has turned, even when the run is stopped.</p>
 
 <h2 id="problems">Problems JEVision reports</h2>
 <p>The editor, <code>jevision validate</code> and AI assistants all check tests the same way. Every problem names the block and the field it concerns. <strong>Errors</strong> stop a test from running; <strong>warnings</strong> don't.</p>
@@ -468,9 +483,11 @@
   <li>Two blocks with the same id; <code>start</code> or an arrow that names a block that doesn't exist.</li>
   <li>A circle of arrows outside a loop body, or a loop whose body is the loop block itself.</li>
   <li>A number out of range: <code>retries</code> 0–10, <code>times</code> 1–10000, <code>timeout</code> 1ms–60m, <code>threshold</code> above 0 and at most 1.</li>
-  <li>A point or area outside the window; an absolute path; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't a <code>.flow.json</code> test, a <code>.block.json</code> block or the <code>flow.json</code> of a package.</li>
+  <li>A point or area outside the window, or an <code>area</code> target that isn't written <code>x,y,width,height</code>; an absolute path; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't a <code>.flow.json</code> test, a <code>.block.json</code> block or the <code>flow.json</code> of a package.</li>
   <li>A <code>runTest</code> of a <a href="custom-blocks.html">block from the community</a> that isn't installed in the project, a <code>package</code> whose <code>version</code> doesn't look like <code>1.2.0</code> or whose <code>source</code> doesn't start with <code>https://</code>, or an <code>inputs</code> name that isn't letters, digits and <code>_</code>.</li>
   <li>A malformed placeholder, an <code>${env.NAME}</code> that no environment has, or a <code>${data.COLUMN}</code> the table doesn't have.</li>
+  <li>A picture, area or script input that is just <code>${var.NAME}</code> when every block that keeps NAME keeps a value of a type that doesn't fit (text always fits).</li>
+  <li>A <code>dateTime</code> <code>language</code> other than <code>en</code> or <code>ru</code>, or a <code>timeZone</code> that isn't an IANA name.</li>
   <li><code>threshold</code> without <code>"compare": "similar"</code>, or <code>expect</code> without <code>"compare": "meaning"</code>.</li>
   <li>A note file or link that is neither a plain file name nor a web address, or two replies of a note with the same id.</li>
 </ul>
