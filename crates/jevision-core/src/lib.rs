@@ -19,6 +19,7 @@ mod layout;
 mod merge;
 mod model;
 mod project;
+mod references;
 mod route;
 mod schedule;
 mod search;
@@ -59,6 +60,7 @@ pub use model::*;
 pub use project::{
     AiChoice, AiTask, FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined,
 };
+pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_settings};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
