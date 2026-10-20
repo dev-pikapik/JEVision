@@ -41,6 +41,16 @@
         }
       }
     },
+    "%@ attached a file or link" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: прикреплён файл или ссылка"
+          }
+        }
+      }
+    },
     "%@ can’t be read: %@" : {
       "localizations" : {
         "ru" : {
@@ -61,12 +71,52 @@
         }
       }
     },
+    "%@ changed a reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: изменён ответ"
+          }
+        }
+      }
+    },
+    "%@ changed the text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: изменён текст"
+          }
+        }
+      }
+    },
     "%@ declined to help: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ отказался помогать: %2$@"
+          }
+        }
+      }
+    },
+    "%@ deleted a reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: удалён ответ"
+          }
+        }
+      }
+    },
+    "%@ deleted the note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: заметка удалена"
           }
         }
       }
@@ -279,6 +329,36 @@
         }
       }
     },
+    "%@ made the note about a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: заметка теперь о блоке"
+          }
+        }
+      }
+    },
+    "%@ made the note about the folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: заметка теперь о папке"
+          }
+        }
+      }
+    },
+    "%@ made the note about the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: заметка теперь о тесте"
+          }
+        }
+      }
+    },
     "%@ on %@" : {
       "localizations" : {
         "ru" : {
@@ -309,6 +389,36 @@
         }
       }
     },
+    "%@ reopened the discussion" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: обсуждение открыто снова"
+          }
+        }
+      }
+    },
+    "%@ replied" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: добавлен ответ"
+          }
+        }
+      }
+    },
+    "%@ resolved the discussion" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: обсуждение решено"
+          }
+        }
+      }
+    },
     "%@ stopped. %@" : {
       "localizations" : {
         "en" : {
@@ -321,6 +431,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@: остановлено. %2$@"
+          }
+        }
+      }
+    },
+    "%@ took off a file or link" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: убран файл или ссылка"
           }
         }
       }
@@ -341,6 +461,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ изменился за это время, поэтому ничего не заменено."
+          }
+        }
+      }
+    },
+    "%@ wrote the note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: заметка написана"
           }
         }
       }
@@ -969,6 +1099,110 @@
         }
       }
     },
+    "%lld files and links" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file or link"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files and links"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл или ссылка"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла или ссылки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файлов и ссылок"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла или ссылки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files are over %@, %@ together." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file is over %@, %@ together."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files are over %@, %@ together."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл больше %@, вместе %@."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла больше %@, вместе %@."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файлов больше %@, вместе %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла больше %@, вместе %@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld items" : {
       "localizations" : {
         "en" : {
@@ -1066,6 +1300,58 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld строки"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld notes are about what you are deleting." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld note is about what you are deleting."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld notes are about what you are deleting."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заметка относится к тому, что вы удаляете."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заметки относятся к тому, что вы удаляете."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заметок относятся к тому, что вы удаляете."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заметки относятся к тому, что вы удаляете."
                 }
               }
             }
@@ -1235,6 +1521,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld пкс"
+          }
+        }
+      }
+    },
+    "%lld replies" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reply"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld replies"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ответ"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ответа"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ответов"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ответа"
+                }
+              }
+            }
           }
         }
       }
@@ -1811,6 +2149,16 @@
         }
       }
     },
+    "A block that is gone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок, которого уже нет"
+          }
+        }
+      }
+    },
     "A board of all tests appears once the project has a test. Make your own with the + button next to Boards." : {
       "localizations" : {
         "en" : {
@@ -2113,6 +2461,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ключ API для %@"
+          }
+        }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О чём"
+          }
+        }
+      }
+    },
+    "About the block %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О блоке «%@»"
+          }
+        }
+      }
+    },
+    "About the folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О папке"
+          }
+        }
+      }
+    },
+    "About the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О тесте"
           }
         }
       }
@@ -2607,6 +2995,16 @@
         }
       }
     },
+    "Add Note to Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить заметку к блоку"
+          }
+        }
+      }
+    },
     "Add Note to Board" : {
       "localizations" : {
         "en" : {
@@ -2619,6 +3017,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить заметку на доску"
+          }
+        }
+      }
+    },
+    "Add Note to This Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить заметку к этому блоку"
           }
         }
       }
@@ -2659,6 +3067,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить эталон…"
+          }
+        }
+      }
+    },
+    "Add Reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить ответ"
           }
         }
       }
@@ -3777,6 +4195,76 @@
         }
       }
     },
+    "Attach" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить"
+          }
+        }
+      }
+    },
+    "Attach Anyway" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё равно прикрепить"
+          }
+        }
+      }
+    },
+    "Attach File…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить файл…"
+          }
+        }
+      }
+    },
+    "Attach a file or a link to the note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить к заметке файл или ссылку"
+          }
+        }
+      }
+    },
+    "Attach a large file?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить крупный файл?"
+          }
+        }
+      }
+    },
+    "Attach and Track with Git LFS" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить и вести через Git LFS"
+          }
+        }
+      }
+    },
+    "Attach to Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикрепить к заметке"
+          }
+        }
+      }
+    },
     "Author" : {
       "localizations" : {
         "ru" : {
@@ -4767,6 +5255,16 @@
         }
       }
     },
+    "Change What the Note Is About" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить, о чём заметка"
+          }
+        }
+      }
+    },
     "Change anything you like. Secret values are replaced with •••• before sending." : {
       "localizations" : {
         "ru" : {
@@ -5499,6 +5997,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрыть после теста"
+          }
+        }
+      }
+    },
+    "Closed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыто"
+          }
+        }
+      }
+    },
+    "Closed pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрытый пул-реквест"
           }
         }
       }
@@ -6781,6 +7299,26 @@
         }
       }
     },
+    "Delete Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить заметку"
+          }
+        }
+      }
+    },
+    "Delete Reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить ответ"
+          }
+        }
+      }
+    },
     "Delete Row" : {
       "localizations" : {
         "ru" : {
@@ -6811,6 +7349,16 @@
         }
       }
     },
+    "Delete the notes about this block too?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить и заметки об этом блоке?"
+          }
+        }
+      }
+    },
     "Delete the schedule “%@”?" : {
       "localizations" : {
         "ru" : {
@@ -6827,6 +7375,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалить эту строку"
+          }
+        }
+      }
+    },
+    "Delete with the Notes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить вместе с заметками"
           }
         }
       }
@@ -7017,6 +7575,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отсоединить блок"
+          }
+        }
+      }
+    },
+    "Discussion" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обсуждение"
           }
         }
       }
@@ -7483,6 +8051,16 @@
         }
       }
     },
+    "Edit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Править"
+          }
+        }
+      }
+    },
     "Edit Areas Always Hidden" : {
       "localizations" : {
         "ru" : {
@@ -7571,6 +8149,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Редактировать эталон…"
+          }
+        }
+      }
+    },
+    "Edit Reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить ответ"
           }
         }
       }
@@ -8275,12 +8863,32 @@
         }
       }
     },
+    "File, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл, %@"
+          }
+        }
+      }
+    },
     "Files" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "Files and links" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы и ссылки"
           }
         }
       }
@@ -8893,6 +9501,16 @@
         }
       }
     },
+    "From this size, JEVision asks before it copies a file into a note: track it with Git LFS, attach it anyway or leave it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начиная с этого размера JEVision спрашивает, прежде чем копировать файл в заметку: вести его через Git LFS, всё равно прикрепить или не прикреплять."
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "ru" : {
@@ -8939,6 +9557,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Git и GitHub"
+          }
+        }
+      }
+    },
+    "Git doesn’t track this project, so there is no history to show." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git не ведёт этот проект, поэтому истории нет."
           }
         }
       }
@@ -9029,6 +9657,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHub не принял Client ID OAuth-приложения. Проверьте его и включён ли Device flow в настройках приложения на GitHub."
+          }
+        }
+      }
+    },
+    "GitHub didn’t answer for this one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub не ответил по этой задаче."
           }
         }
       }
@@ -9217,6 +9855,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скрыть мини-карту"
+          }
+        }
+      }
+    },
+    "Hide Resolved Notes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть решённые заметки"
           }
         }
       }
@@ -10090,6 +10738,16 @@
         }
       }
     },
+    "Keep the Notes on the Canvas" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить заметки на холсте"
+          }
+        }
+      }
+    },
     "Keep this Mac awake while remote access is on" : {
       "localizations" : {
         "ru" : {
@@ -10156,6 +10814,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Язык"
+          }
+        }
+      }
+    },
+    "Large file in a note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крупный файл в заметке"
+          }
+        }
+      }
+    },
+    "Large files make the project slow to download. Git LFS keeps them out of the project’s history; choosing it adds a line for each file to .gitattributes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крупные файлы замедляют загрузку проекта. Git LFS не пускает их в историю проекта; если выбрать его, для каждого файла в .gitattributes добавится строка."
+          }
+        }
+      }
+    },
+    "Large files make the project slow to download. Install Git LFS, in a project that uses git, to keep them out of its history. You can change what counts as large in Settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крупные файлы замедляют загрузку проекта. Чтобы не пускать их в историю, установите Git LFS в проекте, который ведётся в git. Что считать крупным, можно изменить в Настройках."
           }
         }
       }
@@ -10492,6 +11180,16 @@
         }
       }
     },
+    "Load Preview" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузить превью"
+          }
+        }
+      }
+    },
     "Local Network" : {
       "localizations" : {
         "ru" : {
@@ -10820,6 +11518,16 @@
         }
       }
     },
+    "Mark the discussion as settled" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметить обсуждение решённым"
+          }
+        }
+      }
+    },
     "Marked flaky in the test details." : {
       "localizations" : {
         "ru" : {
@@ -10866,6 +11574,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Средняя"
+          }
+        }
+      }
+    },
+    "Mentions this person" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Упоминает этого человека"
+          }
+        }
+      }
+    },
+    "Merged" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влито"
           }
         }
       }
@@ -11740,6 +12468,16 @@
         }
       }
     },
+    "No replies" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответов нет"
+          }
+        }
+      }
+    },
     "No rows yet. Each row runs the whole test once; add one with Add Row." : {
       "localizations" : {
         "ru" : {
@@ -11916,6 +12654,16 @@
         }
       }
     },
+    "Not committed yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не в коммите"
+          }
+        }
+      }
+    },
     "Not connected" : {
       "localizations" : {
         "ru" : {
@@ -12084,6 +12832,46 @@
         }
       }
     },
+    "Note text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст заметки"
+          }
+        }
+      }
+    },
+    "Note: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка: %@"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки"
+          }
+        }
+      }
+    },
+    "Notes of the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки теста"
+          }
+        }
+      }
+    },
     "Nothing" : {
       "localizations" : {
         "ru" : {
@@ -12100,6 +12888,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ничего не проверено"
+          }
+        }
+      }
+    },
+    "Nothing attached" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не прикреплено"
           }
         }
       }
@@ -12782,6 +13580,16 @@
         }
       }
     },
+    "Open in Browser" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в браузере"
+          }
+        }
+      }
+    },
     "Open in a new copy of the app" : {
       "localizations" : {
         "ru" : {
@@ -12818,6 +13626,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть на GitHub"
+          }
+        }
+      }
+    },
+    "Open pull request" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытый пул-реквест"
           }
         }
       }
@@ -12928,6 +13746,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть отчёт об этом прогоне"
+          }
+        }
+      }
+    },
+    "Open the test that has this note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть тест с этой заметкой"
           }
         }
       }
@@ -13220,6 +14048,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наложение"
+          }
+        }
+      }
+    },
+    "PDF, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PDF, %@"
           }
         }
       }
@@ -13754,6 +14592,16 @@
         }
       }
     },
+    "Picture, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка, %@"
+          }
+        }
+      }
+    },
     "Pixels" : {
       "localizations" : {
         "ru" : {
@@ -13880,6 +14728,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиши"
+          }
+        }
+      }
+    },
+    "Press Return to send, Option-Return for a new line." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Return — отправить, Option-Return — новая строка."
           }
         }
       }
@@ -14760,6 +15618,16 @@
         }
       }
     },
+    "Refresh Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить состояние"
+          }
+        }
+      }
+    },
     "Regression" : {
       "localizations" : {
         "ru" : {
@@ -14984,6 +15852,16 @@
         }
       }
     },
+    "Remove from Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из заметки"
+          }
+        }
+      }
+    },
     "Remove the price for %@" : {
       "localizations" : {
         "ru" : {
@@ -15116,6 +15994,26 @@
         }
       }
     },
+    "Reopen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть снова"
+          }
+        }
+      }
+    },
+    "Reopen Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть заметку снова"
+          }
+        }
+      }
+    },
     "Repeat" : {
       "localizations" : {
         "ru" : {
@@ -15192,6 +16090,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменяет то, что лежит в буфере обмена. После запуска текст там остаётся."
+          }
+        }
+      }
+    },
+    "Replies" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответы"
+          }
+        }
+      }
+    },
+    "Reply" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответить"
+          }
+        }
+      }
+    },
+    "Reply text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст ответа"
+          }
+        }
+      }
+    },
+    "Reply…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответ…"
           }
         }
       }
@@ -15282,6 +16220,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение размера"
+          }
+        }
+      }
+    },
+    "Resolve" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметить решённой"
+          }
+        }
+      }
+    },
+    "Resolve Note" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметить заметку решённой"
+          }
+        }
+      }
+    },
+    "Resolved" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Решено"
+          }
+        }
+      }
+    },
+    "Resolved by %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Решено: %@"
+          }
+        }
+      }
+    },
+    "Resolved by %@, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Решено: %@, %@"
           }
         }
       }
@@ -17692,6 +18680,16 @@
         }
       }
     },
+    "Sign in to GitHub in Settings to see its title and state." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите в GitHub в Настройках, чтобы видеть название и состояние."
+          }
+        }
+      }
+    },
     "Sign in with a valid password" : {
       "localizations" : {
         "ru" : {
@@ -17972,6 +18970,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Часть результатов CI не удалось загрузить: они слишком большие, повреждены или удалены."
+          }
+        }
+      }
+    },
+    "Someone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кто-то"
           }
         }
       }
@@ -19430,6 +20438,16 @@
         }
       }
     },
+    "The file couldn’t be attached" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прикрепить файл"
+          }
+        }
+      }
+    },
     "The file disappears" : {
       "localizations" : {
         "ru" : {
@@ -19456,6 +20474,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл лежит в вашем репозитории. Закоммитьте и отправьте его, и GitHub будет запускать тесты."
+          }
+        }
+      }
+    },
+    "The file is missing. It may not have been downloaded, or it was moved." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файла нет. Возможно, он не загружен или перемещён."
           }
         }
       }
@@ -19606,6 +20634,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Старый эталон в Корзине. «Правка › Отменить» вернёт картинку и настройки."
+          }
+        }
+      }
+    },
+    "The page has no preview." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У страницы нет превью."
           }
         }
       }
@@ -20642,6 +21680,16 @@
         }
       }
     },
+    "This folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта папка"
+          }
+        }
+      }
+    },
     "This isn’t a picture JEVision can show." : {
       "localizations" : {
         "en" : {
@@ -20744,6 +21792,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На этом сервере нет моделей, которые понимают картинки. Загрузите такую и нажмите «Обновить»."
+          }
+        }
+      }
+    },
+    "This test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест"
           }
         }
       }
@@ -21300,6 +22358,16 @@
         }
       }
     },
+    "Unknown author" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор неизвестен"
+          }
+        }
+      }
+    },
     "Unknown device" : {
       "localizations" : {
         "ru" : {
@@ -21822,6 +22890,16 @@
         }
       }
     },
+    "Video, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видео, %@"
+          }
+        }
+      }
+    },
     "View only" : {
       "localizations" : {
         "ru" : {
@@ -22160,6 +23238,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Что должно быть верно до начала теста"
+          }
+        }
+      }
+    },
+    "What the note is about" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О чём заметка"
+          }
+        }
+      }
+    },
+    "What the note is about. A note about a block moves with it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О чём заметка. Заметка о блоке перемещается вместе с ним."
           }
         }
       }
@@ -22524,6 +23622,16 @@
         }
       }
     },
+    "Write a web address that starts with http:// or https://." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введите веб-адрес, который начинается с http:// или https://."
+          }
+        }
+      }
+    },
     "Write four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3." : {
       "localizations" : {
         "ru" : {
@@ -22620,6 +23728,16 @@
         }
       }
     },
+    "Written by %@, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор: %@, %@"
+          }
+        }
+      }
+    },
     "Years" : {
       "localizations" : {
         "ru" : {
@@ -22672,6 +23790,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вы и сервер изменили одни и те же файлы. Выберите, что оставить, — ничего не изменится, пока вы их не объедините."
+          }
+        }
+      }
+    },
+    "You can use Markdown: lists, links, bold and italic text." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можно использовать Markdown: списки, ссылки, полужирный и курсивный текст."
           }
         }
       }
@@ -24016,6 +25144,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот тест ни разу не смотрит на экран, поэтому не заметит неверный результат. Добавьте блок «Проверка»."
+          }
+        }
+      }
+    },
+    "flow.note.attachment.invalid" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В заметке «%@» есть «%@», а это не имя файла и не веб-адрес."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The note “%@” has “%@”, which isn’t a file name or a web address."
+          }
+        }
+      }
+    },
+    "flow.note.reply.duplicateId" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В заметке «%@» два ответа с одним именем «%@»."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The note “%@” has two replies named “%@”."
+          }
+        }
+      }
+    },
+    "flow.note.unknownBlock" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка «%@» относится к блоку «%@», но такого блока нет."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The note “%@” is about the block “%@”, but there is no such block."
           }
         }
       }
@@ -27298,6 +28474,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписание «%@»: тесты не прошли"
+          }
+        }
+      }
+    },
+    "“%@” is %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — %@."
+          }
+        }
+      }
+    },
+    "“%@” is a folder. Attach the files in it instead." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — папка. Прикрепите файлы из неё."
           }
         }
       }

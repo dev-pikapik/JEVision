@@ -642,7 +642,9 @@ struct CanvasKeyboardTests {
   @Test func diffsNotesAndFramesOfTheCanvas() throws {
     var before = try loadFlow(json: Self.branches)
     before.canvas.notes = [
-      Note(id: "n1", text: "Old", author: "Ann", time: "", rect: Rect(x: 0, y: 0, width: 200, height: 100))
+      Note(
+        id: "n1", text: "Old", author: "Ann", time: "", anchor: .test, attachments: [], replies: [], resolved: nil,
+        rect: Rect(x: 0, y: 0, width: 200, height: 100))
     ]
     var after = before
     after.canvas.notes[0].text = "New"
@@ -651,9 +653,14 @@ struct CanvasKeyboardTests {
     #expect(diff.notes == [BlockChange(id: "n1", kind: .changed, fields: ["text"])])
     #expect(diff.sections == [BlockChange(id: "s1", kind: .added, fields: [])])
     #expect(diff.testFields.isEmpty)
+    after.canvas.notes[0].resolved = Resolved(by: "Ann", time: "2026-01-01T00:00:00Z")
+    after.canvas.notes[0].replies = [Reply(id: "r1", author: "Bo", time: "", text: "ok")]
+    #expect(
+      diffFlows(before: before, after: after).notes
+        == [BlockChange(id: "n1", kind: .changed, fields: ["text", "replies", "resolved"])])
     #expect(FlowDiffView.marks(diff.sections, on: .before).isEmpty, "An added frame isn’t on the old version")
     #expect(FlowDiffView.marks(diff.notes, on: .before) == ["n1": DiffMark(.changed)])
-    for field in ["text", "title", "author", "position", "size"] {
+    for field in ["text", "title", "author", "position", "size", "anchor", "attachments", "replies", "resolved"] {
       #expect(FlowDiffView.fieldName(field) != field)
     }
   }

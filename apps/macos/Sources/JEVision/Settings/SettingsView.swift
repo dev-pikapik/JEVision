@@ -218,6 +218,7 @@ struct SettingsItem: Identifiable {
       SettingsItem(tab: .general, id: "runPausesOnMouse", title: String(localized: "Pause when you move the mouse")),
       SettingsItem(tab: .general, id: "runEscapeStops", title: String(localized: "Stop with Esc Esc")),
       SettingsItem(tab: .general, id: "snapToGrid", title: String(localized: "Snap to grid")),
+      SettingsItem(tab: .general, id: "noteLargeFile", title: String(localized: "Large file in a note")),
       SettingsItem(tab: .ai, id: "provider", title: String(localized: "Provider")),
       SettingsItem(tab: .ai, id: "localOnly", title: String(localized: "Only models on this Mac")),
       SettingsItem(tab: .ai, id: "pictures", title: String(localized: "Understands pictures")),

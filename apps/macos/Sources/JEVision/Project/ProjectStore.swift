@@ -210,7 +210,16 @@ final class ProjectStore {
     if !caseOnly, FileManager.default.fileExists(atPath: target.path) {
       throw CocoaError(.fileWriteFileExists, userInfo: [NSFilePathErrorKey: target.path])
     }
+    let assets = noteAssets(of: item)
     try FileManager.default.moveItem(at: item.url, to: target)
+    if let assets {
+      do {
+        try FileManager.default.moveItem(at: assets, to: Self.noteAssetsURL(of: target))
+      } catch {
+        try? FileManager.default.moveItem(at: target, to: item.url)
+        throw error
+      }
+    }
     if let text = try? String(contentsOf: target, encoding: .utf8), var flow = try? loadFlow(json: text) {
       flow.name = name
       try? saveFlow(flow: flow).write(to: target, atomically: true, encoding: .utf8)
@@ -218,6 +227,18 @@ final class ProjectStore {
     let id = item.parentPath.isEmpty ? target.lastPathComponent : item.parentPath + "/" + target.lastPathComponent
     boards.renamed(item.id, to: id)
     if selection == item.id { selection = id }
+  }
+
+  /// The folder with the files that come with the notes of test `item`, when it has one: it goes
+  /// with the test.
+  private func noteAssets(of item: ProjectItem) -> URL? {
+    guard item.kind == .test else { return nil }
+    let folder = Self.noteAssetsURL(of: item.url)
+    return FileManager.default.fileExists(atPath: folder.path) ? folder : nil
+  }
+
+  private static func noteAssetsURL(of test: URL) -> URL {
+    URL(filePath: noteAssetsFolder(test: test.path(percentEncoded: false)), directoryHint: .isDirectory)
   }
 
   /// Shows the board `name` in the center.
@@ -229,7 +250,9 @@ final class ProjectStore {
   }
 
   func moveToTrash(_ item: ProjectItem) throws {
+    let assets = noteAssets(of: item)
     try FileManager.default.trashItem(at: item.url, resultingItemURL: nil)
+    if let assets { try? FileManager.default.trashItem(at: assets, resultingItemURL: nil) }
     if selection == item.id { selection = nil }
   }
 

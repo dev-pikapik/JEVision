@@ -309,9 +309,7 @@ struct BoardNoteView: View {
       if text.isEmpty {
         Text("Double-click to write a note").foregroundStyle(.secondary)
       } else {
-        ForEach(Array(text.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
-          Self.line(line)
-        }
+        MarkdownText(text: text)
       }
     }
     .font(.body)
@@ -325,39 +323,6 @@ struct BoardNoteView: View {
         .strokeBorder(isPicked ? AnyShapeStyle(.tint) : AnyShapeStyle(color ?? Color(nsColor: .separatorColor)), lineWidth: isPicked ? 2 : 1)
     )
     .shadow(color: .black.opacity(0.06), radius: 7, y: 4)
-  }
-
-  @ViewBuilder static func line(_ line: String) -> some View {
-    let trimmed = line.trimmingCharacters(in: .whitespaces)
-    if let heading = trimmed.firstMatch(of: /^(#{1,6})\s+(.*)$/) {
-      let size: [Font] = [.title, .title2, .title3, .headline, .headline, .headline]
-      inline(String(heading.2)).font(size[heading.1.count - 1].weight(.semibold))
-    } else if let task = trimmed.firstMatch(of: /^[-*+]\s+\[([ xX])\]\s+(.*)$/) {
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
-        Image(systemName: task.1 == " " ? "square" : "checkmark.square.fill")
-          .foregroundStyle(task.1 == " " ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
-        inline(String(task.2)).strikethrough(task.1 != " ")
-      }
-    } else if let item = trimmed.firstMatch(of: /^(?:[-*+]|\d+[.)])\s+(.*)$/) {
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
-        Text(verbatim: trimmed.first?.isNumber == true ? String(trimmed.prefix { $0 != " " }) : "•")
-          .foregroundStyle(.secondary)
-        inline(String(item.1))
-      }
-    } else if trimmed.hasPrefix(">") {
-      inline(String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces))
-        .foregroundStyle(.secondary)
-        .padding(.leading, 10)
-        .overlay(alignment: .leading) { Capsule().fill(.quaternary).frame(width: 3) }
-    } else {
-      inline(line)
-    }
-  }
-
-  private static func inline(_ text: String) -> Text {
-    let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-    if let styled = try? AttributedString(markdown: text, options: options) { return Text(styled) }
-    return Text(verbatim: text)
   }
 }
 
