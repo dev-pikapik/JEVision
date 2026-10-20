@@ -26,7 +26,7 @@ It is written in Rust (the core: file format, validation, runner, reports, MCP s
 - `jevision validate <tests>`: report errors and warnings.
 - `jevision fmt <tests> [--check]`: rewrite files in canonical form.
 - `jevision schedule run <project>`: run the project's schedules that are due.
-- `jevision mcp [--project DIR]`: Model Context Protocol server over standard input and output.
+- `jevision mcp [--project DIR]`: Model Context Protocol server over standard input and output. `jevision mcp --pair LINK` pairs this computer with another Mac and `jevision mcp --remote MAC` serves an assistant with that Mac's tests (`--forget MAC` removes it).
 
 ## MCP tools
 `list_tests`, `read_test`, `write_test`, `add_blocks`, `remove_block`, `validate_test`, `list_block_types`, `run_test`, `get_run`, `stop_run`, `get_report`, `screenshot`. Running tests and screenshots are off until the user turns them on in Settings → AI → Assistants. Each run an assistant starts is confirmed by the user in an alert in the app, unless they turned that off; no answer within a minute is a refusal. The app lists the assistants that connected.

@@ -65,6 +65,7 @@
     <li><a href="#connect">Connect an assistant</a></li>
     <li><a href="#allowed">What assistants may do</a></li>
     <li><a href="#asking-first">Asking first, and who connected</a></li>
+    <li><a href="#remote">From another Mac</a></li>
     <li><a href="#tools">Tools</a></li>
     <li><a href="#example">An example</a></li>
   </ul>
@@ -111,6 +112,22 @@
   <li>The question is asked by JEVision, not by the assistant, so an assistant can't answer it for you.</li>
 </ul>
 <p>Under <strong>Connected Assistants</strong> in the same place, the app lists each assistant that connected: its name and version, whether it is connected now, when it first connected and the last thing it did, such as “ran a test, 2 minutes ago”. <strong>Forget the Ones Not Connected</strong> clears the rest of the list. Assistants appear there after their first call; an assistant that was never started shows nothing.</p>
+
+<h2 id="remote">From another Mac</h2>
+<p>An assistant doesn't have to run on the Mac that runs the tests. Say the tests and the apps are on a Mac in the office, and you work with Claude on your laptop: the assistant starts <code>jevision mcp --remote</code> on the laptop, and that command talks to JEVision on the office Mac over an end-to-end encrypted connection. The tools, the switches and the questions are the ones of the office Mac.</p>
+<ol>
+  <li>On the Mac with the tests, open <strong>Settings → iPhone &amp; Remote</strong> and turn on <strong>Allow remote access</strong>.</li>
+  <li>Under <strong>Add</strong>, choose <strong>Assistant on another computer</strong>. JEVision shows a command with a one-time code. The code works once, for five minutes.</li>
+  <li>On the other computer, <a href="getting-started.html#cli">install the command-line tool</a> and run that command in Terminal. It looks like <code>jevision mcp --pair 'jevision://assistant?…'</code>. The computer is now paired, and the Mac shows it under <strong>Paired devices</strong> as an assistant.</li>
+  <li>In the settings of your assistant on the other computer, add JEVision as an MCP server with <code>jevision mcp --remote "Office Mac"</code>, using the name of the Mac as the app shows it. The app shows the exact line to copy. The assistant gets the project open in JEVision on that Mac; <code>--project <var>name</var></code> names it, and the call is refused when another project is open there.</li>
+</ol>
+<p>What the assistant may do is decided on the Mac with the tests:</p>
+<ul>
+  <li>Each paired assistant has its own <strong>Assistant</strong> switch under <strong>Paired devices</strong>. Turn it off, or choose <strong>Disconnect</strong>, and the assistant is cut off at once and what it started stops. To use it again, pair it with a new code. Without that switch an assistant can't use any tool.</li>
+  <li>Running tests, screenshots and <a href="#asking-first">asking first</a> follow <strong>Settings → AI → Assistants</strong> on that Mac, exactly as for an assistant on the same Mac. The alert shows from which computer the call came, and the list of connected assistants says “Over the network”.</li>
+  <li>The screen of that Mac must be unlocked for a run, and JEVision must be open and awake. Otherwise the assistant is told why and nothing is clicked.</li>
+</ul>
+<p>Nothing is opened on the router. The two computers find each other directly or through a relay that can't read the traffic, the same way an <a href="iphone.html">iPhone</a> does. The other computer keeps its key in its Keychain, and the Mac keeps only the public part. To remove a Mac from the other computer, run <code>jevision mcp --forget "Office Mac"</code>.</p>
 
 <h2 id="tools">Tools</h2>
 <p>Every path is relative to the project folder, such as <code>login/sign-in.flow.json</code>. Fields marked “required” must be given; the rest are optional.</p>

@@ -717,7 +717,7 @@ failure, and look through a project's run history.
 - **Privacy.** Tests, pictures and secrets stay on the Mac; the iPhone keeps only the list of
   paired Macs. Each iPhone signs in with its own key from the Secure Enclave, over an end-to-end
   encrypted connection, directly or through a relay that can't read it. The Mac lists every
-  paired iPhone and can revoke it at once.
+  paired iPhone and can disconnect it at once.
 
 The app isn't in the App Store yet: build it from [`apps/ios`](apps/ios/README.md), which also
 explains building for the Simulator.
