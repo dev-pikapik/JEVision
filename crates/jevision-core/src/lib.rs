@@ -7,6 +7,7 @@
 mod batch;
 mod board;
 mod canvas;
+mod ci;
 mod data;
 mod decode;
 mod diff;
@@ -32,6 +33,10 @@ pub use board::{
     CARD_HEIGHT, CARD_WIDTH, FRAME_HEADER, LaidBoardEdge, LaidNode,
 };
 pub use canvas::CanvasItem;
+pub use ci::{
+    CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, ci_workflow, ci_workflow_text, repository_root,
+    write_ci_workflow,
+};
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
