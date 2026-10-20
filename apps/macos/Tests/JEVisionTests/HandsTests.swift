@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import CoreMedia
 import CoreVideo
 import Foundation
 import JEVisionCore
@@ -372,6 +373,22 @@ struct RunVideoTests {
         #expect(chroma[y * chromaRow + x] == (covered ? painted : 200), "chroma (\(x), \(y))")
       }
     }
+  }
+
+  @Test func theFirstPictureStandsInFromTheStartOfTheVideo() throws {
+    var made: CVPixelBuffer?
+    CVPixelBufferCreate(nil, 4, 4, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &made)
+    let image = try #require(made)
+    var format: CMVideoFormatDescription?
+    CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: image, formatDescriptionOut: &format)
+    let late = try CMSampleBuffer(
+      imageBuffer: image, formatDescription: try #require(format),
+      sampleTiming: CMSampleTimingInfo(
+        duration: .invalid, presentationTimeStamp: CMTime(value: 5, timescale: 1), decodeTimeStamp: .invalid))
+
+    let first = try #require(RunVideo.picture(late, at: CMTime(value: 2, timescale: 1)))
+    #expect(first.presentationTimeStamp == CMTime(value: 2, timescale: 1))
+    #expect(first.imageBuffer === image)
   }
 
   @Test func paintLeavesOutPicturesOfAnotherFormat() throws {
