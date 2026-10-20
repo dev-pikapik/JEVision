@@ -110,7 +110,10 @@ impl Agents {
         if let Some(session) = self.lock().as_mut() {
             let calls = session.record["calls"].as_u64().unwrap_or_default() + 1;
             session.record["calls"] = json!(calls);
-            session.record["lastCall"] = json!({ "tool": tool, "at": unix(SystemTime::now()) });
+            let now = SystemTime::now();
+            // Calls a moment apart share a second; the microseconds tell which came last.
+            session.record["lastCall"] =
+                json!({ "tool": tool, "at": unix(now), "atMicros": unix_micros(now) });
             session.save();
         }
     }
@@ -260,7 +263,8 @@ pub struct AssistantRequest {
 #[uniffi::export]
 pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
     let now = SystemTime::now();
-    let mut found: Vec<ConnectedAssistant> = Vec::new();
+    // Each assistant with when its last call came, in Unix microseconds.
+    let mut found: Vec<(ConnectedAssistant, Option<i64>)> = Vec::new();
     for (path, modified, record) in sessions(Path::new(&folder)) {
         let age = now.duration_since(modified).unwrap_or_default();
         if age > KEEP {
@@ -279,13 +283,17 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
                 .to_owned(),
             at: c.get("at").and_then(Value::as_i64).unwrap_or_default(),
         });
-        match found.iter_mut().find(|a| a.name == text("name")) {
-            Some(a) => {
+        let call_at = record["lastCall"]["atMicros"]
+            .as_i64()
+            .or_else(|| record["lastCall"]["at"].as_i64().map(|s| s * 1_000_000));
+        match found.iter_mut().find(|(a, _)| a.name == text("name")) {
+            Some((a, latest)) => {
                 a.first_connected_at = a.first_connected_at.min(started);
                 a.connected |= connected;
                 a.calls += calls;
-                if last_call.as_ref().map(|c| c.at) > a.last_call.as_ref().map(|c| c.at) {
+                if call_at > *latest {
                     a.last_call = last_call;
+                    *latest = call_at;
                 }
                 if started > a.last_connected_at {
                     a.last_connected_at = started;
@@ -293,18 +301,22 @@ pub fn connected_assistants(folder: String) -> Vec<ConnectedAssistant> {
                     a.version = text("version");
                 }
             }
-            None => found.push(ConnectedAssistant {
-                name: text("name"),
-                title: text("title"),
-                version: text("version"),
-                first_connected_at: started,
-                last_connected_at: started,
-                connected,
-                calls,
-                last_call,
-            }),
+            None => found.push((
+                ConnectedAssistant {
+                    name: text("name"),
+                    title: text("title"),
+                    version: text("version"),
+                    first_connected_at: started,
+                    last_connected_at: started,
+                    connected,
+                    calls,
+                    last_call,
+                },
+                call_at,
+            )),
         }
     }
+    let mut found: Vec<ConnectedAssistant> = found.into_iter().map(|(a, _)| a).collect();
     found.sort_by(|a, b| {
         (b.connected, b.last_connected_at, &a.name).cmp(&(
             a.connected,
@@ -436,6 +448,12 @@ fn unix(time: SystemTime) -> i64 {
     time.duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs() as i64
+}
+
+fn unix_micros(time: SystemTime) -> i64 {
+    time.duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_micros() as i64
 }
 
 fn unix_ms(time: SystemTime) -> i64 {
