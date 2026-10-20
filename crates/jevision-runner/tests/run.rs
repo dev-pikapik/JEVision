@@ -1219,6 +1219,44 @@ fn environment_values_and_one_data_row() {
 }
 
 #[test]
+fn a_condition_can_branch_on_the_environment_the_test_runs_in() {
+    let p = Project::new();
+    p.write(
+        "jevision.environments.json",
+        r#"{"format":1,"environments":{"staging":{"HOST":"s"},"prod":{"HOST":"p"},"named":{"ENVIRONMENT":"mine"}}}"#,
+    )
+    .test(
+        r#""branch":{"type":"if","value":{"of":"${env.ENVIRONMENT}","is":"equals","to":"prod"},"then":"live","else":"safe"},
+           "live":{"type":"type","text":"live ${env.ENVIRONMENT}"},
+           "safe":{"type":"type","text":"safe ${env.ENVIRONMENT}"}"#,
+        "branch",
+        0,
+    );
+    for (environment, typed, shown) in [
+        ("prod", "live prod", "prod"),
+        ("staging", "safe staging", "staging"),
+        ("named", "safe mine", "mine"),
+    ] {
+        let hands = Fake::new(solid([0, 0, 0]));
+        let options = RunOptions {
+            environment: Some(environment.into()),
+            ..options()
+        };
+        let (run, events) = run_with(&p, &hands, RunControl::new(), &options);
+        assert_eq!(run.report.verdict, Verdict::Passed, "{environment}");
+        assert_eq!(hands.typed(), [typed]);
+        assert!(events.iter().any(|e| matches!(e,
+            Event::StepStarted { variables, .. } if variables["env.ENVIRONMENT"] == shown)));
+    }
+
+    // Without an environment the name is empty, and nothing else about the run changes.
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, _) = run_with(&p, &hands, RunControl::new(), &options());
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(hands.typed(), ["safe "]);
+}
+
+#[test]
 fn cancel_stops_a_long_wait_at_once() {
     let p = Project::new();
     p.write("refs/ok.png", solid([0, 255, 0])).test(

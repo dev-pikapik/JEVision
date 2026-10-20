@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ = %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ = %2$@"
+          }
+        }
+      }
+    },
     "%@ To put a test in quarantine, choose Quarantine… in its menu in the sidebar. The settings are saved in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -239,6 +249,16 @@
         }
       }
     },
+    "%@ isn’t set in %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не задано в окружении %2$@"
+          }
+        }
+      }
+    },
     "%@ link from %@ to %@" : {
       "localizations" : {
         "ru" : {
@@ -427,6 +447,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@: файл %2$lld"
+          }
+        }
+      }
+    },
+    "%@: no environment is chosen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: окружение не выбрано"
           }
         }
       }
@@ -1629,6 +1659,16 @@
         }
       }
     },
+    "+%lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld"
+          }
+        }
+      }
+    },
     ", and %lld runs passed only on a retry" : {
       "localizations" : {
         "en" : {
@@ -1913,6 +1953,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В тёмном оформлении прогон сравнивает с тёмной картинкой, если она есть."
+          }
+        }
+      }
+    },
+    "A run would stop at these. Values go to the environments file; secrets stay in the Keychain on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без них прогон остановится. Значения попадут в файл окружений, секреты останутся в Связке ключей на этом Mac."
           }
         }
       }
@@ -3517,6 +3567,16 @@
         }
       }
     },
+    "Arrange in Rows" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разложить по строкам"
+          }
+        }
+      }
+    },
     "Arrow keys move the selected area, Delete removes it." : {
       "localizations" : {
         "ru" : {
@@ -4593,6 +4653,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменения"
+          }
+        }
+      }
+    },
+    "Changes are saved in %@ at once. Don’t put secrets here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменения сразу сохраняются в файле %@. Секреты сюда не кладите."
           }
         }
       }
@@ -10446,6 +10516,16 @@
         }
       }
     },
+    "Missing on This Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не хватает на этом Mac"
+          }
+        }
+      }
+    },
     "Model" : {
       "localizations" : {
         "ru" : {
@@ -11458,6 +11538,16 @@
         }
       }
     },
+    "Not set in %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не задано в окружении %@"
+          }
+        }
+      }
+    },
     "Not taken in the last run" : {
       "localizations" : {
         "ru" : {
@@ -12354,6 +12444,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает свой блок: его шаги изменятся во всех тестах, которые его используют."
+          }
+        }
+      }
+    },
+    "Opens the environment’s values and the secrets this test needs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает значения окружения и секреты, которые нужны тесту."
           }
         }
       }
@@ -15968,6 +16068,16 @@
         }
       }
     },
+    "Secrets not set: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секреты не заданы: %@"
+          }
+        }
+      }
+    },
     "See what it changed." : {
       "localizations" : {
         "ru" : {
@@ -18398,6 +18508,16 @@
         }
       }
     },
+    "The environment this test runs in. Click to change it or its values." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окружение, в котором запустится тест. Нажмите, чтобы сменить его или поправить значения."
+          }
+        }
+      }
+    },
     "The failure doesn’t fail Run All, the command line or the JUnit report." : {
       "localizations" : {
         "ru" : {
@@ -18624,6 +18744,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Папка проекта не находится внутри git-репозитория."
+          }
+        }
+      }
+    },
+    "The project has no environment yet. Add one to give the test its values." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте ещё нет окружения. Добавьте его, чтобы у теста были значения."
           }
         }
       }
@@ -19108,6 +19238,16 @@
         }
       }
     },
+    "The value is saved for %@ in %@, next to the tests. Don’t put secrets here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение сохранится для окружения %1$@ в файле %2$@ рядом с тестами. Секреты сюда не кладите."
+          }
+        }
+      }
+    },
     "The webhook, bot token and password stay in the Keychain on this Mac. On CI, set them in the environment variables JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD. To run tests without messages, add --no-notify to jevision run." : {
       "localizations" : {
         "ru" : {
@@ -19234,6 +19374,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет поставщика ИИ «%@». Выберите его в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "There’s no environment %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет окружения %@."
           }
         }
       }
@@ -20470,6 +20620,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Значения"
+          }
+        }
+      }
+    },
+    "Values This Test Reads" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значения, которые читает тест"
           }
         }
       }

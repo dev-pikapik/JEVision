@@ -252,7 +252,7 @@ pub(crate) fn guide() -> Value {
             "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",
             "secrets": "${secret.NAME} in a type block's text is typed as the secret's value, which the person keeps in JEVision or the environment. Secret values never appear in tests, reports or here.",
             "variables": "${var.NAME} anywhere a block takes text is a value an earlier block of the run saved: the outputs of a script, saveOutput of a command, save of an http block, saveAs of a database block, saveAs of a clipboard read or a dateTime block.",
-            "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder.",
+            "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder. ${env.ENVIRONMENT} is the name of that environment (empty when none is chosen), for text to type or an if block's value condition.",
             "library": "templates/NAME.template.json in the project folder are templates: blocks copied into a test as they are. blocks/NAME.block.json are custom blocks: tests run as one block through runTest, reading ${input.NAME} from its inputs.",
         },
     })

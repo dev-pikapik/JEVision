@@ -185,12 +185,15 @@ struct FlowCanvas: View {
   private func blocks(_ layout: FlowLayout) -> some View {
     let order = document.order
     let run = runs.marks(for: document) ?? (outcomes, nil)
+    let environment = project.environments.current
+    let reads = document.flow.map { blockEnvReads(flow: $0) } ?? [:]
     return ForEach(layout.blocks, id: \.id) { laid in
       if let block = document.block(laid.id) {
         let item = CanvasItem.block(id: laid.id)
         BlockNode(
           block: block,
           summary: BlockSummary.text(block.kind, appName: appName, testApp: document.flow?.app),
+          environmentHelp: environment.help(reading: reads[laid.id] ?? []),
           custom: customBlock(block.kind),
           issues: document.issues(of: laid.id),
           isSelected: document.picked.contains(item),
@@ -759,6 +762,8 @@ private struct ItemMenu: View {
 private struct BlockNode: View {
   let block: Block
   let summary: String
+  /// What the block reads from the environment chosen for the run, a line for each value.
+  let environmentHelp: String?
   /// The custom block this block runs, shown with its own name and icon.
   let custom: LibraryEntry?
   let issues: [Issue]
@@ -853,6 +858,7 @@ private struct BlockNode: View {
     .shadow(color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: isCurrent ? 10 : 3, y: 1)
     .animation(reduceMotion ? nil : .snappy, value: isCurrent)
     .contentShape(.rect(cornerRadius: 14))
+    .help(environmentHelp ?? "")
     .onTapGesture(perform: select)
     .contextMenu {
       Button("Run from Here", systemImage: "play", action: { runFromHere?() })
@@ -870,7 +876,7 @@ private struct BlockNode: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("Step \(step) of \(steps), \(title)"))
     .accessibilityValue(Text(
-      ([runValue, summary, hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
+      ([runValue, summary, environmentHelp?.replacingOccurrences(of: "\n", with: ". "), hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
         + issues.map(IssueText.line)).joined(separator: ". ")))
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction(.default, select)
