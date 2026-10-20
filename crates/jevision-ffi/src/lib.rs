@@ -7,12 +7,12 @@
 use std::collections::HashMap;
 
 use jevision_core::{
-    Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
-    Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod,
-    Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton, NamedValue, Note,
-    OutputKind, Point, Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput,
-    ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot, Target, TestStatus, TestType,
-    ValueCheck, ValueTest, WaitUntil,
+    Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection,
+    Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout,
+    HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
+    MouseButton, NamedValue, Note, OutputKind, Point, Priority, Rect, Reference, SavedValue,
+    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
+    Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -344,10 +344,73 @@ pub fn paste_on_canvas(mut flow: Flow, text: String, after: Option<String>) -> O
     Some(CanvasEdit { flow, items })
 }
 
+/// Names of the inputs a custom block reads through `${input.NAME}`, sorted.
+#[uniffi::export]
+pub fn required_inputs(flow: Flow) -> Vec<String> {
+    jevision_core::required_inputs(&flow)
+}
+
+/// Templates every project has: `(id, text of the template file)`.
+#[uniffi::export]
+pub fn builtin_templates() -> Vec<BuiltinTemplate> {
+    jevision_core::BUILTIN_TEMPLATES
+        .iter()
+        .map(|(id, text)| BuiltinTemplate {
+            id: (*id).to_owned(),
+            text: (*text).to_owned(),
+        })
+        .collect()
+}
+
+#[derive(uniffi::Record)]
+pub struct BuiltinTemplate {
+    pub id: String,
+    pub text: String,
+}
+
+/// `items` as a template file named `name`.
+#[uniffi::export]
+pub fn template_from_canvas(flow: Flow, items: Vec<CanvasItem>, name: String) -> String {
+    flow.template(&items, &name)
+}
+
+/// Text fields of the chosen blocks that a custom block can ask for each time it is used.
+#[uniffi::export]
+pub fn input_fields(flow: Flow, items: Vec<CanvasItem>) -> Vec<InputField> {
+    flow.input_fields(&items)
+}
+
+/// `items` as a custom block file named `name` with the SF Symbol `icon`, asking for `inputs`.
+#[uniffi::export]
+pub fn custom_block_from_canvas(
+    flow: Flow,
+    items: Vec<CanvasItem>,
+    name: String,
+    icon: String,
+    inputs: Vec<BlockInput>,
+) -> String {
+    flow.custom_block(&items, &name, &icon, &inputs)
+}
+
+#[uniffi::remote(Record)]
+pub struct InputField {
+    pub block: String,
+    pub field: String,
+    pub value: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct BlockInput {
+    pub block: String,
+    pub field: String,
+    pub name: String,
+}
+
 #[uniffi::remote(Record)]
 pub struct Flow {
     pub name: String,
     pub description: Option<String>,
+    pub icon: Option<String>,
     pub app: String,
     pub test_type: Option<TestType>,
     pub priority: Option<Priority>,
@@ -429,6 +492,7 @@ pub enum BlockKind {
         files: Vec<String>,
         app: Option<String>,
         new_instance: bool,
+        close_after: bool,
         next: Option<String>,
     },
     Click {
@@ -471,6 +535,10 @@ pub enum BlockKind {
         timeout_ms: u64,
         next: Option<String>,
     },
+    Pause {
+        duration_ms: u64,
+        next: Option<String>,
+    },
     Check {
         reference: Reference,
         next: Option<String>,
@@ -493,6 +561,7 @@ pub enum BlockKind {
     },
     RunTest {
         test: String,
+        inputs: HashMap<String, String>,
         next: Option<String>,
     },
     Script {

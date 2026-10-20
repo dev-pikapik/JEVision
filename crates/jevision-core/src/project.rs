@@ -13,13 +13,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::Rect;
 use crate::batch::{DEFAULT_PARALLEL, MAX_PARALLEL, RunMode};
+use crate::model::TEST_SUFFIX;
 use crate::validate::{MAX_RETRIES, rect_fits};
 
 /// Name of the project settings file in the project folder.
 pub const PROJECT_FILE: &str = "jevision.project.json";
 /// Format of the project settings file written by this build.
 pub const PROJECT_FORMAT: u32 = 1;
-const TEST_SUFFIX: &str = ".flow.json";
 
 /// The settings of a project.
 #[derive(Debug, Clone, Default, PartialEq)]

@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "name": "Sign in",
+  "description": "Types the email and password into the sign-in form and checks the screen after signing in. Choose the two fields and the reference, and set LOGIN_EMAIL and the LOGIN_PASSWORD secret.",
+  "app": "com.example.App",
+  "start": "email",
+  "blocks": {
+    "email": {
+      "type": "type",
+      "text": "${env.LOGIN_EMAIL}",
+      "into": {
+        "image": ""
+      },
+      "next": "password"
+    },
+    "password": {
+      "type": "type",
+      "text": "${secret.LOGIN_PASSWORD}",
+      "into": {
+        "image": ""
+      },
+      "next": "submit"
+    },
+    "submit": {
+      "type": "pressKeys",
+      "keys": "return",
+      "next": "settle"
+    },
+    "settle": {
+      "type": "waitFor",
+      "until": "screenStable",
+      "timeout": "10s",
+      "next": "signedIn"
+    },
+    "signedIn": {
+      "type": "check",
+      "reference": {
+        "image": "",
+        "compare": "similar",
+        "threshold": 0.95
+      }
+    }
+  }
+}

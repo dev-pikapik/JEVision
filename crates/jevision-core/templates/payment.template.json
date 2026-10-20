@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "name": "Payment",
+  "description": "Fills in the card form, pays and checks the confirmation. Choose the fields, the Pay button and the reference, and set CARD_NUMBER, CARD_EXPIRY and the CARD_CVC secret.",
+  "app": "com.example.App",
+  "start": "number",
+  "blocks": {
+    "number": {
+      "type": "type",
+      "text": "${env.CARD_NUMBER}",
+      "into": {
+        "image": ""
+      },
+      "next": "expiry"
+    },
+    "expiry": {
+      "type": "type",
+      "text": "${env.CARD_EXPIRY}",
+      "into": {
+        "image": ""
+      },
+      "next": "cvc"
+    },
+    "cvc": {
+      "type": "type",
+      "text": "${secret.CARD_CVC}",
+      "into": {
+        "image": ""
+      },
+      "next": "pay"
+    },
+    "pay": {
+      "type": "click",
+      "target": {
+        "image": ""
+      },
+      "button": "left",
+      "waitForChange": true,
+      "next": "confirmed"
+    },
+    "confirmed": {
+      "type": "check",
+      "reference": {
+        "image": "",
+        "compare": "similar",
+        "threshold": 0.95
+      }
+    }
+  }
+}

@@ -401,6 +401,8 @@ impl Runner<'_> {
                             tests: Vec::new(),
                             apps: Vec::new(),
                             launched: Vec::new(),
+                            to_close: Vec::new(),
+                            inputs: Vec::new(),
                             baselines: Vec::new(),
                             checked: false,
                             video,
@@ -788,6 +790,10 @@ struct Exec<'r> {
     /// Application each running test acts on.
     apps: Vec<String>,
     launched: Vec<String>,
+    /// What `openFile` blocks that close after the test opened, in the order they ran.
+    to_close: Vec<(Vec<Openable>, Option<String>)>,
+    /// Values given to each running custom block, by input name; empty for a test.
+    inputs: Vec<HashMap<String, String>>,
     baselines: Vec<String>,
     /// A block that looks at the screen ran to the end: a check, or a wait for something to
     /// appear or disappear.
@@ -816,6 +822,11 @@ impl Exec<'_> {
             Err(Stop::Cancelled) => (Verdict::Cancelled, None),
             Err(Stop::Failed { failure, .. }) => (Verdict::Failed, Some(failure)),
         };
+        // Whatever the verdict, nothing a block was asked to close stays open; a window that
+        // won't close must not change the result.
+        for (items, app) in std::mem::take(&mut self.to_close).into_iter().rev() {
+            let _ = self.runner.hands.close(&items, app.as_deref());
+        }
         self.steps.sort_by_key(|s| s.seq);
         let attempt = Attempt {
             number: self.attempt,
@@ -940,6 +951,7 @@ impl Exec<'_> {
                 files,
                 app,
                 new_instance,
+                close_after,
                 next,
             } => {
                 let mut items = Vec::with_capacity(files.len());
@@ -951,6 +963,10 @@ impl Exec<'_> {
                         let copy = self.fresh_copy(t, id, file, step.seq, i)?;
                         items.push(Openable::File(copy));
                     }
+                }
+                if *close_after {
+                    // Recorded first: what opened before a failure is closed too.
+                    self.to_close.push((items.clone(), app.clone()));
                 }
                 self.hands(id, |h| h.open(&items, app.as_deref(), *new_instance))?;
                 if let Some(app) = app {
@@ -1062,6 +1078,11 @@ impl Exec<'_> {
                 next,
             } => {
                 self.wait_for(t, id, until, *timeout_ms, step)?;
+                Ok(next.clone())
+            }
+            BlockKind::Pause { duration_ms, next } => {
+                // Time the run spends paused by the user doesn't count.
+                self.poll(id, Duration::from_millis(*duration_ms), || Ok(None::<()>))?;
                 Ok(next.clone())
             }
             BlockKind::Check { reference, next } => {
@@ -1450,8 +1471,12 @@ impl Exec<'_> {
                 }
                 Ok(next.clone())
             }
-            BlockKind::RunTest { test, next } => {
+            BlockKind::RunTest { test, inputs, next } => {
                 let path = self.resolve_filled(t, id, test)?;
+                let mut given = HashMap::with_capacity(inputs.len());
+                for (name, value) in inputs {
+                    given.insert(name.clone(), self.substitute(id, value)?);
+                }
                 if self.tests.contains(&path) {
                     return Err(fail(
                         Failure::new("run.runTest.recursion")
@@ -1468,9 +1493,11 @@ impl Exec<'_> {
                     .map_err(|f| fail(f.with("block", id)))?;
                 self.tests.push(path);
                 self.apps.push(sub.flow.app.clone());
+                self.inputs.push(given);
                 let result = self.run_chain(&sub, &sub.flow.start);
                 self.tests.pop();
                 self.apps.pop();
+                self.inputs.pop();
                 result?;
                 Ok(next.clone())
             }
@@ -2086,6 +2113,20 @@ impl Exec<'_> {
                     })?;
                     out.push_str(value);
                 }
+                Some(("input", name)) => {
+                    let value = self
+                        .inputs
+                        .last()
+                        .and_then(|given| given.get(name))
+                        .ok_or_else(|| {
+                            fail(
+                                Failure::new("run.input.missing")
+                                    .with("block", id)
+                                    .with("name", name),
+                            )
+                        })?;
+                    out.push_str(value);
+                }
                 _ => out.push_str(&rest[..=end]),
             }
             rest = &rest[end + 1..];
@@ -2113,6 +2154,9 @@ impl Exec<'_> {
         }
         for (name, value) in &self.vars {
             vars.insert(format!("var.{name}"), self.mask(value));
+        }
+        for (name, value) in self.inputs.last().into_iter().flatten() {
+            vars.insert(format!("input.{name}"), self.mask(value));
         }
         for frame in &self.frames {
             match frame {

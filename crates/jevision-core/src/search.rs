@@ -107,7 +107,7 @@ pub fn test_keywords(flow: &Flow) -> String {
                     condition(&branch.condition, &mut words);
                 }
             }
-            BlockKind::Repeat { .. } => {}
+            BlockKind::Pause { .. } | BlockKind::Repeat { .. } => {}
             BlockKind::UseData { file, .. } => words.push(file),
             BlockKind::RunTest { test, .. } => words.push(test),
             BlockKind::Script { code, .. } => words.push(code),

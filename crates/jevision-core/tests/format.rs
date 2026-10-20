@@ -637,7 +637,7 @@ fn secrets_are_listed_by_name() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 19);
+    assert_eq!(specs.len(), 20);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -664,6 +664,66 @@ fn catalog_matches_the_file_format() {
             );
         }
     }
+}
+
+#[test]
+fn pauses_closing_files_and_custom_blocks_round_trip() {
+    let text = minimal(
+        r#"{"a": {"type": "pause", "duration": "1500ms", "next": "b"},
+            "b": {"type": "openFile", "files": ["f.txt"], "closeAfter": true, "next": "c"},
+            "c": {"type": "runTest", "test": "blocks/Sign in.block.json",
+                  "inputs": {"email": "${env.EMAIL}", "Bad name": "x"}}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    let saved = to_canonical_json(&flow);
+    assert!(saved.contains(r#""duration": "1500ms""#), "{saved}");
+    assert!(saved.contains(r#""closeAfter": true"#), "{saved}");
+    assert!(
+        saved.contains("\"inputs\": {\n        \"Bad name\": \"x\",\n        \"email\": \"${env.EMAIL}\"\n      }"),
+        "{saved}"
+    );
+    assert_eq!(parse(&saved).unwrap(), flow);
+    let issues = validate(&flow);
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(found, [("flow.input.invalid", "inputs.Bad name")]);
+
+    let issues = issues_of(
+        r#"{"a": {"type": "pause", "duration": "0s", "next": "b"},
+            "b": {"type": "runTest", "test": "x.block.json", "inputs": {"n": "${input.n}"}}}"#,
+    );
+    assert_eq!(codes(&issues), ["flow.field.range"]);
+    let missing = parse_err(&minimal(r#"{"a": {"type": "pause"}}"#));
+    assert_eq!(codes(&missing), ["flow.field.missing"]);
+}
+
+#[test]
+fn a_custom_block_asks_for_its_inputs() {
+    let dir = std::env::temp_dir().join(format!("jevision-inputs-{}", std::process::id()));
+    fs::create_dir_all(dir.join("blocks")).unwrap();
+    fs::write(
+        dir.join("blocks/login.block.json"),
+        minimal(
+            r#"{"a": {"type": "type", "text": "${input.email} ${input.name}", "next": "b"},
+                "b": {"type": "runTest", "test": "inner.block.json", "inputs": {"x": "${input.name}"}}}"#,
+        ),
+    )
+    .unwrap();
+    let block = parse(&fs::read_to_string(dir.join("blocks/login.block.json")).unwrap()).unwrap();
+    assert_eq!(required_inputs(&block), ["email", "name"]);
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "runTest", "test": "blocks/login.block.json", "inputs": {"email": "a@b.c"}}}"#,
+    ))
+    .unwrap();
+    let issues = validate_in(&flow, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(found, [("flow.input.missing", "inputs.name")]);
 }
 
 #[test]

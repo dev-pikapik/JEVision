@@ -10,8 +10,11 @@ enum ProjectScanner {
     fileName.count > testSuffix.count && fileName.lowercased().hasSuffix(testSuffix)
   }
 
+  /// The name of a test or custom block file, without its ending.
   static func testName(_ fileName: String) -> String {
-    String(fileName.dropLast(testSuffix.count))
+    let lower = fileName.lowercased()
+    let suffix = [testSuffix, ProjectLibrary.blockSuffix].first { lower.hasSuffix($0) } ?? testSuffix
+    return String(fileName.dropLast(suffix.count))
   }
 
   /// Returns folders that contain tests (directly or deeper) and the tests themselves.

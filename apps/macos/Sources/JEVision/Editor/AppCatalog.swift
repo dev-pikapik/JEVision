@@ -169,3 +169,47 @@ private struct AppList: View {
     .onAppear { highlighted = selection }
   }
 }
+
+/// Chooses the browser that opens links: any installed one, or the Mac's default browser.
+struct BrowserPicker: View {
+  @Binding var bundleID: String?
+
+  /// Every file is a web link.
+  static func areLinks(_ files: [String]) -> Bool {
+    !files.isEmpty && files.allSatisfy { $0.hasPrefix("http://") || $0.hasPrefix("https://") }
+  }
+
+  private static let probe = URL(string: "https://example.com")!
+
+  /// Installed browsers as `(bundle ID, name)`, by name.
+  private var browsers: [(id: String, name: String)] {
+    var seen: Set<String> = []
+    return NSWorkspace.shared.urlsForApplications(toOpen: Self.probe)
+      .compactMap { url in Bundle(url: url)?.bundleIdentifier.map { ($0, FileManager.default.displayName(atPath: url.path)) } }
+      .filter { seen.insert($0.0).inserted }
+      .map { (id: $0.0, name: ($0.1 as NSString).deletingPathExtension) }
+      .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+  }
+
+  private var defaultName: String {
+    NSWorkspace.shared.urlForApplication(toOpen: Self.probe)
+      .map { (FileManager.default.displayName(atPath: $0.path) as NSString).deletingPathExtension } ?? ""
+  }
+
+  var body: some View {
+    let browsers = browsers
+    Picker(selection: $bundleID) {
+      (defaultName.isEmpty ? Text("Default Browser") : Text("Default Browser (\(defaultName))")).tag(String?.none)
+      Divider()
+      ForEach(browsers, id: \.id) { browser in
+        Text(verbatim: browser.name).tag(String?.some(browser.id))
+      }
+      if let bundleID, !browsers.contains(where: { $0.id == bundleID }) {
+        Text(verbatim: AppCatalog.shared.name(of: bundleID)).tag(String?.some(bundleID))
+      }
+    } label: {
+      Text("Browser")
+    }
+    .help(Text("The browser that opens the links."))
+  }
+}

@@ -190,6 +190,7 @@ struct FlowCanvas: View {
         BlockNode(
           block: block,
           summary: BlockSummary.text(block.kind, appName: appName, testApp: document.flow?.app),
+          custom: customBlock(block.kind),
           issues: document.issues(of: laid.id),
           isSelected: document.picked.contains(item),
           isLinkTarget: (link?.target ?? document.linking?.target) == laid.id,
@@ -471,7 +472,20 @@ struct FlowCanvas: View {
           onPick([item], id)
           CanvasClipboard.paste(into: document)
         }
+      },
+      saveToLibrary: { kind in
+        only()
+        document.savingToLibrary = kind
       })
+  }
+
+  /// The custom block a Run Test block runs, as the library knows it.
+  private func customBlock(_ kind: BlockKind) -> LibraryEntry? {
+    guard case .runTest(let test, _, _) = kind, test.lowercased().hasSuffix(ProjectLibrary.blockSuffix) else {
+      return nil
+    }
+    let file = document.url.deletingLastPathComponent().appending(path: test).standardizedFileURL
+    return project.library.blocks.first { $0.url?.standardizedFileURL == file }
   }
 
   private func slotLabel(_ slot: Slot) -> Text {
@@ -715,6 +729,8 @@ private struct ItemActions {
   let delete: () -> Void
   /// Pastes after this block; `nil` for frames and notes.
   let paste: (() -> Void)?
+  /// Saves the selection as a template or a custom block.
+  let saveToLibrary: (LibraryEntry.Kind) -> Void
 }
 
 private struct ItemMenu: View {
@@ -727,6 +743,9 @@ private struct ItemMenu: View {
     }
     Button("Duplicate", systemImage: "plus.square.on.square", action: actions.duplicate)
     Divider()
+    Button("Save as Template…", systemImage: ProjectLibrary.templateSymbol) { actions.saveToLibrary(.template) }
+    Button("Make Block…", systemImage: ProjectLibrary.defaultBlockSymbol) { actions.saveToLibrary(.block) }
+    Divider()
     Button("Delete", systemImage: "trash", role: .destructive, action: actions.delete)
   }
 }
@@ -734,6 +753,8 @@ private struct ItemMenu: View {
 private struct BlockNode: View {
   let block: Block
   let summary: String
+  /// The custom block this block runs, shown with its own name and icon.
+  let custom: LibraryEntry?
   let issues: [Issue]
   let isSelected: Bool
   /// A link being dragged would lead here when dropped.
@@ -758,6 +779,7 @@ private struct BlockNode: View {
   @Environment(\.colorSchemeContrast) private var contrast
 
   private var type: String { block.kind.typeName }
+  private var title: String { custom?.name ?? BlockInfo.title(type) }
   private var hasError: Bool { issues.contains { $0.severity == .error } }
 
   private var border: (color: Color, width: Double) {
@@ -780,9 +802,9 @@ private struct BlockNode: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      IconTile(symbol: BlockInfo.symbol(type), color: BlockInfo.color(ofType: type), size: 34)
+      IconTile(symbol: custom?.symbol ?? BlockInfo.symbol(type), color: BlockInfo.color(ofType: type), size: 34)
       VStack(alignment: .leading, spacing: 1) {
-        Text(BlockInfo.title(type))
+        Text(title)
           .font(.headline)
           .lineLimit(1)
         Text(summary)
@@ -839,7 +861,7 @@ private struct BlockNode: View {
       ItemMenu(actions: actions)
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text("Step \(step) of \(steps), \(BlockInfo.title(type))"))
+    .accessibilityLabel(Text("Step \(step) of \(steps), \(title)"))
     .accessibilityValue(Text(
       ([runValue, summary, hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
         + issues.map(IssueText.line)).joined(separator: ". ")))

@@ -159,6 +159,7 @@ struct CommandPaletteView: View {
       state.selectionIsIf = document.block(selection)?.kind.typeName == "if"
       state.selectionHasLinks = document.hasLinks(selection)
     }
+    state.hasPickedBlocks = flow != nil && document?.picked.contains { $0.blockID != nil } == true
     let tests = project.items.flatMap(\.tests)
     state.hasTests = !tests.isEmpty
     let last = lastRun
@@ -181,6 +182,7 @@ struct CommandPaletteView: View {
         }
       }.filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
     }
+    state.library = project.library.entries
     if case .tracked(let status) = project.git.state {
       state.git = PaletteState.Git(
         isTracked: true, hasChanges: !status.changes.isEmpty, hasCommits: status.hasCommits,
@@ -215,6 +217,8 @@ struct CommandPaletteView: View {
     case .record: if let document { records.record(document) }
     case .schedules: project.schedules.isShowingSheet = true
     case .addBlock(let type): document?.insert(type, at: document?.slotAfterSelection)
+    case .addFromLibrary(let entry): document?.add(entry, at: document?.slotAfterSelection)
+    case .saveToLibrary(let kind): document?.savingToLibrary = kind
     case .addCondition: document?.addCondition()
     case .arrange: document?.arrange()
     case .disconnect: if let document, let id = document.selection { document.disconnect(id) }

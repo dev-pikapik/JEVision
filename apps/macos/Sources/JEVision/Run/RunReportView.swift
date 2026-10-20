@@ -117,6 +117,7 @@ struct RunReportView: View {
               .foregroundStyle(.secondary)
               .padding(.vertical, 8)
           } else {
+            let depths = Self.depths(steps.map(\.test), in: report.file)
             VStack(spacing: 0) {
               ForEach(Array(steps.enumerated()), id: \.element.seq) { index, step in
                 if index > 0 { Divider().padding(.leading, 44) }
@@ -130,6 +131,7 @@ struct RunReportView: View {
                   },
                   preview: { preview = $0 },
                   failure: $failure)
+                .padding(.leading, Double(depths[index]) * 24)
                 .accessibilityRotorEntry(id: step.seq, in: stepsNamespace)
               }
             }
@@ -155,6 +157,20 @@ struct RunReportView: View {
   }
 
   /// Index of the try that decided the verdict, the one a report is opened for.
+  /// How deep each step, given by the test it belongs to, runs inside other tests and custom
+  /// blocks: 0 for the steps of `file` itself, 1 for those of a test it runs, and so on.
+  static func depths(_ tests: [String], in file: String) -> [Int] {
+    var running = [file]
+    return tests.map { test in
+      if let level = running.lastIndex(of: test) {
+        running.removeSubrange((level + 1)...)
+      } else {
+        running.append(test)
+      }
+      return running.count - 1
+    }
+  }
+
   static func decidingIndex(_ report: RunReport) -> Int {
     let deciding = decidingAttempt(report: report)
     return report.attempts.lastIndex { $0.number == deciding?.number && $0.row == deciding?.row }

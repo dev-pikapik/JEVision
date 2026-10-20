@@ -18,6 +18,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
                 "files": "list of file paths relative to the test file, or http(s):// addresses",
                 "app": "optional bundle id of the app to open them in; default: the system's choice",
                 "newInstance": "optional, true to open them in a new instance of the app",
+                "closeAfter": "optional, true to close the opened files when the test ends, passed or not, and quit the app if this block started it",
             }),
             json!({ "type": "openFile", "files": ["fixtures/note.txt"], "app": "com.apple.TextEdit" }),
         ),
@@ -80,6 +81,11 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             }),
             json!({ "type": "waitFor", "until": { "appears": { "image": "refs/inbox.png" } }, "timeout": "10s" }),
         ),
+        "pause" => (
+            "Waits a fixed time, whatever the screen shows.",
+            json!({ "duration": "how long to wait: a duration (see shapes), up to 1h" }),
+            json!({ "type": "pause", "duration": "2s" }),
+        ),
         "check" => (
             "Fails the test unless the screen matches the reference.",
             json!({ "reference": "what the screen should show: a reference (see shapes)" }),
@@ -100,8 +106,11 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "repeat", "times": 3 }),
         ),
         "runTest" => (
-            "Runs another test file as one step.",
-            json!({ "test": "path of the other test file, relative to this test file" }),
+            "Runs another test file as one step, or a custom block: a .block.json file whose ${input.NAME} placeholders take the values in inputs.",
+            json!({
+                "test": "path of the other test file (.flow.json) or custom block (.block.json), relative to this test file",
+                "inputs": "optional object: a value for every ${input.NAME} the custom block reads; values may use placeholders",
+            }),
             json!({ "type": "runTest", "test": "sign-in.flow.json" }),
         ),
         "useData" => (
@@ -197,6 +206,7 @@ pub(super) fn guide() -> Value {
             "status": "optional: draft, ready or outdated",
             "tags": "optional list of words for finding tests",
             "retries": format!("optional, how many times a failed run is tried again, 0 to {MAX_RETRIES}"),
+            "icon": "optional SF Symbol name a custom block (.block.json) is shown with",
         },
         "edges": "Blocks lead to each other by id: next for the block after; then, elseIf1, elseIf2… and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
         "blocks": blocks,
@@ -209,6 +219,7 @@ pub(super) fn guide() -> Value {
             "secrets": "${secret.NAME} in a type block's text is typed as the secret's value, which the person keeps in JEVision or the environment. Secret values never appear in tests, reports or here.",
             "variables": "${var.NAME} anywhere a block takes text is a value an earlier block of the run saved: the outputs of a script, saveOutput of a command, save of an http block, saveAs of a database block.",
             "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder.",
+            "library": "templates/NAME.template.json in the project folder are templates: blocks copied into a test as they are. blocks/NAME.block.json are custom blocks: tests run as one block through runTest, reading ${input.NAME} from its inputs.",
         },
     })
 }

@@ -7,12 +7,15 @@ enum PaletteChoice: Hashable {
   case block(String)
   case note
   case frame
+  /// A template or a custom block of the project.
+  case library(LibraryEntry)
 
   var title: String {
     switch self {
     case .block(let type): BlockInfo.title(type)
     case .note: String(localized: "Note")
     case .frame: String(localized: "Frame")
+    case .library(let entry): entry.name
     }
   }
 
@@ -22,6 +25,10 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.tagline(type)
     case .note: String(localized: "A sticky note for whoever reads the test")
     case .frame: String(localized: "Groups blocks into a section with a title")
+    case .library(let entry):
+      entry.kind == .template
+        ? String(localized: "Template: adds its blocks to the test")
+        : String(localized: "Custom block: runs its steps as one")
     }
   }
 
@@ -30,6 +37,7 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.symbol(type)
     case .note: "note.text"
     case .frame: "rectangle.dashed"
+    case .library(let entry): entry.symbol
     }
   }
 
@@ -38,6 +46,7 @@ enum PaletteChoice: Hashable {
     case .block(let type): BlockInfo.color(ofType: type)
     case .note: .yellow
     case .frame: .gray
+    case .library(let entry): entry.kind == .template ? .teal : .indigo
     }
   }
 
@@ -46,17 +55,27 @@ enum PaletteChoice: Hashable {
     switch self {
     case .block(let type): BlockInfo.catalog.first { $0.typeName == type }.map { BlockInfo.groupTitle($0.group) } ?? ""
     case .note, .frame: String(localized: "Canvas")
+    case .library: String(localized: "Library")
     }
   }
 
   /// Every block type in palette order, then a note and a frame.
   static let all: [PaletteChoice] = BlockInfo.catalog.map { .block($0.typeName) } + [.note, .frame]
 
+  /// `all`, then the project's templates and custom blocks.
+  static func all(with library: [LibraryEntry]) -> [PaletteChoice] {
+    all + library.map(PaletteChoice.library)
+  }
+
   /// `choices` matching `query`, best first; all of them for an empty query.
   static func search(_ query: String, in choices: [PaletteChoice] = all) -> [PaletteChoice] {
     let candidates = choices.map { choice in
       var keywords = [choice.tagline, choice.groupTitle]
-      if case .block(let type) = choice { keywords += [BlockInfo.explanation(type), type] }
+      switch choice {
+      case .block(let type): keywords += [BlockInfo.explanation(type), type]
+      case .library(let entry): keywords += [entry.detail, String(localized: "template block library")]
+      case .note, .frame: break
+      }
       return SearchCandidate(title: choice.title, keywords: keywords.joined(separator: " "))
     }
     return rankSearch(query: query, candidates: candidates).map { choices[Int($0)] }
@@ -95,6 +114,8 @@ struct BlockDrag: Codable, Transferable {
 /// the canvas.
 struct PaletteView: View {
   static let size = CGSize(width: 400, height: 460)
+  /// The project's templates and custom blocks, listed after the blocks.
+  var library: [LibraryEntry] = []
   let pick: (PaletteChoice) -> Void
   let close: () -> Void
   @State private var query = ""
@@ -104,7 +125,10 @@ struct PaletteView: View {
   private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
   /// The choices in the order the rows are drawn: best match first while searching, by group otherwise.
-  private var choices: [PaletteChoice] { isSearching ? PaletteChoice.search(query) : PaletteChoice.all }
+  private var choices: [PaletteChoice] {
+    let all = PaletteChoice.all(with: library)
+    return isSearching ? PaletteChoice.search(query, in: all) : all
+  }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -123,7 +147,7 @@ struct PaletteView: View {
           if isSearching {
             ForEach(choices, id: \.self, content: row)
           } else {
-            ForEach(PaletteChoice.grouped(), id: \.title) { group in
+            ForEach(PaletteChoice.grouped(choices), id: \.title) { group in
               Section(group.title) {
                 ForEach(group.choices, id: \.self, content: row)
               }
@@ -191,8 +215,11 @@ struct PaletteView: View {
 extension PaletteChoice {
   /// The full description, shown when the pointer rests on the row.
   fileprivate var help: String {
-    if case .block(let type) = self { return BlockInfo.explanation(type) }
-    return tagline
+    switch self {
+    case .block(let type): BlockInfo.explanation(type)
+    case .library(let entry) where !entry.detail.isEmpty: entry.detail
+    default: tagline
+    }
   }
 }
 

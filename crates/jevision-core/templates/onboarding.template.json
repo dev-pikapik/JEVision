@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "name": "Onboarding",
+  "description": "Clicks the Continue button through three welcome screens and checks the screen that follows. Choose the button and the reference, and change the number of screens.",
+  "app": "com.example.App",
+  "start": "screens",
+  "blocks": {
+    "screens": {
+      "type": "repeat",
+      "times": 3,
+      "body": "continue",
+      "next": "done"
+    },
+    "continue": {
+      "type": "click",
+      "target": {
+        "image": ""
+      },
+      "button": "left",
+      "waitForChange": true,
+      "next": "screens"
+    },
+    "done": {
+      "type": "check",
+      "reference": {
+        "image": "",
+        "compare": "similar",
+        "threshold": 0.95
+      }
+    }
+  }
+}

@@ -293,6 +293,7 @@ impl Flow {
         let mut part = Flow {
             name: self.name.clone(),
             description: None,
+            icon: None,
             app: self.app.clone(),
             test_type: None,
             priority: None,
@@ -382,6 +383,10 @@ impl Flow {
         }
 
         let entry = ids.get(&part.start).cloned();
+        if self.start.is_empty() && first == 0 {
+            // Blocks pasted into an empty test become its start.
+            self.start = entry.clone().unwrap_or_default();
+        }
         let chained = after
             .zip(entry)
             .is_some_and(|(after, entry)| self.chain(after, &entry, first));
@@ -660,6 +665,13 @@ mod tests {
         assert!(crate::validate(&f).iter().all(|i| i.code == "flow.noCheck"));
 
         assert_eq!(f.paste_items("not a test", None), None);
+
+        // Pasted into an empty test, they become its start.
+        let mut empty = chain();
+        empty.blocks.clear();
+        empty.start.clear();
+        empty.paste_items(&copied, None).unwrap();
+        assert_eq!(empty.start, "a");
     }
 
     #[test]

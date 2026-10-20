@@ -279,6 +279,26 @@
         }
       }
     },
+    "%@: file %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: файл %2$lld"
+          }
+        }
+      }
+    },
+    "%@: text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: текст"
+          }
+        }
+      }
+    },
     "%lld columns" : {
       "localizations" : {
         "en" : {
@@ -2119,6 +2139,16 @@
         }
       }
     },
+    "Add Template" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить шаблон"
+          }
+        }
+      }
+    },
     "Add Test to Board" : {
       "localizations" : {
         "en" : {
@@ -3271,6 +3301,16 @@
         }
       }
     },
+    "Box" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коробка"
+          }
+        }
+      }
+    },
     "Branch" : {
       "localizations" : {
         "ru" : {
@@ -3317,6 +3357,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Принять изменения с сервера с вашим выбором и закоммитить результат."
+          }
+        }
+      }
+    },
+    "Browser" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер"
           }
         }
       }
@@ -3679,12 +3729,32 @@
         }
       }
     },
+    "Card" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карта"
+          }
+        }
+      }
+    },
     "Carries encrypted traffic when the iPhone can’t reach this Mac directly. Without one, only the same Wi-Fi or a VPN works." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Передаёт зашифрованные данные, когда iPhone не может связаться с Mac напрямую. Без него работает только та же сеть Wi-Fi или VPN."
+          }
+        }
+      }
+    },
+    "Cart" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Корзина"
           }
         }
       }
@@ -4225,6 +4295,16 @@
         }
       }
     },
+    "Clicks Continue through the welcome screens, then checks the screen that follows." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажимает «Продолжить» на приветственных экранах и проверяет экран после них."
+          }
+        }
+      }
+    },
     "Clicks a button or a point" : {
       "localizations" : {
         "ru" : {
@@ -4271,6 +4351,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Close after the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть после теста"
           }
         }
       }
@@ -5061,6 +5151,26 @@
         }
       }
     },
+    "Custom Blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свои блоки"
+          }
+        }
+      }
+    },
+    "Custom block: runs its steps as one" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свой блок: выполняет свои шаги как один"
+          }
+        }
+      }
+    },
     "Cyan" : {
       "localizations" : {
         "en" : {
@@ -5203,6 +5313,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Приложение по умолчанию"
+          }
+        }
+      }
+    },
+    "Default Browser" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер по умолчанию"
+          }
+        }
+      }
+    },
+    "Default Browser (%@)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер по умолчанию (%@)"
           }
         }
       }
@@ -5463,6 +5593,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разделитель"
+          }
+        }
+      }
+    },
+    "Document" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Документ"
           }
         }
       }
@@ -5839,6 +5979,16 @@
         }
       }
     },
+    "Each test that uses the block fills in the chosen fields." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Каждый тест, который использует блок, заполняет выбранные поля сам."
+          }
+        }
+      }
+    },
     "Edit Areas Always Hidden" : {
       "localizations" : {
         "ru" : {
@@ -5993,6 +6143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пусто"
+          }
+        }
+      }
+    },
+    "Empty now" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока пусто"
           }
         }
       }
@@ -6557,6 +6717,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создаёт задачу на GitHub о последнем падении открытого теста."
+          }
+        }
+      }
+    },
+    "Fills in the card form, pays and checks the confirmation." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заполняет форму карты, оплачивает и проверяет подтверждение."
           }
         }
       }
@@ -7397,6 +7567,16 @@
         }
       }
     },
+    "Icon" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значок"
+          }
+        }
+      }
+    },
     "If" : {
       "localizations" : {
         "ru" : {
@@ -7573,6 +7753,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вход"
+          }
+        }
+      }
+    },
+    "Input Name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя входа"
           }
         }
       }
@@ -7980,6 +8170,16 @@
         }
       }
     },
+    "Keeps the selected blocks in the library, to add them to other tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняет выбранные блоки в библиотеку, чтобы добавлять их в другие тесты."
+          }
+        }
+      }
+    },
     "Kept in the Keychain on this Mac, not in the project" : {
       "localizations" : {
         "ru" : {
@@ -8156,6 +8356,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не участвует в сравнении: часы, счётчики, аватары."
+          }
+        }
+      }
+    },
+    "Library" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Библиотека"
           }
         }
       }
@@ -8352,6 +8562,16 @@
         }
       }
     },
+    "Mail" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Почта"
+          }
+        }
+      }
+    },
     "Mail Password" : {
       "localizations" : {
         "ru" : {
@@ -8368,6 +8588,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Почтовый сервер"
+          }
+        }
+      }
+    },
+    "Make Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать блок"
+          }
+        }
+      }
+    },
+    "Make Block…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать блок…"
           }
         }
       }
@@ -8702,6 +8942,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Никогда"
+          }
+        }
+      }
+    },
+    "New Account" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый аккаунт"
           }
         }
       }
@@ -9574,6 +9824,16 @@
         }
       }
     },
+    "Notification" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уведомление"
+          }
+        }
+      }
+    },
     "Notification Settings" : {
       "localizations" : {
         "ru" : {
@@ -9700,6 +9960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включено. Mac не будет засыпать сам."
+          }
+        }
+      }
+    },
+    "Onboarding" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Онбординг"
           }
         }
       }
@@ -10218,6 +10488,16 @@
         }
       }
     },
+    "Opens the custom block, so you can change its steps for every test that uses it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает свой блок: его шаги изменятся во всех тестах, которые его используют."
+          }
+        }
+      }
+    },
     "Opens the reference editor" : {
       "localizations" : {
         "ru" : {
@@ -10696,6 +10976,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Останавливается после каждого блока."
+          }
+        }
+      }
+    },
+    "Payment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оплата"
           }
         }
       }
@@ -13002,6 +13292,26 @@
         }
       }
     },
+    "Save as Template" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить как шаблон"
+          }
+        }
+      }
+    },
+    "Save as Template…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить как шаблон…"
+          }
+        }
+      }
+    },
     "Save it in the repository as .github/workflows/ui-tests.yml. GitHub’s own Mac runners have no logged-in user, so the tests run on a self-hosted runner: a Mac of yours that stays logged in. Add the secrets your tests use to the repository’s secrets under the same names." : {
       "localizations" : {
         "ru" : {
@@ -13488,6 +13798,16 @@
         }
       }
     },
+    "Select at least one block first." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сначала выберите хотя бы один блок."
+          }
+        }
+      }
+    },
     "Send Test Message" : {
       "localizations" : {
         "ru" : {
@@ -13698,6 +14018,16 @@
         }
       }
     },
+    "Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
     "Settings are reset. Quit JEVision and open it again to finish." : {
       "localizations" : {
         "ru" : {
@@ -13734,6 +14064,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задать…"
+          }
+        }
+      }
+    },
+    "Share" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться"
           }
         }
       }
@@ -14058,6 +14398,16 @@
         }
       }
     },
+    "Sign In" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход"
+          }
+        }
+      }
+    },
     "Sign In with GitHub…" : {
       "localizations" : {
         "ru" : {
@@ -14074,6 +14424,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выйти"
+          }
+        }
+      }
+    },
+    "Sign in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход в аккаунт"
+          }
+        }
+      }
+    },
+    "Sign in as" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войти как"
           }
         }
       }
@@ -14438,6 +14808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обычный дисплей (%@×)"
+          }
+        }
+      }
+    },
+    "Star" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звезда"
           }
         }
       }
@@ -14838,6 +15218,16 @@
         }
       }
     },
+    "Template: adds its blocks to the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаблон: добавляет свои блоки в тест"
+          }
+        }
+      }
+    },
     "Test" : {
       "localizations" : {
         "ru" : {
@@ -15184,6 +15574,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок провален."
+          }
+        }
+      }
+    },
+    "The browser that opens the links." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер, в котором откроются ссылки."
           }
         }
       }
@@ -15628,6 +16028,26 @@
         }
       }
     },
+    "The selected blocks become a template in the library. Adding it copies them into a test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные блоки станут шаблоном в библиотеке. Шаблон добавляет их копию в тест."
+          }
+        }
+      }
+    },
+    "The selected blocks become one block in the library. Tests run it as a single step; change it once, and every test that uses it changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные блоки станут одним блоком в библиотеке. Тесты выполняют его как один шаг; изменили его — изменились все тесты, которые его используют."
+          }
+        }
+      }
+    },
     "The server didn’t accept your sign-in. Sign in to GitHub in Settings → Git and GitHub, or set up an SSH key, then try again." : {
       "localizations" : {
         "ru" : {
@@ -15754,6 +16174,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест сохранится файлом в открытом проекте."
+          }
+        }
+      }
+    },
+    "The test opens a fresh copy of each file, so the original stays as it is." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест открывает свежую копию каждого файла, поэтому оригинал не меняется."
           }
         }
       }
@@ -16040,6 +16470,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Это приложение не установлено на этом Mac."
+          }
+        }
+      }
+    },
+    "This block asks for nothing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому блоку ничего не нужно."
           }
         }
       }
@@ -16360,6 +16800,16 @@
         }
       }
     },
+    "Time the run is paused by you doesn’t count." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время, пока вы держите запуск на паузе, не считается."
+          }
+        }
+      }
+    },
     "Times" : {
       "localizations" : {
         "ru" : {
@@ -16570,6 +17020,16 @@
         }
       }
     },
+    "Turns the selected blocks into one custom block other tests can run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Превращает выбранные блоки в свой блок, который могут запускать другие тесты."
+          }
+        }
+      }
+    },
     "Two permissions to see and click" : {
       "localizations" : {
         "ru" : {
@@ -16646,6 +17106,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Укажите адрес почтового сервера, например smtp.gmail.com."
+          }
+        }
+      }
+    },
+    "Types an email and a password, then checks the screen after signing in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вводит почту и пароль и проверяет экран после входа."
           }
         }
       }
@@ -17018,6 +17488,16 @@
         }
       }
     },
+    "Values can hold ${secret.NAME}, ${env.NAME} and ${data.COLUMN} of this test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В значениях можно использовать ${secret.NAME}, ${env.NAME} и ${data.COLUMN} этого теста."
+          }
+        }
+      }
+    },
     "Values saved for later blocks" : {
       "localizations" : {
         "ru" : {
@@ -17174,6 +17654,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждёт: %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Waits a set time" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт заданное время"
+          }
+        }
+      }
+    },
+    "Waits a set time before the next step, for animations or slow screens that give no sign when they are ready." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт заданное время перед следующим шагом — для анимаций и медленных экранов, которые никак не показывают, что готовы."
           }
         }
       }
@@ -17350,6 +17850,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Когда тест падает или снова проходит"
+          }
+        }
+      }
+    },
+    "When the test ends, even if it fails, closes what this block opened." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда тест закончится, даже с ошибкой, закрывает то, что открыл этот блок."
           }
         }
       }
@@ -17900,6 +18410,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "содержит"
+          }
+        }
+      }
+    },
+    "custom block library subflow reuse" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "свой блок библиотека подпроцесс повтор"
           }
         }
       }
@@ -18608,6 +19128,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "An earlier condition of this block checks the same thing, so this one never leads anywhere."
+          }
+        }
+      }
+    },
+    "flow.input.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” can’t name an input. Use letters, digits and _, and don’t start with a digit."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не подходит для имени входа. Используйте латинские буквы, цифры и _, и не начинайте с цифры."
+          }
+        }
+      }
+    },
+    "flow.input.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The block asks for %@. Fill it in below."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоку нужно значение %@. Заполните его ниже."
           }
         }
       }
@@ -20458,6 +21010,22 @@
         }
       }
     },
+    "run.input.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: nothing gives the input %@. Run this block from a test that fills it in."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: никто не дал значение входа %2$@. Запускайте этот блок из теста, который его заполняет."
+          }
+        }
+      }
+    },
     "run.io.writeFailed" : {
       "localizations" : {
         "en" : {
@@ -21270,6 +21838,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "стоп откуда угодно · двиньте мышь — пауза"
+          }
+        }
+      }
+    },
+    "template block library" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "шаблон блок библиотека"
           }
         }
       }

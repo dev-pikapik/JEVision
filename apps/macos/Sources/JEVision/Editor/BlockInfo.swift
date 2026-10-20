@@ -14,6 +14,7 @@ enum BlockInfo {
     case "type": "character.cursor.ibeam"
     case "pressKeys": "command"
     case "waitFor": "hourglass"
+    case "pause": "timer"
     case "check": "checkmark.seal"
     case "if": "arrow.triangle.branch"
     case "repeat": "repeat"
@@ -39,6 +40,7 @@ enum BlockInfo {
     case "type": String(localized: "Type Text")
     case "pressKeys": String(localized: "Press Keys")
     case "waitFor": String(localized: "Wait For")
+    case "pause": String(localized: "Pause")
     case "check": String(localized: "Check")
     case "if": String(localized: "If")
     case "repeat": String(localized: "Repeat")
@@ -64,6 +66,7 @@ enum BlockInfo {
     case "type": String(localized: "Types text, optionally clicking into a field first.")
     case "pressKeys": String(localized: "Presses one key combination.")
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
+    case "pause": String(localized: "Waits a set time before the next step, for animations or slow screens that give no sign when they are ready.")
     case "check": String(localized: "Fails the test unless the screen looks as expected.")
     case "if": String(localized: "Takes a different path depending on what the screen shows or what a saved value is.")
     case "repeat": String(localized: "Runs the blocks inside it several times.")
@@ -90,6 +93,7 @@ enum BlockInfo {
     case "type": String(localized: "Types text into a field")
     case "pressKeys": String(localized: "Presses a key combination")
     case "waitFor": String(localized: "Waits for the screen to change")
+    case "pause": String(localized: "Waits a set time")
     case "check": String(localized: "Fails unless the screen matches")
     case "if": String(localized: "Takes a path by the screen or a value")
     case "repeat": String(localized: "Repeats the steps inside")
@@ -183,6 +187,7 @@ extension BlockKind {
     case .type: "type"
     case .pressKeys: "pressKeys"
     case .waitFor: "waitFor"
+    case .pause: "pause"
     case .check: "check"
     case .if: "if"
     case .repeat: "repeat"
