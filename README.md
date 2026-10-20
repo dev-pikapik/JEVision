@@ -324,9 +324,9 @@ readable diff.
 | --- | --- | --- |
 | `openApp` | actions | Opens the application under test, or another one by bundle identifier |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
-| `click` | actions | Clicks an image on screen, an element described in words (found by JEV) or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
+| `click` | actions | Clicks an image on screen, an element described in words (found by JEV) or a point, left or right, single or double, optionally holding ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]`); with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
 | `hover` | actions | Moves the pointer onto an image on screen, an element described in words or a point and leaves it there, to show a tooltip or a menu that opens on hover |
-| `drag` | actions | Presses the left button `from` one image, described element or point, moves holding it and lets go `to` another |
+| `drag` | actions | Presses the left or right `button` `from` one image, described element or point, moves holding it and lets go `to` another, optionally holding ⌃ ⌥ ⇧ ⌘ (`modifiers`) |
 | `scroll` | actions | Turns the scroll wheel `up`, `down`, `left` or `right` by an `amount` of `lines` or `pixels`, over the middle of the window or `at` an image, described element or point |
 | `type` | actions | Types text, optionally into a field found by its image or description |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
@@ -336,6 +336,9 @@ readable diff.
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
 | `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |
+| `script` | data and system | Runs a `sh`, `zsh`, Python 3, Node or AppleScript script; its `inputs` are text, number, boolean, image (a PNG file) or area (`x,y,width,height` in fractions of the window), and its `outputs` become `${var.NAME}` of the same types; a value that doesn't fit its type is reported while editing |
+| `clipboard` | data and system | Puts text on the clipboard (`put`), keeps the clipboard text as a variable (`read`) or waits until it equals, contains or compares with a value (`check`); a test with it doesn't run beside another that uses the screen |
+| `dateTime` | data and system | Keeps the current date and time, written as a `strftime` `format` and moved by a `shift` such as `{ "amount": -2, "unit": "days" }`, as `${var.NAME}`; month and day names are in English |
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
