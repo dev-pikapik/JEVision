@@ -38,7 +38,9 @@ pub use report::{
     Step, StepStatus, Verdict, VisionAnswer, branch_text, describe, describe_vision, html,
     junit_xml,
 };
-pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
+pub use run::{
+    Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, today, vision_failure,
+};
 pub use screen::{ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder};
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,

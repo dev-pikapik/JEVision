@@ -1,7 +1,8 @@
 //! Settings a project shares with everyone who runs its tests, kept in `jevision.project.json`
 //! in the project folder and committed with the tests: how many times a failed test is retried
-//! when its file doesn't say, and the tests in quarantine. A quarantined test still runs, but
-//! its failure doesn't fail Run All, the command line or the JUnit report. The file also says
+//! when its file doesn't say, and the tests in quarantine, each until a date if it has one. A
+//! quarantined test still runs, but its failure doesn't fail Run All, the command line or the
+//! JUnit report; once the date is past the test counts as any other. The file also says
 //! how private the project's screens are: areas covered in every screenshot before it is saved
 //! or sent anywhere, and whether screenshots may go to AI models outside this computer, and
 //! which folders run their tests side by side rather than one after another.
@@ -9,6 +10,7 @@
 use std::path::{Component, Path};
 use std::{fs, io};
 
+use chrono::{Days, NaiveDate};
 use serde::{Deserialize, Serialize};
 
 use crate::Rect;
@@ -20,14 +22,25 @@ use crate::validate::{MAX_RETRIES, rect_fits};
 pub const PROJECT_FILE: &str = "jevision.project.json";
 /// Format of the project settings file written by this build.
 pub const PROJECT_FORMAT: u32 = 1;
+/// Days a new quarantine lasts unless someone picks another end.
+pub const QUARANTINE_DAYS: u64 = 14;
+/// Flaky runs of a test in a week after which its quarantine is suggested, unless the project
+/// says otherwise.
+pub const DEFAULT_QUARANTINE_AFTER: u32 = 3;
+/// Most flaky runs a project can ask for before quarantine is suggested.
+pub const MAX_QUARANTINE_AFTER: u32 = 10;
 
 /// The settings of a project.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ProjectSettings {
     /// How many times a failed test is retried when its file doesn't say; `None` retries none.
     pub retries: Option<u32>,
-    /// Tests in quarantine, sorted by file.
+    /// Tests in quarantine, sorted by file; entries whose end date is past are kept until
+    /// someone releases them.
     pub quarantine: Vec<Quarantined>,
+    /// Flaky runs of a test within 7 days after which quarantine is suggested; `None` for
+    /// [`DEFAULT_QUARANTINE_AFTER`].
+    pub suggest_quarantine_after: Option<u32>,
     /// Screenshots go only to AI models running on this computer; checks that would need a
     /// cloud service fail instead.
     pub local_only: bool,
@@ -73,6 +86,21 @@ pub struct Quarantined {
     /// Why the test is in quarantine, such as a link to the bug that makes it fail.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Last day the test is in quarantine, as `YYYY-MM-DD`; absent for a quarantine without an
+    /// end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub until: Option<String>,
+}
+
+impl Quarantined {
+    /// Whether the quarantine is in force on `today`, as `YYYY-MM-DD`: it has no end, or its
+    /// last day isn't past.
+    pub fn is_active(&self, today: &str) -> bool {
+        match (self.until.as_deref().and_then(date), date(today)) {
+            (Some(until), Some(today)) => until >= today,
+            _ => true,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,6 +111,12 @@ struct File {
     retries: Option<u32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     quarantine: Vec<Quarantined>,
+    #[serde(
+        default,
+        rename = "suggestQuarantineAfter",
+        skip_serializing_if = "Option::is_none"
+    )]
+    suggest_quarantine_after: Option<u32>,
     #[serde(
         default,
         rename = "localOnly",
@@ -113,6 +147,14 @@ impl ProjectSettings {
                 "\"retries\" is {retries}; it must be from 0 to {MAX_RETRIES}"
             ));
         }
+        if let Some(after) = file
+            .suggest_quarantine_after
+            .filter(|n| !(1..=MAX_QUARANTINE_AFTER).contains(n))
+        {
+            return Err(format!(
+                "\"suggestQuarantineAfter\" is {after}; it must be from 1 to {MAX_QUARANTINE_AFTER}"
+            ));
+        }
         let mut quarantine = file.quarantine;
         for entry in &quarantine {
             if !is_test_path(&entry.test) {
@@ -125,6 +167,13 @@ impl ProjectSettings {
             if entry.reason.as_deref().is_some_and(|r| r.trim().is_empty()) {
                 return Err(format!(
                     "the reason for \"{}\" in \"quarantine\" is empty; write why or leave it out",
+                    entry.test
+                ));
+            }
+            if let Some(until) = entry.until.as_deref().filter(|u| date(u).is_none()) {
+                return Err(format!(
+                    "\"until\" of \"{}\" in \"quarantine\" is \"{until}\"; write a date such as \
+                     2026-11-03",
                     entry.test
                 ));
             }
@@ -151,6 +200,7 @@ impl ProjectSettings {
         Ok(Self {
             retries: file.retries,
             quarantine,
+            suggest_quarantine_after: file.suggest_quarantine_after,
             local_only: file.local_only,
             hide: file.hide,
             run_modes,
@@ -174,6 +224,7 @@ impl ProjectSettings {
             format: PROJECT_FORMAT,
             retries: self.retries,
             quarantine: self.quarantine.clone(),
+            suggest_quarantine_after: self.suggest_quarantine_after,
             local_only: self.local_only,
             hide: self.hide.clone(),
             run_modes: self
@@ -203,19 +254,33 @@ impl ProjectSettings {
         fs::write(project.join(PROJECT_FILE), self.to_json())
     }
 
-    /// The quarantine entry of the test file `test`, relative to the project folder.
-    pub fn quarantined(&self, test: &str) -> Option<&Quarantined> {
+    /// The quarantine of the test file `test`, relative to the project folder, if it is in force
+    /// on `today`, as `YYYY-MM-DD`; a test whose quarantine ended counts as any other.
+    pub fn quarantined(&self, test: &str, today: &str) -> Option<&Quarantined> {
         self.quarantine
             .binary_search_by(|q| q.test.as_str().cmp(test))
             .ok()
             .map(|i| &self.quarantine[i])
+            .filter(|q| q.is_active(today))
     }
 
-    /// Puts the test file `test` in quarantine, or changes the reason of one already there. A
-    /// blank reason counts as none; `Err` when `test` isn't a test file path.
-    pub fn quarantine(&mut self, test: &str, reason: Option<&str>) -> Result<(), String> {
+    /// Puts the test file `test` in quarantine until the end of the day `until`, as
+    /// `YYYY-MM-DD`, or without an end, or changes the reason and end of one already there. A
+    /// blank reason counts as none; `Err` when `test` isn't a test file path or `until` isn't a
+    /// date.
+    pub fn quarantine(
+        &mut self,
+        test: &str,
+        reason: Option<&str>,
+        until: Option<&str>,
+    ) -> Result<(), String> {
         if !is_test_path(test) {
             return Err(format!("\"{test}\" isn't a test file of the project"));
+        }
+        if let Some(until) = until.filter(|u| date(u).is_none()) {
+            return Err(format!(
+                "\"{until}\" isn't a date; write one such as 2026-11-03"
+            ));
         }
         let entry = Quarantined {
             test: test.to_owned(),
@@ -223,6 +288,7 @@ impl ProjectSettings {
                 .map(str::trim)
                 .filter(|r| !r.is_empty())
                 .map(str::to_owned),
+            until: until.map(str::to_owned),
         };
         match self
             .quarantine
@@ -232,6 +298,12 @@ impl ProjectSettings {
             Err(i) => self.quarantine.insert(i, entry),
         }
         Ok(())
+    }
+
+    /// How many flaky runs of a test in a week make its quarantine worth suggesting.
+    pub fn quarantine_threshold(&self) -> u32 {
+        self.suggest_quarantine_after
+            .unwrap_or(DEFAULT_QUARANTINE_AFTER)
     }
 
     /// Replaces the areas hidden in every screenshot; `Err` names the first one that doesn't
@@ -287,6 +359,21 @@ impl ProjectSettings {
         self.quarantine.retain(|q| q.test != test);
         self.quarantine.len() != before
     }
+}
+
+/// `YYYY-MM-DD` as a day.
+fn date(text: &str) -> Option<NaiveDate> {
+    NaiveDate::parse_from_str(text, "%Y-%m-%d")
+        .ok()
+        .filter(|_| text.len() == 10)
+}
+
+/// The last day of a quarantine that starts `today`, as `YYYY-MM-DD`, lasting
+/// [`QUARANTINE_DAYS`]; `None` when `today` isn't a date.
+pub fn default_quarantine_until(today: &str) -> Option<String> {
+    date(today)?
+        .checked_add_days(Days::new(QUARANTINE_DAYS))
+        .map(|day| day.format("%Y-%m-%d").to_string())
 }
 
 fn check_hide(hide: &[Rect]) -> Result<(), String> {
@@ -361,10 +448,13 @@ mod tests {
         let settings = ProjectSettings::parse(text).unwrap();
         assert_eq!(settings.retries, Some(2));
         assert_eq!(
-            settings.quarantined("a/login.flow.json").unwrap().reason,
+            settings
+                .quarantined("a/login.flow.json", "2026-10-20")
+                .unwrap()
+                .reason,
             Some("Bug #12".into())
         );
-        assert!(settings.quarantined("b.flow.json").is_none());
+        assert!(settings.quarantined("b.flow.json", "2026-10-20").is_none());
         let written = settings.to_json();
         assert!(written.starts_with("{\n  \"format\": 1,\n  \"retries\": 2,\n"));
         assert!(written.find("a/login").unwrap() < written.find("z.flow").unwrap());
@@ -412,6 +502,23 @@ mod tests {
                 r#"{"format":1,"quarantine":[{"test":"x.flow.json"},{"test":"x.flow.json"}]}"#,
                 "more than once",
             ),
+            (
+                r#"{"format":1,"quarantine":[{"test":"x.flow.json","until":"soon"}]}"#,
+                "write a date",
+            ),
+            (
+                r#"{"format":1,"quarantine":[{"test":"x.flow.json","until":"2026-02-30"}]}"#,
+                "write a date",
+            ),
+            (
+                r#"{"format":1,"quarantine":[{"test":"x.flow.json","until":"2026-2-3"}]}"#,
+                "write a date",
+            ),
+            (r#"{"format":1,"suggestQuarantineAfter":0}"#, "from 1 to 10"),
+            (
+                r#"{"format":1,"suggestQuarantineAfter":11}"#,
+                "from 1 to 10",
+            ),
         ] {
             let error = ProjectSettings::parse(text).unwrap_err();
             assert!(error.contains(says), "{text}: {error}");
@@ -441,12 +548,16 @@ mod tests {
     #[test]
     fn quarantines_and_releases() {
         let mut settings = ProjectSettings::default();
-        settings.quarantine("b.flow.json", Some("  ")).unwrap();
-        settings.quarantine("a.flow.json", Some(" Bug ")).unwrap();
         settings
-            .quarantine("b.flow.json", Some("Slow server"))
+            .quarantine("b.flow.json", Some("  "), None)
             .unwrap();
-        assert!(settings.quarantine("../c.flow.json", None).is_err());
+        settings
+            .quarantine("a.flow.json", Some(" Bug "), None)
+            .unwrap();
+        settings
+            .quarantine("b.flow.json", Some("Slow server"), None)
+            .unwrap();
+        assert!(settings.quarantine("../c.flow.json", None, None).is_err());
         let tests: Vec<_> = settings
             .quarantine
             .iter()
@@ -462,6 +573,50 @@ mod tests {
         assert!(settings.release("a.flow.json"));
         assert!(!settings.release("a.flow.json"));
         assert_eq!(settings.quarantine.len(), 1);
+    }
+
+    #[test]
+    fn a_quarantine_ends_after_its_last_day() {
+        let text = r#"{"format":1,"quarantine":[
+            {"test":"a.flow.json","until":"2026-11-03"},
+            {"test":"b.flow.json"}]}"#;
+        let settings = ProjectSettings::parse(text).unwrap();
+        let on = |test: &str, day: &str| settings.quarantined(test, day).is_some();
+        assert!(on("a.flow.json", "2026-10-20"));
+        assert!(on("a.flow.json", "2026-11-03"));
+        assert!(!on("a.flow.json", "2026-11-04"));
+        assert!(on("b.flow.json", "2099-01-01"));
+        // The entry stays in the file until someone releases it.
+        assert_eq!(settings.quarantine.len(), 2);
+        assert_eq!(
+            ProjectSettings::parse(&settings.to_json()).unwrap(),
+            settings
+        );
+        assert_eq!(
+            default_quarantine_until("2026-12-25").as_deref(),
+            Some("2027-01-08")
+        );
+        assert_eq!(default_quarantine_until("tomorrow"), None);
+        let mut settings = settings;
+        assert!(
+            settings
+                .quarantine("a.flow.json", None, Some("11/03"))
+                .is_err()
+        );
+        settings
+            .quarantine("a.flow.json", Some("Bug"), Some("2026-12-01"))
+            .unwrap();
+        assert!(settings.quarantined("a.flow.json", "2026-12-01").is_some());
+        assert!(settings.quarantined("a.flow.json", "2026-12-02").is_none());
+    }
+
+    #[test]
+    fn projects_choose_when_quarantine_is_suggested() {
+        assert_eq!(ProjectSettings::default().quarantine_threshold(), 3);
+        let settings =
+            ProjectSettings::parse(r#"{"format":1,"suggestQuarantineAfter":5}"#).unwrap();
+        assert_eq!(settings.quarantine_threshold(), 5);
+        assert!(settings.to_json().contains("\"suggestQuarantineAfter\": 5"));
     }
 
     #[test]
@@ -526,7 +681,9 @@ mod tests {
             retries: Some(1),
             ..Default::default()
         };
-        settings.quarantine("t.flow.json", None).unwrap();
+        settings
+            .quarantine("t.flow.json", None, Some("2026-11-03"))
+            .unwrap();
         settings.save(&dir).unwrap();
         assert_eq!(ProjectSettings::load(&dir).unwrap(), settings);
         fs::remove_dir_all(&dir).unwrap();

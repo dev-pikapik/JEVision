@@ -240,6 +240,40 @@ fn call(server: &Server, name: &str, arguments: Value) -> (bool, String) {
 }
 
 #[test]
+fn lists_only_the_tests_a_card_filter_chooses() {
+    let (project, _, server) = setup();
+    let other = sign_in().replace(
+        r#""author":"Anna""#,
+        r#""author":"Bo","priority":"high","flaky":true"#,
+    );
+    project.write("checkout.flow.json", &other);
+    let listed = |arguments: Value| {
+        let (failed, text) = call(&server, "list_tests", arguments);
+        assert!(!failed, "{text}");
+        text
+    };
+    assert!(listed(json!({})).starts_with("2 tests."));
+    let text = listed(json!({ "author": " anna " }));
+    assert!(
+        text.starts_with("1 test.") && text.contains("login/sign-in"),
+        "{text}"
+    );
+    let text = listed(json!({ "priority": "HIGH", "flaky": true }));
+    assert!(
+        text.starts_with("1 test.") && text.contains("checkout.flow.json"),
+        "{text}"
+    );
+    assert!(listed(json!({ "testType": "smoke" })).starts_with("No test matches."));
+    for (arguments, said) in [
+        (json!({ "priority": "urgent" }), "isn't a test priority"),
+        (json!({ "flaky": "yes" }), "must be true or false"),
+    ] {
+        let (failed, text) = call(&server, "list_tests", arguments);
+        assert!(failed && text.contains(said), "{text}");
+    }
+}
+
+#[test]
 fn speaks_the_protocol_over_lines() {
     let (_project, _, server) = setup();
     let input = [

@@ -13,6 +13,7 @@ mod decode;
 mod diff;
 mod edit;
 mod env;
+mod filter;
 mod index;
 mod issue;
 mod layout;
@@ -47,6 +48,7 @@ pub use env::{
     AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
     required_env_values, validate_environment_values,
 };
+pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
 pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
 pub use layout::{
@@ -56,7 +58,10 @@ pub use merge::{
     ConflictKind, ConflictPart, MergeChoice, MergeConflict, merge_conflicts, merge_flows,
 };
 pub use model::*;
-pub use project::{FolderRunMode, PROJECT_FILE, PROJECT_FORMAT, ProjectSettings, Quarantined};
+pub use project::{
+    DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE, PROJECT_FORMAT,
+    ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
+};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,

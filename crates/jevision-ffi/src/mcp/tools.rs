@@ -8,8 +8,8 @@ use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use jevision_core::{
-    Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, describe, parse,
-    parse_block, to_canonical_json, validate_in,
+    Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, TestCard,
+    TestFilter, describe, parse, parse_block, to_canonical_json, validate_in,
 };
 use jevision_runner::{MaskedImage, Run, StepStatus, Verdict};
 
@@ -40,10 +40,15 @@ pub(super) fn definitions() -> Vec<Value> {
         tool(
             "list_tests",
             "List tests",
-            "Lists the tests (*.flow.json files) in the project with their name, app, tags, status and how many problems each has. Give query to find tests by words in their path, name, description, app or tags.",
+            "Lists the tests (*.flow.json files) in the project with their name, app, tags, status and how many problems each has. Give query to find tests by words in their path, name, description, app or tags, and testType, priority, status, author or flaky to keep only the tests whose card says so.",
             json!({
                 "query": { "type": "string", "description": "Words to look for; every word must match. Case doesn't matter." },
                 "folder": path("Only list tests in this folder, relative to the project folder."),
+                "testType": { "type": "string", "enum": ["smoke", "regression", "acceptance"], "description": "Only tests of this type." },
+                "priority": { "type": "string", "enum": ["critical", "high", "medium", "low"], "description": "Only tests with this priority." },
+                "status": { "type": "string", "enum": ["draft", "ready", "outdated"], "description": "Only tests with this status." },
+                "author": { "type": "string", "description": "Only tests written by this author, as the card names them. Case doesn't matter." },
+                "flaky": { "type": "boolean", "description": "true keeps only the tests marked flaky in their card." },
             }),
             &[],
             read_only(),
@@ -263,14 +268,28 @@ impl Server {
             .split_whitespace()
             .map(str::to_lowercase)
             .collect();
+        let flaky = match args.get("flaky") {
+            None | Some(Value::Null) => false,
+            Some(v) => v.as_bool().ok_or("\"flaky\" must be true or false.")?,
+        };
+        let filter = TestFilter::from_words(
+            optional(args, "testType")?,
+            optional(args, "priority")?,
+            optional(args, "status")?,
+            optional(args, "author")?,
+            flaky,
+        )?;
         let mut tests = Vec::new();
         for file in self.collect(&folder)? {
             let path = self.relative(&file);
             let entry = match fs::read_to_string(&file).map(|t| parse(&t)) {
+                // A test that can't be read has no card to choose it by.
+                Err(_) | Ok(Err(_)) if !filter.is_empty() => continue,
                 Err(e) => json!({ "path": path, "error": format!("can't be read: {e}") }),
                 Ok(Err(e)) => {
                     json!({ "path": path, "errors": e.issues.len(), "problems": described(&e.issues) })
                 }
+                Ok(Ok(flow)) if !filter.matches(&TestCard::of(&flow, false)) => continue,
                 Ok(Ok(flow)) => {
                     let issues = checked(&flow, &file);
                     let errors = issues
@@ -303,8 +322,8 @@ impl Server {
             }
         }
         let summary = match (tests.len(), words.is_empty()) {
-            (0, true) => "The project has no tests yet.".to_owned(),
-            (0, false) => "No test matches.".to_owned(),
+            (0, true) if filter.is_empty() => "The project has no tests yet.".to_owned(),
+            (0, _) => "No test matches.".to_owned(),
             (1, _) => "1 test.".to_owned(),
             (n, _) => format!("{n} tests."),
         };

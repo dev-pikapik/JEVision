@@ -351,18 +351,18 @@ impl<'v> Obj<'v> {
     }
 }
 
-const TEST_TYPES: &[(&str, TestType)] = &[
+pub(crate) const TEST_TYPES: &[(&str, TestType)] = &[
     ("smoke", TestType::Smoke),
     ("regression", TestType::Regression),
     ("acceptance", TestType::Acceptance),
 ];
-const PRIORITIES: &[(&str, Priority)] = &[
+pub(crate) const PRIORITIES: &[(&str, Priority)] = &[
     ("critical", Priority::Critical),
     ("high", Priority::High),
     ("medium", Priority::Medium),
     ("low", Priority::Low),
 ];
-const STATUSES: &[(&str, TestStatus)] = &[
+pub(crate) const STATUSES: &[(&str, TestStatus)] = &[
     ("draft", TestStatus::Draft),
     ("ready", TestStatus::Ready),
     ("outdated", TestStatus::Outdated),
