@@ -31,14 +31,20 @@ struct ProjectView: View {
       }
       // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
       .safeAreaBar(edge: .top, spacing: 0) {
-        Picker("Show", selection: $project.sidebar) {
-          Text("Tests").tag(ProjectStore.Sidebar.tests)
-          Text("Runs").tag(ProjectStore.Sidebar.runs)
+        VStack(spacing: 0) {
+          HStack(spacing: 8) {
+            Picker("Show", selection: $project.sidebar) {
+              Text("Tests").tag(ProjectStore.Sidebar.tests)
+              Text("Runs").tag(ProjectStore.Sidebar.runs)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            if project.sidebar == .tests, !project.items.isEmpty { TestFilterMenu() }
+          }
+          .padding(.horizontal, 10)
+          .padding(.bottom, 6)
+          if project.sidebar == .tests, project.filtersTests { TestFilterBar() }
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, 10)
-        .padding(.bottom, 6)
       }
       .safeAreaBar(edge: .bottom, spacing: 0) {
         VStack(spacing: 0) {
@@ -68,7 +74,7 @@ struct ProjectView: View {
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       project.git.refresh()
     }
-    .quarantineAlert($quarantining)
+    .quarantineSheet($quarantining)
     .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
       TextField("Name", text: $newName)
       Button("Rename") {
@@ -132,7 +138,8 @@ struct ProjectView: View {
 
   private var testList: some View {
     @Bindable var project = project
-    let found = isSearching ? ProjectScanner.tests(in: project.items, matching: query) : []
+    let shown = project.filtered(project.items)
+    let found = isSearching ? ProjectScanner.tests(in: shown, matching: query) : []
     let selection = Binding<ProjectItem.ID?>(
       get: { project.showsBoard ? project.boards.current.map(Self.boardTag) : project.selection },
       set: { id in
@@ -160,7 +167,7 @@ struct ProjectView: View {
               }
             }
             Section("Tests") {
-              ForEach(project.items) { tree($0) }
+              ForEach(shown) { tree($0) }
             }
           }
         }
@@ -178,6 +185,14 @@ struct ProjectView: View {
       .overlay {
         if isSearching, found.isEmpty {
           ContentUnavailableView.search(text: query)
+        } else if !isSearching, project.filtersTests, shown.isEmpty {
+          ContentUnavailableView {
+            Label("No tests match", systemImage: "line.3.horizontal.decrease.circle")
+          } description: {
+            Text("No test has a card that fits the filter: \(TestFilterText.summary(project.filter)).")
+          } actions: {
+            Button("Clear Filter") { project.filter = TestFilter() }
+          }
         }
       }
       .onDeleteCommand {
@@ -201,7 +216,7 @@ struct ProjectView: View {
   private func row(_ item: ProjectItem, showsPath: Bool) -> some View {
     SidebarRow(
       item: item, showsPath: showsPath, status: project.latestRuns[item.id]?.status, quarantine: project.quarantine(of: item.id),
-      flaky: project.flaky[item.id], run: canRun ? { run(item) } : nil
+      flaky: project.flaky[item.id], suggestion: project.quarantineSuggestion(for: item.id), run: canRun ? { run(item) } : nil
     )
       .contextMenu {
         Button(item.kind == .test ? "Run" : "Run Folder") { run(item) }
@@ -215,11 +230,19 @@ struct ProjectView: View {
             newName = item.name
             renaming = item
           }
-          if project.quarantine(of: item.id) != nil {
+          if let entry = project.quarantine(of: item.id) {
+            Button("Change Quarantine…") {
+              quarantining = QuarantineRequest(file: item.id, name: item.name, entry: entry)
+            }
             Button("Release from Quarantine") {
               do { try project.releaseFromQuarantine(item.id) } catch { failure = ProjectStore.message(error) }
             }
           } else {
+            if let suggestion = project.quarantineSuggestion(for: item.id) {
+              Button("Put in Quarantine for Two Weeks (Suggested)") {
+                attempt { try project.quarantine(item.id, accepting: suggestion) }
+              }
+            }
             Button("Quarantine…") { quarantining = QuarantineRequest(file: item.id, name: item.name) }
           }
           Button("Move to Trash") { trash(item) }
@@ -239,12 +262,12 @@ struct ProjectView: View {
     let isAllTests = name == project.boards.allTests
     return BoardRow(
       name: name, isAllTests: isAllTests,
-      run: isAllTests && canRun ? { runAll(project.items, title: String(localized: "All tests")) } : nil
+      run: isAllTests && canRun ? { runAll(project.items, title: project.runAllTitle) } : nil
     )
     .tag(Self.boardTag(name))
     .contextMenu {
       if isAllTests {
-        Button("Run All Tests") { runAll(project.items, title: String(localized: "All tests")) }
+        Button("Run All Tests") { runAll(project.items, title: project.runAllTitle) }
           .disabled(!canRun)
         RunModePicker(folder: ".") { failure = $0 }
         Divider()
@@ -288,7 +311,7 @@ struct ProjectView: View {
 
   private func runAll(_ items: [ProjectItem], title: String, folder: String = ".") {
     guard let root = project.rootURL else { return }
-    runs.runAll(items.flatMap(\.tests).map(\.url), in: root, title: title, folder: folder)
+    runs.runAll(project.chosen(from: items).map(\.url), in: root, title: title, folder: folder)
   }
 
   private func trash(_ item: ProjectItem) {
@@ -394,6 +417,8 @@ private struct SidebarRow: View {
   let quarantine: Quarantined?
   /// Why the test counts as flaky, when its recent runs say so; a mark in its details also shows.
   let flaky: FlakyEvidence?
+  /// Why the test is worth putting in quarantine, when its runs say so.
+  let suggestion: QuarantineSuggestion?
   /// Runs the test, or every test of the folder; `nil` while nothing can run.
   let run: (() -> Void)?
 
@@ -415,12 +440,19 @@ private struct SidebarRow: View {
                 .foregroundStyle(.secondary)
             }
           }
-          if status != nil || quarantine != nil || flakyHelp != nil {
+          if status != nil || quarantine != nil || flakyHelp != nil || suggestionHelp != nil {
             Spacer(minLength: 0)
           }
           if let quarantine {
             QuarantineMark(entry: quarantine)
               .font(.caption2)
+              .accessibilityHidden(true)
+          }
+          if let suggestionHelp {
+            Image(systemName: "bandage")
+              .font(.caption2)
+              .foregroundStyle(RunStatus.quarantined.color)
+              .help(Text(suggestionHelp))
               .accessibilityHidden(true)
           }
           if let flakyHelp, status != .flaky {
@@ -450,10 +482,16 @@ private struct SidebarRow: View {
 
   private var flakyHelp: String? { TestFields.flakyHelp(flaky, marked: item.markedFlaky) }
 
+  /// That quarantine is worth it, and where to do it.
+  private var suggestionHelp: String? {
+    suggestion.map { QuarantineText.suggestion($0) + ". " + String(localized: "Open its menu to put it in quarantine.") }
+  }
+
   private var accessibilityValue: String {
     var parts: [String] = []
     if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
     if let flakyHelp { parts.append(flakyHelp) }
+    if let suggestionHelp { parts.append(suggestionHelp) }
     if let status { parts.append(String(localized: "Last run: \(status.title)")) }
     return parts.joined(separator: ". ")
   }

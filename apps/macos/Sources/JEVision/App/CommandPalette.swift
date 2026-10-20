@@ -54,7 +54,10 @@ struct PaletteState {
   var selectionHasLinks = false
   /// Blocks are selected on the canvas.
   var hasPickedBlocks = false
+  /// Run All has tests to run: at least one, and one the sidebar filter chooses.
   var hasTests = false
+  /// The sidebar filter chooses only some tests.
+  var filtersTests = false
   var hasLastRun = false
   /// The newest run of the open test failed.
   var lastRunFailed = false
@@ -171,7 +174,10 @@ enum CommandPalette {
         : String(localized: "The AI writes a new test from what you describe in words."),
       symbol: "sparkles", keywords: String(localized: "ai write generate draft words text"), if: state.hasProject)
     add(
-      .runAll, String(localized: "Run All Tests"), String(localized: "Runs every test of the project in turn."),
+      .runAll, String(localized: "Run All Tests"),
+      state.filtersTests
+        ? String(localized: "Runs the tests the sidebar filter chooses, in turn.")
+        : String(localized: "Runs every test of the project in turn."),
       symbol: "play.square.stack", shortcut: Shortcuts.runAll, if: state.hasProject && state.hasTests)
     add(
       .commit, String(localized: "Commit Changes…"), String(localized: "Saves a version of the changed tests in Git."),

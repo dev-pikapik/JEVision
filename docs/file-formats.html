@@ -151,7 +151,8 @@
 <pre><code>{
   "format": 1,
   "retries": 2,
-  "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42" } ],
+  "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42", "until": "2026-11-03" } ],
+  "suggestQuarantineAfter": 3,
   "localOnly": true,
   "hide": [ { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 } ],
   "ai": {
@@ -161,7 +162,7 @@
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>. A file from a newer JEVision is refused instead of being misread.</li>
-  <li><code>retries</code> (optional), 0 to 10, and <code>quarantine</code> (optional): see <a href="retries.html#project-file">Project settings file</a>.</li>
+  <li><code>retries</code> (optional), 0 to 10, <code>quarantine</code> (optional; each entry has a <code>test</code>, and optionally a <code>reason</code> and the last day <code>until</code> as <code>YYYY-MM-DD</code>) and <code>suggestQuarantineAfter</code> (optional, 1 to 10, default 3): see <a href="retries.html#project-file">Project settings file</a>.</li>
   <li><code>localOnly</code> (optional, <code>false</code> when left out): <code>true</code> sends the project's screenshots only to AI models on this Mac, and never to assistants.</li>
   <li><code>ai</code> (optional): the AI the project asks, instead of the one chosen in each person's Settings → AI. <code>screen</code> is for checks by meaning, <code>text</code> for drafting tests and explaining failures. Each has a <code>provider</code>, one of <code>anthropic</code>, <code>openai</code>, <code>gemini</code>, <code>jev</code>, <code>ollama</code>, <code>lmstudio</code> or <code>openai-compatible</code> (not <code>jev</code> for <code>text</code>), and an optional <code>model</code> that, when left out, is the model chosen for that provider in Settings. A check that names its own <code>provider</code> or <code>model</code> comes first. The file never holds an API key or an address. See <a href="checks.html#which-ai">Which AI answers</a>.</li>
   <li><code>hide</code> (optional): areas of the window, as <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 from its top-left corner, painted over in grey in every screenshot before it is saved in a report or sent to an AI model or an assistant. Each area must have a size and end inside the window.</li>
@@ -207,9 +208,9 @@
     <tr><td><code>environment</code></td><td>The environment the run used; absent when it used none</td></tr>
     <tr><td><code>video</code></td><td>The run's video; absent when none was kept</td></tr>
     <tr><td><code>fileHash</code></td><td>A fingerprint (SHA-256) of the test file, which tells runs of the same test apart from runs after it changed</td></tr>
-    <tr><td><code>quarantined</code>, <code>quarantineReason</code></td><td>Whether the test was in <a href="retries.html#quarantine">quarantine</a>, and why</td></tr>
+    <tr><td><code>quarantined</code>, <code>quarantineReason</code></td><td>Whether the test was in <a href="retries.html#quarantine">quarantine</a> when it ran, and why; a quarantine whose last day was past doesn't count</td></tr>
     <tr><td><code>virtualMachine</code>, <code>displayScale</code></td><td>Whether the run ran in a <a href="vm.html">virtual machine</a>, and the pixels per point of its display: <code>2</code> on Retina, <code>1</code> on a standard display; absent when unknown</td></tr>
-    <tr><td><code>attempts</code></td><td>Every attempt: <code>number</code>, <code>verdict</code>, <code>durationMs</code>, <code>failure</code>, the data <code>row</code> for a data-driven test, and its <code>steps</code></td></tr>
+    <tr><td><code>attempts</code></td><td>Every attempt: <code>number</code>, <code>verdict</code>, <code>durationMs</code>, <code>failure</code>, the data <code>row</code> for a data-driven test (its <code>number</code>, <code>label</code> and <code>hash</code>, a fingerprint of its values that tells an edited row from the same row before the edit; reports written before it was kept have no <code>hash</code>), and its <code>steps</code></td></tr>
   </tbody>
 </table>
 </div>

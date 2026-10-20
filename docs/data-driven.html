@@ -99,7 +99,7 @@ Bo,bo@example.com,"quotes ""inside"", and a comma"</code></pre>
 <h2 id="rows">Once per row</h2>
 <p>The first <code>useData</code> block on the way from <code>start</code> names the test's table. The whole test runs once for each of its rows, and every block of the test reads that row's values.</p>
 <ul>
-  <li>Each row is a result of its own, with its own <a href="retries.html">retries</a>.</li>
+  <li>Each row is a result of its own, with its own <a href="retries.html">retries</a>. The report keeps which row ran, and <a href="retries.html#flaky">flaky tests</a> and <a href="retries.html#suggestion">quarantine suggestions</a> are worked out row by row: a row that fails now and then is flaky, the others aren't.</li>
   <li>A row is named by its <code>name</code> column (in any case, such as <code>Name</code>), or else by its first column: “Row 2: Bo”.</li>
   <li>The run passes when every row passes. The report and the run summary say how many did, such as “4 of 5 rows passed”.</li>
   <li>In JUnit XML, each row is a test case of its own, such as <code>Sign in [Row 2: Bo]</code>.</li>

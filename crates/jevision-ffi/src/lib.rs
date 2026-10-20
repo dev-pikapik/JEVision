@@ -12,8 +12,8 @@ use jevision_core::{
     FlowLayout, HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame,
     LaidSlot, Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference,
     SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
-    SearchCandidate, Severity, Slot, Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck,
-    ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
+    SearchCandidate, Severity, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
+    TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -252,6 +252,8 @@ pub struct TestFileSummary {
     pub keywords: String,
     /// Someone marked the test as flaky in its details.
     pub flaky: bool,
+    /// The fields of the test's card the sidebar and Run All choose tests by.
+    pub card: TestCard,
 }
 
 /// The sidebar's summary of the test in `json`; empty when it doesn't read as a test.
@@ -261,8 +263,53 @@ pub fn test_summary(json: String) -> TestFileSummary {
         .map(|flow| TestFileSummary {
             keywords: jevision_core::test_keywords(&flow),
             flaky: flow.flaky,
+            card: TestCard::of(&flow, false),
         })
         .unwrap_or_default()
+}
+
+/// A word for a filter isn't one a test card can have.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum TestFilterError {
+    #[error("{reason}")]
+    Invalid { reason: String },
+}
+
+/// The filter for what a person wrote: the type, priority and status as they appear in test
+/// files (`smoke`, `high`, `ready`; case doesn't matter), the author's name, and whether only
+/// flaky tests count. A blank word asks nothing.
+#[uniffi::export]
+pub fn parse_test_filter(
+    test_type: Option<String>,
+    priority: Option<String>,
+    status: Option<String>,
+    author: Option<String>,
+    flaky: bool,
+) -> Result<TestFilter, TestFilterError> {
+    TestFilter::from_words(
+        test_type.as_deref(),
+        priority.as_deref(),
+        status.as_deref(),
+        author.as_deref(),
+        flaky,
+    )
+    .map_err(|reason| TestFilterError::Invalid { reason })
+}
+
+/// Positions of the `cards` that `filter` chooses, in order; all of them for an empty filter.
+#[uniffi::export]
+pub fn filter_tests(filter: TestFilter, cards: Vec<TestCard>) -> Vec<u32> {
+    filter
+        .choose(&cards)
+        .into_iter()
+        .filter_map(|i| u32::try_from(i).ok())
+        .collect()
+}
+
+/// Whether `filter` asks for nothing.
+#[uniffi::export]
+pub fn test_filter_is_empty(filter: TestFilter) -> bool {
+    filter.is_empty()
 }
 
 /// `text` for display with its `${…}` placeholders kept whole across line breaks.
@@ -488,6 +535,34 @@ pub enum CanvasItem {
     Block { id: String },
     Section { id: String },
     Note { id: String },
+}
+
+#[uniffi::remote(Record)]
+pub struct TestCard {
+    #[uniffi(default = None)]
+    pub test_type: Option<TestType>,
+    #[uniffi(default = None)]
+    pub priority: Option<Priority>,
+    #[uniffi(default = None)]
+    pub status: Option<TestStatus>,
+    #[uniffi(default = None)]
+    pub author: Option<String>,
+    #[uniffi(default = false)]
+    pub flaky: bool,
+}
+
+#[uniffi::remote(Record)]
+pub struct TestFilter {
+    #[uniffi(default = None)]
+    pub test_type: Option<TestType>,
+    #[uniffi(default = None)]
+    pub priority: Option<Priority>,
+    #[uniffi(default = None)]
+    pub status: Option<TestStatus>,
+    #[uniffi(default = None)]
+    pub author: Option<String>,
+    #[uniffi(default = false)]
+    pub flaky: bool,
 }
 
 #[uniffi::remote(Enum)]
@@ -1004,6 +1079,52 @@ mod tests {
         let marked = test_summary(EXAMPLE.replace(r#""retries""#, r#""flaky": true, "retries""#));
         assert!(marked.flaky);
         assert_eq!(test_summary("{".to_owned()), TestFileSummary::default());
+    }
+
+    #[test]
+    fn tests_are_chosen_by_their_cards() {
+        let card = |extra: &str| {
+            test_summary(EXAMPLE.replace(r#""retries""#, &format!(r#"{extra}"retries""#))).card
+        };
+        let cards = vec![
+            card(r#""priority": "high", "author": "Anna Lee", "#),
+            card(r#""priority": "low", "flaky": true, "#),
+            TestCard::default(),
+        ];
+        let by = |filter| filter_tests(filter, cards.clone());
+        let none = TestFilter {
+            test_type: None,
+            priority: None,
+            status: None,
+            author: None,
+            flaky: false,
+        };
+        assert!(test_filter_is_empty(none.clone()));
+        assert_eq!(by(none.clone()), [0, 1, 2]);
+        let high = TestFilter {
+            priority: Some(Priority::High),
+            ..none.clone()
+        };
+        assert_eq!(by(high), [0]);
+        let anna = TestFilter {
+            author: Some("anna lee".into()),
+            ..none.clone()
+        };
+        assert_eq!(by(anna), [0]);
+        let flaky = TestFilter {
+            flaky: true,
+            ..none
+        };
+        assert!(!test_filter_is_empty(flaky.clone()));
+        assert_eq!(by(flaky.clone()), [1]);
+        assert_eq!(
+            parse_test_filter(None, Some("High".into()), None, None, true),
+            Ok(TestFilter {
+                priority: Some(Priority::High),
+                ..flaky
+            })
+        );
+        assert!(parse_test_filter(Some("fast".into()), None, None, None, false).is_err());
     }
 
     #[test]

@@ -1154,6 +1154,15 @@ fn data_rows_run_one_by_one_with_their_own_retries() {
     );
     assert_eq!(report.rows_summary().as_deref(), Some("2 of 3 rows passed"));
     assert_eq!(&hands.typed()[..2], ["hi Ann", "Ann"]);
+    // A row keeps a fingerprint of its values, the same for each of its attempts.
+    let hashes: Vec<_> = report
+        .attempts
+        .iter()
+        .map(|a| a.row.as_ref().unwrap().hash.clone().unwrap())
+        .collect();
+    assert_eq!(hashes[1], hashes[2]);
+    assert!(hashes[0] != hashes[1] && hashes[1] != hashes[3] && hashes[0] != hashes[3]);
+    assert!(hashes.iter().all(|h| h.len() == 16));
     let cases = report.split_rows();
     assert_eq!(cases[1].test, "T [Row 2: Bo]");
     assert_eq!(cases[1].attempts.len(), 2);
@@ -1175,6 +1184,37 @@ fn data_rows_run_one_by_one_with_their_own_retries() {
     let report = run_with(&p, &hands, RunControl::new(), &options).0.report;
     assert_eq!(report.rows_summary().as_deref(), Some("1 of 2 rows passed"));
     assert_eq!(hands.typed(), ["hi Bo", "Bo", "hi Cy", "Cy"]);
+}
+
+#[test]
+fn a_row_never_shows_a_secret_in_its_label_or_fingerprint() {
+    let rows = |name: &str| {
+        let p = Project::new();
+        p.write("data/users.csv", format!("name,plan\n{name},pro\n"))
+            .test(
+                r#""rows":{"type":"useData","file":"data/users.csv","body":"type"},
+                   "type":{"type":"type","text":"${secret.ACME_PASSWORD}","next":"rows"}"#,
+                "rows",
+                0,
+            );
+        run(&p, &Fake::new(solid([0, 0, 0]))).report
+    };
+    let report = rows(SECRET);
+    let row = report.attempts[0].row.clone().unwrap();
+    assert_eq!(row.label, "••••");
+    assert!(!serde_json::to_string(&report).unwrap().contains(SECRET));
+    // The fingerprint is made from the covered values: it tells nothing about the secret.
+    assert_eq!(
+        rows("••••").attempts[0].row.as_ref().unwrap().hash,
+        row.hash
+    );
+}
+
+#[test]
+fn a_report_without_row_fingerprints_still_reads() {
+    let row: DataRow = serde_json::from_str(r#"{"number":2,"label":"Row 2: Bo"}"#).unwrap();
+    assert_eq!((row.number, row.hash.as_deref()), (2, None));
+    assert!(!serde_json::to_string(&row).unwrap().contains("hash"));
 }
 
 #[test]
@@ -1436,7 +1476,25 @@ fn project_retries_and_quarantine_apply_to_runs() {
         "{xml}"
     );
 
+    // A quarantine with a last day still holds on that day and ends the day after.
+    let until = |day: &str| {
+        format!(r#"{{"format":1,"quarantine":[{{"test":"t.flow.json","until":"{day}"}}]}}"#)
+    };
+    p.write("jevision.project.json", until("2999-01-01"));
+    let report = run(&p, &Fake::new(solid([128, 0, 0]))).report;
+    assert!(report.quarantined && report.is_quarantined_failure());
+    p.write("jevision.project.json", until(&jevision_runner::today()));
+    assert!(run(&p, &Fake::new(solid([128, 0, 0]))).report.quarantined);
+    p.write("jevision.project.json", until("2000-01-01"));
+    let report = run(&p, &Fake::new(solid([128, 0, 0]))).report;
+    assert!(!report.quarantined && !report.is_quarantined_failure());
+    assert_eq!(report.verdict, Verdict::Failed);
+
     // The test's own retries win over the project's, even 0.
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"retries":2,"quarantine":[{"test":"t.flow.json","reason":"Bug 12"}]}"#,
+    );
     p.write(
         "t.flow.json",
         failing.replace(r#""start""#, r#""retries":0,"start""#),

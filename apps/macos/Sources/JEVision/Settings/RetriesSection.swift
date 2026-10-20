@@ -28,6 +28,12 @@ struct RetriesSection: View {
           Text("How many more times to run a failed test whose file doesn’t say. A test that fails, then passes, is marked flaky.")
         }
         .settingAnchor("retries")
+        Picker(selection: Binding(get: { quarantineThreshold(settings: project.settings) }, set: { set(threshold: $0) })) {
+          ForEach(UInt32(1)...10, id: \.self) { Text($0, format: .number).tag($0) }
+        } label: {
+          Text("Suggest quarantine after")
+          Text("How many times in a week a test may be unreliable before JEVision suggests quarantine: it passed only on a retry, or failed after it passed with nothing changed.")
+        }
         if project.settings.quarantine.isEmpty {
           LabeledContent("In quarantine") { Text("No tests") }
         } else {
@@ -36,7 +42,7 @@ struct RetriesSection: View {
               Button("Release") { release(entry.test) }
                 .help(Text("Release from Quarantine"))
             } label: {
-              Label { RowLabel(Text(name(entry.test)), Text(entry.reason ?? entry.test)) } icon: { QuarantineMark(entry: entry) }
+              Label { RowLabel(Text(name(entry.test)), Text(detail(entry))) } icon: { QuarantineMark(entry: entry) }
             }
           }
         }
@@ -62,6 +68,15 @@ struct RetriesSection: View {
   private func name(_ test: String) -> String {
     let file = test.split(separator: "/").last.map(String.init) ?? test
     return file.hasSuffix(ProjectScanner.testSuffix) ? String(file.dropLast(ProjectScanner.testSuffix.count)) : file
+  }
+
+  /// Until when and why, or the test file when the entry says neither.
+  private func detail(_ entry: Quarantined) -> String {
+    entry.until == nil && entry.reason == nil ? entry.test : QuarantineText.describe(entry)
+  }
+
+  private func set(threshold: UInt32) {
+    do { try project.setQuarantineThreshold(threshold == 3 ? nil : threshold) } catch { failure = ProjectStore.message(error) }
   }
 
   private func set(retries: UInt32) {

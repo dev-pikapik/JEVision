@@ -195,7 +195,7 @@ impl Run {
             .and_then(|text| jevision_core::parse(text).ok());
         let quarantine = ProjectSettings::load(&project)
             .ok()
-            .and_then(|s| s.quarantined(&file).cloned());
+            .and_then(|s| s.quarantined(&file, &today()).cloned());
         let report = RunReport {
             format: REPORT_FORMAT,
             test: flow
@@ -270,7 +270,7 @@ impl Runner<'_> {
         let quarantine = settings
             .as_ref()
             .ok()
-            .and_then(|s| s.quarantined(&file))
+            .and_then(|s| s.quarantined(&file, &today()))
             .cloned();
         let mut report = RunReport {
             format: REPORT_FORMAT,
@@ -409,7 +409,8 @@ impl Runner<'_> {
                     let row = pass.zip(table.clone()).map(|(row, table)| (table, row));
                     let data_row = row.as_ref().map(|(table, row)| DataRow {
                         number: u32::try_from(row + 1).unwrap_or(u32::MAX),
-                        label: table.label(*row),
+                        label: mask_secrets(&secrets, &table.label(*row)),
+                        hash: row_hash(&secrets, table, *row),
                     });
                     if let (Some(data_row), Some(table)) = (&data_row, &table) {
                         self.events.send(&Event::RowStarted {
@@ -659,6 +660,33 @@ fn no_row(block: &str, file: &str, row: usize, table: &DataTable) -> Failure {
         .with("file", file)
         .with("row", row + 1)
         .with("rows", table.rows.len())
+}
+
+/// Today's date on this computer as `YYYY-MM-DD`, the day a quarantine is checked against.
+pub fn today() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
+/// `text` with the values of `secrets` covered.
+fn mask_secrets(secrets: &HashMap<String, String>, text: &str) -> String {
+    let mut values: Vec<&String> = secrets.values().filter(|v| !v.is_empty()).collect();
+    values.sort_by_key(|v| std::cmp::Reverse(v.len()));
+    values.into_iter().fold(text.to_owned(), |text, v| {
+        text.replace(v.as_str(), SECRET_MASK)
+    })
+}
+
+/// Short fingerprint of the values of row `row` of `table`, counted from 0, with secrets
+/// covered so that it tells nothing about them.
+fn row_hash(secrets: &HashMap<String, String>, table: &DataTable, row: usize) -> Option<String> {
+    let values = table.rows.get(row)?;
+    let text: String = table
+        .columns
+        .iter()
+        .zip(values)
+        .map(|(column, value)| format!("{column}\u{1f}{}\u{1e}", mask_secrets(secrets, value)))
+        .collect();
+    content_hash(text.as_bytes()).get(..16).map(str::to_owned)
 }
 
 /// SHA-256 of a test file's bytes in hex: runs with the same hash ran the same test.
@@ -2604,11 +2632,7 @@ impl Exec<'_> {
     }
 
     fn mask(&self, text: &str) -> String {
-        let mut values: Vec<&String> = self.secrets.values().filter(|v| !v.is_empty()).collect();
-        values.sort_by_key(|v| std::cmp::Reverse(v.len()));
-        values.into_iter().fold(text.to_owned(), |text, v| {
-            text.replace(v.as_str(), SECRET_MASK)
-        })
+        mask_secrets(&*self.secrets, text)
     }
 
     fn redact(&self, failure: &mut Failure) {

@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use jevision_core::{
-    AiChoice, AiTask, FolderRunMode, MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect,
-    RunMode,
+    AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETRIES, PROJECT_FILE,
+    ProjectSettings, Quarantined, Rect, RunMode, default_quarantine_until,
 };
 
 /// The project settings file can't be read or written, or the change isn't allowed.
@@ -24,6 +24,8 @@ pub enum ProjectSettingsError {
 pub struct ProjectSettings {
     pub retries: Option<u32>,
     pub quarantine: Vec<Quarantined>,
+    #[uniffi(default = None)]
+    pub suggest_quarantine_after: Option<u32>,
     #[uniffi(default = false)]
     pub local_only: bool,
     #[uniffi(default = [])]
@@ -60,6 +62,8 @@ pub struct FolderRunMode {
 pub struct Quarantined {
     pub test: String,
     pub reason: Option<String>,
+    #[uniffi(default = None)]
+    pub until: Option<String>,
 }
 
 /// The settings of the project folder `project`; the defaults when it has no settings file.
@@ -69,15 +73,17 @@ pub fn project_settings(project: String) -> Result<ProjectSettings, ProjectSetti
 }
 
 /// Puts the test file `test`, relative to the project folder, in quarantine with an optional
-/// reason, or changes its reason. Returns the saved settings.
+/// reason, until the end of the day `until` (`YYYY-MM-DD`) or without an end, or changes its
+/// reason and end. Returns the saved settings.
 #[uniffi::export]
 pub fn quarantine_test(
     project: String,
     test: String,
     reason: Option<String>,
+    until: Option<String>,
 ) -> Result<ProjectSettings, ProjectSettingsError> {
     change(&project, |s| {
-        s.quarantine(&test, reason.as_deref())
+        s.quarantine(&test, reason.as_deref(), until.as_deref())
             .map_err(|reason| ProjectSettingsError::Rejected { reason })
     })
 }
@@ -91,6 +97,24 @@ pub fn release_from_quarantine(
 ) -> Result<ProjectSettings, ProjectSettingsError> {
     change(&project, |s| {
         s.release(&test);
+        Ok(())
+    })
+}
+
+/// Sets after how many flaky runs of a test within 7 days quarantine is suggested; `None` for
+/// the default. Returns the saved settings.
+#[uniffi::export]
+pub fn set_quarantine_threshold(
+    project: String,
+    after: Option<u32>,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        if after.is_some_and(|n| !(1..=MAX_QUARANTINE_AFTER).contains(&n)) {
+            return Err(ProjectSettingsError::Rejected {
+                reason: format!("Quarantine is suggested after 1 to {MAX_QUARANTINE_AFTER} runs."),
+            });
+        }
+        s.suggest_quarantine_after = after;
         Ok(())
     })
 }
@@ -182,6 +206,31 @@ pub fn folder_run_mode(settings: &ProjectSettings, folder: String) -> RunMode {
     settings.run_mode(&folder)
 }
 
+/// Whether the quarantine `entry` is in force on `today` (`YYYY-MM-DD`): it has no end or its
+/// last day isn't past.
+#[uniffi::export]
+pub fn quarantine_active(entry: &Quarantined, today: String) -> bool {
+    entry.is_active(&today)
+}
+
+/// How many flaky runs of a test within 7 days make its quarantine worth suggesting.
+#[uniffi::export]
+pub fn quarantine_threshold(settings: &ProjectSettings) -> u32 {
+    settings.quarantine_threshold()
+}
+
+/// Today's date on this computer as `YYYY-MM-DD`.
+#[uniffi::export]
+pub fn local_today() -> String {
+    jevision_runner::today()
+}
+
+/// The last day of a quarantine that starts `today` (`YYYY-MM-DD`) and lasts the usual 14 days.
+#[uniffi::export]
+pub fn default_quarantine_end(today: String) -> Option<String> {
+    default_quarantine_until(&today)
+}
+
 /// Name of the project settings file in a project folder.
 #[uniffi::export]
 pub fn project_settings_file_name() -> String {
@@ -229,9 +278,45 @@ mod tests {
             project.clone(),
             "login.flow.json".into(),
             Some("Bug 7".into()),
+            Some("2026-11-03".into()),
         )
         .unwrap();
         assert_eq!(settings.quarantine.len(), 1);
+        assert_eq!(settings.quarantine[0].until.as_deref(), Some("2026-11-03"));
+        assert!(quarantine_active(
+            &settings.quarantine[0],
+            "2026-11-03".into()
+        ));
+        assert!(!quarantine_active(
+            &settings.quarantine[0],
+            "2026-11-04".into()
+        ));
+        assert!(matches!(
+            quarantine_test(
+                project.clone(),
+                "login.flow.json".into(),
+                None,
+                Some("soon".into())
+            ),
+            Err(ProjectSettingsError::Rejected { .. })
+        ));
+        assert_eq!(
+            default_quarantine_end("2026-10-20".into()).as_deref(),
+            Some("2026-11-03")
+        );
+        assert_eq!(quarantine_threshold(&settings), 3);
+        assert_eq!(
+            set_quarantine_threshold(project.clone(), Some(5))
+                .unwrap()
+                .suggest_quarantine_after,
+            Some(5)
+        );
+        for bad in [0, 11] {
+            assert!(matches!(
+                set_quarantine_threshold(project.clone(), Some(bad)),
+                Err(ProjectSettingsError::Rejected { .. })
+            ));
+        }
         assert_eq!(
             set_default_retries(project.clone(), Some(2))
                 .unwrap()
@@ -243,7 +328,7 @@ mod tests {
             Err(ProjectSettingsError::Rejected { .. })
         ));
         assert!(matches!(
-            quarantine_test(project.clone(), "../x.flow.json".into(), None),
+            quarantine_test(project.clone(), "../x.flow.json".into(), None, None),
             Err(ProjectSettingsError::Rejected { .. })
         ));
         assert!(

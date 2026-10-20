@@ -238,7 +238,8 @@ enum RunHistory {
       evidence.environment.map {
         String(localized: "Flaky: since \(since), the unchanged test both passed and failed in \($0).")
       } ?? String(localized: "Flaky: since \(since), the unchanged test both passed and failed.")
-    return what + " " + counts.joined(separator: " · ")
+    let row = evidence.row.map { " " + String(localized: "Data row: \(RunChoices.rowTitle(number: Int($0.number), label: $0.label)).") } ?? ""
+    return what + row + " " + counts.joined(separator: " · ")
   }
 
   /// The step that failed the deciding try: the innermost one, inside loops and other tests.
