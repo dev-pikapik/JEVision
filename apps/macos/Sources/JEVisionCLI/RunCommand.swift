@@ -329,7 +329,7 @@ final class TestSession: @unchecked Sendable {
     let started = Date()
     let count = tests.count == 1 ? "1 test" : "\(tests.count) tests"
     progress.line("Running \(count) in \(project). Press Esc twice or Ctrl-C to stop.")
-    // One at a time: every test uses the screen, so tests side by side would still take turns.
+    // One at a time: tests that use the screen would take turns anyway, and each test's lines stay together.
     let batch = TestBatch(
       project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: .sequential)
     let entries = batch.entries()
