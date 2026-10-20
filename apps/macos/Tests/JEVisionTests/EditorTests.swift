@@ -98,6 +98,28 @@ struct BlockSummaryTests {
       summary(.scroll(direction: .right, amount: 240, unit: .pixels, at: .image("refs/list.png"), waitForChange: false, next: nil))
         == "Scroll right 240 px over “list”")
   }
+
+  @Test func namesElementsDescribedInWords() {
+    let save = Target.description("the blue Save button")
+    let blank = Target.description(" \n")
+    #expect(
+      summary(.click(target: save, button: .right, double: false, waitForChange: false, next: nil))
+        == "Right-click “the blue Save button”")
+    #expect(summary(.click(target: blank, button: .left, double: false, waitForChange: false, next: nil)) == "Choose what to click")
+    #expect(summary(.hover(target: save, waitForChange: false, next: nil)) == "Point at “the blue Save button”")
+    #expect(summary(.hover(target: blank, waitForChange: false, next: nil)) == "Choose what to point at")
+    #expect(
+      summary(.drag(from: .description("the report"), to: .image("refs/trash_bin.png"), waitForChange: false, next: nil))
+        == "Drag “the report” to “trash bin”")
+    #expect(
+      summary(.scroll(direction: .down, amount: 2, unit: .lines, at: save, waitForChange: false, next: nil))
+        == "Scroll down 2 lines over “the blue Save button”")
+    #expect(summary(.scroll(direction: .down, amount: 2, unit: .lines, at: blank, waitForChange: false, next: nil)) == "Scroll down 2 lines")
+    #expect(
+      summary(.type(text: "hello", into: .description("the search field"), next: nil))
+        == "Type “hello” into “the search field”")
+    #expect(summary(.type(text: "hello", into: blank, next: nil)) == "Type “hello”")
+  }
 }
 
 /// The pointer blocks are in the editor like any other: named, drawn, found, and their problems

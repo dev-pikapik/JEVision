@@ -39,6 +39,7 @@
   <ul aria-labelledby="nav-run-tests">
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
     <li><a href="vm.html">Virtual machines</a></li>
   </ul>
@@ -68,6 +69,7 @@
     <li><a href="#environments">Environments</a></li>
     <li><a href="#project">Project settings</a></li>
     <li><a href="#schedule">Schedules</a></li>
+    <li><a href="#notifications">Notifications</a></li>
     <li><a href="#csv">Data tables</a></li>
     <li><a href="#report">Run reports</a></li>
     <li><a href="#schedule-history">Schedule history</a></li>
@@ -86,6 +88,7 @@
     <tr><td><code>jevision.environments.json</code></td><td><a href="environments.html">Environments</a></td><td>Yes</td></tr>
     <tr><td><code>jevision.project.json</code></td><td>Retries, quarantine and privacy for the whole project</td><td>Yes</td></tr>
     <tr><td><code>jevision.schedule.json</code></td><td><a href="schedules.html">Schedules</a></td><td>Yes</td></tr>
+    <tr><td><code>jevision.notifications.json</code></td><td><a href="notifications.html">Notifications</a> to Slack, Telegram and email</td><td>Yes</td></tr>
     <tr><td><code>.jevision/runs/</code></td><td>Reports, screenshots and videos of runs</td><td>No</td></tr>
     <tr><td><code>.jevision/schedule-history.json</code></td><td>What came of scheduled runs on this Mac</td><td>No</td></tr>
   </tbody>
@@ -170,6 +173,15 @@
 }</code></pre>
 <p>See <a href="schedules.html#file">The schedule file</a> for every field.</p>
 
+<h2 id="notifications">Notifications</h2>
+<p><code>jevision.notifications.json</code>, in the project folder:</p>
+<pre><code>{
+  "format": 2,
+  "slack": { "when": "failedOrFixed" },
+  "telegram": { "chat": "-1001234567890", "when": "changed" }
+}</code></pre>
+<p>Each channel has its own <code>when</code>. The webhook, bot token and mail password are never in the file. A file of format 1 is still read. See <a href="notifications.html#file">The settings file</a> for every field.</p>
+
 <h2 id="csv">Data tables</h2>
 <p>CSV files as spreadsheet apps export them: a header line with the column names, then one line per row. See <a href="data-driven.html#csv">CSV rules</a>.</p>
 
@@ -212,7 +224,7 @@
 <p><code>result</code> is <code>finished</code> (with the numbers of tests that passed and failed), <code>skipped</code> (with <code>reason</code> <code>screenLocked</code>, <code>noUser</code> or <code>notAllowed</code>) or <code>error</code> (with a <code>message</code>). If the file can't be read, it starts over: it is only a record and never stops schedules.</p>
 
 <h2 id="versions">Format versions</h2>
-<p>Every JSON file JEVision writes starts with <code>"format": 1</code>. When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
+<p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
 </main>
 </div>
 <footer class="site-footer">

@@ -258,7 +258,7 @@ struct CommandLineToolTests {
 
     let check = try jevision("fmt", "--check", file)
     #expect(check.status == 1)
-    #expect(check.out == "\(file): not formatted\n")
+    #expect(check.out == "\(file): not formatted\n1 test checked, 1 not formatted\n")
     #expect(try String(contentsOfFile: file, encoding: .utf8) == valid, "--check never writes")
 
     #expect(try jevision("fmt", file).status == 0)
@@ -267,7 +267,7 @@ struct CommandLineToolTests {
 
     let again = try jevision("fmt", "--check", file)
     #expect(again.status == 0)
-    #expect(again.out.isEmpty)
+    #expect(again.out == "1 test checked, 0 not formatted\n")
     #expect(try FileManager.default.contentsOfDirectory(atPath: dir.url.path).count == 1, "no temporary files left")
   }
 
@@ -278,6 +278,17 @@ struct CommandLineToolTests {
     #expect(result.status == 1)
     #expect(result.out.contains("error   Test: not valid JSON at line 1, column 3."))
     #expect(try String(contentsOfFile: file, encoding: .utf8) == "{ not json")
+  }
+
+  @Test func aFolderWithoutTestsIsReported() throws {
+    let dir = try Scratch()
+    _ = try dir.file("notes.txt", "not a test")
+    for command in ["validate", "fmt"] {
+      let result = try jevision(command, dir.url.path)
+      #expect(result.status == 2)
+      #expect(result.out.isEmpty)
+      #expect(result.err == "jevision: there are no tests (*.flow.json files) in \(dir.url.path)\n")
+    }
   }
 
   @Test func usageErrorsExitWith2() throws {

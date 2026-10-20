@@ -444,6 +444,9 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             let same = match (from, to) {
                 (Target::Image(a), Target::Image(b)) => !a.is_empty() && a == b,
                 (Target::Point(a), Target::Point(b)) => a == b,
+                (Target::Description(a), Target::Description(b)) => {
+                    !a.trim().is_empty() && a.trim() == b.trim()
+                }
                 _ => false,
             };
             if same {
@@ -799,6 +802,15 @@ fn target(block: &str, field: &str, t: &Target, out: &mut Vec<Issue>) {
             relative_path(block, &format!("{field}.image"), path, out);
         }
         Target::Point(p) => point(block, &format!("{field}.point"), p, out),
+        Target::Description(text) => {
+            if text.trim().is_empty() {
+                out.push(
+                    Issue::error("flow.field.empty")
+                        .with("block", block)
+                        .with("field", format!("{field}.description")),
+                );
+            }
+        }
     }
 }
 

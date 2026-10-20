@@ -276,6 +276,7 @@ fn target_title(target: &Target) -> String {
     match target {
         Target::Image(image) => image.clone(),
         Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
+        Target::Description(text) => format!("“{text}”"),
     }
 }
 

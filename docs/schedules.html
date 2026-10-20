@@ -39,6 +39,7 @@
   <ul aria-labelledby="nav-run-tests">
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html" aria-current="page">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
     <li><a href="vm.html">Virtual machines</a></li>
   </ul>
@@ -129,7 +130,7 @@
 
 <h2 id="results">Results</h2>
 <ul>
-  <li>The app posts a notification when a scheduled run fails, is skipped or can't start.</li>
+  <li>The app posts a notification when a scheduled run fails, is skipped or can't start. To be told in Slack, Telegram or email as well, with one summary for the whole schedule, see <a href="notifications.html">Notifications</a>.</li>
   <li>What came of each scheduled run is kept in <code>.jevision/schedule-history.json</code>, newest 200 runs. This file is local to the Mac and not committed.</li>
   <li>The reports of the tests are in the run history with the other runs. See <a href="reports.html">Run video and reports</a>.</li>
 </ul>

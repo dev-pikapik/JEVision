@@ -729,6 +729,7 @@ pub enum DatabaseExpect {
 pub enum Target {
     Image(String),
     Point(Point),
+    Description(String),
 }
 
 #[uniffi::remote(Record)]

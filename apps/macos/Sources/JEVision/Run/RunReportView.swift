@@ -516,10 +516,16 @@ private struct StepRow: View {
       if let sent = images.sent {
         ShotImage(
           url: sent,
+          found: step.found,
           label: step.sentMasked
             ? String(localized: "Sent to the AI model, masked before sending")
             : String(localized: "Sent to the AI model"),
           preview: preview)
+        if !step.found.isEmpty {
+          Text("The red outline shows where JEV found the element.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+        }
       }
     }
   }
@@ -564,6 +570,7 @@ private struct StepStatusText {
     case .baselineCreated:
       (title, symbol, color) = (String(localized: "New reference saved"), "plus.circle.fill", .blue)
     case .cancelled: (title, symbol, color) = (String(localized: "Stopped"), "stop.circle.fill", .secondary)
+    case .unknown: (title, symbol, color) = (String(localized: "Unknown Status"), "questionmark.circle.fill", .secondary)
     }
   }
 }
@@ -643,6 +650,7 @@ private struct RowResults: View {
     case .failed: "xmark.square.fill"
     case .cancelled: "stop.circle.fill"
     case .blocked: "minus.circle.fill"
+    case .unknown: "questionmark.circle.fill"
     }
   }
 
@@ -650,7 +658,7 @@ private struct RowResults: View {
     switch verdict {
     case .passed: .green
     case .failed: .red
-    case .cancelled: .secondary
+    case .cancelled, .unknown: .secondary
     case .blocked: .yellow
     }
   }
@@ -661,6 +669,7 @@ private struct RowResults: View {
     case .failed: String(localized: "Failed")
     case .cancelled: String(localized: "Stopped")
     case .blocked: String(localized: "Blocked")
+    case .unknown: String(localized: "Unknown Status")
     }
   }
 }

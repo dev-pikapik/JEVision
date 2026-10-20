@@ -86,8 +86,11 @@ public struct AISettings {
       key: Self.key(for: provider), pictures: pictures(for: provider))
   }
 
-  /// The settings of the providers checks by meaning name, read only when a check names one,
-  /// so a run reads no API key it doesn't need.
+  /// The provider that finds the elements tests describe in words, whichever one is chosen.
+  public static let finder = "jev"
+
+  /// The settings of the providers that checks by meaning name and that blocks need besides the
+  /// chosen one, read only when one is needed, so a run reads no API key it doesn't need.
   public var namedProviders: ProviderSettings { NamedProviders(settings: self) }
 
   /// The provider asked when the main one can't answer; empty for none.
@@ -132,6 +135,13 @@ public struct AISettings {
   /// Where a run logs its AI calls, at what prices and within which limits.
   public var usage: AiUsageSettings {
     AiUsageSettings(journal: Self.journal.path(percentEncoded: false), prices: prices, limits: limits)
+  }
+
+  /// The provider has an API key in the environment or the Keychain, without reading it.
+  public static func hasKey(_ provider: VisionProvider) -> Bool {
+    !provider.keyVariable.isEmpty
+      && (SecretStore.isInEnvironment(provider.keyVariable)
+        || SecretStore.isInKeychain(provider.keyVariable, in: keyService))
   }
 
   /// The API key, from the provider's environment variable or the Keychain.

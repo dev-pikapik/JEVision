@@ -39,6 +39,7 @@
   <ul aria-labelledby="nav-run-tests">
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
     <li><a href="vm.html">Virtual machines</a></li>
   </ul>
@@ -147,7 +148,7 @@
 </ul>
 
 <h2 id="models">AI models</h2>
-<p>Checks by meaning use the model chosen in <strong>Settings → AI</strong>. Without one, JEVision compares pictures only and sends nothing anywhere.</p>
+<p>Checks by meaning use the model chosen in <strong>Settings → AI</strong>. Without one, JEVision compares pictures only and sends nothing anywhere. Finding an element by its <a href="writing-tests.html#target">description in words</a> always uses JEV, whichever model checks by meaning.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Provider</th><th scope="col">Runs</th><th scope="col">API key</th><th scope="col">Id for <code>--provider</code></th></tr></thead>
@@ -163,15 +164,15 @@
 </table>
 </div>
 <ul>
-  <li><strong>What is sent.</strong> For each check by meaning: the compared part of the screen, the reference picture if there is one, and the expected text. Hidden and ignored parts are covered before anything leaves the Mac. Nothing else is sent.</li>
+  <li><strong>What is sent.</strong> For each check by meaning: the compared part of the screen, the reference picture if there is one, and the expected text. For each element a test describes in words: the screenshot of the window and the description, to JEV. Hidden and ignored parts, and password fields, are covered before anything leaves the Mac. Nothing else is sent.</li>
   <li><strong>API keys</strong> come from the environment variable in the table or from the Keychain, where Settings → AI saves them. They are never shown, logged or written to reports.</li>
-  <li><strong>Only models on this Mac.</strong> With this setting on, screenshots never go to a cloud service: a check that would need one stops with a message.</li>
+  <li><strong>Only models on this Mac.</strong> With this setting on, screenshots never go to a cloud service: a check that would need one, or a block that finds an element by its description, stops with a message.</li>
   <li><strong>Test Connection</strong> in Settings asks the model about a small built-in picture, to check the address, key and model in one go.</li>
   <li>On the command line, <code>--provider</code> and <code>--model</code> choose another model for one run. See <a href="cli.html#run">jevision run</a>.</li>
 </ul>
 
 <h2 id="targets">Pictures of buttons and fields</h2>
-<p>The <code>target</code> of a <code>click</code> and the <code>into</code> of a <code>type</code> also use pictures, but differently: such a picture shows only one element, such as a button, and JEVision looks for it anywhere on the current screen. That's why a click keeps working when the window moves. Recording makes these pictures for you from what you click.</p>
+<p>The <code>target</code> of a <code>click</code> and the <code>into</code> of a <code>type</code> also use pictures, but differently: such a picture shows only one element, such as a button, and JEVision looks for it anywhere on the current screen. That's why a click keeps working when the window moves. Recording makes these pictures for you from what you click. When an element has no steady look, describe it in words instead and JEV finds it: see <a href="writing-tests.html#target">Target</a>.</p>
 </main>
 </div>
 <footer class="site-footer">

@@ -324,12 +324,13 @@ enum Help {
                             jevision.project.json) like any other failure. Without it
                             they still run, but don't change the exit status and are
                             skipped in the JUnit report
-        --no-notify         Don't send the messages about runs that
+        --no-notify         Don't send the message about the runs that
                             jevision.notifications.json in the project folder asks for
-                            (Slack, Telegram, email). The webhook, bot token and mail
-                            password come from the Keychain, or on CI from
-                            JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and
-                            JEVISION_SMTP_PASSWORD
+                            (Slack, Telegram, email): one message for one test, one
+                            summary for several. A stopped run sends nothing. The
+                            webhook, bot token and mail password come from the
+                            Keychain, or on CI from JEVISION_SLACK_WEBHOOK,
+                            JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD
         --json              Print the result as JSON; progress goes to standard error
         -h, --help          Show this help
 
@@ -357,8 +358,8 @@ enum Help {
         --json      Print the result as JSON
         -h, --help  Show this help
 
-      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments or a file could
-      not be read.
+      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments, a folder with
+      no tests, or a file that could not be read.
 
       """
     case "fmt":
@@ -377,7 +378,8 @@ enum Help {
         -h, --help  Show this help
 
       Exit status: 0 — all good, 1 — a file is not in canonical form or can't be read as
-      a test, 2 — wrong arguments or a file could not be read or written.
+      a test, 2 — wrong arguments, a folder with no tests, or a file that could not be
+      read or written.
 
       """
     case "issue":

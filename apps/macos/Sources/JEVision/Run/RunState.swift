@@ -88,7 +88,7 @@ struct RunState: Equatable {
         switch step.status {
         case .passed, .baselineCreated: marks[step.block] = .passed
         case .failed: marks[step.block] = .failed
-        case .cancelled: break
+        case .cancelled, .unknown: break
         }
       }
       current = open.last.flatMap { $0.test == file ? $0.block : nil }

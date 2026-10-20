@@ -29,6 +29,13 @@ enum RunText {
       return String(localized: "run.file.copyFailed", defaultValue: "Block “\(block)”: can’t copy \(p("file")): \(p("reason")).")
     case "run.target.notFound":
       return String(localized: "run.target.notFound", defaultValue: "Block “\(block)”: \(p("image")) wasn’t found on the screen.")
+    case "run.target.descriptionNotFound":
+      return String(
+        localized: "run.target.descriptionNotFound", defaultValue: "Block “\(block)”: “\(p("description"))” wasn’t found on the screen.")
+    case "run.target.noLocator":
+      return String(
+        localized: "run.target.noLocator",
+        defaultValue: "Block “\(block)”: finding an element by its description needs JEV (TypeSafe AI). Set it up in Settings → AI.")
     case "run.reference.missing":
       return String(localized: "run.reference.missing", defaultValue: "Block “\(block)”: the reference image \(p("image")) doesn’t exist.")
     case "run.reference.unreadable":
@@ -176,6 +183,7 @@ enum RunText {
       "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey",
       "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
       "run.vision.limitReached",
+      "run.target.noLocator", "run.vision.cannotLocate", "run.vision.modelCannotLocate",
     ].contains(failure.code)
   }
 
@@ -230,6 +238,8 @@ enum RunText {
         return String(localized: "The test didn’t run: a test it depends on didn’t pass.")
       }
       return String(localized: "\(Self.blocker(blocker)). The test didn’t run.")
+    case .unknown:
+      return String(localized: "A newer version of JEVision saved this run. Update the app to see how it ended.")
     case .failed:
       let attempt = decidingAttempt(report: report)
       let text = attempt?.failure.map(failure) ?? String(localized: "The test failed.")
@@ -320,6 +330,15 @@ enum VisionText {
         defaultValue: "Can’t write down the AI call in \(p("path")): \(p("reason")). Without it the spending limits can’t be kept, so AI checks stop.")
     case "run.vision.badAnswer":
       return String(localized: "run.vision.badAnswer", defaultValue: "\(provider) gave an answer JEVision can’t read: \(p("answer"))")
+    case "run.vision.cannotLocate":
+      return String(
+        localized: "run.vision.cannotLocate",
+        defaultValue: "\(provider) can’t find elements by description; only JEV (TypeSafe AI) can. Set up JEV in Settings → AI.")
+    case "run.vision.modelCannotLocate":
+      return String(
+        localized: "run.vision.modelCannotLocate",
+        defaultValue:
+          "The JEV model “\(p("model"))” can’t find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI.")
     default:
       return describeFailure(failure: failure)
     }

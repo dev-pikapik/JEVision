@@ -1,11 +1,12 @@
 import JEVisionCore
 import SwiftUI
 
-/// The tests that must pass before this one runs, as tokens, and Add Test… to pick one more
-/// from a search of the project's tests. In Run All and a folder's run they run first; when one
+/// The tests that must pass before this one runs, as tokens that open them, and Add Test… to
+/// pick one more from a search of the project's tests. In Run All and a folder's run they run first; when one
 /// of them doesn't pass, this test is blocked instead of run.
 struct DependenciesField: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(\.dismiss) private var dismiss
   let document: FlowDocument
   /// As saved: paths relative to the folder of the test.
   let dependsOn: [String]
@@ -36,13 +37,23 @@ struct DependenciesField: View {
       if !dependsOn.isEmpty {
         Tokens {
           ForEach(dependsOn, id: \.self) { path in
-            let name = names[RelativePath.resolve(path, in: folder)] ?? path
-            Token(name: name) { save(dependsOn.filter { $0 != path }) }
-              .help(Text(verbatim: path))
+            let url = RelativePath.resolve(path, in: folder)
+            let name = names[url]
+            Token(name: name ?? path, open: name == nil ? nil : { open(url) }) {
+              save(dependsOn.filter { $0 != path })
+            }
+            .help(Text(verbatim: path))
           }
         }
       }
     }
+  }
+
+  /// Shows the test in the editor in place of this one.
+  private func open(_ url: URL) {
+    guard let root = project.rootURL else { return }
+    dismiss()
+    project.selection = RelativePath.from(root, to: url)
   }
 
   private func save(_ dependsOn: [String]) {
@@ -93,14 +104,23 @@ private struct TestSearch: View {
   }
 }
 
-/// A test this one depends on, with a button that takes it off.
+/// A test this one depends on: its name opens it when it is in the project, and a button takes
+/// it off.
 private struct Token: View {
   let name: String
+  let open: (() -> Void)?
   let remove: () -> Void
 
   var body: some View {
     HStack(spacing: 4) {
-      Text(name).lineLimit(1)
+      if let open {
+        Button(name, action: open)
+          .buttonStyle(.link)
+          .lineLimit(1)
+          .accessibilityHint(Text("Opens it"))
+      } else {
+        Text(name).lineLimit(1)
+      }
       Button("Remove", systemImage: "xmark.circle.fill", action: remove)
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)

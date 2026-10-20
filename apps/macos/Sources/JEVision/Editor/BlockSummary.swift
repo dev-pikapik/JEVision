@@ -18,7 +18,7 @@ enum BlockSummary {
       let name = (first as NSString).lastPathComponent
       return files.count == 1 ? name : String(localized: "\(name) and \(files.count - 1) more")
     case .click(let target, let button, let double, _, _):
-      guard case .image(let path) = target, path.isEmpty else {
+      guard isUnset(target) else {
         let place = targetName(target)
         switch (button, double) {
         case (.right, _): return String(localized: "Right-click \(place)")
@@ -55,6 +55,9 @@ enum BlockSummary {
       let what = secretName(text).map { String(localized: "secret \($0)") } ?? quoted(text)
       if let into, case .image(let path) = into, !path.isEmpty {
         return String(localized: "Type \(what) into \(imageName(path))")
+      }
+      if let into, case .description = into, !isUnset(into) {
+        return String(localized: "Type \(what) into \(targetName(into))")
       }
       return String(localized: "Type \(what)")
     case .pressKeys(let keys, _):
@@ -196,6 +199,7 @@ enum BlockSummary {
     switch target {
     case .image(let path): imageName(path)
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
+    case .description(let text): quoted(text, limit: 40)
     }
   }
 
@@ -204,12 +208,17 @@ enum BlockSummary {
     switch target {
     case .image(let path): imageName(path)
     case .point(let p): "\(percent(p.x)), \(percent(p.y))"
+    case .description(let text): quoted(text, limit: 40)
     }
   }
 
-  /// A picture target not chosen yet.
+  /// A picture not chosen or an element not described yet.
   private static func isUnset(_ target: Target) -> Bool {
-    if case .image(let path) = target { path.isEmpty } else { false }
+    switch target {
+    case .image(let path): path.isEmpty
+    case .description(let text): text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    case .point: false
+    }
   }
 
   private static func referenceName(_ reference: Reference) -> String {

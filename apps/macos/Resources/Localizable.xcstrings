@@ -97,6 +97,16 @@
         }
       }
     },
+    "%@ hasn’t seen any chat yet. In Telegram, write something to %@. To use a group, add %@ to it and send a message there. Then find the chat again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ пока не видел ни одного чата. В Telegram напишите что-нибудь боту %2$@. Чтобы использовать группу, добавьте %3$@ в неё и отправьте там сообщение. Затем найдите чат ещё раз."
+          }
+        }
+      }
+    },
     "%@ in “%@”. The test will use the mouse and keyboard of this Mac until it ends." : {
       "localizations" : {
         "ru" : {
@@ -271,6 +281,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · ID %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · ID %2$@"
           }
         }
       }
@@ -1669,6 +1689,36 @@
         }
       }
     },
+    "A message after every run, passed or failed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение после каждого прогона, успешного или нет."
+          }
+        }
+      }
+    },
+    "A message for every test that fails, and when a failing test passes again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение о каждом упавшем тесте и о том, что упавший тест снова проходит."
+          }
+        }
+      }
+    },
+    "A message for every test that fails." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение о каждом упавшем тесте."
+          }
+        }
+      }
+    },
     "A message to Slack, Telegram or email when a test fails, or after every run." : {
       "localizations" : {
         "ru" : {
@@ -1679,12 +1729,32 @@
         }
       }
     },
+    "A message when a test starts failing and when it passes again. A test that keeps failing says nothing more." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение, когда тест начинает падать и когда он снова проходит. Тест, который продолжает падать, больше ничего не отправляет."
+          }
+        }
+      }
+    },
     "A new issue" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новая задача"
+          }
+        }
+      }
+    },
+    "A newer version of JEVision saved this run. Update the app to see how it ended." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот прогон сохранила более новая версия JEVision. Обновите приложение, чтобы увидеть, чем он закончился."
           }
         }
       }
@@ -1735,16 +1805,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стикер для тех, кто читает тест"
-          }
-        }
-      }
-    },
-    "A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тест на карантине сообщает о падении, только если выбрано «После каждого прогона». Остановленный прогон ничего не отправляет."
           }
         }
       }
@@ -3725,6 +3785,16 @@
         }
       }
     },
+    "By Description" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По описанию"
+          }
+        }
+      }
+    },
     "By Look" : {
       "localizations" : {
         "ru" : {
@@ -4259,12 +4329,32 @@
         }
       }
     },
+    "Channel" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Канал"
+          }
+        }
+      }
+    },
     "Chat ID" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ID чата"
+          }
+        }
+      }
+    },
+    "Chats %@ has seen, the latest first. Choose where the messages go." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чаты, которые видел %@, последние первыми. Выберите, куда отправлять сообщения."
           }
         }
       }
@@ -6001,6 +6091,16 @@
         }
       }
     },
+    "Describe the element in plain words. JEV (TypeSafe AI) finds it on the screen, and the pointer goes to its middle." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите элемент простыми словами. JEV (TypeSafe AI) найдёт его на экране, и указатель попадёт в его середину."
+          }
+        }
+      }
+    },
     "Describe what changed" : {
       "localizations" : {
         "ru" : {
@@ -6695,6 +6795,16 @@
         }
       }
     },
+    "Element" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемент"
+          }
+        }
+      }
+    },
     "Email" : {
       "localizations" : {
         "ru" : {
@@ -7335,6 +7445,36 @@
         }
       }
     },
+    "Find Chat" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти чат"
+          }
+        }
+      }
+    },
+    "Finding an element by its description needs JEV (TypeSafe AI) and its API key." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы найти элемент по описанию, нужен JEV (TypeSafe AI) и его ключ API."
+          }
+        }
+      }
+    },
+    "Finding by Description: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск по описанию: %@"
+          }
+        }
+      }
+    },
     "Finish Recording" : {
       "localizations" : {
         "ru" : {
@@ -7935,6 +8075,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зелёный"
+          }
+        }
+      }
+    },
+    "Group" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Группа"
           }
         }
       }
@@ -9246,6 +9396,26 @@
         }
       }
     },
+    "Looking…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищем…"
+          }
+        }
+      }
+    },
+    "Looks for the chats the bot has been written in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищет чаты, в которых боту писали"
+          }
+        }
+      }
+    },
     "Looks like a bug in the app" : {
       "localizations" : {
         "ru" : {
@@ -9356,12 +9526,12 @@
         }
       }
     },
-    "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use the chat’s ID, such as -1001234567890, or @name for a public channel." : {
+    "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use Find Chat, or type the chat’s ID, such as -1001234567890, or @name for a public channel." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и укажите ID чата, например -1001234567890, или @имя для публичного канала."
+            "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и нажмите «Найти чат» или укажите ID чата, например -1001234567890, или @имя для публичного канала."
           }
         }
       }
@@ -10194,6 +10364,16 @@
         }
       }
     },
+    "No messages about the runs were sent: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщения о прогонах не отправлены: %@"
+          }
+        }
+      }
+    },
     "No open pull requests" : {
       "localizations" : {
         "ru" : {
@@ -10824,6 +11004,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешены только модели на этом Mac, поэтому проверки по смыслу через %@ остановятся с сообщением."
+          }
+        }
+      }
+    },
+    "Only models on this Mac are allowed, so finding by description stops with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешены только модели на этом Mac, поэтому поиск по описанию остановится с сообщением."
           }
         }
       }
@@ -12160,6 +12350,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Важность"
+          }
+        }
+      }
+    },
+    "Private chat" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Личный чат"
           }
         }
       }
@@ -13612,6 +13812,16 @@
         }
       }
     },
+    "Run All and scheduled runs of several tests send one summary message, not one message per test. A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Запустить все» и запуски нескольких тестов по расписанию отправляют одно общее сообщение, а не по сообщению на каждый тест. Тест на карантине сообщает о падении, только если выбрано «После каждого прогона». Остановленный прогон ничего не отправляет."
+          }
+        }
+      }
+    },
     "Run Command" : {
       "localizations" : {
         "ru" : {
@@ -14456,12 +14666,12 @@
         }
       }
     },
-    "Screenshots never go to a cloud service. Checks that would need one stop with a message." : {
+    "Screenshots never go to a cloud service. Checks and finding by description that would need one stop with a message." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
+            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки и поиск по описанию, которым такой сервис нужен, останавливаются с сообщением."
           }
         }
       }
@@ -14832,6 +15042,16 @@
         }
       }
     },
+    "Send a message to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлять сообщение в %@"
+          }
+        }
+      }
+    },
     "Send email" : {
       "localizations" : {
         "ru" : {
@@ -14958,6 +15178,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Настроить ИИ…"
+          }
+        }
+      }
+    },
+    "Set Up JEV…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить JEV…"
           }
         }
       }
@@ -16332,6 +16562,16 @@
         }
       }
     },
+    "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. %@ finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты могут кликать, наводить указатель, перетаскивать, прокручивать и вводить текст в элемент, описанный словами, например «синяя кнопка Сохранить». Его находит %@, какой бы провайдер ни проверял по смыслу, и получает снимок окна и описание; поля паролей и области, которые скрывает проект, закрашиваются. Для поиска нужна модель jev-1.14.0 или новее либо jev-latest."
+          }
+        }
+      }
+    },
     "Tests in a folder" : {
       "localizations" : {
         "ru" : {
@@ -16762,6 +17002,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок провален."
+          }
+        }
+      }
+    },
+    "The blue Save button" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синяя кнопка «Сохранить»"
           }
         }
       }
@@ -17244,6 +17494,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось добавить запись в тест: %@"
+          }
+        }
+      }
+    },
+    "The red outline shows where JEV found the element." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Красная рамка показывает, где JEV нашёл элемент."
           }
         }
       }
@@ -18692,6 +18952,16 @@
         }
       }
     },
+    "Unknown Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестный статус"
+          }
+        }
+      }
+    },
     "Unknown device" : {
       "localizations" : {
         "ru" : {
@@ -18844,6 +19114,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Применить"
+          }
+        }
+      }
+    },
+    "Use %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применить: %@"
           }
         }
       }
@@ -19404,6 +19684,16 @@
         }
       }
     },
+    "When a test starts or stops failing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда тест начинает или перестаёт падать"
+          }
+        }
+      }
+    },
     "When the AI writes a test or analyzes a failure, it can use the tools of these MCP servers, such as finding an issue in a tracker. It asks you before every tool that may change something." : {
       "localizations" : {
         "ru" : {
@@ -19524,12 +19814,12 @@
         }
       }
     },
-    "Without a provider, checks compare pictures only. JEVision sends nothing anywhere." : {
+    "Without a provider, checks compare pictures only and send nothing anywhere." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Без провайдера проверки сравнивают только картинки. JEVision ничего никуда не отправляет."
+            "value" : "Без провайдера проверки сравнивают только картинки и ничего никуда не отправляют."
           }
         }
       }
@@ -19580,6 +19870,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Написать тест"
+          }
+        }
+      }
+    },
+    "Write to the bot in Telegram, then find its chat here instead of typing the ID." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Напишите боту в Telegram, затем найдите его чат здесь, не вводя ID вручную."
           }
         }
       }
@@ -22892,6 +23192,38 @@
         }
       }
     },
+    "run.target.descriptionNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» не найден на экране."
+          }
+        }
+      }
+    },
+    "run.target.noLocator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: finding an element by its description needs JEV (TypeSafe AI). Set it up in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: чтобы найти элемент по описанию, нужен JEV (TypeSafe AI). Настройте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.target.notFound" : {
       "localizations" : {
         "en" : {
@@ -23020,6 +23352,22 @@
         }
       }
     },
+    "run.vision.cannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t find elements by description; only JEV (TypeSafe AI) can. Set up JEV in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не умеет находить элементы по описанию — это умеет только JEV (TypeSafe AI). Настройте JEV в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.vision.cloudBlocked" : {
       "localizations" : {
         "en" : {
@@ -23128,6 +23476,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ израсходовал $%2$@ из месячного лимита $%3$@. Проверки ИИ с ним остановлены до следующего месяца или пока лимит не поднят в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.modelCannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The JEV model “%@” can’t find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель JEV «%@» не умеет находить элементы по описанию — это умеют jev-1.14.0 и новее или jev-latest. Выберите такую в Настройках → ИИ."
           }
         }
       }

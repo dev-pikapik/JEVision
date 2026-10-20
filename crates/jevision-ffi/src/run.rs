@@ -199,7 +199,8 @@ pub struct RunOptions {
     /// Asked instead of `vision` when it can't be reached, is busy or has used up its limit.
     #[uniffi(default = None)]
     pub fallback: Option<VisionSettings>,
-    /// Settings of the providers that checks by meaning name instead of `vision`'s.
+    /// Settings of the providers that blocks need besides `vision`'s: those checks by meaning
+    /// name, and JEV, which finds elements a test describes in words.
     #[uniffi(default = None)]
     pub providers: Option<Arc<dyn ProviderSettings>>,
     /// Where AI calls are logged and the spending limits they are held to; `None` logs
@@ -327,6 +328,10 @@ pub(crate) fn run(
         .unwrap_or_default();
     let providers: Vec<&dyn VisionJudge> = providers.iter().map(|c| c as _).collect();
     let usage = options.usage.clone().map(AiUsageSettings::book);
+    let locator = options
+        .providers
+        .as_ref()
+        .map(|p| NamedJudge::new(jevision_runner::Provider::Jev, p));
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
@@ -336,6 +341,7 @@ pub(crate) fn run(
         fallback: fallback.as_ref().map(|c| c as &dyn VisionJudge),
         providers: &providers,
         usage: usage.as_ref(),
+        locator: locator.as_ref().map(|c| c as &dyn VisionJudge),
     };
     match runner.run(
         Path::new(project),
@@ -917,6 +923,10 @@ pub struct Step {
     /// Private areas of `sent` were covered before sending.
     #[uniffi(default = false)]
     pub sent_masked: bool,
+    /// Where the vision model found the elements the block describes in words, in fractions of
+    /// `sent`.
+    #[uniffi(default = [])]
+    pub found: Vec<Rect>,
     /// How many ways out the `if` had: two are Yes and No, more are Condition 1, 2… and Otherwise.
     #[uniffi(default = None)]
     pub branches: Option<u32>,
@@ -950,6 +960,7 @@ impl From<jevision_runner::Step> for Step {
             video_at_ms: s.video_at_ms,
             sent: s.sent,
             sent_masked: s.sent_masked,
+            found: s.found,
             branches: s.branches,
             branch_condition: s.branch_condition,
             outputs: s
@@ -1055,6 +1066,7 @@ pub enum Verdict {
     Failed,
     Cancelled,
     Blocked,
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]
@@ -1063,6 +1075,7 @@ pub enum StepStatus {
     Failed,
     BaselineCreated,
     Cancelled,
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]
@@ -1228,11 +1241,20 @@ pub(crate) mod tests {
         }
 
         fn start(&self, run: &TestRun, hands: Arc<Fake>) -> Receiver<Message> {
+            self.start_with(run, hands, RunOptions::default())
+        }
+
+        fn start_with(
+            &self,
+            run: &TestRun,
+            hands: Arc<Fake>,
+            options: RunOptions,
+        ) -> Receiver<Message> {
             let (tx, rx) = channel();
             run.start(
                 path(&self.0),
                 "t.flow.json".into(),
-                RunOptions::default(),
+                options,
                 hands,
                 Arc::new(Secrets),
                 Arc::new(Listener(Mutex::new(tx))),
@@ -1306,6 +1328,23 @@ pub(crate) mod tests {
             .collect();
         assert_eq!(started, ["open", "pw", "go"]);
         assert!(!format!("{events:?}").contains(SECRET));
+    }
+
+    #[test]
+    fn a_run_without_described_elements_never_reads_provider_settings() {
+        let p = Project::new(
+            "providers",
+            r#""open":{"type":"openApp","next":"go"},
+               "go":{"type":"click","target":{"point":{"x":0.5,"y":0.5}}}"#,
+        );
+        let asked = Arc::new(crate::vision::tests::Asked::default());
+        let options = RunOptions {
+            providers: Some(asked.clone()),
+            ..RunOptions::default()
+        };
+        let rx = p.start_with(&TestRun::new(), Arc::new(Fake::default()), options);
+        wait(&rx, Duration::from_secs(10));
+        assert!(asked.0.lock().unwrap().is_empty());
     }
 
     #[test]

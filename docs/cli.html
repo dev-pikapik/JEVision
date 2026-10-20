@@ -39,6 +39,7 @@
   <ul aria-labelledby="nav-run-tests">
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
     <li><a href="vm.html">Virtual machines</a></li>
   </ul>
@@ -117,6 +118,7 @@ jevision --help</code></pre>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
     <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report.</td></tr>
+    <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
     <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
   </tbody>
 </table>
@@ -145,6 +147,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   "failed": 1,
   "quarantined": 0,
   "cancelled": 0,
+  "blocked": 0,
   "notRun": 0,
   "errors": 0,
   "tests": [
@@ -155,6 +158,8 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
       "flaky": false,
       "quarantined": false,
       "quarantineReason": null,
+      "blockedBy": null,
+      "addedAsDependency": false,
       "attempts": 3,
       "rows": [],
       "durationMs": 18234,
@@ -167,7 +172,8 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   ]
 }</code></pre>
 <ul>
-  <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>blocked</code> (didn't run because a test it depends on didn't pass; <code>blockedBy</code> says which and why), <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>addedAsDependency</code> is <code>true</code> for a test you didn't choose that ran because a chosen test depends on it.</li>
   <li><code>file</code> is relative to the project folder. <code>newReferences</code> lists the reference images this run saved for the first time.</li>
   <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>.</li>
 </ul>
@@ -183,7 +189,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments or a file could not be read.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read.</p>
 
 <h2 id="fmt"><code>jevision fmt</code></h2>
 <p>Rewrites test files in <a href="writing-tests.html#canonical">canonical form</a>, so every change shows up as a small, readable diff.</p>
@@ -196,7 +202,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments or a file could not be read or written.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read or written.</p>
 
 <h2 id="mcp"><code>jevision mcp</code></h2>
 <p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
@@ -246,6 +252,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
             reports/</code></pre>
 <p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
 <p>The app can write the workflow for you: <strong>Settings → Advanced → Continuous Integration → Add to Project…</strong>. It shows the file first, with the secrets your tests use, and saves it as <code>.github/workflows/jevision.yml</code> at the top of the git repository your project is in. It replaces an existing file only after you confirm, and it doesn't commit or push anything.</p>
+<p>To be told in Slack, Telegram or email when the run fails, set up <a href="notifications.html">Notifications</a> in the app and commit <code>jevision.notifications.json</code>; <code>jevision run</code> sends one summary when it finishes, and on CI reads the secrets from environment variables.</p>
 </main>
 </div>
 <footer class="site-footer">

@@ -639,6 +639,32 @@ fn a_finished_step_carries_the_way_an_if_took() {
     );
 }
 
+#[test]
+fn verdicts_and_statuses_from_a_newer_mac_read_as_unknown() {
+    let runs: RunList = serde_json::from_value(serde_json::json!({
+        "active": [],
+        "saved": [{
+            "run": "r1", "test": "Inbox", "file": "inbox.flow.json",
+            "startedAt": "2026-10-19T08:00:00Z", "durationMs": 5, "verdict": "skipped", "flaky": false
+        }]
+    }))
+    .unwrap();
+    assert_eq!(runs.saved[0].verdict, Verdict::Unknown);
+
+    let step: RunEvent = serde_json::from_value(serde_json::json!({
+        "event": "blockFinished", "attempt": 1, "seq": 2, "test": "inbox.flow.json",
+        "block": "open", "status": "retried", "durationMs": 80, "failure": null
+    }))
+    .unwrap();
+    assert!(matches!(
+        step,
+        RunEvent::BlockFinished {
+            status: StepStatus::Unknown,
+            ..
+        }
+    ));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn reads_saved_runs_reports_and_pictures() {
     let setup = Setup::new("reports").await;

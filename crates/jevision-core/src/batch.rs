@@ -14,7 +14,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::issue::Issue;
-use crate::model::{BlockKind, Flow};
+use crate::model::{BlockKind, Condition, Flow, ScriptLanguage};
 
 /// How the tests of a batch run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -420,8 +420,10 @@ impl<R: FnMut(&str) -> Loaded> Planner<R> {
         self.order.push(file.to_owned());
     }
 
-    /// The test, or a test it runs, has a block that acts on the screen or looks at it. A test
-    /// that can't be read counts as one that does.
+    /// The test, or a test it runs, has a block that acts on the screen or looks at it. Commands,
+    /// requests, files, databases, pauses, loops, conditions on values and scripts don't, except
+    /// AppleScript, which usually drives apps through their windows. A test that can't be read
+    /// counts as one that does.
     fn uses_screen(&mut self, file: &str, seen: &mut HashSet<String>) -> bool {
         if !seen.insert(file.to_owned()) {
             return false;
@@ -436,6 +438,21 @@ impl<R: FnMut(&str) -> Loaded> Planner<R> {
                     Some(test) => runs.push(test),
                     None => return true,
                 },
+                BlockKind::Script { language, .. } if *language != ScriptLanguage::AppleScript => {}
+                BlockKind::Command { .. }
+                | BlockKind::Http { .. }
+                | BlockKind::CheckFile { .. }
+                | BlockKind::Database { .. }
+                | BlockKind::Pause { .. }
+                | BlockKind::Repeat { .. }
+                | BlockKind::UseData { .. } => {}
+                BlockKind::If {
+                    condition: Condition::Value(_),
+                    else_if,
+                    ..
+                } if else_if
+                    .iter()
+                    .all(|way| matches!(way.condition, Condition::Value(_))) => {}
                 _ => return true,
             }
         }
@@ -732,6 +749,64 @@ mod tests {
         assert_eq!(batch.start_next(), None, "the screen is still taken");
         batch.finish(0, TestOutcome::Passed);
         assert_eq!(batch.start_next(), Some(1));
+    }
+
+    #[test]
+    fn only_blocks_on_the_screen_keep_a_test_from_running_beside_others() {
+        let flow = |blocks: &str| {
+            crate::parse(&format!(
+                r#"{{"format": {}, "name": "T", "app": "com.apple.TextEdit", "start": "a",
+                    "blocks": {{{blocks}}}}}"#,
+                crate::FORMAT_VERSION
+            ))
+            .unwrap()
+        };
+        let read = project(&[
+            (
+                "quiet.flow.json",
+                flow(
+                    r#""a": {"type": "script", "language": "python3", "code": "print(1)", "next": "b"},
+                    "b": {"type": "command", "command": "true", "next": "c"},
+                    "c": {"type": "http", "url": "https://x.test", "next": "d"},
+                    "d": {"type": "checkFile", "path": "out.txt", "until": "exists", "next": "e"},
+                    "e": {"type": "database", "file": "a.sqlite", "query": "select 1", "next": "f"},
+                    "f": {"type": "repeat", "times": 2, "body": "g", "next": "h"},
+                    "g": {"type": "pause", "duration": "1s"},
+                    "h": {"type": "useData", "file": "users.csv", "body": "i", "next": "j"},
+                    "i": {"type": "if", "value": {"of": "${data.name}", "is": "equals", "to": "x"}},
+                    "j": {"type": "runTest", "test": "sub/setup.flow.json"}"#,
+                ),
+            ),
+            (
+                "sub/setup.flow.json",
+                flow(r#""a": {"type": "command", "command": "true"}"#),
+            ),
+            (
+                "apple.flow.json",
+                flow(r#""a": {"type": "script", "language": "appleScript", "code": "beep"}"#),
+            ),
+            (
+                "looks.flow.json",
+                flow(
+                    r#""a": {"type": "if", "value": {"of": "1", "is": "equals", "to": "1"},
+                        "elseIf": [{"reference": {"image": "refs/a.png"}}]}"#,
+                ),
+            ),
+            (
+                "calls.flow.json",
+                flow(r#""a": {"type": "runTest", "test": "s1.flow.json"}"#),
+            ),
+            ("s1.flow.json", test("S1", &[])),
+        ]);
+        let all = chosen(&[
+            "quiet.flow.json",
+            "apple.flow.json",
+            "looks.flow.json",
+            "calls.flow.json",
+        ]);
+        let batch = Batch::plan(&all, RunMode::Parallel { limit: 4 }, read);
+        let screens: Vec<bool> = batch.tests().iter().map(|t| t.uses_screen).collect();
+        assert_eq!(screens, [false, true, true, true]);
     }
 
     #[test]

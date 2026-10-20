@@ -281,6 +281,7 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
             percent(p.x),
             percent(p.y)
         ),
+        Target::Description(what) => format!("{} (found by description)", what.trim()),
     };
     match kind {
         BlockKind::OpenApp { app: other, .. } => {

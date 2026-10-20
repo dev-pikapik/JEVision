@@ -402,6 +402,7 @@ fn step_line(step: &Step) -> String {
         StepStatus::Failed => "failed",
         StepStatus::BaselineCreated => "saved its reference",
         StepStatus::Cancelled => "cancelled",
+        StepStatus::Unknown => "status unknown to this version",
     };
     let mut line = format!(
         "{}. {} {} ({}): {status}",

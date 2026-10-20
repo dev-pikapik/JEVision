@@ -184,7 +184,12 @@ const HEALTH_BARS: usize = 20;
 pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
     let mut finished: Vec<(i64, &RunReport)> = runs
         .iter()
-        .filter(|run| !matches!(run.verdict, Verdict::Cancelled | Verdict::Blocked))
+        .filter(|run| {
+            !matches!(
+                run.verdict,
+                Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown
+            )
+        })
         .map(|run| (unix_ms(&run.started_at).unwrap_or(i64::MIN), run))
         .collect();
     finished.sort_by_key(|(at, _)| *at);
@@ -554,6 +559,9 @@ mod tests {
                 "wait",
             ),
             saved("t", "2026-10-17T10:00:00.000Z", "cancelled"),
+            saved("t", "2026-10-17T11:00:00.000Z", "blocked"),
+            // Saved by a newer version: neither passed nor failed as far as this one knows.
+            saved("t", "2026-10-17T12:00:00.000Z", "skipped"),
         ];
         let mut flaky = saved("t", "2026-10-18T09:00:00.000Z", "passed");
         flaky.flaky = true;

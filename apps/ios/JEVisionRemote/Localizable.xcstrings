@@ -2033,6 +2033,38 @@
         }
       }
     },
+    "run.target.descriptionNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» не найден на экране."
+          }
+        }
+      }
+    },
+    "run.target.noLocator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: finding an element by its description needs JEV (TypeSafe AI). Set it up in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: чтобы найти элемент по описанию, нужен JEV (TypeSafe AI). Настройте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.test.invalid" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -2097,6 +2129,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ дал ответ, который JEVision не может прочитать: %2$@"
+          }
+        }
+      }
+    },
+    "run.vision.cannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t find elements by description; only JEV (TypeSafe AI) can. Set up JEV in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не умеет находить элементы по описанию — это умеет только JEV (TypeSafe AI). Настройте JEV в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.modelCannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The JEV model “%@” can’t find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель JEV «%@» не умеет находить элементы по описанию — это умеют jev-1.14.0 и новее или jev-latest. Выберите такую в Настройках → ИИ."
           }
         }
       }
@@ -2428,6 +2492,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заблокирован: тест «%@» не прошёл. Этот тест не запускался."
+          }
+        }
+      }
+    },
+    "Unknown status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестный статус"
+          }
+        }
+      }
+    },
+    "The Mac reported a result this version of the app doesn’t know. Update the app to see it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac сообщил результат, который эта версия приложения не знает. Обновите приложение, чтобы его увидеть."
           }
         }
       }

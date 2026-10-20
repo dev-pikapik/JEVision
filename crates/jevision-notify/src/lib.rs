@@ -1,30 +1,39 @@
 //! Telling people how test runs went: a message to Slack (incoming webhook), Telegram (a bot)
 //! or email (SMTP over TLS) after a run, as the project's `jevision.notifications.json` asks.
 //!
-//! The file says which channels to use and when; it holds nothing secret and is committed with
-//! the tests. The webhook, the bot token and the mail password are kept in the Keychain of each
+//! The file says which channels to use and, for each, when; it holds nothing secret and is
+//! committed with the tests. The webhook, the bot token and the mail password are kept in the Keychain of each
 //! Mac, per project, or come from environment variables on CI.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io};
 
-use jevision_core::BlockReason;
-use jevision_runner::{RetryVerdict, Run, RunReport, Verdict, describe};
+use jevision_runner::{Run, RunReport, Verdict};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{Value, json};
 
+mod chats;
+mod message;
+mod render;
 #[cfg(test)]
 mod tests;
 
+pub use chats::{ChatKind, FoundChat, FoundChats, find_chats};
+pub use message::{
+    Details, FailedTest, Finished, Message, Notice, Picture, ReportLink, Tone, failure_picture,
+    message, notice_for,
+};
+
 /// Name of the notification settings file in the project folder.
 pub const FILE: &str = "jevision.notifications.json";
-const FORMAT: u32 = 1;
+/// The layout the file is saved in. Format 1, with one `when` for every channel, is still read.
+const FORMAT: u32 = 2;
 /// Telegram's Bot API.
 pub const TELEGRAM_API: &str = "https://api.telegram.org";
 const TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Which runs are told about.
+/// Which runs a channel is told about.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NotifyWhen {
@@ -33,6 +42,9 @@ pub enum NotifyWhen {
     /// Every run that failed, and the first pass after a failure.
     #[default]
     FailedOrFixed,
+    /// The first failure of a test that passed before, and the first pass after a failure; a
+    /// test that keeps failing says nothing more.
+    Changed,
     /// Every run that finished.
     Every,
 }
@@ -49,12 +61,22 @@ pub enum MailSecurity {
     StartTls,
 }
 
+/// The Slack channel of the webhook.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SlackChannel {
+    #[serde(default)]
+    pub when: NotifyWhen,
+}
+
 /// A Telegram chat a bot posts to.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TelegramChat {
     /// The chat's id, like `-1001234567890` for a group, or `@channel` for a public channel.
     pub chat: String,
+    #[serde(default)]
+    pub when: NotifyWhen,
 }
 
 /// Mail sent through an SMTP server.
@@ -73,16 +95,16 @@ pub struct MailServer {
     pub from: String,
     /// Addresses the mail goes to.
     pub to: Vec<String>,
+    #[serde(default)]
+    pub when: NotifyWhen,
 }
 
-/// A project's notification settings.
+/// A project's notification settings: the channels that are on, each with its own `when`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NotificationSettings {
-    pub when: NotifyWhen,
     /// Only runs started by a schedule or on CI are told about, not the ones someone watched.
     pub unattended_only: bool,
-    /// Post to the Slack channel of the webhook.
-    pub slack: bool,
+    pub slack: Option<SlackChannel>,
     pub telegram: Option<TelegramChat>,
     pub email: Option<MailServer>,
 }
@@ -157,27 +179,57 @@ fn missing_secret(channel: NotifyChannel) -> String {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct File {
     format: u32,
-    #[serde(default)]
-    when: NotifyWhen,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     unattended_only: bool,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    slack: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    slack: Option<SlackChannel>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     telegram: Option<TelegramChat>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     email: Option<MailServer>,
 }
 
+/// Format 1 had one `when` for every channel and `slack` as `true` or `false`; format 2 gives
+/// each channel its own `when`. Turns a format 1 file into format 2.
+fn migrate(file: &mut Value) -> Result<(), String> {
+    let Some(file) = file
+        .as_object_mut()
+        .filter(|f| f.get("format") == Some(&json!(1)))
+    else {
+        return Ok(());
+    };
+    let when = file
+        .remove("when")
+        .unwrap_or_else(|| json!(NotifyWhen::default()));
+    serde_json::from_value::<NotifyWhen>(when.clone()).map_err(|e| format!("\"when\": {e}"))?;
+    for channel in ["telegram", "email"] {
+        if let Some(channel) = file.get_mut(channel).and_then(Value::as_object_mut) {
+            channel.entry("when").or_insert_with(|| when.clone());
+        }
+    }
+    match file.get("slack") {
+        Some(Value::Bool(true)) => {
+            file.insert("slack".into(), json!({ "when": when }));
+        }
+        Some(Value::Bool(false)) => {
+            file.remove("slack");
+        }
+        _ => {}
+    }
+    file.insert("format".into(), json!(FORMAT));
+    Ok(())
+}
+
 impl NotificationSettings {
-    /// Reads the text of a settings file; `Err` says what is wrong with it.
+    /// Reads the text of a settings file, of format 1 or 2; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let file: File = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        let mut value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        migrate(&mut value)?;
+        let file: File = serde_json::from_value(value).map_err(|e| e.to_string())?;
         if file.format != FORMAT {
-            return Err(format!("\"format\" must be {FORMAT}"));
+            return Err(format!("\"format\" must be 1 or {FORMAT}"));
         }
         let settings = Self {
-            when: file.when,
             unattended_only: file.unattended_only,
             slack: file.slack,
             telegram: file.telegram,
@@ -239,7 +291,6 @@ impl NotificationSettings {
         }
         let file = File {
             format: FORMAT,
-            when: self.when,
             unattended_only: self.unattended_only,
             slack: self.slack,
             telegram: self.telegram.clone(),
@@ -252,12 +303,19 @@ impl NotificationSettings {
 
     /// The channels that are on.
     pub fn channels(&self) -> Vec<NotifyChannel> {
-        let on = [self.slack, self.telegram.is_some(), self.email.is_some()];
         NotifyChannel::ALL
             .into_iter()
-            .zip(on)
-            .filter_map(|(channel, on)| on.then_some(channel))
+            .filter(|c| self.when(*c).is_some())
             .collect()
+    }
+
+    /// Which runs `channel` is told about; none when it is off.
+    pub fn when(&self, channel: NotifyChannel) -> Option<NotifyWhen> {
+        match channel {
+            NotifyChannel::Slack => self.slack.map(|s| s.when),
+            NotifyChannel::Telegram => self.telegram.as_ref().map(|t| t.when),
+            NotifyChannel::Email => self.email.as_ref().map(|e| e.when),
+        }
     }
 }
 
@@ -285,21 +343,6 @@ fn is_address(text: &str) -> bool {
     text.parse::<lettre::message::Mailbox>().is_ok()
 }
 
-/// What a message says.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Message {
-    /// The first line, also the mail's subject, like `Failed: Sign in`.
-    pub title: String,
-    /// The lines after the title.
-    pub body: String,
-}
-
-impl Message {
-    fn text(&self) -> String {
-        format!("{}\n{}", self.title, self.body)
-    }
-}
-
 /// Where messages go besides the real services, for tests.
 #[derive(Debug, Clone)]
 pub struct Endpoints {
@@ -318,128 +361,13 @@ impl Default for Endpoints {
     }
 }
 
-/// The message about `run` when the settings ask for one: `previous` is the run of the same test
-/// before it, and `unattended` says the run was started by a schedule or on CI.
-pub fn message_for(
-    settings: &NotificationSettings,
-    run: &Run,
-    previous: Option<&RunReport>,
-    unattended: bool,
-) -> Option<Message> {
-    let report = &run.report;
-    if settings.channels().is_empty() || (settings.unattended_only && !unattended) {
-        return None;
-    }
-    let fixed =
-        report.verdict == Verdict::Passed && previous.is_some_and(|p| p.verdict == Verdict::Failed);
-    let send = match (report.verdict, settings.when) {
-        (Verdict::Cancelled, _) => false,
-        (_, NotifyWhen::Every) => true,
-        (Verdict::Failed, _) => !report.quarantined,
-        // A failed dependency sends its own message; a missing one or a circle sends none.
-        (Verdict::Blocked, _) => report
-            .blocked
-            .as_ref()
-            .is_some_and(|b| matches!(b.reason, BlockReason::Missing | BlockReason::Cycle { .. })),
-        (Verdict::Passed, NotifyWhen::FailedOrFixed) => fixed,
-        (Verdict::Passed, NotifyWhen::Failed) => false,
-    };
-    send.then(|| message(run, fixed))
-}
-
-/// The message about `run`: what happened, why, how long it took and where the report is.
-pub fn message(run: &Run, fixed: bool) -> Message {
-    let report = &run.report;
-    let outcome = match report.verdict {
-        Verdict::Failed => "Failed",
-        Verdict::Passed if fixed => "Fixed",
-        Verdict::Passed => "Passed",
-        Verdict::Cancelled => "Stopped",
-        Verdict::Blocked => "Blocked",
-    };
-    let mut lines = Vec::new();
-    if let Some(reason) = reason(report) {
-        lines.push(reason);
-    }
-    let mut facts = vec![format!("Took {}", duration(report.duration_ms))];
-    facts.push(report.file.clone());
-    if let Some(schedule) = &report.schedule {
-        facts.push(format!("schedule “{schedule}”"));
-    }
-    if let Some(environment) = &report.environment {
-        facts.push(format!("environment “{environment}”"));
-    }
-    lines.push(facts.join(" · "));
-    lines.push(match ci_run_url() {
-        Some(url) => format!("Report: {url}"),
-        None => format!(
-            "Report on the Mac that ran it: {}",
-            run.dir.join("report.html").display()
-        ),
-    });
-    Message {
-        title: format!("{outcome}: {}", report.test),
-        body: lines.join("\n"),
-    }
-}
-
-/// Why the run failed or was blocked, or that it passed only on a retry, in one sentence.
-fn reason(report: &RunReport) -> Option<String> {
-    if report.verdict == Verdict::Passed {
-        return RetryVerdict::of(report.verdict, report.flaky, report.attempts.len())
-            .map(RetryVerdict::describe);
-    }
-    if let Some(blocker) = &report.blocked {
-        return Some(blocker.describe());
-    }
-    let rows = report.rows();
-    if let Some(row) = rows.iter().find(|r| r.verdict == Verdict::Failed) {
-        let why = row.failure.as_ref().map(describe).unwrap_or_default();
-        let total = rows.len();
-        let failed = rows.iter().filter(|r| r.verdict == Verdict::Failed).count();
-        let more = match failed {
-            1 => String::new(),
-            n => format!(" ({n} of {total} rows failed)"),
-        };
-        return Some(
-            format!("{}: {why}{more}", row.row.title())
-                .trim()
-                .to_owned(),
-        );
-    }
-    report
-        .attempts
-        .last()
-        .and_then(|a| a.failure.as_ref())
-        .map(describe)
-}
-
-/// `850 ms`, `12.3 s` or `2 min 5 s`.
-fn duration(ms: u64) -> String {
-    match ms {
-        0..1_000 => format!("{ms} ms"),
-        1_000..60_000 => format!("{:.1} s", ms as f64 / 1000.0),
-        _ => format!("{} min {} s", ms / 60_000, ms % 60_000 / 1000),
-    }
-}
-
-/// The page of the GitHub Actions run this is part of, where its reports are kept.
-fn ci_run_url() -> Option<String> {
-    let var = |name| std::env::var(name).ok().filter(|v| !v.is_empty());
-    Some(format!(
-        "{}/{}/actions/runs/{}",
-        var("GITHUB_SERVER_URL")?,
-        var("GITHUB_REPOSITORY")?,
-        var("GITHUB_RUN_ID")?
-    ))
-}
-
 /// The run is on CI, where no one is watching.
 pub fn on_ci() -> bool {
     std::env::var("CI").is_ok_and(|v| !v.is_empty() && v != "false" && v != "0")
 }
 
-/// The run of the same test file before `run`, skipping stopped ones.
+/// The run of the same test file before `run`, skipping stopped and blocked ones: they don't
+/// say whether the test was passing.
 pub fn previous(project: &Path, run: &Run) -> Option<RunReport> {
     let runs = project.join(".jevision").join("runs");
     let name = run.dir.file_name()?.to_string_lossy().into_owned();
@@ -455,7 +383,11 @@ pub fn previous(project: &Path, run: &Run) -> Option<RunReport> {
         .filter_map(|n| Run::load(&project.join(".jevision").join("runs").join(n)).ok())
         .map(|r| r.report)
         .find(|r| {
-            r.file == run.report.file && !matches!(r.verdict, Verdict::Cancelled | Verdict::Blocked)
+            r.file == run.report.file
+                && !matches!(
+                    r.verdict,
+                    Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown
+                )
         })
 }
 
@@ -475,44 +407,55 @@ pub struct Sent {
     pub result: Result<(), NotifyError>,
 }
 
-/// Tells the project's channels about the run `dir` of `project` when its settings ask for it.
-/// Nothing at all when they don't.
-pub fn notify(project: &Path, dir: &Path) -> Result<Vec<Sent>, NotifyError> {
+/// Tells the project's channels about the runs in `dirs`, one batch of `project`, as far as
+/// their settings ask for it: one message about a single run, one summary about several. The
+/// channels that aren't due get nothing, and nothing at all goes out when none is.
+pub fn notify(project: &Path, dirs: &[PathBuf]) -> Result<Vec<Sent>, NotifyError> {
     let settings = NotificationSettings::load(project)?;
     if settings.channels().is_empty() {
         return Ok(Vec::new());
     }
-    let run = Run::load(dir).map_err(|e| failed(e.to_string()))?;
-    let unattended = run.report.schedule.is_some() || on_ci();
-    let Some(message) = message_for(
-        &settings,
-        &run,
-        previous(project, &run).as_ref(),
-        unattended,
-    ) else {
+    let runs = dirs
+        .iter()
+        .map(|dir| {
+            let run = Run::load(dir).map_err(|e| failed(e.to_string()))?;
+            Ok(Finished {
+                previous: previous(project, &run),
+                run,
+            })
+        })
+        .collect::<Result<Vec<_>, NotifyError>>()?;
+    let unattended = on_ci() || runs.iter().any(|r| r.run.report.schedule.is_some());
+    let name = project
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    let Some(mut notice) = notice_for(&settings, &name, &runs, unattended) else {
         return Ok(Vec::new());
     };
+    if notice.channels.contains(&NotifyChannel::Email) {
+        notice.message.details.picture = failure_picture(&runs);
+    }
     Ok(send_all(
         &settings,
-        &message,
+        &notice,
         &|c| secret(project, c),
         &Endpoints::default(),
     ))
 }
 
-/// Sends `message` to every channel of `settings` that is on.
+/// Sends the message of `notice` to the channels it names.
 pub fn send_all(
     settings: &NotificationSettings,
-    message: &Message,
+    notice: &Notice,
     secret: &dyn Fn(NotifyChannel) -> Option<String>,
     endpoints: &Endpoints,
 ) -> Vec<Sent> {
-    settings
-        .channels()
-        .into_iter()
-        .map(|channel| Sent {
+    notice
+        .channels
+        .iter()
+        .map(|&channel| Sent {
             channel,
-            result: send(settings, channel, message, secret, endpoints),
+            result: send(settings, channel, &notice.message, secret, endpoints),
         })
         .collect()
 }
@@ -522,13 +465,16 @@ pub fn test_message(project: &Path) -> Message {
     let name = project
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    Message {
-        title: "JEVision test message".into(),
-        body: format!(
-            "Messages about runs of the tests in “{name}” will come here, as the project's \
-             notification settings say."
-        ),
-    }
+    Message::new(
+        "JEVision test message".into(),
+        Details {
+            lead: Some(format!(
+                "Messages about runs of the tests in “{name}” will come here, as the project's \
+                 notification settings say."
+            )),
+            ..Details::default()
+        },
+    )
 }
 
 /// Sends `message` to `channel`.
@@ -571,7 +517,7 @@ fn agent() -> ureq::Agent {
 }
 
 /// Posts JSON; the status and the answer.
-fn post(url: &str, body: &serde_json::Value, service: &str) -> Result<(u16, String), NotifyError> {
+fn post(url: &str, body: &Value, service: &str) -> Result<(u16, String), NotifyError> {
     let mut response = agent()
         .post(url)
         .content_type("application/json")
@@ -588,13 +534,12 @@ fn slack(webhook: &str, message: &Message) -> Result<(), NotifyError> {
             "the Slack webhook should start with https://hooks.slack.com/",
         ));
     }
-    // Slack reads &, < and > as markup.
-    let text = message
-        .text()
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;");
-    let (status, answer) = post(webhook, &json!({ "text": text }), "Slack")?;
+    let rich = render::slack(message);
+    let (mut status, mut answer) = post(webhook, &rich, "Slack")?;
+    if status == 400 && answer.contains("invalid_blocks") {
+        // The news matters more than its layout.
+        (status, answer) = post(webhook, &json!({ "text": rich["text"] }), "Slack")?;
+    }
     match status {
         200 => Ok(()),
         403 | 404 | 410 => Err(failed(format!(
@@ -609,13 +554,18 @@ fn slack(webhook: &str, message: &Message) -> Result<(), NotifyError> {
 }
 
 fn telegram(api: &str, token: &str, chat: &str, message: &Message) -> Result<(), NotifyError> {
-    let url = format!("{}/bot{token}/sendMessage", api.trim_end_matches('/'));
     let body =
         json!({ "chat_id": chat.trim(), "text": message.text(), "disable_web_page_preview": true });
-    let (status, answer) = post(&url, &body, "Telegram")?;
-    let answer: serde_json::Value = serde_json::from_str(&answer).unwrap_or_default();
+    telegram_call(api, token, "sendMessage", &body).map(drop)
+}
+
+/// Calls `method` of Telegram's Bot API; the `result` it answers with.
+fn telegram_call(api: &str, token: &str, method: &str, body: &Value) -> Result<Value, NotifyError> {
+    let url = format!("{}/bot{token}/{method}", api.trim_end_matches('/'));
+    let (status, answer) = post(&url, body, "Telegram")?;
+    let mut answer: Value = serde_json::from_str(&answer).unwrap_or_default();
     if status == 200 && answer["ok"] == true {
-        return Ok(());
+        return Ok(answer["result"].take());
     }
     let description = answer["description"].as_str().unwrap_or_default();
     Err(failed(match status {
@@ -632,7 +582,7 @@ fn mail(
     root: Option<&[u8]>,
 ) -> Result<(), NotifyError> {
     use lettre::message::header::ContentType;
-    use lettre::message::{Mailbox, MessageBuilder};
+    use lettre::message::{Attachment, Mailbox, MessageBuilder, MultiPart, SinglePart};
     use lettre::transport::smtp::authentication::Credentials;
     use lettre::transport::smtp::client::{Certificate, CertificateStore, Tls, TlsParameters};
     use lettre::{SmtpTransport, Transport};
@@ -641,12 +591,28 @@ fn mail(
     let mailbox = |a: &str| a.parse::<Mailbox>().map_err(|e| broken(&e));
     let mut builder = MessageBuilder::new()
         .from(mailbox(&email.from)?)
-        .subject(&message.title)
-        .header(ContentType::TEXT_PLAIN);
+        .subject(&message.title);
     for to in &email.to {
         builder = builder.to(mailbox(to)?);
     }
-    let mail = builder.body(message.text()).map_err(|e| broken(&e))?;
+    let (plain, html) = (message.text(), render::html(message));
+    let body = match &message.details.picture {
+        None => MultiPart::alternative_plain_html(plain, html),
+        Some(picture) => {
+            let png = ContentType::parse("image/png").map_err(|e| broken(&e))?;
+            MultiPart::alternative()
+                .singlepart(SinglePart::plain(plain))
+                .multipart(
+                    MultiPart::related()
+                        .singlepart(SinglePart::html(html))
+                        .singlepart(
+                            Attachment::new_inline(render::PICTURE_ID.into())
+                                .body(picture.png.clone(), png),
+                        ),
+                )
+        }
+    };
+    let mail = builder.multipart(body).map_err(|e| broken(&e))?;
 
     let server = email.server.trim();
     let mut tls = TlsParameters::builder(server.to_owned());

@@ -228,6 +228,7 @@ struct TestResult {
       case .failed: report.quarantined ? "quarantined" : "failed"
       case .cancelled: "cancelled"
       case .blocked: "blocked"
+      case .unknown: "unknown"
       }
     case .error: "error"
     case .notRun: "notRun"
@@ -328,7 +329,7 @@ final class TestSession: @unchecked Sendable {
     let started = Date()
     let count = tests.count == 1 ? "1 test" : "\(tests.count) tests"
     progress.line("Running \(count) in \(project). Press Esc twice or Ctrl-C to stop.")
-    // One at a time: every test uses the screen, so tests side by side would still take turns.
+    // One at a time: tests that use the screen would take turns anyway, and each test's lines stay together.
     let batch = TestBatch(
       project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: .sequential)
     let entries = batch.entries()
@@ -356,6 +357,7 @@ final class TestSession: @unchecked Sendable {
     lock.withLock { current = nil }
     let results = zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) }
     printSummary(results, duration: Date().timeIntervalSince(started))
+    if request.notify, !lock.withLock({ stopped }) { notify(about: results.compactMap(\.dir)) }
     return results
   }
 
@@ -365,7 +367,7 @@ final class TestSession: @unchecked Sendable {
     switch report.verdict {
     case .passed: return .passed
     case .cancelled: return .cancelled
-    case .blocked: return .notRun
+    case .blocked, .unknown: return .notRun
     // A failure in quarantine still means the test didn't do what the ones after it need.
     case .failed: return .failed
     }
@@ -419,7 +421,6 @@ final class TestSession: @unchecked Sendable {
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
       printVerdict(report, dir: dir, html: html ?? dir)
-      if request.notify { notify(about: dir) }
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
       progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
@@ -429,22 +430,24 @@ final class TestSession: @unchecked Sendable {
     }
   }
 
-  /// Sends the messages the project's notification settings ask for, and says how it went.
-  private func notify(about dir: String) {
+  /// Sends the message the project's notification settings ask for about the runs in `dirs`, one
+  /// message about a single run and one summary about several, and says how it went.
+  private func notify(about dirs: [String]) {
+    guard !dirs.isEmpty else { return }
+    let lines: [String]
     do {
-      for sent in try notifyRun(project: project, dir: dir) {
+      lines = try notifyRuns(project: project, dirs: dirs).map { sent in
         let channel = notifyChannelName(channel: sent.channel)
-        if let failure = sent.failure {
-          progress.line("  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red))
-        } else {
-          progress.line("  Message sent to \(channel)")
-        }
+        guard let failure = sent.failure else { return "  Message sent to \(channel)" }
+        return "  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red)
       }
     } catch let error as NotifyError {
-      progress.line("  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red))
+      lines = ["  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red)]
     } catch {
-      progress.line("  " + progress.paint("✗ No messages sent: \(error)", .red))
+      lines = ["  " + progress.paint("✗ No messages sent: \(error)", .red)]
     }
+    if !lines.isEmpty { progress.line() }
+    lines.forEach { progress.line($0) }
   }
 
   /// Time to take the hand off the keyboard after pressing Return.
@@ -484,6 +487,7 @@ final class TestSession: @unchecked Sendable {
       case .failed: progress.paint("Failed in \(took)", .red)
       case .cancelled: progress.paint("Stopped", .yellow)
       case .blocked: progress.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
+      case .unknown: progress.paint("Unknown status", .yellow)
       }
     progress.line("  " + line)
     if !report.rows.isEmpty {
@@ -577,6 +581,7 @@ private final class Progress: RunListener, @unchecked Sendable {
         case .baselineCreated: console.paint("✓", .green)
         case .failed: console.paint("✗", .red)
         case .cancelled: console.paint("–", .yellow)
+        case .unknown: console.paint("?", .yellow)
         }
       var text = "  \(mark) \(label(step.seq, step.block, step.blockType, step.test))  "
       text += console.paint(duration(step.durationMs), .dim)

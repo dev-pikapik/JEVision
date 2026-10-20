@@ -23,7 +23,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "openFile", "files": ["fixtures/note.txt"], "app": "com.apple.TextEdit" }),
         ),
         "click" => (
-            "Clicks an element found by its picture, or a fixed point of the window.",
+            "Clicks an element found by its picture or its description in words, or a fixed point of the window.",
             json!({
                 "target": "where to click: a target (see shapes)",
                 "button": "optional, \"left\" (default) or \"right\"",
@@ -216,7 +216,7 @@ pub(crate) fn guide() -> Value {
         "edges": "Blocks lead to each other by id: next for the block after; then, elseIf1, elseIf2… and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
         "blocks": blocks,
         "shapes": {
-            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner",
+            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"description\": \"the blue Save button\" } has JEV (TypeSafe AI) find the element described in words; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner",
             "reference": "{ \"image\": path, \"compare\": \"similar\" (default) | \"exact\" | \"meaning\", \"threshold\": 0–1 for similar (default 0.95), \"expect\": sentence for meaning, \"area\": rect, \"ignore\": [rect], \"hide\": [rect] }. With compare meaning, an AI model checks that the screen shows what expect says; the image is then optional.",
             "rect": "{ \"x\", \"y\", \"width\", \"height\" } in fractions (0–1) of the window or image, from the top-left corner. area limits the comparison, ignore leaves parts out (clocks, counters), hide paints parts over with grey before screenshots are stored or sent anywhere, as do the hide areas of jevision.project.json and password fields",
             "duration": "text like 500ms, 10s or 2m",
