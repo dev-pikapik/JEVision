@@ -431,7 +431,9 @@ impl RunListener for RunReporter {
         }
         let Some(run) = self.run() else { return };
         let published = match event {
-            RunEvent::RunStarted { .. } | RunEvent::RowStarted { .. } => return,
+            RunEvent::RunStarted { .. }
+            | RunEvent::RowStarted { .. }
+            | RunEvent::WaitingForScreen { .. } => return,
             RunEvent::AttemptStarted { attempt } => {
                 self.update(&run, |s| {
                     s.attempt = attempt;

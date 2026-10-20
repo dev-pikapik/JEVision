@@ -130,6 +130,16 @@ pub enum BlockKind {
         /// Bundle id; `None` opens the application under test.
         #[serde(skip_serializing_if = "Option::is_none")]
         app: Option<String>,
+        /// Quit a copy that is already running and start a fresh one that does not restore its
+        /// windows, so every run begins from the same screen.
+        #[serde(skip_serializing_if = "is_false")]
+        reset_state: bool,
+        /// Resize the main window once the app is up, so screenshots have the same size.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        window_size: Option<WindowSize>,
+        /// Move the main window once the app is up.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        window_position: Option<WindowPosition>,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
@@ -698,6 +708,21 @@ pub enum Target {
     Point(Point),
     /// Found by AI: the element described in words, like "the blue Save button".
     Description(String),
+}
+
+/// The size of a window in points.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct WindowSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Where the top-left corner of a window sits on the screen, in points. The origin is the
+/// top-left corner of the main display; a display to its left or above has negative numbers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
 }
 
 /// A point in fractions (0–1) of the window, from the top-left corner.

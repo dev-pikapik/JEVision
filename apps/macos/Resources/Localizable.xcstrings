@@ -1013,12 +1013,44 @@
         }
       }
     },
+    "%lld of %lld blocks passed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld blocks passed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld из %2$lld блоков пройдено"
+          }
+        }
+      }
+    },
     "%lld of %lld failed" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Упали: %lld из %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld passed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld passed"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld из %2$lld пройдено"
           }
         }
       }
@@ -1195,6 +1227,22 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld running" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld running"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выполняется: %lld"
           }
         }
       }
@@ -1745,6 +1793,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Первое значение"
+          }
+        }
+      }
+    },
+    "A fixed size and position keep pictures of the window the same on every run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированные размер и положение делают картинки окна одинаковыми при каждом прогоне."
           }
         }
       }
@@ -2313,6 +2371,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить картинку"
+          }
+        }
+      }
+    },
+    "Add Image to Board…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Image to Board…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку на доску…"
+          }
+        }
+      }
+    },
+    "Add Image…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Image…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить картинку…"
           }
         }
       }
@@ -3985,6 +4075,22 @@
         }
       }
     },
+    "Cancel Connecting" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel Connecting"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить соединение"
+          }
+        }
+      }
+    },
     "Canvas" : {
       "localizations" : {
         "ru" : {
@@ -4819,6 +4925,22 @@
         }
       }
     },
+    "Choose the pictures to put on the board" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the pictures to put on the board"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите картинки для доски"
+          }
+        }
+      }
+    },
     "Choose the step after %@" : {
       "localizations" : {
         "ru" : {
@@ -5461,6 +5583,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключить GitHub…"
+          }
+        }
+      }
+    },
+    "Connect Here" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect Here"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Соединить здесь"
           }
         }
       }
@@ -7765,6 +7903,26 @@
         }
       }
     },
+    "Fixed Window Position" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированное положение окна"
+          }
+        }
+      }
+    },
+    "Fixed Window Size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиксированный размер окна"
+          }
+        }
+      }
+    },
     "Flakiness %@: the result changed %lld times in %lld runs without the test changing" : {
       "localizations" : {
         "ru" : {
@@ -8078,7 +8236,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Слева"
+            "value" : "От левого края"
           }
         }
       }
@@ -8108,7 +8266,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сверху"
+            "value" : "От верхнего края"
           }
         }
       }
@@ -8389,6 +8547,16 @@
         }
       }
     },
+    "Height" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Высота"
+          }
+        }
+      }
+    },
     "Height, px" : {
       "localizations" : {
         "ru" : {
@@ -8415,6 +8583,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скрыть"
+          }
+        }
+      }
+    },
+    "Hide Blocks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Blocks"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть блоки"
           }
         }
       }
@@ -12574,12 +12758,76 @@
         }
       }
     },
+    "Pick what to connect “%@” to, then press Return" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick what to connect “%@” to, then press Return"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, с чем соединить «%@», и нажмите Return"
+          }
+        }
+      }
+    },
+    "Picture" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка"
+          }
+        }
+      }
+    },
+    "Picture not found" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture not found"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка не найдена"
+          }
+        }
+      }
+    },
     "Picture of the window, %lld by %lld pixels" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Картинка окна, %1$lld на %2$lld пикселей"
+          }
+        }
+      }
+    },
+    "Picture on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture on %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка на доске %@"
           }
         }
       }
@@ -13060,6 +13308,22 @@
         }
       }
     },
+    "Puts a picture from your Mac on the board." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts a picture from your Mac on the board."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кладёт на доску картинку с вашего Mac."
+          }
+        }
+      }
+    },
     "Puts a test of the project on the board." : {
       "localizations" : {
         "en" : {
@@ -13168,6 +13432,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Быстрый просмотр"
+          }
+        }
+      }
+    },
+    "Quits the app if it is running, then opens it without the windows it had last time." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывает приложение, если оно запущено, и открывает его без окон, которые были в прошлый раз."
           }
         }
       }
@@ -14630,6 +14904,22 @@
         }
       }
     },
+    "Running block %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running block %lld of %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполняется блок %1$lld из %2$lld"
+          }
+        }
+      }
+    },
     "Running now" : {
       "localizations" : {
         "ru" : {
@@ -15572,6 +15862,22 @@
         }
       }
     },
+    "Selected tests" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected tests"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные тесты"
+          }
+        }
+      }
+    },
     "Send Test Message" : {
       "localizations" : {
         "ru" : {
@@ -15912,6 +16218,22 @@
         }
       }
     },
+    "Show Blocks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Blocks"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать блоки"
+          }
+        }
+      }
+    },
     "Show Everything" : {
       "localizations" : {
         "en" : {
@@ -16088,6 +16410,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать весь тест (⌘0)"
+          }
+        }
+      }
+    },
+    "Shows all the fields of the block" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows all the fields of the block"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает все поля блока"
           }
         }
       }
@@ -16622,6 +16960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Звезда"
+          }
+        }
+      }
+    },
+    "Start Fresh" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить с нуля"
           }
         }
       }
@@ -18950,6 +19298,22 @@
         }
       }
     },
+    "This isn’t a picture JEVision can show." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This isn’t a picture JEVision can show."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не картинка, которую JEVision умеет показывать."
+          }
+        }
+      }
+    },
     "This month: %@" : {
       "localizations" : {
         "ru" : {
@@ -20058,12 +20422,38 @@
         }
       }
     },
+    "Waiting for its turn" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for its turn"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт своей очереди"
+          }
+        }
+      }
+    },
     "Waiting for the answer…" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждём ответа…"
+          }
+        }
+      }
+    },
+    "Waiting for the screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт экран"
           }
         }
       }
@@ -20494,12 +20884,42 @@
         }
       }
     },
+    "Width" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ширина"
+          }
+        }
+      }
+    },
     "Width, px" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ширина, пикс."
+          }
+        }
+      }
+    },
+    "Window Position" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положение окна"
+          }
+        }
+      }
+    },
+    "Window Size" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Размер окна"
           }
         }
       }
@@ -21038,6 +21458,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "доска карта проект открыть"
+          }
+        }
+      }
+    },
+    "board picture photo screenshot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "board picture photo screenshot"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доска картинка фото изображение скриншот снимок"
           }
         }
       }
@@ -22636,6 +23072,16 @@
         }
       }
     },
+    "points" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пунктов"
+          }
+        }
+      }
+    },
     "preferences options" : {
       "localizations" : {
         "ru" : {
@@ -23812,6 +24258,70 @@
         }
       }
     },
+    "run.hands.stillRunning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: %@ didn’t quit, so it can’t start over. Close it, or answer what it asks, and run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не закрылось, поэтому его нельзя запустить заново. Закройте его или ответьте на его вопрос и запустите тест ещё раз."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.position" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ should be at %@ but is at %@. The screen may be too small, or the app keeps its window where it likes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть в точке %3$@, а оно в %4$@. Возможно, экран слишком мал или приложение само выбирает, где держать окно."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.size" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ should be %@ points but is %@. The app may have its own limits, or the screen may be too small."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть %3$@ пунктов, а получилось %4$@. У приложения могут быть свои ограничения, или экран слишком мал."
+          }
+        }
+      }
+    },
+    "run.hands.windowFixed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the window of %@ doesn’t allow its size or position to be changed. Turn off the fixed size and position in this block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ не даёт менять размер или положение. Отключите фиксированные размер и положение в этом блоке."
+          }
+        }
+      }
+    },
     "run.http.failed" : {
       "localizations" : {
         "en" : {
@@ -24596,6 +25106,22 @@
         }
       }
     },
+    "run.waitFor.timeout.dark" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: waited %@ s for %@, but it didn’t happen. The window is dark and only the light picture exists; save the dark one as %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались. Окно тёмное, а есть только светлая картинка; сохраните тёмную как %4$@."
+          }
+        }
+      }
+    },
     "run.waitFor.timeout.screenStable" : {
       "localizations" : {
         "en" : {
@@ -24634,6 +25160,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "сохранено: %@"
+          }
+        }
+      }
+    },
+    "screen.busy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen busy: %@, test %@, since %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: %1$@, тест %2$@, с %3$@"
+          }
+        }
+      }
+    },
+    "screen.busy.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen busy: another run is using it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: его использует другой прогон."
           }
         }
       }

@@ -147,10 +147,15 @@
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>app</code></td><td>No</td><td>Bundle identifier of another application. Leave it out to open the application under test (the test's <code>app</code>).</td></tr>
+    <tr><td><code>resetState</code></td><td>No</td><td><code>true</code> to quit a copy that is already running and start a new one that does not bring back its windows from last time. Default <code>false</code>.</td></tr>
+    <tr><td><code>windowSize</code></td><td>No</td><td>The size of the main window in points, <code>{ "width": 900, "height": 640 }</code>. Each side is 100 to 20000.</td></tr>
+    <tr><td><code>windowPosition</code></td><td>No</td><td>Where the top-left corner of the main window sits, <code>{ "x": 80, "y": 60 }</code>, in points from the top-left corner of the main display. A display to the left of or above it has negative numbers.</td></tr>
   </tbody>
 </table>
 </div>
 <pre><code>{ "type": "openApp", "next": "email" }</code></pre>
+<p id="stable-window">Screenshots are only the same from run to run when the window is. With <code>windowSize</code> and <code>windowPosition</code>, JEVision sets them once the app is up and reads them back; if the window did not take them, the run stops at this block and says what size or position it has instead. Some windows can't be resized or moved, such as the windows of some utilities: the run then says so, and the fields have to go. Leave either field out to keep what the app chose.</p>
+<p><code>resetState</code> quits the running copy politely, so an app that asks to save or confirm first still gets to ask: the run stops and says so if the app does not quit. It does not delete anything: the app's settings, documents and caches stay as they are. Checks look at the window of the application under test, never at the whole screen, so what lies around the window never changes the result.</p>
 
 <h3 id="openFile">openFile: open files or web addresses</h3>
 <p>Opens one or more files, or <code>http://</code> and <code>https://</code> addresses. Each file is opened from a fresh copy made in the run's folder, so the original stays as it was and every run starts from the same file.</p>

@@ -5,6 +5,8 @@ import JEVisionCore
 struct RunState: Equatable {
   enum Phase: Equatable {
     case running
+    /// Another run has the screen, so this one starts when it is done; `nil` if not known who.
+    case waitingForScreen(ScreenHolder?)
     case paused(PauseReason)
     case finished(Verdict)
   }
@@ -52,6 +54,10 @@ struct RunState: Equatable {
 
   var isPaused: Bool {
     if case .paused = phase { true } else { false }
+  }
+
+  var isWaitingForScreen: Bool {
+    if case .waitingForScreen = phase { true } else { false }
   }
 
   /// Blocks of this test done so far in this attempt, counting each once.
@@ -126,6 +132,8 @@ struct RunState: Equatable {
       if let pausedAt { waitEnds = waitEnds?.addingTimeInterval(now.timeIntervalSince(pausedAt)) }
       pausedAt = nil
       phase = .running
+    case .waitingForScreen(let holder):
+      phase = .waitingForScreen(holder)
     case .attemptFinished(_, _, let failure):
       self.failure = failure
     case .runFinished(let verdict, let flaky, _):

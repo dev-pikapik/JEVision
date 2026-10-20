@@ -429,10 +429,14 @@ final class RunCenter {
     guard isRunning else { return }
     if case .stepFinished(_, let step) = event { AppLog.step(step) }
     let wasPaused = state?.isPaused ?? false
+    let wasWaiting = state?.isWaitingForScreen ?? false
     state?.apply(event)
     guard let state else { return }
     if state.isPaused, !wasPaused {
       AccessibilityNotification.Announcement(RunHUD.status(of: state)).post()
+    }
+    if case .waitingForScreen(let holder) = state.phase, !wasWaiting {
+      AccessibilityNotification.Announcement(RunText.screenBusy(holder)).post()
     }
   }
 

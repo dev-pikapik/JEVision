@@ -578,7 +578,7 @@ extension Recording {
       Reference(image: try path(picture), compare: .similar(threshold: minSimilarity), area: area, ignore: [], hide: [])
     }
     return switch step {
-    case .openApp: .openApp(app: nil, next: nil)
+    case .openApp: .openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, next: nil)
     case .click(let t, let button, let double, let modifiers):
       .click(target: try target(t), button: button, double: double, modifiers: modifiers, waitForChange: false, next: nil)
     case .drag(let from, let to, let button, let modifiers):

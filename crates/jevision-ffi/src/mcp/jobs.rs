@@ -6,7 +6,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use jevision_runner::{Event, PauseReason, Verdict};
+use jevision_runner::{Event, PauseReason, Verdict, describe_screen_holder};
 use serde_json::{Value, json};
 
 use super::{AssistantHost, hands_message};
@@ -121,6 +121,8 @@ struct Now {
     step: u32,
     block: String,
     paused: bool,
+    /// Who has the screen while this test waits for it.
+    waiting: Option<String>,
 }
 
 impl Job {
@@ -169,6 +171,9 @@ impl Job {
                 running["paused"] = json!(
                     "A person is using the mouse or keyboard. The test goes on once they stop."
                 );
+            }
+            if let Some(waiting) = &now.waiting {
+                running["waiting"] = json!(waiting);
             }
             tests.push(running);
         }
@@ -274,6 +279,10 @@ impl Job {
                     now.attempt = *attempt;
                     now.step = *seq;
                     now.block.clone_from(block);
+                    now.waiting = None;
+                }
+                Event::WaitingForScreen { holder } => {
+                    now.waiting = Some(describe_screen_holder(holder.as_ref()));
                 }
                 Event::Paused { reason, .. } => {
                     now.paused = true;

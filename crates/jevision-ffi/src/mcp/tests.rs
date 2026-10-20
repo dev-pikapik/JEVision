@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 
 use super::{AssistantHost, AssistantPermissions, Server};
 use crate::{Hands, HandsError, Openable, RunOptions, SecretSource, TestRun};
+use jevision_core::{WindowPosition, WindowSize};
 use jevision_runner::Screenshot;
 
 const SECRET: &str = "hunter2-secret";
@@ -53,7 +54,15 @@ struct FakeHands {
 }
 
 impl Hands for FakeHands {
-    fn open_app(&self, _: String) -> Result<(), HandsError> {
+    fn open_app(&self, _: String, _: bool) -> Result<(), HandsError> {
+        Ok(())
+    }
+    fn arrange_window(
+        &self,
+        _: String,
+        _: Option<WindowSize>,
+        _: Option<WindowPosition>,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn open_items(&self, _: Vec<Openable>, _: Option<String>, _: bool) -> Result<(), HandsError> {

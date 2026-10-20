@@ -48,6 +48,23 @@ struct RunStateTests {
     #expect(RunText.branch(Self.choice("next", of: nil)) == nil)
   }
 
+  @Test func aRunWaitingForTheScreenSaysWhoHasItAndGoesOnWhenItIsFree() {
+    let holder = ScreenHolder(process: "jevision", pid: 31, test: "Checkout", since: 1_700_000_000)
+    var state = run([.waitingForScreen(holder: holder)])
+    #expect(state.phase == .waitingForScreen(holder))
+    #expect(state.isWaitingForScreen && !state.isPaused)
+    state.apply(.attemptStarted(attempt: 1))
+    #expect(state.phase == .running)
+  }
+
+  @MainActor @Test func theWaitNamesTheHolderOrAdmitsNotKnowingIt() {
+    let holder = ScreenHolder(process: "JEVision", pid: 31, test: "Sign in", since: 1_700_000_000)
+    let text = RunText.screenBusy(holder)
+    #expect(text.hasPrefix("Screen busy: JEVision, test Sign in, since "))
+    #expect(RunText.screenBusy(nil) == "Screen busy: another run is using it.")
+    #expect(RunHUD.status(of: run([.waitingForScreen(holder: nil)])) == "Waiting for the screen")
+  }
+
   @Test func remembersTheWaysOutTheIfsTook() {
     let state = run([
       .stepFinished(attempt: 1, step: Self.choice("elseIf1", of: 3, saw: "Inbox is empty")),

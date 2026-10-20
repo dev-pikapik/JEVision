@@ -571,12 +571,20 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("seconds")
         ),
-        "run.waitFor.timeout" => format!(
-            "Block {}: {} did not happen within {} s.",
-            p("block"),
-            wait_target(p("target")),
-            p("seconds")
-        ),
+        "run.waitFor.timeout" => {
+            let dark = match p("dark") {
+                "" => String::new(),
+                name => format!(
+                    " The window is in dark appearance and only the light picture exists; save the dark one as {name}."
+                ),
+            };
+            format!(
+                "Block {}: {} did not happen within {} s.{dark}",
+                p("block"),
+                wait_target(p("target")),
+                p("seconds")
+            )
+        }
         "run.check.mismatch" => format!(
             "Block {}: the screen matches {} by {}, at least {} is required.",
             p("block"),
@@ -752,6 +760,30 @@ pub fn describe(f: &Failure) -> String {
         "run.hands.screenLocked" => format!(
             "Block {}: the screen is locked. Unlock it and run the test again.",
             p("block")
+        ),
+        "run.hands.stillRunning" => format!(
+            "Block {}: application {} did not quit, so it cannot start over. Close it, or answer what it asks, and run the test again.",
+            p("block"),
+            p("app")
+        ),
+        "run.hands.windowFixed" => format!(
+            "Block {}: the window of {} does not allow its size or position to be changed. Remove the window size and position from this block.",
+            p("block"),
+            p("app")
+        ),
+        "run.hands.windowDiffers" if p("what") == "position" => format!(
+            "Block {}: the window of {} should be at {} but is at {}. The screen may be too small, or the app keeps its window where it likes.",
+            p("block"),
+            p("app"),
+            p("wanted"),
+            p("actual")
+        ),
+        "run.hands.windowDiffers" => format!(
+            "Block {}: the window of {} should be {} points but is {}. The app may have its own limits, or the screen may be too small.",
+            p("block"),
+            p("app"),
+            p("wanted"),
+            p("actual")
         ),
         "run.hands.failed" => format!("Block {}: {}.", p("block"), p("reason")),
         "run.check.meaningMismatch" => format!(

@@ -7,9 +7,9 @@ use std::time::{Duration, Instant, SystemTime};
 use jevision_runner::{
     DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
     MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
-    RunOptions, RunReport, Runner, Screenshot, ScrollDirection, ScrollUnit, StepStatus, Usage,
-    UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe,
-    html, junit_xml, prune_videos,
+    RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot, ScrollDirection,
+    ScrollUnit, StepStatus, Usage, UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer,
+    VisionError, VisionJudge, WindowPosition, WindowSize, describe, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -33,6 +33,8 @@ struct State {
     /// Shown from the second look at the screen on.
     after_capture: Option<Vec<u8>>,
     not_findable: bool,
+    /// What placing a window answers instead of success.
+    window_error: Option<HandsError>,
     reject_typing: bool,
     user_input: bool,
     /// Recording a video fails, as without the Screen Recording permission.
@@ -41,6 +43,8 @@ struct State {
     /// Areas the video was asked to cover in every window.
     video_hide: Vec<jevision_core::Rect>,
     log: Vec<String>,
+    /// The application named by every look at the screen.
+    looked_at: Vec<String>,
     typed: Vec<String>,
     clipboard: String,
     /// Put on the clipboard after the first look at it, as another application would.
@@ -66,6 +70,10 @@ impl Fake {
         self.state.lock().unwrap().log.clone()
     }
 
+    fn looked_at(&self) -> Vec<String> {
+        self.state.lock().unwrap().looked_at.clone()
+    }
+
     fn typed(&self) -> Vec<String> {
         self.state.lock().unwrap().typed.clone()
     }
@@ -89,9 +97,21 @@ impl Fake {
 }
 
 impl Hands for Fake {
-    fn open_app(&self, app: &str) -> Result<(), HandsError> {
-        self.note(format!("open {app}"));
+    fn open_app(&self, app: &str, fresh: bool) -> Result<(), HandsError> {
+        self.note(format!("open {app}{}", if fresh { " fresh" } else { "" }));
         Ok(())
+    }
+    fn arrange_window(
+        &self,
+        app: &str,
+        size: Option<WindowSize>,
+        position: Option<WindowPosition>,
+    ) -> Result<(), HandsError> {
+        self.note(format!("arrange {app} {size:?} {position:?}"));
+        match self.state.lock().unwrap().window_error.clone() {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
     }
     fn open(&self, items: &[Openable], app: Option<&str>, _: bool) -> Result<(), HandsError> {
         self.note(format!("open {items:?} in {app:?}"));
@@ -112,8 +132,9 @@ impl Hands for Fake {
         }
         Ok(())
     }
-    fn capture(&self, _: &str) -> Result<Screenshot, HandsError> {
+    fn capture(&self, app: &str) -> Result<Screenshot, HandsError> {
         let mut s = self.state.lock().unwrap();
+        s.looked_at.push(app.to_owned());
         let png = s.screen.clone();
         if let Some(next) = s.after_capture.take() {
             s.screen = next;
@@ -125,14 +146,15 @@ impl Hands for Fake {
             secure: s.secure.clone(),
         })
     }
-    fn locate(&self, _: &str, template: &[u8], _: f64) -> Result<Option<Point>, HandsError> {
+    fn locate(&self, app: &str, template: &[u8], _: f64) -> Result<Option<Point>, HandsError> {
         assert!(
             png::Decoder::new(std::io::Cursor::new(template))
                 .read_info()
                 .is_ok()
         );
-        let found = !self.state.lock().unwrap().not_findable;
-        Ok(found.then_some(Point { x: 0.5, y: 0.25 }))
+        let mut s = self.state.lock().unwrap();
+        s.looked_at.push(app.to_owned());
+        Ok((!s.not_findable).then_some(Point { x: 0.5, y: 0.25 }))
     }
     fn click(
         &self,
@@ -548,6 +570,81 @@ fn a_point_target_is_a_share_of_the_window() {
 }
 
 #[test]
+fn open_app_starts_fresh_and_places_the_window_only_when_asked() {
+    let p = Project::new();
+    p.test(
+        r#""plain":{"type":"openApp","next":"fixed"},
+           "fixed":{"type":"openApp","resetState":true,
+                    "windowSize":{"width":900,"height":600},
+                    "windowPosition":{"x":-40,"y":60},"next":"size"},
+           "size":{"type":"openApp","windowSize":{"width":800,"height":500}}"#,
+        "plain",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    let size = |width, height| WindowSize { width, height };
+    assert_eq!(
+        hands.log(),
+        [
+            "open com.example.App".to_owned(),
+            "open com.example.App fresh".to_owned(),
+            format!(
+                "arrange com.example.App {:?} {:?}",
+                Some(size(900, 600)),
+                Some(WindowPosition { x: -40, y: 60 })
+            ),
+            "open com.example.App".to_owned(),
+            format!(
+                "arrange com.example.App {:?} {:?}",
+                Some(size(800, 500)),
+                None::<WindowPosition>
+            ),
+        ]
+    );
+}
+
+#[test]
+fn a_window_that_will_not_take_its_size_stops_the_run_with_a_clear_reason() {
+    let p = Project::new();
+    p.test(
+        r#""open":{"type":"openApp","windowSize":{"width":900,"height":600}}"#,
+        "open",
+        0,
+    );
+    for (error, code) in [
+        (HandsError::WindowFixed(APP.into()), "run.hands.windowFixed"),
+        (
+            HandsError::WindowDiffers {
+                app: APP.into(),
+                what: "size".into(),
+                wanted: "900 × 600".into(),
+                actual: "1024 × 700".into(),
+            },
+            "run.hands.windowDiffers",
+        ),
+        (
+            HandsError::StillRunning(APP.into()),
+            "run.hands.stillRunning",
+        ),
+    ] {
+        let hands = Fake::new(solid([9, 9, 9])).with(|s| s.window_error = Some(error));
+        let report = run(&p, &hands).report;
+        assert_eq!(report.verdict, Verdict::Failed);
+        assert_eq!(failure_code(&report), code);
+        let failure = report.attempts[0].failure.as_ref().unwrap();
+        let text = describe(failure);
+        assert!(text.contains(APP) && text.contains("open"), "{text}");
+        if code == "run.hands.windowDiffers" {
+            assert!(
+                text.contains("900 × 600") && text.contains("1024 × 700"),
+                "{text}"
+            );
+        }
+    }
+}
+
+#[test]
 fn hover_moves_the_pointer_onto_the_target() {
     let p = Project::new();
     p.write("refs/help.png", solid([9, 9, 9])).test(
@@ -863,6 +960,63 @@ fn ignore_masks_area_and_dark_references() {
         statuses(&dark),
         [("check".to_owned(), StepStatus::BaselineCreated)]
     );
+}
+
+#[test]
+fn a_dark_window_never_passes_on_the_light_picture_in_silence() {
+    let p = Project::new();
+    let light = solid([240, 240, 240]);
+    let dark_screen = solid([20, 20, 20]);
+    p.write("refs/a.png", &light).test(
+        r#""check":{"type":"check","reference":{"image":"refs/a.png","compare":"exact"}}"#,
+        "check",
+        0,
+    );
+    let hands = Fake::new(dark_screen.clone()).with(|s| s.dark = true);
+    // No dark picture yet: the screen becomes it, the step says so, the light one is untouched.
+    let first = run(&p, &hands).report;
+    assert_eq!(first.baselines_created, ["refs/a.dark.png"]);
+    assert_eq!(
+        statuses(&first),
+        [("check".to_owned(), StepStatus::BaselineCreated)]
+    );
+    assert_eq!(std::fs::read(p.0.join("refs/a.png")).unwrap(), light);
+    // From then on the dark window is compared with its own picture, and only with that.
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    hands.state.lock().unwrap().screen = solid([30, 30, 30]);
+    let changed = run(&p, &hands).report;
+    assert_eq!(changed.verdict, Verdict::Failed);
+    assert_eq!(failure_code(&changed), "run.check.mismatch");
+    assert_eq!(
+        changed.attempts[0].steps[0].reference.as_deref(),
+        Some("refs/a.dark.png")
+    );
+}
+
+#[test]
+fn waiting_in_the_dark_names_the_missing_dark_picture() {
+    let p = Project::new();
+    p.write("refs/ok.png", solid([240, 240, 240])).test(
+        r#""wait":{"type":"waitFor","until":{"appears":{"image":"refs/ok.png"}},"timeout":"100ms"}"#,
+        "wait",
+        0,
+    );
+    let failure_in = |dark: bool| {
+        let hands = Fake::new(solid([20, 20, 20])).with(|s| s.dark = dark);
+        run(&p, &hands).report.attempts[0].failure.clone().unwrap()
+    };
+    let light_window = failure_in(false);
+    assert_eq!(light_window.code, "run.waitFor.timeout");
+    assert_eq!(light_window.param("dark"), "");
+
+    let dark_window = failure_in(true);
+    assert_eq!(dark_window.code, "run.waitFor.timeout");
+    assert_eq!(dark_window.param("dark"), "refs/ok.dark.png");
+    assert!(describe(&dark_window).contains("save the dark one as refs/ok.dark.png"));
+
+    // With the dark picture in place the hint goes away: it is a real timeout.
+    p.write("refs/ok.dark.png", solid([200, 0, 0]));
+    assert_eq!(failure_in(true).param("dark"), "");
 }
 
 #[test]
@@ -3011,4 +3165,159 @@ fn finding_by_description_needs_jev_and_a_cloud_service_allowed() {
         .report;
     assert_eq!(failure_code(&report), "run.vision.cloudBlocked");
     assert!(locator.asked.lock().unwrap().is_empty());
+}
+
+#[test]
+fn pictures_are_taken_and_compared_inside_the_window_of_the_app_under_test() {
+    let p = Project::new();
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""check":{"type":"check","reference":{"image":"refs/home.png"},"next":"click"},
+           "click":{"type":"click","target":{"image":"refs/button.png"},"button":"left","next":"wait"},
+           "wait":{"type":"waitFor","until":{"appears":{"image":"refs/home.png"}},"timeout":"2s"}"#,
+        "check",
+        0,
+    );
+    let hands = Fake::new(solid([30, 30, 30]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{:?}", report.attempts);
+    let looked = hands.looked_at();
+    assert!(looked.len() >= 3, "{looked:?}");
+    assert!(looked.iter().all(|app| app == APP), "{looked:?}");
+}
+
+/// A lock file in the project's own folder, so tests do not touch the real one.
+fn screen_lock_in(p: &Project) -> PathBuf {
+    p.0.join("lock/screen.lock")
+}
+
+fn screen_holder() -> ScreenHolder {
+    ScreenHolder {
+        process: "JEVision".to_owned(),
+        pid: 4242,
+        test: "Sign in".to_owned(),
+        since: 1_700_000_000,
+    }
+}
+
+const TAP: &str = r#""keys":{"type":"pressKeys","keys":"return"}"#;
+
+#[test]
+fn a_test_on_the_screen_waits_until_the_other_run_lets_go_and_says_who_has_it() {
+    let p = Project::new();
+    p.test(TAP, "keys", 0);
+    let path = screen_lock_in(&p);
+    let holder = screen_holder();
+    let taken = ScreenLock::try_take(&path, &holder).unwrap().unwrap();
+    let hands = Fake::new(solid([1, 2, 3]));
+    let waiting = RunOptions {
+        screen_lock: Some(path.clone()),
+        ..options()
+    };
+    let (run, events) = std::thread::scope(|s| {
+        let running = s.spawn(|| run_with(&p, &hands, RunControl::new(), &waiting));
+        std::thread::sleep(Duration::from_millis(150));
+        assert!(
+            hands.log().is_empty(),
+            "nothing is done while the screen is taken"
+        );
+        assert!(!running.is_finished());
+        drop(taken);
+        running.join().unwrap()
+    });
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    let waits: Vec<_> = events
+        .iter()
+        .filter(|e| matches!(e, Event::WaitingForScreen { .. }))
+        .collect();
+    assert_eq!(
+        waits,
+        [&Event::WaitingForScreen {
+            holder: Some(holder)
+        }]
+    );
+    let first_step = events
+        .iter()
+        .position(|e| matches!(e, Event::StepStarted { .. }))
+        .unwrap();
+    let wait = events
+        .iter()
+        .position(|e| matches!(e, Event::WaitingForScreen { .. }))
+        .unwrap();
+    assert!(wait < first_step);
+    assert!(
+        run.report.duration_ms < 150,
+        "waiting for the screen is not part of the run: {} ms",
+        run.report.duration_ms
+    );
+    let again = ScreenLock::try_take(&path, &screen_holder()).unwrap();
+    assert!(again.is_ok(), "the run gives the screen back when it ends");
+}
+
+#[test]
+fn a_test_that_never_touches_the_screen_does_not_wait_for_it() {
+    let p = Project::new();
+    p.test(r#""a":{"type":"command","command":"echo hi"}"#, "a", 0);
+    let path = screen_lock_in(&p);
+    let _taken = ScreenLock::try_take(&path, &screen_holder())
+        .unwrap()
+        .unwrap();
+    let busy = RunOptions {
+        screen_lock: Some(path),
+        ..options()
+    };
+    let (run, events) = run_with(&p, &Fake::new(solid([1, 2, 3])), RunControl::new(), &busy);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, Event::WaitingForScreen { .. }))
+    );
+}
+
+#[test]
+fn a_run_cancelled_while_it_waits_for_the_screen_does_nothing() {
+    let p = Project::new();
+    p.test(TAP, "keys", 2);
+    let path = screen_lock_in(&p);
+    let _taken = ScreenLock::try_take(&path, &screen_holder())
+        .unwrap()
+        .unwrap();
+    let hands = Fake::new(solid([1, 2, 3]));
+    let control = RunControl::new();
+    let remote = control.clone();
+    let waiting = RunOptions {
+        screen_lock: Some(path),
+        poll_interval: Duration::from_secs(5),
+        ..options()
+    };
+    let clock = Instant::now();
+    let (run, _) = std::thread::scope(|s| {
+        s.spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            remote.cancel();
+        });
+        run_with(&p, &hands, control, &waiting)
+    });
+    assert!(
+        clock.elapsed() < Duration::from_secs(2),
+        "{:?}",
+        clock.elapsed()
+    );
+    assert_eq!(run.report.verdict, Verdict::Cancelled);
+    assert_eq!(run.report.attempts.len(), 1);
+    assert!(hands.log().is_empty());
+}
+
+#[test]
+fn a_lock_file_that_cannot_be_used_does_not_stop_the_test() {
+    let p = Project::new();
+    p.test(TAP, "keys", 0);
+    // A file where the lock's folder should be.
+    p.write("lock", "not a folder");
+    let broken = RunOptions {
+        screen_lock: Some(screen_lock_in(&p)),
+        ..options()
+    };
+    let (run, _) = run_with(&p, &Fake::new(solid([1, 2, 3])), RunControl::new(), &broken);
+    assert_eq!(run.report.verdict, Verdict::Passed);
 }

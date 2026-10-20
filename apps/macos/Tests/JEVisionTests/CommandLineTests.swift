@@ -720,7 +720,9 @@ private final class WaitingHands: Hands, @unchecked Sendable {
     self.isCancelled = isCancelled
   }
 
-  func openApp(app: String) throws(HandsError) {
+  func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
+
+  func openApp(app: String, fresh: Bool) throws(HandsError) {
     opening.signal()
     while !isCancelled() { usleep(10_000) }
   }
@@ -778,7 +780,9 @@ private final class CountingHands: Hands, @unchecked Sendable {
 
   init(counter: ScreenCounter) { self.counter = counter }
 
-  func openApp(app: String) throws(HandsError) {
+  func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
+
+  func openApp(app: String, fresh: Bool) throws(HandsError) {
     counter.enter()
     usleep(250_000)
     counter.leave()

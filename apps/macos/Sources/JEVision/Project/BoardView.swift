@@ -1,6 +1,7 @@
 import AppKit
 import JEVisionCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The board in view: an endless plane with the project's tests, frames, notes, links and other
 /// boards on it. Two fingers or the wheel pan, a pinch or ⌘ with the wheel zooms, a drag moves
@@ -25,8 +26,16 @@ struct BoardView: View {
   @State private var usedBy: [String: [String]] = [:]
   /// Dashed arrows from each test card to the cards of the tests it runs, in board points.
   @State private var uses: [ProjectMap.Link] = []
+  /// How the board looks from afar and how its tests stand, worked out when either changes.
+  @State private var look = BoardLook()
+  /// Counts the changes of `look`, so the minimap draws again only then.
+  @State private var lookRevision = 0
+  /// The tests whose blocks show on the board, and the block whose fields are open.
+  @State private var documents = BoardTestDocuments()
   @State private var picked: Set<String> = []
   @State private var pickedArrow: String?
+  /// The node an arrow is being made from with the keyboard or VoiceOver.
+  @State private var connecting: String?
   @State private var drag: Drag?
   /// The note being written.
   @State private var editing: String?
@@ -80,10 +89,17 @@ struct BoardView: View {
     content
       .safeAreaInset(edge: .top, spacing: 0) { header }
       .task(id: project.items) { await loadMap() }
-      .task(id: RouteKey(board: boards.board, map: map)) { await route() }
+      .task(id: RouteKey(generation: boards.generation, map: map)) { await route() }
       .onChange(of: boards.current, initial: true) { old, new in switched(from: old, to: new) }
       .onChange(of: boards.request) { handle(boards.request) }
       .onDisappear { if let name = boards.current { boards.viewports[name] = viewport } }
+      .onChange(of: boards.generation, initial: true) { refreshLook() }
+      .onChange(of: names) { refreshLook() }
+      .onChange(of: map) { refreshLook() }
+      .onChange(of: project.latestRuns) { refreshLook() }
+      .onChange(of: runningFile) { refreshLook() }
+      .onChange(of: waitingFiles) { refreshLook() }
+      .onChange(of: project.items) { documents.reload() }
       .popover(item: $testPicker, attachmentAnchor: .point(pickerAnchor), arrowEdge: .bottom) { place in
         BoardTestPicker(tests: testsOffBoard) { test in
           testPicker = nil
@@ -105,8 +121,8 @@ struct BoardView: View {
   }
 
   @ViewBuilder private var content: some View {
-    if let board = boards.board {
-      canvas(board, layout: boards.layout)
+    if boards.board != nil {
+      canvas(boards.scene)
         .unmirrored()
     } else if let problem = boards.problem {
       ContentUnavailableView {
@@ -124,7 +140,7 @@ struct BoardView: View {
   // MARK: Header
 
   private var header: some View {
-    let tests = testsOnBoard
+    let tests = look.tests
     return HStack(spacing: 16) {
       VStack(alignment: .leading, spacing: 2) {
         Text(verbatim: boards.current ?? "")
@@ -177,44 +193,35 @@ struct BoardView: View {
 
   // MARK: Canvas
 
-  private func canvas(_ board: Board, layout: BoardLayout) -> some View {
-    let nodes = Dictionary(board.nodes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-    let rects = shownRects(layout)
-    let area = CGRect(origin: .zero, size: size).insetBy(dx: -60, dy: -60)
-    let visible = rects.filter { screen($0.rect).intersects(area) }
-    let glances = glances(board)
-    let detailed = viewport.scale >= Self.detailZoom
+  /// How many nodes VoiceOver is told of at once: a board zoomed out over thousands would swamp it.
+  private static let spokenLimit = 150
+
+  private func canvas(_ scene: BoardScene) -> some View {
+    let scale = viewport.scale
+    let area = visibleRect.insetBy(dx: -60 / scale, dy: -60 / scale)
+    let seen = scene.visible(in: area, moved: movedIDs, by: moveShift)
+    let laid = seen.nodes.map { scene.layout.nodes[$0] }
+    let detailed = scale >= Self.detailZoom
     return ZStack(alignment: .topLeading) {
       BoardGrid(viewport: viewport)
-      BoardArrows(arrows: arrows(board, layout: layout), uses: shownUses, picked: pickedArrow, viewport: viewport)
+      BoardArrows(
+        arrows: seen.edges.compactMap { arrow(at: $0, in: scene) }, uses: shownUses(scene), picked: pickedArrow,
+        viewport: viewport, area: area)
       if detailed {
-        ForEach(visible, id: \.id) { item in
-          if let node = nodes[item.id] { placed(node, rect: item.rect) }
+        ForEach(laid, id: \.id) { node in
+          if let found = scene.nodes[node.id] { placed(found, rect: shown(node)) }
         }
       } else {
-        BoardOverview(nodes: visible, glances: glances, picked: picked, viewport: viewport)
-          .accessibilityChildren {
-            ZStack(alignment: .topLeading) {
-              ForEach(visible, id: \.id) { item in
-                if let node = nodes[item.id] {
-                  let rect = screen(item.rect)
-                  Color.clear
-                    .frame(width: rect.width, height: rect.height)
-                    .modifier(accessibility(node))
-                    .offset(x: rect.minX, y: rect.minY)
-                }
-              }
-            }
-          }
+        overview(laid, scene: scene)
       }
-      handles(nodes: nodes, layout: layout, detailed: detailed)
-      connection(layout)
-      noteEditor(layout)
+      handles(scene, detailed: detailed)
+      connection(scene)
+      noteEditor(scene)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .contentShape(.rect)
     .coordinateSpace(.named(Self.space))
-    .gesture(dragGesture(board, layout: layout))
+    .gesture(dragGesture(scene))
     .simultaneousGesture(SpatialTapGesture(count: 2, coordinateSpace: .named(Self.space)).onEnded { doubleClick($0.location) })
     .simultaneousGesture(SpatialTapGesture(coordinateSpace: .named(Self.space)).onEnded { click($0.location) })
     .overlay {
@@ -228,7 +235,8 @@ struct BoardView: View {
       ZoomBar(zoom: canvasZoom, fitHelp: Text("Show everything on the board (⌘0)"))
         .padding(12)
     }
-    .overlay(alignment: .bottomTrailing) { minimap(layout: layout, glances: glances).padding(12) }
+    .overlay(alignment: .bottomTrailing) { minimap(scene).padding(12) }
+    .overlay(alignment: .top) { connectionBanner }
     .onGeometryChange(for: CGSize.self) { $0.size } action: {
       size = $0
       fitIfNeeded()
@@ -238,20 +246,90 @@ struct BoardView: View {
     .focused($focus, equals: .board)
     .focusEffectDisabled()
     .onDeleteCommand { removePicked() }
-    .onKeyPress(.escape) {
-      picked = []
-      pickedArrow = nil
-      return .handled
+    .onKeyPress(phases: [.down, .repeat]) { press in key(press) }
+    .onDrop(of: [.fileURL, .image], isTargeted: nil) { providers, location in
+      drop(providers, at: onBoard(location))
+    }
+    .onPasteCommand(of: [.fileURL, .image]) { providers in
+      _ = drop(providers, at: onBoard(CGPoint(x: size.width / 2, y: size.height / 2)))
+    }
+    .popover(item: inspection, attachmentAnchor: .rect(.rect(inspectionRect(scene))), arrowEdge: .trailing) { inspection in
+      inspector(inspection)
     }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text("Board"))
+  }
+
+  private var inspection: Binding<BoardTestDocuments.Inspection?> {
+    Binding(get: { documents.inspected }, set: { if $0 == nil { documents.dismiss() } })
+  }
+
+  /// All the fields of a block of an open test, as the editor's inspector shows them.
+  @ViewBuilder private func inspector(_ inspection: BoardTestDocuments.Inspection) -> some View {
+    if let root = project.rootURL {
+      let document = documents.document(of: inspection.file, in: root)
+      let last = documents.lastRun(of: inspection.file, document: document, runs: project.runs).last
+      InspectorView(document: document, id: inspection.block, failure: last?.failure(of: inspection.block))
+        .frame(width: 340, height: 480)
+    }
+  }
+
+  /// Where the block being looked at is in the view.
+  private func inspectionRect(_ scene: BoardScene) -> CGRect {
+    guard let inspected = documents.inspected, let root = project.rootURL,
+      let node = scene.board.nodes.first(where: { $0.open && BoardLook.test($0) == inspected.file }),
+      let place = scene.places[node.id]
+    else { return .zero }
+    let document = documents.document(of: inspected.file, in: root)
+    guard let geometry = BoardBlockGeometry(card: shown(scene.layout.nodes[place]), layout: document.layout),
+      let block = document.layout.blocks.first(where: { $0.id == inspected.block })
+    else { return .zero }
+    return screen(geometry.rect(of: block.rect))
+  }
+
+  /// The board from afar: one drawing for what is in view, with the name of each test and how it
+  /// stands. An open test big enough to read stays a full view, so its blocks show.
+  @ViewBuilder private func overview(_ laid: [LaidNode], scene: BoardScene) -> some View {
+    let scale = viewport.scale
+    let readable = laid.filter { scene.nodes[$0.id]?.open == true && $0.rect.width * scale >= 60 }
+    let skip = Set(readable.map(\.id))
+    let items = laid.compactMap { node -> BoardOverview.Item? in
+      guard !skip.contains(node.id), let place = scene.places[node.id], place < look.glances.count else { return nil }
+      return BoardOverview.Item(id: node.id, rect: shown(node), glance: look.glances[place])
+    }
+    BoardOverview(items: items, picked: picked, viewport: viewport)
+      .accessibilityChildren {
+        ZStack(alignment: .topLeading) {
+          ForEach(spoken(items), id: \.id) { item in
+            if let node = scene.nodes[item.id] {
+              let rect = screen(item.rect)
+              Color.clear
+                .frame(width: rect.width, height: rect.height)
+                .modifier(accessibility(node))
+                .offset(x: rect.minX, y: rect.minY)
+            }
+          }
+        }
+      }
+    ForEach(readable, id: \.id) { node in
+      if let found = scene.nodes[node.id] { placed(found, rect: shown(node)) }
+    }
+  }
+
+  /// The items VoiceOver is told of: all of them, or the nearest to the middle of the view.
+  private func spoken(_ items: [BoardOverview.Item]) -> [BoardOverview.Item] {
+    guard items.count > Self.spokenLimit else { return items }
+    let middle = CGPoint(x: visibleRect.midX, y: visibleRect.midY)
+    return Array(
+      items.sorted { hypot($0.rect.midX - middle.x, $0.rect.midY - middle.y) < hypot($1.rect.midX - middle.x, $1.rect.midY - middle.y) }
+        .prefix(Self.spokenLimit))
   }
 
   /// A node as a full view, drawn at board size and scaled into place. Clicks and drags go to
   /// the board, which knows what lies under the pointer.
   private func placed(_ node: BoardNode, rect: CGRect) -> some View {
     let scale = viewport.scale
-    return nodeView(node)
+    return nodeView(node, rect: rect)
       .frame(width: rect.width, height: rect.height)
       .scaleEffect(scale, anchor: .topLeading)
       .frame(width: rect.width * scale, height: rect.height * scale, alignment: .topLeading)
@@ -260,14 +338,14 @@ struct BoardView: View {
       .offset(x: rect.minX * scale + viewport.offset.x, y: rect.minY * scale + viewport.offset.y)
   }
 
-  @ViewBuilder private func nodeView(_ node: BoardNode) -> some View {
+  @ViewBuilder private func nodeView(_ node: BoardNode, rect: CGRect) -> some View {
     let tint = BoardColor.color(node.color)
     let isPicked = picked.contains(node.id)
     switch node.kind {
     case .group(let label, let collapsed, _):
       BoardFrameView(
         label: label, color: tint, isFolded: collapsed, isPicked: isPicked,
-        tests: collapsed ? testsInside(node).count : 0)
+        tests: collapsed ? testsInside(node).count : 0, rollup: look.rollups[node.id])
     case .text(let text):
       BoardNoteView(text: editing == node.id ? "" : text, color: tint, isPicked: isPicked)
     case .link(let url):
@@ -276,11 +354,17 @@ struct BoardView: View {
         isMissing: false)
     case .file(let file):
       if ProjectScanner.isTestFile(file) {
-        testCard(file, isPicked: isPicked)
+        if node.open, let open = openTest(file, size: rect.size, isPicked: isPicked) {
+          open
+        } else {
+          testCard(file, isPicked: isPicked)
+        }
       } else if let name = ProjectBoards.name(of: file) {
         BoardLinkCard(
           symbol: "rectangle.on.rectangle", title: name, detail: String(localized: "Board"), color: tint,
           isPicked: isPicked, isMissing: !boards.names.contains(name))
+      } else if boards.scene.images.contains(node.id) {
+        BoardImageView(file: file, root: project.rootURL, color: tint, isPicked: isPicked)
       } else {
         BoardLinkCard(
           symbol: "doc", title: (file as NSString).lastPathComponent, detail: file, color: tint, isPicked: isPicked,
@@ -290,30 +374,62 @@ struct BoardView: View {
   }
 
   private func testCard(_ file: String, isPicked: Bool) -> TestCard {
-    TestCard(
+    let standing = look.status[file]?.kind
+    return TestCard(
       name: names[file] ?? ProjectScanner.testName((file as NSString).lastPathComponent), info: map[file],
       last: project.latestRuns[file], quarantine: project.quarantine(of: file), flaky: project.flaky[file],
       uses: (map[file]?.uses ?? []).compactMap { names[$0] }, usedBy: (usedBy[file] ?? []).compactMap { names[$0] },
       needs: (map[file]?.dependsOn ?? []).map { names[$0] ?? $0 },
-      isRunning: isRunning(file), isMissing: names[file] == nil, isPicked: isPicked)
+      isRunning: standing == .running, isMissing: names[file] == nil, isPicked: isPicked,
+      isWaiting: standing == .waiting, blocksChevron: hasBlocks(file) ? "chevron.right" : nil)
+  }
+
+  /// A test card that shows the blocks inside it; `nil` when the test can't be read.
+  private func openTest(_ file: String, size: CGSize, isPicked: Bool) -> BoardOpenTestView? {
+    guard let root = project.rootURL, names[file] != nil else { return nil }
+    let document = documents.document(of: file, in: root)
+    guard document.flow != nil else { return nil }
+    let fit = BoardBlockGeometry(card: CGRect(origin: .zero, size: size), layout: document.layout)?.fit ?? 1
+    return BoardOpenTestView(
+      file: file, name: names[file] ?? file, status: look.status[file] ?? source.status(of: file), document: document,
+      documents: documents, run: blockRun(of: file, document: document), size: size,
+      detail: BoardBlockDetail(scale: viewport.scale * fit), isPicked: isPicked)
+  }
+
+  /// How the blocks of an open test did: in the run going on, else in the last saved one.
+  private func blockRun(of file: String, document: FlowDocument) -> BoardBlockRun {
+    if let live = runs.marks(for: document) { return BoardBlockRun(marks: live.marks, current: live.current) }
+    return documents.lastRun(of: file, document: document, runs: project.runs).run
+  }
+
+  /// The test has blocks to show on its card.
+  private func hasBlocks(_ file: String) -> Bool {
+    names[file] != nil && (map[file]?.blocks ?? 0) > 0
   }
 
   /// What VoiceOver says of a node and what it can do with it.
   private func accessibility(_ node: BoardNode) -> BoardAccessibility {
     let (label, value) = describe(node)
+    let files = testFiles(of: node)
     return BoardAccessibility(
-      label: label, value: value, isPicked: picked.contains(node.id),
-      open: { open(node) }, select: { picked = [node.id] },
-      remove: isRemovable(node) ? { remove([node.id]) } : nil)
+      label: label, value: value, isPicked: picked.contains(node.id), holdsBlocks: node.open && BoardLook.test(node) != nil,
+      open: { open(node) }, select: { select(node.id) },
+      remove: isRemovable(node) ? { remove([node.id]) } : nil, connect: connectAction(node),
+      run: canRun && !files.isEmpty ? { run(files, title: label) } : nil,
+      blocks: blocksAction(node))
+  }
+
+  private func blocksAction(_ node: BoardNode) -> (title: String, action: () -> Void)? {
+    guard let file = BoardLook.test(node), node.open || hasBlocks(file) else { return nil }
+    return (node.open ? String(localized: "Hide Blocks") : String(localized: "Show Blocks"), { toggleBlocks(node) })
   }
 
   private func describe(_ node: BoardNode) -> (String, String) {
     switch node.kind {
     case .group(let label, let collapsed, _):
       let tests = testsInside(node).count
-      return (
-        String(localized: "Frame \(label)"),
-        collapsed ? String(localized: "Folded, \(tests) tests") : String(localized: "\(tests) tests"))
+      let count = collapsed ? String(localized: "Folded, \(tests) tests") : String(localized: "\(tests) tests")
+      return (String(localized: "Frame \(label)"), [count, look.rollups[node.id]?.text ?? ""].filter { !$0.isEmpty }.joined(separator: ". "))
     case .text(let text):
       return (String(localized: "Note"), text.isEmpty ? String(localized: "Empty") : text)
     case .link(let url):
@@ -324,20 +440,26 @@ struct BoardView: View {
         return (card.name, card.accessibilityValue)
       }
       if let name = ProjectBoards.name(of: file) { return (String(localized: "Board \(name)"), "") }
+      if boards.scene.images.contains(node.id) { return (String(localized: "Picture"), (file as NSString).lastPathComponent) }
       return (String(localized: "File"), file)
     }
+  }
+
+  private func select(_ id: String) {
+    picked = [id]
+    pickedArrow = nil
   }
 
   // MARK: Handles
 
   /// For the one node picked: a corner to resize it by and a dot to draw an arrow from.
-  @ViewBuilder private func handles(nodes: [String: BoardNode], layout: BoardLayout, detailed: Bool) -> some View {
-    if detailed, picked.count == 1, let id = picked.first, let node = nodes[id],
-      let laid = layout.nodes.first(where: { $0.id == id }), !isFolded(node)
+  @ViewBuilder private func handles(_ scene: BoardScene, detailed: Bool) -> some View {
+    if detailed, picked.count == 1, let id = picked.first, let node = scene.nodes[id], let place = scene.places[id],
+      !isFolded(node)
     {
+      let laid = scene.layout.nodes[place]
       let original = laid.rect.cgRect
-      let shown = shownRects(layout).first { $0.id == id }?.rect ?? original
-      let rect = screen(shown)
+      let rect = screen(shown(laid))
       BoardHandle(kind: .resize)
         .position(x: rect.maxX, y: rect.maxY)
         .gesture(
@@ -362,7 +484,7 @@ struct BoardView: View {
             .onChanged { drag = .connect(from: id, to: $0.location) }
             .onEnded { value in
               drag = nil
-              guard let board = boards.board, let target = hit(onBoard(value.location), layout: layout, wholeFrames: true),
+              guard let board = boards.board, let target = hit(onBoard(value.location), wholeFrames: true),
                 target != id, let edit = connectOnBoard(board: board, from: id, to: target)
               else { return }
               apply(edit.board, action: String(localized: "Add Arrow"))
@@ -373,21 +495,48 @@ struct BoardView: View {
   }
 
   /// The arrow being drawn from a node to the pointer.
-  @ViewBuilder private func connection(_ layout: BoardLayout) -> some View {
-    if case .connect(let from, let to)? = drag, let rect = layout.nodes.first(where: { $0.id == from })?.rect.cgRect {
-      let start = screen(rect)
+  @ViewBuilder private func connection(_ scene: BoardScene) -> some View {
+    if case .connect(let from, let to)? = drag, let place = scene.places[from] {
+      let start = screen(scene.layout.nodes[place].rect.cgRect)
       Path { path in
         path.move(to: CGPoint(x: start.maxX, y: start.midY))
         path.addLine(to: to)
       }
       .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
       .allowsHitTesting(false)
+    } else if let from = connecting, let source = scene.places[from], let target = picked.first, target != from,
+      let end = scene.places[target]
+    {
+      let start = screen(scene.layout.nodes[source].rect.cgRect)
+      let stop = screen(scene.layout.nodes[end].rect.cgRect)
+      Path { path in
+        path.move(to: CGPoint(x: start.midX, y: start.midY))
+        path.addLine(to: CGPoint(x: stop.midX, y: stop.midY))
+      }
+      .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+      .allowsHitTesting(false)
     }
   }
 
-  @ViewBuilder private func noteEditor(_ layout: BoardLayout) -> some View {
-    if let editing, let rect = layout.nodes.first(where: { $0.id == editing })?.rect.cgRect {
-      let place = screen(rect)
+  /// Says what the keyboard does while an arrow is being made.
+  @ViewBuilder private var connectionBanner: some View {
+    if let from = connecting, let node = boards.scene.nodes[from] {
+      HStack(spacing: 10) {
+        Image(systemName: "arrow.right")
+        Text("Pick what to connect “\(describe(node).0)” to, then press Return")
+        Button("Cancel") { connecting = nil }
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 8)
+      .adaptiveGlass(in: .capsule)
+      .padding(.top, 12)
+      .accessibilityElement(children: .combine)
+    }
+  }
+
+  @ViewBuilder private func noteEditor(_ scene: BoardScene) -> some View {
+    if let editing, let found = scene.places[editing] {
+      let place = screen(scene.layout.nodes[found].rect.cgRect)
       TextEditor(text: $noteText)
         .font(.system(size: NSFont.systemFontSize * viewport.scale))
         .scrollContentBackground(.hidden)
@@ -409,9 +558,11 @@ struct BoardView: View {
 
   // MARK: Minimap
 
-  @ViewBuilder private func minimap(layout: BoardLayout, glances: [String: BoardGlance]) -> some View {
+  @ViewBuilder private func minimap(_ scene: BoardScene) -> some View {
     if showsMinimap {
-      BoardMinimap(layout: layout, glances: glances, visible: visibleRect) { center(on: $0) }
+      BoardMinimap(layout: scene.layout, glances: look.glances, revision: lookRevision, visible: visibleRect) {
+        center(on: $0)
+      }
         .padding(6)
         .adaptiveGlass(in: .rect(cornerRadius: 16))
         .overlay(alignment: .topTrailing) {
@@ -434,15 +585,15 @@ struct BoardView: View {
 
   // MARK: Pointer
 
-  private func dragGesture(_ board: Board, layout: BoardLayout) -> some Gesture {
+  private func dragGesture(_ scene: BoardScene) -> some Gesture {
     DragGesture(minimumDistance: 3, coordinateSpace: .named(Self.space))
       .onChanged { value in
         if drag == nil {
           if isInEditor(value.startLocation) { return }
-          if let id = hit(onBoard(value.startLocation), layout: layout, wholeFrames: false) {
+          if let id = hit(onBoard(value.startLocation), wholeFrames: false) {
             if !picked.contains(id) { picked = [id] }
             pickedArrow = nil
-            drag = .move(ids: Set(boardWithContents(board: board, ids: Array(picked))), by: .zero)
+            drag = .move(ids: Set(boardWithContents(board: scene.board, ids: Array(picked))), by: .zero)
           } else {
             drag = .pan(from: viewport.offset)
           }
@@ -469,8 +620,12 @@ struct BoardView: View {
     if editing != nil { endEditing() }
     focus = .board
     let point = onBoard(location)
-    let layout = boards.layout
-    guard let id = hit(point, layout: layout, wholeFrames: false), let node = node(id) else {
+    if connecting != nil {
+      if let id = hit(point, wholeFrames: true) { finishConnection(to: id) } else { connecting = nil }
+      return
+    }
+    let scene = boards.scene
+    guard let id = hit(point, wholeFrames: false), let node = scene.nodes[id] else {
       picked = []
       pickedArrow = hitArrow(point)
       return
@@ -478,6 +633,16 @@ struct BoardView: View {
     pickedArrow = nil
     if case .group = node.kind, point.x <= node.rect.x + 44 {
       fold(node)
+      return
+    }
+    if isBlocksChevron(point, of: node) {
+      select(id)
+      toggleBlocks(node)
+      return
+    }
+    if let file = BoardLook.test(node), let block = block(at: point, of: node) {
+      select(id)
+      documents.inspect(file, block: block)
       return
     }
     let flags = NSEvent.modifierFlags
@@ -491,37 +656,52 @@ struct BoardView: View {
   private func doubleClick(_ location: CGPoint) {
     if isInEditor(location) { return }
     let point = onBoard(location)
-    if let id = hit(point, layout: boards.layout, wholeFrames: false), let node = node(id) {
+    if let id = hit(point, wholeFrames: false), let node = boards.scene.nodes[id] {
       if case .group = node.kind, point.x <= node.rect.x + 44 { return }
+      if isBlocksChevron(point, of: node) { return }
+      if let file = BoardLook.test(node), let block = block(at: point, of: node) {
+        project.showBlock(block, in: file)
+        return
+      }
       open(node)
     } else if hitArrow(point) == nil {
       add(.note, at: point, view: location)
     }
   }
 
+  /// The corner of a test's card where the chevron that shows or hides its blocks is.
+  private func isBlocksChevron(_ point: CGPoint, of node: BoardNode) -> Bool {
+    guard let file = BoardLook.test(node), node.open || hasBlocks(file) else { return false }
+    let rect = node.rect.cgRect
+    return point.x >= rect.maxX - 44 && point.y <= rect.minY + 44
+  }
+
+  /// The block of an open test at a board point.
+  private func block(at point: CGPoint, of node: BoardNode) -> String? {
+    guard node.open, let file = BoardLook.test(node), let root = project.rootURL, names[file] != nil else { return nil }
+    let document = documents.document(of: file, in: root)
+    return BoardBlockGeometry(card: node.rect.cgRect, layout: document.layout)?
+      .block(at: point, in: document.layout)
+  }
+
   /// Clicks and drags in the note being written are the text editor's.
   private func isInEditor(_ location: CGPoint) -> Bool {
-    guard let editing, let rect = boards.layout.nodes.first(where: { $0.id == editing })?.rect.cgRect else { return false }
-    return screen(rect).contains(location)
+    let scene = boards.scene
+    guard let editing, let place = scene.places[editing] else { return false }
+    return screen(scene.layout.nodes[place].rect.cgRect).contains(location)
   }
 
   /// The topmost node at a board point. A frame counts only by its title bar, so a drag inside
   /// it pans, unless `wholeFrames`.
-  private func hit(_ point: CGPoint, layout: BoardLayout, wholeFrames: Bool) -> String? {
-    let header = max(boardFrameHeader(), 24 / viewport.scale)
-    for laid in layout.nodes.reversed() {
-      let rect = laid.rect.cgRect
-      guard rect.contains(point) else { continue }
-      if !wholeFrames, case .group? = node(laid.id)?.kind, point.y > rect.minY + header { continue }
-      return laid.id
-    }
-    return nil
+  private func hit(_ point: CGPoint, wholeFrames: Bool) -> String? {
+    boards.scene.hit(point, header: max(boardFrameHeader(), 24 / viewport.scale), wholeFrames: wholeFrames)
   }
 
   private func hitArrow(_ point: CGPoint) -> String? {
-    guard let board = boards.board else { return nil }
+    let scene = boards.scene
     let reach = 8 / viewport.scale
-    return arrows(board, layout: boards.layout).first { arrow in
+    let near = CGRect(x: point.x - reach, y: point.y - reach, width: 2 * reach, height: 2 * reach)
+    return scene.index.visible(area: Rect(near)).edges.lazy.compactMap { arrow(at: Int($0), in: scene) }.first { arrow in
       let curve = BoardArrows.curve(arrow, scale: viewport.scale)
       let points = (0...32).map { curve.point(at: Double($0) / 32) }
       return zip(points, points.dropFirst()).contains { Self.distance(point, $0, $1) < reach }
@@ -535,6 +715,163 @@ struct BoardView: View {
     return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
   }
 
+  // MARK: Keyboard
+
+  /// Arrow keys go to the nearest node that way, Return opens it, C starts an arrow from it and
+  /// Return ends it, R runs its tests, B shows or hides the blocks of a test, Esc lets go.
+  private func key(_ press: KeyPress) -> KeyPress.Result {
+    guard editing == nil, press.modifiers.isDisjoint(with: [.command, .control, .option]) else { return .ignored }
+    switch press.key {
+    case .upArrow: navigate(.up)
+    case .downArrow: navigate(.down)
+    case .leftArrow: navigate(.left)
+    case .rightArrow: navigate(.right)
+    case .return:
+      guard press.phase == .down else { return .handled }
+      if connecting != nil {
+        finishConnection()
+      } else if picked.count == 1, let id = picked.first, let node = boards.scene.nodes[id] {
+        open(node)
+      } else {
+        return .ignored
+      }
+    case .escape:
+      if connecting != nil {
+        connecting = nil
+      } else {
+        picked = []
+        pickedArrow = nil
+      }
+    default:
+      guard press.phase == .down else { return .ignored }
+      switch press.characters.lowercased() {
+      case "c": startConnecting()
+      case "r": runPicked()
+      case "b": togglePickedBlocks()
+      default: return .ignored
+      }
+    }
+    return .handled
+  }
+
+  /// Picks the node next to the picked one in `heading`; with none picked, the one nearest the middle.
+  private func navigate(_ heading: BoardHeading) {
+    let scene = boards.scene
+    let target =
+      picked.count == 1 && picked.first != nil
+      ? scene.neighbour(of: picked.first ?? "", heading)
+      : scene.nearest(to: CGPoint(x: visibleRect.midX, y: visibleRect.midY), in: visibleRect)
+    guard let target, let place = scene.places[target] else { return NSSound.beep() }
+    select(target)
+    bringIntoView(scene.layout.nodes[place].rect.cgRect)
+  }
+
+  /// Moves the view just enough that `rect` is in it.
+  private func bringIntoView(_ rect: CGRect) {
+    guard !visibleRect.insetBy(dx: 24 / viewport.scale, dy: 24 / viewport.scale).contains(rect) else { return }
+    center(on: CGPoint(x: rect.midX, y: rect.midY))
+  }
+
+  private func startConnecting(_ id: String? = nil) {
+    guard let id = id ?? (picked.count == 1 ? picked.first : nil) else { return NSSound.beep() }
+    connecting = id
+    select(id)
+    focus = .board
+  }
+
+  /// Draws the arrow from the node it was started on to `target`, or to the picked node.
+  private func finishConnection(to target: String? = nil) {
+    guard let from = connecting else { return }
+    connecting = nil
+    guard let target = target ?? (picked.count == 1 ? picked.first : nil), target != from else { return }
+    guard let board = boards.board, let edit = connectOnBoard(board: board, from: from, to: target) else {
+      return NSSound.beep()
+    }
+    apply(edit.board, action: String(localized: "Add Arrow"))
+    picked = []
+    pickedArrow = edit.id
+  }
+
+  /// What VoiceOver offers for making an arrow: start one, end it here, or give it up.
+  private func connectAction(_ node: BoardNode) -> (title: String, action: () -> Void)? {
+    guard let from = connecting else { return (String(localized: "Connect"), { startConnecting(node.id) }) }
+    if from == node.id { return (String(localized: "Cancel Connecting"), { connecting = nil }) }
+    return (String(localized: "Connect Here"), { finishConnection(to: node.id) })
+  }
+
+  /// The test files a node stands for: its own test, or the tests inside a frame.
+  private func testFiles(of node: BoardNode) -> [String] {
+    if let file = BoardLook.test(node) { return names[file] != nil ? [file] : [] }
+    if case .group = node.kind { return testsInside(node) }
+    return []
+  }
+
+  private func runPicked() {
+    let scene = boards.scene
+    var seen: Set<String> = []
+    let files = picked.compactMap { id in scene.places[id].map { ($0, id) } }.sorted { $0.0 < $1.0 }
+      .compactMap { scene.nodes[$0.1] }.flatMap(testFiles(of:)).filter { seen.insert($0).inserted }
+    guard canRun, let first = files.first else { return NSSound.beep() }
+    run(files, title: files.count == 1 ? names[first] ?? first : String(localized: "Selected tests"))
+  }
+
+  private func togglePickedBlocks() {
+    guard picked.count == 1, let id = picked.first, let node = boards.scene.nodes[id], let file = BoardLook.test(node),
+      node.open || hasBlocks(file)
+    else { return NSSound.beep() }
+    toggleBlocks(node)
+  }
+
+  private func toggleBlocks(_ node: BoardNode) {
+    do {
+      try boards.toggleBlocks(of: node.id, undoManager: undoManager)
+    } catch {
+      failure = ProjectBoards.message(error)
+    }
+  }
+
+  // MARK: Pictures
+
+  /// Puts the pictures a drop or a paste holds on the board, side by side from `point`.
+  private func drop(_ providers: [NSItemProvider], at point: CGPoint) -> Bool {
+    let accepted = providers.filter {
+      $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) || $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+    }
+    guard !accepted.isEmpty else { return false }
+    Task {
+      for (index, provider) in accepted.enumerated() {
+        guard let picture = await BoardImages.read(provider) else { continue }
+        addPicture(picture.data, named: picture.name, at: CGPoint(x: point.x + Double(index) * 32, y: point.y + Double(index) * 32))
+      }
+    }
+    return true
+  }
+
+  private func choosePictures(at point: CGPoint) {
+    let panel = NSOpenPanel()
+    panel.allowedContentTypes = [.image]
+    panel.allowsMultipleSelection = true
+    panel.message = String(localized: "Choose the pictures to put on the board")
+    guard panel.runModal() == .OK else { return }
+    for (index, url) in panel.urls.enumerated() {
+      do {
+        addPicture(
+          try Data(contentsOf: url), named: url.lastPathComponent,
+          at: CGPoint(x: point.x + Double(index) * 32, y: point.y + Double(index) * 32))
+      } catch {
+        failure = error.localizedDescription
+      }
+    }
+  }
+
+  private func addPicture(_ data: Data, named name: String, at point: CGPoint) {
+    do {
+      if let id = try boards.addImage(data, named: name, at: point, undoManager: undoManager) { select(id) }
+    } catch {
+      failure = ProjectBoards.message(error)
+    }
+  }
+
   // MARK: Menus
 
   private func menu(at location: CGPoint) -> NSMenu? {
@@ -542,10 +879,13 @@ struct BoardView: View {
     let point = onBoard(location)
     let menu = NSMenu()
     menu.autoenablesItems = false
-    if let id = hit(point, layout: boards.layout, wholeFrames: false), let node = node(id) {
+    if let id = hit(point, wholeFrames: false), let node = node(id) {
       if !picked.contains(id) { picked = [id] }
       pickedArrow = nil
       nodeItems(node).forEach(menu.addItem)
+      if let connect = connectAction(node) {
+        menu.addItem(BoardMenuItem(connect.title, symbol: "arrow.right") { connect.action() })
+      }
       menu.addItem(colorMenu { color in recolor(nodes: picked, color: color) })
       menu.addItem(.separator())
       let removable = board.nodes.filter { picked.contains($0.id) && isRemovable($0) }.map(\.id)
@@ -576,6 +916,7 @@ struct BoardView: View {
     items.append(BoardMenuItem(String(localized: "Add Note"), symbol: "note.text") { add(.note, at: point, view: view) })
     items.append(BoardMenuItem(String(localized: "Add Frame"), symbol: "rectangle.dashed") { add(.frame, at: point, view: view) })
     items.append(BoardMenuItem(String(localized: "Add Link…"), symbol: "globe") { add(.link, at: point, view: view) })
+    items.append(BoardMenuItem(String(localized: "Add Image…"), symbol: "photo") { add(.image, at: point, view: view) })
     let others = boards.names.filter { $0 != boards.current }
     let links = others.map { name in
       BoardMenuItem(name, symbol: "rectangle.on.rectangle") {
@@ -613,7 +954,9 @@ struct BoardView: View {
           BoardMenuItem(String(localized: "Run"), symbol: "play.fill", enabled: exists && canRun) {
             run([file], title: names[file] ?? file)
           },
-        ]
+        ] + (blocksAction(node).map { blocks in
+          [BoardMenuItem(blocks.title, symbol: "square.stack.3d.up") { blocks.action() }]
+        } ?? [])
       }
       if let name = ProjectBoards.name(of: file) {
         return [BoardMenuItem(String(localized: "Open Board"), symbol: "rectangle.on.rectangle", enabled: boards.names.contains(name)) { open(node) }]
@@ -654,6 +997,8 @@ struct BoardView: View {
     case .link:
       promptText = ""
       prompt = .newLink(at: point)
+    case .image:
+      choosePictures(at: point)
     case .board:
       do {
         let current = boards.current
@@ -840,8 +1185,10 @@ struct BoardView: View {
 
   /// Unfolds the frames that hide node `id`, puts it in the middle and picks it.
   private func reveal(_ id: String) {
-    guard var board = boards.board, let target = board.nodes.first(where: { $0.id == id }) else { return }
-    if !boards.layout.nodes.contains(where: { $0.id == id }) {
+    let scene = boards.scene
+    guard let target = scene.nodes[id] else { return }
+    if scene.places[id] == nil {
+      var board = scene.board
       for i in board.nodes.indices {
         if case .group(let label, true, let folder) = board.nodes[i].kind,
           board.nodes[i].rect.cgRect.contains(target.rect.cgRect)
@@ -854,8 +1201,7 @@ struct BoardView: View {
     if viewport.scale < 0.75 { viewport.scale = 1 }
     let rect = target.rect.cgRect
     center(on: CGPoint(x: rect.midX, y: rect.midY))
-    picked = [id]
-    pickedArrow = nil
+    select(id)
   }
 
   // MARK: Viewport
@@ -904,6 +1250,8 @@ struct BoardView: View {
     picked = []
     pickedArrow = nil
     editing = nil
+    connecting = nil
+    documents.dismiss()
     if let new, let saved = boards.viewports[new] {
       viewport = saved
       needsFit = false
@@ -937,77 +1285,56 @@ struct BoardView: View {
 
   // MARK: What is on the board
 
-  /// The shown nodes in drawing order, where they are while something is dragged.
-  private func shownRects(_ layout: BoardLayout) -> [(id: String, rect: CGRect)] {
-    layout.nodes.map { node in
-      var rect = node.rect.cgRect
-      switch drag {
-      case .move(let ids, let by)? where ids.contains(node.id):
-        rect = rect.offsetBy(dx: by.width / viewport.scale, dy: by.height / viewport.scale)
-      case .resize(let id, let new)? where id == node.id:
-        rect = new
-      default: break
-      }
-      return (node.id, rect)
+  /// Where a shown node is, which differs from the layout while it is dragged or resized.
+  private func shown(_ node: LaidNode) -> CGRect {
+    let rect = node.rect.cgRect
+    switch drag {
+    case .move(let ids, let by)? where ids.contains(node.id):
+      return rect.offsetBy(dx: by.width / viewport.scale, dy: by.height / viewport.scale)
+    case .resize(let id, let new)? where id == node.id:
+      return new
+    default:
+      return rect
     }
   }
 
-  private func arrows(_ board: Board, layout: BoardLayout) -> [BoardArrows.Arrow] {
-    let edges = Dictionary(board.edges.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-    var moved: Set<String> = []
-    if case .move(let ids, _)? = drag { moved = ids }
-    let by = { () -> CGSize in
-      if case .move(_, let by)? = drag { return CGSize(width: by.width / viewport.scale, height: by.height / viewport.scale) }
-      return .zero
-    }()
-    return layout.edges.compactMap { laid in
-      guard let edge = edges[laid.id] else { return nil }
-      func shift(_ point: Point, _ node: String) -> CGPoint {
-        let point = CGPoint(x: point.x, y: point.y)
-        return moved.contains(node) ? CGPoint(x: point.x + by.width, y: point.y + by.height) : point
-      }
-      return BoardArrows.Arrow(
-        id: laid.id, from: shift(laid.from, edge.from), fromSide: laid.fromSide, to: shift(laid.to, edge.to),
-        toSide: laid.toSide, fromHead: edge.fromArrow, toHead: edge.toArrow, label: edge.label,
-        color: BoardColor.color(edge.color))
+  /// The nodes being dragged, and how far in board points.
+  private var movedIDs: Set<String> {
+    if case .move(let ids, _)? = drag { ids } else { [] }
+  }
+
+  private var moveShift: CGSize {
+    guard case .move(_, let by)? = drag else { return .zero }
+    return CGSize(width: by.width / viewport.scale, height: by.height / viewport.scale)
+  }
+
+  /// The arrow at `position` in the layout, its ends moved along with the nodes being dragged.
+  private func arrow(at position: Int, in scene: BoardScene) -> BoardArrows.Arrow? {
+    guard position < scene.layout.edges.count else { return nil }
+    let laid = scene.layout.edges[position]
+    guard let edge = scene.edges[laid.id] else { return nil }
+    let moved = movedIDs
+    let by = moveShift
+    func shift(_ point: Point, _ node: String) -> CGPoint {
+      let point = CGPoint(x: point.x, y: point.y)
+      return moved.contains(node) ? CGPoint(x: point.x + by.width, y: point.y + by.height) : point
     }
+    return BoardArrows.Arrow(
+      id: laid.id, from: shift(laid.from, edge.from), fromSide: laid.fromSide, to: shift(laid.to, edge.to),
+      toSide: laid.toSide, fromHead: edge.fromArrow, toHead: edge.toArrow, label: edge.label,
+      color: BoardColor.color(edge.color))
   }
 
   /// The arrows of tests running others, but not from or to cards being dragged.
-  private var shownUses: [ProjectMap.Link] {
-    guard case .move? = drag else { return uses }
-    let moving = shownRects(boards.layout).filter { item in boards.layout.nodes.contains { $0.id == item.id && $0.rect.cgRect != item.rect } }
-    let rects = moving.compactMap { item in boards.layout.nodes.first { $0.id == item.id }?.rect.cgRect }
-    return uses.filter { link in !rects.contains(link.from) && !rects.contains(link.to) }
-  }
-
-  private func glances(_ board: Board) -> [String: BoardGlance] {
-    var glances: [String: BoardGlance] = [:]
-    let running = runningFile
-    for node in board.nodes {
-      let tint = BoardColor.color(node.color)
-      switch node.kind {
-      case .group(let label, _, _):
-        glances[node.id] = BoardGlance(shape: .frame, title: label, color: tint)
-      case .text(let text):
-        glances[node.id] = BoardGlance(shape: .note, title: String(text.prefix { $0 != "\n" }), color: tint)
-      case .link(let url):
-        glances[node.id] = BoardGlance(shape: .card, title: URL(string: url)?.host() ?? url, color: tint)
-      case .file(let file):
-        if ProjectScanner.isTestFile(file) {
-          let status = running == file ? Color.accentColor : project.latestRuns[file]?.status.color
-          let name = names[file] ?? ProjectScanner.testName((file as NSString).lastPathComponent)
-          glances[node.id] = BoardGlance(shape: .card, title: name, color: status ?? tint)
-        } else {
-          glances[node.id] = BoardGlance(shape: .card, title: ProjectBoards.name(of: file) ?? file, color: tint)
-        }
-      }
-    }
-    return glances
+  private func shownUses(_ scene: BoardScene) -> [ProjectMap.Link] {
+    let moved = movedIDs
+    guard !moved.isEmpty else { return uses }
+    let rects = Set(moved.compactMap { id in scene.places[id].map { scene.layout.nodes[$0].rect.cgRect } })
+    return uses.filter { !rects.contains($0.from) && !rects.contains($0.to) }
   }
 
   private func node(_ id: String) -> BoardNode? {
-    boards.board?.nodes.first { $0.id == id }
+    boards.scene.nodes[id]
   }
 
   private func isFolded(_ node: BoardNode) -> Bool {
@@ -1020,40 +1347,41 @@ struct BoardView: View {
 
   /// The tests whose cards lie inside the frame `frame`, in board order.
   private func testsInside(_ frame: BoardNode) -> [String] {
-    let area = frame.rect.cgRect
-    return (boards.board?.nodes ?? []).compactMap { node in
-      guard node.id != frame.id, case .file(let file) = node.kind, ProjectScanner.isTestFile(file),
-        area.contains(node.rect.cgRect), names[file] != nil
-      else { return nil }
-      return file
-    }
-  }
-
-  /// The tests on the board that are in the project, each once, in board order.
-  private var testsOnBoard: [String] {
-    var seen: Set<String> = []
-    return (boards.board?.nodes ?? []).compactMap { node in
-      guard case .file(let file) = node.kind, ProjectScanner.isTestFile(file), names[file] != nil,
-        seen.insert(file).inserted
-      else { return nil }
-      return file
-    }
+    (boards.scene.frameTests[frame.id] ?? []).filter { names[$0] != nil }
   }
 
   /// Tests of the project not yet on the board, for Add Test.
   private var testsOffBoard: [ProjectItem] {
-    let on = Set(testsOnBoard)
+    let on = Set(look.tests)
     return project.items.flatMap(\.tests).filter { !on.contains($0.id) }
-  }
-
-  private func isRunning(_ file: String) -> Bool {
-    runningFile == file
   }
 
   /// The test running now, relative to the project.
   private var runningFile: String? {
     guard let running = runs.running, let root = project.rootURL else { return nil }
     return RelativePath.from(root, to: running.document.url)
+  }
+
+  /// The tests of the batch running now that haven't started.
+  private var waitingFiles: Set<String> {
+    guard let batch = runs.batch else { return [] }
+    return Set(
+      batch.entries.compactMap { entry in
+        if case .waiting = entry.state { entry.file } else { nil }
+      })
+  }
+
+  private var source: BoardStatusSource {
+    BoardStatusSource(
+      names: names, map: map, latest: project.latestRuns, running: runningFile, waiting: waitingFiles)
+  }
+
+  /// Works out again how each test stands and how the board looks from afar.
+  private func refreshLook() {
+    let scene = boards.scene
+    look = BoardLook(scene, source)
+    lookRevision += 1
+    documents.keep(only: Set(scene.board.nodes.compactMap { $0.open ? BoardLook.test($0) : nil }))
   }
 
   private func fileExists(_ file: String) -> Bool {
@@ -1076,7 +1404,7 @@ struct BoardView: View {
   }
 
   private struct RouteKey: Hashable {
-    let board: Board?
+    let generation: Int
     let map: [String: MapTest]
   }
 
@@ -1107,26 +1435,36 @@ struct BoardView: View {
   }
 }
 
-/// VoiceOver's view of a board node: what it is, what it says, and opening, picking and
-/// removing it, since clicks on the board go to the board itself.
+/// VoiceOver's view of a board node: what it is, what it says, and what can be done with it,
+/// since clicks on the board go to the board itself.
 private struct BoardAccessibility: ViewModifier {
   let label: String
   let value: String
   let isPicked: Bool
+  /// An open test: its blocks are elements of their own inside it.
+  let holdsBlocks: Bool
   let open: () -> Void
   let select: () -> Void
   let remove: (() -> Void)?
+  let connect: (title: String, action: () -> Void)?
+  let run: (() -> Void)?
+  let blocks: (title: String, action: () -> Void)?
 
   func body(content: Content) -> some View {
     content
-      .accessibilityElement(children: .ignore)
+      .accessibilityElement(children: holdsBlocks ? .contain : .ignore)
       .accessibilityLabel(Text(verbatim: label))
       .accessibilityValue(Text(verbatim: value))
       .accessibilityAddTraits(isPicked ? [.isButton, .isSelected] : .isButton)
       .accessibilityHint(Text("Opens it"))
       .accessibilityAction { open() }
       .accessibilityAction(named: Text("Select")) { select() }
-      .accessibilityAction(named: Text("Remove from Board")) { remove?() }
+      .accessibilityActions {
+        if let connect { Button(action: connect.action) { Text(verbatim: connect.title) } }
+        if let run { Button("Run", action: run) }
+        if let blocks { Button(action: blocks.action) { Text(verbatim: blocks.title) } }
+        if let remove { Button("Remove from Board", action: remove) }
+      }
   }
 }
 

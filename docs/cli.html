@@ -66,6 +66,7 @@
     <li><a href="#overview">Commands</a></li>
     <li><a href="#run"><code>jevision run</code></a></li>
     <li><a href="#parallel">Running tests side by side</a></li>
+    <li><a href="#screen">One run at a time on the screen</a></li>
     <li><a href="#run-json">The result of <code>run --json</code></a></li>
     <li><a href="#validate"><code>jevision validate</code></a></li>
     <li><a href="#fmt"><code>jevision fmt</code></a></li>
@@ -151,7 +152,13 @@ jevision run tests/ --parallel 4</code></pre>
   <li><strong>Stopping.</strong> <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> stops every test that is running, and each is reported as cancelled. The tests that hadn't started are reported as not run. The exit status is the same as without <code>--parallel</code>.</li>
   <li>It works with <code>--env</code>, <a href="data-driven.html">data-driven tests</a> (the rows of a test still run one after another), <code>--retries</code>, <code>--junit</code>, <code>--html</code> and <code>--json</code>.</li>
 </ul>
-<p>The app and other <code>jevision</code> commands on the same Mac don't take turns with this run, so don't start two runs that use the screen at the same time.</p>
+<p>The app, other <code>jevision</code> commands and AI assistants on the same Mac take turns with this run: a test that uses the screen waits while another run has it. See <a href="#screen">One run at a time on the screen</a>.</p>
+
+<h2 id="screen">One run at a time on the screen</h2>
+<p>Only one run can move the mouse and type on a Mac at a time. The JEVision app, <code>jevision run</code> and the assistants of <a href="mcp.html"><code>jevision mcp</code></a> share one lock for it, kept in <code>~/Library/Application Support/JEVision/screen.lock</code>. A test that clicks, types, looks at the screen, runs AppleScript or uses the clipboard takes the lock when it starts and gives it back when it ends. A test that doesn't use the screen never takes it.</p>
+<p>When another run has it, the test waits and says who has it, then starts as soon as the screen is free:</p>
+<pre><code>  Screen busy: JEVision, test Sign in, since 12:03. Waiting for it.</code></pre>
+<p>Nothing needs cleaning up: if the run that has the screen crashes or is stopped, the Mac frees the lock by itself. <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> stops a run that waits, and it is reported as cancelled.</p>
 
 <h2 id="run-json">The result of <code>run --json</code></h2>
 <p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>

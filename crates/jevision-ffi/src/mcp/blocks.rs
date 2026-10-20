@@ -8,9 +8,14 @@ use serde_json::{Value, json};
 fn details(type_name: &str) -> (&'static str, Value, Value) {
     match type_name {
         "openApp" => (
-            "Launches an app and brings it to the front: the app under test, or another one.",
-            json!({ "app": "optional bundle id of another app; leave out for the app under test" }),
-            json!({ "type": "openApp" }),
+            "Launches an app and brings it to the front: the app under test, or another one. It can start the app from a clean state and fix the size and position of its window, so screenshots look the same on every run.",
+            json!({
+                "app": "optional bundle id of another app; leave out for the app under test",
+                "resetState": "optional, true to quit a copy that is already running and start a fresh one that does not bring back its last windows",
+                "windowSize": "optional {\"width\": 900, \"height\": 600} in points, 100 to 20000; the run fails with a clear reason if the window can't take it",
+                "windowPosition": "optional {\"x\": 40, \"y\": 60} in points, from the top-left corner of the main display (negative on a display to its left or above); the run fails if the window can't take it",
+            }),
+            json!({ "type": "openApp", "resetState": true, "windowSize": { "width": 900, "height": 600 } }),
         ),
         "openFile" => (
             "Opens files (each from a fresh copy, so the original stays intact) or web addresses.",

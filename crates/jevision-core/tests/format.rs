@@ -1298,6 +1298,86 @@ fn clipboard_and_date_blocks_round_trip_in_canonical_form() {
 }
 
 #[test]
+fn open_app_can_fix_the_window_and_reset_the_state() {
+    let text = minimal(
+        r#"{"a": {"type": "openApp", "resetState": true,
+                  "windowSize": {"width": 900, "height": 600},
+                  "windowPosition": {"x": -40, "y": 60}, "next": "b"},
+            "b": {"type": "openApp"}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    match &flow.blocks[0].kind {
+        BlockKind::OpenApp {
+            reset_state,
+            window_size,
+            window_position,
+            ..
+        } => {
+            assert!(reset_state);
+            assert_eq!(
+                *window_size,
+                Some(WindowSize {
+                    width: 900,
+                    height: 600
+                })
+            );
+            assert_eq!(*window_position, Some(WindowPosition { x: -40, y: 60 }));
+        }
+        other => panic!("{other:?}"),
+    }
+    let saved = to_canonical_json(&flow);
+    assert_eq!(parse(&saved).unwrap(), flow);
+    assert!(saved.contains(r#""resetState": true"#), "{saved}");
+    // A block that asks for nothing writes none of the new fields: old files stay as they were.
+    let plain = saved.split(r#""b": "#).nth(1).unwrap();
+    for field in ["resetState", "windowSize", "windowPosition"] {
+        assert!(!plain.contains(field), "{plain}");
+    }
+    assert!(validate(&flow).iter().all(|i| i.code == "flow.noCheck"));
+}
+
+#[test]
+fn open_app_window_fields_are_checked() {
+    let parsed = parse_err(&minimal(
+        r#"{"a": {"type": "openApp", "windowSize": {"width": 900}, "next": "b"},
+            "b": {"type": "openApp", "windowPosition": {"x": 1.5, "y": 2}, "next": "c"},
+            "c": {"type": "openApp", "windowSize": {"width": 900, "height": 600, "depth": 1}, "resetState": "yes"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = parsed
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    for expected in [
+        ("flow.field.missing", Some("a"), Some("windowSize.height")),
+        ("flow.field.type", Some("b"), Some("windowPosition.x")),
+        ("flow.field.unknown", Some("c"), Some("windowSize.depth")),
+        ("flow.field.type", Some("c"), Some("resetState")),
+    ] {
+        assert!(
+            found.contains(&expected),
+            "{expected:?} missing in {found:?}"
+        );
+    }
+
+    let issues = issues_of(
+        r#"{"a": {"type": "openApp", "windowSize": {"width": 50, "height": 30000},
+                  "windowPosition": {"x": 20001, "y": -20000}}}"#,
+    );
+    let found: Vec<(&str, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.range", Some("windowSize.width")),
+            ("flow.field.range", Some("windowSize.height")),
+            ("flow.field.range", Some("windowPosition.x")),
+        ]
+    );
+}
+
+#[test]
 fn clipboard_and_date_blocks_are_validated() {
     let parsed = parse_err(&minimal(
         r#"{"a": {"type": "clipboard", "action": "paste", "text": "x"},

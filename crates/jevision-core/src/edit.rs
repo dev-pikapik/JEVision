@@ -36,6 +36,9 @@ impl BlockKind {
         Some(match type_name {
             "openApp" => Self::OpenApp {
                 app: None,
+                reset_state: false,
+                window_size: None,
+                window_position: None,
                 next: None,
             },
             "openFile" => Self::OpenFile {

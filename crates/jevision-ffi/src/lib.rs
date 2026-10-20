@@ -13,7 +13,7 @@ use jevision_core::{
     LaidSlot, Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference,
     SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
     SearchCandidate, Severity, Slot, Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck,
-    ValueKind, ValueTest, WaitUntil,
+    ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -520,6 +520,9 @@ pub struct Block {
 pub enum BlockKind {
     OpenApp {
         app: Option<String>,
+        reset_state: bool,
+        window_size: Option<WindowSize>,
+        window_position: Option<WindowPosition>,
         next: Option<String>,
     },
     OpenFile {
@@ -806,6 +809,18 @@ pub enum Target {
 pub struct Point {
     pub x: f64,
     pub y: f64,
+}
+
+#[uniffi::remote(Record)]
+pub struct WindowSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+#[uniffi::remote(Record)]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
 }
 
 #[uniffi::remote(Record)]

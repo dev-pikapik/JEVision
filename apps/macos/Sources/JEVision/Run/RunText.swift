@@ -70,6 +70,10 @@ enum RunText {
       return String(localized: "run.action.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after this step.", bundle: .app, locale: .app)
     case "run.waitFor.timeout" where p("target") == "screenStable":
       return String(localized: "run.waitFor.timeout.screenStable", defaultValue: "Block “\(block)”: the screen didn’t settle within \(p("seconds")) s.", bundle: .app, locale: .app)
+    case "run.waitFor.timeout" where !p("dark").isEmpty:
+      return String(
+        localized: "run.waitFor.timeout.dark",
+        defaultValue: "Block “\(block)”: waited \(p("seconds")) s for \(p("target")), but it didn’t happen. The window is dark and only the light picture exists; save the dark one as \(p("dark")).", bundle: .app, locale: .app)
     case "run.waitFor.timeout":
       return String(localized: "run.waitFor.timeout", defaultValue: "Block “\(block)”: waited \(p("seconds")) s for \(p("target")), but it didn’t happen.", bundle: .app, locale: .app)
     case "run.check.mismatch":
@@ -113,6 +117,22 @@ enum RunText {
       return String(localized: "run.hands.cannotOpen", defaultValue: "Block “\(block)”: can’t open \(p("file")).", bundle: .app, locale: .app)
     case "run.hands.screenLocked":
       return String(localized: "run.hands.screenLocked", defaultValue: "Block “\(block)”: the screen is locked. Unlock the Mac and run the test again.", bundle: .app, locale: .app)
+    case "run.hands.stillRunning":
+      return String(
+        localized: "run.hands.stillRunning",
+        defaultValue: "Block “\(block)”: \(app) didn’t quit, so it can’t start over. Close it, or answer what it asks, and run the test again.", bundle: .app, locale: .app)
+    case "run.hands.windowFixed":
+      return String(
+        localized: "run.hands.windowFixed",
+        defaultValue: "Block “\(block)”: the window of \(app) doesn’t allow its size or position to be changed. Turn off the fixed size and position in this block.", bundle: .app, locale: .app)
+    case "run.hands.windowDiffers" where p("what") == "position":
+      return String(
+        localized: "run.hands.windowDiffers.position",
+        defaultValue: "Block “\(block)”: the window of \(app) should be at \(p("wanted")) but is at \(p("actual")). The screen may be too small, or the app keeps its window where it likes.", bundle: .app, locale: .app)
+    case "run.hands.windowDiffers":
+      return String(
+        localized: "run.hands.windowDiffers.size",
+        defaultValue: "Block “\(block)”: the window of \(app) should be \(p("wanted")) points but is \(p("actual")). The app may have its own limits, or the screen may be too small.", bundle: .app, locale: .app)
     case "run.hands.failed":
       return String(localized: "run.hands.failed", defaultValue: "Block “\(block)”: \(p("reason"))", bundle: .app, locale: .app)
     case "run.var.missing":
@@ -165,6 +185,16 @@ enum RunText {
   }
 
   /// The run stopped because the AI model isn't set up right: Settings → AI can fix it.
+  /// Who has the screen, for a run that waits for its turn: Screen busy: JEVision, test Sign in, since 12:03.
+  static func screenBusy(_ holder: ScreenHolder?) -> String {
+    guard let holder else {
+      return String(localized: "screen.busy.unknown", defaultValue: "Screen busy: another run is using it.", bundle: .app, locale: .app)
+    }
+    let since = Date(timeIntervalSince1970: TimeInterval(holder.since)).formatted(date: .omitted, time: .shortened)
+    return String(
+      localized: "screen.busy", defaultValue: "Screen busy: \(holder.process), test \(holder.test), since \(since)", bundle: .app, locale: .app)
+  }
+
   /// Which way an `if` step went, named as the canvas names the ways out:
   /// Took “Condition 2: Inbox is empty”, Took “Otherwise”. `nil` for other blocks.
   static func branch(_ step: Step) -> String? {

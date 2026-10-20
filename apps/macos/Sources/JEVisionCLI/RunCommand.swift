@@ -659,6 +659,14 @@ private final class Progress: RunListener, @unchecked Sendable {
       paused()
     case .resumed:
       console.line("  Going on")
+    case .waitingForScreen(let holder):
+      closeLine()
+      var text = "  Screen busy: another run is using it. Waiting for it."
+      if let holder {
+        let since = Date(timeIntervalSince1970: TimeInterval(holder.since)).formatted(date: .omitted, time: .shortened)
+        text = "  Screen busy: \(holder.process), test \(holder.test), since \(since). Waiting for it."
+      }
+      console.line(console.paint(text, .yellow))
     case .attemptFinished(_, _, let failure):
       closeLine()
       if let failure, !failureShown {

@@ -12,7 +12,7 @@ enum BlockSummary {
 
   private static func plainText(_ kind: BlockKind, appName: (String) -> String, testApp: String?) -> String {
     switch kind {
-    case .openApp(let app, _):
+    case .openApp(let app, _, _, _, _):
       return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }

@@ -184,6 +184,14 @@ struct RunHUD: View {
       values(state.variables)
     }
 
+    if case .waitingForScreen(let holder) = state.phase {
+      Label(RunText.screenBusy(holder), systemImage: "hourglass")
+        .font(.callout)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .adaptiveGlass(tint: .orange.opacity(0.35), in: .rect(cornerRadius: 12))
+    }
+
     if state.phase == .paused(.userInput) {
       Label("Paused — you moved the mouse. Resume when your hands are off.", systemImage: "hand.raised.fill")
         .font(.callout)
@@ -199,9 +207,11 @@ struct RunHUD: View {
       } else {
         Button("Pause", systemImage: "pause.fill", action: center.pause)
           .buttonStyle(.glass)
+          .disabled(state.isWaitingForScreen)
       }
       Button("Step", systemImage: "forward.frame.fill", action: center.step)
         .buttonStyle(.glass)
+        .disabled(state.isWaitingForScreen)
         .help(Text("Run one block, then pause"))
       Spacer(minLength: 0)
       Button("Stop", systemImage: "stop.fill", role: .destructive, action: center.stop)
@@ -407,6 +417,7 @@ struct RunHUD: View {
   static func status(of state: RunState) -> String {
     switch state.phase {
     case .running: String(localized: "Running")
+    case .waitingForScreen: String(localized: "Waiting for the screen")
     case .paused(.requested): String(localized: "Paused")
     case .paused(.step): String(localized: "Paused before the next block")
     case .paused(.breakpoint): String(localized: "Paused at “Pause Here”")

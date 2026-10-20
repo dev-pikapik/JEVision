@@ -342,7 +342,7 @@ enum Accessibility {
     return []
   }
 
-  private static func frame(of element: AXUIElement) -> CGRect? {
+  static func frame(of element: AXUIElement) -> CGRect? {
     func value<T: BitwiseCopyable>(_ attribute: String, _ type: AXValueType, _ empty: T) -> T? {
       var raw: CFTypeRef?
       guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success, let raw,
