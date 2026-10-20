@@ -474,9 +474,9 @@ impl Board {
 
     /// Opens the card of the test `id` to show the blocks inside it: the card grows, from its
     /// top left corner, to hold `content`, the size the blocks take up on the test's own
-    /// canvas, and comes to the front so it doesn't hide behind what it now overlaps. A test
-    /// bigger than the board's limit shows its blocks smaller. `false` when `id` isn't a test's
-    /// card or is open already.
+    /// canvas, and comes to the front. The frames around it grow with it and make way for it,
+    /// so it stays in them and covers nothing. A test bigger than the board's limit shows its
+    /// blocks smaller. `false` when `id` isn't a test's card or is open already.
     pub fn open_test(&mut self, id: &str, content: (f64, f64)) -> bool {
         let Some(at) = self.nodes.iter().position(|n| n.id == id) else {
             return false;
@@ -486,23 +486,130 @@ impl Board {
         }
         let (width, height) = (content.0.max(1.0), content.1.max(1.0));
         let fit = (OPEN_LIMIT / width.max(height)).min(1.0);
+        self.resize_card(
+            at,
+            (
+                snap(width * fit).max(CARD_WIDTH),
+                (OPEN_HEADER + snap(height * fit)).max(CARD_HEIGHT),
+            ),
+        );
         let mut node = self.nodes.remove(at);
         node.open = true;
-        node.rect.width = snap(width * fit).max(CARD_WIDTH);
-        node.rect.height = (OPEN_HEADER + snap(height * fit)).max(CARD_HEIGHT);
         self.nodes.push(node);
         true
     }
 
-    /// Folds the open test `id` back into its card. `false` when it isn't open.
+    /// Folds the open test `id` back into its card, and the frames around it give back the
+    /// room it took. `false` when it isn't open.
     pub fn close_test(&mut self, id: &str) -> bool {
-        let Some(node) = self.nodes.iter_mut().find(|n| n.id == id && n.open) else {
+        let Some(at) = self.nodes.iter().position(|n| n.id == id && n.open) else {
             return false;
         };
-        node.open = false;
-        node.rect.width = CARD_WIDTH;
-        node.rect.height = CARD_HEIGHT;
+        self.nodes[at].open = false;
+        self.resize_card(at, (CARD_WIDTH, CARD_HEIGHT));
         true
+    }
+
+    /// Gives the card at `at` the size `size` from its top left corner. Each frame around it
+    /// grows or shrinks by as much as the card, though never so far that it lets go of what it
+    /// holds, and makes way for it: what lies right of the card in its frame moves across by
+    /// the change in width, what lies below it moves down by the change in height, and so, one
+    /// frame out, does what lies right of or below that frame, up to the nodes outside all of
+    /// them. What lies in a frame moves with it. Only what lies wholly above or wholly left
+    /// stays, so the move is undone exactly by the opposite one. A card in no frame only
+    /// changes size.
+    fn resize_card(&mut self, at: usize, size: (f64, f64)) {
+        let card = self.nodes[at].rect;
+        let (dw, dh) = (size.0 - card.width, size.1 - card.height);
+        let index = self.rect_index();
+        let mut around: Vec<usize> = index
+            .query(&card)
+            .into_iter()
+            .filter(|&n| self.nodes[n].is_frame() && contains(&self.nodes[n].rect, &card))
+            .collect();
+        let area = |n: usize| self.nodes[n].rect.width * self.nodes[n].rect.height;
+        around.sort_by(|&a, &b| area(a).total_cmp(&area(b)));
+        if around.is_empty() {
+            self.nodes[at].rect.width = size.0;
+            self.nodes[at].rect.height = size.1;
+            return;
+        }
+        let held: Vec<Vec<usize>> = around
+            .iter()
+            .map(|&f| index.inside(&self.nodes[f].rect))
+            .collect();
+
+        // Frame by frame from the card out, what lies between the frame and the one inside it,
+        // or the card, moves as a whole: a node with everything inside it, unless it lies in
+        // another such frame and moves with that.
+        let fixed: HashSet<usize> = around.iter().copied().chain([at]).collect();
+        let mut moves: HashMap<usize, (f64, f64)> = HashMap::new();
+        let mut inner = card;
+        for level in 0..=around.len() {
+            let outer = around.get(level).map(|&f| self.nodes[f].rect);
+            let loose: Vec<usize> = match outer {
+                Some(outer) => index.inside(&outer),
+                None => (0..self.nodes.len()).collect(),
+            }
+            .into_iter()
+            .filter(|n| !fixed.contains(n) && !contains(&inner, &self.nodes[*n].rect))
+            .collect();
+            let is_loose: HashSet<usize> = loose.iter().copied().collect();
+            for &n in &loose {
+                let rect = self.nodes[n].rect;
+                let in_frame = index.query(&rect).into_iter().any(|f| {
+                    f != n
+                        && is_loose.contains(&f)
+                        && self.nodes[f].is_frame()
+                        && contains(&self.nodes[f].rect, &rect)
+                });
+                let by = (
+                    if rect.x >= inner.x + inner.width && rect.y + rect.height > inner.y {
+                        dw
+                    } else {
+                        0.0
+                    },
+                    if rect.y >= inner.y + inner.height && rect.x + rect.width > inner.x {
+                        dh
+                    } else {
+                        0.0
+                    },
+                );
+                if in_frame || by == (0.0, 0.0) {
+                    continue;
+                }
+                let whole = if self.nodes[n].is_frame() {
+                    index.inside(&rect)
+                } else {
+                    vec![n]
+                };
+                for m in whole {
+                    moves.entry(m).or_insert(by);
+                }
+            }
+            if let Some(outer) = outer {
+                inner = outer;
+            }
+        }
+
+        for (n, (dx, dy)) in moves {
+            self.nodes[n].rect.x += dx;
+            self.nodes[n].rect.y += dy;
+        }
+        self.nodes[at].rect.width = size.0;
+        self.nodes[at].rect.height = size.1;
+        for (&f, held) in around.iter().zip(&held) {
+            let (right, bottom) = held
+                .iter()
+                .filter(|&&n| n != f)
+                .map(|&n| self.nodes[n].rect)
+                .fold((f64::NEG_INFINITY, f64::NEG_INFINITY), |(r, b), n| {
+                    (r.max(n.x + n.width), b.max(n.y + n.height))
+                });
+            let frame = &mut self.nodes[f].rect;
+            frame.width = (frame.width + dw).max(right - frame.x);
+            frame.height = (frame.height + dh).max(bottom - frame.y);
+        }
     }
 
     /// Draws an arrow from node `from` to node `to` and returns its id; `None` when one of them
@@ -1716,6 +1823,154 @@ mod tests {
         let huge = card(&board, "a.flow.json").rect;
         assert_eq!(huge.width, OPEN_LIMIT);
         assert_eq!(huge.height, OPEN_HEADER + OPEN_LIMIT / 2.0);
+    }
+
+    #[test]
+    fn an_open_test_makes_room_in_its_frames_and_gives_it_back() {
+        let overlaps = |p: &Rect, q: &Rect| {
+            p.x < q.x + q.width
+                && q.x < p.x + p.width
+                && p.y < q.y + q.height
+                && q.y < p.y + p.height
+        };
+        let place = |board: &mut Board, kind: BoardNodeKind, rect: Rect| {
+            let id = board.add(kind, Point { x: 0.0, y: 0.0 });
+            board.resize(&id, rect);
+            id
+        };
+        let note = || BoardNodeKind::Text { text: "n".into() };
+        let rect = |x: f64, y: f64, width: f64, height: f64| Rect {
+            x,
+            y,
+            width,
+            height,
+        };
+        let mut board = Board {
+            all_tests: true,
+            ..Board::default()
+        };
+        let files = ["mail/a.flow.json", "mail/b.flow.json", "pay/c.flow.json"];
+        board.sync_tests(&tests(&files), "Acme");
+        let mail = frame(&board, "mail").id.clone();
+        let team = BoardNodeKind::Group {
+            label: "Team".into(),
+            collapsed: false,
+            folder: None,
+        };
+        // A frame drawn by hand around the folder's frame, things right of it, below it, wholly
+        // above it and wholly left of it.
+        let team = place(&mut board, team, rect(-32.0, -48.0, 304.0, 352.0));
+        let below = place(&mut board, note(), rect(0.0, 320.0, 256.0, 160.0));
+        let left = place(&mut board, note(), rect(-320.0, 320.0, 256.0, 160.0));
+        let above = place(&mut board, note(), rect(288.0, -320.0, 256.0, 160.0));
+        let a = card(&board, "mail/a.flow.json").id.clone();
+        // How the board is to look once the test `id` is folded back: as now, but with the test
+        // in front, where opening it brings it.
+        let folded = |board: &Board, id: &str| {
+            let mut folded = board.clone();
+            let at = folded.nodes.iter().position(|n| n.id == id).unwrap();
+            let front = folded.nodes.remove(at);
+            folded.nodes.push(front);
+            folded
+        };
+        let closed = folded(&board, &a);
+        let was = |id: &str| closed.nodes.iter().find(|n| n.id == id).unwrap().rect;
+        let now = |board: &Board, id: &str| board.nodes.iter().find(|n| n.id == id).unwrap().rect;
+
+        assert!(board.open_test(&a, (400.0, 300.0)));
+        let open = now(&board, &a);
+        let (dw, dh) = (400.0 - CARD_WIDTH, OPEN_HEADER + 304.0 - CARD_HEIGHT);
+        // Both frames still hold the test, with room to spare, and count it.
+        for frame in [&mail, &team] {
+            let rect = now(&board, frame);
+            assert!(contains(&rect, &open), "{frame}");
+            assert_eq!(
+                (rect.width, rect.height),
+                (was(frame).width + dw, was(frame).height + dh)
+            );
+            let counted = board.frame_tests().into_iter().find(|f| &f.frame == frame);
+            assert!(counted.unwrap().tests.contains(&files[0].to_owned()));
+        }
+        assert_eq!(
+            now(&board, &mail).x + now(&board, &mail).width,
+            open.x + open.width + PAD
+        );
+        // The card below it in its frame, the folder's frame to the right with its card and the
+        // note below the hand-drawn frame make way; what lies wholly above or left stays.
+        let b = card(&board, "mail/b.flow.json");
+        assert_eq!(
+            b.rect,
+            Rect {
+                y: was(&b.id).y + dh,
+                ..was(&b.id)
+            }
+        );
+        let pay = frame(&board, "pay");
+        let c = card(&board, "pay/c.flow.json");
+        for moved in [pay, c] {
+            assert_eq!(
+                moved.rect,
+                Rect {
+                    x: was(&moved.id).x + dw,
+                    ..was(&moved.id)
+                }
+            );
+        }
+        assert_eq!(
+            now(&board, &below),
+            Rect {
+                y: was(&below).y + dh,
+                ..was(&below)
+            }
+        );
+        assert_eq!(now(&board, &left), was(&left));
+        assert_eq!(now(&board, &above), was(&above));
+        for node in board
+            .nodes
+            .iter()
+            .filter(|n| ![&a, &mail, &team].contains(&&n.id))
+        {
+            assert!(
+                !overlaps(&node.rect, &open),
+                "{} is under the open test",
+                node.id
+            );
+        }
+
+        assert!(board.close_test(&a));
+        assert_eq!(board, closed, "everything back where it was");
+
+        // A frame made bigger by hand, or given more to hold, while the test is open keeps it.
+        assert!(board.open_test(&a, (400.0, 300.0)));
+        let wider = Rect {
+            width: now(&board, &team).width + 160.0,
+            ..now(&board, &team)
+        };
+        board.resize(&team, wider);
+        let extra = place(&mut board, note(), rect(256.0, 416.0, 160.0, 96.0));
+        assert!(board.close_test(&a));
+        assert_eq!(now(&board, &team).width, was(&team).width + 160.0);
+        assert!(contains(&now(&board, &mail), &now(&board, &extra)));
+
+        // A test in no frame only grows, as nothing moves out of its way.
+        let mut board = Board::default();
+        let loose = place(
+            &mut board,
+            BoardNodeKind::File {
+                file: "loose.flow.json".into(),
+            },
+            rect(0.0, 0.0, CARD_WIDTH, CARD_HEIGHT),
+        );
+        let near = place(&mut board, note(), rect(240.0, 0.0, 256.0, 160.0));
+        let closed = folded(&board, &loose);
+        assert!(board.open_test(&loose, (400.0, 300.0)));
+        assert_eq!(now(&board, &near), now(&closed, &near));
+        assert_eq!(
+            now(&board, &loose),
+            rect(0.0, 0.0, 400.0, OPEN_HEADER + 304.0)
+        );
+        assert!(board.close_test(&loose));
+        assert_eq!(board, closed);
     }
 
     #[test]

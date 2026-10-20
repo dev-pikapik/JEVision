@@ -49,8 +49,10 @@ struct CoreMappingTests {
 
   @Test func followsTheEventsTheScreensShow() {
     let started = JEVisionMobile.RunUpdate.event(
-      event: .blockStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "open", blockType: "openApp"))
-    #expect(JEVisionRemote.RunUpdate(started) == .event(.blockStarted(test: "a.flow.json", block: "open", kind: "openApp")))
+      event: .blockStarted(attempt: 1, seq: 1, test: "a.flow.json", block: "greet", blockType: "type", title: "Hello, Boris!"))
+    #expect(
+      JEVisionRemote.RunUpdate(started)
+        == .event(.blockStarted(test: "a.flow.json", block: "greet", kind: "type", title: "Hello, Boris!")))
     let attemptEnd = JEVisionMobile.RunUpdate.event(event: .attemptFinished(attempt: 1, verdict: .failed, failure: nil))
     #expect(JEVisionRemote.RunUpdate(attemptEnd) == nil)
   }
@@ -71,9 +73,10 @@ struct CoreMappingTests {
 
     let summary = JEVisionMobile.TestSummary(
       name: "Sign in", description: nil, priority: "high", testType: "regression", status: "draft", author: "Anna",
-      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [])
+      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [])
     let flow = TestFlow(summary)
     #expect((flow.priority, flow.testType, flow.status, flow.author) == ("high", "regression", "draft", "Anna"))
+    #expect(flow.notes.isEmpty)
   }
 
   /// A newer Mac may send a verdict or a step status this version doesn't know; the core reads

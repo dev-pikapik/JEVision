@@ -7,7 +7,8 @@
 use std::collections::HashMap;
 
 pub use jevision_remote::{
-    Area, BlockSummary, EdgeSummary, FrameSummary, HostRecord, LastRun, Network, PairingOffer,
+    Area, BlockSummary, EdgeSummary, FrameSummary, HostRecord, LastRun, Network,
+    NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary, PairingOffer,
     PauseReason, Permission, Position, ProjectInfo, Relay, RunList, RunState, RunStatus,
     RunSummary, ScreenHolder, ScreenWait, StepStatus, TestEntry, TestSummary, Verdict,
 };
@@ -125,6 +126,57 @@ pub struct TestSummary {
     /// once per row; pass a row's index to [`crate::RemoteConnection::run_test`] to run only
     /// it. Empty without such a table.
     pub rows: Vec<String>,
+    /// The sticky notes on the canvas, read-only, already limited in number and length.
+    pub notes: Vec<NoteSummary>,
+}
+
+/// A sticky note of a test. `text` is Markdown. Files that come with it stay on the Mac.
+#[uniffi::remote(Record)]
+pub struct NoteSummary {
+    pub id: String,
+    pub text: String,
+    /// Who wrote the note; empty when unknown.
+    pub author: String,
+    /// RFC 3339; empty when unknown.
+    pub time: String,
+    /// What the note is about: `test`, `block` or `folder`.
+    pub anchor: String,
+    /// The block a note about a block is about.
+    pub block: Option<String>,
+    /// Where the note sits on the canvas, in the same points as the blocks.
+    pub area: Area,
+    /// How many replies the note has, also when only the newest are in `replies`.
+    pub reply_count: u32,
+    /// Oldest first.
+    pub replies: Vec<NoteReplySummary>,
+    /// Set when the discussion is settled.
+    pub resolved: Option<NoteResolvedSummary>,
+    pub attachments: Vec<NoteAttachmentSummary>,
+}
+
+#[uniffi::remote(Record)]
+pub struct NoteReplySummary {
+    pub id: String,
+    pub author: String,
+    /// RFC 3339; empty when unknown.
+    pub time: String,
+    pub text: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct NoteResolvedSummary {
+    pub by: String,
+    /// RFC 3339; empty when unknown.
+    pub time: String,
+}
+
+/// A file or a link that comes with a note.
+#[uniffi::remote(Record)]
+pub struct NoteAttachmentSummary {
+    /// `file` or `link`.
+    pub kind: String,
+    /// The file name, which stays on the Mac, or the web address to open.
+    pub value: String,
 }
 
 #[uniffi::remote(Record)]
@@ -332,6 +384,9 @@ pub enum RunEvent {
         test: String,
         block: String,
         block_type: String,
+        /// What the block works with, its placeholders filled with the values of this run, such
+        /// as the data row's: `Hello, Anna!`. `None` from Macs that don't send it.
+        title: Option<String>,
     },
     BlockFinished {
         attempt: u32,
@@ -376,12 +431,14 @@ impl From<jevision_remote::RunEvent> for RunEvent {
                 test,
                 block,
                 block_type,
+                title,
             } => Self::BlockStarted {
                 attempt,
                 seq,
                 test,
                 block,
                 block_type,
+                title,
             },
             E::BlockFinished {
                 attempt,

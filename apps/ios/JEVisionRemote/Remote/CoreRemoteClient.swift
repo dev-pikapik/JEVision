@@ -233,9 +233,37 @@ extension TestFlow {
       edges: test.edges.map {
         Edge(from: $0.from, edge: $0.edge, to: $0.to, points: $0.points.map { CGPoint(x: $0.x, y: $0.y) })
       },
-      rows: test.rows, priority: test.priority, testType: test.testType, status: test.status, author: test.author)
+      rows: test.rows, priority: test.priority, testType: test.testType, status: test.status, author: test.author,
+      notes: test.notes.map(TestNote.init))
   }
 }
+
+extension TestNote {
+  init(_ note: NoteSummary) {
+    let anchor: Anchor =
+      switch (note.anchor, note.block) {
+      case ("block", let block?): .block(block)
+      case ("folder", _): .folder
+      default: .test
+      }
+    self.init(
+      id: note.id, text: note.text, author: note.author, time: noteDate(note.time), anchor: anchor,
+      area: CGRect(note.area), replyCount: Int(note.replyCount),
+      replies: note.replies.map { Reply(id: $0.id, author: $0.author, time: noteDate($0.time), text: $0.text) },
+      resolved: note.resolved.map { Resolved(by: $0.by, time: noteDate($0.time)) },
+      // The Mac only sends web addresses; whatever else arrives is not opened.
+      attachments: note.attachments.compactMap {
+        switch $0.kind {
+        case "file": .file($0.value)
+        case "link": NoteText.webAddress($0.value).map { .link($0) }
+        default: nil
+        }
+      })
+  }
+}
+
+/// A note's time, `nil` when the Mac doesn't know it.
+private func noteDate(_ text: String) -> Date? { try? remoteDate(text) }
 
 extension RunStatus {
   init(_ status: JEVisionMobile.RunStatus) {
@@ -281,8 +309,8 @@ extension RunUpdate {
       switch event {
       case .attemptStarted(let attempt):
         self = .event(.attemptStarted(attempt: Int(attempt)))
-      case .blockStarted(_, _, let test, let block, let kind):
-        self = .event(.blockStarted(test: test, block: block, kind: kind))
+      case .blockStarted(_, _, let test, let block, let kind, let title):
+        self = .event(.blockStarted(test: test, block: block, kind: kind, title: title))
       case .blockFinished(_, _, let test, let block, let status, _, let failure, let branch, let branches, let condition):
         self = .event(
           .blockFinished(

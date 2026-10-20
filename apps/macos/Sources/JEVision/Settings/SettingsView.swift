@@ -277,27 +277,31 @@ struct SettingsItem: Identifiable {
   }
 }
 
-/// Makes the Settings window resizable with a unified toolbar, and remembers its size and place.
+/// Makes the Settings window resizable with a unified toolbar. SwiftUI remembers its size and place
+/// itself, so only the first opening gets the default size.
 private struct SettingsWindowSetup: NSViewRepresentable {
   func makeNSView(context: Context) -> NSView { Hook() }
   func updateNSView(_ nsView: NSView, context: Context) {}
 
   private final class Hook: NSView {
-    private static let autosaveName = "Settings Frame"
+    private var observation: NSKeyValueObservation?
 
     override func viewDidMoveToWindow() {
       super.viewDidMoveToWindow()
-      guard let window, window.frameAutosaveName != Self.autosaveName else { return }
-      window.styleMask.insert([.resizable, .fullSizeContentView])
+      guard let window, observation == nil else { return }
+      window.styleMask.insert(.fullSizeContentView)
       window.toolbarStyle = .unified
       window.collectionBehavior.insert(.fullScreenNone)
       window.contentMinSize = SettingsModel.minSize
-      if !window.setFrameUsingName(Self.autosaveName) {
-        let screen = window.screen ?? NSScreen.main
-        window.setContentSize(CGSize(width: 860, height: min(800, (screen?.visibleFrame.height ?? 840) - 40)))
-        window.center()
+      let screen = window.screen ?? NSScreen.main
+      window.setContentSize(CGSize(width: 860, height: min(800, (screen?.visibleFrame.height ?? 840) - 40)))
+      window.center()
+      // SwiftUI takes `.resizable` away again whenever it sizes the window to its content.
+      observation = window.observe(\.styleMask, options: .initial) { window, _ in
+        MainActor.assumeIsolated {
+          if !window.styleMask.contains(.resizable) { window.styleMask.insert(.resizable) }
+        }
       }
-      window.setFrameAutosaveName(Self.autosaveName)
     }
   }
 }

@@ -74,6 +74,8 @@ struct TestFlow: Hashable, Sendable {
   var status: String? = nil
   /// Who wrote the test or looks after it.
   var author: String? = nil
+  /// The sticky notes on the canvas; empty without any and from Macs that don't send them.
+  var notes: [TestNote] = []
 
   struct Block: Hashable, Identifiable, Sendable {
     var id: String
@@ -97,6 +99,49 @@ struct TestFlow: Hashable, Sendable {
     var edge: String
     var to: String
     var points: [CGPoint]
+  }
+}
+
+/// A sticky note of a test, for reading only. Its text is Markdown; the Mac has already limited
+/// how much of it there is. Geometry is in canvas points, like the blocks'.
+struct TestNote: Hashable, Identifiable, Sendable {
+  var id: String
+  var text: String
+  /// Empty when unknown.
+  var author: String
+  var time: Date?
+  var anchor: Anchor
+  var area: CGRect
+  /// How many replies the note has, also when only the newest are in `replies`.
+  var replyCount: Int
+  /// Oldest first.
+  var replies: [Reply]
+  /// `nil` while the discussion is open.
+  var resolved: Resolved?
+  var attachments: [Attachment]
+
+  enum Anchor: Hashable, Sendable {
+    case test
+    case block(String)
+    case folder
+  }
+
+  struct Reply: Hashable, Identifiable, Sendable {
+    var id: String
+    var author: String
+    var time: Date?
+    var text: String
+  }
+
+  struct Resolved: Hashable, Sendable {
+    var by: String
+    var time: Date?
+  }
+
+  enum Attachment: Hashable, Sendable {
+    /// A file that stays on the Mac; only its name is here.
+    case file(String)
+    case link(URL)
   }
 }
 
@@ -163,7 +208,9 @@ enum RunUpdate: Hashable, Sendable {
 enum RunEvent: Hashable, Sendable {
   case attemptStarted(attempt: Int)
   /// `test` is the file the block belongs to; it differs from the run's test inside `runTest`.
-  case blockStarted(test: String, block: String, kind: String)
+  /// `title` is what the block works with, its placeholders filled for this run, such as the
+  /// data row's name; `nil` from Macs that don't send it.
+  case blockStarted(test: String, block: String, kind: String, title: String? = nil)
   /// `branch` is the way out an `if` took, `branches` how many it had and `branchCondition`
   /// what the way taken looks for; `nil` for other blocks.
   case blockFinished(

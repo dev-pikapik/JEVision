@@ -39,7 +39,9 @@ struct WelcomeView: View {
       .frame(maxWidth: .infinity)
     }
     .scrollBounceBehavior(.basedOnSize)
-    .safeAreaInset(edge: .bottom) {
+    // Text scrolling under the buttons is cut off, so it never reads through them.
+    .scrollEdgeEffectStyle(.hard, for: .bottom)
+    .safeAreaBar(edge: .bottom) {
       VStack(spacing: 12) {
         Button(action: scan) {
           Label("Scan Pairing Code", systemImage: "qrcode.viewfinder")

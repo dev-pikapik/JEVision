@@ -638,6 +638,7 @@ async fn streams_run_events_to_watchers() {
             test: "smoke.flow.json".into(),
             block: "open".into(),
             block_type: "openApp".into(),
+            title: Some("com.example.Mail".into()),
         },
         RunEvent::BlockFinished {
             attempt: 1,
@@ -720,6 +721,7 @@ async fn a_run_waiting_for_the_screen_reaches_watchers_as_a_status() {
         test: "smoke.flow.json".into(),
         block: "open".into(),
         block_type: "openApp".into(),
+        title: None,
     };
     setup
         .host
@@ -778,6 +780,41 @@ fn waiting_for_the_screen_and_the_card_fields_are_additions_older_peers_ignore()
         ),
         (None, None, None, None)
     );
+}
+
+#[test]
+fn a_started_block_shows_what_it_works_with_filled_for_the_run() {
+    let scratch = Scratch::new("title");
+    write(
+        &scratch.0,
+        "greet.flow.json",
+        r#"{"format":1,"name":"Greet","app":"com.example.App","start":"type","blocks":{
+            "type":{"type":"type","text":"Hello, ${data.name}! ${secret.pin} ${var.later}"}}}"#,
+    );
+    let values = HashMap::from([
+        ("data.name".to_owned(), "Boris".to_owned()),
+        ("secret.pin".to_owned(), "••••••".to_owned()),
+    ]);
+    let title = |block| running_title(&scratch.0, "greet.flow.json", block, &values);
+    // A value the block doesn't see stays a placeholder, kept on one line as on the test's card.
+    assert_eq!(
+        title("type"),
+        Some(format!(
+            "Hello, Boris! •••••• {}",
+            jevision_core::unbreakable_placeholders("${var.later}")
+        ))
+    );
+    assert_eq!(title("gone"), None);
+
+    // An older Mac sends no title.
+    let old = json!({
+        "event": "blockStarted", "attempt": 1, "seq": 1, "test": "greet.flow.json",
+        "block": "type", "blockType": "type"
+    });
+    assert!(matches!(
+        serde_json::from_value::<RunEvent>(old).unwrap(),
+        RunEvent::BlockStarted { title: None, .. }
+    ));
 }
 
 #[test]
@@ -1578,4 +1615,412 @@ fn devices_saved_before_assistants_are_phones() {
     assert_eq!(device.kind, DeviceKind::Phone);
     assert!(!device.assistant);
     assert_eq!(device.permission, Permission::Run);
+}
+
+/// A test with the notes written as JSON object entries.
+fn notes_test(notes: &str) -> String {
+    format!(
+        r#"{{"format":1,"name":"Notes","app":"com.example.AcmeMail","start":"open","blocks":{{
+          "open":{{"type":"openApp"}}}},"canvas":{{"notes":{{{notes}}}}}}}"#
+    )
+}
+
+fn note(area: Area) -> NoteSummary {
+    NoteSummary {
+        id: "note".into(),
+        text: "Text".into(),
+        author: "Anna".into(),
+        time: "2026-10-19T10:00:00Z".into(),
+        anchor: "block".into(),
+        block: Some("open".into()),
+        area,
+        reply_count: 0,
+        replies: Vec::new(),
+        resolved: None,
+        attachments: Vec::new(),
+    }
+}
+
+const AREA: Area = Area {
+    x: 20.0,
+    y: 30.0,
+    width: 224.0,
+    height: 144.0,
+};
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_test_brings_its_notes_to_the_phone_read_only() {
+    let setup = Setup::new("notes").await;
+    let project = setup.scratch.0.join("project");
+    write(
+        &project,
+        "notes/discussed.flow.json",
+        &notes_test(
+            r#""note":{"text":"**Heads up**: flaky on CI","author":"Anna","time":"2026-10-19T10:00:00Z",
+                "anchor":{"type":"block","block":"open"},
+                "attachments":[{"file":"shot.png"},{"link":"https://github.com/o/r/issues/1"}],
+                "replies":[{"id":"reply","author":"Boris","time":"2026-10-19T11:00:00Z","text":"Seen it too"},
+                           {"id":"reply2","text":"Fixed"}],
+                "resolved":{"by":"Boris","time":"2026-10-19T12:00:00Z"},
+                "frame":{"x":320,"y":16,"width":224,"height":144}},
+               "about-folder":{"text":"All tests here need VPN","anchor":{"type":"folder"},
+                "frame":{"x":16,"y":200,"width":224,"height":144}},
+               "plain":{"text":"Whole test","frame":{"x":16,"y":400,"width":224,"height":144}}"#,
+        ),
+    );
+    let client = setup.pair(Permission::View, TestSigner::new(1)).await;
+
+    let test = client
+        .get_test("Demo".into(), "notes/discussed.flow.json".into())
+        .await
+        .unwrap();
+    assert_eq!(test.notes.len(), 3);
+    let by_id = |id: &str| test.notes.iter().find(|n| n.id == id).unwrap();
+
+    let note = by_id("note");
+    assert_eq!(note.text, "**Heads up**: flaky on CI");
+    assert_eq!(
+        (note.author.as_str(), note.time.as_str()),
+        ("Anna", "2026-10-19T10:00:00Z")
+    );
+    assert_eq!(
+        (note.anchor.as_str(), note.block.as_deref()),
+        ("block", Some("open"))
+    );
+    assert_eq!(
+        note.area,
+        Area {
+            x: 320.0,
+            y: 16.0,
+            width: 224.0,
+            height: 144.0
+        }
+    );
+    assert_eq!(note.reply_count, 2);
+    assert_eq!(note.replies.len(), 2);
+    assert_eq!(note.replies[0].author, "Boris");
+    assert_eq!(note.replies[1].text, "Fixed");
+    let resolved = note.resolved.as_ref().unwrap();
+    assert_eq!(
+        (resolved.by.as_str(), resolved.time.as_str()),
+        ("Boris", "2026-10-19T12:00:00Z")
+    );
+    let attachments: Vec<(&str, &str)> = note
+        .attachments
+        .iter()
+        .map(|a| (a.kind.as_str(), a.value.as_str()))
+        .collect();
+    assert_eq!(
+        attachments,
+        [
+            ("file", "shot.png"),
+            ("link", "https://github.com/o/r/issues/1")
+        ]
+    );
+
+    let folder = by_id("about-folder");
+    assert_eq!(
+        (folder.anchor.as_str(), folder.block.as_deref()),
+        ("folder", None)
+    );
+    assert_eq!(folder.resolved, None);
+    let plain = by_id("plain");
+    assert_eq!((plain.anchor.as_str(), plain.reply_count), ("test", 0));
+
+    // A test without notes sends none, and the canvas covers the notes.
+    let none = client
+        .get_test("Demo".into(), "smoke.flow.json".into())
+        .await
+        .unwrap();
+    assert!(none.notes.is_empty());
+    assert!(test.height >= 400.0 + 144.0);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_flood_of_notes_is_cut_to_the_limits_on_the_mac() {
+    let setup = Setup::new("notes-flood").await;
+    let project = setup.scratch.0.join("project");
+    let replies: Vec<Value> = (0..30)
+        .map(|n| json!({ "id": format!("r{n}"), "author": "Anna", "text": format!("Reply {n}") }))
+        .collect();
+    let mut attachments: Vec<Value> = vec![
+        json!({ "link": "javascript:alert(1)" }),
+        json!({ "link": "file:///etc/passwd" }),
+        json!({ "link": "https://example.com/has space" }),
+        json!({ "link": format!("https://example.com/{}", "a".repeat(600)) }),
+    ];
+    attachments.extend((0..15).map(|n| json!({ "file": format!("shot{n}.png") })));
+    let notes: serde_json::Map<String, Value> = (0..120)
+        .map(|n| {
+            (
+                format!("note{n:03}"),
+                json!({
+                    "text": "é".repeat(8000),
+                    "author": "A".repeat(300),
+                    "replies": replies,
+                    "attachments": attachments,
+                    "frame": { "x": 16, "y": 16, "width": 224, "height": 144 },
+                }),
+            )
+        })
+        .collect();
+    let text = notes_test("");
+    let text = text.replace(
+        r#""notes":{}"#,
+        &format!(r#""notes":{}"#, Value::Object(notes)),
+    );
+    assert!(
+        text.len() < wire::MAX_MESSAGE,
+        "the file itself is readable"
+    );
+    write(&project, "notes/flood.flow.json", &text);
+    let client = setup.pair(Permission::View, TestSigner::new(1)).await;
+
+    let test = client
+        .get_test("Demo".into(), "notes/flood.flow.json".into())
+        .await
+        .unwrap();
+    assert_eq!(test.notes.len(), wire::MAX_NOTES);
+    assert!(serde_json::to_string(&test.notes).unwrap().len() <= wire::MAX_NOTES_JSON);
+    for note in &test.notes {
+        assert!(note.text.len() <= wire::MAX_NOTE_TEXT);
+        assert!(note.text.ends_with('…'), "a cut text says so");
+        assert_eq!(note.author.len(), wire::MAX_NOTE_LABEL);
+        assert!(note.author.ends_with('…'));
+        assert_eq!(note.reply_count, 30);
+        assert_eq!(note.replies.len(), wire::MAX_REPLIES);
+        // The newest replies stay, oldest first.
+        assert_eq!(note.replies[0].id, "r10");
+        assert_eq!(note.replies[wire::MAX_REPLIES - 1].id, "r29");
+        assert_eq!(note.attachments.len(), wire::MAX_ATTACHMENTS);
+        assert!(note.attachments.iter().all(|a| a.kind == "file"));
+    }
+}
+
+#[test]
+fn bounded_notes_limits_whatever_a_sender_writes() {
+    // Characters of several bytes are cut between characters.
+    let mut long = note(AREA);
+    long.text = "日".repeat(5000);
+    long.replies = (0..25)
+        .map(|n| NoteReplySummary {
+            id: format!("r{n}"),
+            author: "Boris".into(),
+            time: String::new(),
+            text: "ü".repeat(2000),
+        })
+        .collect();
+    long.reply_count = 3; // less than there are: the count never shrinks below them
+    let [long] = &wire::bounded_notes(vec![long])[..] else {
+        panic!("one note stays");
+    };
+    assert!(long.text.len() <= wire::MAX_NOTE_TEXT && long.text.ends_with('…'));
+    assert!(long.text.is_char_boundary(long.text.len() - '…'.len_utf8()));
+    assert_eq!(long.reply_count, 25);
+    assert_eq!(long.replies.len(), wire::MAX_REPLIES);
+    assert_eq!(long.replies[0].id, "r5");
+    assert!(
+        long.replies
+            .iter()
+            .all(|r| r.text.len() <= wire::MAX_REPLY_TEXT)
+    );
+
+    // Links the phone may open are web addresses and short enough not to be cut; files are
+    // names only.
+    let mut linked = note(AREA);
+    let attach = |kind: &str, value: &str| NoteAttachmentSummary {
+        kind: kind.into(),
+        value: value.into(),
+    };
+    linked.attachments = vec![
+        attach("link", "https://example.com/a"),
+        attach("link", "http://example.com/b"),
+        attach("link", "javascript:alert(1)"),
+        attach("link", "tel:+100"),
+        attach("link", "https://"),
+        attach("link", "https://ex ample.com"),
+        attach("link", "https://exa\u{0}mple.com"),
+        attach("snippet", "from a newer Mac"),
+        attach("file", ""),
+        attach("file", "shot.png"),
+    ];
+    let [linked] = &wire::bounded_notes(vec![linked])[..] else {
+        panic!("one note stays");
+    };
+    let kept: Vec<&str> = linked
+        .attachments
+        .iter()
+        .map(|a| a.value.as_str())
+        .collect();
+    assert_eq!(
+        kept,
+        ["https://example.com/a", "http://example.com/b", "shot.png"]
+    );
+
+    // An anchor of a newer Mac, and a block anchor without a block, read as the test.
+    let mut odd = note(AREA);
+    odd.anchor = "whiteboard".into();
+    let mut headless = note(AREA);
+    headless.block = None;
+    let mut stray = note(AREA);
+    stray.anchor = "folder".into();
+    let bounded = wire::bounded_notes(vec![odd, headless, stray]);
+    assert_eq!(
+        bounded
+            .iter()
+            .map(|n| (n.anchor.as_str(), n.block.as_deref()))
+            .collect::<Vec<_>>(),
+        [("test", None), ("test", None), ("folder", None)]
+    );
+
+    // The area stays on the canvas and in a sane size; numbers that are no numbers go.
+    let sized = |x: f64, y: f64, width: f64, height: f64| {
+        note(Area {
+            x,
+            y,
+            width,
+            height,
+        })
+    };
+    let bounded = wire::bounded_notes(vec![
+        sized(-50.0, 1e12, 1e9, -3.0),
+        sized(f64::NAN, 0.0, 10.0, 10.0),
+        sized(0.0, f64::INFINITY, 10.0, 10.0),
+    ]);
+    assert_eq!(bounded.len(), 1);
+    assert_eq!(
+        bounded[0].area,
+        Area {
+            x: 0.0,
+            y: 1_000_000.0,
+            width: 2000.0,
+            height: 1.0
+        }
+    );
+}
+
+#[test]
+fn bounded_notes_keeps_the_notes_within_one_message() {
+    // Heavy notes in a heap: what is kept stays within the budget, the rest is left out.
+    let heavy = |n: usize| {
+        let mut note = note(AREA);
+        note.id = format!("note{n}");
+        note.text = "x".repeat(wire::MAX_NOTE_TEXT);
+        note.replies = (0..wire::MAX_REPLIES)
+            .map(|r| NoteReplySummary {
+                id: format!("reply{r}"),
+                author: "Anna".into(),
+                time: "2026-10-19T10:00:00Z".into(),
+                text: "y".repeat(wire::MAX_REPLY_TEXT),
+            })
+            .collect();
+        note.attachments = (0..wire::MAX_ATTACHMENTS)
+            .map(|a| NoteAttachmentSummary {
+                kind: "link".into(),
+                value: format!("https://example.com/{a}/{}", "z".repeat(400)),
+            })
+            .collect();
+        note
+    };
+    let bounded = wire::bounded_notes((0..wire::MAX_NOTES).map(heavy).collect());
+    let size = serde_json::to_string(&bounded).unwrap().len();
+    assert!(size <= wire::MAX_NOTES_JSON, "{size} bytes");
+    assert!(!bounded.is_empty() && bounded.len() < wire::MAX_NOTES);
+    // The ones kept are the first ones.
+    assert_eq!(bounded[0].id, "note0");
+    assert_eq!(
+        bounded.last().unwrap().id,
+        format!("note{}", bounded.len() - 1)
+    );
+    // Cutting what is cut changes nothing.
+    assert_eq!(wire::bounded_notes(bounded.clone()), bounded);
+}
+
+#[test]
+fn notes_are_an_addition_older_peers_ignore() {
+    let with_notes = |notes: Vec<NoteSummary>| TestSummary {
+        name: "Smoke".into(),
+        description: None,
+        priority: None,
+        test_type: None,
+        status: None,
+        author: None,
+        app: "com.example.App".into(),
+        start: "open".into(),
+        width: 1.0,
+        height: 1.0,
+        blocks: Vec::new(),
+        frames: Vec::new(),
+        edges: Vec::new(),
+        rows: Vec::new(),
+        notes,
+    };
+
+    // A Mac that has no notes to send says what an older Mac says, and a summary from an older
+    // Mac reads as one without notes.
+    let plain = serde_json::to_value(with_notes(Vec::new())).unwrap();
+    assert!(plain.get("notes").is_none());
+    let old = json!({
+        "name": "Smoke", "description": null, "app": "com.example.App", "start": "open",
+        "width": 1.0, "height": 1.0, "blocks": [], "frames": [], "edges": []
+    });
+    assert_eq!(
+        serde_json::from_value::<TestSummary>(old).unwrap(),
+        with_notes(Vec::new())
+    );
+
+    // A summary with notes, as a phone that predates them reads it: the same fields as before,
+    // the notes unknown to it and so ignored.
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    struct BeforeNotes {
+        name: String,
+        app: String,
+        start: String,
+        width: f64,
+        height: f64,
+        blocks: Vec<BlockSummary>,
+        frames: Vec<FrameSummary>,
+        edges: Vec<EdgeSummary>,
+        rows: Vec<String>,
+    }
+    let mut replied = note(AREA);
+    replied.reply_count = 1;
+    replied.replies = vec![NoteReplySummary {
+        id: "reply".into(),
+        author: "Boris".into(),
+        time: String::new(),
+        text: "Seen".into(),
+    }];
+    replied.resolved = Some(NoteResolvedSummary {
+        by: "Boris".into(),
+        time: String::new(),
+    });
+    let summary = with_notes(vec![replied]);
+    let json = serde_json::to_value(&summary).unwrap();
+    assert_eq!(json["notes"][0]["replyCount"], 1);
+    assert_eq!(json["notes"][0]["resolved"]["by"], "Boris");
+    assert_eq!(json["notes"][0]["area"]["width"], 224.0);
+    let before: BeforeNotes = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(
+        (before.name.as_str(), before.start.as_str()),
+        ("Smoke", "open")
+    );
+    assert_eq!(
+        serde_json::from_value::<TestSummary>(json.clone()).unwrap(),
+        summary
+    );
+
+    // A newer Mac may add fields to a note and kinds to anchors and attachments; this phone
+    // still reads the test and takes what it knows.
+    let mut future = json;
+    future["notes"][0]["color"] = json!("yellow");
+    future["notes"][0]["anchor"] = json!("whiteboard");
+    future["notes"][0]["attachments"] = json!([{ "kind": "snippet", "value": "x", "size": 3 }]);
+    let read: TestSummary = serde_json::from_value(future).unwrap();
+    let [read] = &wire::bounded_notes(read.notes)[..] else {
+        panic!("the note stays");
+    };
+    assert_eq!(read.anchor, "test");
+    assert!(read.attachments.is_empty());
+    assert_eq!(read.replies[0].text, "Seen");
 }
