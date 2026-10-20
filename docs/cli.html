@@ -65,6 +65,7 @@
     <li><a href="#install">Install</a></li>
     <li><a href="#overview">Commands</a></li>
     <li><a href="#run"><code>jevision run</code></a></li>
+    <li><a href="#parallel">Running tests side by side</a></li>
     <li><a href="#run-json">The result of <code>run --json</code></a></li>
     <li><a href="#validate"><code>jevision validate</code></a></li>
     <li><a href="#fmt"><code>jevision fmt</code></a></li>
@@ -99,7 +100,7 @@ jevision --help</code></pre>
 <p>Every command ends with an <strong>exit status</strong>, a number a script or CI system reads to know how it went: <code>0</code> means all good, <code>1</code> means a test failed or a problem was found, and <code>2</code> means the command itself couldn't do its work.</p>
 
 <h2 id="run"><code>jevision run</code></h2>
-<p>Runs tests on this Mac, one after another, and saves a report of every run.</p>
+<p>Runs tests on this Mac, one after another (or <a href="#parallel">side by side</a>), and saves a report of every run.</p>
 <pre><code>jevision run <var>tests</var>… [options]</code></pre>
 <p>Each of <var>tests</var> is a test file, a folder of tests, or a test's name as the app shows it, without <code>.flow.json</code>: <code>jevision run notes/add-milk</code>.</p>
 <div class="table-wrap">
@@ -118,6 +119,7 @@ jevision --help</code></pre>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
     <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report.</td></tr>
+    <tr><td><code>--parallel [<var>n</var>]</code></td><td>Run up to <var>n</var> tests at the same time, 1 to 16, instead of one after another. Without a number: one per core of this Mac. Tests that use the screen still take turns. See <a href="#parallel">below</a>. A folder named with digits only needs <code>./</code> in front: <code>--parallel 4 ./2024</code>.</td></tr>
     <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
     <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
   </tbody>
@@ -126,7 +128,8 @@ jevision --help</code></pre>
 <p>While tests run, JEVision uses the mouse and keyboard. Press <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> to stop; the stopped test is reported as cancelled. Secrets come from environment variables or the Keychain (see <a href="environments.html#secret-order">Secrets</a>), and so do API keys of AI providers, such as <code>ANTHROPIC_API_KEY</code>.</p>
 <pre><code>jevision run tests/
 jevision run tests/sign-in.flow.json --env staging --retries 2
-jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
+jevision run tests/ --junit junit.xml --html reports --video always
+jevision run tests/ --parallel 4</code></pre>
 <div class="table-wrap">
 <table>
   <caption>Exit status of <code>jevision run</code></caption>
@@ -138,6 +141,17 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
   </tbody>
 </table>
 </div>
+
+<h2 id="parallel">Running tests side by side</h2>
+<p>Tests run one after another unless you add <code>--parallel</code>. <code>--parallel 4</code> runs up to four tests at a time, and <code>--parallel</code> alone runs one per core of the Mac (at most 16), so a suite of tests that don't need the screen finishes sooner.</p>
+<ul>
+  <li><strong>The screen is never shared.</strong> A test that clicks, types, looks at the screen, runs AppleScript or uses the clipboard has the screen to itself: another test that does the same waits. Only tests that leave the screen alone run beside it: commands, requests, files, databases, scripts other than AppleScript, pauses, dates, loops and conditions on values. A test that runs another test counts as the tests it runs, and a test JEVision can't read counts as one that uses the screen. If every test uses the screen, <code>--parallel</code> changes nothing.</li>
+  <li><strong>“Runs after” is kept.</strong> A test starts only after the tests it runs after (<code>dependsOn</code> in the test) have passed. When one of them fails, the tests that need it are blocked, as without <code>--parallel</code>.</li>
+  <li><strong>The output stays readable.</strong> The lines of a test are printed together when it ends, so the test that ends first is printed first. The JUnit report, the HTML reports and the <code>--json</code> result keep the order of the tests, the same as without <code>--parallel</code>.</li>
+  <li><strong>Stopping.</strong> <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> stops every test that is running, and each is reported as cancelled. The tests that hadn't started are reported as not run. The exit status is the same as without <code>--parallel</code>.</li>
+  <li>It works with <code>--env</code>, <a href="data-driven.html">data-driven tests</a> (the rows of a test still run one after another), <code>--retries</code>, <code>--junit</code>, <code>--html</code> and <code>--json</code>.</li>
+</ul>
+<p>The app and other <code>jevision</code> commands on the same Mac don't take turns with this run, so don't start two runs that use the screen at the same time.</p>
 
 <h2 id="run-json">The result of <code>run --json</code></h2>
 <p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>

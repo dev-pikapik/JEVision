@@ -85,6 +85,13 @@ struct RunRequest: Equatable {
   /// Send the messages jevision.notifications.json asks for after each test.
   var notify = true
   var json = false
+  /// Most tests to run side by side; `nil` runs them one after another.
+  var parallel: UInt32?
+
+  /// What `--parallel` alone means: a test per core, the most the core allows at once.
+  static var defaultParallel: UInt32 {
+    min(max(1, UInt32(clamping: ProcessInfo.processInfo.activeProcessorCount)), maxParallelRuns())
+  }
 }
 
 enum Command: Equatable {
@@ -118,7 +125,8 @@ enum Command: Equatable {
     case "run":
       let options = try Options.parse(
         rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify"],
-        values: ["--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video"])
+        values: ["--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video"],
+        optionalNumbers: ["--parallel"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
       request.project = options.values["--project"]
@@ -163,6 +171,17 @@ enum Command: Equatable {
       request.includeQuarantinedFailures = options.flags.contains("--include-quarantined-failures")
       request.notify = !options.flags.contains("--no-notify")
       request.json = options.flags.contains("--json")
+      if options.flags.contains("--parallel") {
+        guard let given = options.values["--parallel"] else {
+          request.parallel = RunRequest.defaultParallel
+          return .run(request)
+        }
+        let most = maxParallelRuns()
+        guard let limit = UInt32(given), (1...most).contains(limit) else {
+          throw UsageError(message: "--parallel needs a number of tests from 1 to \(most), such as 4, not “\(given)”", command: name)
+        }
+        request.parallel = limit
+      }
       return .run(request)
     case "mcp":
       let options = try Options.parse(rest, command: name, flags: [], values: ["--project"])
@@ -211,7 +230,8 @@ enum Command: Equatable {
 }
 
 /// Options and paths after the command name: `--flag`, `--name value`, `--name=value`;
-/// everything after `--` is a path.
+/// everything after `--` is a path. An option in `optionalNumbers` may stand alone or take a
+/// number (`--parallel`, `--parallel 4`, `--parallel=4`); it is in `flags`, and its number in `values`.
 struct Options {
   var paths: [String] = []
   var flags: Set<String> = []
@@ -219,7 +239,8 @@ struct Options {
   var wantsHelp = false
 
   static func parse(
-    _ arguments: [String], command: String, flags: Set<String>, values: Set<String> = []
+    _ arguments: [String], command: String, flags: Set<String>, values: Set<String> = [],
+    optionalNumbers: Set<String> = []
   ) throws(UsageError) -> Options {
     var options = Options()
     var rest = arguments[...]
@@ -242,6 +263,15 @@ struct Options {
       if flags.contains(name) {
         guard parts.count == 1 else { throw UsageError(message: "\(name) takes no value", command: command) }
         options.flags.insert(name)
+        continue
+      }
+      if optionalNumbers.contains(name) {
+        guard options.flags.insert(name).inserted else { throw UsageError(message: "\(name) is given twice", command: command) }
+        if parts.count == 2 {
+          options.values[name] = parts[1]
+        } else if let next = rest.first, next.allSatisfy({ $0 >= "0" && $0 <= "9" }) {
+          options.values[name] = rest.removeFirst()
+        }
         continue
       }
       guard values.contains(name) else {
@@ -281,7 +311,8 @@ enum Help {
     switch command {
     case "run":
       """
-      Runs tests on this Mac, one after another, and saves a report of every run.
+      Runs tests on this Mac, one after another (or side by side with --parallel), and
+      saves a report of every run.
       The tests a test runs after ("dependsOn") run before it, even when they aren't
       named. When one of them doesn't pass, the tests that need it are blocked: they
       don't run, and their reports say why.
@@ -324,6 +355,16 @@ enum Help {
                             jevision.project.json) like any other failure. Without it
                             they still run, but don't change the exit status and are
                             skipped in the JUnit report
+        --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a
+                            number, one per core of this Mac) instead of one after
+                            another. Tests that click, type, look at the screen or use
+                            the clipboard still run one at a time; only tests that
+                            leave the screen alone (commands, requests, files,
+                            databases, scripts, dates) run beside them. A test starts
+                            after the tests it runs after. Each test's lines are
+                            printed together when it ends, and reports keep the order
+                            of the tests. A folder named with digits only needs ./ in
+                            front: --parallel 4 ./2024
         --no-notify         Don't send the message about the runs that
                             jevision.notifications.json in the project folder asks for
                             (Slack, Telegram, email): one message for one test, one

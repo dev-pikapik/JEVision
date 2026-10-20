@@ -165,6 +165,12 @@ pub fn describe_blocker(blocker: &Blocker) -> String {
     blocker.describe()
 }
 
+/// The most tests a batch runs side by side, whatever limit it is given.
+#[uniffi::export]
+pub fn max_parallel_runs() -> u32 {
+    jevision_core::MAX_PARALLEL
+}
+
 /// Problems with the tests `flow` depends on, saved as the test `file` (relative to the folder
 /// `project`): tests that don't exist, the test itself, and tests depending on each other in a
 /// circle.

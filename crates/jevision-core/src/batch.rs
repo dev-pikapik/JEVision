@@ -752,6 +752,156 @@ mod tests {
         assert_eq!(batch.start_next(), Some(1));
     }
 
+    /// A test with one command block, which never touches the screen, depending on `deps`.
+    fn quiet(name: &str, deps: &[&str]) -> Flow {
+        let mut flow = crate::parse(&format!(
+            r#"{{"format": {}, "name": "{name}", "app": "com.apple.TextEdit", "start": "a",
+                "blocks": {{"a": {{"type": "command", "command": "true"}}}}}}"#,
+            crate::FORMAT_VERSION
+        ))
+        .unwrap();
+        flow.depends_on = deps.iter().map(|d| d.to_string()).collect();
+        flow
+    }
+
+    #[test]
+    fn parallel_runs_wait_for_dependencies_however_many_places_are_free() {
+        let read = project(&[
+            ("base.flow.json", quiet("Base", &[])),
+            ("a.flow.json", quiet("A", &["base.flow.json"])),
+            ("b.flow.json", quiet("B", &["base.flow.json"])),
+            ("c.flow.json", quiet("C", &[])),
+        ]);
+        let all = chosen(&["a.flow.json", "b.flow.json", "c.flow.json"]);
+        let mut batch = Batch::plan(&all, RunMode::Parallel { limit: 4 }, read);
+        assert_eq!(
+            files(&batch),
+            [
+                "base.flow.json",
+                "a.flow.json",
+                "b.flow.json",
+                "c.flow.json"
+            ]
+        );
+        assert_eq!(batch.start_next(), Some(0));
+        assert_eq!(batch.start_next(), Some(3), "c needs nobody");
+        assert_eq!(batch.start_next(), None, "a and b wait for base");
+        assert_eq!(
+            batch.wait(1),
+            Some(WaitingFor::Dependency {
+                test: "base.flow.json".into()
+            })
+        );
+        batch.finish(3, TestOutcome::Passed);
+        assert_eq!(batch.start_next(), None, "base is still running");
+        batch.finish(0, TestOutcome::Passed);
+        assert_eq!(batch.start_next(), Some(1));
+        assert_eq!(batch.start_next(), Some(2));
+    }
+
+    #[test]
+    fn a_failed_dependency_blocks_its_tests_while_the_others_go_on() {
+        let read = project(&[
+            ("base.flow.json", quiet("Base", &[])),
+            ("a.flow.json", quiet("A", &["base.flow.json"])),
+            ("b.flow.json", quiet("B", &["a.flow.json"])),
+            ("c.flow.json", quiet("C", &[])),
+        ]);
+        let all = chosen(&["b.flow.json", "c.flow.json"]);
+        let mut batch = Batch::plan(&all, RunMode::Parallel { limit: 3 }, read);
+        assert_eq!(batch.start_next(), Some(0));
+        assert_eq!(batch.start_next(), Some(3));
+        assert_eq!(batch.finish(0, TestOutcome::Failed), [1, 2]);
+        let TestState::Blocked(blocker) = &batch.tests()[2].state else {
+            panic!("b should be blocked");
+        };
+        assert_eq!(blocker.describe(), "Blocked: Base failed");
+        assert_eq!(batch.start_next(), None);
+        batch.finish(3, TestOutcome::Passed);
+        assert!(batch.is_over());
+    }
+
+    #[test]
+    fn a_parallel_plan_keeps_its_rules_at_every_step() {
+        let read = || {
+            project(&[
+                ("setup.flow.json", quiet("Setup", &[])),
+                ("login.flow.json", test("Login", &["setup.flow.json"])),
+                ("inbox.flow.json", test("Inbox", &["login.flow.json"])),
+                ("api.flow.json", quiet("Api", &["setup.flow.json"])),
+                ("clock.flow.json", quiet("Clock", &[])),
+                ("files.flow.json", quiet("Files", &["clock.flow.json"])),
+                ("paste.flow.json", test("Paste", &[])),
+            ])
+        };
+        let all = chosen(&[
+            "inbox.flow.json",
+            "api.flow.json",
+            "files.flow.json",
+            "paste.flow.json",
+        ]);
+        for limit in 1..=6 {
+            let mut batch = Batch::plan(&all, RunMode::Parallel { limit }, read());
+            assert_eq!(batch.tests().len(), 7);
+            let mut running: Vec<usize> = Vec::new();
+            let mut started = Vec::new();
+            while !batch.is_over() {
+                while let Some(i) = batch.start_next() {
+                    let t = &batch.tests()[i];
+                    assert!(
+                        t.depends_on
+                            .iter()
+                            .all(|d| batch.tests()[batch.position(d).unwrap()].state
+                                == TestState::Done(TestOutcome::Passed)),
+                        "{} started before its dependencies passed",
+                        t.file
+                    );
+                    running.push(i);
+                    started.push(i);
+                    assert!(running.len() <= limit as usize, "limit {limit} exceeded");
+                    assert!(
+                        running
+                            .iter()
+                            .filter(|&&r| batch.tests()[r].uses_screen)
+                            .count()
+                            <= 1,
+                        "two tests on the screen at limit {limit}"
+                    );
+                }
+                assert!(!running.is_empty(), "the plan got stuck at limit {limit}");
+                // The test that started first finishes first.
+                batch.finish(running.remove(0), TestOutcome::Passed);
+            }
+            started.sort_unstable();
+            assert_eq!(started, (0..7).collect::<Vec<_>>(), "every test ran once");
+        }
+    }
+
+    #[test]
+    fn stopping_a_parallel_run_skips_the_waiting_tests_and_lets_the_running_ones_end() {
+        let read = project(&[
+            ("a.flow.json", quiet("A", &[])),
+            ("b.flow.json", quiet("B", &[])),
+            ("c.flow.json", quiet("C", &["a.flow.json"])),
+            ("d.flow.json", quiet("D", &[])),
+        ]);
+        let all = chosen(&["a.flow.json", "b.flow.json", "c.flow.json", "d.flow.json"]);
+        let mut batch = Batch::plan(&all, RunMode::Parallel { limit: 2 }, read);
+        assert_eq!(batch.start_next(), Some(0));
+        assert_eq!(batch.start_next(), Some(1));
+        batch.stop();
+        assert!(!batch.is_over(), "a and b are still running");
+        assert_eq!(batch.start_next(), None);
+        batch.finish(0, TestOutcome::Cancelled);
+        batch.finish(1, TestOutcome::Cancelled);
+        assert!(batch.is_over());
+        assert!(
+            batch.tests()[2..]
+                .iter()
+                .all(|t| t.state == TestState::Done(TestOutcome::Cancelled))
+        );
+    }
+
     #[test]
     fn only_blocks_on_the_screen_keep_a_test_from_running_beside_others() {
         let flow = |blocks: &str| {
