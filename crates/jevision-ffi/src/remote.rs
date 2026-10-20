@@ -10,7 +10,7 @@ use std::time::Duration;
 use jevision_remote::{self as remote, Activity, ActivityKind, HostStatus, Relay, RemoteError};
 use jevision_runner::{PauseReason, Verdict};
 
-use crate::run::{Failure, RunEvent, RunListener, RunOutcome};
+use crate::run::{Failure, RunEvent, RunListener, RunOutcome, ScreenHolder};
 
 /// Time a run a phone asked for has to create its folder before the phone hears it failed.
 const START_TIMEOUT: Duration = Duration::from_secs(30);
@@ -386,6 +386,28 @@ impl RunReporter {
         }
     }
 
+    /// Notes that the run waits for the screen and sends the phones its status, which no event
+    /// of the protocol tells; older phones show it like any other status.
+    fn wait_for_screen(&self, run: String, holder: Option<ScreenHolder>) {
+        let status = {
+            let mut state = self.runs.state();
+            match &mut state.active {
+                Some((root, status)) if *root == self.root && status.run == run => {
+                    status.waiting = Some(remote::ScreenWait {
+                        holder: holder.map(|h| remote::ScreenHolder {
+                            process: h.process,
+                            test: h.test,
+                            since: h.since,
+                        }),
+                    });
+                    status.clone()
+                }
+                _ => return,
+            }
+        };
+        self.host.publish_status(self.root.clone(), run, status);
+    }
+
     /// Forgets the run going on, if it is this one, and tells the phones it has finished.
     fn end(&self, run: String, verdict: Verdict, flaky: bool) {
         {
@@ -422,6 +444,7 @@ impl RunListener for RunReporter {
                     verdict: None,
                     attempt: 0,
                     block: None,
+                    waiting: None,
                 },
             ));
             if let Some(waiting) = state.waiting.take() {
@@ -431,9 +454,11 @@ impl RunListener for RunReporter {
         }
         let Some(run) = self.run() else { return };
         let published = match event {
-            RunEvent::RunStarted { .. }
-            | RunEvent::RowStarted { .. }
-            | RunEvent::WaitingForScreen { .. } => return,
+            RunEvent::RunStarted { .. } | RunEvent::RowStarted { .. } => return,
+            RunEvent::WaitingForScreen { holder } => {
+                self.wait_for_screen(run, holder);
+                return;
+            }
             RunEvent::AttemptStarted { attempt } => {
                 self.update(&run, |s| {
                     s.attempt = attempt;
@@ -452,6 +477,7 @@ impl RunListener for RunReporter {
             } => {
                 self.update(&run, |s| {
                     s.state = remote::RunState::Running;
+                    s.waiting = None;
                     if s.test == test {
                         s.block = Some(block.clone());
                     }
@@ -626,6 +652,7 @@ pub enum RemoteError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::path::PathBuf;
     use std::sync::{OnceLock, Weak};
     use std::time::Instant;
@@ -913,5 +940,66 @@ mod tests {
         host.revoke(devices[0].id.clone()).unwrap();
         assert!(host.devices().is_empty());
         phone.block_on(client.close());
+    }
+
+    #[test]
+    fn a_run_waiting_for_the_screen_says_so_until_its_first_block_starts() {
+        let scratch = Scratch(
+            std::env::temp_dir().join(format!("jevision-ffi-waiting-{}", std::process::id())),
+        );
+        let host = RemoteHost::new(
+            RemoteConfig {
+                secret_key: generate_remote_key(),
+                name: "Studio Mac".into(),
+                state_dir: scratch.0.join("state").to_string_lossy().into_owned(),
+                relay: Relay::Disabled,
+                local_discovery: false,
+                global_discovery: false,
+            },
+            Arc::new(App::default()),
+        )
+        .unwrap();
+        let listener = host.run_listener("/project".into());
+        listener.event(RunEvent::RunStarted {
+            test: "T".into(),
+            file: "t.flow.json".into(),
+            dir: "/project/runs/20261018-130000-t".into(),
+            max_attempts: 1,
+        });
+        let waiting = || {
+            let state = host.runs.state();
+            state.active.as_ref().and_then(|(_, s)| s.waiting.clone())
+        };
+        assert_eq!(waiting(), None);
+
+        listener.event(RunEvent::WaitingForScreen {
+            holder: Some(ScreenHolder {
+                process: "jevision".into(),
+                pid: 4242,
+                test: "Sign in".into(),
+                since: 1_800_000_000,
+            }),
+        });
+        assert_eq!(
+            waiting(),
+            Some(remote::ScreenWait {
+                holder: Some(remote::ScreenHolder {
+                    process: "jevision".into(),
+                    test: "Sign in".into(),
+                    since: 1_800_000_000,
+                })
+            })
+        );
+
+        listener.event(RunEvent::StepStarted {
+            attempt: 1,
+            seq: 1,
+            test: "t.flow.json".into(),
+            block: "open".into(),
+            block_type: "openApp".into(),
+            variables: HashMap::new(),
+            timeout_ms: None,
+        });
+        assert_eq!(waiting(), None);
     }
 }

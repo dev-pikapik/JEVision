@@ -185,16 +185,19 @@ final class FlowDocument {
   }
 
   /// Adds what was recorded at `slot`, and the app it was recorded in when the test has none,
-  /// as one change. Undo also moves `files`, the pictures the recording saved, to the Trash;
+  /// as one change. A test that had no blocks is laid out in rows; others keep their layout. Undo also moves `files`, the pictures the recording saved, to the Trash;
   /// Redo brings them back.
   func insertRecorded(
     _ blocks: [BlockKind], files: [URL], at slot: Slot?, app: String, trash: @escaping Baseline.Trash = Baseline.moveToTrash
   ) {
     guard var flow else { return }
     if flow.app.isEmpty { flow.app = app }
+    let wasEmpty = flow.blocks.isEmpty
     guard let edited = insertBlocks(flow: flow, blocks: blocks, slot: slot) else { return }
     undoManager?.beginUndoGrouping()
-    apply(edited.flow, select: edited.selection, action: String(localized: "Recording"))
+    apply(
+      wasEmpty ? JEVisionCore.arrangeInRows(flow: edited.flow) : edited.flow, select: edited.selection,
+      action: String(localized: "Recording"))
     trashOnUndo(files, trash: trash)
     undoManager?.endUndoGrouping()
   }
@@ -278,6 +281,12 @@ final class FlowDocument {
   func arrange() {
     guard let flow else { return }
     apply(arrangeAutomatically(flow: flow), select: selection, action: String(localized: "Arrange Automatically"))
+  }
+
+  /// Lays the blocks out in rows of three, each in a frame, so the test reads like text.
+  func arrangeInRows() {
+    guard let flow else { return }
+    apply(JEVisionCore.arrangeInRows(flow: flow), select: selection, action: String(localized: "Arrange in Rows"))
   }
 
   /// Points edge `edge` of block `from` at block `to`, or removes the link when `to` is `nil`.

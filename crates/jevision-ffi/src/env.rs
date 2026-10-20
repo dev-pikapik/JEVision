@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use jevision_core::{AddEnvironmentError, DataError, DataTable, Environments};
+use jevision_core::{AddEnvironmentError, DataError, DataTable, Environments, SetValueError};
 
 use crate::{DataRowRange, Flow, Issue};
 
@@ -119,6 +119,43 @@ pub fn add_environment(
         .map_err(|error| new_environment_error(&name, error))
 }
 
+/// Why a value of an environment can't be set.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum EnvironmentValueError {
+    #[error("there's no environment \"{name}\"")]
+    UnknownEnvironment { name: String },
+    #[error(
+        "\"{name}\" isn't a valid value name; use letters, digits and _, not starting with a digit"
+    )]
+    InvalidValueName { name: String },
+    #[error("{file} can't be read: {reason}")]
+    Unreadable { file: String, reason: String },
+    #[error("{file} can't be saved: {reason}")]
+    Unwritable { file: String, reason: String },
+}
+
+/// Sets the value `name` of `environment` in the environments file of the project folder
+/// `project`, adding it when the environment lacks it.
+#[uniffi::export]
+pub fn set_environment_value(
+    project: String,
+    environment: String,
+    name: String,
+    value: String,
+) -> Result<(), EnvironmentValueError> {
+    let file = jevision_core::ENVIRONMENTS_FILE.to_owned();
+    Environments::set_value(Path::new(&project), &environment, &name, &value).map_err(|error| {
+        match error {
+            SetValueError::UnknownEnvironment => {
+                EnvironmentValueError::UnknownEnvironment { name: environment }
+            }
+            SetValueError::InvalidValueName => EnvironmentValueError::InvalidValueName { name },
+            SetValueError::Unreadable(reason) => EnvironmentValueError::Unreadable { file, reason },
+            SetValueError::Unwritable(reason) => EnvironmentValueError::Unwritable { file, reason },
+        }
+    })
+}
+
 /// Name of the environments file in a project folder.
 #[uniffi::export]
 pub fn environments_file_name() -> String {
@@ -129,6 +166,20 @@ pub fn environments_file_name() -> String {
 #[uniffi::export]
 pub fn required_env_values(flow: Flow) -> Vec<String> {
     jevision_core::required_env_values(&flow)
+}
+
+/// The environment values each block of the test reads through `${env.NAME}`, by block id,
+/// names sorted; `ENVIRONMENT` is the name of the environment itself. Blocks that read none
+/// aren't listed.
+#[uniffi::export]
+pub fn block_env_reads(flow: Flow) -> HashMap<String, Vec<String>> {
+    jevision_core::env_reads(&flow).into_iter().collect()
+}
+
+/// Name every run has as `${env.ENVIRONMENT}`: the name of the environment chosen for it.
+#[uniffi::export]
+pub fn environment_name_value() -> String {
+    jevision_core::ENVIRONMENT_NAME.to_owned()
 }
 
 /// Problems with the environment values a test saved in `folder` reads, given its project's

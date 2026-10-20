@@ -5,6 +5,10 @@
 //! side, and a loop is a frame around its body. Once blocks are moved by hand, they stay where
 //! they were put and the connectors are routed between them. Coordinates are canvas points from
 //! the top-left corner, not fractions of a window.
+//!
+//! [`rows`] is the other arrangement: the chain wraps like text, three blocks to a row, each row
+//! in a frame of its own. A recorded test gets it, and anyone can ask for it; it is saved as
+//! positions and frames, so a test already on the canvas is never moved by it on its own.
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -25,6 +29,13 @@ const PAD: f64 = 16.0;
 const TURN: f64 = 16.0;
 /// Distance between connectors that jump to a block placed elsewhere.
 const LANE: f64 = 12.0;
+/// Blocks in a row of the arrangement by rows.
+const ROW_BLOCKS: usize = 3;
+/// Room for the title of a row's frame above its blocks.
+const ROW_TITLE: f64 = 3.0 * GRID;
+/// Room under the blocks of a row: the connector from its last block to the next row turns
+/// inside the frame.
+const ROW_BOTTOM: f64 = 2.0 * GRID;
 
 /// Where everything goes on the canvas.
 #[derive(Debug, Clone, PartialEq)]
@@ -104,12 +115,17 @@ fn pt(x: f64, y: f64) -> Point {
     Point { x, y }
 }
 
+/// Width of a frame around a row of `blocks` blocks.
+fn row_width(blocks: usize) -> f64 {
+    2.0 * PAD + blocks as f64 * BLOCK_WIDTH + (blocks - 1) as f64 * COLUMN_GAP
+}
+
 /// Lays out `flow`: automatically, or around the blocks placed by hand when there are any. In
 /// both cases blocks that cannot be reached from `start` get columns of their own on the right,
 /// and only the first block of each duplicate id is placed. The canvas covers sections and
 /// notes too.
 pub fn layout(flow: &Flow) -> FlowLayout {
-    let auto = auto_layout(flow);
+    let auto = auto_layout(flow, false).0;
     let pinned = auto
         .blocks
         .iter()
@@ -139,7 +155,26 @@ pub(crate) fn port_xs(kind: &BlockKind, rect: &Rect) -> Vec<(Cow<'static, str>, 
         .collect()
 }
 
-fn auto_layout(flow: &Flow) -> FlowLayout {
+/// Where `flow` goes when arranged by rows: the top-left corner of every block, on the grid, and
+/// the frame of every row. Blocks that are not part of a plain run, the `if`s and loops with
+/// what is inside them, keep the shape the automatic layout gives them and sit between the rows.
+pub(crate) fn rows(flow: &Flow) -> (HashMap<String, Point>, Vec<Rect>) {
+    let (laid, frames) = auto_layout(flow, true);
+    let snap = |v: f64| (v / GRID).round() * GRID;
+    let positions = laid
+        .blocks
+        .into_iter()
+        .map(|b| {
+            let at = pt(snap(b.rect.x), snap(b.rect.y));
+            (b.id, at)
+        })
+        .collect();
+    (positions, frames)
+}
+
+/// The automatic layout, with the main chain in rows of frames when `by_rows`, which come back
+/// too.
+fn auto_layout(flow: &Flow, by_rows: bool) -> (FlowLayout, Vec<Rect>) {
     let index: HashMap<&str, usize> = flow
         .blocks
         .iter()
@@ -186,18 +221,28 @@ fn auto_layout(flow: &Flow) -> FlowLayout {
     }
 
     let mut left = PAD;
+    let mut frames = Vec::new();
     for (n, items) in columns.iter().enumerate() {
-        let (width, _) = b.column_size(items);
+        let rows = by_rows && n == 0;
+        let width = if rows {
+            b.rows_width(items)
+        } else {
+            b.column_size(items).0
+        };
         let cx = left + width / 2.0;
         if n == 0 {
             b.slot_at(String::new(), START, pt(cx, GAP / 2.0));
         }
-        let open = b.place_column(items, cx, GAP);
+        let open = if rows {
+            b.place_rows(items, left, width, &mut frames)
+        } else {
+            b.place_column(items, cx, GAP)
+        };
         b.jumps.extend(open);
         left += width + 2.0 * COLUMN_GAP;
     }
     b.route_jumps();
-    b.finish()
+    (b.finish(), frames)
 }
 
 struct Builder<'a> {
@@ -424,6 +469,56 @@ impl<'a> Builder<'a> {
         let width = sizes.iter().map(|s| s.0).fold(BLOCK_WIDTH, f64::max);
         let gaps = GAP * sizes.len().saturating_sub(1) as f64;
         (width, sizes.iter().map(|s| s.1).sum::<f64>() + gaps)
+    }
+
+    /// Width of the main chain in rows: a full row, or what an `if` or a loop in it needs.
+    fn rows_width(&self, items: &[Item]) -> f64 {
+        let widest = items.iter().map(|i| self.size(i).0);
+        widest.fold(row_width(ROW_BLOCKS), f64::max)
+    }
+
+    /// Places the main chain in `width` from `left`: every run of plain blocks wraps into rows
+    /// of [`ROW_BLOCKS`], each in a frame pushed to `frames`; an `if` or a loop goes in the
+    /// middle, on a line of its own. Returns the edges of the last item still to connect.
+    fn place_rows(
+        &mut self,
+        items: &[Item],
+        left: f64,
+        width: f64,
+        frames: &mut Vec<Rect>,
+    ) -> Vec<Exit> {
+        let mut y = GAP;
+        let mut open = Vec::new();
+        let mut rest = items;
+        while let Some(item) = rest.first() {
+            if matches!(item, Item::Block(_)) {
+                let run = rest
+                    .iter()
+                    .take_while(|i| matches!(i, Item::Block(_)))
+                    .count();
+                for row in rest[..run].chunks(ROW_BLOCKS) {
+                    let height = ROW_TITLE + BLOCK_HEIGHT + ROW_BOTTOM;
+                    frames.push(Rect {
+                        x: left,
+                        y,
+                        width: row_width(ROW_BLOCKS),
+                        height,
+                    });
+                    for (n, item) in row.iter().enumerate() {
+                        let x = left + PAD + n as f64 * (BLOCK_WIDTH + COLUMN_GAP);
+                        self.block(item.first(), x + BLOCK_WIDTH / 2.0, y + ROW_TITLE);
+                    }
+                    y += height + GAP;
+                }
+                open = Vec::new();
+                rest = &rest[run..];
+            } else {
+                open = self.place_item(item, left + width / 2.0, y);
+                y += self.size(item).1 + GAP;
+                rest = &rest[1..];
+            }
+        }
+        open
     }
 
     /// Places a column centred on `cx` from `top`; returns its edges still to connect.
@@ -678,7 +773,8 @@ impl<'a> Builder<'a> {
 /// Lays out a test with blocks placed by hand. A block without a position goes below the first
 /// block that leads to it, or where the automatic layout put it, moved right until it overlaps
 /// nothing. Connectors leave the bottom of a block and enter the top of the next one; one going
-/// back up passes on the right of both blocks. A loop's frame surrounds its body.
+/// back up passes on the right of both blocks, and one between blocks side by side runs from
+/// side to side. A loop's frame surrounds its body.
 fn free_layout(flow: &Flow, auto: &FlowLayout) -> FlowLayout {
     let index: HashMap<&str, &BlockKind> = flow
         .blocks
@@ -761,13 +857,22 @@ fn free_layout(flow: &Flow, auto: &FlowLayout) -> FlowLayout {
                 },
             });
         }
+        let sole_exit = kind.edge_names().len() == 1;
         for (edge, x) in port_xs(kind, &rect) {
             let from = pt(x, rect.y + rect.height);
-            out.ports.push(slot(id.to_owned(), &edge, from));
             let target = kind.edge(&edge).filter(|t| *t != id || edge != BODY);
-            match target.and_then(|t| Some((t, rects.get(t)?))) {
+            let target = target.and_then(|t| Some((t, rects.get(t)?)));
+            let beside = target
+                .filter(|_| sole_exit)
+                .and_then(|(_, t)| route_beside(&rect, t));
+            out.ports.push(slot(
+                id.to_owned(),
+                &edge,
+                beside.as_ref().map_or(from, |points| points[0]),
+            ));
+            match target {
                 Some((to, target)) => {
-                    let points = route(from, &rect, target);
+                    let points = beside.unwrap_or_else(|| route(from, &rect, target));
                     out.slots.push(slot(id.to_owned(), &edge, middle(&points)));
                     out.edges.push(LaidEdge {
                         from: id.to_owned(),
@@ -851,6 +956,33 @@ fn loop_body<'a>(
         stack.extend(kind.edges().into_iter().map(|(_, t)| t));
     }
     seen
+}
+
+/// A connector between blocks side by side, from the side of `source` facing `target` to the
+/// side of `target` facing it; `None` unless they share a row, with room for an arrow between.
+fn route_beside(source: &Rect, target: &Rect) -> Option<Vec<Point>> {
+    let same_row = target.y < source.y + source.height && source.y < target.y + target.height;
+    if !same_row {
+        return None;
+    }
+    let (from_x, to_x) = if target.x >= source.x + source.width + GRID {
+        (source.x + source.width, target.x)
+    } else if source.x >= target.x + target.width + GRID {
+        (source.x, target.x + target.width)
+    } else {
+        return None;
+    };
+    let (from_y, to_y) = (
+        source.y + source.height / 2.0,
+        target.y + target.height / 2.0,
+    );
+    let bend = (from_x + to_x) / 2.0;
+    Some(straighten(vec![
+        pt(from_x, from_y),
+        pt(bend, from_y),
+        pt(bend, to_y),
+        pt(to_x, to_y),
+    ]))
 }
 
 /// A connector from `from`, on the bottom of `source`, to the top middle of `target`.

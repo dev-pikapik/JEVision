@@ -138,6 +138,16 @@
 
 <h2 id="accept">When the app changed on purpose</h2>
 <p>If a check fails because the app was redesigned, not because of a bug, open the run's report and accept the screenshot as the new reference. The old picture goes to the Trash, and <strong>Edit → Undo</strong> brings it back. In git, the change shows up as a changed picture you can compare side by side, under a sliding divider, one over the other or with the differing pixels in red.</p>
+<p>One picture is often used by many blocks, in several tests and <a href="file-formats.html">custom blocks</a>: a <code>check</code> compares with it, a <code>waitFor</code> waits for it, a <code>click</code> looks for it on the screen. Replacing it changes what all of them see, so <strong>Accept New Reference</strong> is a short guide that goes through them:</p>
+<ol>
+  <li><strong>Old, new and differences.</strong> Look at the two pictures and what differs.</li>
+  <li><strong>Blocks that use this picture.</strong> Every test and block that names it, with the dark version counted too. Nothing is changed yet.</li>
+  <li><strong>One page per block,</strong> with the new picture and the block's areas, hidden parts and similarity drawn over it. <strong>Confirm</strong> if the settings still fit, <strong>Edit Settings</strong> to move the areas or change the similarity right there, or <strong>Skip</strong> to leave the block's settings as they are.</li>
+  <li><strong>Summary</strong> of what is about to change. <strong>Accept as New Reference</strong> writes everything, then says, for example, “Updated 3 blocks in 2 tests”.</li>
+</ol>
+<p>The new picture and the changed settings are written together: if one test can't be saved, or a test was edited while the guide was open, nothing is replaced. <strong>Cancel</strong> at any step changes nothing, and <strong>Edit → Undo</strong> after the end puts back the picture and every setting. A skipped block still compares with the new picture, so the summary warns about it. When only one block uses the picture, the guide is a single step: the two pictures and that block's settings.</p>
+<p>The same guide opens when you choose <strong>Replace Image</strong> in the <a href="#areas">reference editor</a> for a picture that other blocks use too; it starts at the list of blocks, since you have just chosen the new picture. If only this block uses the picture, it is replaced at once, and <strong>Edit → Undo</strong> brings the old one back.</p>
+<p>A block that looks for the picture on the screen, such as a <code>click</code> or a <code>drag</code> with an image target, has no areas or similarity: it is listed, and from now on it looks for the new picture. The command line has no command to accept a reference.</p>
 
 <h2 id="meaning">Checks by meaning</h2>
 <p>Comparing pixels is sometimes too strict: a list may hold different messages each day, but you only care that it isn't empty. Then describe the screen in words:</p>

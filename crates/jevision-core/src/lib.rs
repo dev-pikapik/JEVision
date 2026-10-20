@@ -22,6 +22,7 @@ mod model;
 mod package;
 mod package_files;
 mod project;
+mod references;
 mod route;
 mod schedule;
 mod search;
@@ -47,8 +48,9 @@ pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
 pub use env::{
-    AddEnvironmentError, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, EnvironmentValues, Environments,
-    required_env_values, validate_environment_values,
+    AddEnvironmentError, ENVIRONMENT_NAME, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT,
+    EnvironmentValues, Environments, SetValueError, env_reads, required_env_values,
+    validate_environment_values,
 };
 pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
@@ -75,6 +77,7 @@ pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
     PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
 };
+pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_settings};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,

@@ -20,9 +20,16 @@ struct RunsView: View {
               ForEach(runs.active, id: \.run) { status in
                 NavigationLink(value: Route.run(host, project: project, run: status.run)) {
                   Label {
-                    Text(status.test)
+                    VStack(alignment: .leading, spacing: 2) {
+                      Text(status.test)
+                      if status.waiting != nil {
+                        Text("Waiting for the screen")
+                          .font(.subheadline)
+                          .foregroundStyle(.secondary)
+                      }
+                    }
                   } icon: {
-                    Image(systemName: status.state == .paused ? "pause.circle.fill" : "play.circle.fill")
+                    Image(systemName: status.waiting != nil ? "clock.fill" : status.state == .paused ? "pause.circle.fill" : "play.circle.fill")
                       .foregroundStyle(.orange)
                   }
                 }

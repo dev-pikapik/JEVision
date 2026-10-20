@@ -5,11 +5,12 @@
 #
 #   apps/ios/scripts/ui-tour.sh <simulator UDID> <output folder>
 #
-# The simulator is booted if needed and left as it was found: appearance, text size and
-# Face ID enrollment are put back. Its keychain is reset, which forgets any paired Mac.
+# The tour runs on a new simulator of the same model and iOS version as the one named, which is
+# deleted afterwards, so the one named is never changed. A simulator whose Face ID enrollment
+# was turned off once doesn't take it again, and the tour would wait at pairing for good.
 set -euo pipefail
 
-UDID=${1:?usage: ui-tour.sh <simulator UDID> <output folder>}
+MODEL=${1:?usage: ui-tour.sh <simulator UDID> <output folder>}
 OUT=${2:?usage: ui-tour.sh <simulator UDID> <output folder>}
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 WORK=$(mktemp -d)
@@ -17,24 +18,34 @@ mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 export PATH=$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH
 
+# The device type and runtime of the simulator named, on one line.
+read -r TYPE RUNTIME < <(xcrun simctl list devices -j | python3 -c '
+import json, sys
+for runtime, devices in json.load(sys.stdin)["devices"].items():
+    for device in devices:
+        if device["udid"] == sys.argv[1]:
+            print(device["deviceTypeIdentifier"], runtime)
+' "$MODEL")
+[ -n "${RUNTIME:-}" ] || { echo "No simulator $MODEL; xcrun simctl list devices shows them." >&2; exit 1; }
+
+UDID=
 HOST_PID=
 MATCHER_PID=
 FAILED=
-WAS_BOOTED=$(xcrun simctl list devices | grep -q "$UDID) (Booted)" && echo yes || echo no)
 cleanup() {
   [ -n "$MATCHER_PID" ] && kill "$MATCHER_PID" 2>/dev/null || true
   [ -n "$HOST_PID" ] && kill "$HOST_PID" 2>/dev/null || true
-  xcrun simctl ui "$UDID" appearance light >/dev/null 2>&1 || true
-  xcrun simctl ui "$UDID" content_size large >/dev/null 2>&1 || true
-  xcrun simctl spawn "$UDID" notifyutil -s com.apple.BiometricKit.enrollmentChanged 0 >/dev/null 2>&1 || true
-  xcrun simctl spawn "$UDID" notifyutil -p com.apple.BiometricKit.enrollmentChanged >/dev/null 2>&1 || true
-  [ "$WAS_BOOTED" = no ] && xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
+  if [ -n "$UDID" ]; then
+    xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
+    xcrun simctl delete "$UDID" >/dev/null 2>&1 || true
+  fi
   rm -rf "$WORK"
 }
 trap cleanup EXIT
 trap 'exit 1' INT TERM
 
-xcrun simctl boot "$UDID" 2>/dev/null || true
+UDID=$(xcrun simctl create "JEVision Remote tour" "$TYPE" "$RUNTIME")
+xcrun simctl boot "$UDID"
 xcrun simctl bootstatus "$UDID" -b >/dev/null
 xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100
 # Pairing needs Face ID; enroll it and keep confirming every prompt while the tour runs.

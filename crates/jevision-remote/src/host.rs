@@ -118,7 +118,7 @@ struct Shared {
     delegate: Arc<dyn HostDelegate>,
     state: Mutex<State>,
     /// Phones watching a run, by project root and run.
-    watchers: Mutex<HashMap<(String, String), broadcast::Sender<RunEvent>>>,
+    watchers: Mutex<HashMap<(String, String), broadcast::Sender<RunUpdate>>>,
 }
 
 struct State {
@@ -352,15 +352,27 @@ impl Host {
     /// `root` as given to [`Host::set_projects`]. Send [`RunEvent::Finished`] last, once
     /// [`HostDelegate::run_status`] no longer reports the run.
     pub fn publish(&self, project_root: String, run: String, event: RunEvent) {
+        let finished = matches!(event, RunEvent::Finished { .. });
+        self.send_update(project_root, run, RunUpdate::Event { event }, finished);
+    }
+
+    /// Passes the run's new status to the phones watching it, for a change no event tells,
+    /// such as the run waiting for the screen. Phones that don't know the change read it as
+    /// any other status.
+    pub fn publish_status(&self, project_root: String, run: String, status: RunStatus) {
+        let finished = status.state == RunState::Finished;
+        self.send_update(project_root, run, RunUpdate::Status { status }, finished);
+    }
+
+    fn send_update(&self, project_root: String, run: String, update: RunUpdate, finished: bool) {
         let mut watchers = self
             .shared
             .watchers
             .lock()
             .unwrap_or_else(|e| e.into_inner());
         let key = (project_root, run);
-        let finished = matches!(event, RunEvent::Finished { .. });
         if let Some(sender) = watchers.get(&key)
-            && (sender.send(event).is_err() || finished)
+            && (sender.send(update).is_err() || finished)
         {
             watchers.remove(&key);
         }
@@ -859,8 +871,8 @@ impl Shared {
         tokio::pin!(stopped);
         loop {
             let update = tokio::select! {
-                event = events.recv() => match event {
-                    Ok(event) => RunUpdate::Event { event },
+                update = events.recv() => match update {
+                    Ok(update) => update,
                     Err(broadcast::error::RecvError::Lagged(_)) => match self.run_status(project, run).await {
                         Ok(status) => RunUpdate::Status { status },
                         Err(_) => break,

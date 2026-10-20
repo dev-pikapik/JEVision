@@ -116,6 +116,7 @@ impl HostDelegate for Fake {
                 verdict: None,
                 attempt: 1,
                 block: Some("open".into()),
+                waiting: None,
             },
         );
         self.started
@@ -608,6 +609,104 @@ async fn streams_run_events_to_watchers() {
     assert_eq!(*setup.fake.stopped.lock().unwrap(), vec![run]);
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_waiting_for_the_screen_reaches_watchers_as_a_status() {
+    let setup = Setup::new("waiting").await;
+    let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let run = client
+        .run_test("Demo".into(), "smoke.flow.json".into(), None)
+        .await
+        .unwrap();
+    let watch = client.watch("Demo".into(), run.clone()).await.unwrap();
+    let Ok(Some(RunUpdate::Status { mut status })) = watch.next().await else {
+        panic!("the first update is the status");
+    };
+    assert_eq!(status.waiting, None);
+
+    status.waiting = Some(ScreenWait {
+        holder: Some(ScreenHolder {
+            process: "jevision".into(),
+            test: "Sign in".into(),
+            since: 1_800_000_000,
+        }),
+    });
+    setup
+        .host
+        .publish_status(setup.root(), run.clone(), status.clone());
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Status {
+            status: status.clone()
+        }))
+    );
+
+    // The run goes on and ends as before: the watch is still open and still closes at the end.
+    let started = RunEvent::BlockStarted {
+        attempt: 1,
+        seq: 1,
+        test: "smoke.flow.json".into(),
+        block: "open".into(),
+        block_type: "openApp".into(),
+    };
+    setup
+        .host
+        .publish(setup.root(), run.clone(), started.clone());
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Event { event: started }))
+    );
+    let finished = RunEvent::Finished {
+        verdict: Verdict::Passed,
+        flaky: false,
+    };
+    setup.host.publish(setup.root(), run, finished.clone());
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Event { event: finished }))
+    );
+    assert_eq!(watch.next().await, Ok(None));
+}
+
+#[test]
+fn waiting_for_the_screen_and_the_card_fields_are_additions_older_peers_ignore() {
+    let status = |waiting| RunStatus {
+        run: "20261018-130000-live".into(),
+        test: "smoke.flow.json".into(),
+        state: RunState::Running,
+        verdict: None,
+        attempt: 1,
+        block: None,
+        waiting,
+    };
+    // A status of a run that doesn't wait is the one an older Mac sends, and the other way round.
+    let plain = serde_json::to_value(status(None)).unwrap();
+    assert!(plain.get("waiting").is_none());
+    assert_eq!(
+        serde_json::from_value::<RunStatus>(plain).unwrap(),
+        status(None)
+    );
+    let waiting = status(Some(ScreenWait { holder: None }));
+    let json = serde_json::to_value(&waiting).unwrap();
+    assert_eq!(json["waiting"], serde_json::json!({ "holder": null }));
+    assert_eq!(serde_json::from_value::<RunStatus>(json).unwrap(), waiting);
+
+    // A summary from an older Mac has no card fields.
+    let old = serde_json::json!({
+        "name": "Smoke", "description": null, "app": "com.example.App", "start": "open",
+        "width": 1.0, "height": 1.0, "blocks": [], "frames": [], "edges": []
+    });
+    let summary = serde_json::from_value::<TestSummary>(old).unwrap();
+    assert_eq!(
+        (
+            summary.priority,
+            summary.test_type,
+            summary.status,
+            summary.author
+        ),
+        (None, None, None, None)
+    );
+}
+
 #[test]
 fn a_finished_step_carries_the_way_an_if_took() {
     let finished =
@@ -724,6 +823,10 @@ async fn lists_tests_as_a_tree_and_summarizes_one() {
     let email = test.blocks.iter().find(|b| b.id == "email").unwrap();
     assert_eq!(email.title, "demo@example.com");
     assert!(test.blocks.iter().all(|b| b.area.is_some()));
+    assert_eq!(test.priority.as_deref(), Some("critical"));
+    assert_eq!(test.test_type.as_deref(), Some("smoke"));
+    assert_eq!(test.status.as_deref(), Some("ready"));
+    assert_eq!(test.author, None);
     assert!(
         test.edges.iter().any(|e| e.from == "open"
             && e.edge == "next"

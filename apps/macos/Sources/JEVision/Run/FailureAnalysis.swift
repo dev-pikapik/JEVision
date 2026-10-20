@@ -45,6 +45,10 @@ struct FailureAnalysisCard: View {
     .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.separator))
     .quarantineSheet($quarantining)
     .onDisappear { conversation.stop() }
+    // The wizard replaced the reference, or Undo put it back.
+    .onChange(of: project.referenceChanges) {
+      if explanation?.fix == .updateReference { fixed = screenshotIsReference }
+    }
   }
 
   private var offer: some View {
@@ -162,9 +166,16 @@ struct FailureAnalysisCard: View {
   private func canFix(_ explanation: FailureExplanation) -> Bool {
     switch explanation.fix {
     case .runAgain, .addRetries, .quarantine, .addWait: project.hasTest(explanation.test)
-    case .updateReference: RunHistory.failedStep(run.report)?.after != nil
+    case .updateReference: RunHistory.failedStep(run.report).map { $0.after != nil && $0.reference != nil } ?? false
     case .openBlock: RunHistory.failedStep(run.report).map { project.hasTest($0.test) } ?? false
     }
+  }
+
+  private var screenshotIsReference: Bool {
+    guard let failed = RunHistory.failedStep(run.report), let after = failed.after, let reference = failed.reference,
+      let root = project.rootURL, let file = Baseline.file(reference, in: root)
+    else { return false }
+    return Baseline.isReference(run.url.appending(path: after), file)
   }
 
   private func fix(_ explanation: FailureExplanation) {
@@ -172,13 +183,8 @@ struct FailureAnalysisCard: View {
     fixError = nil
     switch explanation.fix {
     case .updateReference:
-      guard let after = failed?.after, let reference = failed?.reference else { return }
-      do {
-        try project.acceptReference(run.url.appending(path: after), as: reference, undoManager: undoManager)
-        done()
-      } catch {
-        fixError = String(localized: "Can’t replace the reference image: \(error.localizedDescription)")
-      }
+      guard let failed else { return }
+      project.startReferenceWizard(step: failed, run: run.url)
     case .addWait:
       guard let block = explanation.block else { return }
       project.showBlock(block, in: explanation.test, from: run.id)
@@ -200,11 +206,6 @@ struct FailureAnalysisCard: View {
     case .openBlock:
       if let failed { openFailedBlock(failed) }
     }
-  }
-
-  private func done() {
-    fixed = true
-    AccessibilityNotification.Announcement(String(localized: "Done. Undo brings it back.")).post()
   }
 }
 

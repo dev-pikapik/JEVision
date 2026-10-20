@@ -102,14 +102,19 @@
 <p>Placeholders work in the text of a <code>type</code> block and in the paths and addresses of files a block opens or reads. See <a href="writing-tests.html#placeholders">Placeholders</a>.</p>
 <p>The editor and <code>jevision validate</code> report a name that no environment has as an error, and a name that only some environments have as a warning, listing the environments that lack it.</p>
 
+<h3 id="environment-name">The name of the environment</h3>
+<p><code>${env.ENVIRONMENT}</code> is always there: the name of the environment the run uses, such as <code>staging</code>, or nothing when no environment is chosen. An environment that defines its own <code>ENVIRONMENT</code> value wins. Use it in the text a block types or, in an <a href="writing-tests.html#if"><code>if</code> block</a>, to take another way in each environment:</p>
+<pre><code>{ "type": "if", "value": { "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }, "then": "careful-path", "else": "normal-path" }</code></pre>
+
 <h2 id="choose">Choosing an environment</h2>
 <ul>
-  <li><strong>In the app:</strong> pick the environment at the foot of the sidebar or in the Run menu. The choice is kept per project on this Mac. The app starts with the file's <code>default</code> until you choose another one.</li>
+  <li><strong>In the app:</strong> pick the environment at the foot of the sidebar, at the top right of a test's canvas or in the Run menu. The choice is kept per project on this Mac. The app starts with the file's <code>default</code> until you choose another one.</li>
+  <li><strong>On the canvas:</strong> the environment at the top right shows the values the test reads. Click it to switch the environment, change a value (it is saved to the environments file at once) and see which secrets are set; secrets show only <em>Set</em> or <em>Not set</em>. Hover a block that reads a value to see what it gets.</li>
   <li><strong>On the command line:</strong> <code>jevision run tests/ --env staging</code>. Without <code>--env</code>, the file's <code>default</code> is used.</li>
   <li><strong>For an AI assistant:</strong> the <code>env</code> argument of <a href="mcp.html#run_test"><code>run_test</code></a>.</li>
   <li><strong>For a schedule:</strong> its <code>environment</code>. See <a href="schedules.html">Schedules</a>.</li>
 </ul>
-<p>Before a run, the app lists the names of values and secrets that are missing, never the values. The report says which environment the run used.</p>
+<p>Before a run, the app lists the names of values and secrets that are missing, never the values. A test's details show the same list as <strong>Missing on This Mac</strong>, with a <strong>Set…</strong> button on each line. The report says which environment the run used.</p>
 
 <h2 id="secrets">Secrets</h2>
 <p>A secret is a value that must never be written in a file: a password, a token, a key. A test refers to it by name, as <code>${secret.NAME}</code>:</p>

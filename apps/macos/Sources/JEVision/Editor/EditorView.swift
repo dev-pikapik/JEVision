@@ -208,6 +208,8 @@ struct EditorView: View {
             Button("Add Frame", systemImage: "rectangle.dashed") { addFrame(at: nil) }
             Button("Describe the Test…", systemImage: "sparkles") { describeTest() }
             Divider()
+            Button("Arrange in Rows", systemImage: "rectangle.grid.3x2") { document.arrangeInRows() }
+              .disabled(flow.blocks.isEmpty)
             Button("Arrange Automatically", systemImage: "rectangle.3.group") { document.arrange() }
               .disabled(flow.canvas.positions.isEmpty)
           } label: {
@@ -359,6 +361,13 @@ struct EditorView: View {
         // A new zoom resizes the canvas after it asked to scroll; scroll again to where it asked.
         if let pendingScroll { scrollPosition.scrollTo(point: pendingScroll) }
         pendingScroll = nil
+      }
+      .overlay(alignment: .topTrailing) {
+        if project.rootURL != nil, let flow = document.flow {
+          EnvironmentStrip(flow: flow)
+            .padding(12)
+            .unmirrored()
+        }
       }
       .overlay {
         if document.layout.blocks.isEmpty {

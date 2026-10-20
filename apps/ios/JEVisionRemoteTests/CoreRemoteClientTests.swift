@@ -55,6 +55,27 @@ struct CoreMappingTests {
     #expect(JEVisionRemote.RunUpdate(attemptEnd) == nil)
   }
 
+  /// A run that waits for the screen and a test's card fields cross from the core as they are;
+  /// a Mac that sends neither leaves them out.
+  @Test func theQueueAndTheCardCrossFromTheCore() {
+    let holder = JEVisionMobile.ScreenHolder(process: "jevision", test: "Sign in", since: 1_800_000_000)
+    let waiting = JEVisionMobile.RunStatus(
+      run: "r", test: "a.flow.json", state: .running, verdict: nil, attempt: 1, block: nil,
+      waiting: JEVisionMobile.ScreenWait(holder: holder))
+    #expect(
+      JEVisionRemote.RunStatus(waiting).waiting
+        == ScreenWait(holder: ScreenHolder(process: "jevision", test: "Sign in", since: Date(timeIntervalSince1970: 1_800_000_000))))
+    let plain = JEVisionMobile.RunStatus(
+      run: "r", test: "a.flow.json", state: .running, verdict: nil, attempt: 1, block: nil, waiting: nil)
+    #expect(JEVisionRemote.RunStatus(plain).waiting == nil)
+
+    let summary = JEVisionMobile.TestSummary(
+      name: "Sign in", description: nil, priority: "high", testType: "regression", status: "draft", author: "Anna",
+      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [])
+    let flow = TestFlow(summary)
+    #expect((flow.priority, flow.testType, flow.status, flow.author) == ("high", "regression", "draft", "Anna"))
+  }
+
   /// A newer Mac may send a verdict or a step status this version doesn't know; the core reads
   /// it as unknown and the screens show it as such instead of failing.
   @Test func unknownResultsFromANewerMacShowAsUnknown() {

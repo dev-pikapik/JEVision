@@ -18,6 +18,9 @@ pub const ENVIRONMENTS_FILE: &str = "jevision.environments.json";
 /// Format of the environments file written by this build.
 pub const ENVIRONMENTS_FORMAT: u32 = 1;
 const MAX_NAME_LEN: usize = 64;
+/// The value every run has: `${env.ENVIRONMENT}` is the name of the environment chosen for it,
+/// empty when none is. An environment that has a value of this name itself keeps it.
+pub const ENVIRONMENT_NAME: &str = "ENVIRONMENT";
 
 /// Values of one environment, by name.
 pub type EnvironmentValues = BTreeMap<String, String>;
@@ -135,19 +138,44 @@ impl Environments {
         name: &str,
         values: EnvironmentValues,
     ) -> Result<(), AddEnvironmentError> {
-        let path = project.join(ENVIRONMENTS_FILE);
-        let current = Self::load(project).map_err(AddEnvironmentError::Unreadable)?;
+        let mut current = Self::load(project).map_err(AddEnvironmentError::Unreadable)?;
         current.check_new(name, values.keys().map(String::as_str))?;
-        let mut file = File {
+        current.all.insert(name.to_owned(), values);
+        current
+            .save(project)
+            .map_err(AddEnvironmentError::Unwritable)
+    }
+
+    /// Sets the value `value_name` of the environment `name` in the environments file of the
+    /// project folder `project`, adding the value when the environment lacks it. The file is
+    /// read again first, so changes made to it meanwhile stay.
+    pub fn set_value(
+        project: &Path,
+        name: &str,
+        value_name: &str,
+        value: &str,
+    ) -> Result<(), SetValueError> {
+        if !is_identifier(value_name) {
+            return Err(SetValueError::InvalidValueName);
+        }
+        let mut current = Self::load(project).map_err(SetValueError::Unreadable)?;
+        current
+            .all
+            .get_mut(name)
+            .ok_or(SetValueError::UnknownEnvironment)?
+            .insert(value_name.to_owned(), value.to_owned());
+        current.save(project).map_err(SetValueError::Unwritable)
+    }
+
+    fn save(self, project: &Path) -> Result<(), String> {
+        let file = File {
             format: ENVIRONMENTS_FORMAT,
-            default: current.default,
-            environments: current.all,
+            default: self.default,
+            environments: self.all,
         };
-        file.environments.insert(name.to_owned(), values);
-        let mut text = serde_json::to_string_pretty(&file)
-            .map_err(|e| AddEnvironmentError::Unwritable(e.to_string()))?;
+        let mut text = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
         text.push('\n');
-        fs::write(path, text).map_err(|e| AddEnvironmentError::Unwritable(e.to_string()))
+        fs::write(project.join(ENVIRONMENTS_FILE), text).map_err(|e| e.to_string())
     }
 }
 
@@ -166,17 +194,50 @@ pub enum AddEnvironmentError {
     Unwritable(String),
 }
 
-/// Names of the environment values the test reads through `${env.NAME}`, sorted, without
-/// repeats.
+/// Why a value of an environment can't be set.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetValueError {
+    /// The project has no environment of that name.
+    UnknownEnvironment,
+    /// A value name that isn't letters, digits and `_`, not starting with a digit.
+    InvalidValueName,
+    /// The environments file is there but can't be read.
+    Unreadable(String),
+    /// The environments file can't be saved.
+    Unwritable(String),
+}
+
+/// Names of the environment values the test reads through `${env.NAME}` and an environment has
+/// to provide, sorted, without repeats. `ENVIRONMENT` is left out: every run has it.
 pub fn required_env_values(flow: &Flow) -> Vec<String> {
-    let names: BTreeSet<&str> = used(flow).into_iter().map(|(_, _, name)| name).collect();
+    let names: BTreeSet<&str> = used(flow)
+        .into_iter()
+        .map(|(_, _, name)| name)
+        .filter(|name| *name != ENVIRONMENT_NAME)
+        .collect();
     names.into_iter().map(str::to_owned).collect()
+}
+
+/// The `${env.NAME}` values each block reads, by block id: names sorted, without repeats,
+/// `ENVIRONMENT` included. Blocks that read none aren't listed.
+pub fn env_reads(flow: &Flow) -> BTreeMap<String, Vec<String>> {
+    let mut reads: BTreeMap<String, BTreeSet<&str>> = BTreeMap::new();
+    for (block, _, name) in used(flow) {
+        reads.entry(block.to_owned()).or_default().insert(name);
+    }
+    reads
+        .into_iter()
+        .map(|(block, names)| (block, names.into_iter().map(str::to_owned).collect()))
+        .collect()
 }
 
 /// Problems with the `${env.NAME}` values a test in the folder `dir` reads: values no
 /// environment of the project has are errors, values some environments lack are warnings.
 pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
-    let used = used(flow);
+    let used: Vec<_> = used(flow)
+        .into_iter()
+        .filter(|(_, _, name)| *name != ENVIRONMENT_NAME)
+        .collect();
     if used.is_empty() {
         return Vec::new();
     }
@@ -306,6 +367,58 @@ mod tests {
             required_env_values(&flow("${env.USER} ${env.HOST} ${secret.PASS}")),
             ["HOST", "USER"]
         );
+    }
+
+    #[test]
+    fn every_run_knows_its_environment_without_a_value_for_it() {
+        let reads = flow("${env.ENVIRONMENT} ${env.HOST}");
+        assert_eq!(required_env_values(&reads), ["HOST"]);
+        let dir = project(Some(r#"{"format":1,"environments":{"dev":{"HOST":"d"}}}"#));
+        assert!(validate_environment_values(&reads, &dir.join("tests/login")).is_empty());
+        let reads_of = env_reads(&reads);
+        assert_eq!(reads_of["a"], ["ENVIRONMENT", "HOST"]);
+        assert_eq!(reads_of["b"], ["HOST"]);
+        assert!(env_reads(&crate::parse(
+            r#"{"format":1,"name":"T","app":"com.example.App","start":"a","blocks":{"a":{"type":"pressKeys","keys":"cmd+s"}}}"#
+        )
+        .unwrap())
+        .is_empty());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_value_is_changed_or_added_in_one_environment() {
+        let dir = project(Some(
+            r#"{"format":1,"default":"dev","environments":{"dev":{"HOST":"d"},"prod":{"HOST":"p"}}}"#,
+        ));
+        Environments::set_value(&dir, "dev", "HOST", "d2.example.com").unwrap();
+        Environments::set_value(&dir, "dev", "USER", "me").unwrap();
+        let envs = Environments::load(&dir).unwrap();
+        assert_eq!(envs.get("dev").unwrap()["HOST"], "d2.example.com");
+        assert_eq!(envs.get("dev").unwrap()["USER"], "me");
+        assert_eq!(envs.get("prod").unwrap()["HOST"], "p");
+        assert_eq!(envs.default.as_deref(), Some("dev"));
+
+        assert_eq!(
+            Environments::set_value(&dir, "nope", "HOST", "x"),
+            Err(SetValueError::UnknownEnvironment)
+        );
+        assert_eq!(
+            Environments::set_value(&dir, "dev", "1X", "x"),
+            Err(SetValueError::InvalidValueName)
+        );
+        let broken = project(Some("{"));
+        assert!(matches!(
+            Environments::set_value(&broken, "dev", "HOST", "x"),
+            Err(SetValueError::Unreadable(_))
+        ));
+        assert_eq!(
+            fs::read_to_string(broken.join(ENVIRONMENTS_FILE)).unwrap(),
+            "{"
+        );
+        for dir in [dir, broken] {
+            fs::remove_dir_all(dir).unwrap();
+        }
     }
 
     #[test]

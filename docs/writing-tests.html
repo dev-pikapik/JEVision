@@ -276,7 +276,7 @@
 { "type": "waitFor", "until": "screenStable", "timeout": "5s", "next": "check" }</code></pre>
 
 <h3 id="check">check: check the screen</h3>
-<p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture.</p>
+<p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
@@ -297,8 +297,9 @@
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
-    <tr><td><code>reference</code></td><td>Yes</td><td>What to look for: a <a href="checks.html#reference">reference</a>.</td></tr>
-    <tr><td><code>then</code></td><td>No</td><td>Id of the block to go to when the screen matches.</td></tr>
+    <tr><td><code>reference</code></td><td>Yes, unless <code>value</code> is given</td><td>What to look for: a <a href="checks.html#reference">reference</a>.</td></tr>
+    <tr><td><code>value</code></td><td>Instead of <code>reference</code></td><td>A condition on a value instead of the screen: <code>{ "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }</code>. <code>of</code> and <code>to</code> may hold <a href="#placeholders">placeholders</a>; <code>is</code> is <code>"equals"</code>, <code>"notEquals"</code>, <code>"contains"</code>, <code>"greaterThan"</code> or <code>"lessThan"</code>, the last two reading both sides as numbers. Each condition, including each <code>elseIf</code>, uses one or the other.</td></tr>
+    <tr><td><code>then</code></td><td>No</td><td>Id of the block to go to when the condition holds.</td></tr>
     <tr><td><code>elseIf</code></td><td>No</td><td>More conditions, checked in order when the screen doesn't match <code>reference</code>: a list of <code>{ "reference": …, "then": "…" }</code>, where <code>then</code> is optional. A condition that repeats an earlier one is reported, because it can never be chosen.</td></tr>
     <tr><td><code>else</code></td><td>No</td><td>Id of the block to go to when no condition matches.</td></tr>
   </tbody>
@@ -311,7 +312,9 @@
   "then": "sign-in",
   "elseIf": [{ "reference": { "image": "refs/update.png" }, "then": "skip-update" }],
   "else": "compose"
-}</code></pre>
+}
+{ "type": "if", "value": { "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }, "then": "careful-path", "else": "compose" }</code></pre>
+<p>A condition on a value doesn't look at the screen, so it never needs a reference picture. Branching on <code>${env.ENVIRONMENT}</code> lets one test take another way in each <a href="environments.html#environment-name">environment</a>.</p>
 
 <h3 id="repeat">repeat: run blocks several times</h3>
 <p>Runs the chain of blocks that starts at <code>body</code> a number of times, then goes to <code>next</code>. The last block of the body leads back to the <code>repeat</code> block.</p>
@@ -439,7 +442,7 @@
 <p>Some fields can hold values that are filled in when the test runs:</p>
 <ul>
   <li><code>${secret.NAME}</code>: a secret, such as a password, from the Keychain or an environment variable. It is never stored in the file. See <a href="environments.html#secrets">Secrets</a>.</li>
-  <li><code>${env.NAME}</code>: a value of the chosen <a href="environments.html">environment</a>, such as a server address.</li>
+  <li><code>${env.NAME}</code>: a value of the chosen <a href="environments.html">environment</a>, such as a server address. <code>${env.ENVIRONMENT}</code> is the name of the environment itself.</li>
   <li><code>${data.COLUMN}</code>: a value from the current row of a <a href="data-driven.html">data table</a>.</li>
 </ul>
 <p>They work in the <code>text</code> of a <code>type</code> block and in the paths and addresses of files a block opens or reads: <code>files</code> of <code>openFile</code>, <code>file</code> of <code>useData</code> and <code>test</code> of <code>runTest</code>. Names start with a letter or <code>_</code> and go on with letters, digits and <code>_</code>. Anything else written as <code>${…}</code> is reported as an error.</p>
@@ -492,6 +495,8 @@
   <li>Run from any block (<kbd>⇧</kbd><kbd>⌘</kbd><kbd>Return</kbd> runs from the selected one), or set breakpoints to pause the run there; <strong>Run Step by Step</strong> (<kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd>) pauses after every block. When a run fails, <strong>Show Failed Block</strong> selects the block it stopped at and shows why.</li>
   <li><kbd>⌘</kbd><kbd>K</kbd> opens the command palette: type a few letters of any command, block or test, then press <kbd>Return</kbd> to run the command, add the block or open the test.</li>
   <li>Move blocks by hand, frame parts of the test in titled sections and add notes. All of this is kept in the test's <code>canvas</code> and never changes how the test runs. Without it, blocks are laid out automatically.</li>
+  <li>A test you record is laid out in <strong>rows</strong>: three blocks in a row from left to right, then the next row below, each row in a light frame. Tests you already have keep the layout they have. <strong>Arrange in Rows</strong> in the toolbar's menu puts the blocks of any test in rows the same way (undo with <kbd>⌘</kbd><kbd>Z</kbd>); <strong>Arrange Automatically</strong> lays them out by the arrows instead. Branches and loops stay readable: a way out that goes elsewhere is routed around the blocks between.</li>
+  <li>The <strong>environment</strong> the test runs in is shown at the top right of the canvas, with the values the test reads from it. Click it to switch the environment, change those values or see which secrets are set. Hover a block that reads a value to see what it gets.</li>
 </ul>
 </main>
 </div>

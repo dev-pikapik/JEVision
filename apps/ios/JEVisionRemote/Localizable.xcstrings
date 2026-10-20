@@ -47,6 +47,16 @@
         }
       }
     },
+    "Acceptance" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приёмочный"
+          }
+        }
+      }
+    },
     "Accessibility" : {
       "localizations" : {
         "ru" : {
@@ -93,6 +103,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блокировка"
+          }
+        }
+      }
+    },
+    "Author" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор"
           }
         }
       }
@@ -233,6 +253,16 @@
         }
       }
     },
+    "Critical" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Критическая"
+          }
+        }
+      }
+    },
     "Declined on the Mac" : {
       "localizations" : {
         "ru" : {
@@ -259,6 +289,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Draft" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Черновик"
           }
         }
       }
@@ -329,6 +369,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Забыть «%@»?"
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Высокая"
           }
         }
       }
@@ -443,12 +493,32 @@
         }
       }
     },
+    "Low" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Низкая"
+          }
+        }
+      }
+    },
     "Macs" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя"
           }
         }
       }
@@ -623,6 +693,16 @@
         }
       }
     },
+    "Outdated" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устарел"
+          }
+        }
+      }
+    },
     "Pair" : {
       "localizations" : {
         "ru" : {
@@ -763,12 +843,32 @@
         }
       }
     },
+    "Priority" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Важность"
+          }
+        }
+      }
+    },
     "Private end to end" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сквозное шифрование"
+          }
+        }
+      }
+    },
+    "Ready" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готов"
           }
         }
       }
@@ -789,6 +889,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переподключиться"
+          }
+        }
+      }
+    },
+    "Regression" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Регрессионный"
           }
         }
       }
@@ -839,6 +949,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "База данных"
+          }
+        }
+      }
+    },
+    "screen.busy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Screen busy: %@, test %@, since %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: %1$@, тест %2$@, с %3$@"
+          }
+        }
+      },
+      "extractionState" : "extracted_with_value"
+    },
+    "screen.busy.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Screen busy: another run is using it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран занят: его использует другой прогон."
+          }
+        }
+      },
+      "extractionState" : "extracted_with_value"
+    },
+    "Smoke" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смоук"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Состояние"
+          }
+        }
+      }
+    },
+    "Type" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тип"
           }
         }
       }
@@ -1561,6 +1735,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждём Mac…"
+          }
+        }
+      }
+    },
+    "Waiting for the screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт экран"
           }
         }
       }

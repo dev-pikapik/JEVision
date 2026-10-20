@@ -75,8 +75,9 @@ phone starts instead of driving anything. Pass that link to the test above.
 
 `apps/ios/scripts/ui-tour.sh <simulator UDID> <folder>` walks the app itself from pairing to a
 report against the stand-in, in English and Russian, light and dark, and the largest text size,
-and saves a screenshot of every screen into the folder. It enrolls Face ID in the Simulator and
-confirms it, and resets the Simulator's keychain.
+and saves a screenshot of every screen into the folder. It runs on a new Simulator of the same
+model and iOS version as the one named, enrolls Face ID there and confirms it, and deletes that
+Simulator afterwards, so the one named stays as it was.
 
 ## Run on an iPhone
 

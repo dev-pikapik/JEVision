@@ -67,6 +67,13 @@ struct TestFlow: Hashable, Sendable {
   /// What each row of the test's data table is called, when the test runs once per row; a run
   /// can be limited to one of them. Empty without such a table.
   var rows: [String] = []
+  /// The card fields as the test file writes them (`critical`, `smoke`, `ready`); `nil` when
+  /// the test has none and from Macs that don't send them. `CardText` names them.
+  var priority: String? = nil
+  var testType: String? = nil
+  var status: String? = nil
+  /// Who wrote the test or looks after it.
+  var author: String? = nil
 
   struct Block: Hashable, Identifiable, Sendable {
     var id: String
@@ -108,6 +115,25 @@ struct RunStatus: Hashable, Sendable {
   var attempt: Int
   /// The block running now.
   var block: String?
+  /// Set while the run waits for its turn at the screen; `nil` otherwise and from Macs that
+  /// don't send it.
+  var waiting: ScreenWait? = nil
+}
+
+/// A run that waits for the Mac's screen because another run has it.
+struct ScreenWait: Hashable, Sendable {
+  /// Who has the screen; `nil` while the lock does not say.
+  var holder: ScreenHolder?
+}
+
+/// The run that has the screen: another JEVision window, the command line or the assistant.
+struct ScreenHolder: Hashable, Sendable {
+  /// The program, such as `JEVision` or `jevision`.
+  var process: String
+  /// Name of the test that runs.
+  var test: String
+  /// When that run took the screen.
+  var since: Date
 }
 
 struct RunSummary: Hashable, Identifiable, Sendable {

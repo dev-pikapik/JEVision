@@ -9,6 +9,8 @@ struct TestDetailsView: View {
   @Environment(\.dismiss) private var dismiss
   let document: FlowDocument
   @State private var settingSecret: SecretName?
+  @State private var settingValue: EnvironmentValueName?
+  @State private var addingEnvironment = false
   /// Bumped after a secret is saved, to read the statuses again.
   @State private var secretsVersion = 0
 
@@ -36,6 +38,7 @@ struct TestDetailsView: View {
           }
           IssueList(issues: issues.filter { $0.param("field") == "app" })
         }
+        missingSection(flow)
         Section {
           CommitField(
             title: "Tags", prompt: Text(verbatim: "smoke, sign-in"), value: flow.tags.joined(separator: ", "),
@@ -130,21 +133,9 @@ struct TestDetailsView: View {
               .foregroundStyle(.secondary)
           }
           ForEach(secrets, id: \.self) { name in
-            let isSet = secretsVersion >= 0 && SecretStore.isSet(name, environment: environment)
-            LabeledContent {
-              HStack {
-                Label {
-                  Text(isSet ? "Set" : "Not set")
-                } icon: {
-                  Image(systemName: isSet ? "checkmark.circle.fill" : "circle.dashed")
-                    .foregroundStyle(isSet ? .green : .secondary)
-                }
-                Button("Set…") { settingSecret = SecretName(id: name) }
-                  .accessibilityLabel(Text("Set \(name)"))
-              }
-            } label: {
-              Text(verbatim: name)
-            }
+            SecretStatusRow(
+              name: name, isSet: secretsVersion >= 0 && SecretStore.isSet(name, environment: environment)
+            ) { settingSecret = SecretName(id: name) }
           }
         } header: {
           if let environment {
@@ -186,6 +177,78 @@ struct TestDetailsView: View {
         SetSecretSheet(name: secret.id, environment: project.environments.current.selected?.name) {
           secretsVersion += 1
         }
+      }
+      .sheet(item: $settingValue) { value in
+        if let environment = project.environments.current.selected?.name {
+          SetEnvironmentValueSheet(name: value.id, environment: environment)
+        }
+      }
+      .sheet(isPresented: $addingEnvironment) { AddEnvironmentSheet(valueNames: requiredEnvValues(flow: flow)) }
+    }
+  }
+
+  /// What a run on this Mac would lack: values of the chosen environment and secrets, each with
+  /// a way to set it. Nothing is shown when the test has all it needs.
+  @ViewBuilder
+  private func missingSection(_ flow: Flow) -> some View {
+    let missing = MissingValues(for: flow, in: project.environments.current) {
+      secretsVersion >= 0 && SecretStore.isSet($0, environment: $1)
+    }
+    if !missing.isEmpty {
+      Section {
+        if let problem = missing.problem {
+          Label {
+            Text(problem)
+          } icon: {
+            Image(systemName: "exclamationmark.octagon.fill").foregroundStyle(.red)
+          }
+          Button("Edit Environments…") { project.environments.edit() }
+        } else if let environment = missing.environment {
+          ForEach(missing.values, id: \.self) { name in
+            LabeledContent {
+              HStack {
+                Text("Not set in \(environment)").foregroundStyle(.secondary)
+                Button("Set…") { settingValue = EnvironmentValueName(id: name) }
+                  .accessibilityLabel(Text("Set \(name)"))
+              }
+            } label: {
+              Label {
+                Text(verbatim: name)
+              } icon: {
+                Image(systemName: "server.rack").foregroundStyle(.orange)
+              }
+            }
+          }
+        } else if !missing.values.isEmpty {
+          ForEach(missing.values, id: \.self) { name in
+            Label {
+              Text(verbatim: name)
+            } icon: {
+              Image(systemName: "server.rack").foregroundStyle(.orange)
+            }
+          }
+          Button("Add Environment…") { addingEnvironment = true }
+        }
+        ForEach(missing.secrets, id: \.self) { name in
+          LabeledContent {
+            HStack {
+              Text("Not set").foregroundStyle(.secondary)
+              Button("Set…") { settingSecret = SecretName(id: name) }
+                .accessibilityLabel(Text("Set \(name)"))
+            }
+          } label: {
+            Label {
+              Text(verbatim: name)
+            } icon: {
+              Image(systemName: "key.fill").foregroundStyle(.orange)
+            }
+          }
+        }
+      } header: {
+        Text("Missing on This Mac")
+      } footer: {
+        Text("A run would stop at these. Values go to the environments file; secrets stay in the Keychain on this Mac.")
+          .foregroundStyle(.secondary)
       }
     }
   }

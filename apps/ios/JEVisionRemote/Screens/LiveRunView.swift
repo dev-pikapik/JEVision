@@ -49,6 +49,9 @@ struct LiveRunView: View {
       Text(stopError?.message ?? "")
     }
     .task(id: attempt) { await follow() }
+    .onChange(of: progress.waiting) { _, waiting in
+      if let waiting { AccessibilityNotification.Announcement(RunText.screenBusy(waiting.holder)).post() }
+    }
     .sensoryFeedback(trigger: progress.verdict) { _, verdict in
       switch verdict {
       case .passed: .success
@@ -86,6 +89,8 @@ struct LiveRunView: View {
       VerdictStyle(verdict, flaky: progress.flaky).image
     } else if progress.state == .paused {
       Image(systemName: "pause.circle.fill").foregroundStyle(.orange)
+    } else if progress.waiting != nil {
+      Image(systemName: "clock.fill").foregroundStyle(.orange).accessibilityHidden(true)
     } else {
       ProgressView()
     }
@@ -95,6 +100,7 @@ struct LiveRunView: View {
     if let lost { return lost.title }
     if let verdict = progress.verdict, progress.isFinished { return VerdictStyle(verdict, flaky: progress.flaky).title }
     if progress.state == .paused { return String(localized: "Paused on the Mac") }
+    if progress.waiting != nil { return String(localized: "Waiting for the screen") }
     if progress.attempt > 1 { return String(localized: "Running, try \(progress.attempt)") }
     return String(localized: "Running on \(host.name)")
   }
@@ -109,6 +115,7 @@ struct LiveRunView: View {
       }
       return nil
     }
+    if let waiting = progress.waiting, progress.state != .paused { return RunText.screenBusy(waiting.holder) }
     if let current = progress.current, let block = flow?.blocks.first(where: { $0.id == current }) {
       return block.title.isEmpty ? BlockInfo.title(block.kind) : "\(BlockInfo.title(block.kind)): \(block.title)"
     }
