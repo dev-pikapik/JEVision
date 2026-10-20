@@ -82,6 +82,36 @@
           }
         }
       }
+    },
+    "dependencies": {
+      "description": "Other block packages the steps run, as ../ID.jevblock/flow.json; each must be installed beside this one.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The id of the package that is needed.",
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$"
+          },
+          "version": {
+            "description": "The versions that work, * for any when left out: 1.2.0 or =1.2.0 for exactly that one, ^1.2.0 for 1.2.0 up to 2.0.0 (up to 0.3.0 for ^0.2.0), ~1.2.0 for 1.2.x, 1.x and 1.2.x, or comparisons with >=, >, <, <= joined by spaces or commas, like >=1.2.0 <2.0.0.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "source": {
+            "description": "An https address to install the package from when it is missing.",
+            "type": "string",
+            "maxLength": 500,
+            "pattern": "^https://"
+          }
+        }
+      }
     }
   },
   "$defs": {

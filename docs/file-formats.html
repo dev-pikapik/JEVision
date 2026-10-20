@@ -87,7 +87,7 @@
     <tr><td><code>*.flow.json</code></td><td>One test each</td><td>Yes</td></tr>
     <tr><td><code>blocks/*.block.json</code></td><td>Your own <a href="custom-blocks.html">custom blocks</a>: steps that tests run as one</td><td>Yes</td></tr>
     <tr><td><code>blocks/*.jevblock/</code></td><td>Blocks installed from other people: <code>block.json</code>, <code>flow.json</code> and pictures</td><td>Yes</td></tr>
-    <tr><td><code>jevision.blocks.json</code></td><td>Where the installed blocks came from</td><td>Yes</td></tr>
+    <tr><td><code>jevision.blocks.json</code></td><td>Where the installed blocks came from, and their versions</td><td>Yes</td></tr>
     <tr><td>Images, such as <code>refs/inbox.png</code></td><td>Reference images and the pictures of click targets</td><td>Yes</td></tr>
     <tr><td><code>*.csv</code></td><td>Tables for <a href="data-driven.html">data-driven tests</a></td><td>Yes</td></tr>
     <tr><td><code>jevision.environments.json</code></td><td><a href="environments.html">Environments</a></td><td>Yes</td></tr>
@@ -160,7 +160,7 @@
 <p>A <a href="custom-blocks.html">custom block</a> is a test that other tests run with a <a href="writing-tests.html#runTest"><code>runTest</code></a> block, which may give it values in <code>inputs</code>. There are two kinds of files:</p>
 <ul>
   <li><code>blocks/<var>Name</var>.block.json</code>, a block you made. It is a test file in every way (see <a href="#test">Test files</a>) that reads its values as <code>${input.NAME}</code>, and isn't run on its own.</li>
-  <li><code>blocks/<var>id</var>.jevblock/</code>, a package from someone else: a folder with <code>block.json</code> (who made it, its version and its inputs), <code>flow.json</code> (the steps, a test file) and the pictures the steps use.</li>
+  <li><code>blocks/<var>id</var>.jevblock/</code>, a package from someone else: a folder with <code>block.json</code> (who made it, its version, its inputs and the packages it needs), <code>flow.json</code> (the steps, a test file) and the pictures the steps use.</li>
 </ul>
 <pre><code>{
   "format": 1,
@@ -169,9 +169,22 @@
   "version": "1.2.0",
   "author": "Acme QA",
   "license": "MIT",
-  "inputs": [ { "name": "email" }, { "name": "password" } ]
+  "inputs": [ { "name": "email" }, { "name": "password" } ],
+  "dependencies": [ { "id": "com.acme.open-app", "version": "^1.0.0", "source": "https://github.com/acme/open-app" } ]
 }</code></pre>
-<p><code>jevision.blocks.json</code>, in the project folder, keeps the address each package was installed from: <code>{ "sources": { "com.acme.sign-in": "https://github.com/acme/sign-in-block" } }</code>. Packages installed from a file have no entry.</p>
+<p><code>dependencies</code> lists the other packages the steps run, up to 50. Each entry has an <code>id</code>; a <code>version</code>, the range of versions that work, such as <code>^1.0.0</code>, <code>~1.2.0</code>, <code>1.x</code> or <code>&gt;=1.2.0 &lt;2.0.0</code>, and <code>*</code> (any version) when left out; and a <code>source</code>, an <code>https</code> address to install the package from when it is missing. Every range is explained in <a href="custom-blocks.html#ranges">Version ranges</a>.</p>
+<p>Paths in a package are relative to its <code>flow.json</code> and stay in its folder. The one exception is a <code>runTest</code> step that runs a listed package: installed packages sit side by side, so its <code>test</code> is <code>../<var>id</var>.jevblock/flow.json</code>. A step that runs a package that isn't listed is an error, and so is any other path with <code>..</code>.</p>
+<p><code>jevision.blocks.json</code>, in the project folder, keeps the address each package was installed from in <code>sources</code>, and the version installed from it in <code>versions</code>, so that <a href="custom-blocks.html#restore"><code>jevision blocks restore</code></a> can install the same ones again:</p>
+<pre><code>{
+  "format": 1,
+  "sources": {
+    "com.acme.sign-in": "https://github.com/acme/sign-in-block"
+  },
+  "versions": {
+    "com.acme.sign-in": "1.2.0"
+  }
+}</code></pre>
+<p>Ids are in alphabetical order, so git shows clean differences. Packages installed from a file have no entry. A file without <code>versions</code>, from an older JEVision, still reads; its packages count as installed in any version.</p>
 <p>A <code>runTest</code> block that runs a package keeps <code>"package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in-block" }</code>, the version the test was made with and, when there is one, the address to install it from. Both are optional, and a test without <code>package</code> reads as before. When the package isn't installed, validation and runs name it with that version and say how to install it.</p>
 <p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="schemas/block.schema.json">JSON Schema</a> is part of this documentation.</p>
 
