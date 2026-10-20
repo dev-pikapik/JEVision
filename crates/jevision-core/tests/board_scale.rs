@@ -1,8 +1,11 @@
 //! A board of tens of thousands of nodes must still open, lay out, fill in and answer "what is in
 //! view" fast enough to scroll: the time is compared with a smaller board on the same machine and
-//! build, never with a fixed budget.
+//! build, never with a fixed budget, and it is CPU time, so other programs taking the cores do not
+//! count.
 
-use std::time::{Duration, Instant};
+mod common;
+
+use std::time::Duration;
 
 use jevision_core::{Board, BoardIndex, BoardLayout, Rect};
 
@@ -48,14 +51,10 @@ fn big_board(n: usize) -> String {
     )
 }
 
-/// The fastest of a few runs of `work`, so a busy machine skews the time as little as possible.
+/// The least CPU time of a few runs of `work`.
 fn fastest<T>(mut work: impl FnMut() -> T) -> Duration {
     (0..3)
-        .map(|_| {
-            let clock = Instant::now();
-            std::hint::black_box(work());
-            clock.elapsed()
-        })
+        .map(|_| common::cpu_time(|| std::hint::black_box(work())).1)
         .min()
         .unwrap()
 }
