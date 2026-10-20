@@ -125,6 +125,7 @@ pub fn test_keywords(flow: &Flow) -> String {
                 ClipboardAction::Put { text } | ClipboardAction::Check { to: text, .. } => {
                     words.push(text)
                 }
+                ClipboardAction::PutImage { image } => words.push(image),
                 ClipboardAction::Read { .. } => {}
             },
             BlockKind::DateTime { .. } => {}

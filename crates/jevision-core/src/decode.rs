@@ -10,11 +10,12 @@ use serde_json::{Map, Value};
 use crate::issue::{Issue, ParseError};
 use crate::model::{
     Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction,
-    Compare, Condition, DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow,
-    HttpMethod, Modifiers, MouseButton, NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority,
-    Rect, Reference, Reply, Resolved, SavedValue, ScriptInput, ScriptLanguage, ScriptOutput,
-    ScrollDirection, ScrollUnit, Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck,
-    ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize, parse_duration,
+    ClipboardContent, Compare, Condition, DATE_LANGUAGES, DEFAULT_DATE_FORMAT, DatabaseExpect,
+    ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NamedValue, Note,
+    NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue,
+    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
+    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition,
+    WindowSize, parse_duration, time_zone_known,
 };
 
 /// Oldest file format this build can read.
@@ -367,8 +368,11 @@ pub(crate) const STATUSES: &[(&str, TestStatus)] = &[
     ("ready", TestStatus::Ready),
     ("outdated", TestStatus::Outdated),
 ];
-const BUTTONS: &[(&str, MouseButton)] =
-    &[("left", MouseButton::Left), ("right", MouseButton::Right)];
+const BUTTONS: &[(&str, MouseButton)] = &[
+    ("left", MouseButton::Left),
+    ("right", MouseButton::Right),
+    ("middle", MouseButton::Middle),
+];
 const SCROLL_DIRECTIONS: &[(&str, ScrollDirection)] = &[
     ("up", ScrollDirection::Up),
     ("down", ScrollDirection::Down),
@@ -411,6 +415,11 @@ enum ClipboardMode {
     Read,
     Check,
 }
+const CLIPBOARD_CONTENTS: &[(&str, ClipboardContent)] = &[
+    ("text", ClipboardContent::Text),
+    ("image", ClipboardContent::Image),
+    ("files", ClipboardContent::Files),
+];
 const CLIPBOARD_MODES: &[(&str, ClipboardMode)] = &[
     ("put", ClipboardMode::Put),
     ("read", ClipboardMode::Read),
@@ -707,11 +716,13 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         }
         "hover" => {
             let target = o.object("target", out).and_then(|t| target(t, out));
+            let modifiers = modifiers(&mut o, out);
             let wait_for_change = o.flag("waitForChange", out);
             let next = next(&mut o, out);
             all_present(|| {
                 Some(BlockKind::Hover {
                     target: target?,
+                    modifiers,
                     wait_for_change,
                     next,
                 })
@@ -742,6 +753,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let amount = o.require("amount", amount, out);
             let unit = o.opt_choice("unit", SCROLL_UNITS, out);
             let at = o.opt_object("at", out).and_then(|t| target(t, out));
+            let modifiers = modifiers(&mut o, out);
             let wait_for_change = o.flag("waitForChange", out);
             let next = next(&mut o, out);
             all_present(|| {
@@ -750,6 +762,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     amount: amount?,
                     unit: unit.unwrap_or(ScrollUnit::Lines),
                     at,
+                    modifiers,
                     wait_for_change,
                     next,
                 })
@@ -1003,12 +1016,33 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "clipboard" => {
             let mode = o.opt_choice("action", CLIPBOARD_MODES, out);
             let action = match o.require("action", mode, out) {
-                Some(ClipboardMode::Put) => o
-                    .string("text", out)
-                    .map(|text| ClipboardAction::Put { text }),
-                Some(ClipboardMode::Read) => o
-                    .string("saveAs", out)
-                    .map(|save_as| ClipboardAction::Read { save_as }),
+                Some(ClipboardMode::Put) => match o.one_of(&["text", "image"], out) {
+                    Some("image") => o
+                        .string("image", out)
+                        .map(|image| ClipboardAction::PutImage { image }),
+                    Some(_) => o
+                        .string("text", out)
+                        .map(|text| ClipboardAction::Put { text }),
+                    None => {
+                        o.known.extend(["text", "image"]);
+                        None
+                    }
+                },
+                Some(ClipboardMode::Read) => {
+                    let save_as = o.string("saveAs", out);
+                    let content = o.opt_choice("content", CLIPBOARD_CONTENTS, out);
+                    let content = if o.map.contains_key("content") {
+                        content
+                    } else {
+                        Some(ClipboardContent::Text)
+                    };
+                    all_present(|| {
+                        Some(ClipboardAction::Read {
+                            save_as: save_as?,
+                            content: content?,
+                        })
+                    })
+                }
                 Some(ClipboardMode::Check) => {
                     let is = o.opt_choice("is", VALUE_TESTS, out);
                     let is = o.require("is", is, out);
@@ -1023,7 +1057,8 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     })
                 }
                 None => {
-                    o.known.extend(["text", "saveAs", "is", "to", "timeout"]);
+                    o.known
+                        .extend(["text", "image", "saveAs", "content", "is", "to", "timeout"]);
                     None
                 }
             };
@@ -1038,6 +1073,21 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "dateTime" => {
             let save_as = o.string("saveAs", out);
             let format = o.opt_string("format", out);
+            let languages: Vec<(&str, &str)> = DATE_LANGUAGES.iter().map(|l| (*l, *l)).collect();
+            let language = o.opt_choice("language", &languages, out);
+            let language = if o.map.contains_key("language") {
+                language.map(|l| Some(l.to_owned()))
+            } else {
+                Some(None)
+            };
+            let time_zone = o.opt_string("timeZone", out);
+            if let Some(zone) = time_zone.as_deref().filter(|z| !time_zone_known(z)) {
+                out.push(
+                    o.issue("flow.field.value", &o.path_of("timeZone"))
+                        .with("value", zone)
+                        .with("allowed", "UTC, Europe/Berlin, America/New_York …"),
+                );
+            }
             let shift = match o.opt_object("shift", out) {
                 None => Some(None),
                 Some(s) => time_shift(s, out).map(Some),
@@ -1047,6 +1097,8 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 Some(BlockKind::DateTime {
                     save_as: save_as?,
                     format: format.unwrap_or_else(|| DEFAULT_DATE_FORMAT.to_owned()),
+                    language: language?,
+                    time_zone: time_zone.filter(|z| time_zone_known(z)),
                     shift: shift?,
                     next,
                 })
@@ -1071,16 +1123,17 @@ fn all_present<T>(build: impl FnOnce() -> Option<T>) -> Option<T> {
 }
 
 fn target(mut o: Obj<'_>, out: &mut Out) -> Option<Target> {
-    let which = o.one_of(&["image", "point", "description"], out);
+    let which = o.one_of(&["image", "point", "description", "area"], out);
     let t = match which {
         Some("image") => o.string("image", out).map(Target::Image),
+        Some("area") => o.string("area", out).map(Target::Area),
         Some("description") => o.string("description", out).map(Target::Description),
         Some(_) => o
             .object("point", out)
             .and_then(|p| point(p, out))
             .map(Target::Point),
         None => {
-            o.known.extend(["image", "point", "description"]);
+            o.known.extend(["image", "point", "description", "area"]);
             None
         }
     };

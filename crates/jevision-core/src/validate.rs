@@ -48,7 +48,7 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
     }
     graph(flow, &blocks, &mut out);
     unknown_variables(flow, &blocks, &mut out);
-    script_input_kinds(flow, &blocks, &mut out);
+    variable_kinds(flow, &blocks, &mut out);
     notes(flow, &seen, &mut out);
     // A test that runs another one may check the screen there.
     if !flow
@@ -125,10 +125,39 @@ fn unknown_variables(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
     }
 }
 
-/// Fails a script input that gets `${var.NAME}` when every block that saves NAME saves it as a
-/// kind of value the input can't take. A value saved as text may be anything once a run is on,
-/// so only a run finds out whether it fits.
-fn script_input_kinds(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
+/// `format` without the specifiers for the names of months and days, with or without the `^`
+/// and `O` flags: the runner writes those itself, in the language of the date, so the date
+/// formatter never sees them.
+fn without_name_specifiers(format: &str) -> String {
+    let mut out = String::with_capacity(format.len());
+    let mut chars = format.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '%' {
+            out.push(c);
+            continue;
+        }
+        let mut spec = String::from('%');
+        while let Some(&f) = chars.peek() {
+            if !"-_0^#O".contains(f) {
+                break;
+            }
+            spec.push(f);
+            chars.next();
+        }
+        match chars.next() {
+            Some('B' | 'b' | 'h' | 'A' | 'a') => {}
+            Some(letter) => {
+                spec.push(letter);
+                out.push_str(&spec);
+            }
+            None => out.push_str(&spec),
+        }
+    }
+    out
+}
+
+/// The kinds of value each run variable is saved as, by every block that saves it.
+fn saved_kinds(flow: &Flow) -> HashMap<&str, Vec<ValueKind>> {
     let mut made: HashMap<&str, Vec<ValueKind>> = HashMap::new();
     for b in &flow.blocks {
         match &b.kind {
@@ -137,6 +166,13 @@ fn script_input_kinds(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
                     made.entry(o.name.as_str()).or_default().push(o.kind);
                 }
             }
+            BlockKind::Clipboard {
+                action: ClipboardAction::Read { save_as, content },
+                ..
+            } => made
+                .entry(save_as.as_str())
+                .or_default()
+                .push(content.kind()),
             kind => {
                 for (_, name) in saved_names(kind) {
                     made.entry(name).or_default().push(ValueKind::Text);
@@ -144,33 +180,126 @@ fn script_input_kinds(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
             }
         }
     }
+    made
+}
+
+/// Fails a field that gets `${var.NAME}` as a whole when every block that saves NAME saves it
+/// as a kind of value the field can't take: a script input of a kind, the image or the area a
+/// target looks for, the image a check compares with, the picture a clipboard block puts. A
+/// value saved as text may be anything once a run is on, so only a run finds out whether it
+/// fits.
+fn variable_kinds(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
+    let made = saved_kinds(flow);
     for b in blocks {
-        let BlockKind::Script { inputs, .. } = &b.kind else {
-            continue;
-        };
-        for (i, input) in inputs.iter().enumerate() {
-            let Some(name) = whole_variable(&input.value) else {
+        for (field, kind, text, input) in kind_fields(&b.kind) {
+            let Some(name) = whole_variable(text) else {
                 continue;
             };
             let Some(kinds) = made.get(name) else {
                 continue;
             };
-            let fits = |k: &ValueKind| {
-                [ValueKind::Text, input.kind].contains(k) || input.kind == ValueKind::Text
-            };
+            let fits =
+                |k: &ValueKind| [ValueKind::Text, kind].contains(k) || kind == ValueKind::Text;
             if !kinds.iter().any(fits) {
                 let from: BTreeSet<&str> = kinds.iter().map(|k| k.name()).collect();
-                out.push(
-                    Issue::error("flow.script.inputKind")
+                let mut issue = match input {
+                    Some(input) => Issue::error("flow.script.inputKind")
                         .with("block", &b.id)
-                        .with("field", format!("inputs.{i}.value"))
-                        .with("name", &input.name)
-                        .with("type", input.kind.name())
-                        .with("variable", name)
-                        .with("from", from.into_iter().collect::<Vec<_>>().join(", ")),
-                );
+                        .with("field", &field)
+                        .with("name", input),
+                    None => Issue::error("flow.var.kind")
+                        .with("block", &b.id)
+                        .with("field", &field),
+                };
+                issue = issue
+                    .with("type", kind.name())
+                    .with("variable", name)
+                    .with("from", from.into_iter().collect::<Vec<_>>().join(", "));
+                out.push(issue);
             }
         }
+    }
+}
+
+type KindField<'a> = (String, ValueKind, &'a str, Option<&'a str>);
+
+/// `(field, kind, text, script input name)` of every field of a block that takes a value of a
+/// kind other than text, written in full or as `${var.NAME}`.
+fn kind_fields(kind: &BlockKind) -> Vec<KindField<'_>> {
+    use crate::model::WaitUntil::*;
+    fn target<'a>(field: &str, t: Option<&'a Target>) -> Vec<KindField<'a>> {
+        match t {
+            Some(Target::Image(text)) => {
+                vec![(
+                    format!("{field}.image"),
+                    ValueKind::Image,
+                    text.as_str(),
+                    None,
+                )]
+            }
+            Some(Target::Area(text)) => {
+                vec![(
+                    format!("{field}.area"),
+                    ValueKind::Area,
+                    text.as_str(),
+                    None,
+                )]
+            }
+            _ => Vec::new(),
+        }
+    }
+    fn image<'a>(field: &str, text: &'a str) -> Vec<KindField<'a>> {
+        vec![(field.to_owned(), ValueKind::Image, text, None)]
+    }
+    match kind {
+        BlockKind::Click { target: t, .. } | BlockKind::Hover { target: t, .. } => {
+            target("target", Some(t))
+        }
+        BlockKind::Drag { from, to, .. } => {
+            let mut both = target("from", Some(from));
+            both.extend(target("to", Some(to)));
+            both
+        }
+        BlockKind::Scroll { at, .. } => target("at", at.as_ref()),
+        BlockKind::Type { into, .. } => target("into", into.as_ref()),
+        BlockKind::Script { inputs, .. } => inputs
+            .iter()
+            .enumerate()
+            .map(|(i, input)| {
+                (
+                    format!("inputs.{i}.value"),
+                    input.kind,
+                    input.value.as_str(),
+                    Some(input.name.as_str()),
+                )
+            })
+            .collect(),
+        BlockKind::Check { reference, .. } => image("reference.image", &reference.image),
+        BlockKind::WaitFor {
+            until: Appears(r), ..
+        } => image("until.appears.image", &r.image),
+        BlockKind::WaitFor {
+            until: Disappears(r),
+            ..
+        } => image("until.disappears.image", &r.image),
+        BlockKind::If {
+            condition, else_if, ..
+        } => std::iter::once(("reference.image".to_owned(), condition))
+            .chain(
+                else_if
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| (format!("elseIf.{i}.reference.image"), &c.condition)),
+            )
+            .filter_map(|(field, c)| {
+                Some((field, ValueKind::Image, c.reference()?.image.as_str(), None))
+            })
+            .collect(),
+        BlockKind::Clipboard {
+            action: ClipboardAction::PutImage { image: text },
+            ..
+        } => image("image", text),
+        _ => Vec::new(),
     }
 }
 
@@ -193,7 +322,10 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     let mut read = Vec::new();
     for &b in &blocks {
         if let BlockKind::Check { reference: r, .. } = &b.kind {
-            if is_relative_path(&r.image) && !dir.join(&r.image).exists() {
+            if is_relative_path(&r.image)
+                && placeholders(&r.image).is_empty()
+                && !dir.join(&r.image).exists()
+            {
                 saved_by_check.insert(r.image.as_str());
                 out.push(
                     Issue::warning("flow.reference.notSaved")
@@ -329,6 +461,10 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
             )
             .filter_map(|(field, c)| Some((field, &c.reference()?.image)))
             .collect(),
+        BlockKind::Clipboard {
+            action: ClipboardAction::PutImage { image },
+            ..
+        } => vec![("image".to_owned(), image)],
         BlockKind::UseData { file, .. } => vec![("file".to_owned(), file)],
         BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test)],
         _ => Vec::new(),
@@ -368,6 +504,18 @@ fn placeholder_names(flow: &Flow, namespace: &str) -> Vec<String> {
 /// `${var.NAME}` placeholders: text to type, the paths and addresses of files the block reads,
 /// and what the blocks that work without the screen send and compare.
 pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
+    let mut fields = text_fields(kind);
+    // The pictures and areas a block looks for or compares with may be run variables too.
+    fields.extend(
+        kind_fields(kind)
+            .into_iter()
+            .filter(|(.., input)| input.is_none())
+            .map(|(field, _, text, _)| (field, text)),
+    );
+    fields
+}
+
+fn text_fields(kind: &BlockKind) -> Vec<(String, &str)> {
     match kind {
         BlockKind::Type { text, .. } => vec![("text".to_owned(), text.as_str())],
         BlockKind::OpenFile { files, .. } => files
@@ -413,6 +561,7 @@ pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
             .collect(),
         BlockKind::Clipboard { action, .. } => match action {
             ClipboardAction::Put { text } => vec![("text".to_owned(), text.as_str())],
+            ClipboardAction::PutImage { image } => vec![("image".to_owned(), image.as_str())],
             ClipboardAction::Check { to, .. } => vec![("to".to_owned(), to.as_str())],
             ClipboardAction::Read { .. } => Vec::new(),
         },
@@ -493,7 +642,7 @@ fn saved_names(kind: &BlockKind) -> Vec<(String, &str)> {
             .map(|n| ("saveAs".to_owned(), n.as_str()))
             .collect(),
         BlockKind::Clipboard {
-            action: ClipboardAction::Read { save_as },
+            action: ClipboardAction::Read { save_as, .. },
             ..
         }
         | BlockKind::DateTime { save_as, .. } => vec![("saveAs".to_owned(), save_as.as_str())],
@@ -865,7 +1014,7 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
         BlockKind::DateTime { format, shift, .. } => {
             if format.is_empty() {
                 out.push(err("flow.field.empty", "format"));
-            } else if chrono::format::StrftimeItems::new(format)
+            } else if chrono::format::StrftimeItems::new(&without_name_specifiers(format))
                 .any(|item| item == chrono::format::Item::Error)
             {
                 out.push(err("flow.dateTime.format", "format").with("value", format));
@@ -1065,6 +1214,23 @@ fn target(block: &str, field: &str, t: &Target, out: &mut Vec<Issue>) {
             relative_path(block, &format!("{field}.image"), path, out);
         }
         Target::Point(p) => point(block, &format!("{field}.point"), p, out),
+        Target::Area(text) => {
+            let field = format!("{field}.area");
+            if text.trim().is_empty() {
+                out.push(
+                    Issue::error("flow.field.empty")
+                        .with("block", block)
+                        .with("field", &field),
+                );
+            } else if placeholders(text).is_empty() && ValueKind::Area.parse(text).is_none() {
+                out.push(
+                    Issue::error("flow.target.area")
+                        .with("block", block)
+                        .with("field", &field)
+                        .with("value", text),
+                );
+            }
+        }
         Target::Description(text) => {
             if text.trim().is_empty() {
                 out.push(

@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use jevision_core::{
-    BlockKind, ClipboardAction, Compare, Condition, FileState, Flow, Modifiers, Reference,
-    ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration, is_block_path,
+    BlockKind, ClipboardAction, ClipboardContent, Compare, Condition, FileState, Flow, Modifiers,
+    Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
+    is_block_path,
 };
 use sha2::{Digest, Sha256};
 
@@ -290,6 +291,7 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             percent(p.y)
         ),
         Target::Description(what) => format!("{} (found by description)", what.trim()),
+        Target::Area(area) => format!("the middle of the area {area}"),
     };
     match kind {
         BlockKind::OpenApp { app: other, .. } => {
@@ -305,12 +307,17 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
         } => {
             let verb = match (button, double) {
                 (jevision_core::MouseButton::Right, _) => "Right-click",
+                (jevision_core::MouseButton::Middle, _) => "Middle-click",
                 (_, true) => "Double-click",
                 _ => "Click",
             };
             format!("{verb} {}{}", target(t), holding(modifiers))
         }
-        BlockKind::Hover { target: t, .. } => format!("Hover over {}", target(t)),
+        BlockKind::Hover {
+            target: t,
+            modifiers,
+            ..
+        } => format!("Hover over {}{}", target(t), holding(modifiers)),
         BlockKind::Drag {
             from,
             to,
@@ -318,10 +325,10 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             modifiers,
             ..
         } => {
-            let with = if button.is_left() {
-                ""
-            } else {
-                " with the right button"
+            let with = match button {
+                jevision_core::MouseButton::Left => "",
+                jevision_core::MouseButton::Right => " with the right button",
+                jevision_core::MouseButton::Middle => " with the middle button",
             };
             format!(
                 "Drag from {} to {}{with}{}",
@@ -335,6 +342,7 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
             amount,
             unit,
             at,
+            modifiers,
             ..
         } => {
             let direction = match direction {
@@ -350,7 +358,10 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
                 (jevision_core::ScrollUnit::Pixels, _) => "points",
             };
             let place = at.as_ref().map_or_else(|| "the window".to_owned(), target);
-            format!("Scroll {direction} {amount} {unit} over {place}")
+            format!(
+                "Scroll {direction} {amount} {unit} over {place}{}",
+                holding(modifiers)
+            )
         }
         BlockKind::Type { text, into, .. } => match into {
             Some(t) => format!("Type “{text}” into {}", target(t)),
@@ -407,8 +418,16 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
         BlockKind::Database { file, query, .. } => format!("Query `{file}`: `{query}`"),
         BlockKind::Clipboard { action, .. } => match action {
             ClipboardAction::Put { text } => format!("Put “{text}” on the clipboard"),
-            ClipboardAction::Read { save_as } => {
-                format!("Read the clipboard into `{save_as}`")
+            ClipboardAction::PutImage { image } => {
+                format!("Put the picture “{image}” on the clipboard")
+            }
+            ClipboardAction::Read { save_as, content } => {
+                let what = match content {
+                    ClipboardContent::Text => "the clipboard",
+                    ClipboardContent::Image => "the picture on the clipboard",
+                    ClipboardContent::Files => "the files on the clipboard",
+                };
+                format!("Read {what} into `{save_as}`")
             }
             ClipboardAction::Check { is, to, .. } => {
                 format!("Check that the clipboard {} `{to}`", test_words(*is))
@@ -417,6 +436,8 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
         BlockKind::DateTime {
             save_as,
             format,
+            language,
+            time_zone,
             shift,
             ..
         } => {
@@ -433,7 +454,15 @@ pub fn describe_block(kind: &BlockKind, app: &str) -> String {
                 let plural = if s.amount.abs() == 1 { "" } else { "s" };
                 format!(", moved by {} {unit}{plural}", s.amount)
             });
-            format!("Save the date and time as `{save_as}` in the form `{format}`{moved}")
+            let language = language
+                .as_ref()
+                .map_or_else(String::new, |l| format!(", month and day names in `{l}`"));
+            let zone = time_zone
+                .as_ref()
+                .map_or_else(String::new, |z| format!(", time zone `{z}`"));
+            format!(
+                "Save the date and time as `{save_as}` in the form `{format}`{language}{zone}{moved}"
+            )
         }
     }
 }
@@ -449,7 +478,7 @@ fn test_words(test: ValueTest) -> &'static str {
     }
 }
 
-/// The keys held down during a click or a drag, as a phrase that ends a sentence, or nothing.
+/// The keys held down during a click, drag, hover or scroll, as a phrase that ends a sentence, or nothing.
 fn holding(modifiers: &Modifiers) -> String {
     if modifiers.is_empty() {
         String::new()

@@ -284,7 +284,8 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::Database { file, .. } => file.clone(),
         BlockKind::Clipboard { action, .. } => match action {
             ClipboardAction::Put { text } => text.clone(),
-            ClipboardAction::Read { save_as } => save_as.clone(),
+            ClipboardAction::PutImage { image } => image.clone(),
+            ClipboardAction::Read { save_as, .. } => save_as.clone(),
             ClipboardAction::Check { to, .. } => to.clone(),
         },
         BlockKind::DateTime { save_as, .. } => save_as.clone(),
@@ -296,6 +297,7 @@ fn target_title(target: &Target) -> String {
         Target::Image(image) => image.clone(),
         Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
         Target::Description(text) => format!("“{text}”"),
+        Target::Area(area) => area.clone(),
     }
 }
 
