@@ -7,13 +7,14 @@
 use std::collections::HashMap;
 
 use jevision_core::{
-    Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection,
-    ClipboardAction, Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow,
-    FlowLayout, HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame,
-    LaidSlot, Modifiers, MouseButton, NamedValue, Note, PackageNeed, Point, Priority, Rect,
-    Reference, SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
-    SearchCandidate, Severity, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
-    TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
+    Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent,
+    CanvasItem, CanvasSection, ClipboardAction, Compare, Condition, DatabaseExpect, ElseIf,
+    ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue, IssueParam,
+    LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note, NoteAnchor,
+    PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue, ScriptInput,
+    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
+    Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind,
+    ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -31,6 +32,7 @@ mod history;
 mod last_run;
 mod map;
 mod mcp;
+mod notes;
 mod notify;
 mod project;
 mod references;
@@ -54,6 +56,7 @@ pub use history::*;
 pub use last_run::*;
 pub use map::*;
 pub use mcp::*;
+pub use notes::*;
 pub use project::*;
 pub use references::*;
 pub use remote::*;
@@ -171,10 +174,18 @@ pub fn insert_blocks(mut flow: Flow, blocks: Vec<BlockKind>, slot: Option<Slot>)
     })
 }
 
-/// Removes block `id`, joining its neighbours, and selects the block that took its place.
+/// Removes block `id`, joining its neighbours, and selects the block that took its place. The
+/// notes about it become notes about the test.
 #[uniffi::export]
 pub fn remove_block(mut flow: Flow, id: String) -> Edited {
     let selection = flow.remove_block(&id);
+    Edited { flow, selection }
+}
+
+/// Like [`remove_block`], and the notes about the removed blocks go with them.
+#[uniffi::export]
+pub fn remove_block_with_notes(mut flow: Flow, id: String) -> Edited {
+    let selection = flow.remove_block_with_notes(&id);
     Edited { flow, selection }
 }
 
@@ -391,7 +402,7 @@ pub fn add_section(mut flow: Flow, title: String, rect: Rect) -> CanvasEdit {
     }
 }
 
-/// Adds a note at `at` written by `author` at `time` (RFC 3339) and selects it.
+/// Adds a note about `anchor` at `at` written by `author` at `time` (RFC 3339) and selects it.
 #[uniffi::export]
 pub fn add_note(
     mut flow: Flow,
@@ -399,8 +410,9 @@ pub fn add_note(
     author: String,
     time: String,
     at: Point,
+    anchor: NoteAnchor,
 ) -> CanvasEdit {
-    let item = flow.add_note(&text, &author, &time, at);
+    let item = flow.add_note(&text, &author, &time, at, anchor);
     CanvasEdit {
         flow,
         items: vec![item],
@@ -412,6 +424,13 @@ pub fn add_note(
 #[uniffi::export]
 pub fn remove_from_canvas(mut flow: Flow, items: Vec<CanvasItem>) -> Edited {
     let selection = flow.remove_items(&items);
+    Edited { flow, selection }
+}
+
+/// Like [`remove_from_canvas`], and the notes about the removed blocks go with them.
+#[uniffi::export]
+pub fn remove_from_canvas_with_notes(mut flow: Flow, items: Vec<CanvasItem>) -> Edited {
+    let selection = flow.remove_items_with_notes(&items);
     Edited { flow, selection }
 }
 
@@ -545,7 +564,44 @@ pub struct Note {
     pub text: String,
     pub author: String,
     pub time: String,
+    pub anchor: NoteAnchor,
+    pub attachments: Vec<Attachment>,
+    pub replies: Vec<Reply>,
+    pub resolved: Option<Resolved>,
     pub rect: Rect,
+}
+
+#[uniffi::remote(Enum)]
+pub enum NoteAnchor {
+    Test,
+    Block { id: String },
+    Folder,
+}
+
+#[uniffi::remote(Enum)]
+pub enum AttachmentKind {
+    File,
+    Link,
+}
+
+#[uniffi::remote(Record)]
+pub struct Attachment {
+    pub kind: AttachmentKind,
+    pub value: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct Reply {
+    pub id: String,
+    pub author: String,
+    pub time: String,
+    pub text: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct Resolved {
+    pub by: String,
+    pub time: String,
 }
 
 #[uniffi::remote(Enum)]

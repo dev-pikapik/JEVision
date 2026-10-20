@@ -70,6 +70,14 @@ final class FlowDocument {
   private(set) var beforeDraft: Flow?
   /// Writes a test from a description; the panel is open while it is set.
   var drafter: TestDrafter?
+  /// Notes that would lose their block, waiting for the person to say what happens to them.
+  var pendingRemoval: PendingRemoval?
+  /// Resolved notes are left off the canvas, unless one is selected.
+  var hidesResolvedNotes = false
+  /// People notes can mention: those who committed to the project.
+  var people: [String] = []
+  /// Who notes and replies are signed by; empty until git has told.
+  var author = ""
 
   @ObservationIgnored weak var undoManager: UndoManager?
   @ObservationIgnored private let project: URL?
@@ -375,12 +383,14 @@ final class FlowDocument {
     linking = nil
   }
 
-  /// Adds an empty note with its top-left corner at `point`, signed by `author`, and selects it.
-  func addNote(at point: Point, author: String) {
+  /// Adds an empty note about `anchor` with its top-left corner at `point`, signed by `author`.
+  /// It is selected unless `select` is off, which leaves the selection as it was.
+  func addNote(at point: Point, author: String, anchor: NoteAnchor = .test, select: Bool = true) {
     guard let flow else { return }
-    let edit = JEVisionCore.addNote(flow: flow, text: "", author: author, time: Date.now.ISO8601Format(), at: point)
-    apply(edit.flow, select: nil, action: String(localized: "Add Note"))
-    pick(Set(edit.items))
+    let edit = JEVisionCore.addNote(
+      flow: flow, text: "", author: author, time: Date.now.ISO8601Format(), at: point, anchor: anchor)
+    apply(edit.flow, select: select ? nil : selection, action: String(localized: "Add Note"))
+    if select { pick(Set(edit.items)) }
   }
 
   /// Adds a frame with the bounds `rect` and selects it.
@@ -403,10 +413,31 @@ final class FlowDocument {
     apply(flow, select: selection, action: String(localized: "Rename Frame"), coalesce: "frame." + id)
   }
 
-  /// Deletes `items`; deleted blocks are bridged, so the blocks around them stay linked.
+  /// Deletes `items`; deleted blocks are bridged, so the blocks around them stay linked. When
+  /// notes are about those blocks, nothing happens until `finishRemoval` says what becomes of them.
   func remove(_ items: [CanvasItem]) {
     guard let flow, !items.isEmpty else { return }
-    let edited = removeFromCanvas(flow: flow, items: items)
+    let blocks = items.compactMap(\.blockID)
+    let notes = notesLeftByRemoving(flow: flow, blocks: blocks).filter { !items.contains(.note(id: $0)) }
+    if notes.isEmpty {
+      let edited = removeFromCanvas(flow: flow, items: items)
+      apply(edited.flow, select: edited.selection, action: String(localized: "Delete"))
+    } else {
+      pendingRemoval = PendingRemoval(items: items, notes: notes)
+    }
+  }
+
+  /// Deletes what `pendingRemoval` holds, with the notes about it or leaving them on the canvas
+  /// as notes about the test; `nil` leaves everything as it was.
+  func finishRemoval(notes: PendingRemoval.Notes?) {
+    guard let pending = pendingRemoval else { return }
+    pendingRemoval = nil
+    guard let notes, let flow else { return }
+    let edited =
+      switch notes {
+      case .delete: removeFromCanvasWithNotes(flow: flow, items: pending.items)
+      case .keep: removeFromCanvas(flow: flow, items: pending.items)
+      }
     apply(edited.flow, select: edited.selection, action: String(localized: "Delete"))
   }
 
@@ -460,6 +491,13 @@ final class FlowDocument {
     beforeDraft = nil
     set(before)
     selection = nil
+  }
+
+  /// Applies a change of a note the core made, as one step for Undo named `action`; `nil`, which
+  /// the core answers to what it can't do, changes nothing.
+  func change(_ new: Flow?, action: String, coalesce: String? = nil) {
+    guard let new else { return }
+    apply(new, select: selection, action: action, coalesce: coalesce)
   }
 
   private func apply(_ new: Flow, select: String?, action: String, coalesce: String? = nil) {
@@ -541,6 +579,20 @@ extension CanvasItem {
   var blockID: String? {
     if case .block(let id) = self { id } else { nil }
   }
+}
+
+/// A deletion that leaves notes without their block, until the person decides about the notes.
+struct PendingRemoval: Equatable {
+  enum Notes {
+    /// The notes go with the blocks.
+    case delete
+    /// The notes stay on the canvas, as notes about the test.
+    case keep
+  }
+
+  let items: [CanvasItem]
+  /// The notes that are about the blocks.
+  let notes: [String]
 }
 
 /// A link being made from the keyboard.

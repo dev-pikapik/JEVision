@@ -200,6 +200,21 @@ pub fn describe(issue: &Issue) -> String {
                 .to_owned()
         }
         "flow.loop.noReturn" => "the blocks inside don't lead back to this loop.".to_owned(),
+        "flow.note.unknownBlock" => format!(
+            "the note \"{}\" is about the block \"{}\", but there is no such block.",
+            p("note"),
+            p("block")
+        ),
+        "flow.note.attachment.invalid" => format!(
+            "the note \"{}\" has \"{}\", which isn't a file name or a web address.",
+            p("note"),
+            p("value")
+        ),
+        "flow.note.reply.duplicateId" => format!(
+            "the note \"{}\" has two replies named \"{}\".",
+            p("note"),
+            p("reply")
+        ),
         "flow.noCheck" => "this test never checks the screen, so it can't catch a wrong result; add a check block.".to_owned(),
         "flow.reference.notSaved" => format!(
             "{} doesn't exist yet; the first run will save the screen there as the reference.",

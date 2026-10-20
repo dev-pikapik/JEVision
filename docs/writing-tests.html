@@ -472,11 +472,13 @@
   <li>A <code>runTest</code> of a <a href="custom-blocks.html">block from the community</a> that isn't installed in the project, a <code>package</code> whose <code>version</code> doesn't look like <code>1.2.0</code> or whose <code>source</code> doesn't start with <code>https://</code>, or an <code>inputs</code> name that isn't letters, digits and <code>_</code>.</li>
   <li>A malformed placeholder, an <code>${env.NAME}</code> that no environment has, or a <code>${data.COLUMN}</code> the table doesn't have.</li>
   <li><code>threshold</code> without <code>"compare": "similar"</code>, or <code>expect</code> without <code>"compare": "meaning"</code>.</li>
+  <li>A note file or link that is neither a plain file name nor a web address, or two replies of a note with the same id.</li>
 </ul>
 <h3 id="warnings">Warnings</h3>
 <ul>
   <li>A block that can't be reached from <code>start</code>.</li>
   <li>A loop body that never leads back to its loop block.</li>
+  <li>A note about a block that doesn't exist.</li>
   <li>A file the test reads that doesn't exist yet. For a <code>check</code> block this is expected before the first run, which saves the picture.</li>
   <li>An <code>${env.NAME}</code> that only some environments have.</li>
   <li>A <code>runTest</code> of a custom block that gives no value for an input the block reads and has no default for.</li>
@@ -496,6 +498,13 @@
   <li>Run from any block (<kbd>⇧</kbd><kbd>⌘</kbd><kbd>Return</kbd> runs from the selected one), or set breakpoints to pause the run there; <strong>Run Step by Step</strong> (<kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd>) pauses after every block. When a run fails, <strong>Show Failed Block</strong> selects the block it stopped at and shows why.</li>
   <li><kbd>⌘</kbd><kbd>K</kbd> opens the command palette: type a few letters of any command, block or test, then press <kbd>Return</kbd> to run the command, add the block or open the test.</li>
   <li>Move blocks by hand, frame parts of the test in titled sections and add notes. All of this is kept in the test's <code>canvas</code> and never changes how the test runs. Without it, blocks are laid out automatically.</li>
+  <li><strong>Notes</strong> say why, not what. Right-click a block and choose <strong>Add Note to Block</strong>: the note stands beside the block, a dashed line joins them, the note moves with the block and shows in the block's inspector. Choose in the note's inspector whether it is about the test, the folder or a block. Deleting a block that has notes asks whether to delete the notes with it or keep them on the canvas. The format is in <a href="file-formats.html#notes">Notes</a>.
+    <ul>
+      <li>Write in Markdown: lists, check boxes, links, <strong>bold</strong> and <em>italic</em> text. Editing shows the source; the canvas and the inspector show it styled. <code>@</code> and a few letters suggest the people who committed to the project.</li>
+      <li><strong>Attach</strong> pictures, videos, PDFs and other files (choose them or drop them on the note) and add links, including links to GitHub issues, which show their number, title and state when you are signed in to GitHub. Files are copied next to the test and move with it. A file over the limit in <strong>Settings</strong> asks first, and can be tracked with Git LFS.</li>
+      <li>Answer under a note, mention colleagues and mark the discussion <strong>Resolved</strong>; <strong>Hide Resolved Notes</strong> in the toolbar's notes menu clears them from the canvas. Every note shows who wrote it and when, and its history from git.</li>
+    </ul>
+  </li>
   <li>A test you record is laid out in <strong>rows</strong>: three blocks in a row from left to right, then the next row below, each row in a light frame. Tests you already have keep the layout they have. <strong>Arrange in Rows</strong> in the toolbar's menu puts the blocks of any test in rows the same way (undo with <kbd>⌘</kbd><kbd>Z</kbd>); <strong>Arrange Automatically</strong> lays them out by the arrows instead. Branches and loops stay readable: a way out that goes elsewhere is routed around the blocks between.</li>
   <li>The <strong>environment</strong> the test runs in is shown at the top right of the canvas, with the values the test reads from it. Click it to switch the environment, change those values or see which secrets are set. Hover a block that reads a value to see what it gets.</li>
 </ul>

@@ -8,6 +8,7 @@ struct GeneralSettingsView: View {
   @AppStorage(RunInputSettings.pausesOnMouseKey) private var pausesOnMouse = true
   @AppStorage(RunInputSettings.escapeStopsKey) private var escapeStops = true
   @AppStorage(GridSnap.key) private var snapsToGrid = true
+  @AppStorage(NoteFiles.largeKey) private var largeNoteFile = NoteFiles.largeDefault
 
   private var language: Binding<String> {
     Binding(get: { AppLanguage.shared.saved }, set: { AppLanguage.shared.choose($0) })
@@ -72,11 +73,25 @@ struct GeneralSettingsView: View {
       } header: {
         Text("Canvas")
       }
+      Section {
+        LabeledContent {
+          Stepper(value: $largeNoteFile, in: 1...1000) {
+            Text(Int64(largeNoteFile) * 1_000_000, format: .byteCount(style: .file))
+          }
+        } label: {
+          RowLabel(
+            Text("Large file in a note"),
+            Text("From this size, JEVision asks before it copies a file into a note: track it with Git LFS, attach it anyway or leave it."))
+        }
+        .settingAnchor("noteLargeFile")
+      } header: {
+        Text("Notes")
+      }
       UpdatesSection(updates: updates)
       RestoreDefaultsSection(
         message: Text("Appearance and language follow the system again. The options for running tests and for the canvas go back to how they came."),
         isDefault: appearance == .system && language.wrappedValue.isEmpty && collapses && pausesOnMouse && escapeStops
-          && snapsToGrid
+          && snapsToGrid && largeNoteFile == NoteFiles.largeDefault
       ) {
         appearance = .system
         language.wrappedValue = ""
@@ -84,6 +99,7 @@ struct GeneralSettingsView: View {
         pausesOnMouse = true
         escapeStops = true
         snapsToGrid = true
+        largeNoteFile = NoteFiles.largeDefault
       }
     }
     .formStyle(.grouped)

@@ -245,6 +245,42 @@ final class ProjectGit {
     return await Task.detached { (try? gitIdentity(project: path)) ?? empty }.value
   }
 
+  /// The name notes are signed with: the one git signs commits with, else the one of the macOS account.
+  func authorName() async -> String {
+    let name = await identity().name
+    return name.isEmpty ? NSFullUserName() : name
+  }
+
+  /// The people who committed to the project, the one git signs with first; none without git.
+  func authors() async -> [String] {
+    guard let path = project?.path(percentEncoded: false) else { return [] }
+    return await Task.detached { (try? gitAuthors(project: path)) ?? [] }.value
+  }
+
+  /// What Git LFS can do about the file at `file`, a path in the project.
+  enum LFS {
+    /// It takes the file already.
+    case tracked
+    /// It is installed and can be told to take the file.
+    case available
+    /// The project isn't in git, or Git LFS isn't installed.
+    case missing
+  }
+
+  func lfs(for file: String) async -> LFS {
+    guard let path = project?.path(percentEncoded: false) else { return .missing }
+    return await Task.detached {
+      guard gitLfsAvailable(project: path) else { return .missing }
+      return ((try? gitLfsTracks(project: path, path: file)) ?? false) ? .tracked : .available
+    }.value
+  }
+
+  /// Makes Git LFS take the file at `file`, a path in the project; this writes `.gitattributes`.
+  func trackWithLFS(_ file: String) async throws {
+    guard let path = project?.path(percentEncoded: false) else { return }
+    try await Task.detached { try gitLfsTrack(project: path, path: file) }.value
+  }
+
   private func perform<Value: Sendable>(
     _ activity: Activity, _ work: @escaping @Sendable (String) throws -> Value,
     then: @escaping (Value) -> Void = { _ in }

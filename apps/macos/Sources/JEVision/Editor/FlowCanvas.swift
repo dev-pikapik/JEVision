@@ -105,6 +105,7 @@ struct FlowCanvas: View {
     ZStack(alignment: .topLeading) {
       frames(canvas?.sections ?? [])
       links(layout)
+      noteLinks(canvas?.notes ?? [], layout)
       blocks(layout)
       notes(canvas?.notes ?? [])
       ports(layout)
@@ -225,11 +226,29 @@ struct FlowCanvas: View {
     }
   }
 
+  /// A dashed line from each note about a block to the block.
+  private func noteLinks(_ notes: [Note], _ layout: FlowLayout) -> some View {
+    let blocks = Dictionary(layout.blocks.map { ($0.id, $0.rect.cgRect) }, uniquingKeysWith: { first, _ in first })
+    return ForEach(notes.filter { !document.isHidden($0) }, id: \.id) { note in
+      if case .block(let id) = note.anchor, let block = blocks[id], !block.intersects(note.rect.cgRect) {
+        let ends = NoteLink.ends(note: note.rect.cgRect, block: block)
+        Path { path in
+          path.move(to: ends.0)
+          path.addLine(to: ends.1)
+        }
+        .stroke(.secondary.opacity(note.resolved == nil ? 0.8 : 0.4), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+      }
+    }
+  }
+
   private func notes(_ notes: [Note]) -> some View {
-    ForEach(notes, id: \.id) { note in
+    ForEach(notes.filter { !document.isHidden($0) }, id: \.id) { note in
       let item = CanvasItem.note(id: note.id)
       NoteView(
         note: note,
+        names: document.people,
         isPicked: document.picked.contains(item),
         isEditing: editing == item,
         text: Binding(
@@ -243,18 +262,35 @@ struct FlowCanvas: View {
         edit: { editing = item }))
       .contextMenu {
         Button("Edit Text", systemImage: "pencil") { editing = item }
+        if note.resolved == nil {
+          Button("Resolve", systemImage: "checkmark.circle") { document.resolve(note.id, by: document.signature) }
+        } else {
+          Button("Reopen", systemImage: "arrow.uturn.backward.circle") { document.reopen(note.id) }
+        }
         Divider()
         ItemMenu(actions: actions(for: item))
       }
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(Text("Note"))
-      .accessibilityValue(Text(verbatim: [note.text, note.author].filter { !$0.isEmpty }.joined(separator: ". ")))
+      .accessibilityValue(Text(verbatim: noteDescription(note)))
       .accessibilityAddTraits(document.picked.contains(item) ? [.isButton, .isSelected] : .isButton)
       .accessibilityAction(.default) { pick(item) }
       .accessibilityAction(named: Text("Edit Text")) { editing = item }
       .accessibilityAction(named: Text("Delete")) { actions(for: item).delete() }
       .offset(x: note.rect.x, y: note.rect.y)
     }
+  }
+
+  /// What VoiceOver reads for a note: its text and author, what it is about and how the talk stands.
+  private func noteDescription(_ note: Note) -> String {
+    var parts = [note.text, note.author].filter { !$0.isEmpty }
+    if case .block(let id) = note.anchor, let block = document.block(id) {
+      parts.append(String(localized: "About the block \(BlockInfo.title(block.kind.typeName))"))
+    }
+    if !note.attachments.isEmpty { parts.append(String(localized: "\(note.attachments.count) files and links")) }
+    if !note.replies.isEmpty { parts.append(String(localized: "\(note.replies.count) replies")) }
+    if note.resolved != nil { parts.append(String(localized: "Resolved")) }
+    return parts.joined(separator: ". ")
   }
 
   private func ports(_ layout: FlowLayout) -> some View {
@@ -453,7 +489,8 @@ struct FlowCanvas: View {
   private func items(in rect: CGRect) -> Set<CanvasItem> {
     let canvas = document.flow?.canvas
     let blocks = document.layout.blocks.filter { rect.intersects($0.rect.cgRect) }.map { CanvasItem.block(id: $0.id) }
-    let notes = (canvas?.notes ?? []).filter { rect.intersects($0.rect.cgRect) }.map { CanvasItem.note(id: $0.id) }
+    let notes = (canvas?.notes ?? []).filter { !document.isHidden($0) && rect.intersects($0.rect.cgRect) }
+      .map { CanvasItem.note(id: $0.id) }
     let frames = (canvas?.sections ?? []).filter { rect.contains($0.rect.cgRect) }.map { CanvasItem.section(id: $0.id) }
     return Set(blocks + notes + frames)
   }
@@ -485,6 +522,9 @@ struct FlowCanvas: View {
       saveToLibrary: { kind in
         only()
         document.savingToLibrary = kind
+      },
+      addNote: item.blockID.map { id in
+        { document.addNote(about: id) }
       })
   }
 
@@ -740,6 +780,8 @@ private struct ItemActions {
   let paste: (() -> Void)?
   /// Saves the selection as a template or a custom block.
   let saveToLibrary: (LibraryEntry.Kind) -> Void
+  /// Adds a note about this block; `nil` for frames and notes.
+  let addNote: (() -> Void)?
 }
 
 private struct ItemMenu: View {
@@ -751,6 +793,9 @@ private struct ItemMenu: View {
       Button("Paste After", systemImage: "doc.on.clipboard", action: paste)
     }
     Button("Duplicate", systemImage: "plus.square.on.square", action: actions.duplicate)
+    if let addNote = actions.addNote {
+      Button("Add Note to Block", systemImage: "note.text.badge.plus", action: addNote)
+    }
     Divider()
     Button("Save as Template…", systemImage: ProjectLibrary.templateSymbol) { actions.saveToLibrary(.template) }
     Button("Make Block…", systemImage: ProjectLibrary.defaultBlockSymbol) { actions.saveToLibrary(.block) }
@@ -963,9 +1008,12 @@ struct FrameView: View {
   }
 }
 
-/// A sticky note: its text, who wrote it and when.
+/// A sticky note: its text in Markdown, who wrote it and when, and what is attached to it, said
+/// under it and settled about it.
 struct NoteView: View {
   let note: Note
+  /// Names a `@name` in the text can stand for.
+  var names: [String] = []
   let isPicked: Bool
   let isEditing: Bool
   let text: Binding<String>
@@ -983,11 +1031,7 @@ struct NoteView: View {
       : NSColor(srgbRed: 0.24, green: 0.21, blue: 0, alpha: 1)
   })
 
-  private var written: Date? { try? Date(note.time, strategy: .iso8601) }
-
-  private var initials: String {
-    note.author.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
-  }
+  private var written: Date? { NoteTime.date(note.time) }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -1001,28 +1045,13 @@ struct NoteView: View {
         } else if note.text.isEmpty {
           Text("Double-click to write a note").opacity(0.6)
         } else {
-          Text(verbatim: note.text)
+          MarkdownText(text: note.text, names: names)
         }
       }
       .font(.callout)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-      if !note.author.isEmpty || written != nil {
-        HStack(spacing: 6) {
-          if !note.author.isEmpty {
-            Text(verbatim: initials)
-              .font(.system(size: 9, weight: .bold))
-              .frame(width: 18, height: 18)
-              .background(Self.ink.opacity(0.15), in: .circle)
-            Text(verbatim: note.author)
-          }
-          if let written {
-            Text(written, format: .relative(presentation: .named))
-          }
-        }
-        .font(.caption)
-        .lineLimit(1)
-        .opacity(0.75)
-      }
+      .clipped()
+      footer
     }
     .padding(12)
     .foregroundStyle(Self.ink)
@@ -1032,7 +1061,58 @@ struct NoteView: View {
         .strokeBorder(isPicked ? Color.accentColor : .clear, lineWidth: 2)
     }
     .shadow(color: .black.opacity(0.1), radius: 7, y: 4)
+    .opacity(note.resolved == nil || isPicked ? 1 : 0.6)
     .contentShape(.rect(cornerRadius: 14))
+  }
+
+  @ViewBuilder private var footer: some View {
+    if !note.author.isEmpty || written != nil || hasBadges {
+      HStack(spacing: 6) {
+        if !note.author.isEmpty {
+          Text(verbatim: Initials.letters(of: note.author))
+            .font(.system(size: 9, weight: .bold))
+            .frame(width: 18, height: 18)
+            .background(Self.ink.opacity(0.15), in: .circle)
+          Text(verbatim: note.author)
+        }
+        if let written {
+          Text(written, format: .relative(presentation: .named))
+        }
+        Spacer(minLength: 0)
+        if !note.attachments.isEmpty {
+          Label { Text(note.attachments.count, format: .number) } icon: { Image(systemName: "paperclip") }
+        }
+        if !note.replies.isEmpty {
+          Label { Text(note.replies.count, format: .number) } icon: { Image(systemName: "bubble.left") }
+        }
+        if note.resolved != nil {
+          Image(systemName: "checkmark.circle.fill")
+        }
+      }
+      .font(.caption)
+      .lineLimit(1)
+      .opacity(0.75)
+    }
+  }
+
+  private var hasBadges: Bool {
+    !note.attachments.isEmpty || !note.replies.isEmpty || note.resolved != nil
+  }
+}
+
+/// The line from a note to the block it is about.
+enum NoteLink {
+  /// Its ends: the middle of the sides of `note` and `block` that face each other.
+  static func ends(note: CGRect, block: CGRect) -> (CGPoint, CGPoint) {
+    if note.maxX <= block.minX {
+      (CGPoint(x: note.maxX, y: note.midY), CGPoint(x: block.minX, y: block.midY))
+    } else if note.minX >= block.maxX {
+      (CGPoint(x: note.minX, y: note.midY), CGPoint(x: block.maxX, y: block.midY))
+    } else if note.maxY <= block.minY {
+      (CGPoint(x: note.midX, y: note.maxY), CGPoint(x: block.midX, y: block.minY))
+    } else {
+      (CGPoint(x: note.midX, y: note.minY), CGPoint(x: block.midX, y: block.maxY))
+    }
   }
 }
 

@@ -1514,3 +1514,121 @@ fn git_gets_the_github_token_from_the_environment_only_when_asked() {
     );
     assert!(!GITHUB_CREDENTIAL.contains("gho_secret"));
 }
+
+#[test]
+fn the_people_to_mention_are_those_who_committed_and_the_user_first() {
+    let scratch = Scratch::new("authors");
+    let (git, repo) = repository(&scratch);
+    assert_eq!(
+        repo.authors().unwrap(),
+        ["Ann Tester"],
+        "nothing committed yet"
+    );
+    let qa = &repo.dir;
+    write(qa, "a.flow.json", "1");
+    sh(&git, qa, &["add", "a.flow.json"]);
+    sh(
+        &git,
+        qa,
+        &[
+            "-c",
+            "user.name=Bob Builder",
+            "-c",
+            "user.email=bob@example.com",
+            "commit",
+            "-qm",
+            "One",
+        ],
+    );
+    write(qa, "a.flow.json", "2");
+    repo.commit(&["a.flow.json".into()], "Two").unwrap();
+    write(qa, "a.flow.json", "3");
+    sh(&git, qa, &["add", "a.flow.json"]);
+    sh(
+        &git,
+        qa,
+        &[
+            "-c",
+            "user.name=Cy Lee",
+            "-c",
+            "user.email=cy@example.com",
+            "commit",
+            "-qm",
+            "Three",
+        ],
+    );
+    assert_eq!(
+        repo.authors().unwrap(),
+        ["Ann Tester", "Cy Lee", "Bob Builder"]
+    );
+}
+
+#[test]
+fn large_files_can_go_to_lfs_only_when_asked_and_only_as_themselves() {
+    let scratch = Scratch::new("lfs");
+    let (_, repo) = repository(&scratch);
+    let qa = &repo.dir;
+    assert!(!repo.lfs_tracks("a.assets/notes/n/clip.mp4").unwrap());
+    write(
+        qa,
+        ".gitattributes",
+        "a.assets/notes/n/clip.mp4 filter=lfs diff=lfs merge=lfs -text\n",
+    );
+    assert!(repo.lfs_tracks("a.assets/notes/n/clip.mp4").unwrap());
+    assert!(!repo.lfs_tracks("a.assets/notes/n/other.mp4").unwrap());
+    assert!(matches!(
+        repo.lfs_track("a[1].mp4"),
+        Err(GitError::Failed { .. })
+    ));
+    assert!(matches!(
+        repo.lfs_track("../x.mp4"),
+        Err(GitError::Failed { .. })
+    ));
+    let before = read(qa, ".gitattributes");
+    if repo.lfs_available() {
+        repo.lfs_track("a.assets/notes/n/two words.mp4").unwrap();
+        assert!(repo.lfs_tracks("a.assets/notes/n/two words.mp4").unwrap());
+        assert!(read(qa, ".gitattributes").starts_with(&before));
+    } else {
+        assert!(matches!(
+            repo.lfs_track("a.mp4"),
+            Err(GitError::Failed { .. })
+        ));
+        assert_eq!(read(qa, ".gitattributes"), before, "nothing was written");
+    }
+}
+
+#[test]
+fn an_issue_or_pull_request_tells_its_title_and_state() {
+    let open = r#"{"number": 12, "title": "Sign in fails", "state": "open", "html_url": "https://github.com/acme/qa/issues/12"}"#;
+    let merged = r#"{"number": 7, "title": "Fix it", "state": "closed", "html_url": "https://github.com/acme/qa/pull/7",
+        "pull_request": {"merged_at": "2026-10-18T09:30:00Z"}}"#;
+    let declined = r#"{"number": 8, "title": "Not this", "state": "closed", "html_url": "https://github.com/acme/qa/pull/8",
+        "pull_request": {"merged_at": null}}"#;
+    let wontfix = r#"{"number": 9, "title": "Never", "state": "closed", "html_url": "https://github.com/acme/qa/issues/9"}"#;
+    let api = Api::serve(vec![
+        (200, open),
+        (200, merged),
+        (200, declined),
+        (200, wontfix),
+        (404, r#"{"message": "Not Found"}"#),
+    ]);
+    let hub = api.hub();
+    let status = |n| hub.issue_status(&acme(), n);
+    let first = status(12).unwrap();
+    assert_eq!(
+        (first.title.as_str(), first.state, first.is_pull_request),
+        ("Sign in fails", IssueState::Open, false)
+    );
+    assert_eq!(status(7).unwrap().state, IssueState::Merged);
+    let declined = status(8).unwrap();
+    assert_eq!(
+        (declined.state, declined.is_pull_request),
+        (IssueState::Closed, true)
+    );
+    assert_eq!(status(9).unwrap().state, IssueState::Closed);
+    assert_eq!(status(99), Err(GitError::RemoteNotFound));
+    let requests = api.requests();
+    assert!(requests[0].starts_with("GET /repos/acme/qa/issues/12 "));
+    assert!(requests.iter().all(|r| r.contains("Bearer secret-token")));
+}

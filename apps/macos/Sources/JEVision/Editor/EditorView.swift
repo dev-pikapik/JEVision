@@ -48,6 +48,20 @@ struct EditorView: View {
       document.undoManager = undoManager
       apps.load()
     }
+    .task(id: project.rootURL) {
+      document.author = await project.git.authorName()
+      document.people = await project.git.authors()
+    }
+    .confirmationDialog(
+      removalTitle, isPresented: Binding(get: { document.pendingRemoval != nil }, set: { if !$0 { document.finishRemoval(notes: nil) } }),
+      presenting: document.pendingRemoval
+    ) { _ in
+      Button("Delete with the Notes", role: .destructive) { document.finishRemoval(notes: .delete) }
+      Button("Keep the Notes on the Canvas") { document.finishRemoval(notes: .keep) }
+      Button("Cancel", role: .cancel) {}
+    } message: { removal in
+      Text(removalMessage(removal))
+    }
     .onChange(of: undoManager) { document.undoManager = undoManager }
     .sheet(item: Binding(get: { document.savingToLibrary }, set: { document.savingToLibrary = $0 })) { kind in
       SaveToLibrarySheet(kind: kind, document: document)
@@ -148,6 +162,8 @@ struct EditorView: View {
         Group {
           if let selection = document.selection {
             InspectorView(document: document, id: selection, failure: lastRun?.failure(of: selection))
+          } else if let note = document.pickedNote {
+            NoteInspector(document: document, id: note.id)
           }
         }
         .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
@@ -201,6 +217,23 @@ struct EditorView: View {
             .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
             .labelStyle(.titleAndIcon)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
+        }
+        if !flow.canvas.notes.isEmpty {
+          ToolbarItem(placement: .primaryAction) {
+            Menu {
+              if let selection = document.selection {
+                Button("Add Note to Block", systemImage: "note.text.badge.plus") { document.addNote(about: selection) }
+              }
+              Toggle(
+                "Hide Resolved Notes", systemImage: "eye.slash",
+                isOn: Binding(get: { document.hidesResolvedNotes }, set: { document.hidesResolvedNotes = $0 })
+              )
+              .disabled(!document.hasResolvedNotes && !document.hidesResolvedNotes)
+            } label: {
+              Label("Notes", systemImage: "text.bubble")
+            }
+            .help(Text("Notes of the test"))
+          }
         }
         ToolbarItemGroup(placement: .primaryAction) {
           Menu {
@@ -327,7 +360,9 @@ struct EditorView: View {
   }
 
   private var inspectorShown: Binding<Bool> {
-    Binding(get: { showsInspector && document.selection != nil }, set: { showsInspector = $0 })
+    Binding(
+      get: { showsInspector && (document.selection != nil || document.pickedNote != nil) },
+      set: { showsInspector = $0 })
   }
 
   private func canvas(outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
@@ -481,9 +516,17 @@ struct EditorView: View {
     runs.dismissResult()
   }
 
+  private var removalTitle: Text {
+    Text("Delete the notes about this block too?")
+  }
+
+  private func removalMessage(_ removal: PendingRemoval) -> String {
+    String(localized: "\(removal.notes.count) notes are about what you are deleting.")
+  }
+
   private func addNote(at point: Point?) {
     let at = point ?? freeSpot
-    Task { document.addNote(at: at, author: await project.git.identity().name) }
+    Task { document.addNote(at: at, author: await project.git.authorName()) }
   }
 
   /// Adds a frame at `point`; without one, around the selection, or at a free place when nothing is selected.
@@ -518,7 +561,7 @@ struct EditorView: View {
     case .space:
       openPalette()
     case .return:
-      guard document.selection != nil else { return .ignored }
+      guard document.selection != nil || document.pickedNote != nil else { return .ignored }
       showsInspector = true
     case .escape:
       if inspectorShown.wrappedValue {

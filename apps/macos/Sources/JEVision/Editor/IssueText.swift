@@ -104,6 +104,12 @@ enum IssueText {
       return String(localized: "flow.cycle", defaultValue: "These blocks lead round in a circle: \(p("blocks")). Use Repeat to run steps again.", bundle: .app, locale: .app)
     case "flow.block.unreachable":
       return String(localized: "flow.block.unreachable", defaultValue: "Nothing leads to this block, so it never runs.", bundle: .app, locale: .app)
+    case "flow.note.unknownBlock":
+      return String(localized: "flow.note.unknownBlock", defaultValue: "The note “\(p("note"))” is about the block “\(p("block"))”, but there is no such block.", bundle: .app, locale: .app)
+    case "flow.note.attachment.invalid":
+      return String(localized: "flow.note.attachment.invalid", defaultValue: "The note “\(p("note"))” has “\(p("value"))”, which isn’t a file name or a web address.", bundle: .app, locale: .app)
+    case "flow.note.reply.duplicateId":
+      return String(localized: "flow.note.reply.duplicateId", defaultValue: "The note “\(p("note"))” has two replies named “\(p("reply"))”.", bundle: .app, locale: .app)
     case "flow.noCheck":
       return String(localized: "flow.noCheck", defaultValue: "This test never checks the screen, so it can’t catch a wrong result. Add a Check block.", bundle: .app, locale: .app)
     case "flow.loop.noReturn":

@@ -446,7 +446,9 @@ enum ConflictText {
       let name = kind.map { BlockInfo.title($0.typeName) } ?? conflict.id
       guard let field = conflict.field else { return name }
       return "\(name): \(conflict.kind == .link ? linkName(field, kind) : FlowDiffView.fieldName(field))"
-    case .note: return String(localized: "Note")
+    case .note:
+      guard let field = conflict.field else { return String(localized: "Note") }
+      return String(localized: "Note: \(FlowDiffView.fieldName(field))")
     case .frame: return String(localized: "Frame")
     }
   }
@@ -473,11 +475,36 @@ enum ConflictText {
       }
       return describe(found)
     case .note:
-      return flow.canvas.notes.first { $0.id == conflict.id }.map { BlockSummary.quoted($0.text, limit: 60) }
+      return flow.canvas.notes.first { $0.id == conflict.id }.map { noteValue($0, field: conflict.field, in: flow) }
         ?? String(localized: "Removed")
     case .frame:
       return flow.canvas.sections.first { $0.id == conflict.id }
         .map { $0.title.isEmpty ? String(localized: "Untitled Frame") : $0.title } ?? String(localized: "Removed")
+    }
+  }
+
+  /// What a note has for the part of it two sides changed differently.
+  private static func noteValue(_ note: Note, field: String?, in flow: Flow) -> String {
+    switch field {
+    case "anchor":
+      switch note.anchor {
+      case .test: return String(localized: "About the test")
+      case .folder: return String(localized: "About the folder")
+      case .block(let id):
+        let title = block(id, in: flow).map { BlockInfo.title($0.kind.typeName) } ?? id
+        return String(localized: "About the block \(title)")
+      }
+    case "resolved":
+      guard let resolved = note.resolved else { return String(localized: "Open") }
+      return resolved.by.isEmpty ? String(localized: "Resolved") : String(localized: "Resolved by \(resolved.by)")
+    case "replies":
+      return note.replies.isEmpty
+        ? String(localized: "No replies") : note.replies.map { BlockSummary.quoted($0.text, limit: 40) }.joined(separator: " · ")
+    case "attachments":
+      return note.attachments.isEmpty
+        ? String(localized: "Nothing attached") : note.attachments.map(\.value).joined(separator: ", ")
+    default:
+      return BlockSummary.quoted(note.text, limit: 60)
     }
   }
 

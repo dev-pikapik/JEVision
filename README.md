@@ -183,9 +183,11 @@ The same test as a file — [`examples/sign-in.flow.json`](examples/sign-in.flow
   for reasons outside the app) and `retries` (how many more times to run the test when it fails;
   without it, the project's default applies, see below).
 - **`canvas`** (optional) keeps how the test looks in the editor: `positions` of blocks moved by
-  hand, `sections` (titled frames around a part of the test) and `notes` (text with its author,
-  time and frame). It never changes how the test runs; without it the blocks are laid out
-  automatically.
+  hand, `sections` (titled frames around a part of the test) and `notes` (Markdown text with its
+  author, time and frame; optionally what it is about — the test, a folder or a block —, attached
+  files and links, replies and a resolved mark). It never changes how the test runs; without it
+  the blocks are laid out automatically. Files of notes live in `<test>.assets/notes/<note id>/`
+  next to the test.
 
 </details>
 
