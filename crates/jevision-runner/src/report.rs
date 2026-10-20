@@ -79,7 +79,23 @@ pub struct RunReport {
     /// The test wasn't chosen: it ran because a chosen test depends on it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub added_as_dependency: bool,
+    /// Block packages whose steps ran, each once, in the order they first ran.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub packages: Vec<UsedPackage>,
     pub attempts: Vec<Attempt>,
+}
+
+/// A block package a run used, as its `block.json` described it when the run ended.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsedPackage {
+    /// Like `com.acme.sign-in`.
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    /// Steps file of the package, relative to the project folder, as the steps name it.
+    pub file: String,
 }
 
 impl RunReport {
@@ -488,6 +504,18 @@ pub fn describe(f: &Failure) -> String {
             "Test file {} has {} errors; fix them in the editor first.",
             p("test"),
             p("errors")
+        ),
+        "run.block.notInstalled" => format!(
+            "Block {}: the package {} is not installed; install it from the block library first.",
+            p("block"),
+            p("package")
+        ),
+        "run.block.needsNewer" => format!(
+            "Block {}: the package {} needs JEVision {} or newer, and this is {}.",
+            p("block"),
+            p("package"),
+            p("needs"),
+            p("have")
         ),
         "run.start.unknownBlock" => format!("There is no block {} to start from.", p("block")),
         "run.secret.missing" => format!("Secret {} is not set.", p("name")),
@@ -1071,7 +1099,7 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{title} — {label}</title>\n<style>{CSS}</style>\n</head>\n<body>\n<main>\n\
          <header><h1>{title}</h1><span class=\"badge {badge}\">{label}</span></header>\n\
-         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}{machine}\
+         <dl class=\"facts\"><dt>Test file</dt><dd>{file}</dd><dt>Application</dt><dd>{app}</dd>{environment}{packages}{machine}\
          <dt>Started</dt><dd>{started}</dd><dt>Duration</dt><dd>{duration}</dd>\
          <dt>Attempts</dt><dd>{attempts}</dd></dl>\n",
         title = xml(&report.test),
@@ -1084,6 +1112,17 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
                 "<dt>Environment</dt><dd>{}</dd>",
                 xml(e)
             )),
+        packages = if report.packages.is_empty() {
+            String::new()
+        } else {
+            let list = report
+                .packages
+                .iter()
+                .map(|p| format!("{} {} by {} ({})", p.name, p.version, p.author, p.id))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("<dt>Community blocks</dt><dd>{}</dd>", xml(&list))
+        },
         machine = report.machine().map_or_else(String::new, |m| format!(
             "<dt>Computer</dt><dd>{}</dd>",
             xml(&m)

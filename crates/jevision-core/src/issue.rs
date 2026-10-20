@@ -288,6 +288,132 @@ pub fn describe(issue: &Issue) -> String {
             "the tests depend on each other in a circle: {}. Remove one of these dependencies.",
             p("cycle")
         ),
+        "flow.block.notInstalled" => format!(
+            "needs the block {}, which isn't installed in this project; install it or remove this step.",
+            p("id")
+        ),
+        "block.json.syntax" => format!(
+            "block.json is not valid JSON at line {}, column {}.",
+            p("line"),
+            p("column")
+        ),
+        "block.json.notObject" => "block.json must be a JSON object.".to_owned(),
+        "block.format.unsupported" => format!(
+            "format {} isn't supported; this version reads format {}.",
+            p("found"),
+            p("supported")
+        ),
+        "block.field.missing" => "required, but missing.".to_owned(),
+        "block.field.empty" => "can't be empty.".to_owned(),
+        "block.field.tooLong" => format!("is too long; the most is {}.", p("max")),
+        "block.field.type" => format!("wrong kind of value; it must be {}.", p("expected")),
+        "block.field.unknown" => "isn't a field of block.json.".to_owned(),
+        "block.id.invalid" => format!(
+            "\"{}\" can't be a package id; write three or more parts of lowercase letters, digits \
+             and - joined by dots, like com.acme.sign-in.",
+            p("value")
+        ),
+        "block.version.invalid" => format!(
+            "\"{}\" isn't a version; write three numbers like 1.2.0.",
+            p("value")
+        ),
+        "block.icon.invalid" => format!(
+            "\"{}\" isn't the name of an SF Symbol; write lowercase letters, digits and dots, \
+             like person.badge.key.",
+            p("value")
+        ),
+        "block.input.invalid" => format!(
+            "\"{}\" can't be an input name: start with a letter or _, then use letters, digits and _.",
+            p("name")
+        ),
+        "block.input.duplicate" => format!("the input \"{}\" is listed twice.", p("name")),
+        "block.input.undeclared" => format!(
+            "the steps read the input \"{}\", but block.json doesn't list it under inputs.",
+            p("name")
+        ),
+        "block.input.unused" => format!(
+            "block.json lists the input \"{}\", but no step reads it.",
+            p("name")
+        ),
+        "block.version.needsNewer" => format!(
+            "needs JEVision {} or newer; this is {}. Update JEVision to use this block.",
+            p("needs"),
+            p("have")
+        ),
+        "block.path.outside" => format!(
+            "{} leads out of the package folder; a block can only use files inside it.",
+            p("path")
+        ),
+        "block.file.missing" => format!("the package has no {}.", p("file")),
+        "block.file.unreadable" => format!("{} can't be read: {}.", p("file"), p("reason")),
+        "block.folder.notPackage" => format!(
+            "{} isn't a block package: it has no block.json and flow.json.",
+            p("path")
+        ),
+        "block.package.tooLarge" => format!("the package is larger than {}.", megabytes(p("max"))),
+        "block.package.tooManyFiles" => format!("the package has more than {} files.", p("max")),
+        "block.path.unsafe" => format!(
+            "{} would end up outside the package folder, so the archive is refused.",
+            p("path")
+        ),
+        "block.install.exists" => format!(
+            "{} {} is already installed.",
+            p("id"),
+            p("version")
+        ),
+        "block.install.failed" => format!("couldn't install {}: {}.", p("id"), p("reason")),
+        "block.remove.failed" => format!("couldn't remove {}: {}.", p("id"), p("reason")),
+        "block.notInstalled" => format!("no block with the id {} is installed.", p("id")),
+        "block.source.missing" => format!("{} doesn't exist.", p("source")),
+        "block.source.unsupported" => format!(
+            "{} isn't a block package folder, a .zip file or an https address; GitHub \
+             repositories and releases work too.",
+            p("source")
+        ),
+        "block.source.none" => format!(
+            "{} wasn't installed from an address, so there is nothing to update it from.",
+            p("id")
+        ),
+        "block.update.otherId" => format!(
+            "the address of {} now holds a different block, {}, so it isn't an update.",
+            p("id"),
+            p("found")
+        ),
+        "block.download.notHttps" => format!(
+            "only https addresses can be downloaded; {} isn't one.",
+            p("url")
+        ),
+        "block.download.failed" => format!("couldn't download {}: {}.", p("url"), p("reason")),
+        "block.download.tooLarge" => {
+            format!("{} is larger than {}.", p("url"), megabytes(p("max")))
+        }
+        "block.archive.invalid" => format!("the archive can't be read: {}.", p("reason")),
+        "block.archive.empty" => {
+            "the archive has no block package: no folder with block.json and flow.json.".to_owned()
+        }
+        "block.archive.several" => format!(
+            "the archive has several block packages ({}); install them one by one.",
+            p("ids")
+        ),
+        "block.lock.invalid" => format!(
+            "{} can't be read: {}.",
+            crate::PACKAGE_LOCK_FILE,
+            p("reason")
+        ),
+        "block.export.nested" => format!(
+            "this block runs {}, and a package can't hold other blocks yet; put the steps of \
+             that block into this one.",
+            p("test")
+        ),
+        "block.export.failed" => format!("couldn't write the package: {}.", p("reason")),
+        "block.export.notBlock" => format!(
+            "{} isn't one of this project's own blocks.",
+            p("path")
+        ),
+        "block.export.skipped" => format!(
+            "{} isn't a file a package can hold, so it was left out.",
+            p("path")
+        ),
         _ => {
             let params: Vec<String> = issue
                 .params
@@ -304,7 +430,14 @@ pub fn describe(issue: &Issue) -> String {
         }
     }
     if place.is_empty() {
-        place.push("Test".to_owned());
+        place.push(
+            if issue.code.starts_with("block.") {
+                "Package"
+            } else {
+                "Test"
+            }
+            .to_owned(),
+        );
     }
     let place = place.join(", ");
     let mut first = place.chars();
@@ -313,6 +446,13 @@ pub fn describe(issue: &Issue) -> String {
         .map(|c| c.to_uppercase().chain(first).collect::<String>())
         .unwrap_or_default();
     format!("{place}: {text}")
+}
+
+/// A size given in bytes, as whole megabytes.
+fn megabytes(bytes: &str) -> String {
+    bytes
+        .parse::<u64>()
+        .map_or_else(|_| bytes.to_owned(), |b| format!("{} MB", b >> 20))
 }
 
 #[cfg(test)]

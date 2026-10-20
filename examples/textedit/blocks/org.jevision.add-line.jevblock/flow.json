@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "name": "Add a line",
+  "description": "Types a line at the end of the document in front, in TextEdit.",
+  "icon": "text.append",
+  "app": "com.apple.TextEdit",
+  "start": "end",
+  "blocks": {
+    "end": {
+      "type": "pressKeys",
+      "keys": "cmd+down",
+      "next": "type"
+    },
+    "type": {
+      "type": "type",
+      "text": "${input.line}\n"
+    }
+  }
+}

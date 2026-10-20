@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use jevision_core::{
-    BLOCK_SUFFIX, BlockKind, ClipboardAction, Compare, Condition, FileState, Flow, Modifiers,
-    Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
+    BlockKind, ClipboardAction, Compare, Condition, FileState, Flow, Modifiers, Reference,
+    ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration, is_block_path,
 };
 use sha2::{Digest, Sha256};
 
@@ -273,9 +273,15 @@ fn type_title(block_type: &str) -> String {
 
 /// What a step did, in one line.
 fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
-    let Some(kind) = block_of(step, flows) else {
-        return format!("{} “{}”", type_title(&step.block_type), step.block);
-    };
+    match block_of(step, flows) {
+        Some(kind) => describe_block(kind, app),
+        None => format!("{} “{}”", type_title(&step.block_type), step.block),
+    }
+}
+
+/// What the block `kind` does, in one English line, for a person who hasn't seen the test:
+/// `app` is the application under test, which an open-app block without one opens.
+pub fn describe_block(kind: &BlockKind, app: &str) -> String {
     let target = |t: &Target| match t {
         Target::Image(image) => format!("“{image}”"),
         Target::Point(p) => format!(
@@ -371,7 +377,7 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
         },
         BlockKind::Repeat { times, .. } => format!("Repeat {times} times"),
         BlockKind::UseData { file, .. } => format!("For each row of {file}"),
-        BlockKind::RunTest { test, .. } if test.ends_with(BLOCK_SUFFIX) => {
+        BlockKind::RunTest { test, .. } if is_block_path(test) => {
             format!("Run the custom block `{test}`")
         }
         BlockKind::RunTest { test, .. } => format!("Run test `{test}`"),
