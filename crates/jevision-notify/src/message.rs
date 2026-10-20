@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::{Component, Path};
 
+use jevision_core::BlockReason;
 use jevision_runner::{Run, RunReport, StepStatus, Verdict, describe};
 
 use crate::{NotificationSettings, NotifyChannel, NotifyWhen};
@@ -150,6 +151,15 @@ impl Finished {
         self.report().verdict == Verdict::Failed && !self.report().quarantined
     }
 
+    /// Blocked by a dependency that is missing or in a circle. No test failed to say so, unlike
+    /// one blocked by a failed dependency, which has its own message.
+    fn stuck(&self) -> bool {
+        self.report().verdict == Verdict::Blocked
+            && self.report().blocked.as_ref().is_some_and(|b| {
+                matches!(b.reason, BlockReason::Missing | BlockReason::Cycle { .. })
+            })
+    }
+
     fn was_failing(&self) -> bool {
         self.previous
             .as_ref()
@@ -181,9 +191,9 @@ impl NotifyWhen {
     fn due(self, runs: &[Finished]) -> bool {
         match self {
             Self::Every => true,
-            Self::Failed => runs.iter().any(Finished::failed),
-            Self::FailedOrFixed => runs.iter().any(|r| r.failed() || r.fixed()),
-            Self::Changed => runs.iter().any(|r| r.broke() || r.fixed()),
+            Self::Failed => runs.iter().any(|r| r.failed() || r.stuck()),
+            Self::FailedOrFixed => runs.iter().any(|r| r.failed() || r.fixed() || r.stuck()),
+            Self::Changed => runs.iter().any(|r| r.broke() || r.fixed() || r.stuck()),
         }
     }
 }

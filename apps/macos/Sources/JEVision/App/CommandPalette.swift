@@ -3,9 +3,13 @@ import SwiftUI
 
 /// What the command palette does when an entry is chosen.
 enum PaletteAction: Hashable {
-  case newTest, openProject, settings
+  case newTest, describeTest, openProject, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
   case addBlock(String), addCondition, arrange, disconnect
+  /// Adds a template or a custom block of the project.
+  case addFromLibrary(LibraryEntry)
+  /// Saves the selected blocks to the library.
+  case saveToLibrary(LibraryEntry.Kind)
   case openReport, reportBug, testStatistics, projectStatistics
   case newBoard, addToBoard(BoardAddition)
   case commit, newPullRequest, pullRequests, pull, push
@@ -48,6 +52,8 @@ struct PaletteState {
   var selection: String?
   var selectionIsIf = false
   var selectionHasLinks = false
+  /// Blocks are selected on the canvas.
+  var hasPickedBlocks = false
   var hasTests = false
   var hasLastRun = false
   /// The newest run of the open test failed.
@@ -63,6 +69,8 @@ struct PaletteState {
   var boardLacksTests = false
   /// Frames, notes and links on the board in view, as `(id, title, what it is)`.
   var boardItems: [(id: String, title: String, kind: String)] = []
+  /// The project's templates and custom blocks.
+  var library: [LibraryEntry] = []
 
   struct Git {
     var isTracked = false
@@ -80,7 +88,7 @@ enum CommandPalette {
   /// Everything that can be done in `state`: commands, then blocks to add, then tests to open,
   /// then boards and what is on the board in view.
   static func entries(_ state: PaletteState) -> [PaletteEntry] {
-    commands(state) + blocks(state) + tests(state) + boards(state)
+    commands(state) + blocks(state) + library(state) + tests(state) + boards(state)
   }
 
   /// `entries` that match `query`, best first; all of them for an empty query.
@@ -141,11 +149,27 @@ enum CommandPalette {
       shortcut: Shortcuts.disconnect, keywords: String(localized: "unlink link arrow"),
       if: state.hasTest && state.selectionHasLinks)
     add(
+      .saveToLibrary(.template), String(localized: "Save as Template…"),
+      String(localized: "Keeps the selected blocks in the library, to add them to other tests."),
+      symbol: ProjectLibrary.templateSymbol, keywords: String(localized: "template block library"),
+      if: state.hasTest && state.hasPickedBlocks)
+    add(
+      .saveToLibrary(.block), String(localized: "Make Block…"),
+      String(localized: "Turns the selected blocks into one custom block other tests can run."),
+      symbol: ProjectLibrary.defaultBlockSymbol, keywords: String(localized: "custom block library subflow reuse"),
+      if: state.hasTest && state.hasPickedBlocks)
+    add(
       .arrange, String(localized: "Arrange Automatically"), String(localized: "Lays the blocks out neatly again."),
       symbol: "rectangle.3.group", keywords: String(localized: "layout tidy"), if: state.hasTest)
     add(
       .newTest, String(localized: "New Test…"), String(localized: "Creates an empty test or one to record."),
       symbol: "plus.rectangle.on.rectangle", shortcut: Shortcuts.newTest, if: state.hasProject)
+    add(
+      .describeTest, String(localized: "Describe a Test…"),
+      state.hasTest
+        ? String(localized: "The AI rewrites the open test from what you describe in words.")
+        : String(localized: "The AI writes a new test from what you describe in words."),
+      symbol: "sparkles", keywords: String(localized: "ai write generate draft words text"), if: state.hasProject)
     add(
       .runAll, String(localized: "Run All Tests"), String(localized: "Runs every test of the project in turn."),
       symbol: "play.square.stack", shortcut: Shortcuts.runAll, if: state.hasProject && state.hasTests)
@@ -232,6 +256,17 @@ enum CommandPalette {
         color: .secondary, shortcut: nil, keywords: [item.kind, String(localized: "board find show")].joined(separator: " "))
     }
     return boards + items
+  }
+
+  private static func library(_ state: PaletteState) -> [PaletteEntry] {
+    guard state.hasTest else { return [] }
+    return state.library.map { entry in
+      let choice = PaletteChoice.library(entry)
+      return PaletteEntry(
+        action: .addFromLibrary(entry), kind: .block, title: entry.name, detail: choice.tagline, symbol: entry.symbol,
+        color: choice.color, shortcut: nil,
+        keywords: [choice.groupTitle, entry.detail, String(localized: "template block library")].joined(separator: " "))
+    }
   }
 
   private static func tests(_ state: PaletteState) -> [PaletteEntry] {

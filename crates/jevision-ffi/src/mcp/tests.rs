@@ -57,6 +57,9 @@ impl Hands for FakeHands {
     fn open_items(&self, _: Vec<Openable>, _: Option<String>, _: bool) -> Result<(), HandsError> {
         Ok(())
     }
+    fn close_items(&self, _: Vec<Openable>, _: Option<String>) -> Result<(), HandsError> {
+        Ok(())
+    }
     fn activate(&self, _: String) -> Result<(), HandsError> {
         Ok(())
     }
@@ -171,6 +174,7 @@ fn sign_in() -> String {
         "name": "Sign in",
         "app": "com.example.mail",
         "tags": ["login"],
+        "author": "Anna",
         "start": "open",
         "blocks": {
             "open": { "type": "openApp", "next": "password" },
@@ -264,6 +268,7 @@ fn speaks_the_protocol_over_lines() {
     assert_eq!(listed["isError"], false);
     let text = listed["content"][1]["text"].as_str().unwrap();
     assert!(text.contains("login/sign-in.flow.json") && text.contains("\"Sign in\""));
+    assert!(text.contains("\"Anna\""), "the details are listed: {text}");
 
     assert_eq!(by_id(json!("four"))["result"], json!({}));
     assert_eq!(by_id(json!(5))["error"]["code"], -32601);

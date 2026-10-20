@@ -141,6 +141,10 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't an app bundle identifier like com.apple.TextEdit.",
             p("value")
         ),
+        "flow.link.invalid" => format!(
+            "\"{}\" isn't a web address; start it with https://.",
+            p("value")
+        ),
         "flow.tags.duplicate" => format!("the tag \"{}\" is listed twice.", p("tag")),
         "flow.block.duplicateId" => "two blocks have this name.".to_owned(),
         "flow.block.invalidId" => {
@@ -163,6 +167,14 @@ pub fn describe(issue: &Issue) -> String {
         "flow.placeholder.invalid" => format!(
             "\"{}\" isn't a valid placeholder; use ${{secret.NAME}}, ${{env.NAME}}, ${{data.COLUMN}} or ${{var.NAME}}.",
             p("placeholder")
+        ),
+        "flow.input.invalid" => format!(
+            "\"{}\" can't name an input; use letters, digits and _, not starting with a digit.",
+            p("name")
+        ),
+        "flow.input.missing" => format!(
+            "the block reads the input {}; give it a value.",
+            p("name")
         ),
         "flow.keys.invalid" => format!(
             "\"{}\" isn't a key combination like cmd+shift+s.",

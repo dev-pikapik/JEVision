@@ -18,7 +18,7 @@ struct ProjectMapTests {
   }
 
   private func mapTest(_ file: String, uses: [String]) -> MapTest {
-    MapTest(file: file, name: file, blocks: 1, uses: uses, errors: 0, readable: true)
+    MapTest(file: file, name: file, blocks: 1, uses: uses, errors: 0, readable: true, flaky: false)
   }
 
   @Test func groupsTestsByTheFolderTheyAreIn() {

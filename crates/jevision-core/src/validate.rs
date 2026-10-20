@@ -6,8 +6,9 @@ use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
-    AI_PROVIDERS, BODY, Block, BlockKind, Compare, Condition, DatabaseExpect, ExpectStatus,
-    FileState, Flow, NamedValue, Point, Rect, Reference, Target, ValueTest, format_duration,
+    AI_PROVIDERS, BLOCK_SUFFIX, BODY, Block, BlockKind, Compare, Condition, DatabaseExpect,
+    ExpectStatus, FileState, Flow, NamedValue, Point, Rect, Reference, TEST_SUFFIX, Target,
+    ValueTest, format_duration,
 };
 
 pub const MAX_RETRIES: u32 = 10;
@@ -117,10 +118,37 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             );
         }
     }
+    for b in &blocks {
+        if let BlockKind::RunTest { test, inputs, .. } = &b.kind {
+            for name in block_inputs(dir, test) {
+                if !inputs.contains_key(&name) {
+                    out.push(
+                        Issue::warning("flow.input.missing")
+                            .with("block", &b.id)
+                            .with("field", format!("inputs.{name}"))
+                            .with("name", name),
+                    );
+                }
+            }
+        }
+    }
     out.extend(crate::env::validate_environment_values(flow, dir));
     out.extend(crate::data::validate_data(flow, dir));
     out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
     out
+}
+
+/// Inputs the custom block in `path`, relative to `dir`, reads; none for a test or a file that
+/// can't be read.
+fn block_inputs(dir: &Path, path: &str) -> Vec<String> {
+    if !path.ends_with(BLOCK_SUFFIX) || !is_relative_path(path) || !placeholders(path).is_empty() {
+        return Vec::new();
+    }
+    std::fs::read_to_string(dir.join(path))
+        .ok()
+        .and_then(|text| crate::parse(&text).ok())
+        .map(|flow| required_inputs(&flow))
+        .unwrap_or_default()
 }
 
 /// Fields of a block that name a file to read, other than a check block's reference.
@@ -174,11 +202,24 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
 
 /// Names of the secrets the test reads through `${secret.NAME}`, sorted, without repeats.
 pub fn required_secrets(flow: &Flow) -> Vec<String> {
+    placeholder_names(flow, "secret")
+}
+
+/// Names of the inputs a custom block reads through `${input.NAME}`, sorted, without repeats:
+/// the values a test that runs the block gives it.
+pub fn required_inputs(flow: &Flow) -> Vec<String> {
+    placeholder_names(flow, "input")
+}
+
+fn placeholder_names(flow: &Flow, namespace: &str) -> Vec<String> {
     let mut names = BTreeSet::new();
     for b in &flow.blocks {
-        for (_, value) in placeholder_fields(&b.kind) {
+        // Values given to a custom block are read by the block, in the caller's place.
+        let own =
+            |(field, _): &(String, &str)| !field.starts_with("inputs.") || namespace != "input";
+        for (_, value) in placeholder_fields(&b.kind).into_iter().filter(own) {
             for p in placeholders(value).into_iter().flatten() {
-                if p.0 == "secret" {
+                if p.0 == namespace {
                     names.insert(p.1.to_owned());
                 }
             }
@@ -199,7 +240,17 @@ pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
             .map(|(i, f)| (format!("files.{i}"), f.as_str()))
             .collect(),
         BlockKind::UseData { file, .. } => vec![("file".to_owned(), file.as_str())],
-        BlockKind::RunTest { test, .. } => vec![("test".to_owned(), test.as_str())],
+        BlockKind::RunTest { test, inputs, .. } => {
+            let mut fields = vec![("test".to_owned(), test.as_str())];
+            let mut given: Vec<(&String, &String)> = inputs.iter().collect();
+            given.sort();
+            fields.extend(
+                given
+                    .into_iter()
+                    .map(|(name, value)| (format!("inputs.{name}"), value.as_str())),
+            );
+            fields
+        }
         BlockKind::If {
             condition, else_if, ..
         } => {
@@ -319,6 +370,13 @@ fn root(flow: &Flow, out: &mut Vec<Issue>) {
             out.push(Issue::error("flow.tags.duplicate").with("tag", tag));
         }
     }
+    if let Some(link) = flow.link.as_deref().filter(|l| !is_web_address(l)) {
+        out.push(
+            Issue::error("flow.link.invalid")
+                .with("field", "link")
+                .with("value", link),
+        );
+    }
     if flow.retries.is_some_and(|retries| retries > MAX_RETRIES) {
         out.push(range(None, "retries", 0, MAX_RETRIES));
     }
@@ -432,6 +490,15 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 );
             }
         }
+        BlockKind::Pause { duration_ms, .. } => {
+            if !(1..=MAX_TIMEOUT_MS).contains(duration_ms) {
+                out.push(
+                    err("flow.field.range", "duration")
+                        .with("min", format_duration(1))
+                        .with("max", format_duration(MAX_TIMEOUT_MS)),
+                );
+            }
+        }
         BlockKind::Check { reference: r, .. } => reference(id, "reference", r, out),
         BlockKind::If {
             condition: first,
@@ -475,7 +542,19 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             path_with_extension(id, "file", file, ".csv", out);
             loop_body(id, body, out);
         }
-        BlockKind::RunTest { test, .. } => path_with_extension(id, "test", test, ".flow.json", out),
+        BlockKind::RunTest { test, inputs, .. } => {
+            let ext = if test.ends_with(BLOCK_SUFFIX) {
+                BLOCK_SUFFIX
+            } else {
+                TEST_SUFFIX
+            };
+            path_with_extension(id, "test", test, ext, out);
+            let mut names: Vec<&String> = inputs.keys().collect();
+            names.sort();
+            for name in names.into_iter().filter(|n| !is_identifier(n)) {
+                out.push(err("flow.input.invalid", &format!("inputs.{name}")).with("name", name));
+            }
+        }
         BlockKind::Script {
             code,
             inputs,
@@ -909,7 +988,7 @@ pub(crate) fn placeholders(text: &str) -> Vec<Result<(&str, &str), &str>> {
         };
         let whole = &rest[..=end];
         let parsed = whole[2..end].split_once('.').filter(|(ns, name)| {
-            matches!(*ns, "secret" | "env" | "data" | "var") && is_identifier(name)
+            matches!(*ns, "secret" | "env" | "data" | "var" | "input") && is_identifier(name)
         });
         found.push(parsed.ok_or(whole));
         rest = &rest[end + 1..];

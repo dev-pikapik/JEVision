@@ -149,7 +149,7 @@ struct TestCard: View {
       }
       .font(.caption)
       .foregroundStyle(.secondary)
-      if quarantine != nil || (flaky != nil && last?.status != .flaky) {
+      if quarantine != nil || (flakyHelp != nil && last?.status != .flaky) {
         HStack(spacing: 8) {
           if let quarantine {
             Label {
@@ -158,13 +158,13 @@ struct TestCard: View {
               Image(systemName: RunStatus.quarantined.symbol).foregroundStyle(RunStatus.quarantined.color)
             }
           }
-          if let flaky, last?.status != .flaky {
+          if let flakyHelp, last?.status != .flaky {
             Label {
               Text("Flaky").lineLimit(1)
             } icon: {
               Image(systemName: RunStatus.flaky.symbol).foregroundStyle(RunStatus.flaky.color)
             }
-            .help(Text(RunHistory.flakyEvidence(flaky)))
+            .help(Text(flakyHelp))
           }
         }
         .font(.caption)
@@ -218,11 +218,13 @@ struct TestCard: View {
     return (last.status.symbol, last.status.color, "\(last.status.title) · \(when)")
   }
 
+  private var flakyHelp: String? { TestFields.flakyHelp(flaky, marked: info?.flaky == true) }
+
   /// Everything the card says, for VoiceOver.
   var accessibilityValue: String {
     var parts = [state.text]
     if let quarantine { parts.append(QuarantineText.describe(quarantine)) }
-    if let flaky { parts.append(RunHistory.flakyEvidence(flaky)) }
+    if let flakyHelp { parts.append(flakyHelp) }
     if !uses.isEmpty { parts.append(String(localized: "Runs \(uses.formatted(.list(type: .and)))")) }
     if !usedBy.isEmpty { parts.append(String(localized: "Run by \(usedBy.formatted(.list(type: .and)))")) }
     if !needs.isEmpty { parts.append(String(localized: "Runs after \(needs.formatted(.list(type: .and))) pass")) }

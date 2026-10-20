@@ -59,6 +59,7 @@ final class ProjectStore {
   let environments = ProjectEnvironments()
   let boards = ProjectBoards()
   let schedules = ProjectSchedules()
+  let library = ProjectLibrary()
   /// Settings shared through the project's settings file: default retries and the tests in
   /// quarantine.
   private(set) var settings = ProjectSettings(retries: nil, quarantine: [])
@@ -113,7 +114,9 @@ final class ProjectStore {
   // MARK: Tests
 
   private func openSelection() {
-    guard let rootURL, let selection, ProjectScanner.isTestFile(selection) else {
+    guard let rootURL, let selection,
+      ProjectScanner.isTestFile(selection) || selection.lowercased().hasSuffix(ProjectLibrary.blockSuffix)
+    else {
       document = nil
       return
     }
@@ -138,7 +141,7 @@ final class ProjectStore {
       FileManager.default.fileExists(atPath: folder.appending(path: $0 + ProjectScanner.testSuffix).path)
     } + ProjectScanner.testSuffix
     let empty = Flow(
-      name: name.trimmingCharacters(in: .whitespaces), description: nil, app: app, testType: nil, priority: nil,
+      name: name.trimmingCharacters(in: .whitespaces), description: nil, icon: nil, app: app, testType: nil, priority: nil,
       status: nil, tags: [], retries: nil, start: "", blocks: [],
       canvas: CanvasContent(positions: [:], sections: [], notes: []))
     let flow = insertBlock(flow: empty, typeName: "openApp", slot: nil)?.flow ?? empty
@@ -389,6 +392,7 @@ final class ProjectStore {
     environments.open(url)
     boards.open(url)
     schedules.open(url)
+    library.open(url)
     rescan()
   }
 
@@ -397,6 +401,7 @@ final class ProjectStore {
     environments.reload()
     boards.reload()
     schedules.reload()
+    library.reload()
     reloadSettings()
     document?.revalidate()
     scanTask?.cancel()

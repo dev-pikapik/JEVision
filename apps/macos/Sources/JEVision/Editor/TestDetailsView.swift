@@ -2,7 +2,8 @@ import JEVisionCore
 import JEVisionHands
 import SwiftUI
 
-/// The test as a whole: its name, app, data, secrets, retries and the tests it runs after.
+/// The test card: what the test checks and needs, who looks after it, the tests it runs after,
+/// its retries, flaky mark, quarantine, data and secrets.
 struct TestDetailsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.dismiss) private var dismiss
@@ -23,6 +24,11 @@ struct TestDetailsView: View {
             prompt: Text("What the test checks"), axis: .vertical
           ) { Text("Description") }
           .lineLimit(1...4)
+          TextField(
+            text: binding(flow.preconditions ?? "", "preconditions") { $0.preconditions = $1.isEmpty ? nil : $1 },
+            prompt: Text("What must be true before it starts"), axis: .vertical
+          ) { Text("Preconditions") }
+          .lineLimit(1...4)
           LabeledContent("App") {
             AppPicker(
               bundleID: binding(flow.app.isEmpty ? nil : flow.app, "app") { $0.app = $1 ?? "" },
@@ -31,7 +37,10 @@ struct TestDetailsView: View {
           IssueList(issues: issues.filter { $0.param("field") == "app" })
         }
         Section {
-          TagsField(tags: flow.tags) { tags in document.updateFlow(field: "tags") { $0.tags = tags } }
+          CommitField(
+            title: "Tags", prompt: Text(verbatim: "smoke, sign-in"), value: flow.tags.joined(separator: ", "),
+            tidy: { TestFields.tags($0).joined(separator: ", ") }
+          ) { text in document.updateFlow(field: "tags") { $0.tags = TestFields.tags(text) } }
           IssueList(issues: issues.filter { $0.param("field") == "tags" || $0.code == "flow.tags.duplicate" })
           Picker(selection: binding(flow.testType, "testType") { $0.testType = $1 }) {
             Text("Not Set").tag(TestType?.none)
@@ -54,6 +63,31 @@ struct TestDetailsView: View {
           } label: {
             Text("Status")
           }
+          CommitField(title: "Author", prompt: Text("Who looks after the test"), value: flow.author ?? "") { author in
+            document.updateFlow(field: "author") { $0.author = author.isEmpty ? nil : author }
+          }
+          CommitField(title: "Platform", prompt: Text(verbatim: "macOS 26"), value: flow.platform ?? "") { platform in
+            document.updateFlow(field: "platform") { $0.platform = platform.isEmpty ? nil : platform }
+          }
+          let linkIssues = issues.filter { $0.param("field") == "link" }
+          LabeledContent {
+            HStack {
+              CommitField(title: "Link", prompt: Text(verbatim: "https://"), value: flow.link ?? "") { link in
+                document.updateFlow(field: "link") { $0.link = link.isEmpty ? nil : link }
+              }
+              .labelsHidden()
+              if linkIssues.isEmpty, let link = flow.link.flatMap(URL.init(string:)) {
+                Link(destination: link) { Image(systemName: "arrow.up.forward.square") }
+                  .buttonStyle(.borderless)
+                  .help(Text("Open the link in the browser"))
+                  .accessibilityLabel(Text("Open Link"))
+              }
+            }
+          } label: {
+            Text("Link")
+            Text("The issue or requirement the test covers.")
+          }
+          IssueList(issues: linkIssues)
         }
         Section {
           Picker(selection: binding(flow.retries, "retries") { $0.retries = $1 }) {
@@ -64,12 +98,22 @@ struct TestDetailsView: View {
             Text("Retries")
             Text("How many more times to run the test if it fails. The project default is set in Settings › Advanced.")
           }
+          Toggle(isOn: binding(flow.flaky, "flaky") { $0.flaky = $1 }) {
+            Text("Flaky")
+            Text(TestFields.flakyExplanation)
+          }
         }
         Section {
           DependenciesField(document: document, dependsOn: flow.dependsOn)
           IssueList(issues: issues.filter { $0.param("field") == "dependsOn" })
         }
         if let file = project.testID(document.url) {
+          let runs = project.runs.filter { $0.report.file == file }
+          if !runs.isEmpty {
+            Section("Health") {
+              HealthView(test: file, health: testHealth(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)))
+            }
+          }
           QuarantineSection(file: file, name: flow.name)
         }
         let files = DataColumns.files(in: flow)
@@ -112,8 +156,8 @@ struct TestDetailsView: View {
           Text("Values are kept in the Keychain on this Mac or read from environment variables of the same name.")
             .foregroundStyle(.secondary)
         }
-        if project.git.status?.hasCommits == true, let path = project.selection {
-          Section {
+        Section {
+          if project.git.status?.hasCommits == true, let path = project.selection {
             LabeledContent {
               Button("History…") {
                 dismiss()
@@ -124,9 +168,15 @@ struct TestDetailsView: View {
               Text("Every committed version of this test.")
             }
           }
+          LabeledContent {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([document.url]) }
+          } label: {
+            Text("File")
+            Text(verbatim: project.testID(document.url) ?? document.url.lastPathComponent)
+          }
         }
         IssueList(issues: issues.filter {
-          !["name", "app", "tags", "dependsOn"].contains($0.param("field") ?? "") && $0.code != "flow.tags.duplicate"
+          !["name", "app", "tags", "dependsOn", "link"].contains($0.param("field") ?? "") && $0.code != "flow.tags.duplicate"
         })
       }
       .formStyle(.grouped)
@@ -146,26 +196,31 @@ struct TestDetailsView: View {
   }
 }
 
-/// Tags typed as one line, separated by commas; saved when the field is left or Return is pressed.
-private struct TagsField: View {
-  let tags: [String]
-  let save: ([String]) -> Void
+/// One line of text saved when the field is left or Return is pressed, not on every key, so a
+/// half-typed value is never checked or saved.
+private struct CommitField: View {
+  let title: LocalizedStringKey
+  let prompt: Text
+  let value: String
+  /// The text as it's saved: trimmed by default.
+  var tidy: (String) -> String = { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+  let save: (String) -> Void
   @State private var text = ""
   @FocusState private var focused: Bool
 
   var body: some View {
-    TextField(text: $text, prompt: Text(verbatim: "smoke, sign-in")) { Text("Tags") }
+    TextField(text: $text, prompt: prompt) { Text(title) }
       .focused($focused)
       .onSubmit(commit)
       .onChange(of: focused) { if !focused { commit() } }
       .onDisappear(perform: commit)
-      .onChange(of: tags, initial: true) { if !focused { text = tags.joined(separator: ", ") } }
+      .onChange(of: value, initial: true) { if !focused { text = value } }
   }
 
   private func commit() {
-    let new = TestFields.tags(text)
-    if new != tags { save(new) }
-    text = new.joined(separator: ", ")
+    let new = tidy(text)
+    if new != value { save(new) }
+    text = new
   }
 }
 
@@ -176,6 +231,19 @@ enum TestFields {
     return text.split(separator: ",")
       .map { $0.trimmingCharacters(in: .whitespaces) }
       .filter { !$0.isEmpty && seen.insert($0).inserted }
+  }
+
+  static let flakyExplanation = String(
+    localized:
+      "It sometimes fails for reasons outside the app. The mark is saved in the test and shown in the sidebar and on the project map; to keep its failures from failing Run All, put it in quarantine."
+  )
+
+  /// Why a test is shown as flaky: what its runs say, its mark in the test details, or both;
+  /// `nil` when neither says so.
+  static func flakyHelp(_ evidence: FlakyEvidence?, marked: Bool) -> String? {
+    let parts = [evidence.map(RunHistory.flakyEvidence), marked ? String(localized: "Marked flaky in the test details.") : nil]
+      .compactMap(\.self)
+    return parts.isEmpty ? nil : parts.joined(separator: " ")
   }
 
   static func title(_ type: TestType) -> String {

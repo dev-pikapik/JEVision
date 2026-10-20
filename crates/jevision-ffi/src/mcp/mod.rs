@@ -5,7 +5,7 @@
 //! hold only `${secret.NAME}`, and reports are saved with secrets masked. Runs and screenshots
 //! work only while the person allows them in the app.
 
-mod blocks;
+pub(crate) mod blocks;
 mod jobs;
 mod tools;
 

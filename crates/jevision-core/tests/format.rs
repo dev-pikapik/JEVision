@@ -637,7 +637,7 @@ fn secrets_are_listed_by_name() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 19);
+    assert_eq!(specs.len(), 20);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -664,6 +664,66 @@ fn catalog_matches_the_file_format() {
             );
         }
     }
+}
+
+#[test]
+fn pauses_closing_files_and_custom_blocks_round_trip() {
+    let text = minimal(
+        r#"{"a": {"type": "pause", "duration": "1500ms", "next": "b"},
+            "b": {"type": "openFile", "files": ["f.txt"], "closeAfter": true, "next": "c"},
+            "c": {"type": "runTest", "test": "blocks/Sign in.block.json",
+                  "inputs": {"email": "${env.EMAIL}", "Bad name": "x"}}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    let saved = to_canonical_json(&flow);
+    assert!(saved.contains(r#""duration": "1500ms""#), "{saved}");
+    assert!(saved.contains(r#""closeAfter": true"#), "{saved}");
+    assert!(
+        saved.contains("\"inputs\": {\n        \"Bad name\": \"x\",\n        \"email\": \"${env.EMAIL}\"\n      }"),
+        "{saved}"
+    );
+    assert_eq!(parse(&saved).unwrap(), flow);
+    let issues = validate(&flow);
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(found, [("flow.input.invalid", "inputs.Bad name")]);
+
+    let issues = issues_of(
+        r#"{"a": {"type": "pause", "duration": "0s", "next": "b"},
+            "b": {"type": "runTest", "test": "x.block.json", "inputs": {"n": "${input.n}"}}}"#,
+    );
+    assert_eq!(codes(&issues), ["flow.field.range"]);
+    let missing = parse_err(&minimal(r#"{"a": {"type": "pause"}}"#));
+    assert_eq!(codes(&missing), ["flow.field.missing"]);
+}
+
+#[test]
+fn a_custom_block_asks_for_its_inputs() {
+    let dir = std::env::temp_dir().join(format!("jevision-inputs-{}", std::process::id()));
+    fs::create_dir_all(dir.join("blocks")).unwrap();
+    fs::write(
+        dir.join("blocks/login.block.json"),
+        minimal(
+            r#"{"a": {"type": "type", "text": "${input.email} ${input.name}", "next": "b"},
+                "b": {"type": "runTest", "test": "inner.block.json", "inputs": {"x": "${input.name}"}}}"#,
+        ),
+    )
+    .unwrap();
+    let block = parse(&fs::read_to_string(dir.join("blocks/login.block.json")).unwrap()).unwrap();
+    assert_eq!(required_inputs(&block), ["email", "name"]);
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "runTest", "test": "blocks/login.block.json", "inputs": {"email": "a@b.c"}}}"#,
+    ))
+    .unwrap();
+    let issues = validate_in(&flow, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(found, [("flow.input.missing", "inputs.name")]);
 }
 
 #[test]
@@ -1031,5 +1091,57 @@ fn dependencies_round_trip_and_are_validated() {
     assert_eq!(
         describe(&issues[2]),
         "Field \"dependsOn\": cart.flow.json is listed twice."
+    );
+}
+
+#[test]
+fn the_test_card_is_saved_in_canonical_form() {
+    let text = r#"{"flaky": true, "link": "https://example.com/issues/12", "platform": "macOS 26",
+        "author": "Anna", "preconditions": "Signed in as a teacher", "tags": ["smoke"],
+        "format": 1, "name": "t", "app": "com.example.App", "start": "a",
+        "blocks": {"a": {"type": "check", "reference": {"image": "refs/a.png"}}}}"#;
+    let flow = parse(text).unwrap();
+    assert_eq!(
+        flow.preconditions.as_deref(),
+        Some("Signed in as a teacher")
+    );
+    assert_eq!(flow.author.as_deref(), Some("Anna"));
+    assert_eq!(flow.platform.as_deref(), Some("macOS 26"));
+    assert_eq!(flow.link.as_deref(), Some("https://example.com/issues/12"));
+    assert!(flow.flaky);
+    assert_eq!(validate(&flow), vec![]);
+    let once = to_canonical_json(&flow);
+    assert!(
+        once.contains(
+            "\"tags\": [\n    \"smoke\"\n  ],\n  \"preconditions\": \"Signed in as a teacher\",\n  \
+             \"author\": \"Anna\",\n  \"platform\": \"macOS 26\",\n  \
+             \"link\": \"https://example.com/issues/12\",\n  \"flaky\": true,\n  \"start\""
+        ),
+        "{once}"
+    );
+    assert_eq!(parse(&once).unwrap(), flow);
+
+    // Left out when not set; `"flaky": false` is the default and isn't written.
+    let plain = canonicalize(
+        &minimal(r#"{"a": {"type": "openApp"}}"#)
+            .replace(r#""name": "t","#, r#""name": "t", "flaky": false,"#),
+    )
+    .unwrap();
+    for key in ["preconditions", "author", "platform", "link", "flaky"] {
+        assert!(!plain.contains(key), "{key} in {plain}");
+    }
+
+    let mut flow = flow;
+    flow.link = Some("JIRA-12".into());
+    let issues = validate(&flow);
+    assert_eq!(codes(&issues), ["flow.link.invalid"]);
+    assert_eq!(issues[0].param("field"), Some("link"));
+    assert_eq!(
+        codes(
+            &parse(&minimal("{}").replace("\"t\",", "\"t\", \"flaky\": 1,"))
+                .unwrap_err()
+                .issues
+        ),
+        ["flow.field.type"]
     );
 }

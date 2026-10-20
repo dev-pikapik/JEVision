@@ -66,7 +66,7 @@
     <li><a href="#project-file">Project settings file</a></li>
     <li><a href="#retries">Retries</a></li>
     <li><a href="#verdict">What the retries tell you</a></li>
-    <li><a href="#flaky">Flaky tests from history</a></li>
+    <li><a href="#flaky">Flaky tests</a></li>
     <li><a href="#quarantine">Quarantine</a></li>
     <li><a href="#privacy">Screenshots and privacy</a></li>
   </ul>
@@ -110,8 +110,9 @@
   <li><strong>“Failed 3 times in a row — a real failure, not flakiness.”</strong> Every attempt failed the same way: look for a bug.</li>
 </ul>
 
-<h2 id="flaky">Flaky tests from history</h2>
+<h2 id="flaky">Flaky tests</h2>
 <p>JEVision also looks back over past runs. When the same test file, unchanged since (the same content), both passed and failed in the same environment over the last 30 days, the app marks it flaky in the sidebar, the project map and the run history, with the dates and counts as evidence. Changing the test starts its record afresh, because a changed test may behave differently.</p>
+<p>You can also mark a test flaky yourself: turn on <strong>Flaky</strong> in the test's details (click its name above the flowchart), or add <code>"flaky": true</code> to the test file. The mark is saved in the test, so everyone sees it in the sidebar and on the project map. It changes nothing in how the test runs; to keep its failures from failing Run All, put it in quarantine.</p>
 
 <h2 id="quarantine">Quarantine</h2>
 <p>Quarantine is for tests whose failures shouldn't block anyone while they are being fixed, for example while a test server is down.</p>

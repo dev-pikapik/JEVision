@@ -96,6 +96,7 @@
 <p>These rules hold for every choice:</p>
 <ul>
   <li><strong>A stopped run sends nothing</strong>, and neither does a batch of runs with a stopped run in it.</li>
+  <li><strong>A test that didn't run because a test it depends on failed</strong> says nothing of its own, since the test that failed does; with <em>After every run</em> it is reported as <code>Blocked</code>. A test blocked by a dependency that doesn't exist or that depends on itself in a circle is reported like a failure.</li>
   <li><strong>A failure in <a href="retries.html#quarantine">quarantine</a> doesn't count as a failure.</strong> The test still runs, and <em>After every run</em> still reports it.</li>
   <li><strong><em>Only for scheduled runs and CI</em></strong> keeps runs you start yourself in the app or in a terminal quiet. Scheduled runs and runs where the environment variable <code>CI</code> is set (GitHub Actions and most CI systems set it) still send.</li>
 </ul>

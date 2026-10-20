@@ -468,6 +468,10 @@ pub fn describe(f: &Failure) -> String {
         ),
         "run.start.unknownBlock" => format!("There is no block {} to start from.", p("block")),
         "run.secret.missing" => format!("Secret {} is not set.", p("name")),
+        "run.input.missing" => format!(
+            "The block reads the input {}, but the test that runs it gives no value for it.",
+            p("name")
+        ),
         "run.env.notChosen" => format!(
             "The test reads the environment value {}, but no environment was chosen.",
             p("name")

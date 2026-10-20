@@ -639,7 +639,7 @@ private final class Progress: RunListener, @unchecked Sendable {
   private static let names = [
     "openApp": "open app", "openFile": "open file", "click": "click", "hover": "hover", "drag": "drag",
     "scroll": "scroll", "type": "type text",
-    "pressKeys": "press keys", "waitFor": "wait", "check": "check", "if": "if", "repeat": "repeat",
+    "pressKeys": "press keys", "waitFor": "wait", "pause": "pause", "check": "check", "if": "if", "repeat": "repeat",
     "useData": "use data", "runTest": "run test", "script": "script", "command": "command", "http": "http",
     "checkFile": "wait for file", "database": "database",
   ]

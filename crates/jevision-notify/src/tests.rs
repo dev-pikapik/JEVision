@@ -223,6 +223,37 @@ fn a_message_goes_to_the_channels_that_ask_for_it() {
         None
     );
 
+    let blocked = |reason: serde_json::Value| {
+        let mut value = report("blocked", None);
+        value["attempts"] = json!([]);
+        value["blocked"] = json!({
+            "dependency": "login/open.flow.json", "cause": "login/open.flow.json",
+            "causeName": "Open", "reason": reason
+        });
+        finished(value, None)
+    };
+    let after_failure = blocked(json!({"kind": "failed"}));
+    let missing = blocked(json!({"kind": "missing"}));
+    assert_eq!(title(&fixed, &after_failure), None);
+    assert_eq!(title(&only_failed, &after_failure), None);
+    assert_eq!(title(&changed, &after_failure), None);
+    assert_eq!(
+        title(&every, &after_failure).as_deref(),
+        Some("Blocked: Sign in")
+    );
+    for settings in [&only_failed, &fixed, &changed] {
+        assert_eq!(
+            title(settings, &missing).as_deref(),
+            Some("Blocked: Sign in")
+        );
+    }
+    let told = notice_for(&only_failed, "shop", std::slice::from_ref(&missing), false).unwrap();
+    assert!(
+        told.message
+            .body
+            .starts_with("Blocked: login/open.flow.json doesn't exist\n")
+    );
+
     let mut quarantined = finished(failed(), None);
     quarantined.run.report.quarantined = true;
     assert_eq!(title(&fixed, &quarantined), None);
@@ -349,6 +380,7 @@ fn fixed_is_told_against_the_last_finished_run_of_the_same_file() {
     };
     save("20261019-080000-sign-in", report("failed", Some("x")));
     save("20261019-083000-sign-in", report("cancelled", None));
+    save("20261019-083500-sign-in", report("blocked", None));
     let mut other = report("passed", None);
     other["file"] = json!("other/sign-in.flow.json");
     save("20261019-083000-sign-in-2", other);

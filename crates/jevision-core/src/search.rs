@@ -36,12 +36,16 @@ pub fn rank(query: &str, candidates: &[SearchCandidate]) -> Vec<usize> {
     scored.into_iter().map(|(_, _, i)| i).collect()
 }
 
-/// Words a test is found by besides its file name: its name, description and tags, what its
-/// blocks type, press, open and look for, and the text of its canvas notes and sections.
+/// Words a test is found by besides its file name: its name, description, tags, preconditions,
+/// author and platform, what its blocks type, press, open and look for, and the text of its
+/// canvas notes and sections.
 pub fn test_keywords(flow: &Flow) -> String {
     let mut words: Vec<&str> = vec![&flow.name];
     words.extend(flow.description.as_deref());
     words.extend(flow.tags.iter().map(String::as_str));
+    for card in [&flow.preconditions, &flow.author, &flow.platform] {
+        words.extend(card.as_deref());
+    }
     fn reference<'a>(r: &'a Reference, words: &mut Vec<&'a str>) {
         words.push(&r.image);
         if let Compare::Meaning {
@@ -107,7 +111,7 @@ pub fn test_keywords(flow: &Flow) -> String {
                     condition(&branch.condition, &mut words);
                 }
             }
-            BlockKind::Repeat { .. } => {}
+            BlockKind::Pause { .. } | BlockKind::Repeat { .. } => {}
             BlockKind::UseData { file, .. } => words.push(file),
             BlockKind::RunTest { test, .. } => words.push(test),
             BlockKind::Script { code, .. } => words.push(code),
@@ -246,7 +250,8 @@ mod tests {
     fn a_test_is_found_by_its_name_description_and_blocks() {
         let flow = crate::parse(
             r#"{"format":1,"name":"Add a line to a note","description":"Keeps the draft",
-            "app":"com.apple.Notes","start":"a","blocks":{
+            "app":"com.apple.Notes","preconditions":"Signed in as a teacher","author":"Anna Lee",
+            "platform":"macOS 26","start":"a","blocks":{
             "a":{"type":"type","text":"Hello, ${data.name}!","next":"m"},
             "m":{"type":"drag","from":{"image":"refs/inbox.png"},"to":{"image":"refs/archive.png"},"next":"b"},
             "b":{"type":"check","reference":{"image":"","compare":"meaning","expect":"A saved note"}}}}"#,
@@ -256,6 +261,9 @@ mod tests {
         for words in [
             "note 01",
             "draft",
+            "teacher",
+            "anna",
+            "macos 26",
             "hello",
             "saved note",
             "inbox",

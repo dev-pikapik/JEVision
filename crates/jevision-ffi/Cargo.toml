@@ -26,10 +26,12 @@ jevision-git.workspace = true
 jevision-notify.workspace = true
 jevision-remote.workspace = true
 jevision-runner.workspace = true
+jevision-vision.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread"] }
 uniffi.workspace = true
+ureq = { version = "3.1", default-features = false, features = ["rustls"] }
 
 [dev-dependencies]
 p256 = { version = "0.14", default-features = false, features = ["ecdsa", "std"] }

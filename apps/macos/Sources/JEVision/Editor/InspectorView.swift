@@ -95,11 +95,12 @@ struct InspectorView: View {
     case .type: ["text", "into"]
     case .pressKeys: ["keys"]
     case .waitFor: ["until", "timeout"]
+    case .pause: ["duration"]
     case .check: ["reference"]
     case .if: ["reference", "value", "elseIf"]
     case .repeat: ["times"]
     case .useData: ["file"]
-    case .runTest: ["test"]
+    case .runTest: ["test", "inputs"]
     case .script: ["language", "code", "inputs", "outputs", "timeout"]
     case .command: ["command", "folder", "exitCode", "saveOutput", "timeout"]
     case .http: ["method", "url", "headers", "body", "expectStatus", "save", "timeout"]
@@ -137,8 +138,11 @@ struct InspectorView: View {
         IssueList(issues: context.issues("app"))
       }
 
-    case .openFile(let files, let app, let newInstance, let next):
-      Section("Files") {
+    case .openFile(let files, let app, let newInstance, let closeAfter, let next):
+      let make = { (files: [String], app: String?, newInstance: Bool, closeAfter: Bool) in
+        BlockKind.openFile(files: files, app: app, newInstance: newInstance, closeAfter: closeAfter, next: next)
+      }
+      Section {
         ForEach(Array(files.enumerated()), id: \.offset) { index, path in
           HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading) {
@@ -147,7 +151,7 @@ struct InspectorView: View {
                 path: bind("files", path) { new in
                   var all = files
                   all[index] = new
-                  return .openFile(files: all, app: app, newInstance: newInstance, next: next)
+                  return make(all, app, newInstance, closeAfter)
                 },
                 types: [.item], context: context)
               IssueList(issues: context.issues("files.\(index)"))
@@ -156,7 +160,7 @@ struct InspectorView: View {
               document.update(id, field: "files") {
                 var all = files
                 all.remove(at: index)
-                $0 = .openFile(files: all, app: app, newInstance: newInstance, next: next)
+                $0 = make(all, app, newInstance, closeAfter)
               }
             }
             .labelStyle(.iconOnly)
@@ -170,20 +174,32 @@ struct InspectorView: View {
           guard panel.runModal() == .OK else { return }
           let added = panel.urls.map { RelativePath.from(context.folder, to: $0) }
           document.update(id, field: "files") {
-            $0 = .openFile(files: files + added, app: app, newInstance: newInstance, next: next)
+            $0 = make(files + added, app, newInstance, closeAfter)
           }
         }
         IssueList(issues: context.issues("files").filter { $0.param("field") == "files" })
+      } header: {
+        Text("Files")
+      } footer: {
+        Text("The test opens a fresh copy of each file, so the original stays as it is.")
+          .foregroundStyle(.secondary)
       }
       Section {
-        LabeledContent("Open With") {
-          AppPicker(
-            bundleID: bind("app", app) { .openFile(files: files, app: $0, newInstance: newInstance, next: next) },
-            noneTitle: Text("Default App"))
+        let openWith = bind("app", app) { make(files, $0, newInstance, closeAfter) }
+        if BrowserPicker.areLinks(files) {
+          BrowserPicker(bundleID: openWith)
+        } else {
+          LabeledContent("Open With") {
+            AppPicker(bundleID: openWith, noneTitle: Text("Default App"))
+          }
         }
         IssueList(issues: context.issues("app"))
+        Toggle(isOn: bind("closeAfter", closeAfter) { make(files, app, newInstance, $0) }) {
+          Text("Close after the test")
+          Text("When the test ends, even if it fails, closes what this block opened.")
+        }
         DisclosureGroup {
-          Toggle(isOn: bind("newInstance", newInstance) { .openFile(files: files, app: app, newInstance: $0, next: next) }) {
+          Toggle(isOn: bind("newInstance", newInstance) { make(files, app, $0, closeAfter) }) {
             Text("Open in a new copy of the app")
           }
         } label: {
@@ -373,6 +389,16 @@ struct InspectorView: View {
         IssueList(issues: context.issues("timeout"))
       }
 
+    case .pause(let durationMs, let next):
+      Section {
+        TimeoutField(
+          milliseconds: bind("duration", durationMs) { .pause(durationMs: $0, next: next) }, label: Text("Duration"))
+        IssueList(issues: context.issues("duration"))
+      } footer: {
+        Text("Time the run is paused by you doesn’t count.")
+          .foregroundStyle(.secondary)
+      }
+
     case .check(let reference, let next):
       Section {
         ReferenceEditor(
@@ -471,22 +497,67 @@ struct InspectorView: View {
           .foregroundStyle(.secondary)
       }
 
-    case .runTest(let test, let next):
+    case .runTest(let test, let inputs, let next):
+      let make = { (test: String, inputs: [String: String]) in BlockKind.runTest(test: test, inputs: inputs, next: next) }
+      let own = document.url.standardizedFileURL
+      let tests = project.items.allTests.filter { $0.url.standardizedFileURL != own }
+      let blocks = project.library.blocks.filter { $0.url?.standardizedFileURL != own }
+      let block = blocks.first { $0.url.map { RelativePath.from(context.folder, to: $0) } == test }
       Section {
-        let tests = project.items.allTests.filter { $0.url.standardizedFileURL != document.url.standardizedFileURL }
-        Picker(selection: bind("test", test) { .runTest(test: $0, next: next) }) {
+        Picker(selection: bind("test", test) { make($0, inputs) }) {
           if test.isEmpty { Text("Choose a Test").tag("") }
           ForEach(tests) { item in
             Text(item.parentPath.isEmpty ? item.name : item.parentPath + "/" + item.name)
               .tag(RelativePath.from(context.folder, to: item.url))
           }
-          if !test.isEmpty, !tests.contains(where: { RelativePath.from(context.folder, to: $0.url) == test }) {
+          if !blocks.isEmpty {
+            Section("Custom Blocks") {
+              ForEach(blocks) { entry in
+                if let url = entry.url {
+                  Label(entry.name, systemImage: entry.symbol).tag(RelativePath.from(context.folder, to: url))
+                }
+              }
+            }
+          }
+          if !test.isEmpty, block == nil, !tests.contains(where: { RelativePath.from(context.folder, to: $0.url) == test }) {
             Text(test).tag(test)
           }
         } label: {
           Text("Test")
         }
         IssueList(issues: context.issues("test"))
+      }
+      if let block {
+        Section {
+          let names = block.inputs + inputs.keys.filter { !block.inputs.contains($0) }.sorted()
+          ForEach(names, id: \.self) { name in
+            TextField(
+              text: bind("inputs", inputs[name] ?? "") { value in
+                var all = inputs
+                all[name] = value
+                return make(test, all)
+              },
+              prompt: Text("Value")
+            ) {
+              Text(verbatim: name)
+            }
+            IssueList(issues: context.issues("inputs.\(name)"))
+          }
+          if let url = block.url, let root = project.rootURL {
+            Button("Edit Block") { project.selection = RelativePath.from(root, to: url) }
+              .help(Text("Opens the custom block, so you can change its steps for every test that uses it."))
+          }
+        } header: {
+          Text("Inputs")
+        } footer: {
+          if block.inputs.isEmpty {
+            Text("This block asks for nothing.")
+              .foregroundStyle(.secondary)
+          } else {
+            Text("Values can hold ${secret.NAME}, ${env.NAME} and ${data.COLUMN} of this test.")
+              .foregroundStyle(.secondary)
+          }
+        }
       }
 
     case .script(let language, let code, let inputs, let outputs, let timeoutMs, let next):

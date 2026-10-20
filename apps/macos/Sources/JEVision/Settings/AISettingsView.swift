@@ -19,6 +19,7 @@ struct AISettingsView: View {
       FallbackSections()
       AIUsageSections()
       ProjectPrivacySection()
+      MCPServersSection()
       AssistantsSection()
       RestoreDefaultsSection(
         message: Text("No provider or fallback provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),

@@ -1689,12 +1689,14 @@ dependencies = [
  "jevision-notify",
  "jevision-remote",
  "jevision-runner",
+ "jevision-vision",
  "p256",
  "png",
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "uniffi",
+ "ureq",
 ]
 
 [[package]]
@@ -1724,6 +1726,7 @@ dependencies = [
 name = "jevision-notify"
 version = "0.1.0"
 dependencies = [
+ "jevision-core",
  "jevision-runner",
  "lettre",
  "rustls",

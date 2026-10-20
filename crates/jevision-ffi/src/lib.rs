@@ -7,16 +7,17 @@
 use std::collections::HashMap;
 
 use jevision_core::{
-    Block, BlockGroup, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection, Compare,
-    Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod,
-    Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, MouseButton, NamedValue, Note,
-    OutputKind, Point, Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput,
-    ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot, Target, TestStatus, TestType,
-    ValueCheck, ValueTest, WaitUntil,
+    Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection,
+    Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout,
+    HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
+    MouseButton, NamedValue, Note, OutputKind, Point, Priority, Rect, Reference, SavedValue,
+    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
+    Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
 
+mod ai;
 mod batch;
 mod board;
 mod bug;
@@ -35,6 +36,7 @@ mod signin;
 mod stats;
 mod vision;
 
+pub use ai::*;
 pub use batch::*;
 pub use board::*;
 pub use bug::*;
@@ -230,12 +232,24 @@ pub fn disconnect_block(mut flow: Flow, id: String) -> Option<Flow> {
     flow.disconnect(&id).then_some(flow)
 }
 
-/// Words the test in `json` is found by besides its file name: its name, description, block
-/// texts and notes. Empty when it doesn't read as a test.
+/// What the sidebar shows and searches of a test file.
+#[derive(Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TestSummary {
+    /// Words the test is found by besides its file name: its name, description, details, block
+    /// texts and notes.
+    pub keywords: String,
+    /// Someone marked the test as flaky in its details.
+    pub flaky: bool,
+}
+
+/// The sidebar's summary of the test in `json`; empty when it doesn't read as a test.
 #[uniffi::export]
-pub fn test_keywords(json: String) -> String {
+pub fn test_summary(json: String) -> TestSummary {
     jevision_core::parse(&json)
-        .map(|flow| jevision_core::test_keywords(&flow))
+        .map(|flow| TestSummary {
+            keywords: jevision_core::test_keywords(&flow),
+            flaky: flow.flaky,
+        })
         .unwrap_or_default()
 }
 
@@ -344,15 +358,88 @@ pub fn paste_on_canvas(mut flow: Flow, text: String, after: Option<String>) -> O
     Some(CanvasEdit { flow, items })
 }
 
+/// Names of the inputs a custom block reads through `${input.NAME}`, sorted.
+#[uniffi::export]
+pub fn required_inputs(flow: Flow) -> Vec<String> {
+    jevision_core::required_inputs(&flow)
+}
+
+/// Templates every project has: `(id, text of the template file)`.
+#[uniffi::export]
+pub fn builtin_templates() -> Vec<BuiltinTemplate> {
+    jevision_core::BUILTIN_TEMPLATES
+        .iter()
+        .map(|(id, text)| BuiltinTemplate {
+            id: (*id).to_owned(),
+            text: (*text).to_owned(),
+        })
+        .collect()
+}
+
+#[derive(uniffi::Record)]
+pub struct BuiltinTemplate {
+    pub id: String,
+    pub text: String,
+}
+
+/// `items` as a template file named `name`.
+#[uniffi::export]
+pub fn template_from_canvas(flow: Flow, items: Vec<CanvasItem>, name: String) -> String {
+    flow.template(&items, &name)
+}
+
+/// Text fields of the chosen blocks that a custom block can ask for each time it is used.
+#[uniffi::export]
+pub fn input_fields(flow: Flow, items: Vec<CanvasItem>) -> Vec<InputField> {
+    flow.input_fields(&items)
+}
+
+/// `items` as a custom block file named `name` with the SF Symbol `icon`, asking for `inputs`.
+#[uniffi::export]
+pub fn custom_block_from_canvas(
+    flow: Flow,
+    items: Vec<CanvasItem>,
+    name: String,
+    icon: String,
+    inputs: Vec<BlockInput>,
+) -> String {
+    flow.custom_block(&items, &name, &icon, &inputs)
+}
+
+#[uniffi::remote(Record)]
+pub struct InputField {
+    pub block: String,
+    pub field: String,
+    pub value: String,
+}
+
+#[uniffi::remote(Record)]
+pub struct BlockInput {
+    pub block: String,
+    pub field: String,
+    pub name: String,
+}
+
 #[uniffi::remote(Record)]
 pub struct Flow {
     pub name: String,
     pub description: Option<String>,
+    pub icon: Option<String>,
     pub app: String,
     pub test_type: Option<TestType>,
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
     pub tags: Vec<String>,
+    #[uniffi(default = None)]
+    pub preconditions: Option<String>,
+    #[uniffi(default = None)]
+    pub author: Option<String>,
+    #[uniffi(default = None)]
+    pub platform: Option<String>,
+    #[uniffi(default = None)]
+    pub link: Option<String>,
+    #[uniffi(default = false)]
+    pub flaky: bool,
     pub retries: Option<u32>,
     #[uniffi(default = [])]
     pub depends_on: Vec<String>,
@@ -429,6 +516,7 @@ pub enum BlockKind {
         files: Vec<String>,
         app: Option<String>,
         new_instance: bool,
+        close_after: bool,
         next: Option<String>,
     },
     Click {
@@ -471,6 +559,10 @@ pub enum BlockKind {
         timeout_ms: u64,
         next: Option<String>,
     },
+    Pause {
+        duration_ms: u64,
+        next: Option<String>,
+    },
     Check {
         reference: Reference,
         next: Option<String>,
@@ -493,6 +585,7 @@ pub enum BlockKind {
     },
     RunTest {
         test: String,
+        inputs: HashMap<String, String>,
         next: Option<String>,
     },
     Script {
@@ -811,6 +904,16 @@ mod tests {
         assert_eq!(removed.selection.as_deref(), Some("email"));
         assert_eq!(removed.flow, flow);
         assert!(insert_block(flow, "nope".into(), None).is_none());
+    }
+
+    #[test]
+    fn the_summary_finds_the_test_and_its_flaky_mark() {
+        let plain = test_summary(EXAMPLE.to_owned());
+        assert!(plain.keywords.contains("nobody is signed in"));
+        assert!(!plain.flaky);
+        let marked = test_summary(EXAMPLE.replace(r#""retries""#, r#""flaky": true, "retries""#));
+        assert!(marked.flaky);
+        assert_eq!(test_summary("{".to_owned()), TestSummary::default());
     }
 
     #[test]
