@@ -279,6 +279,33 @@ struct TimeoutField: View {
   }
 }
 
+/// The keys held down during a click or a drag.
+struct ModifiersField: View {
+  @Binding var modifiers: Modifiers
+
+  var body: some View {
+    LabeledContent {
+      HStack(spacing: 4) {
+        key("⌃", String(localized: "modifier.control", defaultValue: "Control"), \.control)
+        key("⌥", String(localized: "modifier.option", defaultValue: "Option"), \.option)
+        key("⇧", String(localized: "modifier.shift", defaultValue: "Shift"), \.shift)
+        key("⌘", String(localized: "modifier.command", defaultValue: "Command"), \.command)
+      }
+    } label: {
+      Text("Hold Keys")
+    }
+  }
+
+  private func key(_ symbol: String, _ name: String, _ path: WritableKeyPath<Modifiers, Bool>) -> some View {
+    Toggle(isOn: Binding(get: { modifiers[keyPath: path] }, set: { modifiers[keyPath: path] = $0 })) {
+      Text(verbatim: symbol)
+    }
+    .toggleStyle(.button)
+    .accessibilityLabel(Text(verbatim: name))
+    .help(name)
+  }
+}
+
 /// A fraction of the window or image, entered as a percentage.
 struct PercentField: View {
   let label: Text

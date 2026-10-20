@@ -421,9 +421,9 @@ impl<R: FnMut(&str) -> Loaded> Planner<R> {
     }
 
     /// The test, or a test it runs, has a block that acts on the screen or looks at it. Commands,
-    /// requests, files, databases, pauses, loops, conditions on values and scripts don't, except
-    /// AppleScript, which usually drives apps through their windows. A test that can't be read
-    /// counts as one that does.
+    /// requests, files, databases, pauses, dates, loops, conditions on values and scripts don't,
+    /// except AppleScript, which usually drives apps through their windows. The clipboard does:
+    /// tests side by side would fight over it. A test that can't be read counts as one that does.
     fn uses_screen(&mut self, file: &str, seen: &mut HashSet<String>) -> bool {
         if !seen.insert(file.to_owned()) {
             return false;
@@ -444,6 +444,7 @@ impl<R: FnMut(&str) -> Loaded> Planner<R> {
                 | BlockKind::CheckFile { .. }
                 | BlockKind::Database { .. }
                 | BlockKind::Pause { .. }
+                | BlockKind::DateTime { .. }
                 | BlockKind::Repeat { .. }
                 | BlockKind::UseData { .. } => {}
                 BlockKind::If {
@@ -774,7 +775,8 @@ mod tests {
                     "g": {"type": "pause", "duration": "1s"},
                     "h": {"type": "useData", "file": "users.csv", "body": "i", "next": "j"},
                     "i": {"type": "if", "value": {"of": "${data.name}", "is": "equals", "to": "x"}},
-                    "j": {"type": "runTest", "test": "sub/setup.flow.json"}"#,
+                    "j": {"type": "dateTime", "saveAs": "today", "next": "k"},
+                    "k": {"type": "runTest", "test": "sub/setup.flow.json"}"#,
                 ),
             ),
             (
@@ -796,6 +798,10 @@ mod tests {
                 "calls.flow.json",
                 flow(r#""a": {"type": "runTest", "test": "s1.flow.json"}"#),
             ),
+            (
+                "clip.flow.json",
+                flow(r#""a": {"type": "clipboard", "action": "read", "saveAs": "x"}"#),
+            ),
             ("s1.flow.json", test("S1", &[])),
         ]);
         let all = chosen(&[
@@ -803,10 +809,11 @@ mod tests {
             "apple.flow.json",
             "looks.flow.json",
             "calls.flow.json",
+            "clip.flow.json",
         ]);
-        let batch = Batch::plan(&all, RunMode::Parallel { limit: 4 }, read);
+        let batch = Batch::plan(&all, RunMode::Parallel { limit: 5 }, read);
         let screens: Vec<bool> = batch.tests().iter().map(|t| t.uses_screen).collect();
-        assert_eq!(screens, [false, true, true, true]);
+        assert_eq!(screens, [false, true, true, true, true]);
     }
 
     #[test]

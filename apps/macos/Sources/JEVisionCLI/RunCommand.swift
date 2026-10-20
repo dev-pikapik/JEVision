@@ -644,7 +644,7 @@ private final class Progress: RunListener, @unchecked Sendable {
     "scroll": "scroll", "type": "type text",
     "pressKeys": "press keys", "waitFor": "wait", "pause": "pause", "check": "check", "if": "if", "repeat": "repeat",
     "useData": "use data", "runTest": "run test", "script": "script", "command": "command", "http": "http",
-    "checkFile": "wait for file", "database": "database",
+    "checkFile": "wait for file", "database": "database", "clipboard": "clipboard", "dateTime": "date and time",
   ]
 }
 

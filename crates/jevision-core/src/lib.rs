@@ -96,8 +96,8 @@ pub enum BlockGroup {
     /// Conditions and loops.
     Logic,
     SubTests,
-    /// Test data, and blocks that work without the screen: requests, files, databases,
-    /// commands and scripts.
+    /// Test data, and blocks that work without the screen: the clipboard, date and time,
+    /// requests, files, databases, commands and scripts.
     Data,
 }
 
@@ -128,6 +128,8 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),
     ("runTest", BlockGroup::SubTests, &[NEXT]),
     ("useData", BlockGroup::Data, &[BODY, NEXT]),
+    ("clipboard", BlockGroup::Data, &[NEXT]),
+    ("dateTime", BlockGroup::Data, &[NEXT]),
     ("http", BlockGroup::Data, &[NEXT]),
     ("database", BlockGroup::Data, &[NEXT]),
     ("checkFile", BlockGroup::Data, &[NEXT]),

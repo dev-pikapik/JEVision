@@ -128,6 +128,25 @@ enum IssueText {
       return String(localized: "flow.http.saveFrom", defaultValue: "“\(p("value"))” isn’t a part of the answer. Use status, body, body.field or header.Name.")
     case "flow.value.notNumber":
       return String(localized: "flow.value.notNumber", defaultValue: "“\(p("value"))” isn’t a number, and greater or less than compares numbers.")
+    case "flow.script.inputType":
+      let hint =
+        switch p("type") {
+        case "number": String(localized: "Write a number such as 3.5.")
+        case "boolean": String(localized: "Write true or false.")
+        case "image": String(localized: "Write the path of a PNG file.")
+        default: String(localized: "Write four numbers from 0 to 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3.")
+        }
+      return String(
+        localized: "flow.script.inputType",
+        defaultValue: "“\(p("value"))” isn’t a valid \(kindName(p("type"))) for the input \(p("name")). \(hint)")
+    case "flow.script.inputKind":
+      return String(
+        localized: "flow.script.inputKind",
+        defaultValue: "The input \(p("name")) takes \(kindName(p("type"))), but \(p("variable")) is saved as \(p("from").split(separator: ", ").map { kindName(String($0)) }.joined(separator: ", ")).")
+    case "flow.dateTime.format":
+      return String(
+        localized: "flow.dateTime.format",
+        defaultValue: "“\(p("value"))” isn’t a date format. Write it like \("%Y-%m-%d %H:%M"): a letter after a percent sign stands for a part of the date.")
     default:
       return String(localized: "Unknown problem: \(issue.code)")
     }
@@ -210,5 +229,18 @@ enum IssueText {
   static func line(_ issue: Issue) -> String {
     guard let label = issue.param("field").flatMap(fieldLabel) else { return message(issue) }
     return String(localized: "\(label): \(message(issue))")
+  }
+
+  /// A kind of script value (`number`, `image`…) in words, for the middle of a sentence.
+  private static func kindName(_ raw: String) -> String {
+    let kind: ValueKind =
+      switch raw {
+      case "number": .number
+      case "boolean": .boolean
+      case "image": .image
+      case "area": .area
+      default: .text
+      }
+    return BlockInfo.valueKindName(kind).lowercased()
   }
 }

@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "name": "Stamp the note with today's date",
+  "description": "Writes today's date as a variable, pastes it from the clipboard at the end of a copy of note.txt in TextEdit, copies the note back and checks that the clipboard holds the date.",
+  "app": "com.apple.TextEdit",
+  "testType": "smoke",
+  "priority": "low",
+  "status": "ready",
+  "tags": [
+    "example"
+  ],
+  "start": "today",
+  "blocks": {
+    "today": {
+      "type": "dateTime",
+      "saveAs": "today",
+      "format": "%A, %d %B %Y",
+      "next": "put"
+    },
+    "put": {
+      "type": "clipboard",
+      "action": "put",
+      "text": "Checked on ${var.today}\n",
+      "next": "open"
+    },
+    "open": {
+      "type": "openFile",
+      "files": [
+        "note.txt"
+      ],
+      "app": "com.apple.TextEdit",
+      "next": "end"
+    },
+    "end": {
+      "type": "pressKeys",
+      "keys": "cmd+down",
+      "next": "paste"
+    },
+    "paste": {
+      "type": "pressKeys",
+      "keys": "cmd+v",
+      "next": "all"
+    },
+    "all": {
+      "type": "pressKeys",
+      "keys": "cmd+a",
+      "next": "copy"
+    },
+    "copy": {
+      "type": "pressKeys",
+      "keys": "cmd+c",
+      "next": "pasted"
+    },
+    "pasted": {
+      "type": "clipboard",
+      "action": "check",
+      "is": "contains",
+      "to": "${var.today}",
+      "timeout": "5s",
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

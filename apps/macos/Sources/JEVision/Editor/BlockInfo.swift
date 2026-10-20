@@ -25,6 +25,8 @@ enum BlockInfo {
     case "checkFile": "doc.badge.clock"
     case "command": "terminal"
     case "script": "curlybraces"
+    case "clipboard": "doc.on.clipboard"
+    case "dateTime": "calendar.badge.clock"
     default: "square.dashed"
     }
   }
@@ -51,6 +53,8 @@ enum BlockInfo {
     case "checkFile": String(localized: "Wait For File")
     case "command": String(localized: "Run Command")
     case "script": String(localized: "Script")
+    case "clipboard": String(localized: "Clipboard")
+    case "dateTime": String(localized: "Date and Time")
     default: type
     }
   }
@@ -77,6 +81,8 @@ enum BlockInfo {
     case "checkFile": String(localized: "Waits until a file appears, disappears, changes or contains a text.")
     case "command": String(localized: "Runs a Terminal command with your permissions and checks how it ended.")
     case "script": String(localized: "Runs a short program in sh, zsh, Python, JavaScript or AppleScript, with your permissions.")
+    case "clipboard": String(localized: "Puts a text on the clipboard, saves what is on it for later blocks, or waits until it holds a text.")
+    case "dateTime": String(localized: "Saves the current date and time, optionally moved back or forward, in the format you choose.")
     default: ""
     }
   }
@@ -104,6 +110,8 @@ enum BlockInfo {
     case "checkFile": String(localized: "Waits for a file to change")
     case "command": String(localized: "Runs a Terminal command")
     case "script": String(localized: "Runs a short program")
+    case "clipboard": String(localized: "Puts text on the clipboard or reads it")
+    case "dateTime": String(localized: "Saves today’s date or the time")
     default: ""
     }
   }
@@ -142,6 +150,32 @@ enum BlockInfo {
     case .python3: "Python 3"
     case .node: String(localized: "JavaScript (Node.js)")
     case .appleScript: "AppleScript"
+    }
+  }
+
+  static let valueKinds: [ValueKind] = [.text, .number, .boolean, .image, .area]
+
+  static func valueKindName(_ kind: ValueKind) -> String {
+    switch kind {
+    case .text: String(localized: "Text")
+    case .number: String(localized: "Number")
+    case .boolean: String(localized: "True or False")
+    case .image: String(localized: "Image")
+    case .area: String(localized: "Area")
+    }
+  }
+
+  static let timeUnits: [TimeUnit] = [.seconds, .minutes, .hours, .days, .weeks, .months, .years]
+
+  static func timeUnitName(_ unit: TimeUnit) -> String {
+    switch unit {
+    case .seconds: String(localized: "Seconds")
+    case .minutes: String(localized: "Minutes")
+    case .hours: String(localized: "Hours")
+    case .days: String(localized: "Days")
+    case .weeks: String(localized: "Weeks")
+    case .months: String(localized: "Months")
+    case .years: String(localized: "Years")
     }
   }
 
@@ -198,6 +232,8 @@ extension BlockKind {
     case .http: "http"
     case .checkFile: "checkFile"
     case .database: "database"
+    case .clipboard: "clipboard"
+    case .dateTime: "dateTime"
     }
   }
 }

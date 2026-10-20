@@ -3,6 +3,7 @@
 | Example | Runs on your Mac? | What it shows |
 | --- | --- | --- |
 | [`textedit/`](textedit) | Yes, on any Mac | Opens a copy of `note.txt` in TextEdit, adds a line, checks how the window looks and quits TextEdit. The first run saves the reference picture in `textedit/refs/`; later runs compare with it. |
+| [`textedit/stamp-the-note.flow.json`](textedit/stamp-the-note.flow.json) | Yes, on any Mac | The `dateTime` and `clipboard` blocks: keeps today's date, puts a line with it on the clipboard, pastes it into a copy of `note.txt` in TextEdit and checks the clipboard after copying the note back. It replaces what is on your clipboard. |
 | [`sign-in.flow.json`](sign-in.flow.json) | No | Signing in and waiting for the inbox: typing into fields found by picture, a secret, a wait and a check with ignored and hidden areas. |
 | [`open-mail.flow.json`](open-mail.flow.json) | No | A condition with several exits: a sign-in window, an update dialog or the inbox. |
 

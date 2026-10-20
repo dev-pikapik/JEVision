@@ -5,11 +5,11 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, MouseButton,
-    Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl, RunOptions,
-    RunReport, Runner, Screenshot, ScrollDirection, ScrollUnit, StepStatus, Usage, UsageBook,
-    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe, html,
-    junit_xml, prune_videos,
+    DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
+    MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
+    RunOptions, RunReport, Runner, Screenshot, ScrollDirection, ScrollUnit, StepStatus, Usage,
+    UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, describe,
+    html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -42,6 +42,9 @@ struct State {
     video_hide: Vec<jevision_core::Rect>,
     log: Vec<String>,
     typed: Vec<String>,
+    clipboard: String,
+    /// Put on the clipboard after the first look at it, as another application would.
+    after_look: Option<String>,
 }
 
 impl Fake {
@@ -65,6 +68,10 @@ impl Fake {
 
     fn typed(&self) -> Vec<String> {
         self.state.lock().unwrap().typed.clone()
+    }
+
+    fn clipboard_text(&self) -> String {
+        self.state.lock().unwrap().clipboard.clone()
     }
 
     fn note(&self, entry: String) {
@@ -127,17 +134,45 @@ impl Hands for Fake {
         let found = !self.state.lock().unwrap().not_findable;
         Ok(found.then_some(Point { x: 0.5, y: 0.25 }))
     }
-    fn click(&self, _: &str, at: Point, button: MouseButton, _: bool) -> Result<(), HandsError> {
-        self.pointer(format!("click {:?} {} {}", button, at.x, at.y));
+    fn click(
+        &self,
+        _: &str,
+        at: Point,
+        button: MouseButton,
+        _: bool,
+        modifiers: Modifiers,
+    ) -> Result<(), HandsError> {
+        self.pointer(format!(
+            "click {:?} {} {}{}",
+            button,
+            at.x,
+            at.y,
+            holding(modifiers)
+        ));
         Ok(())
     }
     fn hover(&self, _: &str, at: Point) -> Result<(), HandsError> {
         self.pointer(format!("hover {} {}", at.x, at.y));
         Ok(())
     }
-    fn drag(&self, _: &str, path: &[Point]) -> Result<(), HandsError> {
+    fn drag(
+        &self,
+        _: &str,
+        path: &[Point],
+        button: MouseButton,
+        modifiers: Modifiers,
+    ) -> Result<(), HandsError> {
         let points: Vec<String> = path.iter().map(|p| format!("{} {}", p.x, p.y)).collect();
-        self.pointer(format!("drag {}", points.join(", ")));
+        let with = if button == MouseButton::Left {
+            String::new()
+        } else {
+            format!(" with {button:?}")
+        };
+        self.pointer(format!(
+            "drag {}{with}{}",
+            points.join(", "),
+            holding(modifiers)
+        ));
         Ok(())
     }
     fn scroll(
@@ -167,6 +202,18 @@ impl Hands for Fake {
         self.note(format!("keys {keys}"));
         Ok(())
     }
+    fn clipboard(&self) -> Result<String, HandsError> {
+        let mut s = self.state.lock().unwrap();
+        let text = s.clipboard.clone();
+        if let Some(next) = s.after_look.take() {
+            s.clipboard = next;
+        }
+        Ok(text)
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), HandsError> {
+        self.state.lock().unwrap().clipboard = text.to_owned();
+        Ok(())
+    }
     fn user_input_detected(&self) -> bool {
         std::mem::take(&mut self.state.lock().unwrap().user_input)
     }
@@ -194,6 +241,15 @@ impl Hands for Fake {
             .expect("stopping a video that was not started");
         std::fs::write(path, b"movie").unwrap();
         Ok(())
+    }
+}
+
+/// ` holding cmd+shift` after a pointer action, or nothing when no key is held.
+fn holding(modifiers: Modifiers) -> String {
+    if modifiers.is_empty() {
+        String::new()
+    } else {
+        format!(" holding {}", modifiers.names().join("+"))
     }
 }
 
@@ -2374,9 +2430,34 @@ fn scripts_and_commands_fail_with_their_reason() {
             ("value", "many"),
         ),
         (
+            r#""a":{"type":"script","language":"sh","code":"echo pic=gone.png >> $JEV_OUTPUT","outputs":[{"name":"pic","type":"image"}]}"#,
+            "run.script.badOutput",
+            ("type", "image"),
+        ),
+        (
+            r#""a":{"type":"script","language":"sh","code":"echo box=2,2,3,3 >> $JEV_OUTPUT","outputs":[{"name":"box","type":"area"}]}"#,
+            "run.script.badOutput",
+            ("type", "area"),
+        ),
+        (
+            r#""a":{"type":"script","language":"sh","code":"exit 0","inputs":[{"name":"N","type":"number","value":"${secret.ACME_PASSWORD}"}]}"#,
+            "run.script.badInput",
+            ("value", "••••"),
+        ),
+        (
+            r#""a":{"type":"script","language":"sh","code":"exit 0","inputs":[{"name":"PIC","type":"image","value":"${secret.ACME_PASSWORD}"}]}"#,
+            "run.script.badInput",
+            ("type", "image"),
+        ),
+        (
             r#""a":{"type":"script","language":"sh","code":"echo nope >&2; exit 4"}"#,
             "run.script.failed",
             ("code", "4"),
+        ),
+        (
+            r#""a":{"type":"clipboard","action":"check","is":"equals","to":"done","timeout":"100ms"}"#,
+            "run.clipboard.mismatch",
+            ("expected", "done"),
         ),
         (
             r#""a":{"type":"command","command":"sleep 5","timeout":"200ms"}"#,
@@ -2405,6 +2486,149 @@ fn scripts_and_commands_fail_with_their_reason() {
         assert!(!describe(failure).is_empty());
         assert!(clock.elapsed() < Duration::from_secs(3), "{blocks}");
     }
+}
+
+#[test]
+fn clicks_and_drags_hold_their_keys_and_button() {
+    let p = Project::new();
+    p.test(
+        r#""one":{"type":"click","target":{"point":{"x":0.5,"y":0.5}},"modifiers":["cmd","shift"],"next":"two"},
+           "two":{"type":"click","target":{"point":{"x":0.5,"y":0.5}},"button":"right","double":true,"next":"three"},
+           "three":{"type":"drag","from":{"point":{"x":0,"y":0}},"to":{"point":{"x":1,"y":0}},"button":"right","modifiers":["option","ctrl"],"next":"four"},
+           "four":{"type":"drag","from":{"point":{"x":0,"y":0}},"to":{"point":{"x":1,"y":0}}}"#,
+        "one",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    let log = hands.log();
+    assert_eq!(log[0], "click Left 10 5 holding cmd+shift");
+    assert_eq!(log[1], "click Right 10 5");
+    assert!(
+        log[2].ends_with(", 20 0 with Right holding option+ctrl"),
+        "{log:?}"
+    );
+    assert!(log[3].ends_with(", 20 0"), "{log:?}");
+}
+
+#[test]
+fn the_clipboard_takes_text_gives_it_back_and_hides_secrets() {
+    let p = Project::new();
+    p.test(
+        r#""put":{"type":"clipboard","action":"put","text":"code ${secret.ACME_PASSWORD}","next":"read"},
+           "read":{"type":"clipboard","action":"read","saveAs":"copied","next":"check"},
+           "check":{"type":"clipboard","action":"check","is":"contains","to":"code","next":"paste"},
+           "paste":{"type":"type","text":"${var.copied}"}"#,
+        "put",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, events) = run_with(&p, &hands, RunControl::new(), &options());
+    assert_eq!(run.report.verdict, Verdict::Passed, "{:?}", run.report);
+    assert_eq!(hands.clipboard_text(), format!("code {SECRET}"));
+    assert_eq!(hands.typed(), [format!("code {SECRET}")]);
+    assert_eq!(last_steps(&run.report)[1].outputs["copied"], "code ••••");
+    assert!(!outputs(&run, &events).contains(SECRET));
+}
+
+#[test]
+fn a_clipboard_check_waits_for_another_application_to_fill_it() {
+    let p = Project::new();
+    p.test(
+        r#""wait":{"type":"clipboard","action":"check","is":"equals","to":"done","timeout":"5s"}"#,
+        "wait",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| {
+        s.clipboard = "old".to_owned();
+        s.after_look = Some("done".to_owned());
+    });
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+
+    // What the clipboard holds and what is waited for may both be secret.
+    p.test(
+        r#""wait":{"type":"clipboard","action":"check","is":"equals","to":"${secret.ACME_PASSWORD}","timeout":"100ms"}"#,
+        "wait",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.clipboard = format!("old {SECRET}"));
+    let report = run(&p, &hands).report;
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.clipboard.mismatch");
+    assert_eq!(failure.param("actual"), "old ••••");
+    assert_eq!(failure.param("test"), "equals");
+    let text = describe(&failure);
+    assert!(
+        text.contains("“old ••••”") && text.contains("equal to “••••”"),
+        "{text}"
+    );
+
+    // A number is waited for until the clipboard holds one; a number the other side lacks fails.
+    p.test(
+        r#""wait":{"type":"clipboard","action":"check","is":"greaterThan","to":"${secret.ACME_PASSWORD}","timeout":"100ms"}"#,
+        "wait",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.clipboard = "5".to_owned());
+    let failure = run(&p, &hands).report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.value.notNumber");
+    assert_eq!(failure.param("value"), "••••");
+}
+
+#[test]
+fn the_date_and_time_are_saved_as_text_and_can_be_moved() {
+    let p = Project::new();
+    p.test(
+        r#""today":{"type":"dateTime","saveAs":"today","format":"%F","next":"later"},
+           "later":{"type":"dateTime","saveAs":"later","format":"%F","shift":{"amount":2,"unit":"weeks"},"next":"stamp"},
+           "stamp":{"type":"dateTime","saveAs":"stamp","next":"show"},
+           "show":{"type":"type","text":"${var.today}|${var.later}|${var.stamp}"}"#,
+        "today",
+        0,
+    );
+    let day = |text: &str| chrono::NaiveDate::parse_from_str(text, "%F").unwrap();
+    let before = chrono::Local::now().date_naive();
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    let after = chrono::Local::now().date_naive();
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    let typed = hands.typed();
+    let parts: Vec<&str> = typed[0].split('|').collect();
+    assert!((before..=after).contains(&day(parts[0])));
+    let later = day(parts[1]);
+    assert!(
+        [before, after]
+            .iter()
+            .any(|d| *d + chrono::Days::new(14) == later)
+    );
+    assert!(
+        chrono::NaiveDateTime::parse_from_str(parts[2], "%Y-%m-%d %H:%M:%S").is_ok(),
+        "{}",
+        parts[2]
+    );
+}
+
+#[test]
+fn script_values_keep_their_types_between_blocks() {
+    let p = Project::new();
+    p.write("refs/pic.png", solid([1, 2, 3])).test(
+        r#""calc":{"type":"script","language":"sh","code":"printf 'pic=%s\nbox=%s\nflag=%s\nn=%s\n' \"$PIC\" \"$BOX\" \"$FLAG\" \"$N\" >> \"$JEV_OUTPUT\"",
+             "inputs":[{"name":"PIC","type":"image","value":"refs/pic.png"},{"name":"BOX","type":"area","value":"0.1, 0.2, 0.5, 0.5"},{"name":"FLAG","type":"boolean","value":"yes"},{"name":"N","type":"number","value":"2.5"}],
+             "outputs":[{"name":"pic","type":"image"},{"name":"box","type":"area"},{"name":"flag","type":"boolean"},{"name":"n","type":"number"}],"next":"show"},
+           "show":{"type":"type","text":"${var.box} ${var.flag} ${var.n}"}"#,
+        "calc",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    // An area is kept in one form, a yes/no answer as true or false, a picture as its place.
+    assert_eq!(hands.typed(), ["0.1,0.2,0.5,0.5 true 2.5"]);
+    let pic = &last_steps(&report)[0].outputs["pic"];
+    assert!(
+        pic.ends_with("refs/pic.png") && Path::new(pic).is_absolute(),
+        "{pic}"
+    );
 }
 
 /// Answers one request on 127.0.0.1 and hands back what was sent.
