@@ -12,6 +12,8 @@ struct JEVisionApp: App {
   @State private var remote: RemoteAccess
   /// Tells about failed scheduled runs, of every project with schedules.
   @State private var scheduleNotifier: ScheduleNotifier
+  /// Asks before an AI assistant runs a test, whether or not Settings is open.
+  @State private var assistantRequests: AssistantRequests
   @State private var updates = Updates()
 
   init() {
@@ -31,6 +33,9 @@ struct JEVisionApp: App {
     let scheduleNotifier = ScheduleNotifier()
     scheduleNotifier.start()
     _scheduleNotifier = State(initialValue: scheduleNotifier)
+    let assistantRequests = AssistantRequests()
+    assistantRequests.start()
+    _assistantRequests = State(initialValue: assistantRequests)
   }
 
   var body: some Scene {

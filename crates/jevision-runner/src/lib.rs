@@ -30,7 +30,7 @@ pub use jevision_core::{
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Located, MaskedImage, PixelArea,
-    Provider, Question, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
+    Provider, Question, Search, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
     video_mask,
 };
 pub use report::{
@@ -263,6 +263,8 @@ pub enum Event {
     },
     /// A block starts. `test` is the file the block belongs to (it differs from the run's test
     /// inside `runTest`); `variables` are the values visible to it, secrets masked.
+    /// `timeout_ms` is the longest the block waits, when it waits; time the run is paused
+    /// doesn't count against it.
     StepStarted {
         attempt: u32,
         seq: u32,
@@ -270,6 +272,7 @@ pub enum Event {
         block: String,
         block_type: String,
         variables: BTreeMap<String, String>,
+        timeout_ms: Option<u64>,
     },
     StepFinished {
         attempt: u32,

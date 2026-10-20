@@ -47,7 +47,8 @@ public struct EscapeDetector: Sendable {
 
 /// Watches the person's mouse and keyboard while a test drives the computer: notes any real
 /// movement or key press (synthetic input doesn't count) and calls `onEmergencyStop` on Esc Esc,
-/// whichever app is in front. Needs Accessibility; runs its own thread.
+/// whichever app is in front. What counts and what stops the run is up to `settings`, asked each
+/// time. Needs Accessibility; runs its own thread.
 public final class InputWatcher: @unchecked Sendable {
   private let lock = NSLock()
   private var touched = false
@@ -55,17 +56,16 @@ public final class InputWatcher: @unchecked Sendable {
   private var escape = EscapeDetector()
   private var onEmergencyStop: (@Sendable () -> Void)?
   private var tap: EventTap?
+  private let settings: @Sendable () -> RunInputSettings
 
-  public init() {}
+  public init(settings: @escaping @Sendable () -> RunInputSettings = { .app }) {
+    self.settings = settings
+  }
 
   /// Starts watching; `false` when the system doesn't allow it (Accessibility is off).
   public func start(onEmergencyStop: @escaping @Sendable () -> Void) -> Bool {
     stop()
-    lock.withLock {
-      self.onEmergencyStop = onEmergencyStop
-      touched = false
-      escape = EscapeDetector()
-    }
+    arm(onEmergencyStop: onEmergencyStop)
     let tap = EventTap(name: "JEVision input watcher") { [weak self] type, event in self?.handle(type, event) }
     let types: [CGEventType] = [
       .mouseMoved, .leftMouseDown, .rightMouseDown, .otherMouseDown, .leftMouseDragged,
@@ -74,6 +74,15 @@ public final class InputWatcher: @unchecked Sendable {
     guard tap.start(types) else { return false }
     lock.withLock { self.tap = tap }
     return true
+  }
+
+  /// What `start` does before listening: the stop to call, with nothing seen yet.
+  func arm(onEmergencyStop: @escaping @Sendable () -> Void) {
+    lock.withLock {
+      self.onEmergencyStop = onEmergencyStop
+      touched = false
+      escape = EscapeDetector()
+    }
   }
 
   public func stop() {
@@ -87,11 +96,13 @@ public final class InputWatcher: @unchecked Sendable {
     tap?.stop()
   }
 
-  /// Whether the person moved the mouse or typed since the last call.
+  /// Whether the person moved the mouse or typed since the last call, unless the settings say
+  /// a run doesn't pause for that.
   public func takeUserInput() -> Bool {
-    lock.withLock {
+    let pauses = settings().pausesOnMouse
+    return lock.withLock {
       defer { touched = false }
-      return touched
+      return touched && pauses
     }
   }
 
@@ -106,13 +117,24 @@ public final class InputWatcher: @unchecked Sendable {
 
   private func handle(_ type: CGEventType, _ event: CGEvent) {
     guard !SyntheticInput.isSynthetic(event) else { return }
+    note(
+      key: type == .keyDown
+        ? (
+          isEscape: event.getIntegerValueField(.keyboardEventKeycode) == KeyStroke.escapeKeyCode,
+          isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        ) : nil,
+      at: ProcessInfo.processInfo.systemUptime)
+  }
+
+  /// A person's event: any of them counts as a touch; a key press may also finish Esc Esc.
+  func note(key: (isEscape: Bool, isRepeat: Bool)?, at time: TimeInterval) {
+    // Asked only for key presses, which are few; a mouse move is just noted.
+    let stops = key != nil && settings().escapeStops
     let stop: (@Sendable () -> Void)? = lock.withLock {
       if Date() >= quietUntil { touched = true }
-      guard type == .keyDown else { return nil }
-      let isEscape = event.getIntegerValueField(.keyboardEventKeycode) == KeyStroke.escapeKeyCode
-      let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-      let now = ProcessInfo.processInfo.systemUptime
-      return escape.keyDown(isEscape: isEscape, isRepeat: isRepeat, at: now) ? onEmergencyStop : nil
+      guard let key else { return nil }
+      let second = escape.keyDown(isEscape: key.isEscape, isRepeat: key.isRepeat, at: time)
+      return second && stops ? onEmergencyStop : nil
     }
     stop?()
   }

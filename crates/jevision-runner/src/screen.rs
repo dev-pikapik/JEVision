@@ -65,7 +65,15 @@ pub fn describe_screen_holder(holder: Option<&ScreenHolder>) -> String {
 /// The screen is yours while this exists. Dropping it, or the process ending, gives it back.
 #[derive(Debug)]
 pub struct ScreenLock {
-    _file: File,
+    file: File,
+}
+
+impl Drop for ScreenLock {
+    /// Lets go of the lock before the file closes: a process this program starts at that moment
+    /// shares the open file until it begins, and the lock would last as long as that.
+    fn drop(&mut self) {
+        unlock(&self.file);
+    }
 }
 
 impl ScreenLock {
@@ -94,7 +102,7 @@ impl ScreenLock {
                 .map_err(io::Error::other)?
                 .as_bytes(),
         )?;
-        Ok(Ok(Self { _file: file }))
+        Ok(Ok(Self { file }))
     }
 }
 
@@ -120,6 +128,16 @@ fn lock(file: &File) -> io::Result<bool> {
 fn lock(_: &File) -> io::Result<bool> {
     Ok(true)
 }
+
+#[cfg(unix)]
+fn unlock(file: &File) {
+    use std::os::fd::AsRawFd;
+    // SAFETY: `flock` only reads the descriptor, which `file` keeps open.
+    unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_UN) };
+}
+
+#[cfg(not(unix))]
+fn unlock(_: &File) {}
 
 /// The lock file every JEVision program on this Mac shares:
 /// `~/Library/Application Support/JEVision/screen.lock`.

@@ -347,6 +347,11 @@ final class ProjectStore {
     try changeSettings { try setFolderRunMode(project: $0, folder: folder, mode: mode) }
   }
 
+  /// The AI the project asks for `task`; `nil` leaves it to Settings.
+  func setAi(_ task: AiTask, _ choice: AiChoice?) throws {
+    try changeSettings { try setProjectAi(project: $0, task: task, choice: choice) }
+  }
+
   /// Whether screenshots of the project's apps may go to cloud models.
   func setLocalOnly(_ localOnly: Bool) throws {
     try changeSettings { try setProjectLocalOnly(project: $0, localOnly: localOnly) }

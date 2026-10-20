@@ -85,7 +85,10 @@
   "localOnly": true,
   "hide": [
     { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 }
-  ]
+  ],
+  "ai": {
+    "text": { "provider": "anthropic" }
+  }
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
@@ -94,6 +97,7 @@
   <li><code>suggestQuarantineAfter</code> (optional) is how many <a href="#suggestion">unreliable runs</a> of a test within 7 days make the app suggest quarantine, 1 to 10. Default: 3.</li>
   <li><code>localOnly</code> (optional) is <code>true</code> to keep the project's screenshots on this Mac: see <a href="#privacy">Screenshots and privacy</a>.</li>
   <li><code>hide</code> (optional) lists areas of the window painted over in every screenshot of the project: see <a href="#privacy">Screenshots and privacy</a>.</li>
+  <li><code>ai</code> (optional) names the AI provider and model the project asks for checks by meaning (<code>screen</code>) and for drafting tests and explaining failures (<code>text</code>): see <a href="checks.html#which-ai">Which AI answers</a>. Never an API key.</li>
 </ul>
 
 <h2 id="retries">Retries</h2>

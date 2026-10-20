@@ -648,7 +648,7 @@ private final class Progress: RunListener, @unchecked Sendable {
     case .attemptStarted(let attempt):
       failureShown = false
       if attempt > 1 { console.line("  Attempt \(attempt) of \(maxAttempts)") }
-    case .stepStarted(_, let seq, let test, let block, let type, _):
+    case .stepStarted(_, let seq, let test, let block, let type, _, _):
       guard console.live else { return }
       console.write("  " + console.paint("…", .dim) + " " + label(seq, block, type, test))
       lineOpen = true

@@ -920,6 +920,26 @@ impl BlockKind {
         )
     }
 
+    /// The longest this block waits when it runs, in milliseconds: a wait for the screen, a
+    /// pause, a file, a database answer or the clipboard. `None` for a block that doesn't wait.
+    pub fn wait_ms(&self) -> Option<u64> {
+        match self {
+            Self::WaitFor { timeout_ms, .. }
+            | Self::CheckFile { timeout_ms, .. }
+            | Self::Database {
+                expect: Some(_),
+                timeout_ms,
+                ..
+            }
+            | Self::Clipboard {
+                action: ClipboardAction::Check { timeout_ms, .. },
+                ..
+            } => Some(*timeout_ms),
+            Self::Pause { duration_ms, .. } => Some(*duration_ms),
+            _ => None,
+        }
+    }
+
     /// Names of the outgoing edges this block can have, in drawing order.
     pub fn edge_names(&self) -> Vec<Cow<'static, str>> {
         match self {

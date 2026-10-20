@@ -13,7 +13,7 @@ struct BoardView: View {
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
   @AppStorage("boardShowsMinimap") private var showsMinimap = true
-  @AppStorage("boardSnapsToGrid") private var snaps = true
+  @AppStorage(GridSnap.key) private var snaps = true
   @State private var viewport = BoardViewport()
   @State private var size = CGSize.zero
   /// The board hasn't been looked at yet: once its size is known, it zooms to show everything.

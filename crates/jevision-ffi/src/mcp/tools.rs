@@ -17,7 +17,7 @@ use crate::{BugReport, draft_bug_report};
 use serde_json::{Map, Value, json};
 
 use super::jobs::RunChoices;
-use super::{Server, blocks, hands_message, text};
+use super::{Server, agents, blocks, hands_message, text};
 
 /// Longest a `get_run` call waits for a run to end.
 const MAX_WAIT_SECONDS: u64 = 600;
@@ -506,6 +506,23 @@ impl Server {
             .collect();
         if let Some(problem) = self.host.readiness_problem() {
             return Err(format!("This Mac can't run tests right now. {problem}"));
+        }
+        if self.host.permissions().ask_first {
+            let mut apps: Vec<String> = Vec::new();
+            for file in self.tests_at(&target)? {
+                if let Ok(flow) = self.load(&file)
+                    && !flow.app.is_empty()
+                    && !apps.contains(&flow.app)
+                {
+                    apps.push(flow.app);
+                }
+            }
+            self.agents.ask(&agents::Ask {
+                project: &self.project.display().to_string(),
+                tests: &tests,
+                apps,
+                environment: environment.as_deref(),
+            })?;
         }
         let job = self.jobs.start(
             &self.project,

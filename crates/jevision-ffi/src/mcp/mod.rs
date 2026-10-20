@@ -3,8 +3,10 @@
 //!
 //! Assistants see the same JSON people edit, never a secret value or an API key: test files
 //! hold only `${secret.NAME}`, and reports are saved with secrets masked. Runs and screenshots
-//! work only while the person allows them in the app.
+//! work only while the person allows them in the app, and each run asks the person first unless
+//! they turned that off.
 
+mod agents;
 pub(crate) mod blocks;
 mod jobs;
 mod tools;
@@ -14,9 +16,12 @@ mod tests;
 
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
+
+pub use agents::*;
 
 use crate::{Hands, HandsError, RunOptions, SecretSource, TestRun};
 use jevision_runner::Screenshot;
@@ -31,6 +36,9 @@ pub struct AssistantPermissions {
     pub run_tests: bool,
     /// Take screenshots of app windows.
     pub screenshots: bool,
+    /// Ask the person before each run, which an assistant started: they see what it wants to
+    /// do and allow it or not.
+    pub ask_first: bool,
 }
 
 /// The platform side of the server, implemented by the app. Calls come from the server's
@@ -54,6 +62,10 @@ pub trait AssistantHost: Send + Sync {
     fn run_options(&self) -> RunOptions;
     /// The front window of the application with bundle id `app`.
     fn capture(&self, app: String) -> Result<Screenshot, HandsError>;
+    /// A folder the app and every server share, for who connected and the questions the
+    /// person is asked. The app reads it with `connected_assistants` and
+    /// `pending_assistant_requests`.
+    fn shared_folder(&self) -> String;
 }
 
 /// The server could not start or lost its input or output.
@@ -85,6 +97,7 @@ pub(crate) struct Server {
     project: PathBuf,
     host: Arc<dyn AssistantHost>,
     jobs: jobs::Jobs,
+    agents: agents::Agents,
 }
 
 impl Server {
@@ -101,6 +114,7 @@ impl Server {
             })?;
         Ok(Self {
             project,
+            agents: agents::Agents::new(&host.shared_folder()),
             host,
             jobs: jobs::Jobs::default(),
         })
@@ -110,6 +124,13 @@ impl Server {
     pub(crate) fn serve(&self, input: impl BufRead, output: impl Write + Send) -> io::Result<()> {
         let output = Mutex::new(output);
         let result = std::thread::scope(|scope| {
+            // While the assistant is connected, the app can tell it is.
+            let (hangup, hung_up) = mpsc::channel::<()>();
+            scope.spawn(move || {
+                while hung_up.recv_timeout(agents::HEARTBEAT) == Err(RecvTimeoutError::Timeout) {
+                    self.agents.beat();
+                }
+            });
             let mut lines = input.lines();
             let ended = loop {
                 let line = match lines.next() {
@@ -130,10 +151,12 @@ impl Server {
                 });
             };
             // The assistant is gone: nobody watches a run any more.
+            drop(hangup);
             self.jobs.stop_all();
             ended
         });
         self.jobs.wait_all();
+        self.agents.end();
         result
     }
 
@@ -177,7 +200,10 @@ impl Server {
         }
         let params = m.get("params").cloned().unwrap_or_else(|| json!({}));
         let result = match method {
-            "initialize" => Ok(initialize(&params)),
+            "initialize" => {
+                self.agents.hello(&params);
+                Ok(initialize(&params))
+            }
             "ping" => Ok(json!({})),
             "tools/list" => Ok(json!({ "tools": tools::definitions() })),
             "tools/call" => self.call(&params),
@@ -194,6 +220,7 @@ impl Server {
             .get("name")
             .and_then(Value::as_str)
             .ok_or((INVALID_PARAMS, "Invalid params: name the tool".to_owned()))?;
+        self.agents.called(name);
         let empty = json!({});
         let args = params.get("arguments").unwrap_or(&empty);
         if !args.is_object() {

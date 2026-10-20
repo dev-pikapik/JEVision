@@ -120,6 +120,12 @@ struct CommandLineArgumentTests {
     #expect(!settings.assistantsMayRun && !settings.assistantsMayCapture)
     defaults.set(true, forKey: AISettings.assistantsRunKey)
     #expect(settings.assistantsMayRun && !settings.assistantsMayCapture)
+    // Each run an assistant starts is asked about until the person turns that off.
+    #expect(settings.assistantsAskFirst)
+    defaults.set(false, forKey: AISettings.assistantsAskFirstKey)
+    #expect(!settings.assistantsAskFirst)
+    defaults.set(true, forKey: AISettings.assistantsAskFirstKey)
+    #expect(settings.assistantsAskFirst)
   }
 
   @Test func aiProviderAndModel() throws {

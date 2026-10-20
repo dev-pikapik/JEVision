@@ -59,8 +59,8 @@ pub use merge::{
 };
 pub use model::*;
 pub use project::{
-    DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE, PROJECT_FORMAT,
-    ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
+    AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
+    PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
 };
 pub use route::route_around;
 pub use schedule::{

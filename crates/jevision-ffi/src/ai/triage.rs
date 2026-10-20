@@ -9,7 +9,9 @@ use jevision_vision::image::Image;
 use jevision_vision::{MaskedImage, Message};
 use serde_json::{Value, json};
 
-use super::{AiError, AiSession, AiStep, AiToolCall, Finished, Job, McpProblem, McpServer};
+use super::{
+    AiError, AiSafeguards, AiSession, AiStep, AiToolCall, Finished, Job, McpProblem, McpServer,
+};
 use crate::vision::VisionSettings;
 use crate::{Edited, FlakyEvidence, Step, deciding_attempt, describe_failure};
 
@@ -86,17 +88,24 @@ pub struct FailureExplanation {
 impl AiSession {
     /// Explains why the run in `request.run` failed, with the tools of `servers`. Reads the
     /// run at once; nothing is sent before [`AiSession::step`].
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(safeguards = None))]
     pub fn explain_failure(
         settings: VisionSettings,
         servers: Vec<McpServer>,
         request: FailureRequest,
         language: String,
+        safeguards: Option<AiSafeguards>,
     ) -> Result<Arc<Self>, AiError> {
         let local = settings.client().is_ok_and(|c| c.config().is_local());
         let pictures = settings.pictures && (!request.local_only || local);
         let (job, message) = TriageJob::read(&request, pictures, &language)?;
-        Self::new(&settings, servers, Job::Triage(job), vec![message])
+        Self::new(
+            &settings,
+            safeguards,
+            servers,
+            Job::Triage(job),
+            vec![message],
+        )
     }
 }
 
@@ -144,6 +153,11 @@ pub(crate) struct TriageJob {
 }
 
 impl TriageJob {
+    /// The test and the failed block the run was about.
+    pub(super) fn logged_under(&self) -> (&str, &str) {
+        (&self.test, self.block.as_deref().unwrap_or_default())
+    }
+
     /// The job and the question about the run, with the screenshots of the failed step.
     pub(super) fn read(
         request: &FailureRequest,

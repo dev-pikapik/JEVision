@@ -4,8 +4,10 @@
 //! quarantined test still runs, but its failure doesn't fail Run All, the command line or the
 //! JUnit report; once the date is past the test counts as any other. The file also says
 //! how private the project's screens are: areas covered in every screenshot before it is saved
-//! or sent anywhere, and whether screenshots may go to AI models outside this computer, and
-//! which folders run their tests side by side rather than one after another.
+//! or sent anywhere, and whether screenshots may go to AI models outside this computer, which
+//! AI the project asks for looking at screens and for writing and explaining tests (provider
+//! and model by name; API keys never go in the file), and which folders run their tests side
+//! by side rather than one after another.
 
 use std::path::{Component, Path};
 use std::{fs, io};
@@ -15,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Rect;
 use crate::batch::{DEFAULT_PARALLEL, MAX_PARALLEL, RunMode};
-use crate::model::TEST_SUFFIX;
+use crate::model::{AI_PROVIDERS, TEST_SUFFIX};
 use crate::validate::{MAX_RETRIES, rect_fits};
 
 /// Name of the project settings file in the project folder.
@@ -47,10 +49,85 @@ pub struct ProjectSettings {
     /// Areas of the window, in fractions from its top-left corner, covered in every screenshot
     /// before it is saved or sent to an AI model.
     pub hide: Vec<Rect>,
+    /// The AI that checks screens by meaning, when the project doesn't leave it to the app's
+    /// settings. A check that names its own provider still asks that one.
+    pub ai_screen: Option<AiChoice>,
+    /// The AI that drafts tests and explains failed runs, when the project doesn't leave it
+    /// to the app's settings.
+    pub ai_text: Option<AiChoice>,
     /// How the tests of folders run, set explicitly, sorted by folder. A folder without an
     /// entry runs like the nearest folder above it that has one; the project folder, without
     /// one, runs one test after another.
     pub run_modes: Vec<FolderRunMode>,
+}
+
+/// What a project can choose an AI for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiTask {
+    /// Checks by meaning, which look at screenshots.
+    Screen,
+    /// Drafting tests and explaining failed runs, which converse.
+    Text,
+}
+
+impl AiTask {
+    /// The key of the task in the project file, under `ai`.
+    fn key(self) -> &'static str {
+        match self {
+            Self::Screen => "screen",
+            Self::Text => "text",
+        }
+    }
+
+    /// `Err` says why `choice` can't do the task.
+    fn check(self, choice: &AiChoice) -> Result<(), String> {
+        let key = self.key();
+        if !AI_PROVIDERS.contains(&choice.provider.as_str()) {
+            return Err(format!(
+                "\"{}\" in \"ai\" → \"{key}\" isn't an AI provider; use one of {}",
+                choice.provider,
+                AI_PROVIDERS.join(", ")
+            ));
+        }
+        if self == Self::Text && choice.provider == "jev" {
+            return Err(format!(
+                "\"jev\" in \"ai\" → \"{key}\" can't write tests or explain failures, it only \
+                 checks screenshots; choose another provider"
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Which AI to ask: a provider by its id, and one of its models. The key and the address of the
+/// provider are the person's own and stay in the app's settings.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiChoice {
+    /// One of [`AI_PROVIDERS`]; empty for the one the app's settings choose.
+    pub provider: String,
+    /// Empty for the model the settings choose for the provider.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub model: String,
+}
+
+impl AiChoice {
+    /// The AI a task asks, most specific first: what the block itself says, then the project,
+    /// then the app's settings, which an empty provider and an empty model stand for. A model
+    /// a block names without a provider is for the provider that is in force.
+    pub fn resolve(block: &Self, project: Option<&Self>) -> Self {
+        match project {
+            Some(p) if block.provider.is_empty() || block.provider == p.provider => Self {
+                provider: p.provider.clone(),
+                model: if block.model.is_empty() {
+                    p.model.clone()
+                } else {
+                    block.model.clone()
+                },
+            },
+            _ => block.clone(),
+        }
+    }
 }
 
 /// How the tests of a folder run when the folder, or a folder above it, is run.
@@ -125,8 +202,25 @@ struct File {
     local_only: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     hide: Vec<Rect>,
+    #[serde(default, skip_serializing_if = "FileAi::is_empty")]
+    ai: FileAi,
     #[serde(default, rename = "runModes", skip_serializing_if = "Vec::is_empty")]
     run_modes: Vec<RunModeEntry>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileAi {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    screen: Option<AiChoice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    text: Option<AiChoice>,
+}
+
+impl FileAi {
+    fn is_empty(&self) -> bool {
+        self.screen.is_none() && self.text.is_none()
+    }
 }
 
 impl ProjectSettings {
@@ -186,6 +280,14 @@ impl ProjectSettings {
             ));
         }
         check_hide(&file.hide)?;
+        for (task, choice) in [
+            (AiTask::Screen, &file.ai.screen),
+            (AiTask::Text, &file.ai.text),
+        ] {
+            if let Some(choice) = choice {
+                task.check(choice)?;
+            }
+        }
         let mut run_modes = Vec::with_capacity(file.run_modes.len());
         for entry in file.run_modes {
             run_modes.push(run_mode(entry)?);
@@ -203,6 +305,8 @@ impl ProjectSettings {
             suggest_quarantine_after: file.suggest_quarantine_after,
             local_only: file.local_only,
             hide: file.hide,
+            ai_screen: file.ai.screen,
+            ai_text: file.ai.text,
             run_modes,
         })
     }
@@ -227,6 +331,10 @@ impl ProjectSettings {
             suggest_quarantine_after: self.suggest_quarantine_after,
             local_only: self.local_only,
             hide: self.hide.clone(),
+            ai: FileAi {
+                screen: self.ai_screen.clone(),
+                text: self.ai_text.clone(),
+            },
             run_modes: self
                 .run_modes
                 .iter()
@@ -311,6 +419,31 @@ impl ProjectSettings {
     pub fn set_hide(&mut self, hide: Vec<Rect>) -> Result<(), String> {
         check_hide(&hide)?;
         self.hide = hide;
+        Ok(())
+    }
+
+    /// The AI the project chose for `task`.
+    pub fn ai(&self, task: AiTask) -> Option<&AiChoice> {
+        match task {
+            AiTask::Screen => self.ai_screen.as_ref(),
+            AiTask::Text => self.ai_text.as_ref(),
+        }
+    }
+
+    /// Chooses the AI the project asks for `task`; `None` leaves it to the app's settings.
+    /// `Err` when the provider isn't known or can't do the task.
+    pub fn set_ai(&mut self, task: AiTask, choice: Option<AiChoice>) -> Result<(), String> {
+        let choice = choice.map(|c| AiChoice {
+            provider: c.provider.trim().to_owned(),
+            model: c.model.trim().to_owned(),
+        });
+        if let Some(c) = &choice {
+            task.check(c)?;
+        }
+        match task {
+            AiTask::Screen => self.ai_screen = choice,
+            AiTask::Text => self.ai_text = choice,
+        }
         Ok(())
     }
 
@@ -667,6 +800,109 @@ mod tests {
         ] {
             assert!(ProjectSettings::parse(bad).is_err(), "{bad}");
         }
+    }
+
+    fn choice(provider: &str, model: &str) -> AiChoice {
+        AiChoice {
+            provider: provider.into(),
+            model: model.into(),
+        }
+    }
+
+    #[test]
+    fn the_ai_of_a_project_is_read_validated_and_written_without_keys() {
+        let text = r#"{"format":1,"ai":{"screen":{"provider":"ollama","model":"llava"},
+            "text":{"provider":"anthropic"}}}"#;
+        let settings = ProjectSettings::parse(text).unwrap();
+        assert_eq!(
+            settings.ai(AiTask::Screen),
+            Some(&choice("ollama", "llava"))
+        );
+        assert_eq!(settings.ai(AiTask::Text), Some(&choice("anthropic", "")));
+        let written = settings.to_json();
+        assert!(written.contains("\"ai\": {\n    \"screen\": {\n      \"provider\": \"ollama\",\n      \"model\": \"llava\"\n    },\n    \"text\": {\n      \"provider\": \"anthropic\"\n    }\n  }"), "{written}");
+        assert_eq!(ProjectSettings::parse(&written).unwrap(), settings);
+        assert_eq!(
+            ProjectSettings::default().to_json(),
+            "{\n  \"format\": 1\n}\n",
+            "no choice, nothing written"
+        );
+        for (bad, says) in [
+            (
+                r#"{"format":1,"ai":{"screen":{"provider":"nope"}}}"#,
+                "isn't an AI provider",
+            ),
+            (
+                r#"{"format":1,"ai":{"text":{"provider":"jev"}}}"#,
+                "only checks screenshots",
+            ),
+            (
+                r#"{"format":1,"ai":{"screen":{"provider":"openai","key":"sk-1"}}}"#,
+                "unknown field `key`",
+            ),
+            (
+                r#"{"format":1,"ai":{"screen":{"provider":"openai"},"speech":{}}}"#,
+                "unknown field `speech`",
+            ),
+        ] {
+            let error = ProjectSettings::parse(bad).unwrap_err();
+            assert!(error.contains(says), "{bad}: {error}");
+        }
+        assert!(
+            ProjectSettings::parse(r#"{"format":1,"ai":{"screen":{"provider":"jev"}}}"#).is_ok()
+        );
+
+        let mut settings = ProjectSettings::default();
+        settings
+            .set_ai(AiTask::Text, Some(choice(" openai ", " gpt-5-mini ")))
+            .unwrap();
+        assert_eq!(
+            settings.ai(AiTask::Text),
+            Some(&choice("openai", "gpt-5-mini"))
+        );
+        assert!(
+            settings
+                .set_ai(AiTask::Text, Some(choice("jev", "")))
+                .is_err()
+        );
+        assert_eq!(
+            settings.ai(AiTask::Text),
+            Some(&choice("openai", "gpt-5-mini"))
+        );
+        settings.set_ai(AiTask::Text, None).unwrap();
+        assert_eq!(settings.ai(AiTask::Text), None);
+    }
+
+    #[test]
+    fn a_block_beats_the_project_which_beats_the_app() {
+        let project = choice("anthropic", "claude-haiku");
+        let resolve =
+            |block: AiChoice, project: Option<&AiChoice>| AiChoice::resolve(&block, project);
+        // Nothing chosen: the app's settings, which empty stands for.
+        assert_eq!(resolve(choice("", ""), None), choice("", ""));
+        assert_eq!(resolve(choice("", "m"), None), choice("", "m"));
+        // The project's choice, whole.
+        assert_eq!(resolve(choice("", ""), Some(&project)), project);
+        // A block's own provider wins, with its own model only.
+        assert_eq!(
+            resolve(choice("openai", ""), Some(&project)),
+            choice("openai", "")
+        );
+        assert_eq!(
+            resolve(choice("openai", "gpt-5"), Some(&project)),
+            choice("openai", "gpt-5")
+        );
+        // A block's own model belongs to the provider in force.
+        assert_eq!(
+            resolve(choice("", "claude-opus"), Some(&project)),
+            choice("anthropic", "claude-opus")
+        );
+        // The same provider as the project's keeps the project's model unless the block has one.
+        assert_eq!(resolve(choice("anthropic", ""), Some(&project)), project);
+        assert_eq!(
+            resolve(choice("anthropic", "claude-opus"), Some(&project)),
+            choice("anthropic", "claude-opus")
+        );
     }
 
     #[test]

@@ -69,6 +69,7 @@ struct RecordingTests {
       case .pressKeys(let keys): "keys \(keys)"
       case .waitFor(let picture): "wait \(picture.name)"
       case .check(let picture, _): "check \(picture.name)"
+      case .wait: "pause \(Recording.manualWaitMs)"
       }
     }
   }
@@ -110,6 +111,25 @@ struct RecordingTests {
     _ = r.key(Self.press("delete"), inApp: true, frame: frame, focus: field)
     _ = r.key(Self.press("delete"), inApp: true, frame: frame, focus: field)
     #expect(Self.describe(r.steps) == ["click @name-field"])
+  }
+
+  @Test func aWaitAddedByHandIsAFixedPauseAndUndoTakesOnlyIt() {
+    var r = Recording(appName: "TextEdit", opensApp: false)
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: Self.tiles(), element: nil)
+    r.wait()
+    #expect(!r.isEmpty)
+    // The window changed meanwhile: the next step still waits for the new screen first.
+    _ = r.key(Self.press("escape"), inApp: true, frame: Self.tiles(shift: 3), focus: nil)
+    #expect(Self.describe(r.steps) == ["click @click", "pause 2000", "wait untitled", "keys escape"])
+    r.undoLastStep()
+    #expect(Self.describe(r.steps) == ["click @click", "pause 2000"])
+    r.undoLastStep()
+    #expect(Self.describe(r.steps) == ["click @click"])
+    guard case .pause(let ms, nil) = Recording.preview(.wait) else {
+      Issue.record("a wait is a pause block")
+      return
+    }
+    #expect(ms == 2000)
   }
 
   @Test func passwordBecomesASecretAndItsTextIsNeverKept() {

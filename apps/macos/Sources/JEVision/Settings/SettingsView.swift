@@ -214,6 +214,10 @@ struct SettingsItem: Identifiable {
       SettingsItem(tab: .general, id: "appearance", title: String(localized: "Appearance")),
       SettingsItem(tab: .general, id: "language", title: String(localized: "Language")),
       SettingsItem(tab: .general, id: "updates", title: String(localized: "Updates")),
+      SettingsItem(tab: .general, id: "runCollapses", title: String(localized: "Step aside while a test runs")),
+      SettingsItem(tab: .general, id: "runPausesOnMouse", title: String(localized: "Pause when you move the mouse")),
+      SettingsItem(tab: .general, id: "runEscapeStops", title: String(localized: "Stop with Esc Esc")),
+      SettingsItem(tab: .general, id: "snapToGrid", title: String(localized: "Snap to grid")),
       SettingsItem(tab: .ai, id: "provider", title: String(localized: "Provider")),
       SettingsItem(tab: .ai, id: "localOnly", title: String(localized: "Only models on this Mac")),
       SettingsItem(tab: .ai, id: "pictures", title: String(localized: "Understands pictures")),
@@ -221,13 +225,19 @@ struct SettingsItem: Identifiable {
       SettingsItem(tab: .ai, id: "aiSpending", title: String(localized: "Spending")),
       SettingsItem(tab: .ai, id: "aiLimits", title: String(localized: "Limits")),
       SettingsItem(tab: .ai, id: "aiPrices", title: String(localized: "Prices")),
+      SettingsItem(tab: .ai, id: "projectAIScreen", title: String(localized: "Checks by Meaning")),
+      SettingsItem(tab: .ai, id: "projectAIText", title: String(localized: "Writing and Failure Analysis")),
       SettingsItem(tab: .ai, id: "projectLocalOnly", title: String(localized: "Only models on this Mac for this project")),
       SettingsItem(tab: .ai, id: "hiddenAreas", title: String(localized: "Areas always hidden")),
       SettingsItem(tab: .ai, id: "assistantsRun", title: String(localized: "Allow assistants to run tests")),
+      SettingsItem(tab: .ai, id: "assistantsAskFirst", title: String(localized: "Ask before an assistant runs a test")),
       SettingsItem(tab: .ai, id: "assistantsCapture", title: String(localized: "Allow assistants to take screenshots")),
       SettingsItem(tab: .ai, id: "connectAssistant", title: String(localized: "Connect an Assistant")),
     ]
       + Permission.allCases.map { SettingsItem(tab: .permissions, id: "permission.\($0.id)", title: $0.title) }
+      + OptionalPermission.allCases.map {
+        SettingsItem(tab: .permissions, id: "optionalPermission.\($0.id)", title: $0.title)
+      }
       + [
         SettingsItem(tab: .remote, id: "remoteAccess", title: String(localized: "Allow remote access")),
         SettingsItem(tab: .remote, id: "confirmRuns", title: String(localized: "Ask on this Mac before a remote run")),
@@ -302,6 +312,7 @@ private struct PermissionsSettingsView: View {
           ? Text("JEVision can see other apps and click in them.")
           : Text("Without them, macOS won’t let JEVision see other apps or click in them."))
       PermissionsSection()
+      OptionalPermissionsSection()
     }
     .formStyle(.grouped)
   }

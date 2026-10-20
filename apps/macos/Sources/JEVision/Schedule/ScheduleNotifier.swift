@@ -57,7 +57,7 @@ final class ScheduleNotifier {
   }
 
   /// Notifications work only in the app itself, not in tests or `swift run`.
-  private static var canNotify: Bool { Bundle.main.bundleIdentifier == AISettings.appDomain }
+  static var canNotify: Bool { Bundle.main.bundleIdentifier == AISettings.appDomain }
 
   static func askPermission() {
     guard canNotify else { return }

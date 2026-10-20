@@ -119,7 +119,7 @@ final class RunCenter {
   @ObservationIgnored private var run: TestRun?
   /// Counts the batches that ended, so a late answer from the services finds its own result.
   @ObservationIgnored private var endedBatches = 0
-  @ObservationIgnored private let input = InputWatcher()
+  @ObservationIgnored private let input: InputWatcher
   @ObservationIgnored private var hud: GlassPanel?
   /// Whether JEVision is hidden for the run.
   @ObservationIgnored private var isOutOfTheWay = false
@@ -133,6 +133,9 @@ final class RunCenter {
 
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
+    // The watcher reads on its own thread; reading defaults is safe from any.
+    nonisolated(unsafe) let store = defaults
+    input = InputWatcher(settings: { RunInputSettings(store) })
     let saved = defaults.dictionary(forKey: Self.breakpointsKey) as? [String: [String]] ?? [:]
     breakpoints = Dictionary(uniqueKeysWithValues: saved.map { (URL(filePath: $0.key), Set($0.value)) })
   }
@@ -510,10 +513,13 @@ final class RunCenter {
 
   /// Hides JEVision, as Hide in the app menu does, rather than putting its windows away: an app
   /// left without windows looks finished to window managers that quit such apps, and one did so
-  /// mid-run. The run's panels can't be hidden, so they stay.
+  /// mid-run. The run's panels can't be hidden, so they stay. Settings can keep the window where it
+  /// is; the panel shows either way.
   private func getOutOfTheWay() {
-    isOutOfTheWay = true
-    NSApp.hide(nil)
+    if RunInputSettings(defaults).collapsesToPanel {
+      isOutOfTheWay = true
+      NSApp.hide(nil)
+    }
     hud?.show()
   }
 

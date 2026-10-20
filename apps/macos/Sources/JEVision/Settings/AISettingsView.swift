@@ -10,6 +10,7 @@ struct AISettingsView: View {
   @AppStorage(AISettings.fallbackKey) private var fallbackID = ""
   @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
   @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
+  @AppStorage(AISettings.assistantsAskFirstKey) private var askFirst = true
 
   var body: some View {
     Form {
@@ -22,13 +23,14 @@ struct AISettingsView: View {
           .id("finder")
       }
       FallbackSections()
+      ProjectAISection()
       AIUsageSections()
       ProjectPrivacySection()
       MCPServersSection()
       AssistantsSection()
       RestoreDefaultsSection(
         message: Text("No provider or fallback provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),
-        isDefault: providerID.isEmpty && fallbackID.isEmpty && !localOnly && !mayRun && !mayCapture && Self.providerKeys.isEmpty,
+        isDefault: providerID.isEmpty && fallbackID.isEmpty && !localOnly && !mayRun && !mayCapture && askFirst && Self.providerKeys.isEmpty,
         reset: reset)
     }
     .formStyle(.grouped)
@@ -48,6 +50,7 @@ struct AISettingsView: View {
     localOnly = false
     mayRun = false
     mayCapture = false
+    askFirst = true
     Self.providerKeys.forEach(UserDefaults.standard.removeObject(forKey:))
   }
 }

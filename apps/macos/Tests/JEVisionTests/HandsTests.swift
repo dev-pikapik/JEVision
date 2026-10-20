@@ -26,6 +26,77 @@ struct EscapeDetectorTests {
   }
 }
 
+/// What a person's mouse and keys do to a run follows the settings, asked at the moment it matters.
+struct InputWatcherTests {
+  private final class Settings: @unchecked Sendable {
+    private let lock = NSLock()
+    private var current = RunInputSettings()
+    var value: RunInputSettings {
+      get { lock.withLock { current } }
+      set { lock.withLock { current = newValue } }
+    }
+  }
+
+  private final class Stops: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    var value: Int { lock.withLock { count } }
+    func add() { lock.withLock { count += 1 } }
+  }
+
+  private func watcher(_ settings: Settings, _ stops: Stops) -> InputWatcher {
+    let watcher = InputWatcher(settings: { settings.value })
+    watcher.arm(onEmergencyStop: { stops.add() })
+    return watcher
+  }
+
+  private func escapeTwice(_ watcher: InputWatcher, at time: TimeInterval) {
+    watcher.note(key: (isEscape: true, isRepeat: false), at: time)
+    watcher.note(key: (isEscape: true, isRepeat: false), at: time + 0.2)
+  }
+
+  @Test func theMouseAndKeysPauseTheRunUnlessSettingsSayNot() {
+    let settings = Settings()
+    let watcher = watcher(settings, Stops())
+    watcher.note(key: nil, at: 0)
+    #expect(watcher.takeUserInput())
+    #expect(!watcher.takeUserInput())
+    settings.value.pausesOnMouse = false
+    watcher.note(key: nil, at: 1)
+    #expect(!watcher.takeUserInput())
+    // Turned back on, what happened meanwhile is not held against the person.
+    settings.value.pausesOnMouse = true
+    #expect(!watcher.takeUserInput())
+    watcher.note(key: (isEscape: false, isRepeat: false), at: 2)
+    #expect(watcher.takeUserInput())
+  }
+
+  @Test func escapeTwiceStopsTheRunUnlessSettingsSayNotAndAtOnce() {
+    let settings = Settings()
+    let stops = Stops()
+    let watcher = watcher(settings, stops)
+    escapeTwice(watcher, at: 0)
+    #expect(stops.value == 1)
+    settings.value.escapeStops = false
+    escapeTwice(watcher, at: 10)
+    #expect(stops.value == 1)
+    settings.value.escapeStops = true
+    escapeTwice(watcher, at: 20)
+    #expect(stops.value == 2)
+  }
+
+  @Test func settingsReadTheChoicesAndKeepTheDefaultsWhenThereIsNone() throws {
+    let name = "InputWatcherTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: name))
+    defer { defaults.removePersistentDomain(forName: name) }
+    #expect(RunInputSettings(defaults) == RunInputSettings())
+    defaults.set(false, forKey: RunInputSettings.pausesOnMouseKey)
+    defaults.set(false, forKey: RunInputSettings.collapsesKey)
+    let settings = RunInputSettings(defaults)
+    #expect(!settings.pausesOnMouse && !settings.collapsesToPanel && settings.escapeStops)
+  }
+}
+
 struct SyntheticInputTests {
   @Test func tellsTheTestsInputFromAPersons() throws {
     let own = try #require(CGEvent(mouseEventSource: SyntheticInput.source, mouseType: .mouseMoved, mouseCursorPosition: .zero, mouseButton: .left))

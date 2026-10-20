@@ -124,7 +124,8 @@ struct FailureAnalysisCard: View {
   }
 
   private func analyze() {
-    guard let settings = AISettings.app.settings() else {
+    let ai = AISettings.app
+    guard let settings = ai.textSettings(project: project.settings) else {
       noModel = true
       return
     }
@@ -136,9 +137,11 @@ struct FailureAnalysisCard: View {
       localOnly: AISettings.app.localOnly || project.settings.localOnly, flaky: project.flaky[report.file])
     let servers = MCPServers.all
     let language = Self.language
+    let safeguards = ai.safeguards(for: settings)
     textOnly = !settings.pictures
     conversation.start {
-      try AiSession.explainFailure(settings: settings, servers: servers, request: request, language: language)
+      try AiSession.explainFailure(
+        settings: settings, servers: servers, request: request, language: language, safeguards: safeguards)
     } finished: { step in
       guard case .explained(let explanation) = step else { return }
       self.explanation = explanation

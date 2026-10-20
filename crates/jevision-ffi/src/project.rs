@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use jevision_core::{
-    FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined,
-    Rect, RunMode, default_quarantine_until,
+    AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETRIES, PROJECT_FILE,
+    ProjectSettings, Quarantined, Rect, RunMode, default_quarantine_until,
 };
 
 /// The project settings file can't be read or written, or the change isn't allowed.
@@ -30,8 +30,26 @@ pub struct ProjectSettings {
     pub local_only: bool,
     #[uniffi(default = [])]
     pub hide: Vec<Rect>,
+    #[uniffi(default = None)]
+    pub ai_screen: Option<AiChoice>,
+    #[uniffi(default = None)]
+    pub ai_text: Option<AiChoice>,
     #[uniffi(default = [])]
     pub run_modes: Vec<FolderRunMode>,
+}
+
+/// What a project can choose an AI for.
+#[uniffi::remote(Enum)]
+pub enum AiTask {
+    Screen,
+    Text,
+}
+
+/// An AI provider by id and one of its models; empty stands for what the app's settings choose.
+#[uniffi::remote(Record)]
+pub struct AiChoice {
+    pub provider: String,
+    pub model: String,
 }
 
 #[uniffi::remote(Record)]
@@ -143,6 +161,27 @@ pub fn set_project_hide(
         s.set_hide(hide)
             .map_err(|reason| ProjectSettingsError::Rejected { reason })
     })
+}
+
+/// Sets the AI the project asks for `task`, or `None` to leave it to the app's settings.
+/// Returns the saved settings.
+#[uniffi::export]
+pub fn set_project_ai(
+    project: String,
+    task: AiTask,
+    choice: Option<AiChoice>,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.set_ai(task, choice)
+            .map_err(|reason| ProjectSettingsError::Rejected { reason })
+    })
+}
+
+/// The AI `task` asks when a block says `block`: the block's own choice, then the project's,
+/// otherwise empty, which stands for what the app's settings choose.
+#[uniffi::export]
+pub fn resolve_ai_choice(settings: &ProjectSettings, task: AiTask, block: AiChoice) -> AiChoice {
+    AiChoice::resolve(&block, settings.ai(task))
 }
 
 /// Sets how the tests of `folder`, relative to the project folder (`.` for the project
@@ -323,6 +362,45 @@ mod tests {
                 .unwrap()
                 .quarantine
                 .is_empty()
+        );
+
+        let choice = |provider: &str, model: &str| AiChoice {
+            provider: provider.into(),
+            model: model.into(),
+        };
+        let saved = set_project_ai(
+            project.clone(),
+            AiTask::Screen,
+            Some(choice("ollama", "llava")),
+        )
+        .unwrap();
+        assert_eq!(saved.ai_screen, Some(choice("ollama", "llava")));
+        assert_eq!(saved.ai_text, None);
+        assert!(matches!(
+            set_project_ai(project.clone(), AiTask::Text, Some(choice("jev", ""))),
+            Err(ProjectSettingsError::Rejected { .. })
+        ));
+        let file = std::fs::read_to_string(dir.join(PROJECT_FILE)).unwrap();
+        assert!(file.contains(r#""provider": "ollama""#), "{file}");
+        assert!(!file.contains("key"), "{file}");
+        let read = project_settings(project.clone()).unwrap();
+        assert_eq!(
+            resolve_ai_choice(&read, AiTask::Screen, choice("", "")),
+            choice("ollama", "llava")
+        );
+        assert_eq!(
+            resolve_ai_choice(&read, AiTask::Screen, choice("openai", "")),
+            choice("openai", "")
+        );
+        assert_eq!(
+            resolve_ai_choice(&read, AiTask::Text, choice("", "gpt-5")),
+            choice("", "gpt-5")
+        );
+        assert_eq!(
+            set_project_ai(project.clone(), AiTask::Screen, None)
+                .unwrap()
+                .ai_screen,
+            None
         );
 
         std::fs::write(dir.join(PROJECT_FILE), "{").unwrap();

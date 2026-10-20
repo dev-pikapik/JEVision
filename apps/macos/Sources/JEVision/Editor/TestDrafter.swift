@@ -26,13 +26,14 @@ final class TestDrafter {
 
   /// Asks the AI for a test of `document`; with `rework`, for the draft shown changed as
   /// `feedback` says.
-  func write(_ document: FlowDocument, localOnly: Bool, rework: Bool = false) {
+  func write(_ document: FlowDocument, localOnly: Bool, project: ProjectSettings, rework: Bool = false) {
     guard let flow = document.beforeDraft ?? document.flow else { return }
     if flow.app.isEmpty {
       blocked = .noApp
       return
     }
-    guard let settings = AISettings.app.settings() else {
+    let ai = AISettings.app
+    guard let settings = ai.textSettings(project: project) else {
       blocked = .noModel
       return
     }
@@ -43,8 +44,9 @@ final class TestDrafter {
       previous: rework && document.beforeDraft != nil ? document.flow : nil, feedback: rework ? feedback : "",
       localOnly: localOnly)
     let servers = MCPServers.all
+    let safeguards = ai.safeguards(for: settings)
     conversation.start {
-      try AiSession.draftTest(settings: settings, servers: servers, request: request)
+      try AiSession.draftTest(settings: settings, servers: servers, request: request, safeguards: safeguards)
     } finished: { [weak self, weak document] step in
       guard let self, let document, case .drafted(let draft) = step else { return }
       self.draft = draft
@@ -213,7 +215,8 @@ struct DraftPanel: View {
   }
 
   private func write(rework: Bool = false) {
-    drafter.write(document, localOnly: AISettings.app.localOnly || project.settings.localOnly, rework: rework)
+    drafter.write(
+      document, localOnly: AISettings.app.localOnly || project.settings.localOnly, project: project.settings, rework: rework)
   }
 
   private func accept() {
