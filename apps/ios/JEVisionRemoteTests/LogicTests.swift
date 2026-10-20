@@ -267,6 +267,18 @@ struct RunProgressTests {
     #expect(progress.current == nil)
   }
 
+  @Test func keepsWhatABlockWorksWithAsTheMacFilledItIn() {
+    var progress = RunProgress()
+    progress.apply(status(.running))
+    progress.apply(.event(.blockStarted(test: "main.json", block: "greet", kind: "type", title: "Hello, Boris!")))
+    #expect(progress.title(of: "greet") == "Hello, Boris!")
+    // A block of a called test isn't this test's, and a retry starts clean.
+    progress.apply(.event(.blockStarted(test: "login.json", block: "greet", kind: "type", title: "Hi")))
+    #expect(progress.title(of: "greet") == "Hello, Boris!")
+    progress.apply(.event(.attemptStarted(attempt: 2)))
+    #expect(progress.title(of: "greet") == nil)
+  }
+
   @Test func blocksOfACalledTestAreStepsButNotMarks() {
     var progress = RunProgress()
     progress.apply(status(.running))

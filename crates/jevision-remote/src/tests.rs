@@ -638,6 +638,7 @@ async fn streams_run_events_to_watchers() {
             test: "smoke.flow.json".into(),
             block: "open".into(),
             block_type: "openApp".into(),
+            title: Some("com.example.Mail".into()),
         },
         RunEvent::BlockFinished {
             attempt: 1,
@@ -720,6 +721,7 @@ async fn a_run_waiting_for_the_screen_reaches_watchers_as_a_status() {
         test: "smoke.flow.json".into(),
         block: "open".into(),
         block_type: "openApp".into(),
+        title: None,
     };
     setup
         .host
@@ -778,6 +780,41 @@ fn waiting_for_the_screen_and_the_card_fields_are_additions_older_peers_ignore()
         ),
         (None, None, None, None)
     );
+}
+
+#[test]
+fn a_started_block_shows_what_it_works_with_filled_for_the_run() {
+    let scratch = Scratch::new("title");
+    write(
+        &scratch.0,
+        "greet.flow.json",
+        r#"{"format":1,"name":"Greet","app":"com.example.App","start":"type","blocks":{
+            "type":{"type":"type","text":"Hello, ${data.name}! ${secret.pin} ${var.later}"}}}"#,
+    );
+    let values = HashMap::from([
+        ("data.name".to_owned(), "Boris".to_owned()),
+        ("secret.pin".to_owned(), "••••••".to_owned()),
+    ]);
+    let title = |block| running_title(&scratch.0, "greet.flow.json", block, &values);
+    // A value the block doesn't see stays a placeholder, kept on one line as on the test's card.
+    assert_eq!(
+        title("type"),
+        Some(format!(
+            "Hello, Boris! •••••• {}",
+            jevision_core::unbreakable_placeholders("${var.later}")
+        ))
+    );
+    assert_eq!(title("gone"), None);
+
+    // An older Mac sends no title.
+    let old = json!({
+        "event": "blockStarted", "attempt": 1, "seq": 1, "test": "greet.flow.json",
+        "block": "type", "blockType": "type"
+    });
+    assert!(matches!(
+        serde_json::from_value::<RunEvent>(old).unwrap(),
+        RunEvent::BlockStarted { title: None, .. }
+    ));
 }
 
 #[test]

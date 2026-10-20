@@ -12656,6 +12656,16 @@
         }
       }
     },
+    "No AI chosen in Settings → AI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ не выбран в Настройках → ИИ"
+          }
+        }
+      }
+    },
     "No Boards Yet" : {
       "localizations" : {
         "en" : {
@@ -12944,6 +12954,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщения о прогонах не отправлены: %@"
+          }
+        }
+      }
+    },
+    "No model chosen in Settings → AI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель не выбрана в Настройках → ИИ"
           }
         }
       }

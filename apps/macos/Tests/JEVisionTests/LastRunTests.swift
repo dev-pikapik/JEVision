@@ -52,6 +52,19 @@ struct LastRunTests {
     #expect(last.failure(of: "open") == nil)
   }
 
+  @Test func aCiRunIsNotTheTestsLastRun() {
+    var ci = Self.runs[1].report
+    ci.startedAt = "2026-10-18T11:00:00Z"
+    ci.ci = CiOrigin(
+      system: "GitHub Actions", repository: "acme/qa", branch: "main", commit: "abc1234def", pullRequest: nil, runUrl: nil)
+    let runs = [SavedRun(dir: "/p/.jevision/runs/ci", report: ci)] + Self.runs
+    let last = LastRun(file: "sign-in.flow.json", flow: Self.flow, runs: runs, pinned: nil)
+    #expect(last.own?.report.startedAt == "2026-10-18T09:00:00Z")
+    #expect(last.shown?.report.file == "suite.flow.json")
+    // A report opened from the list still shows its own run, from CI or not.
+    #expect(LastRun(file: "sign-in.flow.json", flow: Self.flow, runs: runs, pinned: runs[0].id).shown?.report.ci != nil)
+  }
+
   @Test func aReportPinsItsRun() {
     let pinned = Self.runs[1].id
     let last = LastRun(file: "sign-in.flow.json", flow: Self.flow, runs: Self.runs, pinned: pinned)

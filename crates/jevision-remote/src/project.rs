@@ -233,6 +233,37 @@ fn row_labels(root: &Path, file: &Path, flow: &jevision_core::Flow) -> Vec<Strin
     }
 }
 
+/// The title of `block` of the test at `path` while it runs: its `${…}` placeholders filled from
+/// `values`, the values the block sees with secrets masked; placeholders `values` lacks stay as
+/// written. `None` when the test or the block can't be read.
+pub fn running_title(
+    root: &Path,
+    path: &str,
+    block: &str,
+    values: &HashMap<String, String>,
+) -> Option<String> {
+    let (_, flow) = read_test(&self::root(root).ok()?, path).ok()?;
+    let block = flow.blocks.iter().find(|b| b.id == block)?;
+    let title = title(&block.kind);
+    let mut filled = String::with_capacity(title.len());
+    let mut rest = title.as_str();
+    while let Some(at) = rest.find("${") {
+        let Some(len) = rest[at..].find('}') else {
+            break;
+        };
+        let placeholder = &rest[at..=at + len];
+        filled.push_str(&rest[..at]);
+        filled.push_str(
+            values
+                .get(&placeholder[2..len])
+                .map_or(placeholder, String::as_str),
+        );
+        rest = &rest[at + len + 1..];
+    }
+    filled.push_str(rest);
+    Some(jevision_core::unbreakable_placeholders(&filled))
+}
+
 fn title(kind: &BlockKind) -> String {
     match kind {
         BlockKind::OpenApp { app, .. } => app.clone().unwrap_or_default(),

@@ -32,6 +32,8 @@ struct RunProgress: Equatable {
   /// Why the current attempt failed: its first failure.
   private(set) var failure: Failure?
   private var kinds: [String: String] = [:]
+  /// What the blocks of the run's own test work with in this attempt, filled for the run.
+  private var titles: [String: String] = [:]
 
   var isFinished: Bool { state == .finished }
 
@@ -66,11 +68,14 @@ struct RunProgress: Equatable {
     switch event {
     case .attemptStarted(let number):
       startAttempt(number)
-    case .blockStarted(let file, let block, let kind):
+    case .blockStarted(let file, let block, let kind, let title):
       kinds[file + "\n" + block] = kind
       waiting = nil
       running = Step(id: 0, test: file, block: block, kind: kind, status: nil, failure: nil)
-      if isOwn(file) { current = block }
+      if isOwn(file) {
+        current = block
+        titles[block] = title
+      }
     case .blockFinished(let file, let block, let status, let failure, let branch, let branches, let condition):
       steps.append(
         Step(
@@ -98,6 +103,12 @@ struct RunProgress: Equatable {
     }
   }
 
+  /// What `block` of the run's own test works with, as the Mac filled it in when the block last
+  /// started; `nil` when the Mac doesn't say.
+  func title(of block: String) -> String? {
+    titles[block]
+  }
+
   private func isOwn(_ file: String) -> Bool {
     test == nil || test == file
   }
@@ -109,6 +120,7 @@ struct RunProgress: Equatable {
     running = nil
     marks = [:]
     steps = []
+    titles = [:]
     failure = nil
   }
 }

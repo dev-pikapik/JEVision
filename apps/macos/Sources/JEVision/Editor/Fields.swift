@@ -415,6 +415,12 @@ struct ReferenceEditor: View {
       .map { AISettings(.standard).model(for: $0) } ?? ""
   }
 
+  /// What the empty field says: the model the block would use, or why there is none.
+  private var modelPrompt: Text {
+    if !settingsModel.isEmpty { return Text(verbatim: settingsModel) }
+    return hasAI ? Text("No model chosen in Settings → AI") : Text("No AI chosen in Settings → AI")
+  }
+
   private var threshold: Binding<Double> {
     Binding(
       get: { if case .similar(let t) = reference.compare { t } else { 0.95 } },
@@ -464,7 +470,7 @@ struct ReferenceEditor: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".provider"))
-      TextField(text: model, prompt: Text(settingsModel)) { Text("Model") }
+      TextField(text: model, prompt: modelPrompt) { Text("Model") }
       Text("Leave empty to use the model the project or Settings → AI chooses. Another model of the same provider can suit a harder or a simpler check.")
         .font(.callout)
         .foregroundStyle(.secondary)

@@ -13,6 +13,7 @@ struct LiveRunView: View {
   @State private var stopping = false
   @State private var stopError: RemoteError?
   @State private var attempt = 0
+  private static let top = "top"
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -33,16 +34,24 @@ struct LiveRunView: View {
           }
         }
         .padding()
+        .id(Self.top)
       }
-      // The newest step stays in view, scrolling no further than needed to show it.
+      // While the run goes on, the newest step stays in view, scrolling no further than needed
+      // to show it. Once it ends, the result at the top is what matters.
       .onChange(of: progress.lines.last) { _, step in
-        guard let step else { return }
+        guard let step, !progress.isFinished else { return }
         withAnimation(reduceMotion ? nil : .smooth) { proxy.scrollTo(step.id) }
+      }
+      .onChange(of: progress.isFinished) { _, finished in
+        guard finished else { return }
+        withAnimation(reduceMotion ? nil : .smooth) { proxy.scrollTo(Self.top, anchor: .top) }
       }
     }
     .navigationTitle(flow?.name ?? String(localized: "Run"))
     .navigationBarTitleDisplayMode(.inline)
-    .safeAreaInset(edge: .bottom) { bottomBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
+    // Text scrolling under the buttons is cut off, so it never reads through them.
+    .scrollEdgeEffectStyle(.hard, for: .bottom)
+    .safeAreaBar(edge: .bottom) { bottomBar.dynamicTypeSize(...DynamicTypeSize.accessibility2) }
     .alert(stopError?.title ?? "", isPresented: Binding(get: { stopError != nil }, set: { if !$0 { stopError = nil } })) {
       Button("OK", role: .cancel) {}
     } message: {
@@ -65,7 +74,7 @@ struct LiveRunView: View {
     HStack(alignment: .top, spacing: 12) {
       bannerIcon
         .font(.title2)
-        .frame(width: 30)
+        .frame(minWidth: 30)
       VStack(alignment: .leading, spacing: 4) {
         Text(bannerTitle).font(.headline)
         if let detail = bannerDetail {
@@ -117,7 +126,8 @@ struct LiveRunView: View {
     }
     if let waiting = progress.waiting, progress.state != .paused { return RunText.screenBusy(waiting.holder) }
     if let current = progress.current, let block = flow?.blocks.first(where: { $0.id == current }) {
-      return block.title.isEmpty ? BlockInfo.title(block.kind) : "\(BlockInfo.title(block.kind)): \(block.title)"
+      let title = progress.title(of: current) ?? block.title
+      return title.isEmpty ? BlockInfo.title(block.kind) : "\(BlockInfo.title(block.kind)): \(title)"
     }
     return nil
   }

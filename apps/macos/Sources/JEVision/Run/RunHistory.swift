@@ -126,6 +126,9 @@ extension SavedRun: @retroactive Identifiable {
   var status: RunStatus { RunStatus(report) }
   var startedAt: Date { RunHistory.date(report.startedAt) }
   var source: RunSource { RunSource(report) }
+  /// Made on this Mac or started from it. A CI run is of another checkout and says nothing about
+  /// the test here, so what a test shows as its last run leaves it out.
+  var isHere: Bool { report.ci == nil }
 }
 
 /// Runs of the project in the order and groups the sidebar shows them.
@@ -166,6 +169,12 @@ enum RunHistory {
       }
     }
     return days
+  }
+
+  /// The open run once the list shows only runs started from `source`: it stays only while the
+  /// list still has it, so the report beside the list is always of a run in it.
+  static func selection(_ id: SavedRun.ID?, in runs: [SavedRun], from source: RunSource?) -> SavedRun.ID? {
+    runs.contains { $0.id == id && (source == nil || $0.source == source) } ? id : nil
   }
 
   /// Who started the run, for its row: the phone's name, the schedule, the CI job or this Mac.
@@ -229,11 +238,11 @@ enum RunHistory {
   /// Why a test counts as flaky, from its runs of the last 30 days.
   static func flakyEvidence(_ evidence: FlakyEvidence) -> String {
     let since = date(evidence.since).formatted(date: .abbreviated, time: .omitted)
-    var counts = [
-      String(localized: "Passed: \(evidence.passed + evidence.passedOnRetry)"),
-      String(localized: "Failed: \(evidence.failed)"),
-    ]
+    // Only what happened: a test that passed on retries has no run that failed every try.
+    var counts: [String] = []
+    if evidence.passed > 0 { counts.append(String(localized: "Passed: \(evidence.passed)")) }
     if evidence.passedOnRetry > 0 { counts.append(String(localized: "Passed on retry: \(evidence.passedOnRetry)")) }
+    if evidence.failed > 0 { counts.append(String(localized: "Failed: \(evidence.failed)")) }
     let what =
       evidence.environment.map {
         String(localized: "Flaky: since \(since), the unchanged test both passed and failed in \($0).")

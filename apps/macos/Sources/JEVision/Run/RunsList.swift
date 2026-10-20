@@ -38,6 +38,10 @@ struct RunsList: View {
       }
     }
     .safeAreaBar(edge: .top, spacing: 0) { RunSourceBar() }
+    // A report of a run the new filter hides would stay open beside a list that lacks it.
+    .onChange(of: project.runSource) {
+      project.selectedRun = RunHistory.selection(project.selectedRun, in: project.runs, from: project.runSource)
+    }
     // Opening the runs asks GitHub for the ones CI finished since last time.
     .task { project.ci.refresh() }
     .overlay {
@@ -244,6 +248,12 @@ struct HealthView: View {
             .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        if health.passedOnRetry > 0 {
+          Text("\(Int(health.passedOnRetry)) passed on a retry")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       } else {
         Text("No runs in the last 30 days")
           .font(.caption)
@@ -259,14 +269,12 @@ struct HealthView: View {
             .foregroundStyle(RunStatus.flaky.color)
         }
         .font(.caption)
-        .lineLimit(4)
         .fixedSize(horizontal: false, vertical: true)
       }
       if let point = health.failsMostAt {
         Text("Fails most often at \(place(point))")
           .font(.caption)
           .foregroundStyle(.secondary)
-          .lineLimit(3)
           .fixedSize(horizontal: false, vertical: true)
       }
       if let since = health.failingSince.map(RunHistory.date), since != .distantPast {
