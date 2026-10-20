@@ -7,7 +7,7 @@
 //! the top-left corner, not fractions of a window.
 
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::edit::{START, Slot};
 use crate::model::{BODY, BlockKind, Flow, NEXT, Point, Rect};
@@ -140,15 +140,28 @@ pub(crate) fn port_xs(kind: &BlockKind, rect: &Rect) -> Vec<(Cow<'static, str>, 
 }
 
 fn auto_layout(flow: &Flow) -> FlowLayout {
+    let index: HashMap<&str, usize> = flow
+        .blocks
+        .iter()
+        .enumerate()
+        .rev()
+        .map(|(i, b)| (b.id.as_str(), i))
+        .collect();
+    let mut sources = vec![Vec::new(); flow.blocks.len()];
+    for (i, block) in flow.blocks.iter().enumerate() {
+        if index[block.id.as_str()] != i {
+            continue; // a later block with the same id is never reached
+        }
+        for (name, target) in block.kind.edges() {
+            if let Some(&t) = index.get(target).filter(|_| name != BODY) {
+                sources[t].push(i);
+            }
+        }
+    }
     let mut b = Builder {
         flow,
-        index: flow
-            .blocks
-            .iter()
-            .enumerate()
-            .rev()
-            .map(|(i, b)| (b.id.as_str(), i))
-            .collect(),
+        index,
+        sources,
         placed: vec![false; flow.blocks.len()],
         rects: vec![None; flow.blocks.len()],
         jumps: Vec::new(),
@@ -190,6 +203,8 @@ fn auto_layout(flow: &Flow) -> FlowLayout {
 struct Builder<'a> {
     flow: &'a Flow,
     index: HashMap<&'a str, usize>,
+    /// The blocks with an edge to each block, except a loop's edge into its body.
+    sources: Vec<Vec<usize>>,
     placed: Vec<bool>,
     rects: Vec<Option<Rect>>,
     jumps: Vec<Exit>,
@@ -252,49 +267,122 @@ impl<'a> Builder<'a> {
         items
     }
 
-    /// The first block every branch leads to, where they join again.
+    /// The first block every branch leads to, where they join again: of the blocks they all lead
+    /// to, the one a depth-first walk from the first branch finishes last. The walk stops at
+    /// those blocks, so its cost stays with the branches, not with the rest of the test.
     fn merge(&self, branches: &[Option<&'a str>], stops: &[&'a str]) -> Option<&'a str> {
-        let (first, rest) = branches.split_first()?;
-        let rest: Vec<HashSet<&str>> = rest
+        let stops: Vec<usize> = stops
             .iter()
-            .map(|b| self.reach_in_order(*b, stops).into_iter().collect())
+            .filter_map(|id| self.index.get(id).copied())
             .collect();
-        self.reach_in_order(*first, stops)
-            .into_iter()
-            .find(|id| rest.iter().all(|r| r.contains(id)))
-    }
-
-    /// Blocks reachable from `from` without passing a stop or entering a loop body, each before
-    /// the blocks it leads to.
-    fn reach_in_order(&self, from: Option<&'a str>, stops: &[&'a str]) -> Vec<&'a str> {
-        let mut seen = HashSet::new();
-        let mut order = Vec::new();
-        if let Some(from) = from {
-            self.visit(from, stops, &mut seen, &mut order);
+        let branches: Vec<usize> = branches
+            .iter()
+            .map(|b| {
+                b.and_then(|id| self.index.get(id).copied())
+                    .filter(|i| !stops.contains(i))
+            })
+            .collect::<Option<_>>()?;
+        let (&first, rest) = branches.split_first()?;
+        let mut known = vec![HashMap::new(); rest.len()];
+        let mut shared = |i: usize| {
+            rest.iter()
+                .zip(&mut known)
+                .all(|(&from, known)| self.leads_to(&[from], i, &stops, known))
+        };
+        if shared(first) {
+            return Some(self.id(first));
         }
-        order.reverse();
-        order
-    }
-
-    fn visit(
-        &self,
-        id: &'a str,
-        stops: &[&'a str],
-        seen: &mut HashSet<&'a str>,
-        order: &mut Vec<&'a str>,
-    ) {
-        let Some(&i) = self.index.get(id) else { return };
-        if stops.contains(&id) || !seen.insert(id) {
-            return;
-        }
-        if !self.placed[i] {
-            for (name, target) in self.kind(i).edges() {
-                if name != BODY {
-                    self.visit(target, stops, seen, order);
-                }
+        // The blocks where the walk enters the shared ones: each entered later finishes later.
+        let mut seen = HashSet::from([first]);
+        let mut entries = Vec::new();
+        let mut walk = vec![(self.targets(first, &stops), 0)];
+        while let Some((targets, n)) = walk.last_mut() {
+            let Some(&i) = targets.get(*n) else {
+                walk.pop();
+                continue;
+            };
+            *n += 1;
+            if !seen.insert(i) {
+                continue;
+            }
+            if shared(i) {
+                entries.push(i);
+            } else {
+                walk.push((self.targets(i, &stops), 0));
             }
         }
-        order.push(id);
+        // An entry that an earlier one leads to was walked as part of that one already.
+        (0..entries.len())
+            .rev()
+            .find(|&n| !self.leads_to(&entries[..n], entries[n], &stops, &mut HashMap::new()))
+            .map(|n| self.id(entries[n]))
+    }
+
+    /// Whether one of `from` leads to `to`. Searches forward from `from` and back from `to` in
+    /// turns, so the answer costs about as much as the shorter search. `known` holds what earlier
+    /// searches from the same `from` found out, and gains what this one does.
+    fn leads_to(
+        &self,
+        from: &[usize],
+        to: usize,
+        stops: &[usize],
+        known: &mut HashMap<usize, bool>,
+    ) -> bool {
+        if let Some(&answer) = known.get(&to) {
+            return answer;
+        }
+        let mut ahead: HashSet<usize> = from.iter().copied().collect();
+        let mut behind = HashSet::from([to]);
+        let mut forward: VecDeque<usize> = from.iter().copied().collect();
+        let mut back = VecDeque::from([to]);
+        let found = ahead.contains(&to)
+            || 'search: loop {
+                let Some(i) = forward.pop_front() else {
+                    break false;
+                };
+                for j in self.targets(i, stops) {
+                    if behind.contains(&j) {
+                        break 'search true;
+                    }
+                    if ahead.insert(j) {
+                        forward.push_back(j);
+                    }
+                }
+                let Some(j) = back.pop_front() else {
+                    break false;
+                };
+                for &i in &self.sources[j] {
+                    if self.placed[i] || stops.contains(&i) || known.get(&i) == Some(&false) {
+                        continue;
+                    }
+                    if ahead.contains(&i) || known.get(&i) == Some(&true) {
+                        break 'search true;
+                    }
+                    if behind.insert(i) {
+                        back.push_back(i);
+                    }
+                }
+            };
+        known.extend(ahead.into_iter().map(|i| (i, true)));
+        if !found {
+            known.extend(behind.into_iter().map(|i| (i, false)));
+        }
+        found
+    }
+
+    /// The blocks `i` leads to, in the order of its edges: none once it is placed, and none into
+    /// a loop's body or at a stop.
+    fn targets(&self, i: usize, stops: &[usize]) -> Vec<usize> {
+        if self.placed[i] {
+            return Vec::new();
+        }
+        self.kind(i)
+            .edges()
+            .into_iter()
+            .filter(|(name, _)| name != BODY)
+            .filter_map(|(_, target)| self.index.get(target).copied())
+            .filter(|t| !stops.contains(t))
+            .collect()
     }
 
     fn size(&self, item: &Item) -> (f64, f64) {
