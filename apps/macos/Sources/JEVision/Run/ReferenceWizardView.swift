@@ -262,7 +262,7 @@ struct ReferenceWizardView: View {
 
   static func decisionText(_ entry: ReferenceWizard.Entry) -> String {
     switch entry.decision {
-    case .pending: String(localized: "Not checked")
+    case .pending: String(localized: "Not reviewed yet")
     case .skipped: String(localized: "Skipped")
     case .confirmed: entry.isEdited ? String(localized: "Confirmed, settings changed") : String(localized: "Confirmed")
     }

@@ -11816,16 +11816,6 @@
         }
       }
     },
-    "Not checked" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не проверен"
-          }
-        }
-      }
-    },
     "Not connected" : {
       "localizations" : {
         "ru" : {
@@ -11888,6 +11878,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пока неизвестно"
+          }
+        }
+      }
+    },
+    "Not reviewed yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не просмотрен"
           }
         }
       }
