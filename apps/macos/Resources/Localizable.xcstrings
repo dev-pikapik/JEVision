@@ -1909,6 +1909,16 @@
         }
       }
     },
+    "AI for this project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ИИ для этого проекта"
+          }
+        }
+      }
+    },
     "API Key" : {
       "localizations" : {
         "ru" : {
@@ -3015,6 +3025,58 @@
         }
       }
     },
+    "Allow “%@” to run %lld test?" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Allow “%@” to run %lld test?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Allow “%@” to run %lld tests?"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Разрешить «%@» запустить %lld тест?"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Разрешить «%@» запустить %lld теста?"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Разрешить «%@» запустить %lld тестов?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Разрешить «%@» запустить %lld теста?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Allow “%@” to run a test?" : {
       "localizations" : {
         "ru" : {
@@ -3245,6 +3307,16 @@
         }
       }
     },
+    "Apps: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложения: %@"
+          }
+        }
+      }
+    },
     "Area" : {
       "localizations" : {
         "ru" : {
@@ -3351,6 +3423,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спросить GitHub ещё раз"
+          }
+        }
+      }
+    },
+    "Ask before an assistant runs a test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спрашивать, прежде чем ассистент запустит тест"
           }
         }
       }
@@ -4569,6 +4651,16 @@
         }
       }
     },
+    "Checks by Meaning" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверки по смыслу"
+          }
+        }
+      }
+    },
     "Checks by meaning" : {
       "localizations" : {
         "ru" : {
@@ -5431,6 +5523,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подключение"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключён"
+          }
+        }
+      }
+    },
+    "Connected Assistants" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключавшиеся ассистенты"
           }
         }
       }
@@ -7695,6 +7807,16 @@
         }
       }
     },
+    "First connected %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Впервые подключился %@"
+          }
+        }
+      }
+    },
     "First step" : {
       "localizations" : {
         "ru" : {
@@ -7905,6 +8027,16 @@
         }
       }
     },
+    "Forget the Ones Not Connected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Забыть неподключённых"
+          }
+        }
+      }
+    },
     "Forget the sign-in kept in the Keychain" : {
       "localizations" : {
         "ru" : {
@@ -8029,6 +8161,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Слева, пикс."
+          }
+        }
+      }
+    },
+    "From Project or Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как в проекте или настройках"
           }
         }
       }
@@ -8305,6 +8447,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "HTTP-запрос"
+          }
+        }
+      }
+    },
+    "Hasn’t used JEVision yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока ничего не делал в JEVision"
           }
         }
       }
@@ -8931,6 +9083,16 @@
         }
       }
     },
+    "It will use the mouse and keyboard of this Mac until it ends. Press Esc twice to stop it. Without an answer in a minute, it isn’t run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест будет пользоваться мышью и клавиатурой этого Mac, пока не закончится. Чтобы остановить его, дважды нажмите Esc. Если за минуту ответа не будет, тест не запустится."
+          }
+        }
+      }
+    },
     "It works. The model answered: %@" : {
       "localizations" : {
         "ru" : {
@@ -9294,6 +9456,16 @@
         }
       }
     },
+    "Last: %@, %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последнее: %1$@, %2$@"
+          }
+        }
+      }
+    },
     "Later" : {
       "localizations" : {
         "ru" : {
@@ -9384,12 +9556,12 @@
         }
       }
     },
-    "Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check." : {
+    "Leave empty to use the model the project or Settings → AI chooses. Another model of the same provider can suit a harder or a simpler check." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оставьте пустым, чтобы использовать модель из Настроек → ИИ. Другая модель того же провайдера подойдёт для более сложной или более простой проверки."
+            "value" : "Оставьте пустым, чтобы использовать модель из проекта или из Настроек → ИИ. Другая модель того же провайдера подойдёт для более сложной или более простой проверки."
           }
         }
       }
@@ -10000,6 +10172,16 @@
         }
       }
     },
+    "Model for %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель для %@"
+          }
+        }
+      }
+    },
     "Monthly limit for %@, US dollars" : {
       "localizations" : {
         "ru" : {
@@ -10514,6 +10696,16 @@
         }
       }
     },
+    "No assistant has connected yet. Once you add JEVision to one, it is listed here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни один ассистент ещё не подключался. Когда вы добавите JEVision в ассистента, он появится здесь."
+          }
+        }
+      }
+    },
     "No blocks yet" : {
       "localizations" : {
         "ru" : {
@@ -10846,6 +11038,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не разрешено"
+          }
+        }
+      }
+    },
+    "Not connected" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не подключён"
           }
         }
       }
@@ -11672,6 +11874,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть пример проекта"
+          }
+        }
+      }
+    },
+    "Open the folder with your tests to choose the AI it asks." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы выбрать ИИ для проекта."
           }
         }
       }
@@ -12700,6 +12912,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Как в проекте"
+          }
+        }
+      }
+    },
+    "Project: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект: %@"
           }
         }
       }
@@ -20194,12 +20416,12 @@
         }
       }
     },
-    "Which AI judges this check. “From Settings” uses the one chosen in Settings → AI." : {
+    "Which AI judges this check. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Какой ИИ проверяет этот блок. «Как в настройках» — тот, что выбран в Настройках → ИИ."
+            "value" : "Какой ИИ проверяет этот блок. «Как в проекте или настройках» — тот, что назван в проекте, а если там нет, то выбранный в Настройках → ИИ."
           }
         }
       }
@@ -20400,6 +20622,16 @@
         }
       }
     },
+    "Writing and Failure Analysis" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тексты и разбор падений"
+          }
+        }
+      }
+    },
     "Writing the bug report" : {
       "localizations" : {
         "ru" : {
@@ -20492,6 +20724,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вы удалили этот файл, а на сервере его изменили."
+          }
+        }
+      }
+    },
+    "You see what it wants to do and allow it or not. Without an answer in a minute, the test isn’t run." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы увидите, что ассистент хочет сделать, и решите, разрешить ли. Если за минуту ответа не будет, тест не запустится."
           }
         }
       }
@@ -20642,6 +20884,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "добавить блок"
+          }
+        }
+      }
+    },
+    "added blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "добавил блоки"
           }
         }
       }
@@ -20834,6 +21086,16 @@
         }
       }
     },
+    "checked a test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "проверил тест"
+          }
+        }
+      }
+    },
     "contains" : {
       "localizations" : {
         "ru" : {
@@ -21004,6 +21266,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "отладка"
+          }
+        }
+      }
+    },
+    "drafted a bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "составил отчёт об ошибке"
           }
         }
       }
@@ -22144,6 +22416,26 @@
         }
       }
     },
+    "looked at a run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "посмотрел прогон"
+          }
+        }
+      }
+    },
+    "looked for tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "искал тесты"
+          }
+        }
+      }
+    },
     "macOS asks for an administrator’s password." : {
       "localizations" : {
         "ru" : {
@@ -22396,12 +22688,52 @@
         }
       }
     },
+    "ran a test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "запустил тест"
+          }
+        }
+      }
+    },
     "ran in the last 30 days" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "запускались за последние 30 дней"
+          }
+        }
+      }
+    },
+    "read a report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прочитал отчёт"
+          }
+        }
+      }
+    },
+    "read a test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прочитал тест"
+          }
+        }
+      }
+    },
+    "read the guide to blocks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прочитал справку по блокам"
           }
         }
       }
@@ -23026,6 +23358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл слишком большой для отправки."
+          }
+        }
+      }
+    },
+    "removed a block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "удалил блок"
           }
         }
       }
@@ -24462,6 +24804,16 @@
         }
       }
     },
+    "sent a bug report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "отправил отчёт об ошибке"
+          }
+        }
+      }
+    },
     "start play test" : {
       "localizations" : {
         "ru" : {
@@ -24508,6 +24860,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "стоп откуда угодно · двиньте мышь — пауза"
+          }
+        }
+      }
+    },
+    "stopped a run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "остановил прогон"
           }
         }
       }
@@ -24622,6 +24984,16 @@
         }
       }
     },
+    "took a screenshot" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сделал снимок экрана"
+          }
+        }
+      }
+    },
     "true or false" : {
       "localizations" : {
         "ru" : {
@@ -24658,6 +25030,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ждёт экран"
+          }
+        }
+      }
+    },
+    "wrote a test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "записал тест"
           }
         }
       }
@@ -24794,6 +25176,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«Изменится» значит, что файл сохранили после начала прогона."
+          }
+        }
+      }
+    },
+    "“Checks by Meaning” judge a screen from a sentence, with or without a picture. “Writing and Failure Analysis” drafts tests and explains why one failed. Finding an element by its description always uses JEV. A block can name its own AI for a check. The choice is saved in %@ in the project folder, without any key." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Проверки по смыслу» оценивают экран по фразе, с картинкой или без. «Тексты и разбор падений» пишут черновики тестов и объясняют, почему тест упал. Поиск элемента по описанию всегда делает JEV. Блок может назвать свой ИИ для проверки. Выбор сохраняется в %@ в папке проекта, без ключей."
+          }
+        }
+      }
+    },
+    "…and %lld more" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…и ещё %lld"
           }
         }
       }

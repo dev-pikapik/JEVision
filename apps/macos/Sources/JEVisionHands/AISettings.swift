@@ -12,6 +12,7 @@ public struct AISettings {
   public static let localOnlyKey = "ai.localOnly"
   public static let assistantsRunKey = "assistants.allowRuns"
   public static let assistantsCaptureKey = "assistants.allowScreenshots"
+  public static let assistantsAskFirstKey = "assistants.askFirst"
   public static let fallbackKey = "ai.fallback"
   public static let pricesKey = "ai.prices"
 
@@ -24,6 +25,11 @@ public struct AISettings {
   /// The journal of every AI call, shared by the app and the `jevision` tool.
   public static var journal: URL {
     URL.applicationSupportDirectory.appending(path: "JEVision/ai-usage.jsonl", directoryHint: .notDirectory)
+  }
+
+  /// Where the app and every `jevision mcp` meet: who connected, and what the person is asked.
+  public static var assistantsFolder: URL {
+    URL.applicationSupportDirectory.appending(path: "JEVision/Assistants", directoryHint: .isDirectory)
   }
 
   /// The app's settings, from the app or from the `jevision` tool.
@@ -56,6 +62,9 @@ public struct AISettings {
   /// AI assistants may take screenshots of app windows.
   public var assistantsMayCapture: Bool { defaults.bool(forKey: Self.assistantsCaptureKey) }
 
+  /// Whether the person is asked before each run an assistant starts; on until they turn it off.
+  public var assistantsAskFirst: Bool { defaults.object(forKey: Self.assistantsAskFirstKey) as? Bool ?? true }
+
   /// Picks up what the app changed since this process last read its settings.
   public func refresh() {
     CFPreferencesAppSynchronize(Self.appDomain as CFString)
@@ -84,6 +93,21 @@ public struct AISettings {
     return VisionSettings(
       provider: provider.id, model: model ?? self.model(for: provider), address: address(for: provider),
       key: Self.key(for: provider), pictures: pictures(for: provider))
+  }
+
+  /// The AI that writes tests and explains failures: the one the project names for it, else the
+  /// chosen provider. Nil when neither names a provider.
+  public func textSettings(project: ProjectSettings) -> VisionSettings? {
+    let choice = project.aiText
+    return settings(
+      provider: choice.flatMap { $0.provider.isEmpty ? nil : $0.provider },
+      model: choice.flatMap { $0.model.isEmpty ? nil : $0.model })
+  }
+
+  /// What a session asking `settings` also gets: the fallback provider, and the journal and the
+  /// limits its calls count against.
+  public func safeguards(for settings: VisionSettings) -> AiSafeguards {
+    AiSafeguards(fallback: fallback(besides: settings.provider), usage: usage)
   }
 
   /// The provider that finds the elements tests describe in words, whichever one is chosen.

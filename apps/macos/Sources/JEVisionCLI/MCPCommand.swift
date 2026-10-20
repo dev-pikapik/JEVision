@@ -46,7 +46,13 @@ final class AssistantBridge: AssistantHost, @unchecked Sendable {
   func permissions() -> AssistantPermissions {
     let settings = AISettings.app
     settings.refresh()
-    return AssistantPermissions(runTests: settings.assistantsMayRun, screenshots: settings.assistantsMayCapture)
+    return AssistantPermissions(
+      runTests: settings.assistantsMayRun, screenshots: settings.assistantsMayCapture,
+      askFirst: settings.assistantsAskFirst)
+  }
+
+  func sharedFolder() -> String {
+    AISettings.assistantsFolder.path
   }
 
   func readinessProblem() -> String? {

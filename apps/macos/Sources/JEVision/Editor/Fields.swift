@@ -378,9 +378,15 @@ struct ReferenceEditor: View {
       })
   }
 
-  /// The model the settings choose for the block's provider, shown when the block keeps it.
+  /// Checks by meaning work with the AI of Settings or with the one the project names.
+  private var hasAI: Bool { !aiProvider.isEmpty || project.settings.aiScreen.map { !$0.provider.isEmpty } == true }
+
+  /// The model the project or the settings choose for the block's provider, shown when the
+  /// block keeps it.
   private var settingsModel: String {
-    AISettings.provider(meaning.provider.isEmpty ? aiProvider : meaning.provider)
+    let inherited = resolveAiChoice(settings: project.settings, task: .screen, block: AiChoice(provider: meaning.provider, model: ""))
+    if !inherited.model.isEmpty { return inherited.model }
+    return AISettings.provider(inherited.provider.isEmpty ? aiProvider : inherited.provider)
       .map { AISettings(.standard).model(for: $0) } ?? ""
   }
 
@@ -410,7 +416,7 @@ struct ReferenceEditor: View {
     Picker(selection: mode) {
       Text("Exactly").tag(Mode.exact)
       Text("Similar").tag(Mode.similar)
-      if !aiProvider.isEmpty || isMeaning { Text("By Meaning").tag(Mode.meaning) }
+      if hasAI || isMeaning { Text("By Meaning").tag(Mode.meaning) }
     } label: {
       Text("Match")
     }
@@ -423,24 +429,24 @@ struct ReferenceEditor: View {
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".expect"))
       Picker(selection: provider) {
-        Text("From Settings").tag("")
+        Text("From Project or Settings").tag("")
         ForEach(AISettings.providers, id: \.id) { Text($0.name).tag($0.id) }
       } label: {
         Text("AI")
       }
-      Text("Which AI judges this check. “From Settings” uses the one chosen in Settings → AI.")
+      Text("Which AI judges this check. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI.")
         .font(.callout)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".provider"))
       TextField(text: model, prompt: Text(settingsModel)) { Text("Model") }
-      Text("Leave empty to use the model chosen in Settings → AI. Another model of the same provider can suit a harder or a simpler check.")
+      Text("Leave empty to use the model the project or Settings → AI chooses. Another model of the same provider can suit a harder or a simpler check.")
         .font(.callout)
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".model"))
     }
-    if aiProvider.isEmpty {
+    if !hasAI {
       HStack(alignment: .firstTextBaseline) {
         Text(isMeaning ? "Checking by meaning needs an AI model." : "An AI model can also check the screen from a sentence like “The cart shows 2 items”.")
           .foregroundStyle(.secondary)

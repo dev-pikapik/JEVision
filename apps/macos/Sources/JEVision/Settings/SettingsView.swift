@@ -221,9 +221,12 @@ struct SettingsItem: Identifiable {
       SettingsItem(tab: .ai, id: "aiSpending", title: String(localized: "Spending")),
       SettingsItem(tab: .ai, id: "aiLimits", title: String(localized: "Limits")),
       SettingsItem(tab: .ai, id: "aiPrices", title: String(localized: "Prices")),
+      SettingsItem(tab: .ai, id: "projectAIScreen", title: String(localized: "Checks by Meaning")),
+      SettingsItem(tab: .ai, id: "projectAIText", title: String(localized: "Writing and Failure Analysis")),
       SettingsItem(tab: .ai, id: "projectLocalOnly", title: String(localized: "Only models on this Mac for this project")),
       SettingsItem(tab: .ai, id: "hiddenAreas", title: String(localized: "Areas always hidden")),
       SettingsItem(tab: .ai, id: "assistantsRun", title: String(localized: "Allow assistants to run tests")),
+      SettingsItem(tab: .ai, id: "assistantsAskFirst", title: String(localized: "Ask before an assistant runs a test")),
       SettingsItem(tab: .ai, id: "assistantsCapture", title: String(localized: "Allow assistants to take screenshots")),
       SettingsItem(tab: .ai, id: "connectAssistant", title: String(localized: "Connect an Assistant")),
     ]

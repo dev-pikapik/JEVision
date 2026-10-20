@@ -68,6 +68,57 @@ struct AISettingsTests {
     #expect(aiDefaultPrices().contains { $0.provider == "anthropic" && $0.input > 0 })
   }
 
+  @Test func textsAskTheProjectsAIBeforeTheChosenOne() throws {
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let ai = AISettings(defaults)
+    var project = ProjectSettings(retries: nil, quarantine: [])
+    #expect(ai.textSettings(project: project) == nil)
+
+    defaults.set("anthropic", forKey: AISettings.providerKey)
+    #expect(ai.textSettings(project: project)?.provider == "anthropic")
+    defaults.set("llava", forKey: AISettings.modelKey("ollama"))
+    project.aiText = AiChoice(provider: "ollama", model: "")
+    #expect(ai.textSettings(project: project)?.provider == "ollama")
+    #expect(ai.textSettings(project: project)?.model == "llava", "without a model the project leaves it to Settings")
+    project.aiText = AiChoice(provider: "ollama", model: "qwen2.5vl:7b")
+    #expect(ai.textSettings(project: project)?.model == "qwen2.5vl:7b")
+
+    // A fallback is for another provider than the one in force, and brings the spending limits.
+    defaults.set("ollama", forKey: AISettings.fallbackKey)
+    let settings = try #require(ai.textSettings(project: project))
+    #expect(ai.safeguards(for: settings).fallback == nil)
+    defaults.set("openai", forKey: AISettings.fallbackKey)
+    #expect(ai.safeguards(for: settings).fallback?.provider == "openai")
+    #expect(ai.safeguards(for: settings).usage == ai.usage)
+  }
+
+  @Test func theProjectKeepsOnlyTheNameOfItsAI() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "jevision-ai-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let path = folder.path(percentEncoded: false)
+
+    let screen = AiChoice(provider: "ollama", model: "llava")
+    let saved = try setProjectAi(project: path, task: .screen, choice: screen)
+    #expect(saved.aiScreen == screen && saved.aiText == nil)
+    let file = try String(contentsOf: folder.appending(path: projectSettingsFileName()), encoding: .utf8)
+    #expect(file.contains("ollama") && file.contains("llava"))
+    #expect(!file.lowercased().contains("key"), "the file holds the provider and the model, never a key")
+
+    // A block's own choice comes first, then the project's, then Settings', which empty stands for.
+    let none = AiChoice(provider: "", model: "")
+    #expect(resolveAiChoice(settings: saved, task: .screen, block: none) == screen)
+    #expect(resolveAiChoice(settings: saved, task: .screen, block: AiChoice(provider: "", model: "bigger")) == AiChoice(provider: "ollama", model: "bigger"))
+    #expect(resolveAiChoice(settings: saved, task: .screen, block: AiChoice(provider: "openai", model: "")) == AiChoice(provider: "openai", model: ""))
+    #expect(resolveAiChoice(settings: saved, task: .text, block: none) == none)
+
+    // JEV only reads screenshots.
+    #expect(throws: (any Error).self) { try setProjectAi(project: path, task: .text, choice: AiChoice(provider: "jev", model: "")) }
+    #expect(try setProjectAi(project: path, task: .screen, choice: nil).aiScreen == nil)
+  }
+
   @Test func everyProviderCanBeChosen() {
     let providers = AISettings.providers
     #expect(providers.map(\.name) == ["Anthropic", "OpenAI", "Google Gemini", "JEV (TypeSafe AI)", "Ollama", "LM Studio", "OpenAI-compatible server"])
@@ -229,5 +280,40 @@ struct MCPServersTests {
     #expect(loaded == [tracker, web])
     #expect(loaded[0].server == McpServer(name: "tracker", transport: .command(command: "python3 tracker.py")))
     #expect(loaded[1].location == "http://127.0.0.1:9/mcp")
+  }
+}
+
+@MainActor
+struct AssistantRequestsTests {
+  private func request(tests: [String], environment: String? = nil) -> AssistantRequest {
+    AssistantRequest(
+      id: "1", assistant: "Claude Code", project: "/Users/me/Shop", tests: tests, apps: ["com.example.mail", "com.example.notes"],
+      environment: environment, expiresAt: 0)
+  }
+
+  @Test func theQuestionSaysWhoWantsToDoWhat() {
+    let one = request(tests: ["login/sign-in.flow.json"], environment: "staging")
+    #expect(AssistantRequests.title(one).contains("Claude Code"))
+    let text = AssistantRequests.details(one) { $0.replacing("com.example.", with: "").capitalized }
+    #expect(text.contains("login/sign-in\n"), "the test is named without its file ending")
+    #expect(text.contains("Shop") && !text.contains("/Users/me"))
+    #expect(text.contains("Mail") && text.contains("Notes"))
+    #expect(text.contains("staging"))
+    #expect(!text.contains("…"), "nothing is left out of a single test")
+
+    let many = AssistantRequests.details(request(tests: (1...8).map { "t\($0).flow.json" })) { $0 }
+    #expect(many.contains("t5\n") && !many.contains("t6"), "five tests are named, the rest counted")
+    #expect(many.contains("3"))
+  }
+
+  @Test func theAppAndTheServersMeetInOneFolder() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "jevision-assistants-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let path = folder.path(percentEncoded: false)
+    #expect(connectedAssistants(folder: path).isEmpty)
+    #expect(pendingAssistantRequests(folder: path).isEmpty)
+    #expect(FileManager.default.fileExists(atPath: folder.appending(path: "listening").path), "polling tells the servers the app is open")
+    #expect(!answerAssistantRequest(folder: path, id: "1-2-3", allow: true), "nobody asked")
+    #expect(AISettings.assistantsFolder.path.hasSuffix("JEVision/Assistants"))
   }
 }
