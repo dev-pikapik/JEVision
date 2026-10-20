@@ -199,7 +199,10 @@ impl TriageJob {
         if flow.is_some() && retries < SUGGESTED_RETRIES {
             offered.push(FailureFix::AddRetries);
         }
-        if settings.quarantined(&report.file).is_none() {
+        if settings
+            .quarantined(&report.file, &jevision_runner::today())
+            .is_none()
+        {
             offered.push(FailureFix::Quarantine);
         }
         offered.push(FailureFix::RunAgain);

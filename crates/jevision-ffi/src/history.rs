@@ -5,7 +5,7 @@ use std::path::Path;
 
 use jevision_runner::{Run, StepStatus, Verdict};
 
-use crate::RunReport;
+use crate::{DataRow, RunReport};
 
 /// A saved run could not be read or its report could not be written.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -138,7 +138,8 @@ pub struct TestHealth {
 }
 
 /// Runs of the 30 days that both passed and failed with the test file exactly as it is in the
-/// latest run, in the same environment: nothing in the test changed, yet the result did.
+/// latest run, in the same environment and, for a test with a data table, on the same row with
+/// the same values: nothing in the test changed, yet the result did.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct FlakyEvidence {
     /// Runs that passed on the first try.
@@ -151,6 +152,36 @@ pub struct FlakyEvidence {
     pub environment: Option<String>,
     /// Start of the first of the runs, RFC 3339.
     pub since: String,
+    /// The data row the runs are about, as the latest of them named it; `None` for a test
+    /// without a data table.
+    #[uniffi(default = None)]
+    pub row: Option<DataRow>,
+}
+
+/// Why a test is worth putting in quarantine: it was unreliable several times in a week.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct QuarantineSuggestion {
+    /// The runs of the test in the 30 days that behave unreliably, in the one environment and
+    /// on the one data row with the most unreliable runs in the last 7 days.
+    pub evidence: FlakyEvidence,
+    /// What made the test unreliable in the last 7 days, oldest first.
+    pub events: Vec<FlakyEvent>,
+}
+
+/// One time the test was unreliable.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FlakyEvent {
+    /// Start of the run, RFC 3339.
+    pub started_at: String,
+    pub kind: FlakyKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum FlakyKind {
+    /// The run failed and then passed on a retry.
+    PassedOnRetry,
+    /// The run failed although the one before it, with nothing changed, passed.
+    FailedAfterPass,
 }
 
 /// How one run went, for the health bars.
@@ -177,6 +208,7 @@ pub struct FailurePoint {
 
 const HEALTH_WINDOW_MS: i64 = 30 * 86_400_000;
 const HEALTH_BARS: usize = 20;
+const WEEK_MS: i64 = 7 * 86_400_000;
 
 /// The health of a test from `runs`, its saved runs in any order, at `now_ms` milliseconds
 /// since 1970.
@@ -278,40 +310,160 @@ pub fn flaky_tests(runs: Vec<RunReport>, now_ms: i64) -> HashMap<String, FlakyEv
         .collect()
 }
 
-/// Evidence that the test is flaky from `runs`, finished and oldest first: among the runs of
-/// the latest run's test file content, the environment whose runs disagree, the most recently
-/// run one if several do. Runs saved without the file's hash prove nothing.
-fn flaky_evidence(runs: &[&RunReport]) -> Option<FlakyEvidence> {
-    let hash = runs.last()?.file_hash.as_deref()?;
-    let mut groups: Vec<FlakyEvidence> = Vec::new();
+/// Runs of one test file content in one environment, on one data row.
+struct Group {
+    evidence: FlakyEvidence,
+    events: Vec<(i64, FlakyEvent)>,
+    /// The latest run of the group passed.
+    passing: bool,
+}
+
+/// What `runs`, finished and oldest first, show about each environment and data row of the
+/// latest run's test file content, the group run last coming last. Runs saved without the
+/// file's hash prove nothing.
+fn flaky_groups(runs: &[&RunReport]) -> Vec<Group> {
+    let Some(hash) = runs.last().and_then(|r| r.file_hash.as_deref()) else {
+        return Vec::new();
+    };
+    let mut groups: Vec<(Option<String>, Group)> = Vec::new();
     for run in runs.iter().filter(|r| r.file_hash.as_deref() == Some(hash)) {
-        let index = match groups.iter().position(|g| g.environment == run.environment) {
-            Some(index) => index,
-            None => {
-                groups.push(FlakyEvidence {
-                    passed: 0,
-                    passed_on_retry: 0,
-                    failed: 0,
-                    environment: run.environment.clone(),
-                    since: run.started_at.clone(),
-                });
-                groups.len() - 1
-            }
+        let at = unix_ms(&run.started_at).unwrap_or(i64::MIN);
+        let seen: Vec<(Option<&DataRow>, Verdict, bool)> = if run.rows.is_empty() {
+            vec![(None, run.verdict, run.flaky)]
+        } else {
+            run.rows
+                .iter()
+                .map(|r| (Some(&r.row), r.verdict, r.flaky))
+                .collect()
         };
-        let group = &mut groups[index];
-        match run.verdict {
-            Verdict::Passed if run.flaky => group.passed_on_retry += 1,
-            Verdict::Passed => group.passed += 1,
-            _ => group.failed += 1,
+        for (row, verdict, retried) in seen {
+            let key = row.map(|r| {
+                r.hash
+                    .clone()
+                    .unwrap_or_else(|| format!("{}\u{1f}{}", r.number, r.label))
+            });
+            let index = match groups
+                .iter()
+                .position(|(k, g)| *k == key && g.evidence.environment == run.environment)
+            {
+                Some(index) => index,
+                None => {
+                    groups.push((
+                        key,
+                        Group {
+                            evidence: FlakyEvidence {
+                                passed: 0,
+                                passed_on_retry: 0,
+                                failed: 0,
+                                environment: run.environment.clone(),
+                                since: run.started_at.clone(),
+                                row: None,
+                            },
+                            events: Vec::new(),
+                            passing: false,
+                        },
+                    ));
+                    groups.len() - 1
+                }
+            };
+            let (_, group) = &mut groups[index];
+            group.evidence.row = row.cloned();
+            let mut event = |kind| {
+                group.events.push((
+                    at,
+                    FlakyEvent {
+                        started_at: run.started_at.clone(),
+                        kind,
+                    },
+                ));
+            };
+            match verdict {
+                Verdict::Passed if retried => {
+                    group.evidence.passed_on_retry += 1;
+                    event(FlakyKind::PassedOnRetry);
+                    group.passing = true;
+                }
+                Verdict::Passed => {
+                    group.evidence.passed += 1;
+                    group.passing = true;
+                }
+                _ => {
+                    group.evidence.failed += 1;
+                    // A test that broke and stays broken is one event, not one per run.
+                    if group.passing {
+                        event(FlakyKind::FailedAfterPass);
+                    }
+                    group.passing = false;
+                }
+            }
+            // The group run last comes last.
+            let latest = groups.remove(index);
+            groups.push(latest);
         }
-        // The group run last comes last.
-        let latest = groups.remove(index);
-        groups.push(latest);
     }
-    groups
+    groups.into_iter().map(|(_, g)| g).collect()
+}
+
+/// Evidence that the test is flaky from `runs`, finished and oldest first: among the runs of
+/// the latest run's test file content, the environment and data row whose runs disagree, the
+/// most recently run one if several do.
+fn flaky_evidence(runs: &[&RunReport]) -> Option<FlakyEvidence> {
+    flaky_groups(runs)
         .into_iter()
         .rev()
-        .find(|g| g.passed_on_retry > 0 || (g.passed > 0 && g.failed > 0))
+        .map(|g| g.evidence)
+        .find(|e| e.passed_on_retry > 0 || (e.passed > 0 && e.failed > 0))
+}
+
+/// The tests of `runs` unreliable at least `after` times within the 7 days before `now_ms`
+/// milliseconds since 1970, by test file relative to the project folder: runs that passed only
+/// on a retry, and runs that failed after one that passed with nothing changed. Several failed
+/// runs in a row count once, so a test that broke for good isn't suggested.
+#[uniffi::export]
+pub fn quarantine_suggestions(
+    runs: Vec<RunReport>,
+    now_ms: i64,
+    after: u32,
+) -> HashMap<String, QuarantineSuggestion> {
+    let mut by_file: HashMap<String, Vec<RunReport>> = HashMap::new();
+    for run in runs {
+        by_file.entry(run.file.clone()).or_default().push(run);
+    }
+    let week_start = now_ms.saturating_sub(WEEK_MS);
+    by_file
+        .into_iter()
+        .filter_map(|(file, runs)| {
+            let mut finished: Vec<(i64, &RunReport)> = runs
+                .iter()
+                .filter(|run| {
+                    !matches!(
+                        run.verdict,
+                        Verdict::Cancelled | Verdict::Blocked | Verdict::Unknown
+                    )
+                })
+                .map(|run| (unix_ms(&run.started_at).unwrap_or(i64::MIN), run))
+                .filter(|(at, _)| *at >= now_ms.saturating_sub(HEALTH_WINDOW_MS))
+                .collect();
+            finished.sort_by_key(|(at, _)| *at);
+            let finished: Vec<&RunReport> = finished.into_iter().map(|(_, run)| run).collect();
+            let best = flaky_groups(&finished)
+                .into_iter()
+                .map(|g| {
+                    let events: Vec<FlakyEvent> = g
+                        .events
+                        .into_iter()
+                        .filter(|(at, _)| *at >= week_start)
+                        .map(|(_, event)| event)
+                        .collect();
+                    (g.evidence, events)
+                })
+                // The group run last wins a tie.
+                .max_by_key(|(_, events)| events.len())?;
+            let (evidence, events) = best;
+            (events.len() >= after.max(1) as usize)
+                .then_some((file, QuarantineSuggestion { evidence, events }))
+        })
+        .collect()
 }
 
 /// Milliseconds since 1970 of an RFC 3339 time, such as `2026-10-18T14:30:05.123Z` or
@@ -463,6 +615,7 @@ mod tests {
                 failed: 1,
                 environment: None,
                 since: "2026-10-18T08:00:00.000Z".into(),
+                row: None,
             })
         );
         // A pass after failing within one run is evidence on its own.
@@ -484,6 +637,167 @@ mod tests {
         let mut old = run("08:00", "failed", "a", None);
         old.started_at = "2026-08-01T08:00:00.000Z".into();
         assert_eq!(flaky(vec![old, run("09:00", "passed", "a", None)]), None);
+    }
+
+    /// A saved run of a test with a data table: `rows` are (hash, verdict of the row, the row
+    /// passed only on a retry).
+    fn row_run(started: &str, rows: &[(&str, &str, bool)]) -> RunReport {
+        let attempts: Vec<String> = rows
+            .iter()
+            .enumerate()
+            .flat_map(|(i, (hash, verdict, retried))| {
+                let row = format!(
+                    r#""row":{{"number":{},"label":"r{i}","hash":"{hash}"}}"#,
+                    i + 1
+                );
+                let mut attempts = Vec::new();
+                if *retried {
+                    attempts.push(format!(
+                        r#"{{"number":1,"verdict":"failed","durationMs":1,"steps":[],{row},
+                        "failure":{{"code":"run.check.mismatch","params":{{}}}}}}"#
+                    ));
+                }
+                let number = attempts.len() + 1;
+                let failure = if *verdict == "failed" {
+                    r#","failure":{"code":"run.check.mismatch","params":{}}"#
+                } else {
+                    ""
+                };
+                attempts.push(format!(
+                    r#"{{"number":{number},"verdict":"{verdict}","durationMs":1,"steps":[],{row}{failure}}}"#
+                ));
+                attempts
+            })
+            .collect();
+        let verdict = if rows.iter().all(|(_, v, _)| *v == "passed") {
+            "passed"
+        } else {
+            "failed"
+        };
+        let mut run: RunReport = serde_json::from_str::<jevision_runner::RunReport>(&format!(
+            r#"{{"format":1,"test":"t","file":"t.flow.json","app":"com.example.App",
+            "startedAt":"{started}","durationMs":1,"verdict":"{verdict}","flaky":false,
+            "attempts":[{}]}}"#,
+            attempts.join(",")
+        ))
+        .unwrap()
+        .into();
+        run.file_hash = Some("a".into());
+        run
+    }
+
+    #[test]
+    fn flakiness_is_told_per_data_row() {
+        let now = unix_ms("2026-10-18T12:00:00Z").unwrap();
+        let at = |hour: u32| format!("2026-10-18T{hour:02}:00:00.000Z");
+        // Row 1 always passes; row 2 passes on a retry once, row 3 fails and passes.
+        let runs = vec![
+            row_run(
+                &at(7),
+                &[
+                    ("h1", "passed", false),
+                    ("h2", "passed", false),
+                    ("h3", "passed", false),
+                ],
+            ),
+            row_run(
+                &at(8),
+                &[
+                    ("h1", "passed", false),
+                    ("h2", "passed", true),
+                    ("h3", "failed", false),
+                ],
+            ),
+            row_run(
+                &at(9),
+                &[
+                    ("h1", "passed", false),
+                    ("h2", "passed", false),
+                    ("h3", "passed", false),
+                ],
+            ),
+        ];
+        let evidence = test_health(runs, now).flaky.unwrap();
+        let row = evidence.row.as_ref().unwrap();
+        assert_eq!((row.number, row.hash.as_deref()), (3, Some("h3")));
+        assert_eq!(
+            (evidence.passed, evidence.passed_on_retry, evidence.failed),
+            (2, 0, 1)
+        );
+
+        // A row that fails everywhere is not flaky because another row passes.
+        let runs = vec![
+            row_run(&at(8), &[("h1", "passed", false), ("h2", "failed", false)]),
+            row_run(&at(9), &[("h1", "passed", false), ("h2", "failed", false)]),
+        ];
+        assert_eq!(test_health(runs, now).flaky, None);
+
+        // Editing a row's values starts its history over.
+        let runs = vec![
+            row_run(&at(8), &[("old", "failed", false)]),
+            row_run(&at(9), &[("new", "passed", false)]),
+        ];
+        assert_eq!(test_health(runs, now).flaky, None);
+    }
+
+    #[test]
+    fn quarantine_is_suggested_after_enough_unreliable_runs_in_a_week() {
+        let now = unix_ms("2026-10-18T12:00:00Z").unwrap();
+        let run = |day: u32, hour: u32, verdict: &str, retried: bool| {
+            row_run(
+                &format!("2026-10-{day:02}T{hour:02}:00:00.000Z"),
+                &[("h", verdict, retried)],
+            )
+        };
+        let suggested = |runs: Vec<RunReport>, after| quarantine_suggestions(runs, now, after);
+
+        // Three runs that needed a retry in a week.
+        let runs = vec![
+            run(14, 9, "passed", true),
+            run(15, 9, "passed", false),
+            run(16, 9, "passed", true),
+            run(17, 9, "passed", true),
+        ];
+        let found = suggested(runs.clone(), 3);
+        let suggestion = &found["t.flow.json"];
+        assert_eq!(suggestion.events.len(), 3);
+        assert!(
+            suggestion
+                .events
+                .iter()
+                .all(|e| e.kind == FlakyKind::PassedOnRetry)
+        );
+        assert_eq!(suggestion.events[0].started_at, "2026-10-14T09:00:00.000Z");
+        assert_eq!(suggestion.evidence.row.as_ref().unwrap().number, 1);
+        assert!(suggested(runs.clone(), 4).is_empty());
+
+        // Runs older than 7 days still count for health but not for the suggestion.
+        let mut old = runs.clone();
+        old[0].started_at = "2026-10-01T09:00:00.000Z".into();
+        assert!(suggested(old, 3).is_empty());
+
+        // Pass, fail, pass, fail, pass, fail: failing after a pass is unreliable too.
+        let swing = vec![
+            run(12, 9, "passed", false),
+            run(13, 9, "failed", false),
+            run(14, 9, "passed", false),
+            run(15, 9, "failed", false),
+            run(16, 9, "passed", false),
+            run(17, 9, "failed", false),
+        ];
+        let found = suggested(swing, 3);
+        let kinds: Vec<_> = found["t.flow.json"].events.iter().map(|e| e.kind).collect();
+        assert_eq!(kinds, [FlakyKind::FailedAfterPass; 3]);
+
+        // A test that broke for good is one event, however many runs failed since.
+        let broken = vec![
+            run(13, 9, "passed", false),
+            run(14, 9, "failed", false),
+            run(15, 9, "failed", false),
+            run(16, 9, "failed", false),
+            run(17, 9, "failed", false),
+        ];
+        assert!(suggested(broken, 2).is_empty());
     }
 
     #[test]

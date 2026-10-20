@@ -142,17 +142,19 @@ struct OnboardingView: View {
   /// Creates a test for the chosen app, in the default folder if no project is open, and records into it.
   private func recordFirstTest() {
     guard let app else { return }
-    do {
-      if project.rootURL == nil { try project.openDefaultFolder() }
-      try project.createTest(name: String(localized: "First Test"), app: app)
-    } catch {
-      failure = error.localizedDescription
-      return
+    Task {
+      do {
+        if project.rootURL == nil { try project.openDefaultFolder() }
+        try await project.createTest(name: String(localized: "First Test"), app: app)
+      } catch {
+        failure = error.localizedDescription
+        return
+      }
+      guard let document = project.document else { return }
+      finish()
+      openWindow(id: SceneID.main)
+      // After the main window is up, so the recording puts it out of the app's way.
+      Task { records.record(document) }
     }
-    guard let document = project.document else { return }
-    finish()
-    openWindow(id: SceneID.main)
-    // After the main window is up, so the recording puts it out of the app's way.
-    Task { records.record(document) }
   }
 }

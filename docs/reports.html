@@ -123,7 +123,7 @@
 <p>JUnit XML is the format CI systems such as GitHub Actions, GitLab and Jenkins read to show test results. <code>jevision run tests/ --junit junit.xml</code> saves one file for all the tests of the run.</p>
 <ul>
   <li>Each test is a test case. In a <a href="data-driven.html">data-driven test</a>, each row is a test case of its own, such as <code>Sign in [Row 2: Bo]</code>.</li>
-  <li>A failure of a test in <a href="retries.html#quarantine">quarantine</a> is listed as skipped, with the reason and the failure.</li>
+  <li>A failure of a test in <a href="retries.html#quarantine">quarantine</a> is listed as skipped, with the reason and the failure. Once its quarantine has ended, the failure counts like any other.</li>
   <li>A test with <code>if</code> blocks lists the way each one took in its last attempt in <code>system-out</code>, one line per step, such as <code>first-screen: Took “Condition 2: update dialog”</code>.</li>
 </ul>
 

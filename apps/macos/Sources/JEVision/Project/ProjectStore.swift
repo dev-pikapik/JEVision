@@ -43,6 +43,11 @@ final class ProjectStore {
   /// Tests whose recent runs both passed and failed without the test changing, by test file
   /// relative to the project, with the evidence.
   private(set) var flaky: [String: FlakyEvidence] = [:]
+  /// Tests that were unreliable at least once in the last week, by test file relative to the
+  /// project; `quarantineSuggestion(for:)` keeps those worth putting in quarantine.
+  private(set) var unreliable: [String: QuarantineSuggestion] = [:]
+  /// Which tests the sidebar lists and Run All runs, by the fields of their cards.
+  var filter = TestFilter()
   /// What the sidebar lists.
   var sidebar = Sidebar.tests
   /// The runs the Runs list shows by where they were started; all of them when `nil`.
@@ -66,8 +71,8 @@ final class ProjectStore {
   let schedules = ProjectSchedules()
   let ci = ProjectCI()
   let library = ProjectLibrary()
-  /// Settings shared through the project's settings file: default retries and the tests in
-  /// quarantine.
+  /// Settings shared through the project's settings file: default retries, the tests in
+  /// quarantine and when to suggest it.
   private(set) var settings = ProjectSettings(retries: nil, quarantine: [])
   /// Why the project's settings file can't be read.
   private(set) var settingsProblem: String?
@@ -140,8 +145,9 @@ final class ProjectStore {
     return (id, id.isEmpty ? rootURL : rootURL.appending(path: id))
   }
 
-  /// Writes a new test with one Open App block and selects it.
-  func createTest(name: String, app: String) throws {
+  /// Writes a new test with one Open App block, signed with the git name, and selects it.
+  func createTest(name: String, app: String) async throws {
+    let author = await git.identity().name.trimmingCharacters(in: .whitespaces)
     guard let (folderID, folder) = targetFolder else { return }
     let base = RelativePath.testFileName(name)
     let stem = ProjectScanner.testName(base)
@@ -150,7 +156,7 @@ final class ProjectStore {
     } + ProjectScanner.testSuffix
     let empty = Flow(
       name: name.trimmingCharacters(in: .whitespaces), description: nil, icon: nil, app: app, testType: nil, priority: nil,
-      status: nil, tags: [], retries: nil, start: "", blocks: [],
+      status: nil, tags: [], author: author.isEmpty ? nil : author, retries: nil, start: "", blocks: [],
       canvas: CanvasContent(positions: [:], sections: [], notes: []))
     let flow = insertBlock(flow: empty, typeName: "openApp", slot: nil)?.flow ?? empty
     try Data(saveFlow(flow: flow).utf8).write(to: folder.appending(path: fileName), options: .withoutOverwriting)
@@ -267,9 +273,20 @@ final class ProjectStore {
 
   // MARK: Settings
 
-  /// The quarantine entry of a test file, relative to the project.
+  /// The quarantine of a test file, relative to the project, while it lasts: an entry whose last
+  /// day is past is kept in the settings file but puts nothing in quarantine.
   func quarantine(of file: String) -> Quarantined? {
-    settings.quarantine.first { $0.test == file }
+    let today = localToday()
+    return settings.quarantine.first { $0.test == file && quarantineActive(entry: $0, today: today) }
+  }
+
+  /// Why the test is worth putting in quarantine: it was unreliable as many times in the last
+  /// week as the project's threshold says, and isn't in quarantine yet.
+  func quarantineSuggestion(for file: String) -> QuarantineSuggestion? {
+    guard let suggestion = unreliable[file], quarantine(of: file) == nil,
+      suggestion.events.count >= Int(quarantineThreshold(settings: settings))
+    else { return nil }
+    return suggestion
   }
 
   /// The test file `url` as the quarantine names it: relative to the project, or `nil` outside it.
@@ -283,14 +300,27 @@ final class ProjectStore {
     flow.retries ?? settings.retries ?? 0
   }
 
-  /// Puts the test in quarantine: it still runs, but its failures don't fail Run All, the command
-  /// line or the JUnit report.
-  func quarantine(_ file: String, reason: String?) throws {
-    try changeSettings { try quarantineTest(project: $0, test: file, reason: reason) }
+  /// Puts the test in quarantine until the end of the day `until` (`YYYY-MM-DD`), or without an
+  /// end: it still runs, but its failures don't fail Run All, the command line or the JUnit
+  /// report. A test already in quarantine gets the new reason and end.
+  func quarantine(_ file: String, reason: String?, until: String?) throws {
+    try changeSettings { try quarantineTest(project: $0, test: file, reason: reason, until: until) }
+  }
+
+  /// Puts the test in quarantine as its suggestion asks: for the usual two weeks, with what made
+  /// it unreliable as the reason.
+  func quarantine(_ file: String, accepting suggestion: QuarantineSuggestion) throws {
+    try quarantine(
+      file, reason: QuarantineText.suggestion(suggestion), until: defaultQuarantineEnd(today: localToday()))
   }
 
   func releaseFromQuarantine(_ file: String) throws {
     try changeSettings { try JEVisionCore.releaseFromQuarantine(project: $0, test: file) }
+  }
+
+  /// After how many unreliable runs within a week quarantine is suggested; `nil` for the usual 3.
+  func setQuarantineThreshold(_ after: UInt32?) throws {
+    try changeSettings { try JEVisionCore.setQuarantineThreshold(project: $0, after: after) }
   }
 
   /// How many times a failed test is retried when its file doesn't say; `nil` retries none.
@@ -413,6 +443,7 @@ final class ProjectStore {
     showsBoard = false
     showsCommandPalette = false
     items = []
+    filter = TestFilter()
     show(History([]))
     selectedRun = nil
     runSource = nil
@@ -485,11 +516,17 @@ final class ProjectStore {
     let runs: [SavedRun]
     let latest: [String: SavedRun]
     let flaky: [String: FlakyEvidence]
+    let unreliable: [String: QuarantineSuggestion]
 
     init(_ runs: [SavedRun]) {
       self.runs = runs
       latest = ProjectMap.latestRuns(runs.filter { $0.report.ci == nil })
-      flaky = runs.isEmpty ? [:] : flakyTests(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000))
+      let reports = runs.map(\.report)
+      let now = Int64(Date.now.timeIntervalSince1970 * 1000)
+      flaky = runs.isEmpty ? [:] : flakyTests(runs: reports, nowMs: now)
+      // Every test unreliable even once: the threshold is applied when it is asked for, so
+      // changing it in Settings needs no new look at the runs.
+      unreliable = runs.isEmpty ? [:] : quarantineSuggestions(runs: reports, nowMs: now, after: 1)
     }
   }
 
@@ -497,6 +534,7 @@ final class ProjectStore {
     if runs != history.runs { runs = history.runs }
     if latestRuns != history.latest { latestRuns = history.latest }
     if flaky != history.flaky { flaky = history.flaky }
+    if unreliable != history.unreliable { unreliable = history.unreliable }
   }
 
   private func save(_ url: URL) {

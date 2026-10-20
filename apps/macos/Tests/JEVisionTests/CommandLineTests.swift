@@ -45,6 +45,13 @@ struct CommandLineArgumentTests {
     var quiet = RunRequest(paths: ["t.flow.json"])
     quiet.notify = false
     #expect(try Command.parse(["run", "t.flow.json", "--no-notify"]) == .run(quiet))
+    var chosen = RunRequest(paths: ["t.flow.json"])
+    chosen.filter = TestFilter(testType: .smoke, priority: .high, status: .ready, author: "Anna Lee", flaky: true)
+    #expect(
+      try Command.parse(["run", "t.flow.json", "--type", "Smoke", "--priority=high", "--status", "ready", "--author", "Anna Lee", "--flaky"])
+        == .run(chosen))
+    #expect(throws: UsageError.self) { try Command.parse(["run", "t.flow.json", "--priority", "urgent"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["run", "t.flow.json", "--flaky=yes"]) }
   }
 
   @Test func videoSettings() throws {
@@ -437,6 +444,38 @@ struct CommandLineRunTests {
     #expect(junit.contains("<skipped message=\"The run was cancelled.\"/>"))
   }
 
+  @Test func aQuarantineHoldsTheFailureOnlyUntilItsLastDay() throws {
+    let dir = try Scratch()
+    let test = try dir.file(
+      "broken.flow.json",
+      #"{"format": 1, "name": "Broken", "app": "com.example.App", "start": "open", "blocks": {"open": {"type": "openApp"}}}"#)
+
+    func status(until: String) throws -> (status: Int32, quarantined: Int?) {
+      _ = try dir.file(
+        "jevision.project.json",
+        #"{"format": 1, "quarantine": [{"test": "broken.flow.json", "reason": "Bug 42", "until": "\#(until)"}]}"#)
+      let request = RunRequest(paths: [test], startAt: "nowhere", json: true)
+      let quiet = Console(write: { _ in })
+      let session = TestSession(project: dir.url.path, tests: [test], request: request, progress: quiet, input: nil) { _ in
+        WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { true })
+      }
+      var command = RunCommand(request: request)
+      let output = Lines()
+      command.output = Console(write: { output.append($0) })
+      command.progress = quiet
+      let status = command.finish(session.runAll()).rawValue
+      let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+      return (status, json["quarantined"] as? Int)
+    }
+
+    let lasting = try status(until: "2999-12-31")
+    #expect(lasting.status == 0 && lasting.quarantined == 1)
+    let today = try status(until: localToday())
+    #expect(today.status == 0 && today.quarantined == 1, "the last day still counts")
+    let over = try status(until: "2000-01-01")
+    #expect(over.status == 1 && over.quarantined == 0, "after its last day the failure fails the run again")
+  }
+
   @Test func quarantinedFailuresCountOnlyWhenAsked() throws {
     let dir = try Scratch()
     let test = try dir.file(
@@ -655,6 +694,31 @@ struct CommandLineRunTests {
     #expect(results.value?.map(\.verdict) == ["cancelled", "cancelled", "notRun"])
     #expect(printed.text.contains("Stopping…"))
     #expect(printed.text.contains("2 stopped"))
+  }
+
+  @Test func planKeepsTheTestsTheFilterChooses() throws {
+    let dir = try Scratch()
+    try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)
+    func card(_ fields: String) -> String {
+      #"{"format": 1, "name": "t", "app": "com.example.App", \#(fields) "start": "open", "blocks": {"open": {"type": "openApp"}}}"#
+    }
+    _ = try dir.file("critical.flow.json", card(#""priority": "critical", "testType": "smoke", "author": "Anna Lee","#))
+    _ = try dir.file("marked.flow.json", card(#""priority": "high", "flaky": true,"#))
+    _ = try dir.file("plain.flow.json", card(""))
+    func names(_ filter: TestFilter) throws -> [String] {
+      var request = RunRequest(paths: [dir.url.path])
+      request.filter = filter
+      return try RunCommand.plan(request).tests.map { ($0 as NSString).lastPathComponent }
+    }
+
+    #expect(try names(TestFilter()).count == 3)
+    #expect(try names(TestFilter(priority: .critical)) == ["critical.flow.json"])
+    #expect(try names(TestFilter(author: "anna lee")) == ["critical.flow.json"])
+    #expect(try names(TestFilter(flaky: true)) == ["marked.flow.json"])
+    var request = RunRequest(paths: [dir.url.path])
+    request.filter = TestFilter(testType: .smoke)
+    #expect(try RunCommand.plan(request).filteredOut == 2)
+    #expect(throws: UsageError.self) { try names(TestFilter(priority: .low)) }
   }
 
   @Test func planFindsTestsAndTheProject() throws {

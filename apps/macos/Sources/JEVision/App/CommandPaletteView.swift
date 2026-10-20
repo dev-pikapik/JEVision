@@ -162,7 +162,8 @@ struct CommandPaletteView: View {
     }
     state.hasPickedBlocks = flow != nil && document?.picked.contains { $0.blockID != nil } == true
     let tests = project.items.flatMap(\.tests)
-    state.hasTests = !tests.isEmpty
+    state.hasTests = !project.chosen(from: project.items).isEmpty
+    state.filtersTests = project.filtersTests
     let last = lastRun
     state.hasLastRun = last != nil
     state.lastRunFailed = last?.report.verdict == .failed
@@ -221,7 +222,7 @@ struct CommandPaletteView: View {
         stepByStep: action == .runStepByStep)
     case .runAll:
       guard let root else { return }
-      runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
+      runs.runAll(project.chosen(from: project.items).map(\.url), in: root, title: project.runAllTitle)
     case .record: if let document { records.record(document) }
     case .schedules: project.schedules.isShowingSheet = true
     case .addBlock(let type): document?.insert(type, at: document?.slotAfterSelection)

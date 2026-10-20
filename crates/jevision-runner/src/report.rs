@@ -201,8 +201,14 @@ pub struct Attempt {
 pub struct DataRow {
     /// Counted from 1.
     pub number: u32,
-    /// The row's value in its `name` column, or else in its first; may be empty.
+    /// The row's value in its `name` column, or else in its first, with secrets masked; may be
+    /// empty.
     pub label: String,
+    /// First 16 hex digits of the SHA-256 of the row's columns and values, so a row whose
+    /// values were edited is told from the same row before the edit without keeping the
+    /// values; absent in reports written before it was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
 }
 
 impl DataRow {

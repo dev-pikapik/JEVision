@@ -1,4 +1,5 @@
 import Foundation
+import JEVisionCore
 
 /// A test file or a folder that holds tests, as shown in the sidebar.
 struct ProjectItem: Identifiable, Hashable, Sendable {
@@ -16,6 +17,8 @@ struct ProjectItem: Identifiable, Hashable, Sendable {
   var keywords = ""
   /// Someone marked the test as flaky in its details.
   var markedFlaky = false
+  /// What its card says: type, priority, status and author, to choose tests by.
+  var card = JEVisionCore.TestCard()
 
   /// Children for an outline: `nil` marks a leaf.
   var outlineChildren: [ProjectItem]? { kind == .folder ? children : nil }
@@ -37,5 +40,33 @@ extension [ProjectItem] {
       if let found = item.children.item(withID: id) { return found }
     }
     return nil
+  }
+}
+
+extension [ProjectItem] {
+  /// The tests, at any depth, whose cards `filter` chooses; every one when it asks nothing.
+  /// `flaky` holds the tests found flaky from their runs, which count like the mark in their
+  /// details.
+  func chosen(by filter: TestFilter, flaky: Set<String>) -> [ProjectItem] {
+    let tests = flatMap(\.tests)
+    guard !testFilterIsEmpty(filter: filter) else { return tests }
+    let cards = tests.map { test in
+      var card = test.card
+      if flaky.contains(test.id) { card.flaky = true }
+      return card
+    }
+    return filterTests(filter: filter, cards: cards).map { tests[Int($0)] }
+  }
+
+  /// Only the tests with these ids and the folders that hold them.
+  func keeping(_ ids: Set<String>) -> [ProjectItem] {
+    compactMap { item in
+      guard item.kind == .folder else { return ids.contains(item.id) ? item : nil }
+      let children = item.children.keeping(ids)
+      guard !children.isEmpty else { return nil }
+      return ProjectItem(
+        id: item.id, name: item.name, url: item.url, kind: .folder, children: children,
+        testCount: children.reduce(0) { $0 + $1.testCount }, modified: item.modified)
+    }
   }
 }

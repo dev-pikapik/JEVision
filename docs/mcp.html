@@ -120,6 +120,7 @@
 <ul>
   <li><code>query</code>: words to look for in the path, name, description, app or tags. Every word must match; case doesn't matter.</li>
   <li><code>folder</code>: only list tests in this folder.</li>
+  <li><code>testType</code> (<code>smoke</code>, <code>regression</code>, <code>acceptance</code>), <code>priority</code> (<code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>), <code>status</code> (<code>draft</code>, <code>ready</code>, <code>outdated</code>) and <code>author</code>: only tests whose card says so; case doesn't matter. <code>flaky</code>: <code>true</code> for only the tests marked flaky in their card. The filters combine with each other and with <code>query</code>.</li>
 </ul>
 
 <h3 id="read_test"><code>read_test</code></h3>

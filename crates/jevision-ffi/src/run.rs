@@ -1000,6 +1000,9 @@ pub struct DataRow {
     pub number: u32,
     /// The row's value in its `name` column, or else in its first; may be empty.
     pub label: String,
+    /// Fingerprint of the row's values; absent in reports from before it was kept.
+    #[uniffi(default = None)]
+    pub hash: Option<String>,
 }
 
 impl From<jevision_runner::DataRow> for DataRow {
@@ -1007,6 +1010,7 @@ impl From<jevision_runner::DataRow> for DataRow {
         Self {
             number: r.number,
             label: r.label,
+            hash: r.hash,
         }
     }
 }

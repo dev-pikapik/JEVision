@@ -99,10 +99,10 @@
     <tr><td><code>status</code></td><td>No</td><td><code>draft</code>, <code>ready</code> or <code>outdated</code>.</td></tr>
     <tr><td><code>tags</code></td><td>No</td><td>List of words for finding tests. No empty tags and no repeats.</td></tr>
     <tr><td><code>preconditions</code></td><td>No</td><td>What must be true before the test starts, such as <code>Signed in as a teacher</code>.</td></tr>
-    <tr><td><code>author</code></td><td>No</td><td>Who wrote the test or looks after it.</td></tr>
+    <tr><td><code>author</code></td><td>No</td><td>Who wrote the test or looks after it. A test made in the app starts with the name from your git settings. Tests can be chosen by it, as by the other card fields.</td></tr>
     <tr><td><code>platform</code></td><td>No</td><td>Where the test is meant to run, such as <code>macOS 26</code>.</td></tr>
     <tr><td><code>link</code></td><td>No</td><td>Web address of the issue or requirement the test covers. Starts with <code>https://</code> or <code>http://</code>.</td></tr>
-    <tr><td><code>flaky</code></td><td>No</td><td><code>true</code> marks a test that sometimes fails for reasons outside the app. The test still runs and counts; see <a href="retries.html#flaky">Flaky tests</a>.</td></tr>
+    <tr><td><code>flaky</code></td><td>No</td><td><code>true</code> marks a test that sometimes fails for reasons outside the app. The test still runs and counts; see <a href="retries.html#flaky">Flaky tests</a>. A test that keeps failing and passing by itself is also offered <a href="retries.html#suggestion">quarantine</a>.</td></tr>
     <tr><td><code>retries</code></td><td>No</td><td>How many more times to run the test when it fails, 0 to 10. Without it, the project's default applies. See <a href="retries.html">Retries</a>.</td></tr>
     <tr><td><code>start</code></td><td>Yes</td><td>Id of the first block.</td></tr>
     <tr><td><code>blocks</code></td><td>Yes</td><td>The blocks, as an object from id to block.</td></tr>
@@ -110,6 +110,7 @@
   </tbody>
 </table>
 </div>
+<p>The card fields <code>testType</code>, <code>priority</code>, <code>status</code> and <code>author</code>, and the flaky mark, also choose which tests run. In the app, the filter button above the test list shows only the tests that fit, and <strong>Run All Tests</strong> then runs only those. On the command line use <a href="cli.html#filter"><code>jevision run --priority high --type smoke</code></a>, and an assistant can pass the same fields to <a href="mcp.html#list_tests"><code>list_tests</code></a>. A test whose card leaves out a field you filter by isn't chosen.</p>
 <p>Block ids use letters, digits, <code>-</code> and <code>_</code>, up to 64 characters, and are unique within the test. Unknown fields are an error, so a typo such as <code>"nxet"</code> never goes unnoticed.</p>
 
 <h2 id="blocks">Block types</h2>

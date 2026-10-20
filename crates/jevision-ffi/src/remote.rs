@@ -903,14 +903,12 @@ mod tests {
             .block_on(client.report("Demo".into(), run.clone()))
             .unwrap();
         assert_eq!(report.verdict, Verdict::Passed);
-        let ran: Vec<_> = report.attempts.iter().map(|a| a.row.clone()).collect();
-        assert_eq!(
-            ran,
-            [Some(jevision_runner::DataRow {
-                number: 2,
-                label: "Bo".into()
-            })]
-        );
+        let ran: Vec<_> = report
+            .attempts
+            .iter()
+            .map(|a| a.row.as_ref().map(|r| (r.number, r.label.as_str())))
+            .collect();
+        assert_eq!(ran, [Some((2, "Bo"))]);
 
         host.revoke(devices[0].id.clone()).unwrap();
         assert!(host.devices().is_empty());

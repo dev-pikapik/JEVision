@@ -12,6 +12,7 @@ struct NewTestSheet: View {
   /// What the test does, for the AI to write its blocks; empty for a test with only Open App.
   @State private var description = ""
   @State private var error: String?
+  @State private var isCreating = false
 
   private var canCreate: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && app != nil }
 
@@ -44,20 +45,24 @@ struct NewTestSheet: View {
           .keyboardShortcut(.cancelAction)
         Button(records ? "Record" : "Create") {
           guard let app else { return }
-          do {
-            try project.createTest(name: name, app: app)
-            let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !records, !description.isEmpty {
-              project.document?.drafter = TestDrafter(description: description, startsRightAway: true)
+          isCreating = true
+          Task {
+            do {
+              try await project.createTest(name: name, app: app)
+              let description = description.trimmingCharacters(in: .whitespacesAndNewlines)
+              if !records, !description.isEmpty {
+                project.document?.drafter = TestDrafter(description: description, startsRightAway: true)
+              }
+              created()
+              dismiss()
+            } catch {
+              self.error = error.localizedDescription
+              isCreating = false
             }
-            created()
-            dismiss()
-          } catch {
-            self.error = error.localizedDescription
           }
         }
         .keyboardShortcut(.defaultAction)
-        .disabled(!canCreate)
+        .disabled(!canCreate || isCreating)
       }
     }
     .padding(20)
