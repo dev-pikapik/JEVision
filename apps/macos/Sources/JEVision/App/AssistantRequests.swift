@@ -58,6 +58,9 @@ final class AssistantRequests {
       lines.append(String(localized: "…and \(request.tests.count - shown.count) more"))
     }
     lines.append("")
+    if let computer = request.remote {
+      lines.append(String(localized: "Over the network, from “\(computer)”"))
+    }
     lines.append(String(localized: "Project: \(URL(filePath: request.project).lastPathComponent)"))
     if !request.apps.isEmpty {
       lines.append(String(localized: "Apps: \(request.apps.map(appName).formatted(.list(type: .and)))"))

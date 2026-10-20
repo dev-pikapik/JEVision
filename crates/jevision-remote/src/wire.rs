@@ -9,6 +9,7 @@ use iroh::endpoint::{ReadExactError, RecvStream, SendStream};
 use jevision_runner::{Failure, RunReport, StepStatus, Verdict};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{Permission, RemoteError};
 
@@ -16,12 +17,16 @@ use crate::{Permission, RemoteError};
 pub(crate) const MAX_MESSAGE: usize = 4 << 20;
 /// Largest picture.
 pub(crate) const MAX_PICTURE: usize = 16 << 20;
+/// Largest reply to an assistant: a screenshot travels inside it as base64 text.
+pub(crate) const MAX_ASSISTANT_REPLY: usize = 32 << 20;
 
 /// Connection close codes.
 pub(crate) const CLOSE_DONE: u32 = 0;
 pub(crate) const CLOSE_REVOKED: u32 = 1;
 #[cfg(feature = "host")]
 pub(crate) const CLOSE_REFUSED: u32 = 2;
+/// The owner turned the assistant off while it was connected.
+pub(crate) const CLOSE_DISABLED: u32 = 3;
 
 /// First message of a connection, phone to Mac. Keys and signatures are hex.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -182,6 +187,58 @@ pub(crate) enum Response {
 pub(crate) enum Reply {
     Ok(Response),
     Error(RemoteError),
+}
+
+/// Assistant to Mac on [`crate::ALPN_V2`], after the same handshake phones use. What goes in
+/// and out is what the local MCP server takes and returns, so an assistant sees the same
+/// tools on both.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub(crate) enum AssistantRequest {
+    /// The MCP `initialize` request's params; the reply is its result.
+    Hello { params: Value },
+    /// The MCP `tools/list` result.
+    Tools,
+    /// The MCP `tools/call` result of `tool`. `project` is the name of a project the Mac
+    /// shares; without it the Mac uses the only one it shares.
+    Call {
+        tool: String,
+        arguments: Value,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        project: Option<String>,
+    },
+}
+
+impl AssistantRequest {
+    #[cfg(feature = "client")]
+    /// Asking again after a lost connection cannot do anything twice.
+    pub(crate) fn is_idempotent(&self) -> bool {
+        !matches!(self, Self::Call { .. })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub(crate) enum AssistantReply {
+    Ok {
+        result: Value,
+    },
+    /// The MCP server's own error: unknown tool, invalid params.
+    Rejected {
+        code: i64,
+        message: String,
+    },
+    Error {
+        error: RemoteError,
+    },
 }
 
 /// A project the Mac shares with phones. Its folder stays on the Mac.
@@ -446,15 +503,30 @@ pub(crate) async fn send<T: Serialize>(
     stream: &mut SendStream,
     msg: &T,
 ) -> Result<(), RemoteError> {
+    send_within(stream, msg, MAX_MESSAGE).await
+}
+
+pub(crate) async fn send_within<T: Serialize>(
+    stream: &mut SendStream,
+    msg: &T,
+    limit: usize,
+) -> Result<(), RemoteError> {
     let bytes = serde_json::to_vec(msg).map_err(|_| RemoteError::Protocol)?;
-    send_bytes(stream, &bytes, MAX_MESSAGE).await
+    send_bytes(stream, &bytes, limit).await
 }
 
 /// The next message, or `None` when the other side finished the stream.
 pub(crate) async fn recv<T: DeserializeOwned>(
     stream: &mut RecvStream,
 ) -> Result<Option<T>, RemoteError> {
-    match recv_bytes(stream, MAX_MESSAGE).await? {
+    recv_within(stream, MAX_MESSAGE).await
+}
+
+pub(crate) async fn recv_within<T: DeserializeOwned>(
+    stream: &mut RecvStream,
+    limit: usize,
+) -> Result<Option<T>, RemoteError> {
+    match recv_bytes(stream, limit).await? {
         Some(bytes) => serde_json::from_slice(&bytes)
             .map(Some)
             .map_err(|_| RemoteError::Protocol),
@@ -465,6 +537,15 @@ pub(crate) async fn recv<T: DeserializeOwned>(
 /// Like [`recv`], but a finished stream is a protocol error.
 pub(crate) async fn expect<T: DeserializeOwned>(stream: &mut RecvStream) -> Result<T, RemoteError> {
     recv(stream).await?.ok_or(RemoteError::Protocol)
+}
+
+pub(crate) async fn expect_within<T: DeserializeOwned>(
+    stream: &mut RecvStream,
+    limit: usize,
+) -> Result<T, RemoteError> {
+    recv_within(stream, limit)
+        .await?
+        .ok_or(RemoteError::Protocol)
 }
 
 pub(crate) async fn send_bytes(

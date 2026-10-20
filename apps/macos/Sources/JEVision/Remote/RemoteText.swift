@@ -89,6 +89,8 @@ enum RemoteText {
     case .denied: String(localized: "remote.activity.denied", defaultValue: "Request refused", bundle: .app, locale: .app)
     case .permissionChanged: String(localized: "remote.activity.permissionChanged", defaultValue: "Permission changed", bundle: .app, locale: .app)
     case .revoked: String(localized: "remote.activity.revoked", defaultValue: "Access revoked", bundle: .app, locale: .app)
+    case .assistantCalled:
+      String(localized: "remote.activity.assistantCalled", defaultValue: "Used a tool", bundle: .app, locale: .app)
     }
   }
 

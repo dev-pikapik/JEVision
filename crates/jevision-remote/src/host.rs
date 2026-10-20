@@ -7,21 +7,23 @@ use std::time::{Duration, Instant};
 
 use iroh::endpoint::{Connection, Incoming, RecvStream, SendStream, VarInt};
 use iroh::{Endpoint, EndpointId, SecretKey, Watcher};
+use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 use tokio::sync::broadcast;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use crate::pairing::{
     CODE_LEN, NONCE_LEN, auth_transcript, code_bytes, device_id, pair_transcript, verify,
 };
-use crate::store::{Activity, ActivityKind, Device, Store};
+use crate::store::{Activity, ActivityKind, Device, DeviceKind, Store};
 use crate::wire::{
-    self, CLOSE_DONE, CLOSE_REFUSED, CLOSE_REVOKED, Hello, HostHello, MAX_PICTURE, Proof, Reply,
-    Request, Response, RunEvent, RunList, RunState, RunStatus, RunUpdate, Welcome,
+    self, AssistantReply, AssistantRequest, CLOSE_DISABLED, CLOSE_DONE, CLOSE_REFUSED,
+    CLOSE_REVOKED, Hello, HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, Proof, Reply, Request,
+    Response, RunEvent, RunList, RunState, RunStatus, RunUpdate, Welcome,
 };
 use crate::{
-    ALPN, Network, PairingOffer, Permission, ProjectInfo, RemoteError, bind, hex, now, project,
-    random, unhex,
+    ALPN, ALPN_V2, Network, PairingOffer, Permission, ProjectInfo, RemoteError, bind, hex, now,
+    project, random, unhex,
 };
 
 /// How long a pairing code works.
@@ -34,6 +36,10 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(20);
 const REFUSAL_GRACE: Duration = Duration::from_secs(3);
 /// Device names are cut to this many characters.
 const MAX_NAME: usize = 64;
+/// What an assistant says about itself is cut to this many characters.
+const MAX_ASSISTANT_TEXT: usize = 64;
+/// A tool's name is at most this long.
+const MAX_TOOL_NAME: usize = 64;
 /// Run events kept for a phone that reads slowly; past that it gets the full status again.
 const EVENT_BACKLOG: usize = 256;
 
@@ -103,6 +109,33 @@ pub trait HostDelegate: Send + Sync {
     fn run_status(&self, project_root: String, run: String) -> Option<RunStatus>;
     /// Runs of the project going on now.
     fn active_runs(&self, project_root: String) -> Vec<RunStatus>;
+    /// An assistant connected and said who it is: the MCP `initialize` params, cleaned up to
+    /// `protocolVersion` and `clientInfo`. `session` names the connection until
+    /// [`HostDelegate::assistant_ended`]. Returns the MCP `initialize` result.
+    fn assistant_hello(&self, session: String, device: Device, params: Value) -> Value;
+    /// The MCP `tools/list` result.
+    fn assistant_tools(&self) -> Value;
+    /// An assistant called `tool`, with `arguments` that are a JSON object, on the project at
+    /// `project_root`. Returns the MCP `tools/call` result, which says by `isError` when the
+    /// tool itself failed, or the server's own error. May take as long as a run does.
+    fn assistant_call(
+        &self,
+        session: String,
+        device: Device,
+        project_root: String,
+        tool: String,
+        arguments: Value,
+    ) -> Result<Value, AssistantRejection>;
+    /// The connection `session` ended, was revoked or turned off: stop what it started. May be
+    /// called more than once.
+    fn assistant_ended(&self, session: String);
+}
+
+/// The MCP server's own error, such as an unknown tool: a JSON-RPC error code and its message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssistantRejection {
+    pub code: i64,
+    pub message: String,
 }
 
 /// Remote access on the Mac.
@@ -133,6 +166,7 @@ struct State {
 
 pub(crate) struct Offer {
     code: [u8; CODE_LEN],
+    kind: DeviceKind,
     permission: Permission,
     pub(crate) expires: Instant,
     used: bool,
@@ -178,7 +212,7 @@ impl Host {
         let endpoint = bind(
             self.shared.secret.clone(),
             &self.shared.network,
-            vec![ALPN.to_vec()],
+            vec![ALPN.to_vec(), ALPN_V2.to_vec()],
         )
         .await?;
         let spare = {
@@ -253,12 +287,25 @@ impl Host {
     /// A new pairing code for a phone that gets `permission`. It replaces any code shown
     /// before, works once and for five minutes.
     pub fn create_offer(&self, permission: Permission) -> Result<PairingOffer, RemoteError> {
+        self.offer(DeviceKind::Phone, permission)
+    }
+
+    /// A new pairing code for an assistant, to show as [`PairingOffer::to_assistant_url`]. The
+    /// assistant may use the Mac's tools from the moment it pairs, until the owner turns it
+    /// off with [`Host::set_assistant`]. Otherwise like [`Host::create_offer`]: it replaces any
+    /// code shown before, works once and for five minutes, and only an assistant can use it.
+    pub fn create_assistant_offer(&self) -> Result<PairingOffer, RemoteError> {
+        self.offer(DeviceKind::Assistant, Permission::View)
+    }
+
+    fn offer(&self, kind: DeviceKind, permission: Permission) -> Result<PairingOffer, RemoteError> {
         let mut state = self.shared.state();
         let endpoint = state.endpoint.as_ref().ok_or(RemoteError::HostNotRunning)?;
         let (relay_url, addrs) = addresses(endpoint);
         let code = random::<CODE_LEN>();
         state.offer = Some(Offer {
             code,
+            kind,
             permission,
             expires: Instant::now() + OFFER_LIFETIME,
             used: false,
@@ -283,7 +330,8 @@ impl Host {
         self.shared.state().store.devices().to_vec()
     }
 
-    /// Applies to the device's next request.
+    /// Applies to the device's next request. An assistant has no level: use
+    /// [`Host::set_assistant`].
     pub fn set_permission(
         &self,
         device_id: &str,
@@ -295,6 +343,9 @@ impl Host {
             .device(device_id)
             .cloned()
             .ok_or(RemoteError::NotPaired)?;
+        if device.kind != DeviceKind::Phone {
+            return Err(RemoteError::NotAllowed);
+        }
         device.permission = permission;
         state.store.change(|devices| {
             for d in devices.iter_mut().filter(|d| d.id == device.id) {
@@ -307,6 +358,40 @@ impl Host {
             None,
             None,
         ));
+        Ok(())
+    }
+
+    /// Lets an assistant use the Mac's tools or not, from its next request. Turning it off
+    /// disconnects the assistant and stops what it started. A phone cannot be one.
+    pub fn set_assistant(&self, device_id: &str, enabled: bool) -> Result<(), RemoteError> {
+        let mut state = self.shared.state();
+        let device = state
+            .store
+            .device(device_id)
+            .cloned()
+            .ok_or(RemoteError::NotPaired)?;
+        if device.kind != DeviceKind::Assistant {
+            return Err(RemoteError::NotAllowed);
+        }
+        state.store.change(|devices| {
+            for d in devices.iter_mut().filter(|d| d.id == device.id) {
+                d.assistant = enabled;
+            }
+        })?;
+        state.store.log(&activity(
+            Some(&device),
+            ActivityKind::PermissionChanged,
+            None,
+            None,
+        ));
+        if !enabled {
+            state.live.retain(|(id, conn)| {
+                if *id == device.id {
+                    conn.close(VarInt::from_u32(CLOSE_DISABLED), b"");
+                }
+                *id != device.id
+            });
+        }
         Ok(())
     }
 
@@ -423,18 +508,24 @@ impl Shared {
         let Ok(conn) = incoming.await else {
             return;
         };
-        let device = match tokio::time::timeout(HANDSHAKE_TIMEOUT, self.handshake(&conn)).await {
-            Ok(Ok(device)) => device,
-            Ok(Err(_)) => {
-                let _ = tokio::time::timeout(REFUSAL_GRACE, conn.closed()).await;
-                conn.close(VarInt::from_u32(CLOSE_REFUSED), b"");
-                return;
-            }
-            Err(_) => {
-                conn.close(VarInt::from_u32(CLOSE_REFUSED), b"");
-                return;
-            }
+        let kind = if conn.alpn() == ALPN_V2 {
+            DeviceKind::Assistant
+        } else {
+            DeviceKind::Phone
         };
+        let device =
+            match tokio::time::timeout(HANDSHAKE_TIMEOUT, self.handshake(&conn, kind)).await {
+                Ok(Ok(device)) => device,
+                Ok(Err(_)) => {
+                    let _ = tokio::time::timeout(REFUSAL_GRACE, conn.closed()).await;
+                    conn.close(VarInt::from_u32(CLOSE_REFUSED), b"");
+                    return;
+                }
+                Err(_) => {
+                    conn.close(VarInt::from_u32(CLOSE_REFUSED), b"");
+                    return;
+                }
+            };
         {
             let mut state = self.state();
             if state.store.device(&device).is_none() || state.endpoint.is_none() {
@@ -443,16 +534,46 @@ impl Shared {
             }
             state.live.push((device.clone(), conn.clone()));
         }
-        while let Ok((send, recv)) = conn.accept_bi().await {
-            tokio::spawn(Arc::clone(&self).request(device.clone(), conn.clone(), send, recv));
+        if kind == DeviceKind::Assistant {
+            Arc::clone(&self).serve_assistant(device, &conn).await;
+        } else {
+            while let Ok((send, recv)) = conn.accept_bi().await {
+                tokio::spawn(Arc::clone(&self).request(device.clone(), conn.clone(), send, recv));
+            }
         }
         let id = conn.stable_id();
         self.state().live.retain(|(_, c)| c.stable_id() != id);
     }
 
+    /// Answers an assistant's requests until the connection ends, then stops what it started.
+    async fn serve_assistant(self: Arc<Self>, device: String, conn: &Connection) {
+        let session = conn.stable_id().to_string();
+        let mut requests = JoinSet::new();
+        while let Ok((send, recv)) = conn.accept_bi().await {
+            requests.spawn(Arc::clone(&self).assistant_request(
+                session.clone(),
+                device.clone(),
+                conn.clone(),
+                send,
+                recv,
+            ));
+        }
+        // Stopping the runs lets the calls waiting for them return; one that began just
+        // before the connection ended may have started something new, so stop again after.
+        self.end_session(&session).await;
+        while requests.join_next().await.is_some() {}
+        self.end_session(&session).await;
+    }
+
+    async fn end_session(&self, session: &str) {
+        let delegate = Arc::clone(&self.delegate);
+        let session = session.to_owned();
+        let _ = blocking(move || delegate.assistant_ended(session)).await;
+    }
+
     /// Pairs or signs in the phone and returns its device id. A refusal is sent to the phone
     /// before the error is returned.
-    async fn handshake(&self, conn: &Connection) -> Result<String, RemoteError> {
+    async fn handshake(&self, conn: &Connection, kind: DeviceKind) -> Result<String, RemoteError> {
         let (mut send, mut recv) = conn
             .accept_bi()
             .await
@@ -464,9 +585,10 @@ impl Shared {
                 device_name,
                 device_key,
                 signature,
-            }) => self.pair(phone, &code, &device_name, &device_key, &signature),
+            }) => self.pair(phone, kind, &code, &device_name, &device_key, &signature),
             Ok(Hello::SignIn { device_key }) => {
-                self.sign_in(phone, &device_key, &mut send, &mut recv).await
+                self.sign_in(phone, kind, &device_key, &mut send, &mut recv)
+                    .await
             }
             Err(e) => Err(e),
         };
@@ -496,13 +618,14 @@ impl Shared {
     fn pair(
         &self,
         phone: EndpointId,
+        kind: DeviceKind,
         code: &str,
         name: &str,
         device_key: &str,
         signature: &str,
     ) -> Result<Device, RemoteError> {
         let key = unhex(device_key).unwrap_or_default();
-        let result = self.check_pairing(phone, code, name, &key, signature);
+        let result = self.check_pairing(phone, kind, code, name, &key, signature);
         let device_id = (!key.is_empty()).then(|| device_id(&key));
         match &result {
             Ok(device) => self.log(Some(device), ActivityKind::Paired, None, None),
@@ -521,6 +644,7 @@ impl Shared {
     fn check_pairing(
         &self,
         phone: EndpointId,
+        kind: DeviceKind,
         code: &str,
         name: &str,
         key: &[u8],
@@ -536,6 +660,11 @@ impl Shared {
         }
         let presented = code_bytes(code).unwrap_or_default();
         if !bool::from(presented.as_slice().ct_eq(offer.code.as_slice())) {
+            offer.failures += 1;
+            return Err(RemoteError::PairingCodeInvalid);
+        }
+        // The right code, but shown for the other kind of device: it is not valid here.
+        if offer.kind != kind {
             offer.failures += 1;
             return Err(RemoteError::PairingCodeInvalid);
         }
@@ -562,7 +691,9 @@ impl Shared {
             id: device_id(key),
             name,
             public_key: hex(key),
+            kind,
             permission: offer.permission,
+            assistant: kind == DeviceKind::Assistant,
             paired_at: now(),
             last_seen: Some(now()),
         };
@@ -581,6 +712,7 @@ impl Shared {
     async fn sign_in(
         &self,
         phone: EndpointId,
+        kind: DeviceKind,
         device_key: &str,
         send: &mut SendStream,
         recv: &mut RecvStream,
@@ -596,7 +728,7 @@ impl Shared {
         } else {
             let mut state = self.state();
             match state.store.device(&id).cloned() {
-                Some(device) if device.public_key == hex(&key) => {
+                Some(device) if device.public_key == hex(&key) && device.kind == kind => {
                     let seen = now();
                     // A sign-in still counts when the time of it cannot be saved.
                     let _ = state.store.change(|devices| {
@@ -767,6 +899,130 @@ impl Shared {
         Ok((response, None))
     }
 
+    async fn assistant_request(
+        self: Arc<Self>,
+        session: String,
+        device_id: String,
+        conn: Connection,
+        mut send: SendStream,
+        mut recv: RecvStream,
+    ) {
+        let reply = match wire::expect::<AssistantRequest>(&mut recv).await {
+            Ok(request) => self.assistant_answer(session, &device_id, request).await,
+            Err(error) => AssistantReply::Error { error },
+        };
+        let mut sent = wire::send_within(&mut send, &reply, MAX_ASSISTANT_REPLY).await;
+        if sent == Err(RemoteError::TooLarge) {
+            let error = AssistantReply::Error {
+                error: RemoteError::TooLarge,
+            };
+            sent = wire::send(&mut send, &error).await;
+        }
+        let _ = send.finish();
+        if sent.is_ok()
+            && matches!(
+                reply,
+                AssistantReply::Error {
+                    error: RemoteError::Revoked
+                }
+            )
+        {
+            conn.close(VarInt::from_u32(CLOSE_REVOKED), b"");
+        }
+    }
+
+    /// Passes an assistant's request to the app if the owner lets the device use assistants.
+    /// Only the tool's name is ever logged: its arguments may hold anything.
+    async fn assistant_answer(
+        &self,
+        session: String,
+        device_id: &str,
+        request: AssistantRequest,
+    ) -> AssistantReply {
+        let Some(device) = self.state().store.device(device_id).cloned() else {
+            return AssistantReply::Error {
+                error: RemoteError::Revoked,
+            };
+        };
+        let subject = match &request {
+            AssistantRequest::Call { tool, .. } if valid_tool(tool) => Some(tool.clone()),
+            _ => None,
+        };
+        let reply = if device.kind != DeviceKind::Assistant || !device.assistant {
+            AssistantReply::Error {
+                error: RemoteError::NotAllowed,
+            }
+        } else {
+            self.assistant_reply(session, &device, request).await
+        };
+        let error = match &reply {
+            AssistantReply::Error { error } => Some(*error),
+            _ => None,
+        };
+        if subject.is_some() || error == Some(RemoteError::NotAllowed) {
+            let kind = match error {
+                Some(RemoteError::NotAllowed) => ActivityKind::Denied,
+                _ => ActivityKind::AssistantCalled,
+            };
+            self.log(Some(&device), kind, subject, error);
+        }
+        reply
+    }
+
+    async fn assistant_reply(
+        &self,
+        session: String,
+        device: &Device,
+        request: AssistantRequest,
+    ) -> AssistantReply {
+        let delegate = Arc::clone(&self.delegate);
+        let device = device.clone();
+        let outcome = match request {
+            AssistantRequest::Hello { params } => {
+                let Some(params) = clean_hello(&params) else {
+                    return protocol_error();
+                };
+                blocking(move || Ok(delegate.assistant_hello(session, device, params))).await
+            }
+            AssistantRequest::Tools => blocking(move || Ok(delegate.assistant_tools())).await,
+            AssistantRequest::Call {
+                tool,
+                arguments,
+                project,
+            } => {
+                if !valid_tool(&tool) || !arguments.is_object() {
+                    return protocol_error();
+                }
+                let root = match self.assistant_project(project) {
+                    Ok(root) => root,
+                    Err(error) => return AssistantReply::Error { error },
+                };
+                blocking(move || delegate.assistant_call(session, device, root, tool, arguments))
+                    .await
+            }
+        };
+        match outcome {
+            Ok(Ok(result)) => AssistantReply::Ok { result },
+            Ok(Err(AssistantRejection { code, message })) => {
+                AssistantReply::Rejected { code, message }
+            }
+            Err(error) => AssistantReply::Error { error },
+        }
+    }
+
+    /// The root, as the app gave it, of the project an assistant names; without a name, of the
+    /// only project the Mac shares.
+    fn assistant_project(&self, name: Option<String>) -> Result<String, RemoteError> {
+        let name = match name {
+            Some(name) => name,
+            None => match self.state().projects.as_slice() {
+                [only] => only.name.clone(),
+                _ => return Err(RemoteError::ProjectNotFound),
+            },
+        };
+        self.project(&name).map(|(given, _)| given)
+    }
+
     /// Runs, stops, reports read and anything refused for permission or path go to the log.
     fn audit(&self, device: &Device, request: &Request, error: Option<RemoteError>) {
         let (kind, subject) = match request {
@@ -893,6 +1149,46 @@ impl Shared {
         }
         let _ = send.finish();
     }
+}
+
+fn protocol_error() -> AssistantReply {
+    AssistantReply::Error {
+        error: RemoteError::Protocol,
+    }
+}
+
+/// A tool name that is safe to show and to write to the log.
+fn valid_tool(tool: &str) -> bool {
+    !tool.is_empty()
+        && tool.len() <= MAX_TOOL_NAME
+        && tool
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
+/// What an assistant says about itself, cut down to what the Mac shows: short text without
+/// control characters.
+fn clean_hello(params: &Value) -> Option<Value> {
+    let params = params.as_object()?;
+    let text = |value: Option<&Value>| -> String {
+        value
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(MAX_ASSISTANT_TEXT)
+            .collect()
+    };
+    let info = params.get("clientInfo").and_then(Value::as_object);
+    let said = |key: &str| text(info.and_then(|i| i.get(key)));
+    Some(json!({
+        "protocolVersion": text(params.get("protocolVersion")),
+        "clientInfo": {
+            "name": said("name"),
+            "title": said("title"),
+            "version": said("version"),
+        },
+    }))
 }
 
 fn addresses(endpoint: &Endpoint) -> (Option<String>, Vec<String>) {

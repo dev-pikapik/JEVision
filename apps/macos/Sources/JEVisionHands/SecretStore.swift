@@ -41,6 +41,11 @@ public enum SecretStore {
   /// The environment variable `name`, otherwise the Keychain item.
   public static func value(_ name: String, in service: String = tests) -> String? {
     if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { return value }
+    return keychainValue(name, in: service)
+  }
+
+  /// The Keychain item only, for what an environment variable must never stand in for: keys.
+  public static func keychainValue(_ name: String, in service: String = tests) -> String? {
     var item = query(name, service)
     item[kSecReturnData] = true
     item[kSecMatchLimit] = kSecMatchLimitOne

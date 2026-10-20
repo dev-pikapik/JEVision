@@ -2129,6 +2129,16 @@
         }
       }
     },
+    "1. On the other computer, run this in Terminal. It needs the jevision command line tool." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. На другом компьютере выполните это в Терминале. Нужна утилита командной строки jevision."
+          }
+        }
+      }
+    },
     "1. Open JEVision on your iPhone" : {
       "localizations" : {
         "ru" : {
@@ -2145,6 +2155,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "2. Нажмите **Подключить Mac**"
+          }
+        }
+      }
+    },
+    "2. Then add JEVision to the MCP servers of your assistant there, such as Claude, Cursor or Copilot, with:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2. Затем добавьте JEVision в MCP-серверы ассистента там, например Claude, Cursor или Copilot, такой командой:"
           }
         }
       }
@@ -2965,6 +2985,16 @@
         }
       }
     },
+    "Add JEVision to the MCP servers of your assistant there, such as Claude, Cursor or Copilot, with:" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте JEVision в MCP-серверы ассистента там, например Claude, Cursor или Copilot, такой командой:"
+          }
+        }
+      }
+    },
     "Add JEVision to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with this configuration:" : {
       "localizations" : {
         "ru" : {
@@ -3369,6 +3399,16 @@
         }
       }
     },
+    "Add an iPhone or an assistant" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить iPhone или ассистента"
+          }
+        }
+      }
+    },
     "Add jevision to /usr/local/bin" : {
       "localizations" : {
         "ru" : {
@@ -3567,6 +3607,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавляет ещё один выход выбранному «Если»."
+          }
+        }
+      }
+    },
+    "Add…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить…"
           }
         }
       }
@@ -4295,12 +4345,42 @@
         }
       }
     },
+    "Assistant" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент"
+          }
+        }
+      }
+    },
+    "Assistant on another computer" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент на другом компьютере"
+          }
+        }
+      }
+    },
     "Assistants" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ассистенты"
+          }
+        }
+      }
+    },
+    "Assistants on other computers" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистенты на других компьютерах"
           }
         }
       }
@@ -7805,6 +7885,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отсоединить блок"
+          }
+        }
+      }
+    },
+    "Disconnect “%@”?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отсоединить «%@»?"
           }
         }
       }
@@ -11408,6 +11498,16 @@
         }
       }
     },
+    "Lets it use this Mac’s tools. Turning it off disconnects it now." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешает ему пользоваться инструментами этого Mac. Если выключить, он отсоединится сразу."
+          }
+        }
+      }
+    },
     "Library" : {
       "localizations" : {
         "ru" : {
@@ -12778,12 +12878,12 @@
         }
       }
     },
-    "No devices yet. Scan the code with your iPhone to pair it." : {
+    "No devices yet. Scan the code with your iPhone, or pair an assistant, to add one." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Устройств пока нет. Отсканируйте код iPhone, чтобы подключить его."
+            "value" : "Устройств пока нет. Отсканируйте код на iPhone или подключите ассистента."
           }
         }
       }
@@ -14512,6 +14612,26 @@
         }
       }
     },
+    "Over the network, from “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По сети, с компьютера «%@»"
+          }
+        }
+      }
+    },
+    "Over the network: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По сети: %@"
+          }
+        }
+      }
+    },
     "Overlay" : {
       "localizations" : {
         "ru" : {
@@ -14562,12 +14682,12 @@
         }
       }
     },
-    "Paired iPhones can’t reach this Mac." : {
+    "Paired iPhones and assistants can’t reach this Mac." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подключённые iPhone не могут связаться с этим Mac."
+            "value" : "Подключённые iPhone и ассистенты не смогут связаться с этим Mac."
           }
         }
       }
@@ -16984,26 +17104,6 @@
         }
       }
     },
-    "Revoke" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отозвать"
-          }
-        }
-      }
-    },
-    "Revoke access for “%@”?" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отозвать доступ у «%@»?"
-          }
-        }
-      }
-    },
     "Rework" : {
       "localizations" : {
         "ru" : {
@@ -17344,12 +17444,12 @@
         }
       }
     },
-    "Run tests and read reports from your iPhone. Tests and screenshots stay on this Mac." : {
+    "Run tests and read reports from your iPhone, or let an AI assistant on another computer use this Mac. Tests and screenshots stay on this Mac." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускайте тесты и смотрите отчёты с iPhone. Тесты и скриншоты остаются на этом Mac."
+            "value" : "Запускайте тесты и читайте отчёты с iPhone или разрешите ИИ-ассистенту на другом компьютере пользоваться этим Mac. Тесты и скриншоты остаются на этом Mac."
           }
         }
       }
@@ -20756,6 +20856,26 @@
         }
       }
     },
+    "The assistant disconnects now and what it started stops. To use it again, pair it with a new code." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент отсоединится сразу, а запущенное им остановится. Чтобы подключить его снова, используйте новый код."
+          }
+        }
+      }
+    },
+    "The assistant may use this Mac’s tools as far as Settings → AI → Assistants allows. Turn it off below at any time." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ассистент пользуется инструментами этого Mac в пределах того, что разрешено в «Настройки → ИИ → Ассистенты». Ниже его можно выключить в любой момент."
+          }
+        }
+      }
+    },
     "The assistant sees the project open now. To give it another one, change the folder after --project." : {
       "localizations" : {
         "ru" : {
@@ -22114,6 +22234,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Их используют тесты: %@. Они остановятся с сообщением, что блока нет."
+          }
+        }
+      }
+    },
+    "They connect over the network once you pair them, and use the same settings as above." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Они подключаются по сети после сопряжения и работают по тем же настройкам, что выше."
           }
         }
       }
@@ -27668,6 +27798,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "прочитал справку по блокам"
+          }
+        }
+      }
+    },
+    "remote.activity.assistantCalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Used a tool"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовал инструмент"
           }
         }
       }

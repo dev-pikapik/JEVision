@@ -20,10 +20,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use jevision_core::{BlockKind, Compare, Condition};
 use jevision_remote::{
-    Device, Failure, Host, HostConfig, HostDelegate, Network, Permission, Project, Relay,
-    RemoteError, RunEvent, RunState, RunStatus, ScreenHolder, ScreenWait, StepStatus, Verdict,
+    AssistantRejection, Device, Failure, Host, HostConfig, HostDelegate, Network, Permission,
+    Project, Relay, RemoteError, RunEvent, RunState, RunStatus, ScreenHolder, ScreenWait,
+    StepStatus, Verdict,
 };
-use serde_json::json;
+use serde_json::{Value, json};
 
 const SIGN_IN: &str = include_str!("../../../examples/sign-in.flow.json");
 const PEOPLE: &str = r#"{"format":1,"name":"Greet every person","app":"com.apple.TextEdit",
@@ -182,6 +183,31 @@ impl HostDelegate for Player {
     fn active_runs(&self, _project_root: String) -> Vec<RunStatus> {
         self.runs.lock().unwrap().values().cloned().collect()
     }
+
+    // This stand-in only pairs phones, so no assistant ever reaches these.
+    fn assistant_hello(&self, _session: String, _device: Device, _params: Value) -> Value {
+        json!({})
+    }
+
+    fn assistant_tools(&self) -> Value {
+        json!({ "tools": [] })
+    }
+
+    fn assistant_call(
+        &self,
+        _session: String,
+        _device: Device,
+        _project_root: String,
+        _tool: String,
+        _arguments: Value,
+    ) -> Result<Value, AssistantRejection> {
+        Err(AssistantRejection {
+            code: -32601,
+            message: "This stand-in host has no tools for assistants".into(),
+        })
+    }
+
+    fn assistant_ended(&self, _session: String) {}
 }
 
 impl Player {

@@ -9,10 +9,11 @@
 mod agents;
 pub(crate) mod blocks;
 mod jobs;
+pub(crate) mod network;
 mod tools;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -22,6 +23,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Value, json};
 
 pub use agents::*;
+pub use network::*;
 
 use crate::{Hands, HandsError, RunOptions, SecretSource, TestRun};
 use jevision_runner::Screenshot;
@@ -92,18 +94,45 @@ pub fn serve_assistants(
         })
 }
 
+/// What answers an assistant's messages: the tools on this Mac, or the connection to the tools
+/// on another one. `Err` is a JSON-RPC error code and its message.
+pub(crate) trait Backend: Sync {
+    fn initialize(&self, params: &Value) -> Result<Value, (i64, String)>;
+    fn tools(&self) -> Result<Value, (i64, String)>;
+    fn call(&self, params: &Value) -> Result<Value, (i64, String)>;
+    /// Called every [`agents::HEARTBEAT`] while the assistant is connected.
+    fn beat(&self);
+    /// The assistant is gone and replies are still being waited for: nobody watches a run any
+    /// more.
+    fn hang_up(&self);
+    /// Every reply has been sent.
+    fn finish(&self);
+}
+
 pub(crate) struct Server {
     /// Real path of the project folder.
     project: PathBuf,
     host: Arc<dyn AssistantHost>,
-    jobs: jobs::Jobs,
-    agents: agents::Agents,
+    jobs: Arc<jobs::Jobs>,
+    agents: Arc<agents::Agents>,
 }
 
 impl Server {
     pub(crate) fn new(
         project: &Path,
         host: Arc<dyn AssistantHost>,
+    ) -> Result<Self, AssistantServerError> {
+        let agents = Arc::new(agents::Agents::new(&host.shared_folder()));
+        Self::shared(project, host, agents, Arc::default())
+    }
+
+    /// A server for the project that shares with others what an assistant connected to the
+    /// app over the network does in all the projects it uses: who it is, and its runs.
+    fn shared(
+        project: &Path,
+        host: Arc<dyn AssistantHost>,
+        agents: Arc<agents::Agents>,
+        jobs: Arc<jobs::Jobs>,
     ) -> Result<Self, AssistantServerError> {
         let project = project
             .canonicalize()
@@ -114,105 +143,31 @@ impl Server {
             })?;
         Ok(Self {
             project,
-            agents: agents::Agents::new(&host.shared_folder()),
             host,
-            jobs: jobs::Jobs::default(),
+            jobs,
+            agents,
         })
     }
 
-    /// Answers each message on its own thread, so waiting for a run doesn't hold up the rest.
     pub(crate) fn serve(&self, input: impl BufRead, output: impl Write + Send) -> io::Result<()> {
-        let output = Mutex::new(output);
-        let result = std::thread::scope(|scope| {
-            // While the assistant is connected, the app can tell it is.
-            let (hangup, hung_up) = mpsc::channel::<()>();
-            scope.spawn(move || {
-                while hung_up.recv_timeout(agents::HEARTBEAT) == Err(RecvTimeoutError::Timeout) {
-                    self.agents.beat();
-                }
-            });
-            let mut lines = input.lines();
-            let ended = loop {
-                let line = match lines.next() {
-                    None => break Ok(()),
-                    Some(Err(e)) => break Err(e),
-                    Some(Ok(line)) => line,
-                };
-                if line.trim().is_empty() {
-                    continue;
-                }
-                let output = &output;
-                scope.spawn(move || {
-                    if let Some(reply) = self.handle(&line) {
-                        let mut out = output.lock().unwrap_or_else(|e| e.into_inner());
-                        // A client that is gone can't be told anything.
-                        let _ = writeln!(out, "{reply}").and_then(|()| out.flush());
-                    }
-                });
-            };
-            // The assistant is gone: nobody watches a run any more.
-            drop(hangup);
-            self.jobs.stop_all();
-            ended
-        });
-        self.jobs.wait_all();
-        self.agents.end();
-        result
+        serve_lines(self, input, output)
     }
 
     /// The reply to one message, or `None` for a notification.
+    #[cfg(test)]
     pub(crate) fn handle(&self, message: &str) -> Option<String> {
-        let reply = match serde_json::from_str::<Value>(message) {
-            Err(e) => Some(error_reply(
-                Value::Null,
-                PARSE_ERROR,
-                &format!("Parse error: {e}"),
-            )),
-            Ok(Value::Object(m)) => self.handle_object(&m),
-            Ok(_) => Some(error_reply(
-                Value::Null,
-                INVALID_REQUEST,
-                "Invalid request: send one JSON-RPC object per line",
-            )),
-        };
-        reply.map(|r| r.to_string())
+        handle_line(self, message)
+    }
+}
+
+impl Backend for Server {
+    fn initialize(&self, params: &Value) -> Result<Value, (i64, String)> {
+        self.agents.hello(params);
+        Ok(initialize(params))
     }
 
-    fn handle_object(&self, m: &serde_json::Map<String, Value>) -> Option<Value> {
-        let id = m.get("id").cloned();
-        let Some(method) = m.get("method").and_then(Value::as_str) else {
-            // A response to a request this server never sends, or garbage.
-            return match id {
-                Some(id) if !m.contains_key("result") && !m.contains_key("error") => Some(
-                    error_reply(id, INVALID_REQUEST, "Invalid request: no method"),
-                ),
-                _ => None,
-            };
-        };
-        // Notifications (initialized, cancelled) need no answer.
-        let id = id?;
-        if m.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
-            return Some(error_reply(
-                id,
-                INVALID_REQUEST,
-                "Invalid request: jsonrpc must be \"2.0\"",
-            ));
-        }
-        let params = m.get("params").cloned().unwrap_or_else(|| json!({}));
-        let result = match method {
-            "initialize" => {
-                self.agents.hello(&params);
-                Ok(initialize(&params))
-            }
-            "ping" => Ok(json!({})),
-            "tools/list" => Ok(json!({ "tools": tools::definitions() })),
-            "tools/call" => self.call(&params),
-            other => Err((METHOD_NOT_FOUND, format!("Method not found: {other}"))),
-        };
-        Some(match result {
-            Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
-            Err((code, message)) => error_reply(id, code, &message),
-        })
+    fn tools(&self) -> Result<Value, (i64, String)> {
+        Ok(json!({ "tools": tools::definitions() }))
     }
 
     fn call(&self, params: &Value) -> Result<Value, (i64, String)> {
@@ -237,6 +192,114 @@ impl Server {
             Err(message) => json!({ "content": [text(message)], "isError": true }),
         })
     }
+
+    fn beat(&self) {
+        self.agents.beat();
+    }
+
+    fn hang_up(&self) {
+        self.jobs.stop_all();
+    }
+
+    fn finish(&self) {
+        self.jobs.wait_all();
+        self.agents.end();
+    }
+}
+
+/// Answers each message on its own thread, so waiting for a run doesn't hold up the rest.
+fn serve_lines(
+    backend: &impl Backend,
+    input: impl BufRead,
+    output: impl Write + Send,
+) -> io::Result<()> {
+    let output = Mutex::new(output);
+    let result = std::thread::scope(|scope| {
+        // While the assistant is connected, the app can tell it is.
+        let (hangup, hung_up) = mpsc::channel::<()>();
+        scope.spawn(move || {
+            while hung_up.recv_timeout(agents::HEARTBEAT) == Err(RecvTimeoutError::Timeout) {
+                backend.beat();
+            }
+        });
+        let mut lines = input.lines();
+        let ended = loop {
+            let line = match lines.next() {
+                None => break Ok(()),
+                Some(Err(e)) => break Err(e),
+                Some(Ok(line)) => line,
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let output = &output;
+            scope.spawn(move || {
+                if let Some(reply) = handle_line(backend, &line) {
+                    let mut out = output.lock().unwrap_or_else(|e| e.into_inner());
+                    // A client that is gone can't be told anything.
+                    let _ = writeln!(out, "{reply}").and_then(|()| out.flush());
+                }
+            });
+        };
+        drop(hangup);
+        backend.hang_up();
+        ended
+    });
+    backend.finish();
+    result
+}
+
+fn handle_line(backend: &impl Backend, message: &str) -> Option<String> {
+    let reply = match serde_json::from_str::<Value>(message) {
+        Err(e) => Some(error_reply(
+            Value::Null,
+            PARSE_ERROR,
+            &format!("Parse error: {e}"),
+        )),
+        Ok(Value::Object(m)) => handle_object(backend, &m),
+        Ok(_) => Some(error_reply(
+            Value::Null,
+            INVALID_REQUEST,
+            "Invalid request: send one JSON-RPC object per line",
+        )),
+    };
+    reply.map(|r| r.to_string())
+}
+
+fn handle_object(backend: &impl Backend, m: &serde_json::Map<String, Value>) -> Option<Value> {
+    let id = m.get("id").cloned();
+    let Some(method) = m.get("method").and_then(Value::as_str) else {
+        // A response to a request this server never sends, or garbage.
+        return match id {
+            Some(id) if !m.contains_key("result") && !m.contains_key("error") => Some(error_reply(
+                id,
+                INVALID_REQUEST,
+                "Invalid request: no method",
+            )),
+            _ => None,
+        };
+    };
+    // Notifications (initialized, cancelled) need no answer.
+    let id = id?;
+    if m.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
+        return Some(error_reply(
+            id,
+            INVALID_REQUEST,
+            "Invalid request: jsonrpc must be \"2.0\"",
+        ));
+    }
+    let params = m.get("params").cloned().unwrap_or_else(|| json!({}));
+    let result = match method {
+        "initialize" => backend.initialize(&params),
+        "ping" => Ok(json!({})),
+        "tools/list" => backend.tools(),
+        "tools/call" => backend.call(&params),
+        other => Err((METHOD_NOT_FOUND, format!("Method not found: {other}"))),
+    };
+    Some(match result {
+        Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+        Err((code, message)) => error_reply(id, code, &message),
+    })
 }
 
 const PARSE_ERROR: i64 = -32700;

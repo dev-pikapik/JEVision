@@ -117,7 +117,7 @@
   <dt>Activity log</dt>
   <dd>Who ran what, and when: pairings, connections and remote runs.</dd>
   <dt>Devices</dt>
-  <dd>Each paired iPhone, what it can do and when it last connected. <strong>Revoke</strong> disconnects it at once; to use it again, pair it with a new code.</dd>
+  <dd>Each paired iPhone, and each <a href="mcp.html#remote">assistant on another computer</a>, what it can do and when it last connected. <strong>Disconnect</strong> cuts it off at once; to use it again, pair it with a new code.</dd>
   <dt>Relay</dt>
   <dd><strong>Standard</strong>, <strong>My own</strong> (the address of a relay you run) or <strong>None</strong>. See <a href="#reach">below</a>.</dd>
 </dl>
@@ -131,8 +131,8 @@
   <li><strong>End-to-end encryption.</strong> Every request goes over an encrypted connection between the iPhone and the Mac, directly or through a relay that can't read it.</li>
   <li><strong>A key that can't be copied.</strong> The iPhone makes its own key in the Secure Enclave the first time it is used. The key never leaves the iPhone, needs you present to use it and isn't backed up. The Mac knows the iPhone only by the public half of that key.</li>
   <li><strong>App lock.</strong> The app asks for Face ID or the passcode when opened, after a chosen time in the background (immediately, or after 1, 5 or 15 minutes) and at least every 8 hours. Locking drops every connection, and the app switcher shows the app covered.</li>
-  <li><strong>The Mac decides.</strong> It chooses whether an iPhone may only view or also run tests, and can revoke it at any time. Secrets and API keys are never sent to the phone.</li>
-  <li><strong>Little stored.</strong> The iPhone saves only the list of paired Macs: name, identity and addresses, in a file protected by iOS data protection. Forgetting a Mac on the iPhone removes it from that list; to also revoke the iPhone, remove it on the Mac.</li>
+  <li><strong>The Mac decides.</strong> It chooses whether an iPhone may only view or also run tests, and can disconnect it at any time. Secrets and API keys are never sent to the phone.</li>
+  <li><strong>Little stored.</strong> The iPhone saves only the list of paired Macs: name, identity and addresses, in a file protected by iOS data protection. Forgetting a Mac on the iPhone removes it from that list; to also cut the iPhone off, disconnect it on the Mac.</li>
 </ul>
 </main>
 </div>

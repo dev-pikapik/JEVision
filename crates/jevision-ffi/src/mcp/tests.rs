@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -19,10 +19,10 @@ use jevision_runner::Screenshot;
 const SECRET: &str = "hunter2-secret";
 
 /// A project folder that removes itself.
-struct Project(PathBuf);
+pub(crate) struct Project(pub(crate) PathBuf);
 
 impl Project {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         static NEXT: AtomicU32 = AtomicU32::new(0);
         let dir = std::env::temp_dir().join(format!(
             "jevision-mcp-{}-{}",
@@ -34,7 +34,7 @@ impl Project {
         Self(dir)
     }
 
-    fn write(&self, rel: &str, text: &str) {
+    pub(crate) fn write(&self, rel: &str, text: &str) {
         let path = self.0.join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
@@ -160,12 +160,19 @@ impl SecretSource for Secrets {
 }
 
 #[derive(Default)]
-struct Host {
+pub(crate) struct Host {
     /// Where the server and the app meet.
-    shared: Project,
-    permissions: Mutex<AssistantPermissions>,
+    pub(crate) shared: Project,
+    pub(crate) permissions: Mutex<AssistantPermissions>,
+    /// Why this Mac can't run tests, such as a locked screen.
+    pub(crate) problem: Mutex<Option<String>>,
     hands: Arc<FakeHands>,
-    runs: AtomicU32,
+    /// How many runs started.
+    pub(crate) runs: AtomicU32,
+    /// How many runs ended.
+    pub(crate) ended: AtomicU32,
+    /// Runs wait for the person to step through them, so they stay going.
+    pub(crate) stepping: AtomicBool,
 }
 
 impl AssistantHost for Host {
@@ -173,16 +180,19 @@ impl AssistantHost for Host {
         *self.permissions.lock().unwrap()
     }
     fn readiness_problem(&self) -> Option<String> {
-        None
+        self.problem.lock().unwrap().clone()
     }
-    fn start_run(&self, _: Arc<TestRun>) -> Result<Arc<dyn Hands>, HandsError> {
+    fn start_run(&self, run: Arc<TestRun>) -> Result<Arc<dyn Hands>, HandsError> {
+        run.set_step_mode(self.stepping.load(Ordering::Relaxed));
         self.runs.fetch_add(1, Ordering::Relaxed);
         Ok(self.hands.clone())
     }
     fn run_paused(&self, run: Arc<TestRun>) {
         run.resume();
     }
-    fn run_ended(&self) {}
+    fn run_ended(&self) {
+        self.ended.fetch_add(1, Ordering::Relaxed);
+    }
     fn secrets(&self) -> Arc<dyn SecretSource> {
         Arc::new(Secrets)
     }
@@ -213,7 +223,7 @@ fn screen() -> Screenshot {
     }
 }
 
-fn sign_in() -> String {
+pub(crate) fn sign_in() -> String {
     json!({
         "format": FORMAT_VERSION,
         "name": "Sign in",
@@ -1013,7 +1023,7 @@ fn connected_assistants_are_listed_with_their_last_call() {
 }
 
 /// What the app does: polls for questions, keeps what it saw, and answers.
-fn app_answers(folder: &str, allow: bool) -> AssistantRequest {
+pub(crate) fn app_answers(folder: &str, allow: bool) -> AssistantRequest {
     for _ in 0..100 {
         if let Some(request) = pending_assistant_requests(folder.to_owned())
             .into_iter()
@@ -1084,7 +1094,7 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
     assert_eq!(host.runs.load(Ordering::Relaxed), 1);
 
     // Nobody answers: that is a no too, and the question is withdrawn.
-    server.agents.timeout = Duration::from_secs(1);
+    Arc::get_mut(&mut server.agents).unwrap().timeout = Duration::from_secs(1);
     pending_assistant_requests(folder.clone());
     let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
     assert!(

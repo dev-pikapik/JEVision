@@ -12,8 +12,21 @@ pub(crate) const DEVICE_KEY_LEN: usize = 65;
 pub(crate) const CODE_LEN: usize = 16;
 pub(crate) const NONCE_LEN: usize = 32;
 
-const SCHEME: &str = "jevision://pair?";
-const VERSION: &str = "1";
+/// How a pairing offer is written: the phone's QR code and the assistant's link differ in both,
+/// so one is never taken for the other.
+struct Link {
+    scheme: &'static str,
+    version: &'static str,
+}
+
+const PHONE: Link = Link {
+    scheme: "jevision://pair?",
+    version: "1",
+};
+const ASSISTANT: Link = Link {
+    scheme: "jevision://assistant?",
+    version: "2",
+};
 
 /// The phone's own key. On iOS it lives in the Secure Enclave and cannot be copied out.
 pub trait DeviceSigner: Send + Sync {
@@ -45,8 +58,20 @@ pub struct PairingOffer {
 impl PairingOffer {
     /// The text of the QR code: `jevision://pair?v=1&id=…&name=…&code=…&exp=…&relay=…&addr=…`.
     pub fn to_url(&self) -> String {
+        self.link(&PHONE)
+    }
+
+    /// The text an assistant is paired with: `jevision://assistant?v=2&id=…`, otherwise the
+    /// same as [`PairingOffer::to_url`].
+    pub fn to_assistant_url(&self) -> String {
+        self.link(&ASSISTANT)
+    }
+
+    fn link(&self, link: &Link) -> String {
         let mut url = format!(
-            "{SCHEME}v={VERSION}&id={}&name={}&code={}&exp={}",
+            "{}v={}&id={}&name={}&code={}&exp={}",
+            link.scheme,
+            link.version,
             self.host_id,
             encode(&self.host_name),
             self.code,
@@ -63,9 +88,18 @@ impl PairingOffer {
 
     /// Reads a scanned QR code. Expiry is left to the Mac, whose clock decides.
     pub fn parse(text: &str) -> Result<Self, RemoteError> {
+        Self::read(text, &PHONE)
+    }
+
+    /// Reads the link an assistant is paired with.
+    pub fn parse_assistant(text: &str) -> Result<Self, RemoteError> {
+        Self::read(text, &ASSISTANT)
+    }
+
+    fn read(text: &str, link: &Link) -> Result<Self, RemoteError> {
         let text = text.trim();
-        let query = match text.get(..SCHEME.len()) {
-            Some(head) if head.eq_ignore_ascii_case(SCHEME) => &text[SCHEME.len()..],
+        let query = match text.get(..link.scheme.len()) {
+            Some(head) if head.eq_ignore_ascii_case(link.scheme) => &text[link.scheme.len()..],
             _ => return Err(RemoteError::OfferWrongScheme),
         };
         let mut version = None;
@@ -99,7 +133,7 @@ impl PairingOffer {
             relay_url,
             addrs,
         };
-        let valid = version.as_deref() == Some(VERSION)
+        let valid = version.as_deref() == Some(link.version)
             && offer.host_id.parse::<EndpointId>().is_ok()
             && code_bytes(&offer.code).is_some()
             && offer

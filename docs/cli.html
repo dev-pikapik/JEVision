@@ -248,12 +248,19 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 <h2 id="mcp"><code>jevision mcp</code></h2>
 <p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
 <p>An assistant that runs tests through it is asked about first on the Mac, and the app lists the assistants that connected: see <a href="mcp.html#asking-first">Asking first</a>.</p>
-<pre><code>jevision mcp [--project <var>folder</var>]</code></pre>
+<p>With <code>--remote</code> it serves the assistant from another Mac instead: see <a href="mcp.html#remote">From another Mac</a>.</p>
+<pre><code>jevision mcp [--project <var>folder</var>]
+jevision mcp --pair <var>link</var>
+jevision mcp --remote <var>Mac</var> [--project <var>name</var>]
+jevision mcp --forget <var>Mac</var></code></pre>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>--project <var>folder</var></code></td><td>Project folder whose tests the assistant may see. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder.</td></tr>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder whose tests the assistant may see. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder. With <code>--remote</code>, the name of the project open in JEVision on that Mac; default: that project, whatever its name.</td></tr>
+    <tr><td><code>--pair <var>link</var></code></td><td>Pairs this computer with a Mac, using the one-time command that <strong>Settings → iPhone &amp; Remote → Add → Assistant on another computer</strong> shows on that Mac. The code works once, for five minutes.</td></tr>
+    <tr><td><code>--remote <var>Mac</var></code></td><td>Serves the assistant with the tests of a paired Mac, by its name or the start of its id. The assistant starts this command itself.</td></tr>
+    <tr><td><code>--forget <var>Mac</var></code></td><td>Removes a paired Mac from this computer. To also cut this computer off on the Mac, choose <strong>Disconnect</strong> there.</td></tr>
   </tbody>
 </table>
 </div>

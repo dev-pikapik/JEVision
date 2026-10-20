@@ -33,8 +33,8 @@ enum JEVisionCLI {
       return format(paths, check: check)
     case .run(let request):
       return RunCommand(request: request).execute()
-    case .mcp(let project):
-      return MCPCommand(project: project).execute()
+    case .mcp(let project, let action):
+      return MCPCommand(project: project, action: action).execute()
     case .scheduleRun(let project):
       return ScheduleCommand(project: project).execute()
     case .issue(let request):
@@ -104,7 +104,7 @@ enum Command: Equatable {
   case validate(paths: [String], json: Bool)
   case fmt(paths: [String], check: Bool)
   case run(RunRequest)
-  case mcp(project: String?)
+  case mcp(project: String?, action: MCPAction)
   case scheduleRun(project: String)
   case issue(IssueRequest)
   case blocks(BlocksRequest)
@@ -201,12 +201,31 @@ enum Command: Equatable {
       }
       return .run(request)
     case "mcp":
-      let options = try Options.parse(rest, command: name, flags: [], values: ["--project"])
+      let options = try Options.parse(rest, command: name, flags: [], values: ["--project", "--pair", "--remote", "--forget"])
       if options.wantsHelp { return .help(name) }
       if let extra = options.paths.first {
         throw UsageError(message: "mcp takes no paths; name the project folder with --project, not “\(extra)”", command: name)
       }
-      return .mcp(project: options.values["--project"])
+      let actions = ["--pair", "--remote", "--forget"].filter { options.values[$0] != nil }
+      guard actions.count <= 1 else {
+        throw UsageError(message: "use one of \(actions.joined(separator: ", ")) at a time", command: name)
+      }
+      guard let option = actions.first, let value = options.values[option] else {
+        return .mcp(project: options.values["--project"], action: .serve)
+      }
+      if value.trimmingCharacters(in: .whitespaces).isEmpty {
+        throw UsageError(message: "\(option) needs \(option == "--pair" ? "the code the Mac shows" : "the name of a Mac")", command: name)
+      }
+      if option != "--remote", options.values["--project"] != nil {
+        throw UsageError(message: "--project goes with --remote or alone, not with \(option)", command: name)
+      }
+      let action: MCPAction =
+        switch option {
+        case "--pair": .pair(value)
+        case "--remote": .remote(value)
+        default: .forget(value)
+        }
+      return .mcp(project: options.values["--project"], action: action)
     case "schedule":
       let options = try Options.parse(rest, command: name, flags: [])
       if options.wantsHelp || options.paths.isEmpty { return .help(name) }
@@ -357,7 +376,7 @@ enum Help {
     case "validate": "Usage: jevision validate <tests>… [--json]"
     case "fmt": "Usage: jevision fmt <tests>… [--check]"
     case "issue": "Usage: jevision issue [<test or run>] [--send] [options]"
-    case "mcp": "Usage: jevision mcp [--project <folder>]"
+    case "mcp": "Usage: jevision mcp [--project <folder>]\n       jevision mcp --pair <code>\n       jevision mcp --remote <Mac> [--project <name>]\n       jevision mcp --forget <Mac>"
     case "schedule": "Usage: jevision schedule run <project>"
     case "blocks": "Usage: jevision blocks list | install <folder, .zip or https address> | update [<id>] | remove <id> [options]"
     default: "Usage: jevision <command> [options]"
@@ -531,18 +550,30 @@ enum Help {
       Copilot, over the Model Context Protocol. The assistant starts this command itself and
       talks to it over standard input and output; add it to the assistant's MCP servers.
 
+      With --remote, the assistant uses the tools of another Mac instead: its projects, its
+      screen, its mouse and keyboard. Pair this computer with that Mac once: in JEVision on
+      it, open Settings → iPhone & Remote → Add an assistant and run the command it shows, which is
+      jevision mcp --pair with a one-time code. The traffic is end-to-end encrypted and
+      opens no ports; the key of this computer stays in its Keychain.
+
       \(usage(command))
 
       Options:
         --project <folder>  Project folder whose tests the assistant may see. Default: the
                             nearest folder at or above the current one that has a .jevision
-                            folder, otherwise the current folder
+                            folder, otherwise the current folder. With --remote, the name
+                            of the project the Mac shares; without it, the only one it shares
+        --pair <code>       Pair this computer with the Mac showing the code
+        --remote <Mac>      Serve the tools of that paired Mac, by its name
+        --forget <Mac>      Forget a paired Mac on this computer. The Mac still lists it until
+                            the person there disconnects it in Settings → iPhone & Remote
         -h, --help          Show this help
 
       Assistants can list, read, write and check tests, read reports and see the test
       format. Running tests and taking screenshots work only after you allow them in
-      JEVision → Settings → AI → Assistants. Assistants never get the values of secrets
-      or API keys, and can't touch files outside the project folder.
+      JEVision → Settings → AI → Assistants on the Mac that does them; an assistant on
+      another Mac needs the Assistant switch on in Settings → iPhone & Remote too. Assistants never
+      get the values of secrets or API keys, and can't touch files outside the project folder.
 
       """
     case "blocks":

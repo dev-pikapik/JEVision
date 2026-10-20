@@ -14,6 +14,10 @@
 //! the middle cannot replay them.
 //!
 //! The Mac side is [`Host`] (feature `host`), the phone side [`Client`] (feature `client`).
+//!
+//! Assistants on another computer use a second protocol, [`ALPN_V2`], on the same endpoint:
+//! the same pairing and sign-in, then requests that carry MCP tool calls to the Mac
+//! ([`AssistantClient`]). Phones and assistants cannot use each other's protocol.
 
 mod pairing;
 mod wire;
@@ -34,21 +38,24 @@ use iroh_mdns_address_lookup::MdnsAddressLookup;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "client")]
-pub use client::{Client, HostRecord, RunWatch};
+pub use client::{AssistantClient, AssistantFailure, Client, HostRecord, RunWatch};
 #[cfg(feature = "host")]
-pub use host::{Host, HostConfig, HostDelegate, HostStatus, Project};
+pub use host::{AssistantRejection, Host, HostConfig, HostDelegate, HostStatus, Project};
 pub use jevision_runner::{Failure, RunReport, StepStatus, Verdict};
 pub use pairing::{DeviceSigner, PairingOffer};
 #[cfg(feature = "host")]
-pub use store::{Activity, ActivityKind, Device};
+pub use store::{Activity, ActivityKind, Device, DeviceKind};
 pub use wire::{
     Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, PauseReason, Position, ProjectInfo,
     RunEvent, RunList, RunState, RunStatus, RunSummary, RunUpdate, ScreenHolder, ScreenWait,
     TestEntry, TestSummary,
 };
 
-/// The one protocol spoken between the Mac and the phone.
+/// The protocol spoken between the Mac and the phone.
 pub const ALPN: &[u8] = b"jevision/remote/1";
+
+/// The protocol spoken between the Mac and an assistant on another computer.
+pub const ALPN_V2: &[u8] = b"jevision/remote/2";
 
 /// What a paired phone may do. Every request is checked against the device's current level,
 /// so a change on the Mac applies to the next request.

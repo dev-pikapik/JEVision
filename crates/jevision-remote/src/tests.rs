@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
+use serde_json::{Value, json};
 
 use super::*;
 use crate::store::Store;
@@ -69,6 +70,9 @@ impl DeviceSigner for Impostor {
 /// A run the Mac was asked to start: project root, test, data row and device.
 type Started = (String, String, Option<u32>, String);
 
+/// A tool an assistant called: session, device name, project root, tool and arguments.
+type Called = (String, String, String, String, Value);
+
 #[derive(Default)]
 struct Fake {
     locked: Mutex<bool>,
@@ -78,6 +82,9 @@ struct Fake {
     started: Mutex<Vec<Started>>,
     stopped: Mutex<Vec<String>>,
     active: Mutex<HashMap<String, RunStatus>>,
+    hellos: Mutex<Vec<Value>>,
+    called: Mutex<Vec<Called>>,
+    ended: Mutex<Vec<String>>,
 }
 
 impl HostDelegate for Fake {
@@ -137,6 +144,47 @@ impl HostDelegate for Fake {
 
     fn active_runs(&self, _project_root: String) -> Vec<RunStatus> {
         self.active.lock().unwrap().values().cloned().collect()
+    }
+
+    fn assistant_hello(&self, _session: String, _device: Device, params: Value) -> Value {
+        self.hellos.lock().unwrap().push(params);
+        json!({ "serverInfo": { "name": "jevision" } })
+    }
+
+    fn assistant_tools(&self) -> Value {
+        json!({ "tools": [{ "name": "list_tests" }] })
+    }
+
+    fn assistant_call(
+        &self,
+        session: String,
+        device: Device,
+        project_root: String,
+        tool: String,
+        arguments: Value,
+    ) -> Result<Value, AssistantRejection> {
+        self.called.lock().unwrap().push((
+            session,
+            device.name,
+            project_root,
+            tool.clone(),
+            arguments,
+        ));
+        match tool.as_str() {
+            "nothing" => Err(AssistantRejection {
+                code: -32602,
+                message: "Unknown tool: nothing".into(),
+            }),
+            "big" => Ok(json!({
+                "content": [{ "type": "text", "text": "x".repeat(wire::MAX_MESSAGE + 1) }],
+                "isError": false,
+            })),
+            _ => Ok(json!({ "content": [{ "type": "text", "text": "done" }], "isError": false })),
+        }
+    }
+
+    fn assistant_ended(&self, session: String) {
+        self.ended.lock().unwrap().push(session);
     }
 }
 
@@ -220,6 +268,24 @@ impl Setup {
         .await
         .unwrap()
     }
+
+    /// The link an assistant is paired with, read the way the terminal reads it.
+    fn assistant_offer(&self) -> PairingOffer {
+        let mut offer = self.host.create_assistant_offer().unwrap();
+        offer.addrs = loopback(&offer.addrs);
+        PairingOffer::parse_assistant(&offer.to_assistant_url()).unwrap()
+    }
+
+    async fn pair_assistant(&self, signer: Arc<TestSigner>) -> AssistantClient {
+        AssistantClient::pair(
+            self.assistant_offer(),
+            "Dev laptop".into(),
+            signer,
+            offline(),
+        )
+        .await
+        .unwrap()
+    }
 }
 
 /// The host's own port on 127.0.0.1. macOS asks before a program reaches other devices on
@@ -235,6 +301,13 @@ fn loopback(addrs: &[String]) -> Vec<String> {
 
 /// What the phone saved, pointed at loopback like [`Setup::offer`].
 fn saved(client: &Client) -> HostRecord {
+    let mut record = client.record();
+    record.addrs = loopback(&record.addrs);
+    record
+}
+
+/// What an assistant saved, pointed at loopback like [`Setup::offer`].
+fn assistant_saved(client: &AssistantClient) -> HostRecord {
     let mut record = client.record();
     record.addrs = loopback(&record.addrs);
     record
@@ -1100,4 +1173,389 @@ fn activity_log_rotates_and_reads_newest_first() {
     let times: Vec<i64> = newest.iter().map(|a| a.time).collect();
     assert_eq!(times, [4999, 4998, 4997]);
     assert_eq!(store.activity(100_000).len(), 5000);
+}
+
+const ARGUMENT_SECRET: &str = "hunter2-in-an-argument";
+
+/// Waits for something that happens on the Mac's own time.
+async fn eventually(check: impl Fn() -> bool) {
+    for _ in 0..100 {
+        if check() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("it did not happen in time");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_assistant_calls_the_tools_on_the_mac_next_to_a_phone() {
+    let setup = Setup::new("assistant").await;
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+
+    let devices = setup.host.devices();
+    let device = devices
+        .iter()
+        .find(|d| d.kind == DeviceKind::Assistant)
+        .unwrap();
+    assert_eq!(
+        (device.name.as_str(), device.assistant),
+        ("Dev laptop", true)
+    );
+    let paired_phone = devices
+        .iter()
+        .find(|d| d.kind == DeviceKind::Phone)
+        .unwrap();
+    assert!(!paired_phone.assistant);
+
+    let who = json!({ "protocolVersion": "2025-11-25", "clientInfo": { "name": "claude-code" } });
+    let hello = assistant.hello(who.clone()).await.unwrap();
+    assert_eq!(hello["serverInfo"]["name"], "jevision");
+    assert_eq!(
+        setup.fake.hellos.lock().unwrap()[0]["clientInfo"]["name"],
+        "claude-code"
+    );
+    let tools = assistant.tools().await.unwrap();
+    assert_eq!(tools["tools"][0]["name"], "list_tests");
+    let arguments = json!({ "folder": ARGUMENT_SECRET });
+    let result = assistant
+        .call("list_tests".into(), arguments.clone(), None)
+        .await
+        .unwrap();
+    assert_eq!(result["content"][0]["text"], "done");
+    {
+        let called = setup.fake.called.lock().unwrap();
+        let (_, name, root, tool, got) = &called[0];
+        assert_eq!(
+            (name.as_str(), root.as_str(), tool.as_str()),
+            ("Dev laptop", setup.root().as_str(), "list_tests")
+        );
+        assert_eq!(got, &arguments);
+    }
+
+    // The log says which tool was called and by whom, never with what.
+    let entry = setup.host.activity(1).remove(0);
+    assert_eq!(entry.kind, ActivityKind::AssistantCalled);
+    assert_eq!(entry.subject.as_deref(), Some("list_tests"));
+    assert_eq!(entry.device_name.as_deref(), Some("Dev laptop"));
+    let log = fs::read_to_string(setup.scratch.0.join("state/activity.jsonl")).unwrap();
+    assert!(!log.contains(ARGUMENT_SECRET));
+
+    // The MCP server's own errors arrive as they are, and a reply bigger than a phone's
+    // messages can be still arrives whole.
+    assert_eq!(
+        assistant.call("nothing".into(), json!({}), None).await,
+        Err(AssistantFailure::Rejected {
+            code: -32602,
+            message: "Unknown tool: nothing".into()
+        })
+    );
+    let big = assistant.call("big".into(), json!({}), None).await.unwrap();
+    assert_eq!(
+        big["content"][0]["text"].as_str().unwrap().len(),
+        wire::MAX_MESSAGE + 1
+    );
+
+    // The phone keeps working on its own protocol, and both show as connected.
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+    assert_eq!(setup.host.status().connected.len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_assistant_tells_the_mac_who_it_is_again_after_the_connection_drops() {
+    let setup = Setup::new("assistant-reconnect").await;
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+    let who = json!({ "clientInfo": { "name": "cursor" } });
+    assistant.hello(who).await.unwrap();
+
+    assistant
+        .call("list_tests".into(), json!({}), None)
+        .await
+        .unwrap();
+    let first = assistant.client.connection().await.unwrap();
+    first.close(iroh::endpoint::VarInt::from_u32(wire::CLOSE_DONE), b"");
+    assistant
+        .call("list_tests".into(), json!({}), None)
+        .await
+        .unwrap();
+    let hellos = setup.fake.hellos.lock().unwrap().clone();
+    assert_eq!(hellos.len(), 2);
+    assert_eq!(hellos[1]["clientInfo"]["name"], "cursor");
+    let called = setup.fake.called.lock().unwrap().clone();
+    assert_ne!(called[0].0, called[1].0);
+    // What the first connection started was stopped when it ended.
+    eventually(|| setup.fake.ended.lock().unwrap().contains(&called[0].0)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn refuses_assistants_that_are_not_paired() {
+    let setup = Setup::new("assistant-unpaired").await;
+    let paired = setup.pair_assistant(TestSigner::new(5)).await;
+    let record = assistant_saved(&paired);
+
+    let stranger = AssistantClient::open(record.clone(), TestSigner::new(6), offline())
+        .await
+        .unwrap();
+    assert_eq!(
+        stranger.tools().await,
+        Err(AssistantFailure::Remote(RemoteError::NotPaired))
+    );
+    let impostor = Arc::new(Impostor(TestSigner::new(5), TestSigner::new(6)));
+    let forged = AssistantClient::open(record, impostor, offline())
+        .await
+        .unwrap();
+    assert_eq!(
+        forged.hello(json!({})).await,
+        Err(AssistantFailure::Remote(RemoteError::BadSignature))
+    );
+    assert!(setup.fake.called.lock().unwrap().is_empty());
+    assert!(setup.fake.hellos.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn revoking_an_assistant_stops_it_at_once() {
+    let setup = Setup::new("assistant-revoke").await;
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+    assistant
+        .call("list_tests".into(), json!({}), None)
+        .await
+        .unwrap();
+    let session = setup.fake.called.lock().unwrap()[0].0.clone();
+
+    setup.host.revoke(&assistant.record().device_id).unwrap();
+    assert_eq!(
+        assistant.tools().await,
+        Err(AssistantFailure::Remote(RemoteError::Revoked))
+    );
+    eventually(|| setup.fake.ended.lock().unwrap().contains(&session)).await;
+    assert!(setup.host.status().connected.is_empty());
+
+    let again = AssistantClient::open(assistant_saved(&assistant), TestSigner::new(5), offline())
+        .await
+        .unwrap();
+    assert_eq!(
+        again.tools().await,
+        Err(AssistantFailure::Remote(RemoteError::NotPaired))
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_right_to_run_does_not_open_the_tools() {
+    let setup = Setup::new("assistant-right").await;
+    // A phone that may run tests is still not an assistant.
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let as_assistant = AssistantClient::open(saved(&phone), TestSigner::new(1), offline())
+        .await
+        .unwrap();
+    assert_eq!(
+        as_assistant.tools().await,
+        Err(AssistantFailure::Remote(RemoteError::NotPaired))
+    );
+    // And an assistant is not a phone.
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+    let as_phone =
+        Client::connect(assistant_saved(&assistant), TestSigner::new(5), offline()).await;
+    assert_eq!(as_phone.err(), Some(RemoteError::NotPaired));
+
+    // The owner turns the assistant off: nothing opens, and what it started stops.
+    let id = assistant.record().device_id;
+    assistant
+        .call("list_tests".into(), json!({}), None)
+        .await
+        .unwrap();
+    let session = setup.fake.called.lock().unwrap()[0].0.clone();
+    setup.host.set_assistant(&id, false).unwrap();
+    assert!(!setup.host.devices().iter().any(|d| d.assistant));
+    eventually(|| setup.fake.ended.lock().unwrap().contains(&session)).await;
+    let off = Err(AssistantFailure::Remote(RemoteError::NotAllowed));
+    assert_eq!(assistant.hello(json!({})).await, off);
+    assert_eq!(assistant.tools().await, off);
+    assert_eq!(
+        assistant.call("list_tests".into(), json!({}), None).await,
+        off
+    );
+    assert_eq!(setup.fake.called.lock().unwrap().len(), 1);
+    assert_eq!(setup.fake.hellos.lock().unwrap().len(), 0);
+    let entry = setup.host.activity(1).remove(0);
+    assert_eq!(entry.kind, ActivityKind::Denied);
+    assert_eq!(entry.subject.as_deref(), Some("list_tests"));
+
+    setup.host.set_assistant(&id, true).unwrap();
+    assert!(assistant.tools().await.is_ok());
+
+    // The levels of a phone and the switch of an assistant are not interchangeable.
+    let phone_id = phone.record().device_id;
+    assert_eq!(
+        setup.host.set_assistant(&phone_id, true),
+        Err(RemoteError::NotAllowed)
+    );
+    assert_eq!(
+        setup.host.set_permission(&id, Permission::Run),
+        Err(RemoteError::NotAllowed)
+    );
+    assert_eq!(
+        setup.host.set_assistant("nobody", true),
+        Err(RemoteError::NotPaired)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_does_not_see_assistant_requests_and_an_assistant_does_not_see_phone_ones() {
+    let setup = Setup::new("assistant-protocols").await;
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+
+    let conn = phone.connection().await.unwrap();
+    let (mut send, mut recv) = conn.open_bi().await.unwrap();
+    let call = wire::AssistantRequest::Call {
+        tool: "list_tests".into(),
+        arguments: json!({}),
+        project: None,
+    };
+    wire::send(&mut send, &call).await.unwrap();
+    let reply: wire::Reply = wire::expect(&mut recv).await.unwrap();
+    assert_eq!(reply, wire::Reply::Error(RemoteError::Protocol));
+    assert!(setup.fake.called.lock().unwrap().is_empty());
+
+    let conn = assistant.client.connection().await.unwrap();
+    let (mut send, mut recv) = conn.open_bi().await.unwrap();
+    wire::send(&mut send, &wire::Request::ListProjects)
+        .await
+        .unwrap();
+    let reply: wire::AssistantReply = wire::expect(&mut recv).await.unwrap();
+    assert_eq!(
+        reply,
+        wire::AssistantReply::Error {
+            error: RemoteError::Protocol
+        }
+    );
+    // Both connections go on working.
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+    assert!(assistant.tools().await.is_ok());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_code_pairs_only_the_kind_of_device_it_was_shown_for() {
+    let setup = Setup::new("assistant-codes").await;
+    let phone_offer = setup.offer(Permission::Run);
+    let wrong = AssistantClient::pair(
+        phone_offer.clone(),
+        "Mallory".into(),
+        TestSigner::new(9),
+        offline(),
+    )
+    .await;
+    assert_eq!(wrong.err(), Some(RemoteError::PairingCodeInvalid));
+
+    let mut assistant_offer = setup.host.create_assistant_offer().unwrap();
+    assistant_offer.addrs = loopback(&assistant_offer.addrs);
+    let wrong = Client::pair(
+        assistant_offer.clone(),
+        "Mallory".into(),
+        TestSigner::new(9),
+        offline(),
+    )
+    .await;
+    assert_eq!(wrong.err(), Some(RemoteError::PairingCodeInvalid));
+    assert!(setup.host.devices().is_empty());
+
+    // The two kinds of link are not mistaken for each other.
+    assert_eq!(
+        PairingOffer::parse(&assistant_offer.to_assistant_url()),
+        Err(RemoteError::OfferWrongScheme)
+    );
+    assert_eq!(
+        PairingOffer::parse_assistant(&phone_offer.to_url()),
+        Err(RemoteError::OfferWrongScheme)
+    );
+    let url = assistant_offer.to_assistant_url();
+    assert!(url.starts_with("jevision://assistant?v=2&id="));
+    assert_eq!(PairingOffer::parse_assistant(&url), Ok(assistant_offer));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn checks_what_an_assistant_sends() {
+    let setup = Setup::new("assistant-input").await;
+    let assistant = setup.pair_assistant(TestSigner::new(5)).await;
+
+    let protocol = Err(AssistantFailure::Remote(RemoteError::Protocol));
+    assert_eq!(assistant.hello(json!("claude")).await, protocol);
+    for tool in ["", "../etc/passwd", "a b", &"t".repeat(65)] {
+        assert_eq!(
+            assistant.call(tool.into(), json!({}), None).await,
+            protocol,
+            "{tool}"
+        );
+    }
+    assert_eq!(
+        assistant
+            .call("list_tests".into(), json!(["not", "an", "object"]), None)
+            .await,
+        protocol
+    );
+    let missing = Err(AssistantFailure::Remote(RemoteError::ProjectNotFound));
+    assert_eq!(
+        assistant
+            .call("list_tests".into(), json!({}), Some("Nowhere".into()))
+            .await,
+        missing
+    );
+    assert!(setup.fake.called.lock().unwrap().is_empty());
+
+    // What an assistant says about itself is cut down before the app shows it.
+    let title = format!("Claude\u{7}\n{}", "x".repeat(300));
+    assistant
+        .hello(json!({
+            "protocolVersion": "2025-11-25",
+            "clientInfo": { "name": "claude-code", "title": title, "extra": "dropped" },
+            "capabilities": { "huge": "dropped" },
+        }))
+        .await
+        .unwrap();
+    let said = setup.fake.hellos.lock().unwrap()[0].clone();
+    assert_eq!(said["protocolVersion"], "2025-11-25");
+    assert_eq!(said["clientInfo"]["name"], "claude-code");
+    let shown = said["clientInfo"]["title"].as_str().unwrap();
+    assert_eq!(shown.chars().count(), 64);
+    assert!(shown.starts_with("Claude") && !shown.chars().any(char::is_control));
+    assert!(said.get("capabilities").is_none() && said["clientInfo"].get("extra").is_none());
+
+    // A project is named, or the only one is meant.
+    setup.host.set_projects(vec![
+        Project {
+            name: "Demo".into(),
+            root: setup.root(),
+        },
+        Project {
+            name: "Other".into(),
+            root: setup.root(),
+        },
+    ]);
+    assert_eq!(
+        assistant.call("list_tests".into(), json!({}), None).await,
+        missing
+    );
+    assert!(
+        assistant
+            .call("list_tests".into(), json!({}), Some("Other".into()))
+            .await
+            .is_ok()
+    );
+}
+
+#[test]
+fn devices_saved_before_assistants_are_phones() {
+    let scratch = Scratch::new("old-devices");
+    write(
+        &scratch.0,
+        "devices.json",
+        r#"{"devices":[{"id":"0123456789abcdef0123456789abcdef","name":"Anna's iPhone",
+          "publicKey":"04ab","permission":"run","pairedAt":1792000000,"lastSeen":null}]}"#,
+    );
+    let store = Store::open(&scratch.0).unwrap();
+    let device = &store.devices()[0];
+    assert_eq!(device.kind, DeviceKind::Phone);
+    assert!(!device.assistant);
+    assert_eq!(device.permission, Permission::Run);
 }
