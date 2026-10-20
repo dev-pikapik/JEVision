@@ -394,8 +394,29 @@ fn run_with(
     control: RunControl,
     options: &RunOptions,
 ) -> (Run, Vec<Event>) {
+    run_with_seen(project, hands, control, options, None)
+}
+
+/// How long a test lets another thread take to say what it waits for. Only a test that is never
+/// told hits it; one that is told goes on at once, however slow the machine is.
+const HANG_GUARD: Duration = Duration::from_secs(60);
+
+/// [`run_with`], and each event is also sent to `seen` as it happens, so a test can act on what
+/// the run is doing and not on how much time has passed.
+fn run_with_seen(
+    project: &Project,
+    hands: &Fake,
+    control: RunControl,
+    options: &RunOptions,
+    seen: Option<&mpsc::Sender<Event>>,
+) -> (Run, Vec<Event>) {
     let events = Mutex::new(Vec::new());
-    let sink = |e: &Event| events.lock().unwrap().push(e.clone());
+    let sink = |e: &Event| {
+        events.lock().unwrap().push(e.clone());
+        if let Some(seen) = seen {
+            let _ = seen.send(e.clone());
+        }
+    };
     let secrets = secrets();
     let runner = Runner {
         hands,
@@ -412,6 +433,60 @@ fn run_with(
         .run(&project.0, Path::new("t.flow.json"), options)
         .unwrap();
     (run, events.into_inner().unwrap())
+}
+
+/// Blocks until `seen` brings an event that `matching` accepts.
+fn wait_for_event(seen: &mpsc::Receiver<Event>, matching: impl Fn(&Event) -> bool) {
+    let deadline = Instant::now() + HANG_GUARD;
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        match seen.recv_timeout(left) {
+            Ok(event) if matching(&event) => return,
+            Ok(_) => {}
+            Err(e) => panic!("the event the test waits for never came: {e}"),
+        }
+    }
+}
+
+/// Blocks until `ready` holds.
+fn wait_until(ready: impl Fn() -> bool) {
+    let deadline = Instant::now() + HANG_GUARD;
+    while !ready() {
+        assert!(
+            Instant::now() < deadline,
+            "the state the test waits for never came"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
+/// Runs `t.flow.json`, cancels it once `ready` has seen the run get where the test wants it, and
+/// says how long the run took to end after that.
+fn run_cancelled_at(
+    project: &Project,
+    hands: &Fake,
+    options: &RunOptions,
+    ready: impl FnOnce(&mpsc::Receiver<Event>) + Send,
+) -> (Run, Duration) {
+    let control = RunControl::new();
+    let remote = control.clone();
+    let (seen, events) = mpsc::channel();
+    std::thread::scope(|s| {
+        let cancelling = s.spawn(move || {
+            ready(&events);
+            // What the test waited for comes just before the run falls asleep; this gives it the
+            // time to. A run that is not asleep yet would end at the cancel all the same, so
+            // this is only what lets the test fail when the sleep cannot be woken.
+            std::thread::sleep(Duration::from_millis(100));
+            let at = Instant::now();
+            remote.cancel();
+            at
+        });
+        let (run, _) = run_with_seen(project, hands, control, options, Some(&seen));
+        // A run that ended without getting there lets the thread fail, and not wait.
+        drop(seen);
+        (run, cancelling.join().unwrap().elapsed())
+    })
 }
 
 fn run(project: &Project, hands: &Fake) -> Run {
@@ -1402,23 +1477,20 @@ fn cancel_stops_a_long_wait_at_once() {
         3,
     );
     let hands = Fake::new(solid([255, 0, 0]));
-    let control = RunControl::new();
-    let remote = control.clone();
-    let clock = Instant::now();
-    let report = std::thread::scope(|s| {
-        s.spawn(move || {
-            std::thread::sleep(Duration::from_millis(100));
-            remote.cancel();
-        });
-        let mut slow = options();
-        slow.poll_interval = Duration::from_secs(5);
-        run_with(&p, &hands, control, &slow).0.report
+    // The run looks once a minute: ending long before that is the cancel waking it up.
+    let slow = RunOptions {
+        poll_interval: Duration::from_secs(60),
+        ..options()
+    };
+    let (run, after_cancel) = run_cancelled_at(&p, &hands, &slow, |events| {
+        wait_for_event(events, |e| matches!(e, Event::StepStarted { .. }));
+        wait_until(|| !hands.looked_at().is_empty());
     });
     assert!(
-        clock.elapsed() < Duration::from_secs(2),
-        "{:?}",
-        clock.elapsed()
+        after_cancel < Duration::from_secs(30),
+        "ended {after_cancel:?} after the cancel"
     );
+    let report = run.report;
     assert_eq!(report.verdict, Verdict::Cancelled);
     assert_eq!(report.attempts.len(), 1, "a cancelled run is not retried");
     assert_eq!(
@@ -3176,7 +3248,7 @@ fn scripts_and_commands_fail_with_their_reason() {
             ("expected", "done"),
         ),
         (
-            r#""a":{"type":"command","command":"sleep 5","timeout":"200ms"}"#,
+            r#""a":{"type":"command","command":"sleep 60","timeout":"200ms"}"#,
             "run.process.timeout",
             ("seconds", "0.2"),
         ),
@@ -3200,7 +3272,8 @@ fn scripts_and_commands_fail_with_their_reason() {
         assert_eq!(failure.code, code, "{blocks} {failure:?}");
         assert_eq!(failure.param(param), value, "{blocks}");
         assert!(!describe(failure).is_empty());
-        assert!(clock.elapsed() < Duration::from_secs(3), "{blocks}");
+        // Only tells a command stopped at its timeout from one left to run its minute out.
+        assert!(clock.elapsed() < Duration::from_secs(30), "{blocks}");
     }
 }
 
@@ -4125,16 +4198,27 @@ fn a_test_on_the_screen_waits_until_the_other_run_lets_go_and_says_who_has_it() 
         screen_lock: Some(path.clone()),
         ..options()
     };
-    let (run, events) = std::thread::scope(|s| {
-        let running = s.spawn(|| run_with(&p, &hands, RunControl::new(), &waiting));
+    let (seen, events_seen) = mpsc::channel();
+    let (run, events, released_at, ended_at) = std::thread::scope(|s| {
+        let running = s.spawn(|| {
+            let done = run_with_seen(&p, &hands, RunControl::new(), &waiting, Some(&seen));
+            (done, Instant::now())
+        });
+        wait_for_event(&events_seen, |e| {
+            matches!(e, Event::WaitingForScreen { .. })
+        });
+        // The screen stays taken for a while, so that waiting for it is something a run could
+        // wrongly count: nothing below depends on how long.
         std::thread::sleep(Duration::from_millis(150));
         assert!(
             hands.log().is_empty(),
             "nothing is done while the screen is taken"
         );
         assert!(!running.is_finished());
+        let released_at = Instant::now();
         drop(taken);
-        running.join().unwrap()
+        let ((run, events), ended_at) = running.join().unwrap();
+        (run, events, released_at, ended_at)
     });
     assert_eq!(run.report.verdict, Verdict::Passed);
     let waits: Vec<_> = events
@@ -4156,9 +4240,12 @@ fn a_test_on_the_screen_waits_until_the_other_run_lets_go_and_says_who_has_it() 
         .position(|e| matches!(e, Event::WaitingForScreen { .. }))
         .unwrap();
     assert!(wait < first_step);
+    // The run began after the screen was let go, so it cannot have lasted longer than that.
+    let since_release = ended_at.duration_since(released_at);
     assert!(
-        run.report.duration_ms < 150,
-        "waiting for the screen is not part of the run: {} ms",
+        Duration::from_millis(run.report.duration_ms) <= since_release,
+        "waiting for the screen is not part of the run: {} ms, and {since_release:?} since the \
+         screen was let go",
         run.report.duration_ms
     );
     let again = ScreenLock::try_take(&path, &screen_holder()).unwrap();
@@ -4195,25 +4282,18 @@ fn a_run_cancelled_while_it_waits_for_the_screen_does_nothing() {
         .unwrap()
         .unwrap();
     let hands = Fake::new(solid([1, 2, 3]));
-    let control = RunControl::new();
-    let remote = control.clone();
+    // It looks at the lock once a minute: ending long before that is the cancel waking it up.
     let waiting = RunOptions {
         screen_lock: Some(path),
-        poll_interval: Duration::from_secs(5),
+        poll_interval: Duration::from_secs(60),
         ..options()
     };
-    let clock = Instant::now();
-    let (run, _) = std::thread::scope(|s| {
-        s.spawn(move || {
-            std::thread::sleep(Duration::from_millis(100));
-            remote.cancel();
-        });
-        run_with(&p, &hands, control, &waiting)
+    let (run, after_cancel) = run_cancelled_at(&p, &hands, &waiting, |events| {
+        wait_for_event(events, |e| matches!(e, Event::WaitingForScreen { .. }));
     });
     assert!(
-        clock.elapsed() < Duration::from_secs(2),
-        "{:?}",
-        clock.elapsed()
+        after_cancel < Duration::from_secs(30),
+        "ended {after_cancel:?} after the cancel"
     );
     assert_eq!(run.report.verdict, Verdict::Cancelled);
     assert_eq!(run.report.attempts.len(), 1);

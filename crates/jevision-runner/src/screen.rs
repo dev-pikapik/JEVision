@@ -211,6 +211,27 @@ mod tests {
         let _ = fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
     }
 
+    /// A process another thread starts shares every open file until it begins, so it shares the
+    /// lock's open file too: the screen has to come back at once all the same, and not when
+    /// that process has begun.
+    #[test]
+    fn the_screen_comes_back_while_a_starting_process_still_shares_the_file() {
+        let path = lock_file("shared");
+        let taken = ScreenLock::try_take(&path, &holder("Sign in"))
+            .unwrap()
+            .unwrap();
+        let shared = taken.file.try_clone().unwrap();
+        drop(taken);
+        assert!(
+            ScreenLock::try_take(&path, &holder("Checkout"))
+                .unwrap()
+                .is_ok(),
+            "the screen is still taken after its holder let go"
+        );
+        drop(shared);
+        let _ = fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
+    }
+
     #[test]
     fn a_holder_that_dies_gives_the_screen_back() {
         let path = lock_file("process");
