@@ -129,6 +129,18 @@ struct RunHistoryTests {
     return SavedRun(dir: run.dir, report: report)
   }
 
+  @Test func narrowingTheListClosesTheReportOfARunItHides() {
+    let base = Self.run("login", at: "2026-10-18T09:00:00.000Z")
+    let ci = SavedRun(dir: "/p/.jevision/runs/ci", report: Self.started(base) { $0.ci = Self.ci() }.report)
+    let local = SavedRun(dir: "/p/.jevision/runs/local", report: base.report)
+    let runs = [ci, local]
+    #expect(RunHistory.selection(ci.id, in: runs, from: nil) == ci.id)
+    #expect(RunHistory.selection(ci.id, in: runs, from: .ci) == ci.id)
+    #expect(RunHistory.selection(ci.id, in: runs, from: .schedule) == nil)
+    #expect(RunHistory.selection(local.id, in: runs, from: .thisMac) == local.id)
+    #expect(RunHistory.selection(nil, in: runs, from: .ci) == nil)
+  }
+
   @Test func runsAreToldApartByWhereTheyWereStarted() {
     let base = Self.run("login", at: "2026-10-18T09:00:00.000Z")
     let phone = Self.started(base) { $0.requestedBy = "Anna’s iPhone" }

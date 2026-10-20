@@ -360,6 +360,8 @@ private struct GitChip: View {
       if !status.changes.isEmpty {
         Button("Commit…") { openWindow(id: SceneID.commit) }
           .buttonStyle(.borderless)
+          .fixedSize()
+          .layoutPriority(1)
           .help(Text("Save a version of the changed tests (⌥⌘C)"))
       }
     }

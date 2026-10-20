@@ -35,7 +35,7 @@ struct DependenciesField: View {
         Text("Tests that must pass first. If one doesn’t, this test is blocked instead of run.")
       }
       if !dependsOn.isEmpty {
-        Tokens {
+        WrapLayout {
           ForEach(dependsOn, id: \.self) { path in
             let url = RelativePath.resolve(path, in: folder)
             let name = names[url]
@@ -133,38 +133,5 @@ private struct Token: View {
     .padding(.vertical, 3)
     .background(.tint.opacity(0.15), in: .capsule)
     .accessibilityElement(children: .contain)
-  }
-}
-
-/// Lays its views out in rows, starting a new row when the next one doesn't fit.
-private struct Tokens: Layout {
-  var spacing: CGFloat = 6
-
-  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-    let frames = layout(width: proposal.width ?? .infinity, subviews: subviews)
-    return CGSize(width: frames.map(\.maxX).max() ?? 0, height: frames.map(\.maxY).max() ?? 0)
-  }
-
-  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-    for (frame, view) in zip(layout(width: bounds.width, subviews: subviews), subviews) {
-      view.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
-    }
-  }
-
-  private func layout(width: CGFloat, subviews: Subviews) -> [CGRect] {
-    var frames: [CGRect] = []
-    var point = CGPoint.zero
-    var rowHeight: CGFloat = 0
-    for view in subviews {
-      let size = view.sizeThatFits(ProposedViewSize(width: width, height: nil))
-      if point.x > 0, point.x + size.width > width {
-        point = CGPoint(x: 0, y: point.y + rowHeight + spacing)
-        rowHeight = 0
-      }
-      frames.append(CGRect(origin: point, size: CGSize(width: min(size.width, width), height: size.height)))
-      point.x += size.width + spacing
-      rowHeight = max(rowHeight, size.height)
-    }
-    return frames
   }
 }

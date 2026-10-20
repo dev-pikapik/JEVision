@@ -125,6 +125,9 @@ pub struct TestHealth {
     pub runs_30_days: u32,
     /// Share of those runs that passed, in whole percent rounded down; `None` without runs.
     pub pass_percent: Option<u32>,
+    /// Of the runs that passed, those that passed only on a retry, after failing: a pass the
+    /// percentage counts, but not a clean one.
+    pub passed_on_retry: u32,
     /// The last 20 runs that passed or failed, oldest first.
     pub recent: Vec<HealthMark>,
     /// The block the failed runs of the 30 days stopped at most often; of two blocks as
@@ -236,6 +239,10 @@ pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
         .iter()
         .filter(|run| run.verdict == Verdict::Passed)
         .count();
+    let passed_on_retry = month
+        .iter()
+        .filter(|run| run.verdict == Verdict::Passed && run.flaky)
+        .count();
 
     let mut points: Vec<(FailurePoint, usize)> = Vec::new();
     for (index, step) in month.iter().enumerate().filter_map(|(i, run)| {
@@ -286,6 +293,7 @@ pub fn test_health(runs: Vec<RunReport>, now_ms: i64) -> TestHealth {
         runs_30_days: u32::try_from(month.len()).unwrap_or(u32::MAX),
         pass_percent: (!month.is_empty())
             .then(|| u32::try_from(passed * 100 / month.len()).unwrap_or(100)),
+        passed_on_retry: u32::try_from(passed_on_retry).unwrap_or(u32::MAX),
         recent,
         fails_most_at: points
             .into_iter()
@@ -895,6 +903,7 @@ mod tests {
         let health = test_health(runs, now);
         assert_eq!(health.runs_30_days, 7);
         assert_eq!(health.pass_percent, Some(28));
+        assert_eq!(health.passed_on_retry, 1);
         assert_eq!(
             health.recent,
             [
