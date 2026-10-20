@@ -15,6 +15,7 @@ It is written in Rust (the core: file format, validation, runner, reports, MCP s
 - Checks by meaning: describe the screen in words and an AI model decides (Anthropic, OpenAI, Gemini, JEV by TypeSafe AI, Ollama, LM Studio or any OpenAI-compatible server).
 - Environments (`jevision.environments.json`), data-driven tests from CSV (`useData`), retries and quarantine (`jevision.project.json`), schedules (`jevision.schedule.json`), run notifications to Slack, Telegram or email (`jevision.notifications.json`, one summary per batch, secrets in the Keychain or in `JEVISION_SLACK_WEBHOOK`, `JEVISION_TELEGRAM_TOKEN`, `JEVISION_SMTP_PASSWORD`; `--no-notify` turns them off).
 - Git and GitHub inside the app: commit, pull, push, branches, a visual diff of tests and pictures, pull requests.
+- CI: the generated GitHub Actions workflow uploads the artifact `jevision-reports` (JUnit, HTML and the run reports). `jevision run` in CI records the CI system, repository, branch, commit, pull request and run page in each report. Signed in to GitHub, the app fetches those runs into the Runs list (marked "CI · pull request #N" or "CI · branch X", each once), and a filter shows runs by This Mac, Schedule, iPhone or CI.
 - iPhone remote: browse tests, start a run (or one row of its data table), follow it and read reports from a paired iPhone.
 
 ## Block types

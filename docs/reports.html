@@ -137,6 +137,9 @@
 </ul>
 <p>The <code>.jevision</code> folder holds results, not tests, so keep it out of git. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>.</p>
 
+<h2 id="ci-runs">Runs from CI</h2>
+<p>Runs made by a <a href="cli.html#ci">CI job</a> can join the history. The app fetches them from GitHub when you open <strong>Runs</strong>, or when you click the refresh button there, if you are signed in to GitHub and the project's repository is on GitHub. Each one is marked <strong>CI · pull request #482</strong> or <strong>CI · branch main</strong>, and its report has a link to the run on GitHub. Use the filter above the list to show only the runs from <strong>CI</strong>, this Mac, a schedule or an iPhone. A run from CI doesn't change the result shown for a test in the list of tests, which is about this Mac. See <a href="cli.html#ci-runs">CI runs in the app</a>.</p>
+
 <h2 id="privacy">What reports never contain</h2>
 <ul>
   <li><strong>Secret values.</strong> They are masked wherever they would appear.</li>
