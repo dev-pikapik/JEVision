@@ -476,7 +476,7 @@ final class TestSession: @unchecked Sendable {
       console: console, blockCount: linear == true && request.startAt == nil ? flow?.blocks.count : nil
     ) { [input] in
       guard let input else { return run.resume() }
-      Self.resumeWhenIdle(run, input: input)
+      input.resumeWhenIdle(run)
     }
     console.line()
     input?.ignoreInput(for: Self.handsOffTime)
@@ -522,25 +522,6 @@ final class TestSession: @unchecked Sendable {
 
   /// Time to take the hand off the keyboard after pressing Return.
   private static let handsOffTime: TimeInterval = 1.5
-  /// How long the mouse and keyboard must rest before a paused test goes on.
-  static let idleTime: TimeInterval = 3
-
-  /// A person took the mouse or keyboard and the test paused: it goes on once they let go for
-  /// `idleTime`, unless the run is stopped first.
-  static func resumeWhenIdle(_ run: TestRun, input: InputWatcher) {
-    Thread.detachNewThread {
-      var quietSince = Date()
-      while !run.isCancelled() {
-        Thread.sleep(forTimeInterval: 0.25)
-        if input.takeUserInput() {
-          quietSince = Date()
-        } else if Date().timeIntervalSince(quietSince) >= Self.idleTime {
-          run.resume()
-          return
-        }
-      }
-    }
-  }
 
   private func printVerdict(_ report: RunReport, dir: String, html: String, to console: Console) {
     let took = duration(report.durationMs)
@@ -683,7 +664,7 @@ private final class Progress: RunListener, @unchecked Sendable {
       guard reason == .userInput else { return }
       console.line(
         console.paint(
-          "  Paused: someone used the mouse or keyboard. The test goes on when they rest for \(Int(TestSession.idleTime)) seconds.",
+          "  Paused: someone used the mouse or keyboard. The test goes on when they rest for \(Int(InputWatcher.idleTime)) seconds.",
           .yellow))
       paused()
     case .resumed:

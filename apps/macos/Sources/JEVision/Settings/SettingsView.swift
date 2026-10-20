@@ -242,6 +242,7 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .remote, id: "remoteAccess", title: String(localized: "Allow remote access")),
         SettingsItem(tab: .remote, id: "confirmRuns", title: String(localized: "Ask on this Mac before a remote run")),
         SettingsItem(tab: .remote, id: "keepAwake", title: String(localized: "Keep this Mac awake while remote access is on")),
+        SettingsItem(tab: .remote, id: "addDevice", title: String(localized: "Add an iPhone or an assistant")),
         SettingsItem(tab: .remote, id: "relay", title: String(localized: "Relay")),
         SettingsItem(tab: .remote, id: "activityLog", title: String(localized: "Activity log")),
         SettingsItem(tab: .git, id: "repository", title: String(localized: "Repository")),

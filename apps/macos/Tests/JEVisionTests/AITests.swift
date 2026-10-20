@@ -285,10 +285,10 @@ struct MCPServersTests {
 
 @MainActor
 struct AssistantRequestsTests {
-  private func request(tests: [String], environment: String? = nil) -> AssistantRequest {
+  private func request(tests: [String], environment: String? = nil, remote: String? = nil) -> AssistantRequest {
     AssistantRequest(
-      id: "1", assistant: "Claude Code", project: "/Users/me/Shop", tests: tests, apps: ["com.example.mail", "com.example.notes"],
-      environment: environment, expiresAt: 0)
+      id: "1", assistant: "Claude Code", remote: remote, project: "/Users/me/Shop", tests: tests,
+      apps: ["com.example.mail", "com.example.notes"], environment: environment, expiresAt: 0)
   }
 
   @Test func theQuestionSaysWhoWantsToDoWhat() {
@@ -304,6 +304,13 @@ struct AssistantRequestsTests {
     let many = AssistantRequests.details(request(tests: (1...8).map { "t\($0).flow.json" })) { $0 }
     #expect(many.contains("t5\n") && !many.contains("t6"), "five tests are named, the rest counted")
     #expect(many.contains("3"))
+  }
+
+  @Test func anAssistantOnAnotherComputerSaysWhichOne() {
+    let near = AssistantRequests.details(request(tests: ["a.flow.json"])) { $0 }
+    #expect(!near.contains("Anna’s MacBook") && !near.contains("network"))
+    let far = AssistantRequests.details(request(tests: ["a.flow.json"], remote: "Anna’s MacBook")) { $0 }
+    #expect(far.contains("Anna’s MacBook") && far.contains("network"))
   }
 
   @Test func theAppAndTheServersMeetInOneFolder() throws {

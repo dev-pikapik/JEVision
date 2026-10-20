@@ -11,7 +11,7 @@ struct RemoteSettingsView: View {
   var body: some View {
     @Bindable var remote = remote
     Form {
-      SettingsHeader(tab: .remote, text: Text("Run tests and read reports from your iPhone. Tests and screenshots stay on this Mac."))
+      SettingsHeader(tab: .remote, text: Text("Run tests and read reports from your iPhone, or let an AI assistant on another computer use this Mac. Tests and screenshots stay on this Mac."))
       Section {
         Toggle(isOn: $remote.isEnabled) {
           RowLabel(Text("Allow remote access"), status)
@@ -61,15 +61,17 @@ struct RemoteSettingsView: View {
       }
     }
     .alert(
-      "Revoke access for “\(revoking?.name ?? "")”?", isPresented: Binding(get: { revoking != nil }, set: { if !$0 { revoking = nil } }), presenting: revoking
+      "Disconnect “\(revoking?.name ?? "")”?", isPresented: Binding(get: { revoking != nil }, set: { if !$0 { revoking = nil } }), presenting: revoking
     ) { device in
-      Button("Revoke", role: .destructive) {
+      Button("Disconnect", role: .destructive) {
         remote.revoke(device)
         revoking = nil
       }
       Button("Cancel", role: .cancel) { revoking = nil }
-    } message: { _ in
-      Text("The device disconnects now. To use it again, pair it with a new code.")
+    } message: { device in
+      device.kind == .assistant
+        ? Text("The assistant disconnects now and what it started stops. To use it again, pair it with a new code.")
+        : Text("The device disconnects now. To use it again, pair it with a new code.")
     }
     .alert(
       "Couldn’t change the device", isPresented: Binding(get: { remote.failure != nil }, set: { if !$0 { remote.failure = nil } }), presenting: remote.failure
@@ -84,7 +86,7 @@ struct RemoteSettingsView: View {
   private var status: Text {
     switch remote.phase {
     case .off:
-      Text("Paired iPhones can’t reach this Mac.")
+      Text("Paired iPhones and assistants can’t reach this Mac.")
     case .starting:
       Text("Turning on…")
     case .on:
@@ -112,25 +114,68 @@ struct RemoteSettingsView: View {
         Text("Remote access is off until it can turn on.")
       }
     } else {
-      HStack(alignment: .center, spacing: 18) {
-        code
-        VStack(alignment: .leading, spacing: 6) {
-          Text("1. Open JEVision on your iPhone")
-          Text("2. Tap **Pair a Mac**")
-          Text("3. Point the camera at this code")
-          countdown
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+      Picker("Add", selection: Bindable(remote).newcomer) {
+        Text("iPhone").tag(RemoteAccess.Newcomer.iPhone)
+        Text("Assistant on another computer").tag(RemoteAccess.Newcomer.assistant)
       }
-      .padding(.vertical, 6)
-      Picker("The next device can", selection: Bindable(remote).nextPermission) {
-        Text("Can run tests").tag(DevicePermission.run)
-        Text("View only").tag(DevicePermission.view)
+      .pickerStyle(.segmented)
+      .settingAnchor("addDevice")
+      switch remote.newcomer {
+      case .iPhone:
+        HStack(alignment: .center, spacing: 18) {
+          code
+          VStack(alignment: .leading, spacing: 6) {
+            Text("1. Open JEVision on your iPhone")
+            Text("2. Tap **Pair a Mac**")
+            Text("3. Point the camera at this code")
+            countdown
+              .font(.callout)
+              .foregroundStyle(.secondary)
+              .padding(.top, 4)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 6)
+        Picker("The next device can", selection: Bindable(remote).nextPermission) {
+          Text("Can run tests").tag(DevicePermission.run)
+          Text("View only").tag(DevicePermission.view)
+        }
+      case .assistant:
+        assistantPairing
       }
     }
+  }
+
+  /// The command that pairs an assistant on another computer, and the one its settings run after.
+  @ViewBuilder private var assistantPairing: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      if let offer = remote.offer, remote.justPaired == nil {
+        Text("1. On the other computer, run this in Terminal. It needs the jevision command line tool.")
+        CommandText(RemoteAccess.pairCommand(for: offer))
+      }
+      if remote.justPaired != nil {
+        Label {
+          Text("Add JEVision to the MCP servers of your assistant there, such as Claude, Cursor or Copilot, with:")
+        } icon: {
+          Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        }
+      } else if remote.offer != nil {
+        Text("2. Then add JEVision to the MCP servers of your assistant there, such as Claude, Cursor or Copilot, with:")
+      } else {
+        ProgressView().controlSize(.small)
+      }
+      if remote.offer != nil || remote.justPaired != nil {
+        CommandText(RemoteAccess.connectCommand())
+      }
+      countdown
+        .font(.callout)
+        .foregroundStyle(.secondary)
+      Text("The assistant may use this Mac’s tools as far as Settings → AI → Assistants allows. Turn it off below at any time.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+    }
+    .fixedSize(horizontal: false, vertical: true)
+    .padding(.vertical, 6)
   }
 
   private var code: some View {
@@ -179,41 +224,54 @@ struct RemoteSettingsView: View {
   @ViewBuilder private var devices: some View {
     Section("Paired devices") {
       if remote.devices.isEmpty {
-        Text("No devices yet. Scan the code with your iPhone to pair it.")
+        Text("No devices yet. Scan the code with your iPhone, or pair an assistant, to add one.")
           .foregroundStyle(.secondary)
       }
       ForEach(remote.devices, id: \.id) { device in
         let online = remote.connected.contains(device.id)
         LabeledContent {
           HStack {
-            Picker(
-              "Permission",
-              selection: Binding(get: { device.permission }, set: { remote.setPermission($0, of: device) })
-            ) {
-              Text("Can run tests").tag(DevicePermission.run)
-              Text("View only").tag(DevicePermission.view)
+            switch device.kind {
+            case .phone:
+              Picker(
+                "Permission",
+                selection: Binding(get: { device.permission }, set: { remote.setPermission($0, of: device) })
+              ) {
+                Text("Can run tests").tag(DevicePermission.run)
+                Text("View only").tag(DevicePermission.view)
+              }
+              .labelsHidden()
+              .fixedSize()
+            case .assistant:
+              Toggle("Assistant", isOn: Binding(get: { device.assistant }, set: { remote.setAssistant($0, of: device) }))
+                .help("Lets it use this Mac’s tools. Turning it off disconnects it now.")
             }
-            .labelsHidden()
-            .fixedSize()
-            Button("Revoke", role: .destructive) { revoking = device }
+            Button("Disconnect", role: .destructive) { revoking = device }
           }
         } label: {
           Label {
-            RowLabel(Text(device.name), online ? Text("Connected now") : lastSeen(device))
+            RowLabel(Text(device.name), Text("\(kindName(device)) · \(state(device, online: online))"))
           } icon: {
-            Image(systemName: "iphone")
+            Image(systemName: device.kind == .assistant ? "terminal" : "iphone")
               .foregroundStyle(online ? .green : .secondary)
           }
         }
+        .accessibilityElement(children: .contain)
       }
     }
   }
 
-  private func lastSeen(_ device: PairedDevice) -> Text {
-    guard let seen = device.lastSeen else {
-      return Text("Paired \(Date(timeIntervalSince1970: TimeInterval(device.pairedAt)), format: .relative(presentation: .named))")
+  private func kindName(_ device: PairedDevice) -> String {
+    device.kind == .assistant ? String(localized: "Assistant") : String(localized: "iPhone")
+  }
+
+  private func state(_ device: PairedDevice, online: Bool) -> String {
+    if online { return String(localized: "Connected now") }
+    func ago(_ seconds: Int64) -> String {
+      Date(timeIntervalSince1970: TimeInterval(seconds)).formatted(.relative(presentation: .named))
     }
-    return Text("Last connected \(Date(timeIntervalSince1970: TimeInterval(seen)), format: .relative(presentation: .named))")
+    guard let seen = device.lastSeen else { return String(localized: "Paired \(ago(device.pairedAt))") }
+    return String(localized: "Last connected \(ago(seen))")
   }
 
   @ViewBuilder private var relayPicker: some View {

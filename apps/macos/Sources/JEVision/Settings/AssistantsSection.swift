@@ -6,6 +6,7 @@ import SwiftUI
 /// `jevision mcp`, and how to connect one.
 struct AssistantsSection: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(SettingsModel.self) private var settings
   @AppStorage(AISettings.assistantsRunKey) private var mayRun = false
   @AppStorage(AISettings.assistantsCaptureKey) private var mayCapture = false
   @AppStorage(AISettings.assistantsAskFirstKey) private var askFirst = true
@@ -45,12 +46,19 @@ struct AssistantsSection: View {
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
       }
-      ForEach(assistants, id: \.name) { AssistantRow(assistant: $0) }
+      ForEach(assistants, id: \.rowID) { AssistantRow(assistant: $0) }
       if assistants.contains(where: { !$0.connected }) {
         Button("Forget the Ones Not Connected") {
           forgetAssistants(folder: AISettings.assistantsFolder.path)
           Task { await reload() }
         }
+      }
+      LabeledContent {
+        Button("Add…") { settings.selection = .remote }
+      } label: {
+        RowLabel(
+          Text("Assistants on other computers"),
+          Text("They connect over the network once you pair them, and use the same settings as above."))
       }
     } header: {
       Text("Connected Assistants")
@@ -109,6 +117,11 @@ struct AssistantsSection: View {
   }
 }
 
+extension ConnectedAssistant {
+  /// One row per assistant and computer: the same assistant on two computers is two rows.
+  var rowID: String { "\(name)\n\(remote ?? "")" }
+}
+
 /// One assistant that connected: who it is, whether it is connected, and what it did last.
 private struct AssistantRow: View {
   let assistant: ConnectedAssistant
@@ -126,6 +139,11 @@ private struct AssistantRow: View {
     } label: {
       VStack(alignment: .leading, spacing: 2) {
         Text(verbatim: assistant.version.isEmpty ? assistant.title : "\(assistant.title) \(assistant.version)")
+        if let computer = assistant.remote {
+          Label("Over the network: \(computer)", systemImage: "network")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
         Text("First connected \(Self.when(assistant.firstConnectedAt))")
           .font(.subheadline)
           .foregroundStyle(.secondary)

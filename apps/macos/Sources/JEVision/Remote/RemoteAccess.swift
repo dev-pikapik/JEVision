@@ -29,15 +29,27 @@ final class RemoteAccess {
     var id: String { rawValue }
   }
 
+  /// What the next device to pair is.
+  enum Newcomer: Equatable {
+    case iPhone
+    /// An AI assistant on another computer, through `jevision mcp`.
+    case assistant
+  }
+
   private(set) var phase = Phase.off
+  /// Whether the code shown pairs an iPhone or an assistant on another computer.
+  var newcomer = Newcomer.iPhone {
+    didSet { if newcomer != oldValue, offer != nil || pendingCode { showCode() } }
+  }
   /// What the next phone to pair may do.
   var nextPermission = DevicePermission.run {
-    didSet { if nextPermission != oldValue, offer != nil { showCode() } }
+    didSet { if nextPermission != oldValue, newcomer == .iPhone, offer != nil { showCode() } }
   }
   /// The pairing code shown, while Settings shows it.
   private(set) var offer: PairingCode?
+  /// The code as a picture an iPhone scans; none for an assistant, who types it.
   private(set) var qrCode: CGImage?
-  /// The phone that paired with the code shown last.
+  /// The device that paired with the code shown last.
   private(set) var justPaired: String?
   private(set) var devices: [PairedDevice] = []
   /// Ids of the devices connected now.
@@ -125,7 +137,9 @@ final class RemoteAccess {
           localDiscovery: true,
           // n0's address lookup is a third party, like its relays.
           globalDiscovery: relayChoice == .standard),
-        delegate: RemoteBridge(runs: runs))
+        delegate: RemoteBridge(runs: runs),
+        // Assistants on other computers get what the ones on this Mac get.
+        assistants: MacAssistantHost(readiness: { [runs, name = Self.macName] in Self.assistantBlocker(runs: runs, mac: name) }))
     } catch {
       phase = .failed(RemoteText.error(error))
       return
@@ -208,9 +222,15 @@ final class RemoteAccess {
     }
     pendingCode = false
     do {
-      let offer = try host.createOffer(permission: nextPermission)
-      self.offer = offer
-      qrCode = Self.qrCode(offer.url)
+      switch newcomer {
+      case .iPhone:
+        let offer = try host.createOffer(permission: nextPermission)
+        self.offer = offer
+        qrCode = Self.qrCode(offer.url)
+      case .assistant:
+        offer = try host.createAssistantOffer()
+        qrCode = nil
+      }
     } catch {
       offer = nil
       qrCode = nil
@@ -225,6 +245,16 @@ final class RemoteAccess {
     offer = nil
     qrCode = nil
     justPaired = nil
+  }
+
+  /// What the person types in Terminal on the other computer to pair an assistant with this Mac.
+  static func pairCommand(for offer: PairingCode) -> String {
+    "jevision mcp --pair \(shellWord(offer.url))"
+  }
+
+  /// What the assistant's MCP settings run on the other computer once it is paired.
+  static func connectCommand(mac: String = macName) -> String {
+    "jevision mcp --remote \(shellWord(mac))"
   }
 
   /// Whole seconds until the code shown stops working; 0 once it has.
@@ -262,14 +292,25 @@ final class RemoteAccess {
     perform { try $0.setPermission(deviceId: device.id, permission: permission) }
   }
 
+  /// Lets an assistant use the tools of this Mac or not. Turning it off ends what it started.
+  func setAssistant(_ allowed: Bool, of device: PairedDevice) {
+    perform { try $0.setAssistantEnabled(deviceId: device.id, enabled: allowed) }
+  }
+
   func revoke(_ device: PairedDevice) {
     perform { try $0.revoke(deviceId: device.id) }
   }
 
-  private func perform(_ change: (RemoteHost) throws -> Void) {
+  /// Changes a device off the main thread: disconnecting an assistant waits for its run to stop.
+  private func perform(_ change: @escaping @Sendable (RemoteHost) throws -> Void) {
     guard let host else { return }
-    do { try change(host) } catch { failure = RemoteText.error(error) }
-    refresh()
+    Task.detached {
+      let result = Result { try change(host) }
+      await MainActor.run {
+        if case .failure(let error) = result { self.failure = RemoteText.error(error) }
+        self.refresh()
+      }
+    }
   }
 
   // MARK: Projects
@@ -319,6 +360,23 @@ final class RemoteAccess {
   /// The Mac's name as phones show it, as set in System Settings → General → Sharing.
   static var macName: String {
     Host.current().localizedName ?? String(localized: "Mac")
+  }
+
+  /// What keeps an assistant on another computer from running a test now, in words for it to
+  /// pass on; `nil` when nothing does. What a person at the terminal of this Mac would be told too.
+  nonisolated static func assistantBlocker(runs: RunCenter, mac: String) -> String? {
+    if MacHands.screenIsLocked {
+      return "The screen of “\(mac)” is locked, so tests can’t run there. Ask the person at that Mac to unlock it, then try again."
+    }
+    let missing = [
+      CGPreflightScreenCaptureAccess() ? nil : "record the screen",
+      AXIsProcessTrusted() ? nil : "control the computer",
+    ].compactMap(\.self)
+    if !missing.isEmpty {
+      return "JEVision on “\(mac)” isn’t allowed to \(missing.joined(separator: " and ")) yet. The person at that Mac can allow it in JEVision → Settings → Permissions."
+    }
+    let busy = DispatchQueue.main.sync { MainActor.assumeIsolated { runs.isRunning || runs.blocked != nil } }
+    return busy ? "A test is already running in JEVision on “\(mac)”. Try again when it has ended." : nil
   }
 
   nonisolated private static let keyService = "JEVision Remote"

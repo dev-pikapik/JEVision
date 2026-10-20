@@ -2,19 +2,44 @@ import Foundation
 import JEVisionCore
 import JEVisionHands
 
-/// `jevision mcp`: lets AI assistants on this Mac read, edit and run the project's tests. The
-/// server itself lives in the core; this side gives it the Mac: settings, hands and secrets.
+/// What `jevision mcp` was asked to do.
+enum MCPAction: Equatable {
+  /// Serve the tests of a project on this Mac.
+  case serve
+  /// Pair this computer with the Mac showing this code.
+  case pair(String)
+  /// Serve the tools of a paired Mac, as the Mac lets this computer use them.
+  case remote(String)
+  /// Forget a paired Mac.
+  case forget(String)
+}
+
+/// `jevision mcp`: lets AI assistants on this Mac, or on a Mac they are paired with, read, edit
+/// and run the project's tests. The server itself lives in the core; this side gives it the Mac:
+/// settings, hands and secrets, or the key and the list of Macs of this computer.
 struct MCPCommand {
+  /// The project folder on this Mac; with `.remote`, the name of the project the other Mac shares.
   let project: String?
+  var action = MCPAction.serve
 
   func execute() -> ExitStatus {
+    switch action {
+    case .serve: serveHere()
+    case .pair(let link): pair(link)
+    case .remote(let name): serveRemote(name)
+    case .forget(let name): forget(name)
+    }
+  }
+
+  private func serveHere() -> ExitStatus {
     guard let folder = project ?? Self.defaultProject() else {
       Console.standardError.line(
         "jevision: name the project folder with --project: the assistant started jevision in /, which is no project.")
       return .failure
     }
     do {
-      try serveAssistants(project: folder, host: AssistantBridge())
+      try serveAssistants(
+        project: folder, host: MacAssistantHost(readiness: { Readiness.problem() }))
       return .ok
     } catch AssistantServerError.NoProject(let path) {
       Console.standardError.line("jevision: there is no folder “\(path)”")
@@ -22,6 +47,74 @@ struct MCPCommand {
       Console.standardError.line("jevision: \(error.localizedDescription)")
     }
     return .failure
+  }
+
+  private func pair(_ link: String) -> ExitStatus {
+    do {
+      let key = try ComputerKey.existingOrNew()
+      let mac = try pairRemoteAssistant(link: link, computerName: Self.computerName, key: key)
+      try RemoteMacs.standard.save(mac)
+      Console.standardOutput.line(
+        """
+        Paired with “\(mac.name)”. Add it to the MCP servers of your assistant, such as Claude, Cursor or Copilot, with:
+
+          jevision mcp --remote \(shellWord(mac.name))
+
+        The assistant can then use the tools of that Mac as far as the person there allows it in
+        JEVision → Settings → iPhone & Remote and Settings → AI → Assistants.
+        """)
+      return .ok
+    } catch {
+      Console.standardError.line("jevision: \(error.localizedDescription)")
+      return .failure
+    }
+  }
+
+  private func serveRemote(_ name: String) -> ExitStatus {
+    do {
+      guard let mac = try pairedMac(name) else { return .failure }
+      guard let key = ComputerKey.existing() else {
+        Console.standardError.line(
+          "jevision: the key of this computer isn’t in the Keychain anymore. Pair it again with `jevision mcp --pair`.")
+        return .failure
+      }
+      try serveRemoteAssistant(mac: mac, key: key, project: project)
+      return .ok
+    } catch {
+      Console.standardError.line("jevision: \(error.localizedDescription)")
+      return .failure
+    }
+  }
+
+  private func forget(_ name: String) -> ExitStatus {
+    do {
+      guard let mac = try pairedMac(name) else { return .failure }
+      try RemoteMacs.standard.remove(mac)
+      if try RemoteMacs.standard.all().isEmpty { try ComputerKey.remove() }
+      Console.standardOutput.line(
+        "Forgot “\(mac.name)”. The Mac still lists this computer until the person there disconnects it in JEVision → Settings → iPhone & Remote.")
+      return .ok
+    } catch {
+      Console.standardError.line("jevision: \(error.localizedDescription)")
+      return .failure
+    }
+  }
+
+  /// The paired Mac that `name` means; says why on standard error and returns nil when it
+  /// isn't exactly one.
+  private func pairedMac(_ name: String) throws -> HostRecord? {
+    let macs = try RemoteMacs.standard.matching(name)
+    if macs.count == 1 { return macs[0] }
+    Console.standardError.line(
+      macs.isEmpty
+        ? "jevision: this computer isn’t paired with a Mac called “\(name)”. Pair it in JEVision on that Mac: Settings → iPhone & Remote → Add an assistant."
+        : "jevision: several paired Macs are called “\(name)”. Name one by the start of its id: \(macs.map { String($0.hostId.prefix(8)) }.joined(separator: ", ")).")
+    return nil
+  }
+
+  /// This computer's name as the Macs it pairs with list it.
+  static var computerName: String {
+    Host.current().localizedName ?? ProcessInfo.processInfo.hostName
   }
 
   /// The nearest folder at or above the current one that has a `.jevision` folder, as the app
@@ -33,69 +126,5 @@ struct MCPCommand {
       folder = (folder as NSString).deletingLastPathComponent
     }
     return current == "/" ? nil : current
-  }
-}
-
-/// The Mac's side of the server. Reads the settings at every call, so a switch turned off in
-/// the app applies at once.
-final class AssistantBridge: AssistantHost, @unchecked Sendable {
-  private let lock = NSLock()
-  /// Watches the person's mouse and keyboard while a run goes.
-  private var input: InputWatcher?
-
-  func permissions() -> AssistantPermissions {
-    let settings = AISettings.app
-    settings.refresh()
-    return AssistantPermissions(
-      runTests: settings.assistantsMayRun, screenshots: settings.assistantsMayCapture,
-      askFirst: settings.assistantsAskFirst)
-  }
-
-  func sharedFolder() -> String {
-    AISettings.assistantsFolder.path
-  }
-
-  func readinessProblem() -> String? {
-    Readiness.problem()
-  }
-
-  func startRun(run: TestRun) throws -> Hands {
-    let input = InputWatcher()
-    // Esc Esc stops the run right on the watcher's thread.
-    guard input.start(onEmergencyStop: { run.cancel() }) else {
-      throw HandsError.Failed(
-        reason: "macOS didn’t let jevision watch the keyboard, so pressing Esc twice couldn’t stop the test. The person at this Mac can allow Accessibility for the app that started jevision.")
-    }
-    lock.withLock { self.input = input }
-    return MacHands(input: input, isCancelled: { run.isCancelled() })
-  }
-
-  func runPaused(run: TestRun) {
-    guard let input = lock.withLock({ input }) else { return run.resume() }
-    TestSession.resumeWhenIdle(run, input: input)
-  }
-
-  func runEnded() {
-    lock.withLock {
-      input?.stop()
-      input = nil
-    }
-  }
-
-  func secrets() -> SecretSource {
-    StoredSecrets()
-  }
-
-  func runOptions() -> RunOptions {
-    let ai = AISettings.app
-    let videos = VideoSettings.app
-    return RunOptions(
-      startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly, fallback: ai.fallback(),
-      providers: ai.namedProviders, usage: ai.usage, video: videos.mode, keepVideosDays: videos.keepDays)
-  }
-
-  func capture(app: String) throws -> Screenshot {
-    if MacHands.screenIsLocked { throw HandsError.ScreenLocked }
-    return try MacHands(input: InputWatcher(), isCancelled: { false }).capture(app: app)
   }
 }

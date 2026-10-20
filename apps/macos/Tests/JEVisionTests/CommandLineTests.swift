@@ -96,8 +96,15 @@ struct CommandLineArgumentTests {
   }
 
   @Test func assistantServer() throws {
-    #expect(try Command.parse(["mcp"]) == .mcp(project: nil))
-    #expect(try Command.parse(["mcp", "--project", "p"]) == .mcp(project: "p"))
+    #expect(try Command.parse(["mcp"]) == .mcp(project: nil, action: .serve))
+    #expect(try Command.parse(["mcp", "--project", "p"]) == .mcp(project: "p", action: .serve))
+    #expect(try Command.parse(["mcp", "--pair", "jevision://assistant?x"]) == .mcp(project: nil, action: .pair("jevision://assistant?x")))
+    #expect(try Command.parse(["mcp", "--remote", "Studio"]) == .mcp(project: nil, action: .remote("Studio")))
+    #expect(try Command.parse(["mcp", "--remote=Studio", "--project", "Shop"]) == .mcp(project: "Shop", action: .remote("Studio")))
+    #expect(try Command.parse(["mcp", "--forget", "Studio"]) == .mcp(project: nil, action: .forget("Studio")))
+    #expect(throws: UsageError.self) { try Command.parse(["mcp", "--remote", "Studio", "--forget", "Studio"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["mcp", "--pair", "x", "--project", "p"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["mcp", "--remote", " "]) }
     #expect(try Command.parse(["mcp", "-h"]) == .help("mcp"))
     #expect(throws: UsageError.self) { try Command.parse(["mcp", "p"]) }
 
