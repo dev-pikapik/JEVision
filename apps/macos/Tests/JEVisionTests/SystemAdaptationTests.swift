@@ -135,7 +135,7 @@ struct StatusShapeTests {
   }
 }
 
-struct GuideTests {
+struct HelpGuideTests {
   @Test func aGuideOpensFromTheAppWhenItHasTheDocumentation() throws {
     let root = FileManager.default.temporaryDirectory.appending(path: "docs-\(UUID().uuidString)")
     let docs = root.appending(path: "docs")

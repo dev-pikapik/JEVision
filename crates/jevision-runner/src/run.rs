@@ -11,9 +11,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    BlockKind, Blocker, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE,
-    ExpectStatus, FileState, Flow, PROJECT_FILE, Point, ProjectSettings, Rect, Reference, Severity,
-    THEN, Target, WaitUntil, dark_variant, else_if_edge,
+    BlockKind, Blocker, ClipboardAction, Compare, Condition, DEFAULT_WAIT_TIMEOUT_MS,
+    DatabaseExpect, ELSE, ExpectStatus, FileState, Flow, PROJECT_FILE, Point, ProjectSettings,
+    Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil, dark_variant, else_if_edge,
 };
 
 use crate::control::{Cancelled, PauseReason};
@@ -983,6 +983,7 @@ impl Exec<'_> {
                 target,
                 button,
                 double,
+                modifiers,
                 wait_for_change,
                 next,
             } => {
@@ -990,7 +991,7 @@ impl Exec<'_> {
                 self.hands(id, |h| h.activate(&app))?;
                 let before = self.snapshot(step, "before")?;
                 let at = self.locate(t, id, target, before.as_ref(), step)?;
-                self.hands(id, |h| h.click(&app, at, *button, *double))?;
+                self.hands(id, |h| h.click(&app, at, *button, *double, *modifiers))?;
                 if *wait_for_change {
                     self.wait_for_change(id, before, "run.click.noChange")?;
                 }
@@ -1016,6 +1017,8 @@ impl Exec<'_> {
             BlockKind::Drag {
                 from,
                 to,
+                button,
+                modifiers,
                 wait_for_change,
                 next,
             } => {
@@ -1026,7 +1029,7 @@ impl Exec<'_> {
                 let start = self.locate(t, id, from, before.as_ref(), step)?;
                 let end = self.locate(t, id, to, before.as_ref(), step)?;
                 let path = drag_path(start, end);
-                self.hands(id, |h| h.drag(&app, &path))?;
+                self.hands(id, |h| h.drag(&app, &path, *button, *modifiers))?;
                 if *wait_for_change {
                     self.wait_for_change(id, before, "run.action.noChange")?;
                 }
@@ -1061,7 +1064,13 @@ impl Exec<'_> {
                 if let Some(target) = into {
                     let at = self.locate(t, id, target, before.as_ref(), step)?;
                     self.hands(id, |h| {
-                        h.click(&app, at, jevision_core::MouseButton::Left, false)
+                        h.click(
+                            &app,
+                            at,
+                            jevision_core::MouseButton::Left,
+                            false,
+                            jevision_core::Modifiers::default(),
+                        )
                     })?;
                 }
                 let text = self.substitute(id, text)?;
@@ -1213,7 +1222,17 @@ impl Exec<'_> {
             } => {
                 let mut values = Vec::with_capacity(inputs.len());
                 for input in inputs {
-                    values.push((&input.name, self.substitute(id, &input.value)?));
+                    let given = self.substitute(id, &input.value)?;
+                    let value = typed_value(t, input.kind, &given).ok_or_else(|| {
+                        fail(
+                            Failure::new("run.script.badInput")
+                                .with("block", id)
+                                .with("name", &input.name)
+                                .with("type", input.kind.name())
+                                .with("value", system::excerpt(&given)),
+                        )
+                    })?;
+                    values.push((&input.name, value));
                 }
                 static SCRIPTS: AtomicU64 = AtomicU64::new(0);
                 let work = std::env::temp_dir().join(format!(
@@ -1260,12 +1279,12 @@ impl Exec<'_> {
                                 .with("name", &out.name),
                         ));
                     };
-                    let value = system::typed(out.kind, value).ok_or_else(|| {
+                    let value = typed_value(t, out.kind, value).ok_or_else(|| {
                         fail(
                             Failure::new("run.script.badOutput")
                                 .with("block", id)
                                 .with("name", &out.name)
-                                .with("type", system::kind_name(out.kind))
+                                .with("type", out.kind.name())
                                 .with("value", system::excerpt(value)),
                         )
                     })?;
@@ -1474,6 +1493,67 @@ impl Exec<'_> {
                 if let Some(name) = save_as {
                     self.save(step, name, rows.first);
                 }
+                Ok(next.clone())
+            }
+            BlockKind::Clipboard { action, next } => {
+                match action {
+                    ClipboardAction::Put { text } => {
+                        let text = self.substitute(id, text)?;
+                        self.hands(id, |h| h.set_clipboard(&text))?;
+                    }
+                    ClipboardAction::Read { save_as } => {
+                        let text = self.hands(id, |h| h.clipboard())?;
+                        self.save(step, save_as, text);
+                    }
+                    ClipboardAction::Check { is, to, timeout_ms } => {
+                        let to = self.substitute(id, to)?;
+                        let mut last = String::new();
+                        let held = self.poll(id, Duration::from_millis(*timeout_ms), || {
+                            let text = self.hands(id, |h| h.clipboard())?;
+                            let passed = match system::compare(&text, *is, &to) {
+                                Ok(passed) => passed,
+                                // The clipboard may hold a number later, the other side won't.
+                                Err(value) if value == to => {
+                                    return Err(fail(
+                                        Failure::new("run.value.notNumber")
+                                            .with("block", id)
+                                            .with("value", value),
+                                    ));
+                                }
+                                Err(_) => false,
+                            };
+                            last = text;
+                            Ok(passed.then_some(()))
+                        })?;
+                        if held.is_none() {
+                            return Err(fail(
+                                Failure::new("run.clipboard.mismatch")
+                                    .with("block", id)
+                                    .with("test", system::test_name(*is))
+                                    .with("expected", &to)
+                                    .with("actual", system::excerpt(&last))
+                                    .with("seconds", seconds(*timeout_ms)),
+                            ));
+                        }
+                    }
+                }
+                Ok(next.clone())
+            }
+            BlockKind::DateTime {
+                save_as,
+                format,
+                shift,
+                next,
+            } => {
+                let text =
+                    system::date_time(chrono::Local::now(), format, *shift).map_err(|reason| {
+                        fail(
+                            Failure::new("run.dateTime.failed")
+                                .with("block", id)
+                                .with("reason", reason),
+                        )
+                    })?;
+                self.save(step, save_as, text);
                 Ok(next.clone())
             }
             BlockKind::RunTest { test, inputs, next } => {
@@ -2390,11 +2470,7 @@ impl Exec<'_> {
     /// A file another app keeps: an absolute path, one in the home folder (`~/…`) or one
     /// relative to the test.
     fn outside_path(&self, t: &TestFile, id: &str, path: &str) -> Result<PathBuf, Stop> {
-        let filled = self.substitute(id, path)?;
-        Ok(match filled.strip_prefix("~/") {
-            Some(rest) => PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(rest),
-            None => normalize(&t.dir.join(&filled)),
-        })
+        Ok(outside(t, &self.substitute(id, path)?))
     }
 
     /// Keeps `value` for `${var.NAME}` and shows it in the step, secrets masked.
@@ -2668,6 +2744,25 @@ fn copy_all(from: &Path, to: &Path) -> io::Result<()> {
         }
         fs::copy(from, to).map(|_| ())
     }
+}
+
+/// A file another app keeps, as `outside_path` reads it, from a path already filled in.
+fn outside(t: &TestFile, filled: &str) -> PathBuf {
+    match filled.strip_prefix("~/") {
+        Some(rest) => PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(rest),
+        None => normalize(&t.dir.join(filled)),
+    }
+}
+
+/// `text` as a script value of `kind`, written the way the script gets it or the run keeps it:
+/// a picture becomes the absolute path of a PNG file that is there.
+fn typed_value(t: &TestFile, kind: ValueKind, text: &str) -> Option<String> {
+    let value = kind.parse(text)?;
+    if kind != ValueKind::Image {
+        return Some(value);
+    }
+    let path = outside(t, &value);
+    system::is_png(&path).then(|| path.display().to_string())
 }
 
 /// Resolves `.` and `..` without touching the file system.

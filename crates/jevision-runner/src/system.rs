@@ -10,7 +10,10 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use std::{env, fs};
 
-use jevision_core::{FileState, HttpMethod, JsonStep, OutputKind, ScriptLanguage, ValueTest};
+use chrono::{DateTime, Days, Months, TimeDelta, TimeZone};
+use jevision_core::{
+    FileState, HttpMethod, JsonStep, ScriptLanguage, TimeShift, TimeUnit, ValueTest,
+};
 
 use crate::RunControl;
 
@@ -165,25 +168,74 @@ pub(crate) fn parse_outputs(text: &str) -> BTreeMap<String, String> {
     out
 }
 
-/// `value` as an output of `kind`: numbers as written, yes/no answers as `true` or `false`.
-pub(crate) fn typed(kind: OutputKind, value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    match kind {
-        OutputKind::Text => Some(value.to_owned()),
-        OutputKind::Number => number(trimmed).map(|_| trimmed.to_owned()),
-        OutputKind::Boolean => match trimmed.to_ascii_lowercase().as_str() {
-            "true" | "yes" | "1" => Some("true".to_owned()),
-            "false" | "no" | "0" => Some("false".to_owned()),
-            _ => None,
-        },
-    }
+/// Whether the file at `path` is a PNG picture.
+pub(crate) fn is_png(path: &Path) -> bool {
+    const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+    let mut head = [0; 8];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut head))
+        .is_ok_and(|()| head == SIGNATURE)
 }
 
-pub(crate) fn kind_name(kind: OutputKind) -> &'static str {
-    match kind {
-        OutputKind::Text => "text",
-        OutputKind::Number => "number",
-        OutputKind::Boolean => "boolean",
+/// `now` moved by `shift` and written as `format`; `Err` says why that cannot be done.
+pub(crate) fn date_time<Tz: TimeZone>(
+    now: DateTime<Tz>,
+    format: &str,
+    shift: Option<TimeShift>,
+) -> Result<String, String>
+where
+    Tz::Offset: std::fmt::Display,
+{
+    use std::fmt::Write;
+    let moved = match shift {
+        None => Some(now),
+        Some(TimeShift { amount, unit }) => {
+            let back = amount < 0;
+            let by = u64::from(amount.unsigned_abs());
+            let days = |n: u64| {
+                let n = Days::new(n);
+                if back {
+                    now.clone().checked_sub_days(n)
+                } else {
+                    now.clone().checked_add_days(n)
+                }
+            };
+            let months = |n: u64| {
+                let n = Months::new(u32::try_from(n).ok()?);
+                if back {
+                    now.clone().checked_sub_months(n)
+                } else {
+                    now.clone().checked_add_months(n)
+                }
+            };
+            let by_time = |delta: Option<TimeDelta>| now.clone().checked_add_signed(delta?);
+            let n = i64::from(amount);
+            match unit {
+                TimeUnit::Seconds => by_time(TimeDelta::try_seconds(n)),
+                TimeUnit::Minutes => by_time(TimeDelta::try_minutes(n)),
+                TimeUnit::Hours => by_time(TimeDelta::try_hours(n)),
+                TimeUnit::Days => days(by),
+                TimeUnit::Weeks => days(by * 7),
+                TimeUnit::Months => months(by),
+                TimeUnit::Years => months(by * 12),
+            }
+        }
+    };
+    let moved = moved.ok_or("the date is out of range")?;
+    let mut text = String::new();
+    write!(text, "{}", moved.format(format))
+        .map_err(|_| format!("“{format}” is not a date format"))?;
+    Ok(text)
+}
+
+/// The name of a test as the failure of a block that waits for it tells it.
+pub(crate) fn test_name(test: ValueTest) -> &'static str {
+    match test {
+        ValueTest::Equals => "equals",
+        ValueTest::NotEquals => "notEquals",
+        ValueTest::Contains => "contains",
+        ValueTest::GreaterThan => "greaterThan",
+        ValueTest::LessThan => "lessThan",
     }
 }
 
@@ -422,14 +474,48 @@ mod tests {
     }
 
     #[test]
-    fn outputs_are_typed() {
-        assert_eq!(typed(OutputKind::Number, " 3.5\n").as_deref(), Some("3.5"));
-        assert_eq!(typed(OutputKind::Number, "three"), None);
-        assert_eq!(typed(OutputKind::Number, "NaN"), None);
-        assert_eq!(typed(OutputKind::Boolean, "Yes").as_deref(), Some("true"));
-        assert_eq!(typed(OutputKind::Boolean, "0").as_deref(), Some("false"));
-        assert_eq!(typed(OutputKind::Boolean, "maybe"), None);
-        assert_eq!(typed(OutputKind::Text, " a ").as_deref(), Some(" a "));
+    fn dates_are_moved_and_written() {
+        use chrono::Utc;
+        let now = Utc.with_ymd_and_hms(2026, 3, 31, 14, 5, 9).unwrap();
+        let at =
+            |format: &str, amount, unit| date_time(now, format, Some(TimeShift { amount, unit }));
+        assert_eq!(
+            date_time(now, "%Y-%m-%d %H:%M:%S", None).as_deref(),
+            Ok("2026-03-31 14:05:09")
+        );
+        assert_eq!(
+            at("%d.%m.%Y", -2, TimeUnit::Days).as_deref(),
+            Ok("29.03.2026")
+        );
+        assert_eq!(at("%F", 1, TimeUnit::Weeks).as_deref(), Ok("2026-04-07"));
+        assert_eq!(at("%F", 1, TimeUnit::Months).as_deref(), Ok("2026-04-30"));
+        assert_eq!(at("%F", -1, TimeUnit::Years).as_deref(), Ok("2025-03-31"));
+        assert_eq!(at("%R", 90, TimeUnit::Minutes).as_deref(), Ok("15:35"));
+        assert_eq!(at("%T", -10, TimeUnit::Seconds).as_deref(), Ok("14:04:59"));
+        assert_eq!(at("%H", 12, TimeUnit::Hours).as_deref(), Ok("02"));
+        assert_eq!(
+            date_time(now, "%A %B", None).as_deref(),
+            Ok("Tuesday March")
+        );
+        assert!(date_time(now, "%Q", None).is_err());
+        assert_eq!(
+            at("%F", i32::MAX, TimeUnit::Years),
+            Err("the date is out of range".to_owned())
+        );
+    }
+
+    #[test]
+    fn only_a_png_file_is_a_picture() {
+        let dir = std::env::temp_dir().join(format!("jevision-png-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("a.png");
+        fs::write(&png, [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0]).unwrap();
+        let text = dir.join("b.png");
+        fs::write(&text, "not a picture").unwrap();
+        assert!(is_png(&png));
+        assert!(!is_png(&text));
+        assert!(!is_png(&dir.join("missing.png")));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

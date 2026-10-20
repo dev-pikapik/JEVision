@@ -108,6 +108,11 @@ if [ -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]; then
 fi
 ditto "$SPARKLE/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+# The guides open from disk, so they work offline and match this version; the example project is
+# copied out of here, never run in place.
+ditto "$ROOT/docs" "$APP/Contents/Resources/docs"
+rm "$APP/Contents/Resources/docs/check-links.py"
+ditto "$ROOT/examples" "$APP/Contents/Resources/examples"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 xcrun xcstringstool compile Resources/InfoPlist.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null
 

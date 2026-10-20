@@ -5,10 +5,12 @@ import SwiftUI
 struct AdvancedSettingsView: View {
   @AppStorage(VideoSettings.modeKey) private var mode = VideoSettings.defaultMode.name
   @AppStorage(VideoSettings.keepDaysKey) private var keepDays = VideoSettings.defaultKeepDays
+  @AppStorage(AppLog.levelKey) private var logLevel = LogLevel.default.rawValue
+  @AppStorage(CrashReports.enabledKey) private var savesCrashes = false
 
   var body: some View {
     Form {
-      SettingsHeader(tab: .advanced, text: Text("Command line, CI, run videos and other settings most people never change."))
+      SettingsHeader(tab: .advanced, text: Text("Command line, CI, run videos, logs and other settings most people never change."))
       RetriesSection()
       CommandLineSection()
       ContinuousIntegrationSection()
@@ -32,13 +34,19 @@ struct AdvancedSettingsView: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       }
+      LogsSection(level: $logLevel)
+      CrashReportsSection(isOn: $savesCrashes)
+      GuidesSection()
       ResetSettingsSection()
       RestoreDefaultsSection(
-        message: Text("Run videos are recorded only when a test fails and kept for 30 days. Retries and quarantine stay: they belong to the project."),
+        message: Text("Run videos are recorded only when a test fails and kept for 30 days, the log says what JEVision does, and crash reports aren’t saved. Retries and quarantine stay: they belong to the project."),
         isDefault: mode == VideoSettings.defaultMode.name && keepDays == VideoSettings.defaultKeepDays
+          && logLevel == LogLevel.default.rawValue && !savesCrashes
       ) {
         mode = VideoSettings.defaultMode.name
         keepDays = VideoSettings.defaultKeepDays
+        logLevel = LogLevel.default.rawValue
+        savesCrashes = false
       }
     }
     .formStyle(.grouped)

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{Blocker, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
+use jevision_core::{Blocker, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
     VideoMask, VideoMode, VideoWindow, VisionJudge,
@@ -91,12 +91,20 @@ pub trait Hands: Send + Sync {
         at: Point,
         button: MouseButton,
         double_click: bool,
+        modifiers: Modifiers,
     ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and leaves it there.
     fn hover(&self, app: String, at: Point) -> Result<(), HandsError>;
-    /// Presses the left button at the first point of `path`, moves through the others holding
-    /// it down, and lets go at the last, even when the run is cancelled on the way.
-    fn drag(&self, app: String, path: Vec<Point>) -> Result<(), HandsError>;
+    /// Presses `button` at the first point of `path`, moves through the others holding it down,
+    /// and lets go at the last, with the keys of `modifiers` held down all the while. The button
+    /// and the keys are let go even when the run is cancelled on the way.
+    fn drag(
+        &self,
+        app: String,
+        path: Vec<Point>,
+        button: MouseButton,
+        modifiers: Modifiers,
+    ) -> Result<(), HandsError>;
     /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
     /// brings what is further down into sight.
     fn scroll(
@@ -110,6 +118,10 @@ pub trait Hands: Send + Sync {
     /// The text may hold secret values: never log it.
     fn type_text(&self, text: String) -> Result<(), HandsError>;
     fn press_keys(&self, keys: String) -> Result<(), HandsError>;
+    /// The text on the clipboard, empty when it holds none. The text may be secret: never log it.
+    fn clipboard(&self) -> Result<String, HandsError>;
+    /// Replaces what is on the clipboard with `text`, which may hold secret values: never log it.
+    fn set_clipboard(&self, text: String) -> Result<(), HandsError>;
     /// Whether a person moved the mouse or typed since the last call; the object's own
     /// synthetic input does not count.
     fn user_input_detected(&self) -> bool;
@@ -476,16 +488,27 @@ impl jevision_runner::Hands for HandsAdapter {
         at: Point,
         button: MouseButton,
         double: bool,
+        modifiers: Modifiers,
     ) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.click(app.to_owned(), at, button, double)?)
+        Ok(self
+            .0
+            .click(app.to_owned(), at, button, double, modifiers)?)
     }
 
     fn hover(&self, app: &str, at: Point) -> Result<(), jevision_runner::HandsError> {
         Ok(self.0.hover(app.to_owned(), at)?)
     }
 
-    fn drag(&self, app: &str, path: &[Point]) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.drag(app.to_owned(), path.to_vec())?)
+    fn drag(
+        &self,
+        app: &str,
+        path: &[Point],
+        button: MouseButton,
+        modifiers: Modifiers,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self
+            .0
+            .drag(app.to_owned(), path.to_vec(), button, modifiers)?)
     }
 
     fn scroll(
@@ -505,6 +528,14 @@ impl jevision_runner::Hands for HandsAdapter {
 
     fn press_keys(&self, keys: &str) -> Result<(), jevision_runner::HandsError> {
         Ok(self.0.press_keys(keys.to_owned())?)
+    }
+
+    fn clipboard(&self) -> Result<String, jevision_runner::HandsError> {
+        Ok(self.0.clipboard()?)
+    }
+
+    fn set_clipboard(&self, text: &str) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.set_clipboard(text.to_owned())?)
     }
 
     fn user_input_detected(&self) -> bool {
@@ -1107,6 +1138,7 @@ pub(crate) mod tests {
     #[derive(Default)]
     pub(crate) struct Fake {
         log: Mutex<Vec<String>>,
+        clipboard: Mutex<String>,
     }
 
     impl Hands for Fake {
@@ -1139,13 +1171,28 @@ pub(crate) mod tests {
         fn locate(&self, _: String, _: Vec<u8>, _: f64) -> Result<Option<Point>, HandsError> {
             Ok(None)
         }
-        fn click(&self, _: String, _: Point, _: MouseButton, _: bool) -> Result<(), HandsError> {
+        fn click(
+            &self,
+            _: String,
+            _: Point,
+            button: MouseButton,
+            double: bool,
+            modifiers: Modifiers,
+        ) -> Result<(), HandsError> {
+            self.note(format!("click {button:?} {double} {}", holding(modifiers)));
             Ok(())
         }
         fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
             Ok(())
         }
-        fn drag(&self, _: String, _: Vec<Point>) -> Result<(), HandsError> {
+        fn drag(
+            &self,
+            _: String,
+            _: Vec<Point>,
+            button: MouseButton,
+            modifiers: Modifiers,
+        ) -> Result<(), HandsError> {
+            self.note(format!("drag {button:?} {}", holding(modifiers)));
             Ok(())
         }
         fn scroll(
@@ -1171,6 +1218,13 @@ pub(crate) mod tests {
             self.note(format!("keys {keys}"));
             Ok(())
         }
+        fn clipboard(&self) -> Result<String, HandsError> {
+            Ok(self.clipboard.lock().unwrap().clone())
+        }
+        fn set_clipboard(&self, text: String) -> Result<(), HandsError> {
+            *self.clipboard.lock().unwrap() = text;
+            Ok(())
+        }
         fn user_input_detected(&self) -> bool {
             false
         }
@@ -1192,6 +1246,10 @@ pub(crate) mod tests {
         fn note(&self, entry: String) {
             self.log.lock().unwrap().push(entry);
         }
+    }
+
+    fn holding(modifiers: Modifiers) -> String {
+        modifiers.names().join("+")
     }
 
     pub(crate) struct Secrets;
@@ -1328,6 +1386,31 @@ pub(crate) mod tests {
             .collect();
         assert_eq!(started, ["open", "pw", "go"]);
         assert!(!format!("{events:?}").contains(SECRET));
+    }
+
+    #[test]
+    fn the_clipboard_is_the_apps_to_fill_and_read() {
+        let p = Project::new(
+            "clipboard",
+            r#""open":{"type":"openApp","next":"put"},
+               "put":{"type":"clipboard","action":"put","text":"copied ${secret.PASSWORD}","next":"read"},
+               "read":{"type":"clipboard","action":"read","saveAs":"text","next":"type"},
+               "type":{"type":"type","text":"${var.text}"}"#,
+        );
+        let hands = Arc::new(Fake::default());
+        let rx = p.start(&TestRun::new(), hands.clone());
+        let (_, outcome) = wait(&rx, Duration::from_secs(10));
+        let RunOutcome::Finished { report, .. } = outcome else {
+            panic!("{outcome:?}")
+        };
+        assert_eq!(report.verdict, Verdict::Passed);
+        assert_eq!(
+            *hands.log.lock().unwrap(),
+            [
+                "open com.example.App".to_owned(),
+                format!("type copied {SECRET}"),
+            ]
+        );
     }
 
     #[test]

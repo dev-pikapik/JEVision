@@ -41,6 +41,8 @@ enum BlockInfo {
     case "checkFile": "doc.badge.clock"
     case "command": "terminal"
     case "script": "curlybraces"
+    case "clipboard": "doc.on.clipboard"
+    case "dateTime": "calendar.badge.clock"
     default: "square.dashed"
     }
   }
@@ -67,6 +69,8 @@ enum BlockInfo {
     case "checkFile": String(localized: "Wait For File")
     case "command": String(localized: "Run Command")
     case "script": String(localized: "Script")
+    case "clipboard": String(localized: "Clipboard")
+    case "dateTime": String(localized: "Date and Time")
     default: kind
     }
   }
@@ -76,7 +80,7 @@ enum BlockInfo {
     case "openApp", "openFile", "click", "hover", "drag", "scroll", "type", "pressKeys": .blue
     case "waitFor", "pause", "check": .orange
     case "if", "repeat", "runTest": .purple
-    case "useData", "http", "database", "checkFile", "command", "script": .green
+    case "useData", "http", "database", "checkFile", "command", "script", "clipboard", "dateTime": .green
     default: .gray
     }
   }

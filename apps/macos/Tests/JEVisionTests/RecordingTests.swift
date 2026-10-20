@@ -57,8 +57,12 @@ struct RecordingTests {
     return steps.map { step in
       switch step {
       case .openApp: "open"
-      case .click(let t, let button, let double): (double ? "double " : "") + (button == .right ? "right " : "") + "click" + target(t)
-      case .drag(let from, let to): "drag" + target(from) + " to" + target(to)
+      case .click(let t, let button, let double, let modifiers):
+        (modifiers.isEmpty ? "" : modifiers.symbols + " ") + (double ? "double " : "") + (button == .right ? "right " : "") + "click"
+          + target(t)
+      case .drag(let from, let to, let button, let modifiers):
+        (modifiers.isEmpty ? "" : modifiers.symbols + " ") + (button == .right ? "right " : "") + "drag" + target(from) + " to"
+          + target(to)
       case .scroll(let direction, let amount, let unit, let at): "scroll \(direction) \(amount) \(unit) at \(at.x) \(at.y)"
       case .type(let text, let into): "type \(text)" + target(into)
       case .secret(let name, let into): "secret \(name)" + target(into)
@@ -150,7 +154,7 @@ struct RecordingTests {
     let button = ElementInfo(role: "AXButton", label: "Save", frame: CGRect(x: 200, y: 60, width: 40, height: 16))
     _ = r.click(at: CGPoint(x: 210, y: 65), button: .left, count: 1, inApp: true, frame: frame, element: button)
     _ = r.click(at: CGPoint(x: 160, y: 120), button: .right, count: 1, inApp: true, frame: frame, element: nil)
-    guard case .click(.image(let save), _, _) = r.steps[0], case .click(.image(let spot), .right, false) = r.steps[1] else {
+    guard case .click(.image(let save), _, _, _) = r.steps[0], case .click(.image(let spot), .right, false, _) = r.steps[1] else {
       Issue.record("Expected two pictures, got \(Self.describe(r.steps))")
       return
     }
@@ -167,7 +171,7 @@ struct RecordingTests {
     var r = Recording(appName: "TextEdit", opensApp: false)
     _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: Self.checkerboard(), element: nil)
     _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 2, inApp: true, frame: Self.checkerboard(), element: nil)
-    guard case .click(.point(let point), .left, true) = r.steps.first else {
+    guard case .click(.point(let point), .left, true, _) = r.steps.first else {
       Issue.record("Expected a double click on a place, got \(Self.describe(r.steps))")
       return
     }
@@ -201,17 +205,46 @@ struct RecordingTests {
     #expect(r.release(at: CGPoint(x: 250, y: 140), element: nil) == .recorded)
     #expect(Self.describe(r.steps) == ["click @click", "drag @click to @click"])
     // The blocks keep both places.
-    guard case .drag(.image, .image, false, nil) = Recording.preview(r.steps[1]) else {
+    guard case .drag(.image, .image, .left, let held, false, nil) = Recording.preview(r.steps[1]) else {
       Issue.record("Expected a drag block, got \(Recording.preview(r.steps[1]))")
       return
     }
+    #expect(held.isEmpty)
     // A drag that ends outside the window can't be repeated.
     _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, count: 1, inApp: true, frame: frame, element: nil)
     #expect(r.release(at: CGPoint(x: 20, y: 10), element: nil) == .outsideWindow)
     #expect(r.steps.count == 2)
-    // A right click, or a second click of a double click, is never a drag.
+    // The other button's release, or a second click of a double click, is never a drag.
     _ = r.click(at: CGPoint(x: 150, y: 80), button: .right, count: 1, inApp: true, frame: frame, element: nil)
-    #expect(r.release(at: CGPoint(x: 250, y: 140), element: nil) == .ignored)
+    #expect(r.release(at: CGPoint(x: 250, y: 140), button: .left, element: nil) == .ignored)
+    #expect(r.release(at: CGPoint(x: 250, y: 140), button: .right, element: nil) == .recorded)
+    #expect(Self.describe(r.steps).last == "right drag @click to @click")
+  }
+
+  @Test func keysHeldDuringAClickOrDragAreRecorded() {
+    var r = Recording(appName: "Finder", opensApp: false)
+    let frame = Self.tiles()
+    let held = Modifiers(command: true, shift: false, option: true, control: false)
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, modifiers: held, count: 1, inApp: true, frame: frame, element: nil)
+    #expect(Self.describe(r.steps) == ["⌥⌘ click @click"])
+    // A second click of a double click holding the same keys joins the first.
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, modifiers: held, count: 2, inApp: true, frame: frame, element: nil)
+    #expect(Self.describe(r.steps) == ["⌥⌘ double click @click"])
+    _ = r.click(at: CGPoint(x: 150, y: 80), button: .left, modifiers: held, count: 1, inApp: true, frame: frame, element: nil)
+    #expect(r.release(at: CGPoint(x: 250, y: 140), element: nil) == .recorded)
+    #expect(Self.describe(r.steps).last == "⌥⌘ drag @click to @click")
+    guard case .drag(_, _, _, let kept, _, _) = Recording.preview(r.steps[1]) else {
+      Issue.record("Expected a drag block, got \(Recording.preview(r.steps[1]))")
+      return
+    }
+    #expect(kept == held)
+    // Typing after a click with keys held goes into a step of its own: the click didn't just focus a field.
+    var typing = Recording(appName: "Finder", opensApp: false)
+    let field = ElementInfo(role: "AXTextField", label: "Name", frame: CGRect(x: 130, y: 70, width: 80, height: 20))
+    _ = typing.click(
+      at: CGPoint(x: 150, y: 80), button: .left, modifiers: held, count: 1, inApp: true, frame: frame, element: field)
+    _ = typing.key(Self.press("a", text: "a"), inApp: true, frame: frame, focus: nil)
+    #expect(Self.describe(typing.steps) == ["⌥⌘ click @name-field", "type a"])
   }
 
   @Test func turnsOfTheWheelJoinIntoOneScroll() {
@@ -294,8 +327,8 @@ struct RecordingTests {
     #expect(Self.describe(r.steps) == ["open", "click @send-button", "secret MAIL_PASSWORD @password-field", "keys return", "wait untitled", "click @send-button"])
     let (blocks, saved) = try Recording.blocks(for: r.steps, testFolder: folder)
     try #require(blocks.map(\.typeName) == ["openApp", "click", "type", "pressKeys", "waitFor", "click"])
-    guard case .click(.image(let first), _, _, _, _) = blocks[1], case .type(let text, _, _) = blocks[2],
-      case .waitFor(.appears(let screen), let timeout, _) = blocks[4], case .click(.image(let second), _, _, _, _) = blocks[5]
+    guard case .click(.image(let first), _, _, _, _, _) = blocks[1], case .type(let text, _, _) = blocks[2],
+      case .waitFor(.appears(let screen), let timeout, _) = blocks[4], case .click(.image(let second), _, _, _, _, _) = blocks[5]
     else {
       Issue.record("Unexpected blocks")
       return
@@ -310,7 +343,7 @@ struct RecordingTests {
     #expect(saved.map(\.lastPathComponent).sorted() == files)
     // A second recording doesn't overwrite the first one's pictures.
     let (again, _) = try Recording.blocks(for: [r.steps[1]], testFolder: folder)
-    guard case .click(.image(let third), _, _, _, _) = again[0] else { return }
+    guard case .click(.image(let third), _, _, _, _, _) = again[0] else { return }
     #expect(third == "refs/send-button-3.png")
   }
 

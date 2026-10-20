@@ -225,6 +225,7 @@
 
 <h2 id="versions">Format versions</h2>
 <p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
+<p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, the <code>clipboard</code> and <code>dateTime</code> blocks, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
 </main>
 </div>
 <footer class="site-footer">

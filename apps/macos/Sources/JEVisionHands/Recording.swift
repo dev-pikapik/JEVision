@@ -85,9 +85,10 @@ public enum ClickTarget: Sendable {
 /// One step of a recording; becomes one block.
 public enum RecordedStep: Sendable {
   case openApp
-  case click(ClickTarget, button: MouseButton, double: Bool)
+  /// With the keys that were held down.
+  case click(ClickTarget, button: MouseButton, double: Bool, modifiers: Modifiers)
   /// Both places as the window looked when the button went down.
-  case drag(ClickTarget, to: ClickTarget)
+  case drag(ClickTarget, to: ClickTarget, button: MouseButton, modifiers: Modifiers)
   /// Turns of the wheel in one direction, joined; over a place in the window.
   case scroll(ScrollDirection, amount: UInt32, unit: ScrollUnit, at: Point)
   case type(String, into: ClickTarget?)
@@ -132,7 +133,7 @@ public struct Recording: Sendable {
   private var escape = EscapeDetector()
   /// The Esc press just recorded, while it may still be the first of Esc Esc.
   private var escapeStep: Int?
-  /// The left click just recorded, while letting go of the button elsewhere may make it a drag.
+  /// The click just recorded, while letting go of the button elsewhere may make it a drag.
   private var press: (point: CGPoint, frame: WindowFrame, step: Int)?
 
   /// `opensApp` starts the test by opening the app; `appName` goes into the names of secrets.
@@ -150,36 +151,40 @@ public struct Recording: Sendable {
 
   /// A mouse press at `point` (global points). `inApp`: it went to the app under test, not to
   /// another app or to JEVision's own panels. `frame` is the window before the click.
+  /// `modifiers` are the keys held down.
   public mutating func click(
-    at point: CGPoint, button: MouseButton, count: Int, inApp: Bool, frame: WindowFrame?, element: ElementInfo?
+    at point: CGPoint, button: MouseButton, modifiers: Modifiers = .none, count: Int, inApp: Bool,
+    frame: WindowFrame?, element: ElementInfo?
   ) -> ClickResult {
     guard inApp else { return .ignored }
     escapeStep = nil
     press = nil
     guard let frame, frame.bounds.contains(point) else { return .outsideWindow }
-    if count == 2, case .click(let target, button, false) = steps.last, !typing {
-      steps[steps.count - 1] = .click(target, button: button, double: true)
+    if count == 2, case .click(let target, button, false, modifiers) = steps.last, !typing {
+      steps[steps.count - 1] = .click(target, button: button, double: true, modifiers: modifiers)
       clickedField = false
       return .recorded
     }
     guard count == 1 else { return .ignored }
     settle(frame)
     let target = Self.target(at: point, in: frame, element: element)
-    if let element, element.isSecure, button == .left {
+    if let element, element.isSecure, button == .left, modifiers.isEmpty {
       steps.append(.secret(secretName(element), into: target))
     } else {
-      steps.append(.click(target, button: button, double: false))
-      if button == .left { press = (point, frame, steps.count - 1) }
+      steps.append(.click(target, button: button, double: false, modifiers: modifiers))
+      press = (point, frame, steps.count - 1)
     }
     typing = false
-    clickedField = button == .left && (element?.takesText ?? false)
+    clickedField = button == .left && modifiers.isEmpty && (element?.takesText ?? false)
     return .recorded
   }
 
-  /// The left button let go at `point` (global points). Far enough from where it went down, the
+  /// The button let go at `point` (global points). Far enough from where it went down, the
   /// click just recorded becomes a drag; let go outside the window, a drag a test can't repeat.
-  public mutating func release(at point: CGPoint, element: ElementInfo?) -> ClickResult {
-    guard let press, press.step == steps.count - 1, case .click(let from, .left, false) = steps[press.step] else {
+  public mutating func release(at point: CGPoint, button: MouseButton = .left, element: ElementInfo?) -> ClickResult {
+    guard let press, press.step == steps.count - 1,
+      case .click(let from, button, false, let modifiers) = steps[press.step]
+    else {
       return .ignored
     }
     self.press = nil
@@ -189,7 +194,8 @@ public struct Recording: Sendable {
       clickedField = false
       return .outsideWindow
     }
-    steps[press.step] = .drag(from, to: Self.target(at: point, in: press.frame, element: element))
+    steps[press.step] = .drag(
+      from, to: Self.target(at: point, in: press.frame, element: element), button: button, modifiers: modifiers)
     clickedField = false
     return .recorded
   }
@@ -259,7 +265,7 @@ public struct Recording: Sendable {
       if !typed.isEmpty {
         steps[steps.count - 1] = .type(typed, into: into)
       } else if let into {
-        steps[steps.count - 1] = .click(into, button: .left, double: false)
+        steps[steps.count - 1] = .click(into, button: .left, double: false, modifiers: .none)
         clickedField = true
         typing = false
       } else {
@@ -280,7 +286,7 @@ public struct Recording: Sendable {
         steps.append(.type(text, into: Self.target(at: CGPoint(x: control.midX, y: control.midY), in: frame, element: focus)))
       } else if typing, case .type(let typed, let into) = steps.last {
         steps[steps.count - 1] = .type(typed + text, into: into)
-      } else if clickedField, case .click(let target, .left, false) = steps.last {
+      } else if clickedField, case .click(let target, .left, false, _) = steps.last {
         steps[steps.count - 1] = .type(text, into: target)
       } else {
         settle(frame)
@@ -560,9 +566,10 @@ extension Recording {
     }
     return switch step {
     case .openApp: .openApp(app: nil, next: nil)
-    case .click(let t, let button, let double):
-      .click(target: try target(t), button: button, double: double, waitForChange: false, next: nil)
-    case .drag(let from, let to): .drag(from: try target(from), to: try target(to), waitForChange: false, next: nil)
+    case .click(let t, let button, let double, let modifiers):
+      .click(target: try target(t), button: button, double: double, modifiers: modifiers, waitForChange: false, next: nil)
+    case .drag(let from, let to, let button, let modifiers):
+      .drag(from: try target(from), to: try target(to), button: button, modifiers: modifiers, waitForChange: false, next: nil)
     case .scroll(let direction, let amount, let unit, let at):
       .scroll(direction: direction, amount: amount, unit: unit, at: .point(at), waitForChange: false, next: nil)
     case .type(let text, let into): .type(text: text, into: try into.map(target), next: nil)

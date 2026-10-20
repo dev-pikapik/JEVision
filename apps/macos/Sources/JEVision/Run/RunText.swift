@@ -131,6 +131,12 @@ enum RunText {
       return String(localized: "run.script.missingOutput", defaultValue: "Block “\(block)”: the script didn’t write \(p("name")) to $JEV_OUTPUT.", bundle: .app, locale: .app)
     case "run.script.badOutput":
       return String(localized: "run.script.badOutput", defaultValue: "Block “\(block)”: the output \(p("name")) should be \(outputKind(p("type"))), but the script wrote “\(p("value"))”.", bundle: .app, locale: .app)
+    case "run.script.badInput":
+      return String(localized: "run.script.badInput", defaultValue: "Block “\(block)”: the input \(p("name")) should be \(outputKind(p("type"))), but it is “\(p("value"))”.", bundle: .app, locale: .app)
+    case "run.clipboard.mismatch":
+      return String(localized: "run.clipboard.mismatch", defaultValue: "Block “\(block)”: waited \(p("seconds")) s for this to be true: \(clipboardExpectation(p("test"), p("expected"))). The clipboard holds “\(p("actual"))”.", bundle: .app, locale: .app)
+    case "run.dateTime.failed":
+      return String(localized: "run.dateTime.failed", defaultValue: "Block “\(block)”: \(p("reason")).", bundle: .app, locale: .app)
     case "run.command.exitCode":
       return String(localized: "run.command.exitCode", defaultValue: "Block “\(block)”: the command ended with exit code \(code("actual")) instead of \(p("expected")).\(reason)", bundle: .app, locale: .app)
     case "run.http.failed":
@@ -266,7 +272,20 @@ enum RunText {
     switch kind {
     case "number": String(localized: "a number")
     case "boolean": String(localized: "true or false")
+    case "image": String(localized: "the path of a PNG picture")
+    case "area": String(localized: "an area written as x,y,width,height in fractions of the window")
     default: String(localized: "text")
+    }
+  }
+
+  /// What a clipboard check expected, as a sentence part: `test` is the check's name in the core.
+  private static func clipboardExpectation(_ test: String, _ expected: String) -> String {
+    switch test {
+    case "notEquals": String(localized: "the clipboard is different from “\(expected)”")
+    case "contains": String(localized: "the clipboard contains “\(expected)”")
+    case "greaterThan": String(localized: "the clipboard is a number greater than \(expected)")
+    case "lessThan": String(localized: "the clipboard is a number less than \(expected)")
+    default: String(localized: "the clipboard is equal to “\(expected)”")
     }
   }
 }

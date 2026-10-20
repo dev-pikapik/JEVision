@@ -103,6 +103,8 @@ struct InspectorView: View {
     case .runTest: ["test", "inputs"]
     case .script: ["language", "code", "inputs", "outputs", "timeout"]
     case .command: ["command", "folder", "exitCode", "saveOutput", "timeout"]
+    case .clipboard: ["text", "saveAs", "to", "timeout"]
+    case .dateTime: ["saveAs", "format", "shift"]
     case .http: ["method", "url", "headers", "body", "expectStatus", "save", "timeout"]
     case .checkFile: ["path", "until", "timeout"]
     case .database: ["file", "query", "saveAs", "expect", "timeout"]
@@ -207,17 +209,17 @@ struct InspectorView: View {
         }
       }
 
-    case .click(let target, let button, let double, let waitForChange, let next):
+    case .click(let target, let button, let double, let modifiers, let waitForChange, let next):
       Section {
         TargetEditor(
           target: bind("target", target) {
-            .click(target: $0, button: button, double: double, waitForChange: waitForChange, next: next)
+            .click(target: $0, button: button, double: double, modifiers: modifiers, waitForChange: waitForChange, next: next)
           },
           field: "target", context: context)
       }
       Section {
         Picker(selection: bind("button", button) {
-          .click(target: target, button: $0, double: double, waitForChange: waitForChange, next: next)
+          .click(target: target, button: $0, double: double, modifiers: modifiers, waitForChange: waitForChange, next: next)
         }) {
           Text("Left").tag(MouseButton.left)
           Text("Right").tag(MouseButton.right)
@@ -225,13 +227,17 @@ struct InspectorView: View {
           Text("Button")
         }
         Toggle(isOn: bind("double", double) {
-          .click(target: target, button: button, double: $0, waitForChange: waitForChange, next: next)
+          .click(target: target, button: button, double: $0, modifiers: modifiers, waitForChange: waitForChange, next: next)
         }) {
           Text("Double-click")
         }
+        ModifiersField(
+          modifiers: bind("modifiers", modifiers) {
+            .click(target: target, button: button, double: double, modifiers: $0, waitForChange: waitForChange, next: next)
+          })
         DisclosureGroup {
           Toggle(isOn: bind("waitForChange", waitForChange) {
-            .click(target: target, button: button, double: double, waitForChange: $0, next: next)
+            .click(target: target, button: button, double: double, modifiers: modifiers, waitForChange: $0, next: next)
           }) {
             Text("Wait until the screen changes")
           }
@@ -256,25 +262,41 @@ struct InspectorView: View {
         }
       }
 
-    case .drag(let from, let to, let waitForChange, let next):
+    case .drag(let from, let to, let button, let modifiers, let waitForChange, let next):
       Section {
         TargetEditor(
-          target: bind("from", from) { .drag(from: $0, to: to, waitForChange: waitForChange, next: next) },
+          target: bind("from", from) {
+            .drag(from: $0, to: to, button: button, modifiers: modifiers, waitForChange: waitForChange, next: next)
+          },
           field: "from", context: context)
       } header: {
         Text("Drag From")
       }
       Section {
         TargetEditor(
-          target: bind("to", to) { .drag(from: from, to: $0, waitForChange: waitForChange, next: next) },
+          target: bind("to", to) {
+            .drag(from: from, to: $0, button: button, modifiers: modifiers, waitForChange: waitForChange, next: next)
+          },
           field: "to", context: context)
       } header: {
         Text("Drop On")
       }
       Section {
+        Picker(selection: bind("button", button) {
+          .drag(from: from, to: to, button: $0, modifiers: modifiers, waitForChange: waitForChange, next: next)
+        }) {
+          Text("Left").tag(MouseButton.left)
+          Text("Right").tag(MouseButton.right)
+        } label: {
+          Text("Button")
+        }
+        ModifiersField(
+          modifiers: bind("modifiers", modifiers) {
+            .drag(from: from, to: to, button: button, modifiers: $0, waitForChange: waitForChange, next: next)
+          })
         DisclosureGroup {
           Toggle(isOn: bind("waitForChange", waitForChange) {
-            .drag(from: from, to: to, waitForChange: $0, next: next)
+            .drag(from: from, to: to, button: button, modifiers: modifiers, waitForChange: $0, next: next)
           }) {
             Text("Wait until the screen changes")
           }
@@ -564,6 +586,12 @@ struct InspectorView: View {
       scriptFields(
         language: language, code: code, inputs: inputs, outputs: outputs, timeoutMs: timeoutMs, next: next,
         context: context, values: values)
+
+    case .clipboard(let action, let next):
+      clipboardFields(action: action, next: next, context: context, values: values)
+
+    case .dateTime(let saveAs, let format, let shift, let next):
+      dateTimeFields(saveAs: saveAs, format: format, shift: shift, next: next, context: context)
 
     case .command(let command, let folder, let exitCode, let saveOutput, let timeoutMs, let next):
       commandFields(

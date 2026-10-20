@@ -15,6 +15,8 @@ struct JEVisionApp: App {
   @State private var updates = Updates()
 
   init() {
+    AppLog.started()
+    if CrashReports.isEnabled { CrashCollector.apply(enabled: true) }
     AppLanguage.shared.start()
     ActiveKeyboard.shared.start()
     Appearance.saved.apply()

@@ -8,11 +8,12 @@ use std::collections::HashMap;
 
 use jevision_core::{
     Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection,
-    Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout,
-    HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot,
-    MouseButton, NamedValue, Note, OutputKind, Point, Priority, Rect, Reference, SavedValue,
-    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
-    Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil,
+    ClipboardAction, Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow,
+    FlowLayout, HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame,
+    LaidSlot, Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference,
+    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
+    SearchCandidate, Severity, Slot, Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck,
+    ValueKind, ValueTest, WaitUntil,
 };
 
 uniffi::setup_scaffolding!();
@@ -21,6 +22,7 @@ mod ai;
 mod batch;
 mod board;
 mod bug;
+mod ci;
 mod env;
 mod git;
 mod history;
@@ -40,6 +42,7 @@ pub use ai::*;
 pub use batch::*;
 pub use board::*;
 pub use bug::*;
+pub use ci::*;
 pub use env::*;
 pub use git::*;
 pub use history::*;
@@ -523,6 +526,7 @@ pub enum BlockKind {
         target: Target,
         button: MouseButton,
         double: bool,
+        modifiers: Modifiers,
         wait_for_change: bool,
         next: Option<String>,
     },
@@ -534,6 +538,8 @@ pub enum BlockKind {
     Drag {
         from: Target,
         to: Target,
+        button: MouseButton,
+        modifiers: Modifiers,
         wait_for_change: bool,
         next: Option<String>,
     },
@@ -591,7 +597,7 @@ pub enum BlockKind {
     Script {
         language: ScriptLanguage,
         code: String,
-        inputs: Vec<NamedValue>,
+        inputs: Vec<ScriptInput>,
         outputs: Vec<ScriptOutput>,
         timeout_ms: u64,
         next: Option<String>,
@@ -628,6 +634,56 @@ pub enum BlockKind {
         timeout_ms: u64,
         next: Option<String>,
     },
+    Clipboard {
+        action: ClipboardAction,
+        next: Option<String>,
+    },
+    DateTime {
+        save_as: String,
+        format: String,
+        shift: Option<TimeShift>,
+        next: Option<String>,
+    },
+}
+
+#[uniffi::remote(Record)]
+pub struct Modifiers {
+    pub command: bool,
+    pub shift: bool,
+    pub option: bool,
+    pub control: bool,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ClipboardAction {
+    Put {
+        text: String,
+    },
+    Read {
+        save_as: String,
+    },
+    Check {
+        is: ValueTest,
+        to: String,
+        timeout_ms: u64,
+    },
+}
+
+#[uniffi::remote(Record)]
+pub struct TimeShift {
+    pub amount: i32,
+    pub unit: TimeUnit,
+}
+
+#[uniffi::remote(Enum)]
+pub enum TimeUnit {
+    Seconds,
+    Minutes,
+    Hours,
+    Days,
+    Weeks,
+    Months,
+    Years,
 }
 
 #[uniffi::remote(Record)]
@@ -665,16 +721,25 @@ pub struct NamedValue {
 }
 
 #[uniffi::remote(Record)]
+pub struct ScriptInput {
+    pub name: String,
+    pub kind: ValueKind,
+    pub value: String,
+}
+
+#[uniffi::remote(Record)]
 pub struct ScriptOutput {
     pub name: String,
-    pub kind: OutputKind,
+    pub kind: ValueKind,
 }
 
 #[uniffi::remote(Enum)]
-pub enum OutputKind {
+pub enum ValueKind {
     Text,
     Number,
     Boolean,
+    Image,
+    Area,
 }
 
 #[uniffi::remote(Enum)]

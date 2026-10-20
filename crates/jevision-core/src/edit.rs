@@ -5,9 +5,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS};
 use crate::model::{
-    BODY, Block, BlockKind, Compare, Condition, ELSE, ElseIf, ExpectStatus, FileState, Flow,
-    HttpMethod, MouseButton, NEXT, Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN,
-    Target, ValueCheck, ValueTest, WaitUntil, else_if_index,
+    BODY, Block, BlockKind, ClipboardAction, Compare, Condition, DEFAULT_DATE_FORMAT, ELSE, ElseIf,
+    ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NEXT, Reference,
+    ScriptLanguage, ScrollDirection, ScrollUnit, THEN, Target, ValueCheck, ValueTest, WaitUntil,
+    else_if_index,
 };
 
 /// How far a new scroll block scrolls, in lines.
@@ -48,6 +49,7 @@ impl BlockKind {
                 target: Target::Image(String::new()),
                 button: MouseButton::Left,
                 double: false,
+                modifiers: Modifiers::default(),
                 wait_for_change: false,
                 next: None,
             },
@@ -59,6 +61,8 @@ impl BlockKind {
             "drag" => Self::Drag {
                 from: Target::Image(String::new()),
                 to: Target::Image(String::new()),
+                button: MouseButton::Left,
+                modifiers: Modifiers::default(),
                 wait_for_change: false,
                 next: None,
             },
@@ -151,6 +155,18 @@ impl BlockKind {
                 save_as: None,
                 expect: None,
                 timeout_ms: DEFAULT_WAIT_TIMEOUT_MS,
+                next: None,
+            },
+            "clipboard" => Self::Clipboard {
+                action: ClipboardAction::Put {
+                    text: String::new(),
+                },
+                next: None,
+            },
+            "dateTime" => Self::DateTime {
+                save_as: String::new(),
+                format: DEFAULT_DATE_FORMAT.to_owned(),
+                shift: None,
                 next: None,
             },
             _ => return None,
@@ -269,7 +285,9 @@ impl BlockKind {
             | Self::Command { next, .. }
             | Self::Http { next, .. }
             | Self::CheckFile { next, .. }
-            | Self::Database { next, .. } => Some(next),
+            | Self::Database { next, .. }
+            | Self::Clipboard { next, .. }
+            | Self::DateTime { next, .. } => Some(next),
         }
     }
 }

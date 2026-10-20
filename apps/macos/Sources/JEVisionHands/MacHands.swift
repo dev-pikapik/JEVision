@@ -186,18 +186,24 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   // MARK: Mouse and keyboard
 
-  public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool) throws(HandsError) {
+  public func click(app: String, at: Point, button: MouseButton, doubleClick: Bool, modifiers: Modifiers) throws(HandsError) {
     let (window, point) = try place(app, at)
     clicking(window)
     defer { clicking(nil) }
     let (down, up, mouse): (CGEventType, CGEventType, CGMouseButton) =
       button == .left ? (.leftMouseDown, .leftMouseUp, .left) : (.rightMouseDown, .rightMouseUp, .right)
-    try post(CGEvent(mouseEventSource: SyntheticInput.source, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouse))
+    // Whatever happens on the way, the keys don't stay pressed.
+    defer { release(modifiers) }
+    let flags = try press(modifiers)
+    let move = CGEvent(mouseEventSource: SyntheticInput.source, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouse)
+    move?.flags = flags
+    try post(move)
     usleep(50_000)
     for count in 1...(doubleClick ? 2 : 1) {
       for type in [down, up] {
         let event = CGEvent(mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point, mouseButton: mouse)
         event?.setIntegerValueField(.mouseEventClickState, value: Int64(count))
+        event?.flags = flags
         try post(event)
         usleep(30_000)
       }
@@ -212,23 +218,28 @@ public final class MacHands: Hands, @unchecked Sendable {
     usleep(50_000)
   }
 
-  public func drag(app: String, path: [Point]) throws(HandsError) {
+  public func drag(app: String, path: [Point], button: MouseButton, modifiers: Modifiers) throws(HandsError) {
     guard let first = path.first else { return }
     let (window, start) = try place(app, first)
     let points = path.map { CGPoint(x: window.minX + $0.x, y: window.minY + $0.y) }
     clicking(window)
     defer { clicking(nil) }
-    try mouse(.mouseMoved, at: start)
+    let (down, dragged, up): (CGEventType, CGEventType, CGEventType) =
+      button == .left ? (.leftMouseDown, .leftMouseDragged, .leftMouseUp) : (.rightMouseDown, .rightMouseDragged, .rightMouseUp)
+    // Whatever happens on the way, the keys don't stay pressed.
+    defer { release(modifiers) }
+    let flags = try press(modifiers)
+    try mouse(.mouseMoved, at: start, button: button, flags: flags)
     usleep(50_000)
-    try mouse(.leftMouseDown, at: start)
+    try mouse(down, at: start, button: button, flags: flags)
     var last = start
     // Whatever happens on the way, the button doesn't stay pressed.
-    defer { try? mouse(.leftMouseUp, at: last) }
+    defer { try? mouse(up, at: last, button: button, flags: flags) }
     // Apps tell a drag from a click by the pause after the press and the moves that follow.
     usleep(100_000)
     for point in points.dropFirst() {
       if isCancelled() { return }
-      try mouse(.leftMouseDragged, at: point)
+      try mouse(dragged, at: point, button: button, flags: flags)
       last = point
       usleep(10_000)
     }
@@ -274,10 +285,34 @@ public final class MacHands: Hands, @unchecked Sendable {
     return (window.bounds, CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y))
   }
 
-  private func mouse(_ type: CGEventType, at point: CGPoint) throws(HandsError) {
-    let event = CGEvent(mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point, mouseButton: .left)
+  private func mouse(
+    _ type: CGEventType, at point: CGPoint, button: MouseButton = .left, flags: CGEventFlags = []
+  ) throws(HandsError) {
+    let event = CGEvent(
+      mouseEventSource: SyntheticInput.source, mouseType: type, mouseCursorPosition: point,
+      mouseButton: button == .left ? .left : .right)
     if type != .mouseMoved { event?.setIntegerValueField(.mouseEventClickState, value: 1) }
+    event?.flags = flags
     try post(event)
+  }
+
+  /// Presses the keys of `modifiers`; returns the flags every event sent while they are held carries.
+  private func press(_ modifiers: Modifiers) throws(HandsError) -> CGEventFlags {
+    var flags: CGEventFlags = []
+    for code in modifiers.keyCodes {
+      flags.insert(KeyStroke.flag(of: code))
+      try key(code, down: true, flags: flags)
+    }
+    return flags
+  }
+
+  /// Lets go of the keys of `modifiers` in reverse order; keys that were never pressed stay as they are.
+  private func release(_ modifiers: Modifiers) {
+    var flags = modifiers.flags
+    for code in modifiers.keyCodes.reversed() {
+      flags.remove(KeyStroke.flag(of: code))
+      try? key(code, down: false, flags: flags)
+    }
   }
 
   public func typeText(text: String) throws(HandsError) {
@@ -304,6 +339,18 @@ public final class MacHands: Hands, @unchecked Sendable {
     try requireInput()
     guard let stroke = KeyStroke(keys) else { throw .Failed(reason: "“\(keys)” isn’t a key combination.") }
     try tap(stroke)
+  }
+
+  public func clipboard() throws(HandsError) -> String {
+    NSPasteboard.general.string(forType: .string) ?? ""
+  }
+
+  public func setClipboard(text: String) throws(HandsError) {
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    guard pasteboard.setString(text, forType: .string) else {
+      throw .Failed(reason: "The clipboard didn’t take the text.")
+    }
   }
 
   public func userInputDetected() -> Bool {

@@ -1,7 +1,7 @@
 //! Ranking for the editor's search fields: the block palette, the command palette and the
 //! project's test list.
 
-use crate::{BlockKind, Compare, Condition, Flow, Reference, Target, WaitUntil};
+use crate::{BlockKind, ClipboardAction, Compare, Condition, Flow, Reference, Target, WaitUntil};
 
 /// Something a search can find: what it is called, and other words it answers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,6 +121,13 @@ pub fn test_keywords(flow: &Flow) -> String {
             BlockKind::Database { file, query, .. } => {
                 words.extend([file.as_str(), query.as_str()])
             }
+            BlockKind::Clipboard { action, .. } => match action {
+                ClipboardAction::Put { text } | ClipboardAction::Check { to: text, .. } => {
+                    words.push(text)
+                }
+                ClipboardAction::Read { .. } => {}
+            },
+            BlockKind::DateTime { .. } => {}
         }
     }
     words.extend(flow.canvas.notes.iter().map(|n| n.text.as_str()));
