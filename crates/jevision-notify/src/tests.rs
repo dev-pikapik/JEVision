@@ -6,6 +6,11 @@ use std::sync::{Arc, Mutex};
 use serde_json::json;
 
 use super::*;
+use crate::message::{ci_run_url, duration};
+
+mod chats;
+mod rich;
+mod summary;
 
 fn folder(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("jevision-notify-{name}-{}", std::process::id()));
@@ -36,9 +41,16 @@ fn run(value: serde_json::Value) -> Run {
 
 fn slack_only(when: NotifyWhen) -> NotificationSettings {
     NotificationSettings {
-        when,
-        slack: true,
+        slack: Some(SlackChannel { when }),
         ..NotificationSettings::default()
+    }
+}
+
+/// A finished run of the test `report` describes, after the run `previous` of it.
+fn finished(value: serde_json::Value, previous: Option<serde_json::Value>) -> Finished {
+    Finished {
+        run: run(value),
+        previous: previous.map(|v| serde_json::from_value(v).unwrap()),
     }
 }
 
@@ -50,11 +62,13 @@ fn settings_are_saved_read_back_and_checked() {
         NotificationSettings::default()
     );
     let settings = NotificationSettings {
-        when: NotifyWhen::Every,
         unattended_only: true,
-        slack: true,
+        slack: Some(SlackChannel {
+            when: NotifyWhen::Every,
+        }),
         telegram: Some(TelegramChat {
             chat: "-100123".into(),
+            when: NotifyWhen::Changed,
         }),
         email: Some(MailServer {
             server: "smtp.acme.com".into(),
@@ -63,12 +77,18 @@ fn settings_are_saved_read_back_and_checked() {
             user: "qa@acme.com".into(),
             from: "qa@acme.com".into(),
             to: vec!["team@acme.com".into(), "Ann <ann@acme.com>".into()],
+            when: NotifyWhen::Failed,
         }),
     };
     settings.save(&project).unwrap();
     let text = fs::read_to_string(project.join(FILE)).unwrap();
     assert!(text.contains("\"unattendedOnly\": true"), "{text}");
     assert!(text.contains("\"security\": \"startTls\""), "{text}");
+    let saved: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(saved["format"], 2);
+    assert_eq!(saved["slack"], json!({"when": "every"}));
+    assert_eq!(saved["telegram"]["when"], "changed");
+    assert!(saved.get("when").is_none(), "{text}");
     assert!(
         !text.contains("token") && !text.contains("password"),
         "{text}"
@@ -89,62 +109,181 @@ fn settings_are_saved_read_back_and_checked() {
         NotificationSettings::parse(r#"{"format": 1, "slack": true, "webhook": "x"}"#).is_err()
     );
     assert!(NotificationSettings::parse(r#"{"format": 2, "slack": true}"#).is_err());
+    assert!(NotificationSettings::parse(r#"{"format": 2, "when": "every"}"#).is_err());
+    assert_eq!(
+        NotificationSettings::parse(r#"{"format": 3}"#),
+        Err("\"format\" must be 1 or 2".into())
+    );
 
     NotificationSettings::default().save(&project).unwrap();
     assert!(!project.join(FILE).exists());
 }
 
 #[test]
-fn messages_go_out_when_the_settings_say() {
-    let failed = run(report("failed", Some("run.secret.missing")));
-    let passed = run(report("passed", None));
-    let stopped = run(report("cancelled", None));
-    let before_failed = failed.report.clone();
-    let before_passed = passed.report.clone();
-    let title = |m: Option<Message>| m.map(|m| m.title);
+fn a_format_1_file_is_read_with_its_when_for_every_channel_and_saved_as_format_2() {
+    let old = r#"{
+      "format": 1, "when": "every", "unattendedOnly": true, "slack": true,
+      "telegram": {"chat": "-100123"},
+      "email": {"server": "smtp.acme.com", "port": 587, "security": "startTls",
+                "from": "qa@acme.com", "to": ["team@acme.com"]}
+    }"#;
+    let settings = NotificationSettings::parse(old).unwrap();
+    assert!(settings.unattended_only);
+    for channel in NotifyChannel::ALL {
+        assert_eq!(
+            settings.when(channel),
+            Some(NotifyWhen::Every),
+            "{channel:?}"
+        );
+    }
+
+    let project = folder("migrate");
+    fs::write(project.join(FILE), old).unwrap();
+    let loaded = NotificationSettings::load(&project).unwrap();
+    assert_eq!(loaded, settings);
+    loaded.save(&project).unwrap();
+    let saved: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(project.join(FILE)).unwrap()).unwrap();
+    assert_eq!(saved["format"], 2);
+    assert!(saved.get("when").is_none());
+    assert_eq!(saved["slack"], json!({"when": "every"}));
+    assert_eq!(saved["email"]["when"], "every");
+    assert_eq!(NotificationSettings::load(&project).unwrap(), settings);
+
+    // No `when` meant the default; `slack: false` and no channel meant off.
+    let plain = NotificationSettings::parse(r#"{"format": 1, "slack": true}"#).unwrap();
+    assert_eq!(plain, slack_only(NotifyWhen::FailedOrFixed));
+    let off =
+        NotificationSettings::parse(r#"{"format": 1, "slack": false, "when": "failed"}"#).unwrap();
+    assert!(off.channels().is_empty());
+    let own = NotificationSettings::parse(
+        r#"{"format": 1, "when": "failed", "telegram": {"chat": "1", "when": "every"}}"#,
+    )
+    .unwrap();
+    assert_eq!(own.when(NotifyChannel::Telegram), Some(NotifyWhen::Every));
+    assert!(
+        NotificationSettings::parse(r#"{"format": 1, "when": "sometimes", "slack": true}"#)
+            .unwrap_err()
+            .starts_with("\"when\":")
+    );
+    assert!(
+        NotificationSettings::parse(r#"{"format": 2, "slack": {"when": "sometimes"}}"#).is_err()
+    );
+}
+
+#[test]
+fn a_message_goes_to_the_channels_that_ask_for_it() {
+    let failed = || report("failed", Some("run.secret.missing"));
+    let passed = || report("passed", None);
+    let title = |settings: &NotificationSettings, now: &Finished| {
+        notice_for(settings, "shop", std::slice::from_ref(now), false).map(|n| n.message.title)
+    };
 
     let fixed = slack_only(NotifyWhen::FailedOrFixed);
     assert_eq!(
-        title(message_for(&fixed, &failed, None, false)).as_deref(),
+        title(&fixed, &finished(failed(), None)).as_deref(),
         Some("Failed: Sign in")
     );
     assert_eq!(
-        title(message_for(&fixed, &passed, Some(&before_failed), false)).as_deref(),
-        Some("Fixed: Sign in")
+        title(&fixed, &finished(failed(), Some(failed()))).as_deref(),
+        Some("Failed: Sign in")
     );
     assert_eq!(
-        message_for(&fixed, &passed, Some(&before_passed), false),
+        title(&fixed, &finished(passed(), Some(failed()))).as_deref(),
+        Some("Fixed: Sign in")
+    );
+    assert_eq!(title(&fixed, &finished(passed(), Some(passed()))), None);
+    assert_eq!(title(&fixed, &finished(passed(), None)), None);
+    assert_eq!(
+        title(&fixed, &finished(report("cancelled", None), None)),
         None
     );
-    assert_eq!(message_for(&fixed, &passed, None, false), None);
-    assert_eq!(message_for(&fixed, &stopped, None, false), None);
 
     let only_failed = slack_only(NotifyWhen::Failed);
     assert_eq!(
-        message_for(&only_failed, &passed, Some(&before_failed), false),
+        title(&only_failed, &finished(passed(), Some(failed()))),
         None
     );
+    assert!(title(&only_failed, &finished(failed(), Some(failed()))).is_some());
+
+    let changed = slack_only(NotifyWhen::Changed);
+    assert!(title(&changed, &finished(failed(), None)).is_some());
+    assert!(title(&changed, &finished(failed(), Some(passed()))).is_some());
+    assert_eq!(title(&changed, &finished(failed(), Some(failed()))), None);
+    assert!(title(&changed, &finished(passed(), Some(failed()))).is_some());
+    assert_eq!(title(&changed, &finished(passed(), Some(passed()))), None);
+
     let every = slack_only(NotifyWhen::Every);
     assert_eq!(
-        title(message_for(&every, &passed, Some(&before_passed), false)).as_deref(),
+        title(&every, &finished(passed(), Some(passed()))).as_deref(),
         Some("Passed: Sign in")
     );
-    assert_eq!(message_for(&every, &stopped, None, false), None);
+    assert_eq!(
+        title(&every, &finished(report("cancelled", None), None)),
+        None
+    );
 
-    let mut quarantined = failed.clone();
-    quarantined.report.quarantined = true;
-    assert_eq!(message_for(&fixed, &quarantined, None, false), None);
-    assert!(message_for(&every, &quarantined, None, false).is_some());
+    let mut quarantined = finished(failed(), None);
+    quarantined.run.report.quarantined = true;
+    assert_eq!(title(&fixed, &quarantined), None);
+    assert_eq!(title(&changed, &quarantined), None);
+    assert!(title(&every, &quarantined).is_some());
 
     let unattended = NotificationSettings {
         unattended_only: true,
         ..fixed.clone()
     };
-    assert_eq!(message_for(&unattended, &failed, None, false), None);
-    assert!(message_for(&unattended, &failed, None, true).is_some());
+    let now = finished(failed(), None);
     assert_eq!(
-        message_for(&NotificationSettings::default(), &failed, None, true),
+        notice_for(&unattended, "shop", std::slice::from_ref(&now), false),
         None
+    );
+    assert!(notice_for(&unattended, "shop", std::slice::from_ref(&now), true).is_some());
+    assert_eq!(
+        notice_for(
+            &NotificationSettings::default(),
+            "shop",
+            std::slice::from_ref(&now),
+            true
+        ),
+        None
+    );
+}
+
+#[test]
+fn each_channel_has_its_own_when() {
+    let settings = NotificationSettings {
+        slack: Some(SlackChannel {
+            when: NotifyWhen::Failed,
+        }),
+        telegram: Some(TelegramChat {
+            chat: "-1".into(),
+            when: NotifyWhen::Every,
+        }),
+        email: Some(MailServer {
+            when: NotifyWhen::Changed,
+            ..MailServer::default()
+        }),
+        ..NotificationSettings::default()
+    };
+    let channels = |now: Finished| notice_for(&settings, "shop", &[now], false).map(|n| n.channels);
+    let failed = || report("failed", Some("run.secret.missing"));
+    let passed = || report("passed", None);
+    assert_eq!(
+        channels(finished(failed(), None)),
+        Some(NotifyChannel::ALL.to_vec())
+    );
+    assert_eq!(
+        channels(finished(failed(), Some(failed()))),
+        Some(vec![NotifyChannel::Slack, NotifyChannel::Telegram])
+    );
+    assert_eq!(
+        channels(finished(passed(), Some(failed()))),
+        Some(vec![NotifyChannel::Telegram, NotifyChannel::Email])
+    );
+    assert_eq!(
+        channels(finished(passed(), Some(passed()))),
+        Some(vec![NotifyChannel::Telegram])
     );
 }
 
@@ -152,13 +291,13 @@ fn messages_go_out_when_the_settings_say() {
 fn a_message_says_why_how_long_and_where_the_report_is() {
     let mut value = report("failed", Some("run.secret.missing"));
     value["schedule"] = json!("Nightly");
-    let told = message(&run(value), false);
+    let told = message("shop", &[finished(value, None)]);
     assert_eq!(told.title, "Failed: Sign in");
     let lines: Vec<&str> = told.body.lines().collect();
     assert_eq!(lines[0], "Secret PASSWORD is not set.");
     assert_eq!(
         lines[1],
-        "Took 12.3 s · login/sign-in.flow.json · schedule “Nightly”"
+        "Took: 12.3 s · File: login/sign-in.flow.json · Schedule: Nightly"
     );
     match ci_run_url() {
         Some(url) => assert_eq!(lines[2], format!("Report: {url}")),
@@ -168,6 +307,7 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
         ),
     }
 
+    let one = |value| message("shop", &[finished(value, None)]);
     let mut rows = report("failed", None);
     rows["attempts"] = json!([
         {"number": 1, "verdict": "passed", "durationMs": 1, "steps": [],
@@ -176,7 +316,7 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
          "row": {"number": 2, "label": "bob"},
          "failure": {"code": "run.secret.missing", "params": {"name": "PASSWORD"}}},
     ]);
-    let body = message(&run(rows), false).body;
+    let body = one(rows).body;
     assert!(
         body.starts_with("Row 2: bob: Secret PASSWORD is not set.\n"),
         "{body}"
@@ -188,9 +328,9 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
         {"number": 1, "verdict": "failed", "durationMs": 1, "steps": []},
         {"number": 2, "verdict": "passed", "durationMs": 1, "steps": []},
     ]);
-    let body = message(&run(flaky), true).body;
+    let body = one(flaky).body;
     assert!(
-        body.starts_with("Passed on retry 1 after failing"),
+        body.starts_with("Passed on retry 1 after failing — the test is flaky.\n"),
         "{body}"
     );
     assert_eq!(duration(850), "850 ms");
@@ -276,10 +416,22 @@ impl Http {
 }
 
 fn note() -> Message {
-    Message {
-        title: "Failed: Sign in & <out>".into(),
-        body: "Took 1 s".into(),
-    }
+    Message::new(
+        "Failed: Sign in & <out>".into(),
+        Details {
+            tone: Tone::Bad,
+            lead: Some("Secret PASSWORD is not set.".into()),
+            facts: vec![("Took".into(), "1 s".into())],
+            ..Details::default()
+        },
+    )
+}
+
+const NOTE_TEXT: &str = "Failed: Sign in & <out>\nSecret PASSWORD is not set.\nTook: 1 s";
+
+/// The JSON a request carried.
+fn json_of(request: &str) -> serde_json::Value {
+    serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap()
 }
 
 fn no_secret(_: NotifyChannel) -> Option<String> {
@@ -287,7 +439,7 @@ fn no_secret(_: NotifyChannel) -> Option<String> {
 }
 
 #[test]
-fn slack_gets_the_text_through_the_webhook() {
+fn slack_gets_the_blocks_through_the_webhook() {
     let server = Http::serve(vec![(200, "ok"), (404, "no_service")]);
     let webhook = format!("{}/services/T1/B2/abc", server.address);
     let settings = slack_only(NotifyWhen::Every);
@@ -313,11 +465,13 @@ fn slack_gets_the_text_through_the_webhook() {
     assert!(reason.contains("no_service"), "{reason}");
     let requests = server.requests();
     assert!(requests[0].starts_with("POST /services/T1/B2/abc "));
-    assert!(
-        requests[0].ends_with(r#"{"text":"Failed: Sign in &amp; &lt;out&gt;\nTook 1 s"}"#),
-        "{}",
-        requests[0]
+    let body = json_of(&requests[0]);
+    assert_eq!(
+        body["text"],
+        "Failed: Sign in &amp; &lt;out&gt;\nSecret PASSWORD is not set.\nTook: 1 s"
     );
+    assert_eq!(body["blocks"][0]["type"], "header");
+    assert_eq!(body["blocks"][0]["text"]["text"], "Failed: Sign in & <out>");
 
     assert_eq!(
         send(
@@ -360,6 +514,7 @@ fn telegram_gets_the_text_from_the_bot() {
     let settings = NotificationSettings {
         telegram: Some(TelegramChat {
             chat: "-100123".into(),
+            when: NotifyWhen::Every,
         }),
         ..NotificationSettings::default()
     };
@@ -368,7 +523,11 @@ fn telegram_gets_the_text_from_the_bot() {
         mail_root: None,
     };
     let secret = |_| Some("123:bot-token".to_owned());
-    let results = send_all(&settings, &note(), &secret, &endpoints);
+    let notice = Notice {
+        message: note(),
+        channels: vec![NotifyChannel::Telegram],
+    };
+    let results = send_all(&settings, &notice, &secret, &endpoints);
     assert_eq!(
         results,
         vec![Sent {
@@ -398,12 +557,9 @@ fn telegram_gets_the_text_from_the_bot() {
     );
     let request = &server.requests()[0];
     assert!(request.starts_with("POST /bot123:bot-token/sendMessage "));
-    let body: serde_json::Value =
-        serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap();
     assert_eq!(
-        body,
-        json!({"chat_id": "-100123", "text": "Failed: Sign in & <out>\nTook 1 s",
-               "disable_web_page_preview": true})
+        json_of(request),
+        json!({"chat_id": "-100123", "text": NOTE_TEXT, "disable_web_page_preview": true})
     );
 }
 
@@ -483,6 +639,7 @@ impl Smtp {
             user: "qa@acme.com".into(),
             from: "JEVision <qa@acme.com>".into(),
             to: vec!["team@acme.com".into()],
+            when: NotifyWhen::Every,
         }
     }
 
@@ -532,6 +689,15 @@ fn converse<S: Read + Write>(mut stream: BufReader<S>, greet: bool, log: &Mutex<
 }
 
 fn mail_to(email: MailServer, password: &str, root: &[u8]) -> Result<(), NotifyError> {
+    mail_message_to(email, password, root, &note())
+}
+
+fn mail_message_to(
+    email: MailServer,
+    password: &str,
+    root: &[u8],
+    message: &Message,
+) -> Result<(), NotifyError> {
     let settings = NotificationSettings {
         email: Some(email),
         ..NotificationSettings::default()
@@ -544,7 +710,7 @@ fn mail_to(email: MailServer, password: &str, root: &[u8]) -> Result<(), NotifyE
     send(
         &settings,
         NotifyChannel::Email,
-        &note(),
+        message,
         &|_| Some(password.clone()),
         &endpoints,
     )
@@ -561,7 +727,7 @@ fn mail_goes_over_tls_from_the_start() {
         talk.contains("Subject: Failed: Sign in & <out>\r\n"),
         "{talk}"
     );
-    assert!(talk.contains("Took 1 s"), "{talk}");
+    assert!(talk.contains("Took: 1 s"), "{talk}");
     assert_eq!(
         mail_to(server.email(MailSecurity::Tls), "wrong", CA),
         Err(failed(
@@ -581,7 +747,7 @@ fn mail_goes_over_starttls_and_never_in_the_clear() {
         "{plain}"
     );
     assert!(
-        secure.contains("AUTH PLAIN") && secure.contains("Took 1 s"),
+        secure.contains("AUTH PLAIN") && secure.contains("Took: 1 s"),
         "{secure}"
     );
 
