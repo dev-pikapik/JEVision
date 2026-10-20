@@ -27,6 +27,11 @@ fn snap(v: f64) -> f64 {
     (v / GRID).round() * GRID
 }
 
+/// `v` on the grid, or as it is when `snapping` is off.
+fn snapped(v: f64, snapping: bool) -> f64 {
+    if snapping { snap(v) } else { v }
+}
+
 fn contains(outer: &Rect, inner: &Rect) -> bool {
     inner.x >= outer.x
         && inner.y >= outer.y
@@ -99,10 +104,10 @@ impl Flow {
     }
 
     /// Moves `items` by `dx`, `dy` canvas points, so that the first of them lands on the grid
-    /// and none goes past the top or left edge. A section takes along everything wholly inside
-    /// it. Moving a block places every block by hand from then on. Returns whether anything
-    /// moved.
-    pub fn move_items(&mut self, items: &[CanvasItem], dx: f64, dy: f64) -> bool {
+    /// (with `snapping`) and none goes past the top or left edge. A section takes along
+    /// everything wholly inside it. Moving a block places every block by hand from then on.
+    /// Returns whether anything moved.
+    pub fn move_items(&mut self, items: &[CanvasItem], dx: f64, dy: f64, snapping: bool) -> bool {
         let items = &self.with_contents(items);
         if items.iter().any(|i| matches!(i, CanvasItem::Block { .. })) {
             self.pin_blocks();
@@ -111,8 +116,8 @@ impl Flow {
         let Some(first) = origins.first() else {
             return false;
         };
-        let mut dx = snap(first.x + dx) - first.x;
-        let mut dy = snap(first.y + dy) - first.y;
+        let mut dx = snapped(first.x + dx, snapping) - first.x;
+        let mut dy = snapped(first.y + dy, snapping) - first.y;
         let left = origins
             .iter()
             .map(|p| p.x + dx)
@@ -175,16 +180,16 @@ impl Flow {
         self.canvas.positions.clear();
     }
 
-    /// Gives section or note `item` the frame `rect`, on the grid and at least four grid steps
-    /// wide and high. Returns `false` for a block or an unknown item.
-    pub fn resize_item(&mut self, item: &CanvasItem, rect: Rect) -> bool {
-        let left = snap(rect.x).max(0.0);
-        let top = snap(rect.y).max(0.0);
+    /// Gives section or note `item` the frame `rect`, on the grid (with `snapping`) and at least
+    /// four grid steps wide and high. Returns `false` for a block or an unknown item.
+    pub fn resize_item(&mut self, item: &CanvasItem, rect: Rect, snapping: bool) -> bool {
+        let left = snapped(rect.x, snapping).max(0.0);
+        let top = snapped(rect.y, snapping).max(0.0);
         let rect = Rect {
             x: left,
             y: top,
-            width: snap(rect.x + rect.width - left).max(MIN_SIZE),
-            height: snap(rect.y + rect.height - top).max(MIN_SIZE),
+            width: snapped(rect.x + rect.width - left, snapping).max(MIN_SIZE),
+            height: snapped(rect.y + rect.height - top, snapping).max(MIN_SIZE),
         };
         let frame = match item {
             CanvasItem::Block { .. } => None,
@@ -216,7 +221,7 @@ impl Flow {
             rect,
         });
         let item = CanvasItem::Section { id };
-        self.resize_item(&item, rect);
+        self.resize_item(&item, rect, true);
         item
     }
 
@@ -237,7 +242,7 @@ impl Flow {
             rect,
         });
         let item = CanvasItem::Note { id };
-        self.resize_item(&item, rect);
+        self.resize_item(&item, rect, true);
         item
     }
 
@@ -515,10 +520,37 @@ mod tests {
     }
 
     #[test]
+    fn moving_and_resizing_leave_the_grid_when_snapping_is_off() {
+        let mut f = chain();
+        assert!(f.move_items(&[block("b")], 301.5, 7.0, false));
+        let before = f.canvas.positions["b"];
+        assert!(f.move_items(&[block("b")], 3.0, 0.0, false));
+        assert_eq!(f.canvas.positions["b"].x, before.x + 3.0);
+        assert!(f.move_items(&[block("b")], 3.0, 0.0, true));
+        assert_eq!(f.canvas.positions["b"].x % GRID, 0.0);
+
+        let note = f.add_note("x", "me", "now", Point { x: 0.0, y: 0.0 });
+        let frame = Rect {
+            x: 10.0,
+            y: 11.0,
+            width: 103.0,
+            height: 101.0,
+        };
+        assert!(f.resize_item(&note, frame, false));
+        let CanvasItem::Note { id } = &note else {
+            unreachable!()
+        };
+        assert_eq!(
+            f.canvas.notes.iter().find(|n| &n.id == id).unwrap().rect,
+            frame
+        );
+    }
+
+    #[test]
     fn moving_a_block_pins_the_others_where_they_were() {
         let mut f = chain();
         let (a, c) = (at(&f, "a"), at(&f, "c"));
-        assert!(f.move_items(&[block("b")], 300.0, 7.0));
+        assert!(f.move_items(&[block("b")], 300.0, 7.0, true));
         assert_eq!(f.canvas.positions.len(), 3);
         let b = f.canvas.positions["b"];
         assert_eq!((b.x % GRID, b.y % GRID), (0.0, 0.0));
@@ -527,12 +559,12 @@ mod tests {
         assert!((at(&f, "a").x - a.x).abs() <= GRID / 2.0);
         assert!((at(&f, "c").y - c.y).abs() <= GRID / 2.0);
         // Nothing goes past the top-left corner; moving by less than half a step does nothing.
-        assert!(f.move_items(&[block("a"), block("b")], -10_000.0, 0.0));
+        assert!(f.move_items(&[block("a"), block("b")], -10_000.0, 0.0, true));
         assert_eq!(
             f.canvas.positions["a"].x.min(f.canvas.positions["b"].x),
             0.0
         );
-        assert!(!f.move_items(&[block("a")], 3.0, -3.0));
+        assert!(!f.move_items(&[block("a")], 3.0, -3.0, true));
 
         let saved = parse(&to_canonical_json(&f)).unwrap();
         assert_eq!(saved, f);
@@ -692,7 +724,7 @@ mod tests {
         let section = f.add_section("Start", frame);
         f.add_note("", "", "", Point { x: 2000.0, y: 0.0 });
         let rect = f.canvas.sections[0].rect;
-        assert!(f.move_items(&[section], 32.0, 0.0));
+        assert!(f.move_items(&[section], 32.0, 0.0, true));
         assert_eq!(f.canvas.sections[0].rect.x, rect.x + 32.0);
         assert!((at(&f, "a").x - (a.x + 32.0)).abs() <= GRID / 2.0);
         assert!((at(&f, "b").x - at(&chain(), "b").x).abs() <= GRID / 2.0);
@@ -732,7 +764,7 @@ mod tests {
             "2026-10-18T09:30:00Z",
             Point { x: 592.0, y: 0.0 },
         );
-        assert!(f.move_items(std::slice::from_ref(&note), 16.0, 32.0));
+        assert!(f.move_items(std::slice::from_ref(&note), 16.0, 32.0, true));
         assert_eq!(
             (f.canvas.notes[0].rect.x, f.canvas.notes[0].rect.y),
             (608.0, 32.0)
@@ -748,7 +780,8 @@ mod tests {
                 y: 32.0,
                 width: 400.0,
                 height: 300.0
-            }
+            },
+            true
         ));
         assert!(!f.resize_item(
             &block("a"),
@@ -757,7 +790,8 @@ mod tests {
                 y: 0.0,
                 width: 1.0,
                 height: 1.0
-            }
+            },
+            true
         ));
         assert!(layout(&f).width >= 608.0 + 400.0);
 

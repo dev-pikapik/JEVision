@@ -185,10 +185,17 @@ pub struct CanvasEdit {
     pub items: Vec<CanvasItem>,
 }
 
-/// Moves `items` by `dx`, `dy` canvas points, snapped to the grid. `None` when nothing moves.
+/// Moves `items` by `dx`, `dy` canvas points, snapped to the grid when `snap`. `None` when
+/// nothing moves.
 #[uniffi::export]
-pub fn move_on_canvas(mut flow: Flow, items: Vec<CanvasItem>, dx: f64, dy: f64) -> Option<Flow> {
-    flow.move_items(&items, dx, dy).then_some(flow)
+pub fn move_on_canvas(
+    mut flow: Flow,
+    items: Vec<CanvasItem>,
+    dx: f64,
+    dy: f64,
+    snap: bool,
+) -> Option<Flow> {
+    flow.move_items(&items, dx, dy, snap).then_some(flow)
 }
 
 /// Puts block `id` with its top-left corner at `at`, snapped to the grid.
@@ -197,10 +204,10 @@ pub fn place_block(mut flow: Flow, id: String, at: Point) -> Option<Flow> {
     flow.place_block(&id, at).then_some(flow)
 }
 
-/// Gives a section or a note a new frame, snapped to the grid.
+/// Gives a section or a note a new frame, snapped to the grid when `snap`.
 #[uniffi::export]
-pub fn resize_on_canvas(mut flow: Flow, item: CanvasItem, rect: Rect) -> Option<Flow> {
-    flow.resize_item(&item, rect).then_some(flow)
+pub fn resize_on_canvas(mut flow: Flow, item: CanvasItem, rect: Rect, snap: bool) -> Option<Flow> {
+    flow.resize_item(&item, rect, snap).then_some(flow)
 }
 
 /// Forgets where blocks were placed by hand, so the test lays out automatically again.
