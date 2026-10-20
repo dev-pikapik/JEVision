@@ -7,8 +7,8 @@ use std::time::{Duration, Instant, SystemTime};
 use jevision_runner::{
     DataRow, Event, Hands, HandsError, Judgement, Located, MaskedImage, MouseButton, Openable,
     PauseReason, Point, Question, RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner,
-    Screenshot, StepStatus, VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge,
-    describe, html, junit_xml, prune_videos,
+    Screenshot, ScrollDirection, ScrollUnit, StepStatus, VIDEO_FILE, Verdict, VideoMode,
+    VisionAnswer, VisionError, VisionJudge, describe, html, junit_xml, prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -26,6 +26,7 @@ struct State {
     dark: bool,
     /// Password fields the window reports.
     secure: Vec<jevision_core::Rect>,
+    /// Shown after the first click, hover, drag or scroll.
     after_click: Option<Vec<u8>>,
     after_quit: Option<Vec<u8>>,
     /// Shown from the second look at the screen on.
@@ -67,6 +68,15 @@ impl Fake {
 
     fn note(&self, entry: String) {
         self.state.lock().unwrap().log.push(entry);
+    }
+
+    /// Logs a pointer action; the screen then shows `after_click`, if set.
+    fn pointer(&self, entry: String) {
+        let mut s = self.state.lock().unwrap();
+        s.log.push(entry);
+        if let Some(screen) = s.after_click.take() {
+            s.screen = screen;
+        }
     }
 }
 
@@ -113,11 +123,30 @@ impl Hands for Fake {
         Ok(found.then_some(Point { x: 0.5, y: 0.25 }))
     }
     fn click(&self, _: &str, at: Point, button: MouseButton, _: bool) -> Result<(), HandsError> {
-        let mut s = self.state.lock().unwrap();
-        s.log.push(format!("click {:?} {} {}", button, at.x, at.y));
-        if let Some(screen) = s.after_click.take() {
-            s.screen = screen;
-        }
+        self.pointer(format!("click {:?} {} {}", button, at.x, at.y));
+        Ok(())
+    }
+    fn hover(&self, _: &str, at: Point) -> Result<(), HandsError> {
+        self.pointer(format!("hover {} {}", at.x, at.y));
+        Ok(())
+    }
+    fn drag(&self, _: &str, path: &[Point]) -> Result<(), HandsError> {
+        let points: Vec<String> = path.iter().map(|p| format!("{} {}", p.x, p.y)).collect();
+        self.pointer(format!("drag {}", points.join(", ")));
+        Ok(())
+    }
+    fn scroll(
+        &self,
+        _: &str,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+    ) -> Result<(), HandsError> {
+        self.pointer(format!(
+            "scroll {direction:?} {amount} {unit:?} at {} {}",
+            at.x, at.y
+        ));
         Ok(())
     }
     fn type_text(&self, text: &str) -> Result<(), HandsError> {
@@ -452,6 +481,110 @@ fn a_point_target_is_a_share_of_the_window() {
     let hands = Fake::new(solid([9, 9, 9]));
     assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
     assert_eq!(hands.log(), ["click Left 10 2.5"]);
+}
+
+#[test]
+fn hover_moves_the_pointer_onto_the_target() {
+    let p = Project::new();
+    p.write("refs/help.png", solid([9, 9, 9])).test(
+        r#""tip":{"type":"hover","target":{"image":"refs/help.png"},"waitForChange":true}"#,
+        "tip",
+        0,
+    );
+    // The tooltip changes the screen, so waiting for a change passes at once.
+    let hands = Fake::new(solid([9, 9, 9])).with(|s| s.after_click = Some(solid([0, 0, 200])));
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(hands.log(), ["hover 0.5 0.25"]);
+    let step = &run.report.attempts[0].steps[0];
+    assert_eq!(step.block_type, "hover");
+    assert!(step.before.is_some() && step.after.is_some());
+}
+
+#[test]
+fn drag_presses_on_the_source_and_lets_go_on_the_destination() {
+    let p = Project::new();
+    p.write("refs/file.png", solid([9, 9, 9])).test(
+        r#""open":{"type":"pressKeys","keys":"a","next":"move"},
+           "move":{"type":"drag","from":{"image":"refs/file.png"},"to":{"point":{"x":0.5,"y":0.85}},"next":"after"},
+           "after":{"type":"pressKeys","keys":"b"}"#,
+        "open",
+        0,
+    );
+    // A window of 20×10 points: from the found picture at (0.5, 0.25) down to (10, 8.5).
+    let hands = Fake::new(solid([9, 9, 9]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    let log = hands.log();
+    assert_eq!(
+        log,
+        [
+            "keys a",
+            "drag 0.5 0.25, 2.875 2.3125, 5.25 4.375, 7.625 6.4375, 10 8.5",
+            "keys b"
+        ]
+    );
+}
+
+#[test]
+fn a_long_drag_moves_in_small_even_steps() {
+    let p = Project::new();
+    p.test(
+        r#""move":{"type":"drag","from":{"point":{"x":0,"y":0}},"to":{"point":{"x":1,"y":0}}}"#,
+        "move",
+        0,
+    );
+    // 1000 points wide: the pointer travels in steps of at most 12 points, 60 at most.
+    let hands = Fake::new(png(2000, 4, |_, _| [9, 9, 9]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    let log = hands.log();
+    let points: Vec<f64> = log[0]
+        .strip_prefix("drag ")
+        .unwrap()
+        .split(", ")
+        .map(|p| p.split(' ').next().unwrap().parse().unwrap())
+        .collect();
+    assert_eq!(points.len(), 61);
+    assert_eq!((points[0], points[60]), (0.0, 1000.0));
+    assert!(
+        points
+            .windows(2)
+            .all(|w| (w[1] - w[0] - 1000.0 / 60.0).abs() < 1e-9)
+    );
+}
+
+#[test]
+fn scroll_turns_the_wheel_over_the_middle_or_the_target() {
+    let p = Project::new();
+    p.write("refs/list.png", solid([9, 9, 9])).test(
+        r#""down":{"type":"scroll","direction":"down","amount":5,"next":"left"},
+           "left":{"type":"scroll","direction":"left","amount":240,"unit":"pixels","at":{"image":"refs/list.png"}}"#,
+        "down",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    assert_eq!(run(&p, &hands).report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        [
+            "scroll Down 5 Lines at 10 5",
+            "scroll Left 240 Pixels at 0.5 0.25"
+        ]
+    );
+}
+
+#[test]
+fn a_scroll_target_must_be_on_screen() {
+    let p = Project::new();
+    p.write("refs/list.png", solid([9, 9, 9])).test(
+        r#""s":{"type":"scroll","direction":"up","amount":1,"at":{"image":"refs/list.png"}}"#,
+        "s",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let report = run(&p, &hands).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.target.notFound");
+    assert!(hands.log().is_empty());
 }
 
 #[test]
@@ -1632,6 +1765,29 @@ fn vision_problems_are_localizable_failures() {
 }
 
 #[test]
+fn waiting_by_meaning_asks_again_only_when_the_screen_changes() {
+    let p = Project::new();
+    p.test(
+        r#""wait":{"type":"waitFor","until":{"appears":{"compare":"meaning","expect":"Done"}},
+                   "timeout":"1s"}"#,
+        "wait",
+        0,
+    );
+    let asked = |hands: &Fake| {
+        let judge = Judge::says(false);
+        let report = run_judged(&p, hands, Some(&judge), false).report;
+        assert_eq!(failure_code(&report), "run.waitFor.timeout");
+        let step = &report.attempts[0].steps[0];
+        assert_eq!(step.vision.as_ref().unwrap().reason, "The cart is empty.");
+        assert!(step.sent.is_some());
+        judge.asked.lock().unwrap().len()
+    };
+    assert_eq!(asked(&Fake::new(solid([9, 9, 9]))), 1);
+    let changing = Fake::new(solid([9, 9, 9])).with(|s| s.after_capture = Some(solid([0, 9, 9])));
+    assert_eq!(asked(&changing), 2);
+}
+
+#[test]
 fn a_model_quoting_a_secret_from_the_screen_is_masked() {
     let p = Project::new();
     p.test(
@@ -1950,7 +2106,8 @@ fn a_described_element_is_clicked_in_the_middle_of_where_the_model_found_it() {
         width: 0.2,
         height: 0.5,
     }));
-    let report = run_located(&p, &hands, Some(&locator)).report;
+    let run = run_located(&p, &hands, Some(&locator));
+    let report = &run.report;
     assert_eq!(report.verdict, Verdict::Passed);
     // The middle of the box, (0.6, 0.5) of a 40×20 window shot at scale 2, in points.
     assert_eq!(hands.log(), ["click Left 12 5", "click Left 12 5", "type"]);
@@ -1963,6 +2120,48 @@ fn a_described_element_is_clicked_in_the_middle_of_where_the_model_found_it() {
     assert_eq!(pixel(shot, 20, 10), [0, 200, 0]);
     let step = &report.attempts[0].steps[0];
     assert!(step.sent.is_some() && step.sent_masked);
+    assert_eq!(step.found, [locator.found.unwrap()]);
+    // The report outlines the box on the picture sent: 40×20 pixels.
+    assert!(
+        html(report, &run.dir, None)
+            .contains(r#"<rect class="found" x="20.0" y="5.0" width="8.0" height="10.0"/>"#)
+    );
+}
+
+#[test]
+fn hover_drag_and_scroll_find_described_elements_too() {
+    let p = Project::new();
+    p.test(
+        r#""tip":{"type":"hover","target":{"description":"the help button"},"next":"move"},
+           "move":{"type":"drag","from":{"description":"the report file"},"to":{"point":{"x":0.5,"y":0.85}},"next":"down"},
+           "down":{"type":"scroll","direction":"down","amount":3,"at":{"description":"the message list"}}"#,
+        "tip",
+        0,
+    );
+    let hands = Fake::new(png(40, 20, |_, _| [0, 200, 0]));
+    let locator = Locator::new(Some(jevision_core::Rect {
+        x: 0.5,
+        y: 0.25,
+        width: 0.2,
+        height: 0.5,
+    }));
+    let report = run_located(&p, &hands, Some(&locator)).report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    let log = hands.log();
+    assert_eq!(log[0], "hover 12 5");
+    // From the found element to the point (0.5, 0.85) of a 20×10 point window.
+    assert!(
+        log[1].starts_with("drag 12 5, ") && log[1].ends_with(", 10 8.5"),
+        "{log:?}"
+    );
+    assert_eq!(log[2], "scroll Down 3 Lines at 12 5");
+    let asked = locator.asked.lock().unwrap();
+    let what: Vec<&str> = asked.iter().map(|(what, _)| what.as_str()).collect();
+    assert_eq!(
+        what,
+        ["the help button", "the report file", "the message list"]
+    );
+    assert!(report.attempts[0].steps.iter().all(|s| s.found.len() == 1));
 }
 
 #[test]

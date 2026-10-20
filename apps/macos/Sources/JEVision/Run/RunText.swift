@@ -62,6 +62,8 @@ enum RunText {
       return String(localized: "Block “\(block)”: \(VisionText.failure(failure))")
     case "run.click.noChange":
       return String(localized: "run.click.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after the click.")
+    case "run.action.noChange":
+      return String(localized: "run.action.noChange", defaultValue: "Block “\(block)”: the screen didn’t change within \(p("seconds")) s after this step.")
     case "run.waitFor.timeout" where p("target") == "screenStable":
       return String(localized: "run.waitFor.timeout.screenStable", defaultValue: "Block “\(block)”: the screen didn’t settle within \(p("seconds")) s.")
     case "run.waitFor.timeout":

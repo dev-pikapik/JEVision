@@ -55,8 +55,20 @@ pub fn test_keywords(flow: &Flow) -> String {
                 words.extend(files.iter().map(String::as_str));
                 words.extend(app.as_deref());
             }
-            BlockKind::Click { target, .. } => {
+            BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => {
                 if let Target::Image(text) | Target::Description(text) = target {
+                    words.push(text);
+                }
+            }
+            BlockKind::Drag { from, to, .. } => {
+                for target in [from, to] {
+                    if let Target::Image(text) | Target::Description(text) = target {
+                        words.push(text);
+                    }
+                }
+            }
+            BlockKind::Scroll { at, .. } => {
+                if let Some(Target::Image(text) | Target::Description(text)) = at {
                     words.push(text);
                 }
             }
@@ -215,12 +227,20 @@ mod tests {
         let flow = crate::parse(
             r#"{"format":1,"name":"Add a line to a note","description":"Keeps the draft",
             "app":"com.apple.Notes","start":"a","blocks":{
-            "a":{"type":"type","text":"Hello, ${data.name}!","next":"b"},
+            "a":{"type":"type","text":"Hello, ${data.name}!","next":"m"},
+            "m":{"type":"drag","from":{"image":"refs/inbox.png"},"to":{"image":"refs/archive.png"},"next":"b"},
             "b":{"type":"check","reference":{"image":"","compare":"meaning","expect":"A saved note"}}}}"#,
         )
         .unwrap();
         let keywords = test_keywords(&flow);
-        for words in ["note 01", "draft", "hello", "saved note"] {
+        for words in [
+            "note 01",
+            "draft",
+            "hello",
+            "saved note",
+            "inbox",
+            "archive",
+        ] {
             let candidate = SearchCandidate {
                 title: "flow-012".to_owned(),
                 keywords: keywords.clone(),

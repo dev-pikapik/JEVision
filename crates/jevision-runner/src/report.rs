@@ -321,6 +321,10 @@ pub struct Step {
     /// Private areas of [`sent`](Self::sent) were covered before sending.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub sent_masked: bool,
+    /// Where the vision model found the elements the block describes in words, in fractions
+    /// (0–1) of [`sent`](Self::sent).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub found: Vec<jevision_core::Rect>,
     /// Edge an `if` block followed: `then`, `elseIf1`, `elseIf2`… or `else`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
@@ -511,6 +515,11 @@ pub fn describe(f: &Failure) -> String {
         ),
         "run.click.noChange" => format!(
             "Block {}: the screen did not change within {} s after the click.",
+            p("block"),
+            p("seconds")
+        ),
+        "run.action.noChange" => format!(
+            "Block {}: the screen did not change within {} s after this step.",
             p("block"),
             p("seconds")
         ),
@@ -944,24 +953,23 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
             } else {
                 "Sent to the AI model"
             };
-            let images: Vec<(&str, &String)> = [
-                ("Before", &s.before),
-                ("After", &s.after),
-                ("Expected", &s.expected),
-                ("Differences", &s.diff),
-                (sent, &s.sent),
+            let images: Vec<(&str, &String, &[jevision_core::Rect])> = [
+                ("Before", &s.before, &[][..]),
+                ("After", &s.after, &[]),
+                ("Expected", &s.expected, &[]),
+                ("Differences", &s.diff, &[]),
+                (sent, &s.sent, &s.found),
             ]
             .into_iter()
-            .filter_map(|(name, path)| Some((name, path.as_ref()?)))
+            .filter_map(|(name, path, found)| Some((name, path.as_ref()?, found)))
             .collect();
             let figures: String = images
                 .iter()
-                .filter_map(|(name, path)| {
+                .filter_map(|(name, path, found)| {
                     let bytes = std::fs::read(run_dir.join(path)).ok()?;
                     Some(format!(
-                        "<figure><img tabindex=\"0\" alt=\"{name}\" \
-                         src=\"data:image/png;base64,{}\"><figcaption>{name}</figcaption></figure>",
-                        base64(&bytes)
+                        "<figure>{}<figcaption>{name}</figcaption></figure>",
+                        picture(name, &bytes, found)
                     ))
                 })
                 .collect();
@@ -978,6 +986,33 @@ pub fn html(report: &RunReport, run_dir: &Path, video: Option<&str>) -> String {
     }
     o.push_str("</body>\n</html>\n");
     o
+}
+
+/// A PNG for the HTML report, with `found` outlined: boxes in fractions of the picture.
+fn picture(name: &str, png: &[u8], found: &[jevision_core::Rect]) -> String {
+    let data = base64(png);
+    // Width and height from the PNG header.
+    let side = |at: usize| Some(u32::from_be_bytes(png.get(at..at + 4)?.try_into().ok()?));
+    let (Some(w), Some(h), false) = (side(16), side(20), found.is_empty()) else {
+        return format!("<img tabindex=\"0\" alt=\"{name}\" src=\"data:image/png;base64,{data}\">");
+    };
+    let boxes: String = found
+        .iter()
+        .map(|r| {
+            format!(
+                "<rect class=\"found\" x=\"{:.1}\" y=\"{:.1}\" width=\"{:.1}\" height=\"{:.1}\"/>",
+                r.x * f64::from(w),
+                r.y * f64::from(h),
+                r.width * f64::from(w),
+                r.height * f64::from(h)
+            )
+        })
+        .collect();
+    format!(
+        "<svg tabindex=\"0\" role=\"img\" aria-label=\"{name}\" width=\"{w}\" height=\"{h}\" \
+         viewBox=\"0 0 {w} {h}\"><image width=\"{w}\" height=\"{h}\" \
+         href=\"data:image/png;base64,{data}\"/>{boxes}</svg>"
+    )
 }
 
 /// Makes the step buttons seek the video.
@@ -1013,8 +1048,11 @@ border-radius:8px;padding:10px 14px}\
 .shots{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}\
 figure{margin:0;width:240px}figure img{width:100%;border:1px solid var(--line);border-radius:6px;\
 display:block;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px}\
-figure img:focus{position:fixed;inset:0;margin:auto;width:auto;max-width:96vw;max-height:96vh;\
-z-index:1;box-shadow:0 0 0 100vmax rgba(0,0,0,.6);cursor:zoom-out;outline:none}figure img{cursor:zoom-in}\
+figure svg{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:6px}\
+figure img:focus,figure svg:focus{position:fixed;inset:0;margin:auto;width:auto;max-width:96vw;\
+max-height:96vh;z-index:1;box-shadow:0 0 0 100vmax rgba(0,0,0,.6);cursor:zoom-out;outline:none}\
+figure img,figure svg{cursor:zoom-in}\
+.found{fill:none;stroke:#ff3b30;stroke-width:3;vector-effect:non-scaling-stroke}\
 figcaption{color:var(--muted);font-size:12px;margin-top:4px}\
 video{display:block;width:100%;max-height:70vh;margin-top:20px;border-radius:8px;background:#000}\
 .seek{font:inherit;font-size:13px;font-variant-numeric:tabular-nums;color:var(--new);background:none;\

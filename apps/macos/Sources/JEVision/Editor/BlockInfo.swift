@@ -8,6 +8,9 @@ enum BlockInfo {
     case "openApp": "macwindow.badge.plus"
     case "openFile": "doc"
     case "click": "cursorarrow.click"
+    case "hover": "cursorarrow.rays"
+    case "drag": "cursorarrow.and.square.on.square.dashed"
+    case "scroll": "scroll"
     case "type": "character.cursor.ibeam"
     case "pressKeys": "command"
     case "waitFor": "hourglass"
@@ -25,6 +28,9 @@ enum BlockInfo {
     case "openApp": String(localized: "Open App")
     case "openFile": String(localized: "Open File")
     case "click": String(localized: "Click")
+    case "hover": String(localized: "Hover")
+    case "drag": String(localized: "Drag")
+    case "scroll": String(localized: "Scroll")
     case "type": String(localized: "Type Text")
     case "pressKeys": String(localized: "Press Keys")
     case "waitFor": String(localized: "Wait For")
@@ -42,6 +48,9 @@ enum BlockInfo {
     case "openApp": String(localized: "Launches an app and brings it to the front.")
     case "openFile": String(localized: "Opens files or web pages. Each file opens from a fresh copy, so the original stays intact.")
     case "click": String(localized: "Clicks an element found by how it looks, or a fixed point in the window.")
+    case "hover": String(localized: "Moves the pointer onto an element and leaves it there, to show a tooltip or a menu that opens on hover.")
+    case "drag": String(localized: "Presses on one place, moves while holding the button and lets go on another: to move, resize or drop something.")
+    case "scroll": String(localized: "Turns the scroll wheel over the window or over an element, by lines or by pixels.")
     case "type": String(localized: "Types text, optionally clicking into a field first.")
     case "pressKeys": String(localized: "Presses one key combination.")
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
@@ -60,6 +69,9 @@ enum BlockInfo {
     case "openApp": String(localized: "Launches an app")
     case "openFile": String(localized: "Opens a file or a web page")
     case "click": String(localized: "Clicks a button or a point")
+    case "hover": String(localized: "Points at something without clicking")
+    case "drag": String(localized: "Drags from one place to another")
+    case "scroll": String(localized: "Scrolls the page or a list")
     case "type": String(localized: "Types text into a field")
     case "pressKeys": String(localized: "Presses a key combination")
     case "waitFor": String(localized: "Waits for the screen to change")
@@ -120,6 +132,9 @@ extension BlockKind {
     case .openApp: "openApp"
     case .openFile: "openFile"
     case .click: "click"
+    case .hover: "hover"
+    case .drag: "drag"
+    case .scroll: "scroll"
     case .type: "type"
     case .pressKeys: "pressKeys"
     case .waitFor: "waitFor"

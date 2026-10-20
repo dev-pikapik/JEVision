@@ -140,6 +140,39 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+    /// Moves the pointer onto the target and leaves it there, to bring up tooltips and menus
+    /// that open on hover.
+    Hover {
+        target: Target,
+        /// After moving, wait until the screen changes; fail if it does not.
+        #[serde(skip_serializing_if = "is_false")]
+        wait_for_change: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Presses the left button on `from`, moves to `to` holding it down, and lets go there.
+    Drag {
+        from: Target,
+        to: Target,
+        /// After letting go, wait until the screen changes; fail if it does not.
+        #[serde(skip_serializing_if = "is_false")]
+        wait_for_change: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Turns the scroll wheel with the pointer over `at`, or over the middle of the window.
+    Scroll {
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        at: Option<Target>,
+        /// After scrolling, wait until the screen changes; fail if it does not.
+        #[serde(skip_serializing_if = "is_false")]
+        wait_for_change: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
     /// Types text, optionally clicking into a field first.
     Type {
         /// May contain `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` placeholders.
@@ -247,6 +280,24 @@ pub enum MouseButton {
     Right,
 }
 
+/// Which way a scroll moves the view: `down` brings what is further down into sight.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScrollDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// What the amount of a scroll counts: wheel notches (lines), or points on screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ScrollUnit {
+    Lines,
+    Pixels,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WaitUntil {
@@ -323,6 +374,9 @@ impl BlockKind {
             Self::OpenApp { .. } => "openApp",
             Self::OpenFile { .. } => "openFile",
             Self::Click { .. } => "click",
+            Self::Hover { .. } => "hover",
+            Self::Drag { .. } => "drag",
+            Self::Scroll { .. } => "scroll",
             Self::Type { .. } => "type",
             Self::PressKeys { .. } => "pressKeys",
             Self::WaitFor { .. } => "waitFor",
@@ -388,6 +442,9 @@ impl BlockKind {
             Self::OpenApp { next, .. }
             | Self::OpenFile { next, .. }
             | Self::Click { next, .. }
+            | Self::Hover { next, .. }
+            | Self::Drag { next, .. }
+            | Self::Scroll { next, .. }
             | Self::Type { next, .. }
             | Self::PressKeys { next, .. }
             | Self::WaitFor { next, .. }

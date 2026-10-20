@@ -152,6 +152,7 @@ mod tests {
             video_at_ms: None,
             sent: None,
             sent_masked: false,
+            found: Vec::new(),
             branches: None,
             branch_condition: None,
         }

@@ -64,7 +64,7 @@
   <ul>
     <li><a href="#how-a-test-runs">How a test runs</a></li>
     <li><a href="#test-fields">Fields of a test</a></li>
-    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a></li>
+    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a></li>
     <li><a href="#shapes">Targets, areas, durations and paths</a></li>
     <li><a href="#placeholders">Placeholders</a></li>
     <li><a href="#keys">Key combinations</a></li>
@@ -115,6 +115,9 @@
     <tr><td><a href="#openApp"><code>openApp</code></a></td><td>Actions</td><td>Opens the application under test, or another one</td><td><code>next</code></td></tr>
     <tr><td><a href="#openFile"><code>openFile</code></a></td><td>Actions</td><td>Opens files or web addresses</td><td><code>next</code></td></tr>
     <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture, or a point</td><td><code>next</code></td></tr>
+    <tr><td><a href="#hover"><code>hover</code></a></td><td>Actions</td><td>Points at an element without clicking</td><td><code>next</code></td></tr>
+    <tr><td><a href="#drag"><code>drag</code></a></td><td>Actions</td><td>Drags from one place to another</td><td><code>next</code></td></tr>
+    <tr><td><a href="#scroll"><code>scroll</code></a></td><td>Actions</td><td>Turns the scroll wheel by lines or pixels</td><td><code>next</code></td></tr>
     <tr><td><a href="#type"><code>type</code></a></td><td>Actions</td><td>Types text, optionally into a field</td><td><code>next</code></td></tr>
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
     <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
@@ -168,6 +171,49 @@
 </table>
 </div>
 <pre><code>{ "type": "click", "target": { "image": "refs/sign-in-button.png" }, "button": "left", "next": "inbox" }</code></pre>
+
+<h3 id="hover">hover: point at an element</h3>
+<p>Brings the application to the front and moves the pointer onto a <a href="#target">target</a>, without clicking, and leaves it there: for tooltips, toolbar buttons that light up and menus that open on hover. Follow it with a <a href="#waitFor"><code>waitFor</code></a> for what should appear. A recording can't catch hovering, so add this block by hand.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>target</code></td><td>Yes</td><td>What to point at: a <a href="#target">target</a>.</td></tr>
+    <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "hover", "target": { "image": "refs/help-button.png" }, "next": "tooltip" }</code></pre>
+
+<h3 id="drag">drag: drag and drop</h3>
+<p>Brings the application to the front, presses the left button on one <a href="#target">target</a>, moves to another in small steps holding the button down, and lets go there: to move a file to a folder, reorder a list, resize a panel or select text. Both places are found on the screen as it is before the drag. The button is let go even when the run is stopped halfway. Recording turns a press, a move and a release inside the window into this block.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>from</code></td><td>Yes</td><td>Where to press: a <a href="#target">target</a>.</td></tr>
+    <tr><td><code>to</code></td><td>Yes</td><td>Where to let go: a <a href="#target">target</a>. It can't be the same place as <code>from</code>.</td></tr>
+    <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait, after letting go, until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "drag", "from": { "image": "refs/report-file.png" }, "to": { "image": "refs/archive-folder.png" }, "next": "moved" }</code></pre>
+
+<h3 id="scroll">scroll: turn the scroll wheel</h3>
+<p>Brings the application to the front, moves the pointer over the middle of the window or over a <a href="#target">target</a>, and turns the scroll wheel. <code>down</code> brings what is further down into sight, whatever the Natural scrolling setting of the Mac. Recording joins turns of the wheel in one direction into one block, in lines from a mouse wheel or pixels from a trackpad.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>direction</code></td><td>Yes</td><td><code>"up"</code>, <code>"down"</code>, <code>"left"</code> or <code>"right"</code>.</td></tr>
+    <tr><td><code>amount</code></td><td>Yes</td><td>How far: a whole number from 1 to 10000.</td></tr>
+    <tr><td><code>unit</code></td><td>No</td><td><code>"lines"</code> (default), as a mouse wheel turns, or <code>"pixels"</code>, as a trackpad scrolls.</td></tr>
+    <tr><td><code>at</code></td><td>No</td><td>A <a href="#target">target</a> to scroll over, such as one list of several. Default: the middle of the window.</td></tr>
+    <tr><td><code>waitForChange</code></td><td>No</td><td><code>true</code> to wait, after scrolling, until the screen changes, and fail if it doesn't change within 10 seconds. Default: <code>false</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "scroll", "direction": "down", "amount": 5, "unit": "lines", "next": "footer" }</code></pre>
 
 <h3 id="type">type: type text</h3>
 <p>Brings the application to the front and types text, as if on the keyboard. With <code>into</code>, it first clicks that field. A line break in the text (<code>\n</code> in JSON) presses Return and a tab (<code>\t</code>) presses Tab.</p>
@@ -288,7 +334,7 @@
 <h2 id="shapes">Targets, areas, durations and paths</h2>
 
 <h3 id="target">Target</h3>
-<p>Where on screen a <code>click</code> or the <code>into</code> of a <code>type</code> happens. Exactly one of:</p>
+<p>Where on screen a <code>click</code>, a <code>hover</code>, either end of a <code>drag</code>, the <code>at</code> of a <code>scroll</code> or the <code>into</code> of a <code>type</code> happens. Exactly one of:</p>
 <ul>
   <li><code>{ "image": "refs/button.png" }</code>: the element that looks like this picture, found on the current screen. This keeps working when the window moves or changes size.</li>
   <li><code>{ "description": "the blue Save button" }</code>: the element described in words, found on the current screen by JEV (TypeSafe AI) and clicked in its middle. JEV must be set up in Settings → AI, even when another provider checks by meaning; the screenshot is masked before it is sent, as for <a href="checks.html">checks by meaning</a>, and finding needs model jev-1.14.0 or newer, or jev-latest.</li>
@@ -343,7 +389,7 @@
 </ul>
 
 <h2 id="canonical">Canonical form</h2>
-<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation, settings that are off or empty left out, and the click button, the comparison and the <code>waitFor</code> timeout always written out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
+<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation, settings that are off or empty left out, and the click button, the scroll unit, the comparison and the <code>waitFor</code> timeout always written out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
 
 <h2 id="editor">Editing on the canvas</h2>
 <ul>

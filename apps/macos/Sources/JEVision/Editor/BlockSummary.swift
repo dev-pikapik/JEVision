@@ -18,7 +18,7 @@ enum BlockSummary {
       let name = (first as NSString).lastPathComponent
       return files.count == 1 ? name : String(localized: "\(name) and \(files.count - 1) more")
     case .click(let target, let button, let double, _, _):
-      guard case .image(let path) = target, path.isEmpty else {
+      guard isUnset(target) else {
         let place = targetName(target)
         switch (button, double) {
         case (.right, _): return String(localized: "Right-click \(place)")
@@ -27,14 +27,37 @@ enum BlockSummary {
         }
       }
       return String(localized: "Choose what to click")
+    case .hover(let target, _, _):
+      return isUnset(target) ? String(localized: "Choose what to point at") : String(localized: "Point at \(targetName(target))")
+    case .drag(let from, let to, _, _):
+      return isUnset(from) || isUnset(to)
+        ? String(localized: "Choose what to drag and where")
+        : String(localized: "Drag \(spotName(from)) to \(spotName(to))")
+    case .scroll(let direction, let amount, let unit, let at, _, _):
+      let much = unit == .lines ? String(localized: "\(Int(amount)) lines") : String(localized: "\(Int(amount)) px")
+      guard let at, !isUnset(at) else {
+        switch direction {
+        case .up: return String(localized: "Scroll up \(much)")
+        case .down: return String(localized: "Scroll down \(much)")
+        case .left: return String(localized: "Scroll left \(much)")
+        case .right: return String(localized: "Scroll right \(much)")
+        }
+      }
+      let place = targetName(at)
+      switch direction {
+      case .up: return String(localized: "Scroll up \(much) over \(place)")
+      case .down: return String(localized: "Scroll down \(much) over \(place)")
+      case .left: return String(localized: "Scroll left \(much) over \(place)")
+      case .right: return String(localized: "Scroll right \(much) over \(place)")
+      }
     case .type(let text, let into, _):
       guard !text.isEmpty else { return String(localized: "No text yet") }
       let what = secretName(text).map { String(localized: "secret \($0)") } ?? quoted(text)
       if let into, case .image(let path) = into, !path.isEmpty {
         return String(localized: "Type \(what) into \(imageName(path))")
       }
-      if let into, case .description(let text) = into, !text.isEmpty {
-        return String(localized: "Type \(what) into \(quoted(text, limit: 40))")
+      if let into, case .description = into, !isUnset(into) {
+        return String(localized: "Type \(what) into \(targetName(into))")
       }
       return String(localized: "Type \(what)")
     case .pressKeys(let keys, _):
@@ -114,8 +137,25 @@ enum BlockSummary {
     switch target {
     case .image(let path): imageName(path)
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
-    case .description(let text):
-      text.isEmpty ? String(localized: "an element described in words") : quoted(text, limit: 40)
+    case .description(let text): quoted(text, limit: 40)
+    }
+  }
+
+  /// A target without the “at” in front of a point.
+  private static func spotName(_ target: Target) -> String {
+    switch target {
+    case .image(let path): imageName(path)
+    case .point(let p): "\(percent(p.x)), \(percent(p.y))"
+    case .description(let text): quoted(text, limit: 40)
+    }
+  }
+
+  /// A picture not chosen or an element not described yet.
+  private static func isUnset(_ target: Target) -> Bool {
+    switch target {
+    case .image(let path): path.isEmpty
+    case .description(let text): text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    case .point: false
     }
   }
 

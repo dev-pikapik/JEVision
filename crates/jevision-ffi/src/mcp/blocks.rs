@@ -1,7 +1,7 @@
 //! The test file format in words, for `list_block_types`: every block type with its fields and
 //! an example, and the shapes blocks share. Tests check that the list matches the core.
 
-use jevision_core::{FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES, catalog};
+use jevision_core::{FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, catalog};
 use serde_json::{Value, json};
 
 /// Fields and an example for every block type, in palette order.
@@ -22,7 +22,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "openFile", "files": ["fixtures/note.txt"], "app": "com.apple.TextEdit" }),
         ),
         "click" => (
-            "Clicks an element found by its picture, or a fixed point of the window.",
+            "Clicks an element found by its picture or its description in words, or a fixed point of the window.",
             json!({
                 "target": "where to click: a target (see shapes)",
                 "button": "optional, \"left\" (default) or \"right\"",
@@ -30,6 +30,34 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
                 "waitForChange": "optional, true to wait until the screen changes after the click and fail if it doesn't",
             }),
             json!({ "type": "click", "target": { "image": "refs/sign-in-button.png" }, "button": "left" }),
+        ),
+        "hover" => (
+            "Moves the pointer onto an element and leaves it there, to bring up a tooltip or a menu that opens on hover. Follow it with a waitFor or a check of what appears.",
+            json!({
+                "target": "where to move the pointer: a target (see shapes)",
+                "waitForChange": "optional, true to wait until the screen changes after the move and fail if it doesn't",
+            }),
+            json!({ "type": "hover", "target": { "image": "refs/help-button.png" }, "waitForChange": true }),
+        ),
+        "drag" => (
+            "Presses the left button on one element, moves to another holding it down, and lets go there: drag and drop, moving a slider, selecting by dragging. Both ends are found on the screen as it is before the drag.",
+            json!({
+                "from": "where to press: a target (see shapes)",
+                "to": "where to let go: a target (see shapes), not the same as from",
+                "waitForChange": "optional, true to wait until the screen changes after the drop and fail if it doesn't",
+            }),
+            json!({ "type": "drag", "from": { "image": "refs/report-file.png" }, "to": { "image": "refs/archive-folder.png" } }),
+        ),
+        "scroll" => (
+            "Turns the scroll wheel with the pointer over a place in the window: the middle, or a target.",
+            json!({
+                "direction": "\"up\", \"down\", \"left\" or \"right\"; down brings what is further down into sight",
+                "amount": format!("how far, 1 to {MAX_SCROLL}"),
+                "unit": "optional, \"lines\" (default; one notch of a mouse wheel each) or \"pixels\" (points on screen)",
+                "at": "optional target (see shapes) to scroll over; default: the middle of the window",
+                "waitForChange": "optional, true to wait until the screen changes after scrolling and fail if it doesn't",
+            }),
+            json!({ "type": "scroll", "direction": "down", "amount": 5, "unit": "lines", "at": { "image": "refs/message-list.png" } }),
         ),
         "type" => (
             "Types text, optionally clicking into a field first.",

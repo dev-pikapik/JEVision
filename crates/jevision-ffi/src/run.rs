@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{MouseButton, Point, Rect};
+use jevision_core::{MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
     VideoMask, VideoMode, VideoWindow, VisionAnswer, VisionJudge,
@@ -88,6 +88,21 @@ pub trait Hands: Send + Sync {
         at: Point,
         button: MouseButton,
         double_click: bool,
+    ) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and leaves it there.
+    fn hover(&self, app: String, at: Point) -> Result<(), HandsError>;
+    /// Presses the left button at the first point of `path`, moves through the others holding
+    /// it down, and lets go at the last, even when the run is cancelled on the way.
+    fn drag(&self, app: String, path: Vec<Point>) -> Result<(), HandsError>;
+    /// Moves the pointer to `at` and turns the scroll wheel by `amount` lines or pixels; `down`
+    /// brings what is further down into sight.
+    fn scroll(
+        &self,
+        app: String,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
     ) -> Result<(), HandsError>;
     /// The text may hold secret values: never log it.
     fn type_text(&self, text: String) -> Result<(), HandsError>;
@@ -402,6 +417,25 @@ impl jevision_runner::Hands for HandsAdapter {
         double: bool,
     ) -> Result<(), jevision_runner::HandsError> {
         Ok(self.0.click(app.to_owned(), at, button, double)?)
+    }
+
+    fn hover(&self, app: &str, at: Point) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.hover(app.to_owned(), at)?)
+    }
+
+    fn drag(&self, app: &str, path: &[Point]) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.drag(app.to_owned(), path.to_vec())?)
+    }
+
+    fn scroll(
+        &self,
+        app: &str,
+        at: Point,
+        direction: ScrollDirection,
+        amount: u32,
+        unit: ScrollUnit,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.scroll(app.to_owned(), at, direction, amount, unit)?)
     }
 
     fn type_text(&self, text: &str) -> Result<(), jevision_runner::HandsError> {
@@ -810,6 +844,10 @@ pub struct Step {
     /// Private areas of `sent` were covered before sending.
     #[uniffi(default = false)]
     pub sent_masked: bool,
+    /// Where the vision model found the elements the block describes in words, in fractions of
+    /// `sent`.
+    #[uniffi(default = [])]
+    pub found: Vec<Rect>,
     /// How many ways out the `if` had: two are Yes and No, more are Condition 1, 2… and Otherwise.
     #[uniffi(default = None)]
     pub branches: Option<u32>,
@@ -840,6 +878,7 @@ impl From<jevision_runner::Step> for Step {
             video_at_ms: s.video_at_ms,
             sent: s.sent,
             sent_masked: s.sent_masked,
+            found: s.found,
             branches: s.branches,
             branch_condition: s.branch_condition,
         }
@@ -978,6 +1017,22 @@ pub(crate) mod tests {
             Ok(None)
         }
         fn click(&self, _: String, _: Point, _: MouseButton, _: bool) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn hover(&self, _: String, _: Point) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn drag(&self, _: String, _: Vec<Point>) -> Result<(), HandsError> {
+            Ok(())
+        }
+        fn scroll(
+            &self,
+            _: String,
+            _: Point,
+            _: ScrollDirection,
+            _: u32,
+            _: ScrollUnit,
+        ) -> Result<(), HandsError> {
             Ok(())
         }
         fn type_text(&self, text: String) -> Result<(), HandsError> {
