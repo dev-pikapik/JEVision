@@ -1019,7 +1019,7 @@ fn rect(block: &str, field: &str, r: &Rect, out: &mut Vec<Issue>) {
     }
 }
 
-fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
+pub(crate) fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<Issue>) {
     let image_optional =
         matches!(&r.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty());
     if !(image_optional && r.image.is_empty()) {

@@ -136,8 +136,7 @@ struct RunReportView: View {
                       if let player { RunVideoView.seek(player, to: step) }
                     }
                   },
-                  preview: { preview = $0 },
-                  failure: $failure)
+                  preview: { preview = $0 })
                 .padding(.leading, Double(depths[index]) * 24)
                 .accessibilityRotorEntry(id: step.seq, in: stepsNamespace)
               }
@@ -373,15 +372,12 @@ struct StepImages {
 /// One step of the report; a click shows its screenshots.
 private struct StepRow: View {
   @Environment(ProjectStore.self) private var project
-  @Environment(\.undoManager) private var undoManager
   let step: Step
   let run: SavedRun
   let flow: Flow?
   let isExpanded: Bool
   let toggle: () -> Void
   let preview: (URL) -> Void
-  @Binding var failure: String?
-  @State private var confirmsAccept = false
 
   private var images: StepImages { StepImages(step: step, in: run.url) }
   private var canExpand: Bool { !images.all.isEmpty || step.failure != nil || step.vision != nil }
@@ -420,13 +416,6 @@ private struct StepRow: View {
           .padding(.trailing, 8)
           .padding(.bottom, 14)
       }
-    }
-    .confirmationDialog(
-      "Make this screenshot the reference?", isPresented: $confirmsAccept, titleVisibility: .visible
-    ) {
-      Button("Accept as New Reference", action: accept)
-    } message: {
-      Text("Next runs compare with it. The current image \(step.reference ?? "") moves to the Trash, and Edit › Undo puts it back.")
     }
   }
 
@@ -559,19 +548,12 @@ private struct StepRow: View {
         Label("This screenshot is the reference now.", systemImage: "checkmark.circle")
           .foregroundStyle(.secondary)
       } else {
-        Button("Accept as New Reference…", systemImage: "checkmark.seal") { confirmsAccept = true }
-          .buttonStyle(.glass)
-          .help(Text("Replace the reference image with this screenshot"))
+        Button("Accept as New Reference…", systemImage: "checkmark.seal") {
+          project.startReferenceWizard(step: step, run: run.url)
+        }
+        .buttonStyle(.glass)
+        .help(Text("Replace the reference image with this screenshot"))
       }
-    }
-  }
-
-  private func accept() {
-    guard let after = images.after, let reference = step.reference else { return }
-    do {
-      try project.acceptReference(after, as: reference, undoManager: undoManager)
-    } catch {
-      failure = String(localized: "Can’t replace the reference image: \(error.localizedDescription)")
     }
   }
 }

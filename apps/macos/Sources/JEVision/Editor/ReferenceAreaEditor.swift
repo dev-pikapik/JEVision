@@ -186,6 +186,8 @@ struct ReferenceAreaEditor: View {
   @State private var picture: ReferencePicture?
   @State private var isCapturing = false
   @State private var problem: Problem?
+  /// The guide that replaces a picture other blocks use too.
+  @State private var wizard: ReferenceWizard?
   /// Kind of the last change, so that changes of one kind in a row, like nudges, undo together.
   @State private var lastChange: String?
   @FocusState private var canvasFocused: Bool
@@ -240,6 +242,7 @@ struct ReferenceAreaEditor: View {
     }
     .onAppear { canvasFocused = true }
     .onExitCommand { dismiss() }
+    .sheet(item: $wizard) { ReferenceWizardView(wizard: $0, undoManager: context.document.undoManager) }
     .alert(
       "The Picture Wasn’t Changed", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } }),
       presenting: problem
@@ -523,11 +526,16 @@ struct ReferenceAreaEditor: View {
           message: String(localized: "The reference image is outside the project, so JEVision doesn’t change it. Choose a picture inside the project in the inspector first."))
         return
       }
-      let temporary = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".png")
-      try png.write(to: temporary)
-      defer { try? FileManager.default.removeItem(at: temporary) }
-      try project.acceptReference(
-        temporary, as: RelativePath.from(root, to: file), undoManager: context.document.undoManager)
+      let reference = RelativePath.from(root, to: file)
+      let picture = try TemporaryPicture(png)
+      // A picture that other blocks use too is replaced through the guide that checks their settings.
+      if let guide = project.referenceWizard(
+        replacing: reference, with: picture, in: context.document.url, block: context.block)
+      {
+        wizard = guide
+      } else {
+        try project.acceptReference(picture, as: reference, undoManager: context.document.undoManager)
+      }
       lastChange = nil
     } catch {
       problem = Problem(message: error.localizedDescription)

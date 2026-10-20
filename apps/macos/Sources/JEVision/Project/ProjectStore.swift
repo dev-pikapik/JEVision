@@ -56,6 +56,8 @@ final class ProjectStore {
   var selectedRun: SavedRun.ID?
   /// Counts reference images replaced or put back, so views that compare with them look again.
   private(set) var referenceChanges = 0
+  /// The Accept New Reference wizard in view.
+  var referenceWizard: ReferenceWizard?
   /// The test or folder, relative to the project, whose history is shown.
   var historyPath: String?
   /// Folder of the failed run whose bug report is being written.
@@ -262,26 +264,11 @@ final class ProjectStore {
     if selectedRun == run.id { selectedRun = nil }
   }
 
-  /// Makes a run's screenshot the reference image `reference` (relative to the project). The old
-  /// image goes to the Trash; Undo brings it back.
-  func acceptReference(_ screenshot: URL, as reference: String, undoManager: UndoManager?) throws {
-    guard let rootURL, let file = Baseline.file(reference, in: rootURL) else {
-      throw CocoaError(.fileWriteNoPermission, userInfo: [NSFilePathErrorKey: reference])
-    }
-    let old = try Baseline.accept(screenshot, as: file)
+  /// Looks again at the reference images and at the tests open, after a reference was
+  /// replaced or put back, with the settings of the blocks that use it.
+  func referencesChanged() {
     referenceChanges += 1
-    let action = String(localized: "Accept as New Reference")
-    undoManager?.registerUndo(withTarget: self) { store in
-      MainActor.assumeIsolated {
-        guard (try? Baseline.restore(old, to: file)) != nil else { return }
-        store.referenceChanges += 1
-        undoManager?.registerUndo(withTarget: store) { store in
-          MainActor.assumeIsolated { try? store.acceptReference(screenshot, as: reference, undoManager: undoManager) }
-        }
-        undoManager?.setActionName(action)
-      }
-    }
-    undoManager?.setActionName(action)
+    document?.reload()
   }
 
   // MARK: Settings
@@ -400,6 +387,16 @@ final class ProjectStore {
       String(localized: "\(file) can’t be saved: \(reason)")
     case ProjectSettingsError.Rejected(let reason):
       reason
+    case ReferenceError.Unreadable(let test, let reason):
+      String(localized: "\(test) can’t be read: \(reason)")
+    case ReferenceError.NoSuchPicture(let test, _, _):
+      String(localized: "\(test) has changed: a block that used the picture is gone.")
+    case ReferenceError.Rejected(let test, _, let reason):
+      String(localized: "The settings for \(test) don’t fit: \(reason)")
+    case ReferenceError.Changed(let test):
+      String(localized: "\(test) was changed meanwhile, so nothing was replaced.")
+    case ReferenceError.Unwritable(let test, let reason):
+      String(localized: "\(test) can’t be saved: \(reason)")
     default:
       error.localizedDescription
     }

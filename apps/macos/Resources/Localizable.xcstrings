@@ -87,6 +87,16 @@
         }
       }
     },
+    "%@ has changed: a block that used the picture is gone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ изменился: блока, который использовал этот эталон, там больше нет."
+          }
+        }
+      }
+    },
     "%@ has changes that aren’t committed and would be replaced. Commit them first, then try again." : {
       "localizations" : {
         "ru" : {
@@ -321,6 +331,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ обычно · %@ максимум для 95%%"
+          }
+        }
+      }
+    },
+    "%@ was changed meanwhile, so nothing was replaced." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ изменился за это время, поэтому ничего не заменено."
           }
         }
       }
@@ -2117,6 +2137,16 @@
         }
       }
     },
+    "Accept New Reference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принять новый эталон"
+          }
+        }
+      }
+    },
     "Accept as New Reference" : {
       "localizations" : {
         "ru" : {
@@ -3899,6 +3929,16 @@
         }
       }
     },
+    "Block %lld of %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок %1$lld из %2$lld"
+          }
+        }
+      }
+    },
     "Block type" : {
       "localizations" : {
         "ru" : {
@@ -3975,6 +4015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заблокирован: тесты ждут друг друга по кругу: %@"
+          }
+        }
+      }
+    },
+    "Blocks that use this picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки с этим эталоном"
           }
         }
       }
@@ -5809,6 +5859,26 @@
         }
       }
     },
+    "Compares the screen with it" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнивает с ним экран"
+          }
+        }
+      }
+    },
+    "Compares the screen with it in another condition" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сравнивает с ним экран в другом условии"
+          }
+        }
+      }
+    },
     "Comparison" : {
       "localizations" : {
         "ru" : {
@@ -5835,6 +5905,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Условия и циклы"
+          }
+        }
+      }
+    },
+    "Confirm" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтвердить"
+          }
+        }
+      }
+    },
+    "Confirmed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтверждён"
+          }
+        }
+      }
+    },
+    "Confirmed, settings changed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтверждён, настройки изменены"
           }
         }
       }
@@ -6395,6 +6495,16 @@
         }
       }
     },
+    "Current picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текущая картинка"
+          }
+        }
+      }
+    },
     "Custom Blocks" : {
       "localizations" : {
         "ru" : {
@@ -6941,6 +7051,16 @@
         }
       }
     },
+    "Done Editing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закончить правку"
+          }
+        }
+      }
+    },
     "Done. Undo brings it back." : {
       "localizations" : {
         "ru" : {
@@ -7197,6 +7317,16 @@
         }
       }
     },
+    "Drags from it" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тащит от него"
+          }
+        }
+      }
+    },
     "Drags from one place to another" : {
       "localizations" : {
         "ru" : {
@@ -7213,6 +7343,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетаскивание, которое заканчивается за окном приложения, записать нельзя. Отпустите внутри окна."
+          }
+        }
+      }
+    },
+    "Drags to it" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тащит к нему"
           }
         }
       }
@@ -7441,6 +7581,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменить расписание"
+          }
+        }
+      }
+    },
+    "Edit Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить настройки"
           }
         }
       }
@@ -7943,6 +8093,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Провален в последнем прогоне"
+          }
+        }
+      }
+    },
+    "Failed this run" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не прошёл в этом прогоне"
           }
         }
       }
@@ -10160,6 +10320,16 @@
         }
       }
     },
+    "Leave this block’s settings as they are" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить настройки этого блока как есть"
+          }
+        }
+      }
+    },
     "Left" : {
       "localizations" : {
         "ru" : {
@@ -10412,6 +10582,16 @@
         }
       }
     },
+    "Looks for it on the screen" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищет его на экране"
+          }
+        }
+      }
+    },
     "Looks for the chats the bot has been written in" : {
       "localizations" : {
         "ru" : {
@@ -10574,16 +10754,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заставить тест здесь немного подождать, если приложению нужно время"
-          }
-        }
-      }
-    },
-    "Make this screenshot the reference?" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сделать этот снимок эталоном?"
           }
         }
       }
@@ -11118,12 +11288,32 @@
         }
       }
     },
+    "New picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая картинка"
+          }
+        }
+      }
+    },
     "New reference image" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новый эталон"
+          }
+        }
+      }
+    },
+    "New reference image, %lld by %lld pixels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый эталон, %1$lld на %2$lld пикселей"
           }
         }
       }
@@ -11792,6 +11982,16 @@
         }
       }
     },
+    "Not reviewed yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не просмотрен"
+          }
+        }
+      }
+    },
     "Not run yet" : {
       "localizations" : {
         "ru" : {
@@ -11910,6 +12110,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этом проекте ничего не меняется"
+          }
+        }
+      }
+    },
+    "Nothing changes until you accept." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока вы не примете, ничего не изменится."
           }
         }
       }
@@ -12582,6 +12792,16 @@
         }
       }
     },
+    "Open in the editor" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыт в редакторе"
+          }
+        }
+      }
+    },
     "Open its menu to put it in quarantine." : {
       "localizations" : {
         "ru" : {
@@ -13170,6 +13390,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прошёл только с повтора"
+          }
+        }
+      }
+    },
+    "Passed to a script" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Передаётся в скрипт"
           }
         }
       }
@@ -14020,6 +14250,16 @@
         }
       }
     },
+    "Put the block’s own settings back" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть настройки самого блока"
+          }
+        }
+      }
+    },
     "Put the file back as it was after this commit. Edit › Undo takes it back." : {
       "localizations" : {
         "ru" : {
@@ -14244,6 +14484,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готов"
+          }
+        }
+      }
+    },
+    "Ready to replace the picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё готово к замене эталона"
           }
         }
       }
@@ -14962,6 +15212,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Репозиторий"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить"
           }
         }
       }
@@ -16960,6 +17220,16 @@
         }
       }
     },
+    "Several tests compare with this picture. Next, check each block against the new one: whether its areas, hidden parts and similarity still fit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот эталон сравнивают несколько тестов. Теперь проверьте каждый блок на новой картинке: подходят ли ему прежние области, скрытые части и сходство."
+          }
+        }
+      }
+    },
     "Share" : {
       "localizations" : {
         "ru" : {
@@ -17508,6 +17778,68 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пропущен"
+          }
+        }
+      }
+    },
+    "Skipped %lld blocks: they keep their settings, and compare with the new picture too." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Skipped %lld block: it keeps its settings, and compares with the new picture too."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Skipped %lld blocks: they keep their settings, and compare with the new picture too."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущен %lld блок: у него прежние настройки, и он тоже сравнивает с новой картинкой."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущено %lld блока: у них прежние настройки, и они тоже сравнивают с новой картинкой."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущено %lld блоков: у них прежние настройки, и они тоже сравнивают с новой картинкой."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущено %lld блока: у них прежние настройки, и они тоже сравнивают с новой картинкой."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Skipped blocks keep their settings, and compare with the new picture too." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропущенные блоки сохраняют свои настройки и тоже сравнивают с новой картинкой."
           }
         }
       }
@@ -19228,12 +19560,52 @@
         }
       }
     },
+    "The new picture becomes the reference image. The old one moves to the Trash." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая картинка станет эталоном. Старая уйдёт в Корзину."
+          }
+        }
+      }
+    },
+    "The new picture can’t be read" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать новую картинку"
+          }
+        }
+      }
+    },
     "The next device can" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Следующее устройство"
+          }
+        }
+      }
+    },
+    "The old and the new picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старый и новый эталон"
+          }
+        }
+      }
+    },
+    "The old picture is in the Trash. Edit › Undo puts back the picture and the settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старый эталон в Корзине. «Правка › Отменить» вернёт картинку и настройки."
           }
         }
       }
@@ -19344,6 +19716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Эталонная картинка лежит вне проекта, поэтому JEVision её не меняет. Сначала выберите в инспекторе картинку внутри проекта."
+          }
+        }
+      }
+    },
+    "The reference image is replaced." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эталон заменён."
           }
         }
       }
@@ -19568,12 +19950,42 @@
         }
       }
     },
+    "The settings fit the new picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки подходят к новой картинке"
+          }
+        }
+      }
+    },
+    "The settings for %@ don’t fit: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки для %1$@ не подходят: %2$@"
+          }
+        }
+      }
+    },
     "The share of pixels that must look the same as in the reference. Around %@ lets small differences through, like smoothed text or a blinking cursor; %@ wants every pixel to match." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Доля пикселей, которые должны выглядеть как в эталоне. Около %@ пропускает мелкие отличия вроде сглаженного текста или мигающего курсора; %@ требует совпадения каждого пикселя."
+          }
+        }
+      }
+    },
+    "The share of pixels that must look the same: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доля пикселей, которые должны совпадать: %@"
           }
         }
       }
@@ -20040,6 +20452,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этому блоку ничего не нужно."
+          }
+        }
+      }
+    },
+    "This block looks for the picture on the screen, so it has no areas or similarity to check. From now on it looks for the new one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот блок ищет картинку на экране, поэтому областей и сходства у него нет. Теперь он ищет новую."
           }
         }
       }
@@ -21076,6 +21498,58 @@
         }
       }
     },
+    "Updated %lld blocks" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Updated %lld block"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Updated %lld blocks"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Обновлён %lld блок"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Обновлено %lld блока"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Обновлено %lld блоков"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Обновлено %lld блока"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Updates" : {
       "localizations" : {
         "ru" : {
@@ -21162,6 +21636,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В названии можно использовать до 64 латинских букв, цифр, - и _, без пробелов."
+          }
+        }
+      }
+    },
+    "Used by %lld blocks" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Used by %lld block"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Used by %lld blocks"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Используется в %lld блоке"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Используется в %lld блоках"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Используется в %lld блоках"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Используется в %lld блоках"
+                }
+              }
+            }
           }
         }
       }
@@ -21478,6 +22004,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждёт, пока изменится файл"
+          }
+        }
+      }
+    },
+    "Waits for it to appear" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт, пока он появится"
+          }
+        }
+      }
+    },
+    "Waits for it to disappear" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждёт, пока он исчезнет"
           }
         }
       }
@@ -23800,6 +24346,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "в тесте %@"
+          }
+        }
+      }
+    },
+    "in %lld tests" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "in %lld test"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "in %lld tests"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в %lld тесте"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в %lld тестах"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в %lld тестах"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в %lld тестах"
+                }
+              }
+            }
           }
         }
       }

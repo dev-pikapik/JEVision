@@ -275,7 +275,7 @@
 { "type": "waitFor", "until": "screenStable", "timeout": "5s", "next": "check" }</code></pre>
 
 <h3 id="check">check: check the screen</h3>
-<p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture.</p>
+<p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
