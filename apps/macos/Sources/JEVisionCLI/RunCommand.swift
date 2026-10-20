@@ -421,7 +421,9 @@ final class TestSession: @unchecked Sendable {
       return stopped
     }
     if isStopped { run.cancel() }
-    DispatchQueue.global().async { [self] in
+    // A thread of its own: a test blocks for its whole run, and on the shared queue it would wait
+    // for a free thread behind whatever else blocks there.
+    Thread { [self] in
       let transcript = Transcript()
       let console = sideBySide ? Console(write: { transcript.append($0) }, color: progress.color) : progress
       let outcome = self.run((project as NSString).appendingPathComponent(entry.file), entry: entry, with: run, console: console)
@@ -430,7 +432,7 @@ final class TestSession: @unchecked Sendable {
       _ = batch.finish(position: UInt32(position), outcome: Self.testOutcome(outcome))
       lock.withLock { running[position] = nil }
       ended.signal()
-    }
+    }.start()
   }
 
   /// What the tests that depend on this one go by.

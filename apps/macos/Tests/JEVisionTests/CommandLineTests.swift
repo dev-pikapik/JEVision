@@ -437,7 +437,14 @@ private final class Scratch {
 /// `jevision run` with hands that wait until the run is cancelled.
 @Suite(.serialized)
 struct CommandLineRunTests {
-  @Test func interruptCancelsTheRunAndReportsIt() throws {
+  /// The second run has every thread of the system's shared queue stuck, as a busy machine, or a
+  /// test running beside this one, leaves them: the run must not wait for one to be free.
+  @Test(arguments: [false, true])
+  func interruptCancelsTheRunAndReportsIt(whileTheSharedQueueIsBusy busy: Bool) throws {
+    let stuck = busy ? 300 : 0
+    let release = DispatchSemaphore(value: 0)
+    for _ in 0..<stuck { DispatchQueue.global().async { release.wait() } }
+    defer { for _ in 0..<stuck { release.signal() } }
     let dir = try Scratch()
     let test = try dir.file(
       "wait.flow.json",
@@ -463,9 +470,9 @@ struct CommandLineRunTests {
       results.value = session.runAll()
       finished.signal()
     }
-    try #require(opening.wait(timeout: .now() + 10) == .success, "the test never reached its first block")
+    try #require(opening.wait(timeout: .now() + hangGuard) == .success, "the test never reached its first block")
     kill(getpid(), SIGINT)
-    try #require(finished.wait(timeout: .now() + 10) == .success, "Ctrl-C didn’t stop the run")
+    try #require(finished.wait(timeout: .now() + hangGuard) == .success, "Ctrl-C didn’t stop the run")
 
     let result = try #require(results.value?.first)
     #expect(result.verdict == "cancelled")
@@ -731,12 +738,10 @@ struct CommandLineRunTests {
       results.value = session.runAll()
       finished.signal()
     }
-    let both = dir.url.appending(path: "one").path
-    for _ in 0..<200 where !(FileManager.default.fileExists(atPath: both) && FileManager.default.fileExists(atPath: dir.url.appending(path: "two").path)) {
-      usleep(50_000)
-    }
+    let both = ["one", "two"].map { dir.url.appending(path: $0).path }
+    try eventually("both tests started") { both.allSatisfy { FileManager.default.fileExists(atPath: $0) } }
     session.stop()
-    try #require(finished.wait(timeout: .now() + 20) == .success, "stopping didn’t end the tests")
+    try #require(finished.wait(timeout: .now() + hangGuard) == .success, "stopping didn’t end the tests")
     #expect(results.value?.map(\.verdict) == ["cancelled", "cancelled", "notRun"])
     #expect(printed.text.contains("Stopping…"))
     #expect(printed.text.contains("2 stopped"))
