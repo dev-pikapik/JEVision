@@ -176,7 +176,7 @@ struct BlockInstallListTests {
     #expect(!store.restoreDeclined)
     store.restoreBlocks()
     let model = try #require(store.installingBlock)
-    for _ in 0..<200 where !isReview(model.phase) { try await Task.sleep(for: .milliseconds(25)) }
+    try await eventuallyAsync("the list is read") { isReview(model.phase) }
     #expect(model.isRestoring)
     #expect(model.entries.map(\.packageID) == ["com.acme.a", "com.acme.b", "com.acme.gone"])
     #expect(ticked(model) == ["com.acme.a"], "Only what the address still has in the saved version")

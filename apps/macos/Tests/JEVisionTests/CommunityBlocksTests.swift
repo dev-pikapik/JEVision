@@ -286,7 +286,7 @@ struct CommunityBlocksTests {
     project.installingBlock = nil
     project.installBlock(for: BlockNeed(id: "com.anna.sign-in", version: "1.0.0", source: file))
     model = try #require(project.installingBlock)
-    for _ in 0..<200 where !isReview(model.phase) { try await Task.sleep(for: .milliseconds(25)) }
+    try await eventuallyAsync("the sheet reads the block") { isReview(model.phase) }
     #expect(isReview(model.phase), "With an address the sheet reads the block at once")
     #expect(model.needMismatch == nil)
     await model.install()
