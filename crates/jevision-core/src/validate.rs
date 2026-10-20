@@ -18,6 +18,11 @@ pub const MAX_TIMEOUT_MS: u64 = 60 * 60 * 1000;
 pub const MAX_SCROLL: u32 = 10_000;
 /// Most a date and time block may move the date, in any unit.
 pub const MAX_TIME_SHIFT: i32 = 100_000;
+/// Smallest and largest window side an open-app block may ask for, in points.
+pub const MIN_WINDOW_SIDE: u32 = 100;
+pub const MAX_WINDOW_SIDE: u32 = 20_000;
+/// Farthest from the main display's corner a window may be placed, in points.
+pub const MAX_WINDOW_OFFSET: i32 = 20_000;
 const MAX_ID_LEN: usize = 64;
 
 /// Lists every problem in `flow`, errors and warnings, in a stable order.
@@ -502,7 +507,36 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
         }
     }
     match &b.kind {
-        BlockKind::OpenApp { app, .. } => app_id(id, app.as_deref(), out),
+        BlockKind::OpenApp {
+            app,
+            window_size,
+            window_position,
+            ..
+        } => {
+            app_id(id, app.as_deref(), out);
+            for (field, side) in window_size.iter().flat_map(|s| {
+                [
+                    ("windowSize.width", s.width),
+                    ("windowSize.height", s.height),
+                ]
+            }) {
+                if !(MIN_WINDOW_SIDE..=MAX_WINDOW_SIDE).contains(&side) {
+                    out.push(range(Some(id), field, MIN_WINDOW_SIDE, MAX_WINDOW_SIDE));
+                }
+            }
+            for (field, offset) in window_position
+                .iter()
+                .flat_map(|p| [("windowPosition.x", p.x), ("windowPosition.y", p.y)])
+            {
+                if offset.unsigned_abs() > MAX_WINDOW_OFFSET.unsigned_abs() {
+                    out.push(
+                        err("flow.field.range", field)
+                            .with("min", -MAX_WINDOW_OFFSET)
+                            .with("max", MAX_WINDOW_OFFSET),
+                    );
+                }
+            }
+        }
         BlockKind::OpenFile { files, app, .. } => {
             if files.is_empty() {
                 out.push(err("flow.field.empty", "files"));

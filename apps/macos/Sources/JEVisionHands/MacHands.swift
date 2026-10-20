@@ -49,10 +49,18 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   // MARK: Apps
 
-  public func openApp(app: String) throws(HandsError) {
+  public func openApp(app: String, fresh: Bool) throws(HandsError) {
     let url = try appURL(app)
-    let running = try launch(url)
+    if fresh, !terminate(Self.runningApps(app)), !isCancelled() { throw .StillRunning(app: app) }
+    let running = try launch(url, arguments: fresh ? Self.forgetLastSession : [])
     waitForWindow(running.map { [$0] } ?? Self.runningApps(app))
+  }
+
+  public func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {
+    let apps = Self.runningApps(app)
+    guard let front = Self.frontWindow(of: apps) else { throw .NoWindow(app: app) }
+    try WindowPlacement.apply(
+      app: app, pids: Set(apps.map(\.processIdentifier)), window: front.bounds, size: size, position: position)
   }
 
   public func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {
@@ -138,7 +146,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func activate(app: String) throws(HandsError) {
     let running = Self.runningApps(app)
-    guard let first = running.first else { return try openApp(app: app) }
+    guard let first = running.first else { return try openApp(app: app, fresh: false) }
     if running.contains(where: \.isActive) { return }
     _ = first.activate()
     if poll(timeout: 1, { first.isActive }) { return }
@@ -147,10 +155,15 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func quit(app: String) throws(HandsError) {
-    let running = Self.runningApps(app)
-    running.forEach { $0.terminate() }
     // An app that asks to save changes stays open; the run goes on.
-    _ = poll(timeout: 10) { running.allSatisfy { kill($0.processIdentifier, 0) != 0 } }
+    _ = terminate(Self.runningApps(app))
+  }
+
+  /// Asks the apps to quit and waits up to 10 s; false if one stays open, e.g. to ask whether to
+  /// save changes.
+  private func terminate(_ running: [NSRunningApplication]) -> Bool {
+    running.forEach { $0.terminate() }
+    return poll(timeout: 10) { running.allSatisfy { kill($0.processIdentifier, 0) != 0 } }
   }
 
   // MARK: Screen
@@ -282,7 +295,18 @@ public final class MacHands: Hands, @unchecked Sendable {
   private func place(_ app: String, _ at: Point) throws(HandsError) -> (window: CGRect, point: CGPoint) {
     try requireInput()
     guard let window = Self.frontWindow(of: Self.runningApps(app)) else { throw .NoWindow(app: app) }
-    return (window.bounds, CGPoint(x: window.bounds.minX + at.x, y: window.bounds.minY + at.y))
+    return (window.bounds, Self.screenPoint(at, in: window.bounds))
+  }
+
+  /// `at`, a point in the window, as a point of the screens. A display left of or above the main
+  /// one has negative coordinates; the window's own origin carries them along.
+  static func screenPoint(_ at: Point, in window: CGRect) -> CGPoint {
+    CGPoint(x: window.minX + at.x, y: window.minY + at.y)
+  }
+
+  /// The window's part of `display`, both in global points: what a capture of the display crops to.
+  static func sourceRect(of window: CGRect, on display: CGRect) -> CGRect {
+    window.offsetBy(dx: -display.minX, dy: -display.minY)
   }
 
   private func mouse(
@@ -433,10 +457,15 @@ public final class MacHands: Hands, @unchecked Sendable {
     NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
   }
 
-  /// Opens or brings forward the app; returns it once it's running.
-  private func launch(_ url: URL) throws(HandsError) -> NSRunningApplication? {
+  /// Makes an app start with empty windows instead of the ones it had when it last quit.
+  static let forgetLastSession = ["-ApplePersistenceIgnoreState", "YES"]
+
+  /// Opens or brings forward the app; returns it once it's running. `arguments` only reach an
+  /// app that isn't running yet.
+  private func launch(_ url: URL, arguments: [String] = []) throws(HandsError) -> NSRunningApplication? {
     let config = NSWorkspace.OpenConfiguration()
     config.activates = true
+    config.arguments = arguments
     let result = Self.wait { done in
       NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
         done((app?.processIdentifier, error?.localizedDescription))
@@ -554,7 +583,7 @@ public final class MacHands: Hands, @unchecked Sendable {
             // The window's part of the screen with only this app's windows on it, so other apps
             // never cover it and a tooltip or menu over it is in the picture.
             filter = SCContentFilter(display: display, including: [scWindow] + shown)
-            config.sourceRect = window.bounds.offsetBy(dx: -display.frame.minX, dy: -display.frame.minY)
+            config.sourceRect = sourceRect(of: window.bounds, on: display.frame)
             config.backgroundColor = .clear
             config.ignoreShadowsDisplay = true
             size = window.bounds.size

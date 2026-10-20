@@ -12,8 +12,8 @@ struct BlockSummaryTests {
   }
 
   @Test func describesWhatABlockDoes() {
-    #expect(summary(.openApp(app: "com.apple.Mail", next: nil)) == "Mail")
-    #expect(summary(.openApp(app: nil, next: nil)) == "The app under test")
+    #expect(summary(.openApp(app: "com.apple.Mail", resetState: false, windowSize: nil, windowPosition: nil, next: nil)) == "Mail")
+    #expect(summary(.openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, next: nil)) == "The app under test")
     #expect(
       summary(.type(text: "${secret.ACME_PASSWORD}", into: .image("refs/password-field.png"), next: nil))
         == "Type secret ACME_PASSWORD into “password field”")
@@ -190,13 +190,14 @@ struct PointerBlockTests {
   @Test func problemsShowNextToTheirSetting() throws {
     let flow = try loadFlow(
       json: #"""
-        {"format":1,"name":"T","app":"com.apple.TextEdit","start":"h","blocks":{
+        {"format":1,"name":"T","app":"com.apple.TextEdit","start":"o","blocks":{
+          "o":{"type":"openApp","windowSize":{"width":50,"height":600},"windowPosition":{"x":90000,"y":10},"next":"h"},
           "h":{"type":"hover","target":{"point":{"x":2,"y":0.5}},"next":"d"},
           "d":{"type":"drag","from":{"image":"refs/a.png"},"to":{"image":"refs/a.png"},"next":"s"},
           "s":{"type":"scroll","direction":"down","amount":0,"at":{"image":"/abs.png"}}}}
         """#)
     let issues = validateFlow(flow: flow)
-    for id in ["h", "d", "s"] {
+    for id in ["o", "h", "d", "s"] {
       let kind = try #require(flow.blocks.first { $0.id == id }?.kind)
       let fields = InspectorView.fields(of: kind)
       let mine = issues.filter { $0.param("block") == id }

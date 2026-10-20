@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use jevision_core::{Blocker, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit};
+use jevision_core::{
+    Blocker, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit, WindowPosition,
+    WindowSize,
+};
 use jevision_runner::{
     PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus, Verdict,
     VideoMask, VideoMode, VideoWindow, VisionJudge,
@@ -28,6 +31,21 @@ pub enum HandsError {
     /// The screen is locked: nothing to look at, and keys would go to the lock screen.
     #[error("the screen is locked")]
     ScreenLocked,
+    /// The application did not quit when asked to, so it cannot start over.
+    #[error("application `{app}` is still running")]
+    StillRunning { app: String },
+    /// The window does not let its size or position be changed.
+    #[error("the window of `{app}` cannot be resized or moved")]
+    WindowFixed { app: String },
+    /// The window took another size or position than asked. `what` is `size` or `position`,
+    /// `wanted` and `actual` are written `900 × 600` and `40, 60`.
+    #[error("the {what} of the window of `{app}` should be {wanted} but is {actual}")]
+    WindowDiffers {
+        app: String,
+        what: String,
+        wanted: String,
+        actual: String,
+    },
     #[error("{reason}")]
     Failed { reason: String },
 }
@@ -46,6 +64,19 @@ impl From<HandsError> for jevision_runner::HandsError {
             HandsError::NoWindow { app } => Self::NoWindow(app),
             HandsError::CannotOpen { item } => Self::CannotOpen(item),
             HandsError::ScreenLocked => Self::ScreenLocked,
+            HandsError::StillRunning { app } => Self::StillRunning(app),
+            HandsError::WindowFixed { app } => Self::WindowFixed(app),
+            HandsError::WindowDiffers {
+                app,
+                what,
+                wanted,
+                actual,
+            } => Self::WindowDiffers {
+                app,
+                what,
+                wanted,
+                actual,
+            },
             HandsError::Failed { reason } => Self::Failed(reason),
         }
     }
@@ -65,7 +96,19 @@ pub enum Openable {
 /// main one; long ones should stop early once the run is cancelled.
 #[uniffi::export(with_foreign)]
 pub trait Hands: Send + Sync {
-    fn open_app(&self, app: String) -> Result<(), HandsError>;
+    /// Opens the application and brings it to the front. With `fresh` a copy that is running
+    /// is first asked to quit (`StillRunning` if it will not) and the new one does not bring
+    /// back the windows of its last session.
+    fn open_app(&self, app: String, fresh: bool) -> Result<(), HandsError>;
+    /// Gives the front window of the application this size and position, and checks that it
+    /// took them: `WindowFixed` if the window cannot be changed, `WindowDiffers` if it ended
+    /// up elsewhere or at another size.
+    fn arrange_window(
+        &self,
+        app: String,
+        size: Option<WindowSize>,
+        position: Option<WindowPosition>,
+    ) -> Result<(), HandsError>;
     /// Opens files or web addresses in `app`, or in the system default application.
     fn open_items(
         &self,
@@ -384,7 +427,19 @@ fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
             .keep_videos_days
             .map(|days| std::time::Duration::from_secs(u64::from(days) * 24 * 60 * 60)),
         added_as_dependency: options.added_as_dependency,
+        screen_lock: screen_lock(),
         ..Default::default()
+    }
+}
+
+/// Every run takes the Mac's screen lock, which is how the app, the command line and the
+/// assistant keep out of each other's way. This crate's own tests don't: they would wait for
+/// a person's run and leave a file in their library.
+fn screen_lock() -> Option<std::path::PathBuf> {
+    if cfg!(test) {
+        None
+    } else {
+        jevision_runner::default_screen_lock()
     }
 }
 
@@ -434,8 +489,17 @@ pub fn save_blocked_run(
 struct HandsAdapter(Arc<dyn Hands>);
 
 impl jevision_runner::Hands for HandsAdapter {
-    fn open_app(&self, app: &str) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.open_app(app.to_owned())?)
+    fn open_app(&self, app: &str, fresh: bool) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.open_app(app.to_owned(), fresh)?)
+    }
+
+    fn arrange_window(
+        &self,
+        app: &str,
+        size: Option<WindowSize>,
+        position: Option<WindowPosition>,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.arrange_window(app.to_owned(), size, position)?)
     }
 
     fn open(
@@ -639,6 +703,12 @@ pub enum RunEvent {
         variables: HashMap<String, String>,
     },
     Resumed,
+    /// The run acts on the screen and another run has it, so this one waits its turn; the next
+    /// event is `StepStarted` once the screen is free. `holder` is `None` while the lock does
+    /// not say who has the screen.
+    WaitingForScreen {
+        holder: Option<ScreenHolder>,
+    },
     AttemptFinished {
         attempt: u32,
         verdict: Verdict,
@@ -649,6 +719,29 @@ pub enum RunEvent {
         flaky: bool,
         report: String,
     },
+}
+
+/// The run that has the screen: another JEVision window, the command line or the assistant.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ScreenHolder {
+    /// The program, such as `JEVision` or `jevision`.
+    pub process: String,
+    pub pid: u32,
+    /// Name of the test that runs.
+    pub test: String,
+    /// When that run took the screen, in seconds since 1970.
+    pub since: u64,
+}
+
+impl From<jevision_runner::ScreenHolder> for ScreenHolder {
+    fn from(h: jevision_runner::ScreenHolder) -> Self {
+        Self {
+            process: h.process,
+            pid: h.pid,
+            test: h.test,
+            since: h.since,
+        }
+    }
 }
 
 impl From<jevision_runner::Event> for RunEvent {
@@ -697,6 +790,9 @@ impl From<jevision_runner::Event> for RunEvent {
                 variables: variables.into_iter().collect(),
             },
             E::Resumed => Self::Resumed,
+            E::WaitingForScreen { holder } => Self::WaitingForScreen {
+                holder: holder.map(Into::into),
+            },
             E::AttemptFinished {
                 attempt,
                 verdict,
@@ -1142,8 +1238,16 @@ pub(crate) mod tests {
     }
 
     impl Hands for Fake {
-        fn open_app(&self, app: String) -> Result<(), HandsError> {
+        fn open_app(&self, app: String, _: bool) -> Result<(), HandsError> {
             self.note(format!("open {app}"));
+            Ok(())
+        }
+        fn arrange_window(
+            &self,
+            _: String,
+            _: Option<WindowSize>,
+            _: Option<WindowPosition>,
+        ) -> Result<(), HandsError> {
             Ok(())
         }
         fn open_items(
@@ -1500,5 +1604,33 @@ pub(crate) mod tests {
         let (events, outcome) = wait(&rx, Duration::from_secs(5));
         assert!(events.is_empty());
         assert!(matches!(outcome, RunOutcome::Failed { .. }));
+    }
+
+    #[test]
+    fn waiting_for_the_screen_names_who_has_it() {
+        let holder = jevision_runner::ScreenHolder {
+            process: "jevision".to_owned(),
+            pid: 31,
+            test: "Checkout".to_owned(),
+            since: 1_700_000_000,
+        };
+        let event = RunEvent::from(jevision_runner::Event::WaitingForScreen {
+            holder: Some(holder),
+        });
+        assert_eq!(
+            event,
+            RunEvent::WaitingForScreen {
+                holder: Some(ScreenHolder {
+                    process: "jevision".to_owned(),
+                    pid: 31,
+                    test: "Checkout".to_owned(),
+                    since: 1_700_000_000,
+                })
+            }
+        );
+        assert_eq!(
+            RunEvent::from(jevision_runner::Event::WaitingForScreen { holder: None }),
+            RunEvent::WaitingForScreen { holder: None }
+        );
     }
 }

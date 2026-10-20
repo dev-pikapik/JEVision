@@ -1880,6 +1880,74 @@
         }
       }
     },
+    "run.hands.stillRunning" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: %2$@ didn’t quit, so it can’t start over. Close it, or answer what it asks, and run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ не закрылось, поэтому его нельзя запустить заново. Закройте его или ответьте на его вопрос и запустите тест ещё раз."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.position" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the window of %2$@ should be at %3$@ but is at %4$@. The screen may be too small, or the app keeps its window where it likes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть в точке %3$@, а оно в %4$@. Возможно, экран слишком мал или приложение само выбирает, где держать окно."
+          }
+        }
+      }
+    },
+    "run.hands.windowDiffers.size" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the window of %2$@ should be %3$@ points but is %4$@. The app may have its own limits, or the screen may be too small."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ должно быть %3$@ пунктов, а получилось %4$@. У приложения могут быть свои ограничения, или экран слишком мал."
+          }
+        }
+      }
+    },
+    "run.hands.windowFixed" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: the window of %2$@ doesn’t allow its size or position to be changed. Turn off the fixed size and position in this block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: окно приложения %2$@ не даёт менять размер или положение. Отключите фиксированные размер и положение в этом блоке."
+          }
+        }
+      }
+    },
     "run.io.writeFailed" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -2365,6 +2433,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались."
+          }
+        }
+      }
+    },
+    "run.waitFor.timeout.dark" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Block “%1$@”: waited %2$@ s for %3$@, but it didn’t happen. The window is dark and only the light picture exists; save the dark one as %4$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали %3$@, но так и не дождались. Окно тёмное, а есть только светлая картинка; сохраните тёмную как %4$@."
           }
         }
       }

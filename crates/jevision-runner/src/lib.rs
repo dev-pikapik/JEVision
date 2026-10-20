@@ -14,6 +14,7 @@ mod env;
 mod machine;
 mod report;
 mod run;
+mod screen;
 mod system;
 mod usage;
 
@@ -23,7 +24,9 @@ use std::path::{Path, PathBuf};
 pub use bug::{BugContext, BugDraft, BugPicture, bug_report, mask_secrets};
 pub use control::{PauseReason, RunControl};
 pub use jevision_core::{DataError, DataTable};
-pub use jevision_core::{Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit};
+pub use jevision_core::{
+    Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit, WindowPosition, WindowSize,
+};
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
     Client as VisionClient, Config as VisionConfig, Judgement, Located, MaskedImage, PixelArea,
@@ -36,6 +39,7 @@ pub use report::{
     junit_xml,
 };
 pub use run::{Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, vision_failure};
+pub use screen::{ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder};
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,
     WARN_SHARE, default_prices, money, price_of,
@@ -52,8 +56,19 @@ pub const SECRET_MASK: &str = "••••";
 /// [`RunControl`] the application created for the run reports [`RunControl::is_cancelled`].
 pub trait Hands: Send + Sync {
     /// Launches the application (or finds it running) and brings it to the front; returns once
-    /// it can take input.
-    fn open_app(&self, app: &str) -> Result<(), HandsError>;
+    /// it can take input. With `fresh`, a copy that is already running is first asked to quit
+    /// ([`HandsError::StillRunning`] if it will not), and the new one starts without bringing
+    /// back the windows of the last session.
+    fn open_app(&self, app: &str, fresh: bool) -> Result<(), HandsError>;
+    /// Gives the application's front window this size and position, and checks that the window
+    /// took them: [`HandsError::WindowFixed`] if the window cannot be changed,
+    /// [`HandsError::WindowDiffers`] if it ended up somewhere else or at another size.
+    fn arrange_window(
+        &self,
+        app: &str,
+        size: Option<WindowSize>,
+        position: Option<WindowPosition>,
+    ) -> Result<(), HandsError>;
     /// Opens files or web addresses in `app`, or in the system default application.
     fn open(
         &self,
@@ -176,6 +191,23 @@ pub enum HandsError {
     /// The screen is locked: there is nothing to look at, and keys would go to the lock screen.
     #[error("the screen is locked")]
     ScreenLocked,
+    /// The application would not quit when asked to start over, e.g. a question about unsaved
+    /// changes is waiting for an answer.
+    #[error("application `{0}` is still running")]
+    StillRunning(String),
+    /// The window does not let its size or position be changed.
+    #[error("the window of `{0}` cannot be resized or moved")]
+    WindowFixed(String),
+    /// The window took another size or position than asked, e.g. because of its own limits.
+    /// `what` is `size` or `position`; `wanted` and `actual` are written `900 × 600` for a size
+    /// and `40, 60` for a position.
+    #[error("the {what} of the window of `{app}` should be {wanted} but is {actual}")]
+    WindowDiffers {
+        app: String,
+        what: String,
+        wanted: String,
+        actual: String,
+    },
     #[error("{0}")]
     Failed(String),
 }
@@ -248,6 +280,12 @@ pub enum Event {
         variables: BTreeMap<String, String>,
     },
     Resumed,
+    /// The run acts on the screen and another run has it; this run waits for its turn. Sent
+    /// again if the screen changes hands to another run that is also ahead. `holder` is `None`
+    /// while the lock file does not say who has it.
+    WaitingForScreen {
+        holder: Option<ScreenHolder>,
+    },
     AttemptFinished {
         attempt: u32,
         verdict: Verdict,

@@ -86,7 +86,7 @@ struct InspectorView: View {
   /// Settings the inspector shows next to their own control; problems with anything else go to the top.
   static func fields(of kind: BlockKind) -> Set<String> {
     switch kind {
-    case .openApp: ["app"]
+    case .openApp: ["app", "resetState", "windowSize", "windowPosition"]
     case .openFile: ["files", "app"]
     case .click: ["target"]
     case .hover: ["target"]
@@ -130,14 +130,63 @@ struct InspectorView: View {
       secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder),
       environment: project.environments.valueNames, variables: savedVariables(flow: flow))
     switch kind {
-    case .openApp(let app, let next):
+    case .openApp(let app, let resetState, let windowSize, let windowPosition, let next):
+      let make = { (app: String?, resetState: Bool, size: WindowSize?, position: WindowPosition?) in
+        BlockKind.openApp(app: app, resetState: resetState, windowSize: size, windowPosition: position, next: next)
+      }
       Section {
         LabeledContent("App") {
           AppPicker(
-            bundleID: bind("app", app) { .openApp(app: $0, next: next) },
+            bundleID: bind("app", app) { make($0, resetState, windowSize, windowPosition) },
             noneTitle: Text("The app under test (\(AppCatalog.shared.name(of: flow.app)))"))
         }
         IssueList(issues: context.issues("app"))
+        Toggle("Start Fresh", isOn: bind("resetState", resetState) { make(app, $0, windowSize, windowPosition) })
+          .accessibilityHint(Text("Quits the app if it is running, then opens it without the windows it had last time."))
+        Text("Quits the app if it is running, then opens it without the windows it had last time.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+      }
+      Section {
+        Toggle(
+          "Fixed Window Size",
+          isOn: bind("windowSize", windowSize != nil) {
+            make(app, resetState, $0 ? WindowSize(width: 1000, height: 700) : nil, windowPosition)
+          })
+        if let size = windowSize {
+          PointsField(
+            label: Text("Width"),
+            value: bind("windowSize", Int(size.width)) {
+              make(app, resetState, WindowSize(width: UInt32(clamping: $0), height: size.height), windowPosition)
+            })
+          PointsField(
+            label: Text("Height"),
+            value: bind("windowSize", Int(size.height)) {
+              make(app, resetState, WindowSize(width: size.width, height: UInt32(clamping: $0)), windowPosition)
+            })
+        }
+        IssueList(issues: context.issues("windowSize"))
+        Toggle(
+          "Fixed Window Position",
+          isOn: bind("windowPosition", windowPosition != nil) {
+            make(app, resetState, windowSize, $0 ? WindowPosition(x: 80, y: 80) : nil)
+          })
+        if let place = windowPosition {
+          PointsField(
+            label: Text("From Left"),
+            value: bind("windowPosition", Int(place.x)) {
+              make(app, resetState, windowSize, WindowPosition(x: Int32(clamping: $0), y: place.y))
+            })
+          PointsField(
+            label: Text("From Top"),
+            value: bind("windowPosition", Int(place.y)) {
+              make(app, resetState, windowSize, WindowPosition(x: place.x, y: Int32(clamping: $0)))
+            })
+        }
+        IssueList(issues: context.issues("windowPosition"))
+        Text("A fixed size and position keep pictures of the window the same on every run.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
       }
 
     case .openFile(let files, let app, let newInstance, let closeAfter, let next):

@@ -21,6 +21,7 @@ use crate::report::{
     Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, Verdict, VisionAnswer,
     percent, summarize,
 };
+use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
 use crate::usage::{LimitState, UsageBook, UsageRecord, price_of};
 use crate::{
@@ -93,6 +94,11 @@ pub struct RunOptions {
     pub keep_videos_for: Option<Duration>,
     /// The test wasn't chosen: it runs because a chosen test depends on it.
     pub added_as_dependency: bool,
+    /// Lock file shared by every program that drives this Mac's screen: a test that acts on the
+    /// screen takes it before its first block and waits if another run has it. `None` takes no
+    /// lock; [`default_screen_lock`] is where the app, the command line and the assistant's
+    /// server meet.
+    pub screen_lock: Option<PathBuf>,
 }
 
 impl Default for RunOptions {
@@ -109,6 +115,7 @@ impl Default for RunOptions {
             video: VideoMode::Off,
             keep_videos_for: None,
             added_as_dependency: false,
+            screen_lock: None,
         }
     }
 }
@@ -242,7 +249,7 @@ impl Runner<'_> {
     /// not be written.
     pub fn run(&self, project: &Path, test: &Path, options: &RunOptions) -> io::Result<Run> {
         let started = SystemTime::now();
-        let clock = Instant::now();
+        let mut clock = Instant::now();
         let project = fs::canonicalize(project)?;
         let test = normalize(&project.join(test));
         let file = relative(&project, &test);
@@ -325,7 +332,7 @@ impl Runner<'_> {
         };
         self.events.send(&Event::RunStarted {
             test: report.test.clone(),
-            file,
+            file: file.clone(),
             dir: dir.clone(),
             max_attempts,
         });
@@ -334,6 +341,18 @@ impl Runner<'_> {
             let data = data_rows(&project, &root, options.rows.as_ref())?;
             Ok((root, start, environment, data))
         });
+        // Held until the run's last block is done; a test that only talks to commands, files
+        // and servers leaves the screen to others.
+        let screen = if prepared.is_ok() {
+            let waited = Instant::now();
+            let screen = self.take_screen(&project, &file, &report.test, options);
+            if waited.elapsed() > options.poll_interval {
+                clock = Instant::now();
+            }
+            screen
+        } else {
+            Ok(None)
+        };
         match prepared {
             Err(failure) => {
                 self.events.send(&Event::AttemptStarted { attempt: 1 });
@@ -344,6 +363,20 @@ impl Runner<'_> {
                         verdict: Verdict::Failed,
                         duration_ms: 0,
                         failure: Some(failure),
+                        row: None,
+                        steps: Vec::new(),
+                    },
+                );
+            }
+            Ok(_) if screen.is_err() => {
+                self.events.send(&Event::AttemptStarted { attempt: 1 });
+                self.finish_attempt(
+                    &mut report,
+                    Attempt {
+                        number: 1,
+                        verdict: Verdict::Cancelled,
+                        duration_ms: 0,
+                        failure: None,
                         row: None,
                         steps: Vec::new(),
                     },
@@ -440,6 +473,7 @@ impl Runner<'_> {
             }
         }
 
+        drop(screen);
         (report.verdict, report.flaky) = summarize(&report.attempts);
         report.nothing_checked &= report.verdict == Verdict::Passed;
         report.duration_ms = millis(clock.elapsed());
@@ -458,6 +492,41 @@ impl Runner<'_> {
             report: path,
         });
         Ok(Run { dir, report })
+    }
+
+    /// Takes the screen if the test acts on it, waiting while another run has it: `Ok(None)`
+    /// when no lock is needed or the lock file can't be used (a locked-down home folder must
+    /// not stop tests that would otherwise run), `Err` when the run is cancelled while waiting.
+    fn take_screen(
+        &self,
+        project: &Path,
+        file: &str,
+        test: &str,
+        options: &RunOptions,
+    ) -> Result<Option<ScreenLock>, Cancelled> {
+        let Some(path) = &options.screen_lock else {
+            return Ok(None);
+        };
+        if !crate::screen::uses_screen(project, file) {
+            return Ok(None);
+        }
+        let me = ScreenHolder::this_process(test);
+        let mut announced = None;
+        loop {
+            match ScreenLock::try_take(path, &me) {
+                Ok(Ok(lock)) => return Ok(Some(lock)),
+                Ok(Err(holder)) => {
+                    if announced.as_ref() != Some(&holder) {
+                        self.events.send(&Event::WaitingForScreen {
+                            holder: holder.clone(),
+                        });
+                        announced = Some(holder);
+                    }
+                    self.control.sleep(options.poll_interval)?;
+                }
+                Err(_) => return Ok(None),
+            }
+        }
     }
 
     /// Stops the recording and keeps the video if `mode` wants it for this verdict; otherwise
@@ -944,9 +1013,20 @@ impl Exec<'_> {
         let id = step.block.clone();
         let id = id.as_str();
         match kind {
-            BlockKind::OpenApp { app, next } => {
+            BlockKind::OpenApp {
+                app,
+                reset_state,
+                window_size,
+                window_position,
+                next,
+            } => {
                 let app = app.clone().unwrap_or_else(|| t.flow.app.clone());
-                self.hands(id, |h| h.open_app(&app))?;
+                self.hands(id, |h| h.open_app(&app, *reset_state))?;
+                if window_size.is_some() || window_position.is_some() {
+                    self.hands(id, |h| {
+                        h.arrange_window(&app, *window_size, *window_position)
+                    })?;
+                }
                 self.use_app(app);
                 self.snapshot(step, "after")?;
                 Ok(next.clone())
@@ -1672,6 +1752,19 @@ impl Exec<'_> {
                 (reached, "screenStable", None)
             }
         };
+        // A dark window compared with the light picture only: the usual reason for waiting in
+        // vain, so the failure names the picture that is missing.
+        let missing_dark = match (reference, &last) {
+            (Some(r), Some(shot))
+                if shot.dark
+                    && !r.image.is_empty()
+                    && !matches!(r.compare, Compare::Meaning { .. }) =>
+            {
+                let dark = dark_variant(&r.image);
+                (!self.resolve(t, id, &dark)?.exists()).then_some(dark)
+            }
+            _ => None,
+        };
         if let Some(shot) = last {
             let hide = reference.map_or(&[][..], |r| &r.hide);
             step.after = Some(self.record_shot(step, "after", &shot, hide)?);
@@ -1680,12 +1773,14 @@ impl Exec<'_> {
             self.record_sent(step, &sent)?;
         }
         if reached.is_none() {
-            return Err(fail(
-                Failure::new("run.waitFor.timeout")
-                    .with("block", id)
-                    .with("target", target)
-                    .with("seconds", seconds(timeout_ms)),
-            ));
+            let failure = Failure::new("run.waitFor.timeout")
+                .with("block", id)
+                .with("target", target)
+                .with("seconds", seconds(timeout_ms));
+            return Err(fail(match missing_dark {
+                Some(dark) => failure.with("dark", dark),
+                None => failure,
+            }));
         }
         Ok(())
     }
@@ -2578,6 +2673,18 @@ fn hands_failure(id: &str, e: HandsError) -> Failure {
         HandsError::NoWindow(app) => Failure::new("run.hands.noWindow").with("app", app),
         HandsError::CannotOpen(file) => Failure::new("run.hands.cannotOpen").with("file", file),
         HandsError::ScreenLocked => Failure::new("run.hands.screenLocked"),
+        HandsError::StillRunning(app) => Failure::new("run.hands.stillRunning").with("app", app),
+        HandsError::WindowFixed(app) => Failure::new("run.hands.windowFixed").with("app", app),
+        HandsError::WindowDiffers {
+            app,
+            what,
+            wanted,
+            actual,
+        } => Failure::new("run.hands.windowDiffers")
+            .with("app", app)
+            .with("what", what)
+            .with("wanted", wanted)
+            .with("actual", actual),
         HandsError::Failed(reason) => Failure::new("run.hands.failed").with("reason", reason),
     };
     f.with("block", id)

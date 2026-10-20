@@ -13,7 +13,8 @@ use crate::model::{
     DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod,
     Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference, SavedValue,
     ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
-    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, parse_duration,
+    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition,
+    WindowSize, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -208,6 +209,23 @@ impl<'v> Obj<'v> {
             self.wrong_type(key, "integer", out);
         }
         n
+    }
+
+    /// A whole number that must be there.
+    fn int(&mut self, key: &'static str, out: &mut Out) -> Option<i32> {
+        let n = self
+            .get(key)
+            .map(|v| v.as_i64().and_then(|n| i32::try_from(n).ok()));
+        if n == Some(None) {
+            self.wrong_type(key, "integer", out);
+        }
+        self.require(key, n.flatten(), out)
+    }
+
+    /// A non-negative whole number that must be there.
+    fn uint(&mut self, key: &'static str, out: &mut Out) -> Option<u32> {
+        let n = self.opt_uint(key, out);
+        self.require(key, n, out)
     }
 
     /// A whole number that may be left out; `0` then.
@@ -559,8 +577,21 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
     let kind = match type_name.as_str() {
         "openApp" => {
             let app = o.opt_string("app", out);
+            let reset_state = o.flag("resetState", out);
+            let window_size = o
+                .opt_object("windowSize", out)
+                .and_then(|s| window_size(s, out));
+            let window_position = o
+                .opt_object("windowPosition", out)
+                .and_then(|p| window_position(p, out));
             let next = next(&mut o, out);
-            Some(BlockKind::OpenApp { app, next })
+            Some(BlockKind::OpenApp {
+                app,
+                reset_state,
+                window_size,
+                window_position,
+                next,
+            })
         }
         "openFile" => {
             let files = o.strings("files", out);
@@ -980,6 +1011,23 @@ fn point(mut o: Obj<'_>, out: &mut Out) -> Option<Point> {
     let y = o.number("y", out);
     o.finish(out);
     Some(Point { x: x?, y: y? })
+}
+
+fn window_size(mut o: Obj<'_>, out: &mut Out) -> Option<WindowSize> {
+    let width = o.uint("width", out);
+    let height = o.uint("height", out);
+    o.finish(out);
+    Some(WindowSize {
+        width: width?,
+        height: height?,
+    })
+}
+
+fn window_position(mut o: Obj<'_>, out: &mut Out) -> Option<WindowPosition> {
+    let x = o.int("x", out);
+    let y = o.int("y", out);
+    o.finish(out);
+    Some(WindowPosition { x: x?, y: y? })
 }
 
 fn rect(mut o: Obj<'_>, out: &mut Out) -> Option<Rect> {

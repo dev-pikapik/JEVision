@@ -68,8 +68,9 @@ pub use schedule::{
 pub use search::{SearchCandidate, rank, test_keywords};
 pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, required_inputs, required_secrets,
-    saved_variables, unbreakable_placeholders, validate, validate_in,
+    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, MAX_WINDOW_OFFSET, MAX_WINDOW_SIDE,
+    MIN_WINDOW_SIDE, required_inputs, required_secrets, saved_variables, unbreakable_placeholders,
+    validate, validate_in,
 };
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.
