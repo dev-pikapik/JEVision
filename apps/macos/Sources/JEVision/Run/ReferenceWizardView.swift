@@ -284,6 +284,7 @@ struct ReferenceWizardView: View {
             .aspectRatio(contentMode: .fit)
             .frame(maxHeight: 150)
             .clipShape(.rect(cornerRadius: 6))
+            .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(.separator) }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text(title))
