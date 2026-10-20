@@ -234,7 +234,7 @@ pub fn disconnect_block(mut flow: Flow, id: String) -> Option<Flow> {
 
 /// What the sidebar shows and searches of a test file.
 #[derive(Debug, Default, PartialEq, Eq, uniffi::Record)]
-pub struct TestSummary {
+pub struct TestFileSummary {
     /// Words the test is found by besides its file name: its name, description, details, block
     /// texts and notes.
     pub keywords: String,
@@ -244,9 +244,9 @@ pub struct TestSummary {
 
 /// The sidebar's summary of the test in `json`; empty when it doesn't read as a test.
 #[uniffi::export]
-pub fn test_summary(json: String) -> TestSummary {
+pub fn test_summary(json: String) -> TestFileSummary {
     jevision_core::parse(&json)
-        .map(|flow| TestSummary {
+        .map(|flow| TestFileSummary {
             keywords: jevision_core::test_keywords(&flow),
             flaky: flow.flaky,
         })
@@ -913,7 +913,7 @@ mod tests {
         assert!(!plain.flaky);
         let marked = test_summary(EXAMPLE.replace(r#""retries""#, r#""flaky": true, "retries""#));
         assert!(marked.flaky);
-        assert_eq!(test_summary("{".to_owned()), TestSummary::default());
+        assert_eq!(test_summary("{".to_owned()), TestFileSummary::default());
     }
 
     #[test]
