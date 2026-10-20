@@ -67,6 +67,7 @@
     <li><a href="#retries">Retries</a></li>
     <li><a href="#verdict">What the retries tell you</a></li>
     <li><a href="#flaky">Flaky tests</a></li>
+    <li><a href="#suggestion">When to quarantine a test</a></li>
     <li><a href="#quarantine">Quarantine</a></li>
     <li><a href="#privacy">Screenshots and privacy</a></li>
   </ul>
@@ -78,8 +79,9 @@
   "format": 1,
   "retries": 2,
   "quarantine": [
-    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
+    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42", "until": "2026-11-03" }
   ],
+  "suggestQuarantineAfter": 3,
   "localOnly": true,
   "hide": [
     { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 }
@@ -88,7 +90,8 @@
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
   <li><code>retries</code> (optional) is the project's default number of retries, 0 to 10.</li>
-  <li><code>quarantine</code> (optional) lists tests in <a href="#quarantine">quarantine</a>: <code>test</code> is a path relative to the project folder, <code>reason</code> is optional.</li>
+  <li><code>quarantine</code> (optional) lists tests in <a href="#quarantine">quarantine</a>: <code>test</code> is a path relative to the project folder, <code>reason</code> is optional, and <code>until</code> (optional) is the last day of the quarantine as <code>YYYY-MM-DD</code>, by the clock of the computer that runs the test. Without <code>until</code> the quarantine lasts until someone releases the test.</li>
+  <li><code>suggestQuarantineAfter</code> (optional) is how many <a href="#suggestion">unreliable runs</a> of a test within 7 days make the app suggest quarantine, 1 to 10. Default: 3.</li>
   <li><code>localOnly</code> (optional) is <code>true</code> to keep the project's screenshots on this Mac: see <a href="#privacy">Screenshots and privacy</a>.</li>
   <li><code>hide</code> (optional) lists areas of the window painted over in every screenshot of the project: see <a href="#privacy">Screenshots and privacy</a>.</li>
 </ul>
@@ -112,7 +115,17 @@
 
 <h2 id="flaky">Flaky tests</h2>
 <p>JEVision also looks back over past runs. When the same test file, unchanged since (the same content), both passed and failed in the same environment over the last 30 days, the app marks it flaky in the sidebar, the project map and the run history, with the dates and counts as evidence. Changing the test starts its record afresh, because a changed test may behave differently.</p>
+<p>A <a href="data-driven.html">data-driven test</a> is judged one row at a time: each report keeps which row ran (its number, its label and a fingerprint of its values, never the values themselves), so a row that fails now and then is flaky while the rows that never fail are not. Editing a row's values starts that row's record afresh. Reports written before this was kept count as one record for the whole test.</p>
 <p>You can also mark a test flaky yourself: turn on <strong>Flaky</strong> in the test's details (click its name above the flowchart), or add <code>"flaky": true</code> to the test file. The mark is saved in the test, so everyone sees it in the sidebar and on the project map. It changes nothing in how the test runs; to keep its failures from failing Run All, put it in quarantine.</p>
+
+<h2 id="suggestion">When to quarantine a test</h2>
+<p>A test that passes and fails by itself teaches people to ignore red results. JEVision counts the unreliable runs of each test, and each data row, over the last 7 days, and once there are 3 it suggests quarantine. A run is unreliable when:</p>
+<ul>
+  <li>it passed only on a retry, or</li>
+  <li>it failed after the same unchanged test had passed. A string of failures right after a pass counts once, so a real regression, which keeps failing, doesn't look like flakiness.</li>
+</ul>
+<p>The suggestion is a small bandage mark next to the test in the sidebar. Open the test's details and its <strong>Quarantine</strong> section lists the unreliable runs, each a link to its report, and one button, <strong>Put in Quarantine until …</strong>, which puts the test in quarantine for 14 days with the number of unreliable runs as its reason. The test's menu in the sidebar has the same button. Nothing is changed until you click it.</p>
+<p>To suggest sooner or later, change <strong>Suggest quarantine after</strong> in <strong>Settings › Advanced</strong> (1 to 10 runs, default 3). It is saved as <code>suggestQuarantineAfter</code> in the project file, so everyone who opens the project gets the same suggestions.</p>
 
 <h2 id="quarantine">Quarantine</h2>
 <p>Quarantine is for tests whose failures shouldn't block anyone while they are being fixed, for example while a test server is down.</p>
@@ -120,13 +133,15 @@
   <li>Tests in quarantine <strong>still run</strong>, and their reports show the failure.</li>
   <li>Their failure <strong>doesn't fail</strong> Run All or the exit status of <code>jevision run</code>.</li>
   <li>The JUnit report lists such a failure as <strong>skipped</strong>, with the reason and the failure.</li>
-  <li>The sidebar, the project map and the reports mark these tests.</li>
+  <li>The sidebar, the project map and the reports mark these tests, and the test's details say “In quarantine until Nov 3”.</li>
 </ul>
-<p>To put a test in quarantine or release it, use its menu in the sidebar, the test's details, or <strong>Settings › Advanced</strong>.</p>
+<p>To put a test in quarantine or release it, use its menu in the sidebar, the test's details, or <strong>Settings › Advanced</strong>. You choose the last day: 14 days from today unless you pick another, or no end at all, in which case the test stays in quarantine until you release it. <strong>Change…</strong> in the test's details moves the day or the reason.</p>
+<p>When the last day is past, the test <strong>comes back by itself</strong>: from the next day its failures fail Run All and <code>jevision run</code> like any other, and its details say it is not in quarantine. Nothing has to be edited. The entry stays in <code>jevision.project.json</code> and <strong>Settings › Advanced</strong> lists it as “Quarantine ended Nov 3” until someone releases it, so you can see what was quarantined; putting the test in quarantine again replaces it.</p>
 <p>To count their failures like any other, for example in a nightly build, add <code>--include-quarantined-failures</code>:</p>
 <pre><code>jevision run tests/ --include-quarantined-failures</code></pre>
+<p>Failures of a test whose quarantine has ended count either way.</p>
 <div class="note">
-  <p>Quarantine is meant to be short. Give a <code>reason</code> that says what must happen to release the test, such as an issue number.</p>
+  <p>Quarantine is meant to be short, which is why it ends by itself. Give a <code>reason</code> that says what must happen to release the test, such as an issue number.</p>
 </div>
 
 <h2 id="privacy">Screenshots and privacy</h2>

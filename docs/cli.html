@@ -65,6 +65,7 @@
     <li><a href="#install">Install</a></li>
     <li><a href="#overview">Commands</a></li>
     <li><a href="#run"><code>jevision run</code></a></li>
+    <li><a href="#filter">Choosing tests by their cards</a></li>
     <li><a href="#parallel">Running tests side by side</a></li>
     <li><a href="#screen">One run at a time on the screen</a></li>
     <li><a href="#run-json">The result of <code>run --json</code></a></li>
@@ -113,13 +114,14 @@ jevision --help</code></pre>
     <tr><td><code>--retries <var>n</var></code></td><td>Run a failed test up to <var>n</var> more times, 0 to 10, instead of the number in the test or the project. See <a href="retries.html#retries">Retries</a>.</td></tr>
     <tr><td><code>--row <var>n</var></code></td><td>Run a <a href="data-driven.html">data-driven test</a> with row <var>n</var> of its table only, counting from 1. The header line isn't a row.</td></tr>
     <tr><td><code>--rows <var>which</var></code></td><td>Rows of a data-driven test to run: <code>all</code> (the default), one row such as <code>3</code>, or a range such as <code>2-4</code>. Each row runs the whole test and has its own retries.</td></tr>
+    <tr><td><code>--type <var>type</var></code>, <code>--priority <var>level</var></code>, <code>--status <var>status</var></code>, <code>--author <var>name</var></code>, <code>--flaky</code></td><td>Run only the named tests whose card says so, such as <code>--priority high --type smoke</code>: see <a href="#filter">Choosing tests by their cards</a>.</td></tr>
     <tr><td><code>--start-at <var>block</var></code></td><td>Start from this block instead of the first one. Works with one test only.</td></tr>
     <tr><td><code>--provider <var>id</var></code></td><td>AI provider for <a href="checks.html#meaning">checks by meaning</a>, instead of the one chosen in the app (Settings → AI): <code>anthropic</code>, <code>openai</code>, <code>gemini</code>, <code>jev</code>, <code>ollama</code>, <code>lmstudio</code> or <code>openai-compatible</code>.</td></tr>
     <tr><td><code>--model <var>name</var></code></td><td>AI model for checks by meaning, instead of the chosen one.</td></tr>
     <tr><td><code>--junit <var>file</var></code></td><td>Also save a <a href="reports.html#junit">JUnit XML report</a> of all the tests, for CI.</td></tr>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
-    <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report.</td></tr>
+    <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report. A test whose quarantine <code>until</code> day is past counts either way.</td></tr>
     <tr><td><code>--parallel [<var>n</var>]</code></td><td>Run up to <var>n</var> tests at the same time, 1 to 16, instead of one after another. Without a number: one per core of this Mac. Tests that use the screen still take turns. See <a href="#parallel">below</a>. A folder named with digits only needs <code>./</code> in front: <code>--parallel 4 ./2024</code>.</td></tr>
     <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
     <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
@@ -130,7 +132,8 @@ jevision --help</code></pre>
 <pre><code>jevision run tests/
 jevision run tests/sign-in.flow.json --env staging --retries 2
 jevision run tests/ --junit junit.xml --html reports --video always
-jevision run tests/ --parallel 4</code></pre>
+jevision run tests/ --parallel 4
+jevision run tests/ --priority critical --type smoke</code></pre>
 <div class="table-wrap">
 <table>
   <caption>Exit status of <code>jevision run</code></caption>
@@ -142,6 +145,20 @@ jevision run tests/ --parallel 4</code></pre>
   </tbody>
 </table>
 </div>
+
+<h2 id="filter">Choosing tests by their cards</h2>
+<p>The card of a test is its <code>testType</code>, <code>priority</code>, <code>status</code> and <code>author</code> (see <a href="writing-tests.html#test-fields">Fields of a test</a>) and whether it is flaky. Add one or more options to <code>jevision run</code> to run only the tests among <var>tests</var> that fit:</p>
+<ul>
+  <li><code>--type</code>: <code>smoke</code>, <code>regression</code> or <code>acceptance</code>.</li>
+  <li><code>--priority</code>: <code>critical</code>, <code>high</code>, <code>medium</code> or <code>low</code>.</li>
+  <li><code>--status</code>: <code>draft</code>, <code>ready</code> or <code>outdated</code>.</li>
+  <li><code>--author</code>: the name written in the test; case and spaces around it don't matter.</li>
+  <li><code>--flaky</code>: tests marked flaky in their card, and tests whose runs saved in the project found them flaky over the last 30 days, as the app does.</li>
+</ul>
+<p>The options combine: a test must fit all of them. A test whose card doesn't say a field you ask for isn't run. The output says how many tests the filter left out. When none fits, nothing runs and the exit status is <code>2</code>. The sidebar of the app filters in the same way, and Run All then runs only the tests you see.</p>
+<pre><code>jevision run tests/ --priority critical --type smoke
+jevision run tests/ --flaky --retries 3
+jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 
 <h2 id="parallel">Running tests side by side</h2>
 <p>Tests run one after another unless you add <code>--parallel</code>. <code>--parallel 4</code> runs up to four tests at a time, and <code>--parallel</code> alone runs one per core of the Mac (at most 16), so a suite of tests that don't need the screen finishes sooner.</p>

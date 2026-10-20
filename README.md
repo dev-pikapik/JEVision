@@ -279,8 +279,9 @@ is optional:
   "format": 1,
   "retries": 2,
   "quarantine": [
-    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42" }
+    { "test": "checkout/pay.flow.json", "reason": "Payment sandbox is down, issue #42", "until": "2026-11-03" }
   ],
+  "suggestQuarantineAfter": 3,
   "localOnly": true,
   "hide": [{ "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 }]
 }
@@ -293,12 +294,22 @@ is optional:
   failure, not flakiness). The report, the app and `jevision run` show this line.
 - **Flaky from history.** When the same test file, unchanged since (same content hash), both
   passed and failed in the same environment over the last 30 days, the app marks it flaky in the
-  sidebar, the project map and the run history, with the dates and counts as evidence.
+  sidebar, the project map and the run history, with the dates and counts as evidence. A
+  data-driven test is judged row by row: reports keep which row ran (number, label and a
+  fingerprint of its values, never the values), so a row that fails now and then is flaky and the
+  others aren't.
+- **Quarantine suggestion.** A run is unreliable when it passed only on a retry, or failed after
+  the same unchanged test had passed (a string of failures counts once). A test, or a data row,
+  that was unreliable 3 times in 7 days gets a mark in the sidebar; its details list those runs,
+  each a link to its report, and one button puts it in quarantine for 14 days. Change the number
+  with `suggestQuarantineAfter` (1 to 10) or in Settings › Advanced.
 - **Quarantine.** `quarantine` lists tests, by path relative to the project folder, whose failures
   shouldn't block anyone while they are fixed. They still run and their reports show the failure,
   but a failure doesn't fail Run All or the `jevision run` exit status, and the JUnit report lists
-  it as skipped with the reason and the failure. `reason` is optional. The sidebar, the project
-  map and the reports mark these tests. To put a test in quarantine or release it, use its menu
+  it as skipped with the reason and the failure. `reason` is optional. `until` is the last day,
+  `YYYY-MM-DD`: the app offers 14 days, you can pick another or none. The next day the test counts
+  again by itself, with nothing to edit. The sidebar, the project map and the reports mark these
+  tests ("in quarantine until Nov 3"). To put a test in quarantine or release it, use its menu
   in the sidebar, the test's details, or Settings › Advanced. `jevision run
   --include-quarantined-failures` counts their failures like any other, for example in a nightly
   build.
@@ -416,6 +427,7 @@ jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML an
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
 jevision run tests/ --parallel 4          # up to 4 tests at once; those using the screen still take turns
 jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
+jevision run tests/ --priority critical --type smoke  # only tests whose card says so (--status, --author, --flaky too)
 jevision run tests/ --no-notify           # don't send the Slack, Telegram or email message
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
 jevision run tests/ --json                # print results as JSON; progress goes to standard error
@@ -655,7 +667,7 @@ Without `--project`, the project is the nearest folder above the current one tha
 
 | Tool | What it does |
 | --- | --- |
-| `list_tests` | Lists and searches the tests of the project |
+| `list_tests` | Lists and searches the tests of the project, optionally by `testType`, `priority`, `status`, `author` or `flaky` |
 | `read_test`, `write_test` | Read a test file, or write one; invalid tests are not saved, and each problem names its block and field |
 | `add_blocks`, `remove_block` | Edit a test the way the editor does |
 | `validate_test` | Checks a test or a folder of tests |
