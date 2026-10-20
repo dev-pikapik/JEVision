@@ -218,7 +218,9 @@ struct BoardView: View {
       connection(scene)
       noteEditor(scene)
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    // Exactly the space it is given: the nodes are moved into place by offsets, so a node bigger
+    // than the view, as an open test can be, must not make the board, and the window, bigger.
+    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
     .contentShape(.rect)
     .coordinateSpace(.named(Self.space))
     .gesture(dragGesture(scene))
