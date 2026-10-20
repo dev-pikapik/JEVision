@@ -11,7 +11,7 @@ use jevision_core::{
 };
 use jevision_runner::{
     CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus,
-    Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
+    UsedPackage, Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
 use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
@@ -190,6 +190,18 @@ pub struct CiOrigin {
     pub pull_request: Option<u64>,
     /// The page of the CI run.
     pub run_url: Option<String>,
+}
+
+/// A block package a run used.
+#[uniffi::remote(Record)]
+pub struct UsedPackage {
+    /// Like `com.acme.sign-in`.
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    /// Steps file of the package, relative to the project folder.
+    pub file: String,
 }
 
 #[uniffi::remote(Record)]
@@ -892,6 +904,9 @@ pub struct RunReport {
     /// The test ran only because other tests in the batch depend on it.
     #[uniffi(default = false)]
     pub added_as_dependency: bool,
+    /// Block packages whose steps ran, each once.
+    #[uniffi(default = [])]
+    pub packages: Vec<UsedPackage>,
     pub attempts: Vec<Attempt>,
     /// One result per row of the test's data table, in the order they ran; empty for a test
     /// without one.
@@ -968,6 +983,7 @@ impl From<jevision_runner::RunReport> for RunReport {
             display_scale: r.display_scale,
             blocked: r.blocked,
             added_as_dependency: r.added_as_dependency,
+            packages: r.packages,
             attempts: r.attempts.into_iter().map(Into::into).collect(),
         }
     }

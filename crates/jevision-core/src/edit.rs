@@ -117,6 +117,7 @@ impl BlockKind {
             },
             "runTest" => Self::RunTest {
                 test: String::new(),
+                package: None,
                 inputs: HashMap::new(),
                 next: None,
             },

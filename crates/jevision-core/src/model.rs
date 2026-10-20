@@ -279,6 +279,10 @@ pub enum BlockKind {
     /// own, see [`BLOCK_SUFFIX`].
     RunTest {
         test: String,
+        /// The version and address of the package `test` belongs to, as its author had it
+        /// installed: what a person needs to install it again when it is missing.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        package: Option<PackageNeed>,
         /// Values of the `${input.NAME}` placeholders in the test it runs, by name. They may
         /// hold placeholders themselves, filled in where this block runs.
         #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "sorted")]
@@ -516,6 +520,16 @@ pub enum ValueTest {
 pub struct NamedValue {
     pub name: String,
     pub value: String,
+}
+
+/// The version of a community block a test was written with, and where to get it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PackageNeed {
+    /// Like `1.2.0`.
+    pub version: String,
+    /// An https address of a repository, release or zip file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 /// A value a script reads from the environment variable `name`, as `kind`.

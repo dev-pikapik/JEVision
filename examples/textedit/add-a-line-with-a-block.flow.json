@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "name": "Add a line with a shared block",
+  "description": "Opens a copy of note.txt in TextEdit and adds a line with the block org.jevision.add-line, the way a block from the community is used, then checks how the window looks and quits TextEdit.",
+  "app": "com.apple.TextEdit",
+  "testType": "smoke",
+  "priority": "low",
+  "status": "ready",
+  "tags": [
+    "example"
+  ],
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "openFile",
+      "files": [
+        "note.txt"
+      ],
+      "app": "com.apple.TextEdit",
+      "next": "add"
+    },
+    "add": {
+      "type": "runTest",
+      "test": "blocks/org.jevision.add-line.jevblock/flow.json",
+      "package": {
+        "version": "1.0.0"
+      },
+      "inputs": {
+        "line": "- eggs"
+      },
+      "next": "check"
+    },
+    "check": {
+      "type": "check",
+      "reference": {
+        "image": "refs/note-with-block.png",
+        "compare": "similar",
+        "threshold": 0.95
+      },
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

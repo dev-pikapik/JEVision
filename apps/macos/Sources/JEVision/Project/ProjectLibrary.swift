@@ -23,6 +23,23 @@ struct LibraryEntry: Hashable, Identifiable, Sendable {
   let url: URL?
   /// What a custom block asks for each time it's used, as `${input.NAME}` names.
   var inputs: [String] = []
+  /// What a block from the community calls some of its inputs, by name, where the name alone isn't clear.
+  var labels: [String: String] = [:]
+  /// What the inputs of a block from the community hold when a test leaves them out, by name.
+  var defaults: [String: String] = [:]
+  /// Where the block came from when someone else made it; `nil` for a block of the project's own.
+  var package: Package?
+
+  /// What `block.json` says about a block installed from the community.
+  struct Package: Hashable, Sendable {
+    /// Like `com.acme.sign-in`.
+    let id: String
+    let author: String
+    let version: String
+    let license: String
+    /// The address it was installed from, which updates come from; `nil` for one installed from a file.
+    let source: String?
+  }
 }
 
 /// The templates and custom blocks of the open project, from its `templates` and `blocks`
@@ -76,8 +93,29 @@ final class ProjectLibrary {
     }
   }
 
-  /// The templates and blocks saved in `project`, each kind by name. Files that aren't tests are left out.
+  /// The templates and blocks saved in `project`, each kind by name, then the blocks installed from
+  /// the community. Files that aren't tests are left out.
   static func read(_ project: URL) -> [LibraryEntry] {
+    ownEntries(project) + communityEntries(project)
+  }
+
+  /// The blocks of other people installed in `project`, by name.
+  static func communityEntries(_ project: URL) -> [LibraryEntry] {
+    listCommunityBlocks(project: project.path).map { block in
+      let manifest = block.manifest
+      return LibraryEntry(
+        kind: .block, id: block.folder, name: manifest.name, detail: manifest.description ?? "",
+        symbol: manifest.icon ?? defaultBlockSymbol, text: nil, url: project.appending(path: block.stepsFile),
+        inputs: manifest.inputs.map(\.name),
+        labels: Dictionary(uniqueKeysWithValues: manifest.inputs.compactMap { i in i.label.map { (i.name, $0) } }),
+        defaults: Dictionary(uniqueKeysWithValues: manifest.inputs.compactMap { i in i.defaultValue.map { (i.name, $0) } }),
+        package: LibraryEntry.Package(
+          id: manifest.id, author: manifest.author, version: manifest.version, license: manifest.license,
+          source: block.source))
+    }
+  }
+
+  private static func ownEntries(_ project: URL) -> [LibraryEntry] {
     [LibraryEntry.Kind.template, .block].flatMap { kind in
       let (folderName, suffix) = place(of: kind)
       let folder = project.appending(path: folderName)

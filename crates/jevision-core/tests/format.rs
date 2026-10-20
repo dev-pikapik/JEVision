@@ -113,6 +113,44 @@ fn examples_are_valid_and_canonical() {
 }
 
 #[test]
+fn example_packages_are_valid_and_canonical() {
+    let blocks = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/textedit/blocks");
+    let mut seen = 0;
+    for entry in fs::read_dir(blocks).unwrap() {
+        let path = entry.unwrap().path();
+        if !path.to_string_lossy().ends_with(PACKAGE_SUFFIX) {
+            continue;
+        }
+        seen += 1;
+        let package = read_package(&path).unwrap();
+        assert_eq!(package.issues, vec![], "{}", path.display());
+        assert_eq!(
+            path.file_name().unwrap().to_string_lossy(),
+            format!("{}{PACKAGE_SUFFIX}", package.manifest.id)
+        );
+        assert_eq!(
+            package.manifest.to_json(),
+            fs::read_to_string(path.join(MANIFEST_FILE)).unwrap()
+        );
+        assert_eq!(
+            to_canonical_json(&package.flow),
+            fs::read_to_string(path.join(PACKAGE_FLOW_FILE)).unwrap()
+        );
+    }
+    assert!(seen > 0);
+
+    let project = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/textedit");
+    let text = fs::read_to_string(project.join("add-a-line-with-a-block.flow.json")).unwrap();
+    let flow = parse(&text).unwrap();
+    assert_eq!(to_canonical_json(&flow), text);
+    assert_eq!(
+        codes(&validate_in(&flow, &project)),
+        ["flow.reference.notSaved"],
+        "The block is installed; only the picture of the first run is missing"
+    );
+}
+
+#[test]
 fn canonical_form_is_idempotent_and_lossless() {
     let flow = parse(ALL_BLOCKS).unwrap();
     assert_eq!(validate(&flow), vec![]);
@@ -763,6 +801,187 @@ fn a_custom_block_asks_for_its_inputs() {
         .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
         .collect();
     assert_eq!(found, [("flow.input.missing", "inputs.name")]);
+}
+
+#[test]
+fn a_test_that_runs_a_package_needs_it_installed() {
+    let dir = std::env::temp_dir().join(format!("jevision-package-use-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    let package = dir.join("blocks/com.acme.sign-in.jevblock");
+    let path = "blocks/com.acme.sign-in.jevblock/flow.json";
+    fs::create_dir_all(&package).unwrap();
+    let flow = parse(&minimal(&format!(
+        r#"{{"a": {{"type": "runTest", "test": "{path}", "inputs": {{"email": "a@b.c"}}}}}}"#
+    )))
+    .unwrap();
+    let missing = validate_in(&flow, &dir);
+    fs::write(
+        package.join("flow.json"),
+        minimal(r#"{"a": {"type": "type", "text": "${input.email} ${input.password}"}}"#),
+    )
+    .unwrap();
+    let installed = validate_in(&flow, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(codes(&missing), ["flow.block.notInstalled"]);
+    assert_eq!(missing[0].severity, Severity::Error);
+    assert_eq!(missing[0].param("id"), Some("com.acme.sign-in"));
+    assert_eq!(missing[0].param("block"), Some("a"));
+    assert_eq!(codes(&installed), ["flow.input.missing"]);
+    assert_eq!(installed[0].param("name"), Some("password"));
+    assert!(is_block_path(path) && !is_block_path("blocks/com.acme.sign-in.jevblock/block.json"));
+    assert_eq!(package_of_path(path), Some("com.acme.sign-in"));
+}
+
+#[test]
+fn an_input_with_a_default_may_be_left_out() {
+    let dir = std::env::temp_dir().join(format!("jevision-input-default-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    let package = dir.join("blocks/com.acme.sign-in.jevblock");
+    fs::create_dir_all(&package).unwrap();
+    fs::write(
+        package.join("block.json"),
+        r#"{"format": 1, "id": "com.acme.sign-in", "name": "Sign in", "version": "1.0.0",
+            "author": "Anna", "license": "MIT",
+            "inputs": [{"name": "email", "default": "a@b.c"}, {"name": "password"}]}"#,
+    )
+    .unwrap();
+    fs::write(
+        package.join("flow.json"),
+        minimal(r#"{"a": {"type": "type", "text": "${input.email} ${input.password}"}}"#),
+    )
+    .unwrap();
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "runTest", "test": "blocks/com.acme.sign-in.jevblock/flow.json"}}"#,
+    ))
+    .unwrap();
+    let found = validate_in(&flow, &dir);
+    let defaults = input_defaults(&package.join("flow.json"));
+    let elsewhere = input_defaults(&dir.join("t.flow.json"));
+    fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(codes(&found), ["flow.input.missing"]);
+    assert_eq!(found[0].param("name"), Some("password"));
+    assert_eq!(defaults.len(), 1);
+    assert_eq!(defaults["email"], "a@b.c");
+    assert!(elsewhere.is_empty());
+}
+
+const PACKAGE_PATH: &str = "blocks/com.acme.sign-in.jevblock/flow.json";
+
+fn package_step(package: &str) -> String {
+    minimal(&format!(
+        r#"{{"a": {{"type": "runTest", "test": "{PACKAGE_PATH}"{package}, "inputs": {{"email": "a@b.c"}}}}}}"#
+    ))
+}
+
+#[test]
+fn a_missing_package_says_which_version_and_where_to_get_it() {
+    let dir = std::env::temp_dir().join(format!("jevision-package-need-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let known = parse(&package_step(
+        r#", "package": {"version": "1.2.0", "source": "https://github.com/acme/sign-in"}"#,
+    ))
+    .unwrap();
+    let old = parse(&package_step("")).unwrap();
+    let found = validate_in(&known, &dir);
+    let without = validate_in(&old, &dir);
+    fs::remove_dir_all(&dir).unwrap();
+
+    assert_eq!(codes(&found), ["flow.block.notInstalled"]);
+    assert_eq!(found[0].param("id"), Some("com.acme.sign-in"));
+    assert_eq!(found[0].param("version"), Some("1.2.0"));
+    assert_eq!(
+        found[0].param("source"),
+        Some("https://github.com/acme/sign-in")
+    );
+    let text = describe(&found[0]);
+    assert!(text.contains("the block com.acme.sign-in 1.2.0,"), "{text}");
+    assert!(
+        text.contains("`jevision blocks install https://github.com/acme/sign-in`"),
+        "{text}"
+    );
+
+    // A test written before the package was recorded still reads, and still says what is missing.
+    assert_eq!(codes(&without), ["flow.block.notInstalled"]);
+    assert_eq!(without[0].param("version"), None);
+    assert_eq!(without[0].param("source"), None);
+    let text = describe(&without[0]);
+    assert!(text.contains("the block com.acme.sign-in,"), "{text}");
+    assert!(
+        text.contains("`jevision blocks install <folder, .zip file or https address>`"),
+        "{text}"
+    );
+}
+
+#[test]
+fn the_package_a_test_names_is_kept_in_canonical_form_and_checked() {
+    let text = package_step(r#", "package": {"version": "1.2.0", "source": "https://x.test/a"}"#);
+    let flow = parse(&text).unwrap();
+    let canonical = to_canonical_json(&flow);
+    let (test_at, package_at, inputs_at) = (
+        canonical.find("\"test\"").unwrap(),
+        canonical.find("\"package\"").unwrap(),
+        canonical.find("\"inputs\"").unwrap(),
+    );
+    assert!(
+        test_at < package_at && package_at < inputs_at,
+        "{canonical}"
+    );
+    assert_eq!(parse(&canonical).unwrap(), flow);
+    assert!(!to_canonical_json(&parse(&package_step("")).unwrap()).contains("package"));
+    assert!(
+        validate(&flow)
+            .iter()
+            .all(|i| i.severity != Severity::Error)
+    );
+
+    let source_only = parse(&package_step(r#", "package": {"version": "1.2.0"}"#)).unwrap();
+    assert!(!to_canonical_json(&source_only).contains("source"));
+
+    let bad = parse(&package_step(
+        r#", "package": {"version": "latest", "source": "http://x.test/a"}"#,
+    ))
+    .unwrap();
+    let issues = validate(&bad);
+    let found: Vec<(&str, &str)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field").unwrap_or("")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.package.version", "package.version"),
+            ("flow.package.source", "package.source")
+        ]
+    );
+    assert_eq!(
+        codes(&parse_err(&package_step(
+            r#", "package": {"source": "https://x.test/a"}"#
+        ))),
+        ["flow.field.missing"]
+    );
+    assert_eq!(
+        codes(&parse_err(&package_step(
+            r#", "package": {"version": "1.0.0", "id": "x"}"#
+        ))),
+        ["flow.field.unknown"]
+    );
+}
+
+#[test]
+fn the_install_command_quotes_what_a_shell_would_split() {
+    assert_eq!(
+        install_command("https://github.com/acme/sign-in"),
+        "jevision blocks install https://github.com/acme/sign-in"
+    );
+    assert_eq!(
+        install_command("https://x.test/a?b=1&c=2"),
+        "jevision blocks install 'https://x.test/a?b=1&c=2'"
+    );
+    assert_eq!(
+        block_with_version("com.acme.sign-in", ""),
+        "com.acme.sign-in"
+    );
 }
 
 #[test]

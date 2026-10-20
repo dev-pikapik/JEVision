@@ -87,6 +87,7 @@ struct RunReportView: View {
           )
           .id(run.id)
         }
+        if !report.packages.isEmpty { UsedPackagesView(packages: report.packages) }
         if let player {
           RunVideoView(player: player, steps: steps)
         }
@@ -391,7 +392,8 @@ private struct StepRow: View {
       text += " · " + branch
     }
     if step.test != run.report.file {
-      text += " · " + String(localized: "in \(ProjectScanner.testName((step.test as NSString).lastPathComponent))")
+      let package = run.report.packages.first { $0.file == step.test }
+      text += " · " + String(localized: "in \(package.map { "\($0.name) \($0.version)" } ?? ProjectScanner.testName(path: step.test))")
     }
     return text
   }
@@ -465,6 +467,11 @@ private struct StepRow: View {
             .font(.subheadline)
             .foregroundStyle(.red)
             .lineLimit(isExpanded ? nil : 2)
+          if let need = BlockNeed(failure) {
+            Button("Install…") { project.installBlock(for: need) }
+              .controlSize(.small)
+              .help(Text("Opens the sheet that installs the block this step needs."))
+          }
         }
       }
       Spacer(minLength: 8)

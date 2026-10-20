@@ -10,8 +10,8 @@ use jevision_core::{
     Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent, CanvasItem, CanvasSection,
     ClipboardAction, Compare, Condition, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow,
     FlowLayout, HttpMethod, InputField, Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame,
-    LaidSlot, Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference,
-    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
+    LaidSlot, Modifiers, MouseButton, NamedValue, Note, PackageNeed, Point, Priority, Rect,
+    Reference, SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
     SearchCandidate, Severity, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
     TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
@@ -24,6 +24,7 @@ mod board;
 mod bug;
 mod ci;
 mod ci_runs;
+mod community;
 mod env;
 mod git;
 mod history;
@@ -46,6 +47,7 @@ pub use board::*;
 pub use bug::*;
 pub use ci::*;
 pub use ci_runs::*;
+pub use community::*;
 pub use env::*;
 pub use git::*;
 pub use history::*;
@@ -476,6 +478,12 @@ pub fn custom_block_from_canvas(
 }
 
 #[uniffi::remote(Record)]
+pub struct PackageNeed {
+    pub version: String,
+    pub source: Option<String>,
+}
+
+#[uniffi::remote(Record)]
 pub struct InputField {
     pub block: String,
     pub field: String,
@@ -688,6 +696,7 @@ pub enum BlockKind {
     },
     RunTest {
         test: String,
+        package: Option<PackageNeed>,
         inputs: HashMap<String, String>,
         next: Option<String>,
     },

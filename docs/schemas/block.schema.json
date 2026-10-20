@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JEVision block package: block.json",
+  "description": "Describes a block that people share. It sits in the folder ID.jevblock next to flow.json, the steps of the block.",
+  "type": "object",
+  "required": ["format", "id", "name", "version", "author", "license"],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "description": "Format of this file. Always 1.",
+      "const": 1
+    },
+    "id": {
+      "description": "Three or more parts of lowercase letters, digits and hyphens, joined by dots, like com.acme.sign-in. The folder of the installed package is named after it.",
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$"
+    },
+    "name": {
+      "description": "What the block is called in the library.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "description": {
+      "description": "What the block does, in a sentence or two.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "icon": {
+      "description": "Name of an SF Symbol the block is shown with, such as person.crop.circle.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9.]+$"
+    },
+    "version": {
+      "description": "Semantic version: MAJOR.MINOR.PATCH, with an optional -pre.release part.",
+      "$ref": "#/$defs/version"
+    },
+    "author": {
+      "description": "Who made the block.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "license": {
+      "description": "Name of the license of the block, such as MIT.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "minVersion": {
+      "description": "The oldest version of JEVision that can run the block.",
+      "$ref": "#/$defs/version"
+    },
+    "inputs": {
+      "description": "What the block asks for each time a test uses it: one entry for every ${input.NAME} of its steps.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "The NAME of ${input.NAME}: letters, digits and underscores, not starting with a digit.",
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "label": {
+            "description": "What to call the input in the editor, when the name isn't clear enough.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "default": {
+            "description": "What the input holds when a test leaves it out.",
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "string",
+      "maxLength": 100,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z.-]+)?$"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import SwiftUI
 enum PaletteAction: Hashable {
   case newTest, describeTest, openProject, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
+  case installBlock, customBlocks
   case addBlock(String), addCondition, arrange, disconnect
   /// Adds a template or a custom block of the project.
   case addFromLibrary(LibraryEntry)
@@ -231,6 +232,16 @@ enum CommandPalette {
     add(
       .schedules, String(localized: "Schedules…"), String(localized: "Runs tests by themselves at set times."),
       symbol: "calendar.badge.clock", keywords: String(localized: "timer nightly"), if: state.hasProject)
+    add(
+      .installBlock, String(localized: "Install Block…"),
+      String(localized: "Adds a block someone shared: from a folder, a .zip file or a GitHub address."),
+      symbol: "square.and.arrow.down", keywords: String(localized: "community custom block package download import"),
+      if: state.hasProject)
+    add(
+      .customBlocks, String(localized: "Custom Blocks…"),
+      String(localized: "Updates or removes installed blocks and shares your own."),
+      symbol: ProjectLibrary.defaultBlockSymbol, keywords: String(localized: "community library share update remove"),
+      if: state.hasProject)
     add(
       .openProject, String(localized: "Open Project…"), String(localized: "Chooses the folder that holds your tests."),
       symbol: "folder", shortcut: Shortcuts.openProject)

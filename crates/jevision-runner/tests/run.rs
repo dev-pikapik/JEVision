@@ -8,8 +8,9 @@ use jevision_runner::{
     CiOrigin, DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
     MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
     RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot, ScrollDirection,
-    ScrollUnit, Search, StepStatus, Usage, UsageBook, VIDEO_FILE, Verdict, VideoMode, VisionAnswer,
-    VisionError, VisionJudge, WindowPosition, WindowSize, describe, html, junit_xml, prune_videos,
+    ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage, VIDEO_FILE, Verdict, VideoMode,
+    VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize, describe, html, junit_xml,
+    prune_videos,
 };
 
 const SECRET: &str = "s3cr3t-pa55";
@@ -1815,6 +1816,136 @@ fn a_custom_block_reads_the_inputs_the_test_gives_it() {
     assert_eq!(hands.typed(), [format!("me@example.com/{SECRET}")]);
     // Inputs belong to the block: the test itself has none.
     assert_eq!(failure_code(&report), "run.input.missing");
+}
+
+fn install_package(p: &Project, id: &str, min_version: Option<&str>) -> String {
+    let needs = min_version.map_or_else(String::new, |v| format!(r#","minVersion":"{v}""#));
+    p.write(
+        &format!("blocks/{id}.jevblock/block.json"),
+        format!(
+            r#"{{"format":1,"id":"{id}","name":"Sign in","version":"1.2.0","author":"Anna",
+                "license":"MIT"{needs},"inputs":[{{"name":"email"}}]}}"#
+        ),
+    )
+    .write(
+        &format!("blocks/{id}.jevblock/flow.json"),
+        format!(
+            r#"{{"format":1,"name":"Sign in","app":"{APP}","start":"k","blocks":{{
+                "k":{{"type":"type","text":"${{input.email}}"}}}}}}"#
+        ),
+    );
+    format!("blocks/{id}.jevblock/flow.json")
+}
+
+const PACKAGE_STEP: &str = r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+    "inputs":{"email":"me@example.com"}}"#;
+
+#[test]
+fn the_report_names_the_packages_a_run_used() {
+    let p = Project::new();
+    let steps = install_package(&p, "com.acme.sign-in", None);
+    p.test(PACKAGE_STEP, "sub", 0);
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    assert_eq!(hands.typed(), ["me@example.com"]);
+    assert_eq!(
+        report.packages,
+        [UsedPackage {
+            id: "com.acme.sign-in".into(),
+            name: "Sign in".into(),
+            version: "1.2.0".into(),
+            author: "Anna".into(),
+            file: steps,
+        }]
+    );
+}
+
+#[test]
+fn a_package_input_the_test_leaves_out_has_the_default_of_its_manifest() {
+    let p = Project::new();
+    p.write(
+        "blocks/com.acme.sign-in.jevblock/block.json",
+        r#"{"format":1,"id":"com.acme.sign-in","name":"Sign in","version":"1.0.0","author":"Anna",
+            "license":"MIT","inputs":[{"name":"email","default":"anna@example.com"},{"name":"note"}]}"#,
+    )
+    .write(
+        "blocks/com.acme.sign-in.jevblock/flow.json",
+        format!(
+            r#"{{"format":1,"name":"Sign in","app":"{APP}","start":"a","blocks":{{
+                "a":{{"type":"type","text":"${{input.email}} ${{input.note}}"}}}}}}"#
+        ),
+    );
+    p.test(
+        r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+            "inputs":{"note":"hello"}}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    assert_eq!(hands.typed(), ["anna@example.com hello"]);
+
+    p.test(
+        r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+            "inputs":{"email":"me@example.com","note":"hi"}}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    run(&p, &hands);
+    assert_eq!(
+        hands.typed(),
+        ["me@example.com hi"],
+        "What the test gives wins"
+    );
+}
+
+#[test]
+fn a_package_that_is_not_installed_or_too_new_stops_the_run_with_a_reason() {
+    let p = Project::new();
+    p.test(PACKAGE_STEP, "sub", 0);
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.block.notInstalled");
+    assert!(report.packages.is_empty());
+
+    install_package(&p, "com.acme.sign-in", Some("999.0.0"));
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.block.needsNewer");
+    assert!(hands.typed().is_empty());
+}
+
+#[test]
+fn a_missing_package_is_reported_with_the_version_and_address_the_test_recorded() {
+    let p = Project::new();
+    p.test(
+        r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+            "package":{"version":"1.2.0","source":"https://github.com/acme/sign-in"},
+            "inputs":{"email":"me@example.com"}}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &hands).report;
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(failure.code, "run.block.notInstalled");
+    assert_eq!(failure.param("package"), "com.acme.sign-in");
+    assert_eq!(failure.param("version"), "1.2.0");
+    assert_eq!(failure.param("source"), "https://github.com/acme/sign-in");
+    assert_eq!(
+        jevision_runner::describe(&failure),
+        "Block sub: the package com.acme.sign-in 1.2.0 is not installed; install it with \
+         `jevision blocks install https://github.com/acme/sign-in`, then run the test again."
+    );
+
+    // A test saved before the version was recorded fails the same way, without them.
+    p.test(PACKAGE_STEP, "sub", 0);
+    let report = run(&p, &hands).report;
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(failure.param("version"), "");
+    assert!(jevision_runner::describe(&failure).contains("com.acme.sign-in is not installed"));
 }
 
 #[test]

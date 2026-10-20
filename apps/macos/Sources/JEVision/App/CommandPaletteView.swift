@@ -225,6 +225,8 @@ struct CommandPaletteView: View {
       runs.runAll(project.chosen(from: project.items).map(\.url), in: root, title: project.runAllTitle)
     case .record: if let document { records.record(document) }
     case .schedules: project.schedules.isShowingSheet = true
+    case .installBlock: project.installBlock()
+    case .customBlocks: project.showsCustomBlocks = true
     case .addBlock(let type): document?.insert(type, at: document?.slotAfterSelection)
     case .addFromLibrary(let entry): document?.add(entry, at: document?.slotAfterSelection)
     case .saveToLibrary(let kind): document?.savingToLibrary = kind

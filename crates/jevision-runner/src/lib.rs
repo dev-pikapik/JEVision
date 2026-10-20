@@ -14,6 +14,7 @@ mod control;
 mod env;
 mod import;
 mod machine;
+mod packages;
 mod report;
 mod run;
 mod screen;
@@ -23,7 +24,7 @@ mod usage;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
-pub use bug::{BugContext, BugDraft, BugPicture, bug_report, mask_secrets};
+pub use bug::{BugContext, BugDraft, BugPicture, bug_report, describe_block, mask_secrets};
 pub use ci::CiOrigin;
 pub use control::{PauseReason, RunControl};
 pub use import::{import_ci_artifact, imported_ci_artifacts};
@@ -37,10 +38,11 @@ pub use jevision_vision::{
     Provider, Question, Search, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
     video_mask,
 };
+pub use packages::{Staged, discard_staged, stage_source, zip_package};
 pub use report::{
     Attempt, DataRow, Failure, NOTHING_CHECKED, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,
-    Step, StepStatus, Verdict, VisionAnswer, branch_text, describe, describe_vision, html,
-    junit_xml,
+    Step, StepStatus, UsedPackage, Verdict, VisionAnswer, branch_text, describe, describe_vision,
+    html, junit_xml,
 };
 pub use run::{
     Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, today, vision_failure,

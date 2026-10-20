@@ -34,6 +34,7 @@
     <li><a href="checks.html">Checks and references</a></li>
     <li><a href="environments.html">Environments and secrets</a></li>
     <li><a href="data-driven.html">Data-driven tests</a></li>
+    <li><a href="custom-blocks.html">Custom blocks</a></li>
   </ul>
   <p class="nav-group" id="nav-run-tests">Run tests</p>
   <ul aria-labelledby="nav-run-tests">
@@ -344,15 +345,19 @@
 
 <h3 id="runTest">runTest: run another test</h3>
 <p>Runs another test file as one step, then comes back and goes to <code>next</code>. Use it for parts many tests share, such as signing in. The other test acts on its own application, uses the same environment, and its failure fails this test. A test can't run itself, directly or through other tests.</p>
+<p>The file may also be a <a href="custom-blocks.html">custom block</a>: a <code>.block.json</code> file you made, or the <code>flow.json</code> of a package installed from someone else. A custom block reads the values you give it in <code>inputs</code> as <code>${input.NAME}</code>.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
-    <tr><td><code>test</code></td><td>Yes</td><td>Path of a <code>.flow.json</code> file, relative to this test file. May hold <a href="#placeholders">placeholders</a>.</td></tr>
+    <tr><td><code>test</code></td><td>Yes</td><td>Path of a <code>.flow.json</code> file or of a custom block (<code>.block.json</code>, or <code>flow.json</code> in a <code>.jevblock</code> folder), relative to this test file. May hold <a href="#placeholders">placeholders</a>.</td></tr>
+    <tr><td><code>package</code></td><td>No</td><td>For a block from the community: the <code>version</code> the test was made with, such as <code>"1.2.0"</code>, and the <code>source</code> it can be installed from, an <code>https://</code> address. JEVision writes it when you add the block from the library. When the block isn't installed, the error names it, such as “needs the block com.acme.sign-in 1.2.0”, and offers <strong>Install…</strong>. Tests without it still work.</td></tr>
+    <tr><td><code>inputs</code></td><td>No</td><td>Values for a custom block, by the name it asks for: <code>{ "email": "${env.USER_EMAIL}" }</code>. May hold <a href="#placeholders">placeholders</a> of this test. A value the block needs and doesn't get is a warning, and stops the run, unless the block has a default for it.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "runTest", "test": "sign-in.flow.json", "next": "compose" }</code></pre>
+<pre><code>{ "type": "runTest", "test": "sign-in.flow.json", "next": "compose" }
+{ "type": "runTest", "test": "blocks/com.acme.sign-in.jevblock/flow.json", "package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in" }, "inputs": { "email": "anna@example.com" }, "next": "compose" }</code></pre>
 
 <h3 id="script">script: run a script</h3>
 <p>Runs a script in <code>sh</code>, <code>zsh</code>, <code>python3</code>, <code>node</code> or <code>appleScript</code>. Each input reaches it as an environment variable. It reports each output as a <code>name=value</code> line written to the file named by <code>$JEV_OUTPUT</code>, and the run keeps it as the variable <code>${var.NAME}</code>. A script that exits with a code other than 0 fails the block.</p>
@@ -463,7 +468,8 @@
   <li>Two blocks with the same id; <code>start</code> or an arrow that names a block that doesn't exist.</li>
   <li>A circle of arrows outside a loop body, or a loop whose body is the loop block itself.</li>
   <li>A number out of range: <code>retries</code> 0–10, <code>times</code> 1–10000, <code>timeout</code> 1ms–60m, <code>threshold</code> above 0 and at most 1.</li>
-  <li>A point or area outside the window; an absolute path; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't <code>.flow.json</code>.</li>
+  <li>A point or area outside the window; an absolute path; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't a <code>.flow.json</code> test, a <code>.block.json</code> block or the <code>flow.json</code> of a package.</li>
+  <li>A <code>runTest</code> of a <a href="custom-blocks.html">block from the community</a> that isn't installed in the project, a <code>package</code> whose <code>version</code> doesn't look like <code>1.2.0</code> or whose <code>source</code> doesn't start with <code>https://</code>, or an <code>inputs</code> name that isn't letters, digits and <code>_</code>.</li>
   <li>A malformed placeholder, an <code>${env.NAME}</code> that no environment has, or a <code>${data.COLUMN}</code> the table doesn't have.</li>
   <li><code>threshold</code> without <code>"compare": "similar"</code>, or <code>expect</code> without <code>"compare": "meaning"</code>.</li>
 </ul>
@@ -473,6 +479,7 @@
   <li>A loop body that never leads back to its loop block.</li>
   <li>A file the test reads that doesn't exist yet. For a <code>check</code> block this is expected before the first run, which saves the picture.</li>
   <li>An <code>${env.NAME}</code> that only some environments have.</li>
+  <li>A <code>runTest</code> of a custom block that gives no value for an input the block reads and has no default for.</li>
 </ul>
 
 <h2 id="canonical">Canonical form</h2>
