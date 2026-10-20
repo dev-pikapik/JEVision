@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications — JEVision</title>
+<meta name="description" content="Get a message in Slack, Telegram or email when a test fails or passes again, or after every run.">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html"><img src="assets/icon.svg" alt="" width="28" height="28">JEVision</a>
+  <form class="search" role="search" hidden>
+    <label class="visually-hidden" for="search-input">Search the documentation</label>
+    <input id="search-input" type="search" placeholder="Search the docs (press /)" autocomplete="off" aria-describedby="search-help">
+    <span class="visually-hidden" id="search-help">Results appear below as you type. Use the arrow keys to move through them and Escape to clear.</span>
+    <ul class="search-results" aria-label="Search results"></ul>
+    <p class="visually-hidden search-status-live" role="status" aria-live="polite"></p>
+  </form>
+</header>
+<div class="layout">
+<nav class="site-nav" aria-label="Documentation">
+  <p class="nav-group" id="nav-start">Start</p>
+  <ul aria-labelledby="nav-start">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+  </ul>
+  <p class="nav-group" id="nav-write-tests">Write tests</p>
+  <ul aria-labelledby="nav-write-tests">
+    <li><a href="writing-tests.html">Writing tests</a></li>
+    <li><a href="checks.html">Checks and references</a></li>
+    <li><a href="environments.html">Environments and secrets</a></li>
+    <li><a href="data-driven.html">Data-driven tests</a></li>
+  </ul>
+  <p class="nav-group" id="nav-run-tests">Run tests</p>
+  <ul aria-labelledby="nav-run-tests">
+    <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
+    <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html" aria-current="page">Notifications</a></li>
+    <li><a href="reports.html">Run video and reports</a></li>
+    <li><a href="vm.html">Virtual machines</a></li>
+  </ul>
+  <p class="nav-group" id="nav-reference">Reference</p>
+  <ul aria-labelledby="nav-reference">
+    <li><a href="cli.html">Command line</a></li>
+    <li><a href="mcp.html">AI assistants (MCP)</a></li>
+    <li><a href="file-formats.html">File formats</a></li>
+  </ul>
+  <p class="nav-group" id="nav-more">More</p>
+  <ul aria-labelledby="nav-more">
+    <li><a href="iphone.html">iPhone remote</a></li>
+    <li><a href="faq.html">FAQ and troubleshooting</a></li>
+  </ul>
+</nav>
+<main id="main" tabindex="-1">
+<h1>Notifications</h1>
+<p class="lead">Get a message in Slack, Telegram or email when a test fails or passes again, so a run nobody watches doesn't stay unnoticed.</p>
+
+<nav class="on-this-page" aria-labelledby="otp">
+  <h2 id="otp">On this page</h2>
+  <ul>
+    <li><a href="#set-up">Set up</a></li>
+    <li><a href="#when">When a message is sent</a></li>
+    <li><a href="#summary">One summary for many tests</a></li>
+    <li><a href="#content">What a message says</a></li>
+    <li><a href="#slack">Slack</a></li>
+    <li><a href="#telegram">Telegram</a></li>
+    <li><a href="#email">Email</a></li>
+    <li><a href="#file">The settings file</a></li>
+    <li><a href="#ci">On CI</a></li>
+    <li><a href="#trouble">When a message doesn't arrive</a></li>
+  </ul>
+</nav>
+
+<h2 id="set-up">Set up</h2>
+<p>Open a project, choose <strong>JEVision → Settings → Notifications</strong>, and turn on one or more channels: <strong>Post to Slack</strong>, <strong>Post to Telegram</strong> or <strong>Send email</strong>. Each channel has its own <strong>Send a message</strong> choice, so a busy team channel can hear about every change while your own inbox only hears about failures. <strong>Send Test Message</strong> saves the settings and sends a short message, to check that the channel works before a real run needs it.</p>
+<p>The settings are saved in <code>jevision.notifications.json</code> in the project folder and committed with the tests, so everyone who runs them sends the same messages. The webhook, bot token and mail password are never written there: they stay in the Keychain on this Mac, and JEVision never shows them again. See <a href="#ci">On CI</a> for where they come from on a runner.</p>
+
+<h2 id="when">When a message is sent</h2>
+<p>Each channel sends a message in one of four cases:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Choice in the app</th><th scope="col"><code>when</code> in the file</th><th scope="col">A message goes out</th></tr></thead>
+  <tbody>
+    <tr><td>When a test fails</td><td><code>"failed"</code></td><td>When a test fails, every time it does.</td></tr>
+    <tr><td>When a test fails or passes again</td><td><code>"failedOrFixed"</code></td><td>When a test fails, and when a test that failed in its run before passes again. The default.</td></tr>
+    <tr><td>When a test starts or stops failing</td><td><code>"changed"</code></td><td>When a test that wasn't failing fails, and when a failing test passes again. A test that keeps failing says nothing more, so a broken test doesn't fill the channel every night.</td></tr>
+    <tr><td>After every run</td><td><code>"every"</code></td><td>After every run that finished, passed or failed.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>“The run before” is the last earlier run of the same test file that finished, in this project's run history. Runs that were stopped or blocked don't count, because they don't say whether the test was passing. The history is the <code>.jevision/runs</code> folder of the project, so on a CI runner that starts from an empty folder every time, every failure counts as new and nothing counts as fixed; a self-hosted runner that keeps the folder between runs works as on your Mac.</p>
+<p>These rules hold for every choice:</p>
+<ul>
+  <li><strong>A stopped run sends nothing</strong>, and neither does a batch of runs with a stopped run in it.</li>
+  <li><strong>A test that didn't run because a test it depends on failed</strong> says nothing of its own, since the test that failed does; with <em>After every run</em> it is reported as <code>Blocked</code>. A test blocked by a dependency that doesn't exist or that depends on itself in a circle is reported like a failure.</li>
+  <li><strong>A failure in <a href="retries.html#quarantine">quarantine</a> doesn't count as a failure.</strong> The test still runs, and <em>After every run</em> still reports it.</li>
+  <li><strong><em>Only for scheduled runs and CI</em></strong> keeps runs you start yourself in the app or in a terminal quiet. Scheduled runs and runs where the environment variable <code>CI</code> is set (GitHub Actions and most CI systems set it) still send.</li>
+</ul>
+
+<h2 id="summary">One summary for many tests</h2>
+<p><strong>Run All</strong> in the app, <code>jevision run</code> with several tests, and every <a href="schedules.html">schedule</a> that runs several tests send <strong>one message</strong> when the last test is done, not one per test. The title says how it went:</p>
+<ul>
+  <li><code>Failed: 3 of 42 tests</code>: the tests that failed, with a sentence each;</li>
+  <li><code>Blocked: 1 of 42 tests</code>: a test didn't run because a test it depends on failed or couldn't run;</li>
+  <li><code>Fixed: 2 tests passing again</code>;</li>
+  <li><code>Passed: 42 tests</code>.</li>
+</ul>
+<p>A summary names at most 10 failed tests and says how many more there were. A test run on its own sends its own message, titled like <code>Failed: Sign in</code>. Whether a channel gets the message depends on its choice above: with <em>When a test fails</em> a batch where everything passed sends nothing at all.</p>
+
+<h2 id="content">What a message says</h2>
+<ul>
+  <li>how it went, in the title: <code>Failed</code>, <code>Fixed</code>, <code>Passed</code> or <code>Blocked</code>, and the test's name;</li>
+  <li>why a test failed, in one sentence, such as which step and what it expected;</li>
+  <li>how long the run took, the test file, the schedule and the <a href="environments.html">environment</a>;</li>
+  <li>where the report is: a link to the GitHub Actions run when the tests ran on one, otherwise the folder on the Mac that ran them. Reports stay on that Mac, so nothing but the message goes to the service.</li>
+</ul>
+<p>Pictures only ever come from the report, where the areas you hide and password fields are already covered. See <a href="retries.html#privacy">Screenshots and privacy</a>.</p>
+
+<h2 id="slack">Slack</h2>
+<ol>
+  <li>In Slack, open <strong>api.slack.com/apps</strong> and create an app. Turn on <strong>Incoming Webhooks</strong>, add a webhook for the channel and copy its URL, which starts with <code>https://hooks.slack.com/</code>.</li>
+  <li>In JEVision, turn on <strong>Post to Slack</strong>, click <strong>Set…</strong> by <strong>Webhook</strong> and paste the URL.</li>
+</ol>
+<p>Messages are laid out with Slack's blocks: a heading in the title, the facts side by side, the failed tests as a list and the report below. A plain-text version goes with them for notifications and screen readers. If Slack refuses the layout, JEVision sends the plain text instead, so the message still arrives.</p>
+
+<h2 id="telegram">Telegram</h2>
+<ol>
+  <li>In Telegram, write to <strong>@BotFather</strong> to make a bot and copy its token.</li>
+  <li>In JEVision, turn on <strong>Post to Telegram</strong>, click <strong>Set…</strong> by <strong>Bot token</strong> and paste the token.</li>
+  <li>Write something to the bot, or add it to the group or channel and send a message there. In JEVision, click <strong>Find Chat</strong>: it lists the chats the bot has seen, the latest first, and <strong>Use</strong> fills in the chat for you.</li>
+</ol>
+<p>You can also type the chat's ID yourself: a number such as <code>-1001234567890</code> for a group, or <code>@name</code> for a public channel.</p>
+<p><strong>Find Chat</strong> needs the bot to have been written to lately; Telegram forgets old messages. It doesn't work for a bot that hands its messages to a webhook, and says so: make a new bot just for JEVision, or type the ID.</p>
+
+<h2 id="email">Email</h2>
+<p>Mail goes through an SMTP server of your own, such as the one of your mail provider. Fill in:</p>
+<ul>
+  <li><strong>Mail server</strong> and <strong>Port</strong>, such as <code>smtp.gmail.com</code> and <code>465</code>;</li>
+  <li><strong>Encryption</strong>: <strong>TLS</strong> (usually with port 465) or <strong>STARTTLS</strong> (usually with 587). Mail is never sent unencrypted, and a server that can't upgrade to STARTTLS is refused;</li>
+  <li><strong>User name</strong> and <strong>Password</strong>, unless the server takes mail without signing in; for Gmail and iCloud Mail, make an app password in your account's security settings;</li>
+  <li><strong>From</strong>, such as <code>JEVision &lt;qa@example.com&gt;</code>, and <strong>To</strong>, one address or several.</li>
+</ul>
+<p>The mail has a plain-text part and a formatted part with a coloured heading, the facts and the failed tests. When a test failed, the formatted part also shows a <strong>screenshot of the step where it failed</strong>, with private areas covered. It is part of the mail itself, so it shows even when the mail program blocks pictures from the web. Screenshots over 5 MB are left out.</p>
+
+<h2 id="file">The settings file</h2>
+<pre><code>{
+  "format": 2,
+  "unattendedOnly": true,
+  "slack": { "when": "failedOrFixed" },
+  "telegram": { "chat": "-1001234567890", "when": "changed" },
+  "email": {
+    "server": "smtp.gmail.com", "port": 465, "security": "tls",
+    "user": "qa@example.com", "from": "JEVision &lt;qa@example.com&gt;",
+    "to": ["team@example.com"], "when": "failed"
+  }
+}</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>format</code></td><td>Yes</td><td><code>2</code>. A file of format 1 is still read. See <a href="#older">below</a>.</td></tr>
+    <tr><td><code>unattendedOnly</code></td><td>No</td><td><code>true</code> to tell only about scheduled runs and CI. Default: <code>false</code>.</td></tr>
+    <tr><td><code>slack</code></td><td>No</td><td><code>{ "when": … }</code>. Leave it out to turn Slack off.</td></tr>
+    <tr><td><code>telegram</code></td><td>No</td><td><code>{ "chat": "…", "when": … }</code>. <code>chat</code> is required and can't be empty.</td></tr>
+    <tr><td><code>email</code></td><td>No</td><td><code>server</code>, <code>port</code>, <code>from</code> and <code>to</code> (at least one address) are required. <code>security</code> is <code>"tls"</code> (the default) or <code>"startTls"</code>. <code>user</code> is left out for a server that takes mail without signing in.</td></tr>
+    <tr><td><code>when</code>, in each channel</td><td>No</td><td><code>"failed"</code>, <code>"failedOrFixed"</code> (the default), <code>"changed"</code> or <code>"every"</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Unknown keys are an error, so a typo doesn't go unnoticed, and so is an address that isn't an address. Turning every channel off in the app removes the file. The secrets are not in it.</p>
+
+<h3 id="older">Files from before format 2</h3>
+<p>Format 1 had one <code>"when"</code> for the whole file and <code>"slack": true</code> or <code>false</code>. JEVision still reads it: the one <code>when</code> becomes the choice of every channel, <code>"slack": true</code> becomes <code>{ "when": … }</code>, and <code>false</code> turns Slack off. Nothing is rewritten until you save the settings in the app, which writes format 2. A JEVision from before format 2 refuses the file, as it does any newer format.</p>
+
+<h2 id="ci">On CI</h2>
+<p>A runner has no Keychain to read, so the secrets come from environment variables instead. A variable wins over the Keychain.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Channel</th><th scope="col">Environment variable</th></tr></thead>
+  <tbody>
+    <tr><td>Slack</td><td><code>JEVISION_SLACK_WEBHOOK</code>, the webhook URL</td></tr>
+    <tr><td>Telegram</td><td><code>JEVISION_TELEGRAM_TOKEN</code>, the bot token</td></tr>
+    <tr><td>Email</td><td><code>JEVISION_SMTP_PASSWORD</code>, the mail password</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>- name: Run UI tests
+  env:
+    JEVISION_SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  run: jevision run tests</code></pre>
+<p><code>jevision run</code> sends the messages when it finishes and says how each went (<code>Message sent to Slack</code>, or why not). A message that couldn't be sent never changes the exit status. Add <code>--no-notify</code> to run without sending anything. On GitHub Actions the message links to the run, where the reports can be uploaded as artifacts. See <a href="cli.html#ci">Running in CI</a>.</p>
+
+<h2 id="trouble">When a message doesn't arrive</h2>
+<ul>
+  <li><strong>“… isn't on this Mac”.</strong> The webhook, token or password is missing: click <strong>Set…</strong> in the settings, or set the environment variable.</li>
+  <li><strong>Nothing arrives and nothing is said.</strong> The choice of <strong>Send a message</strong> doesn't ask for this run: a run where everything passed sends nothing unless the choice is <em>After every run</em>. Check <strong>Only for scheduled runs and CI</strong> as well.</li>
+  <li><strong>Slack says no.</strong> The webhook was deleted or its app removed from the channel: make a new one.</li>
+  <li><strong>Telegram says the chat wasn't found.</strong> Add the bot to the group or channel (a channel needs it as an administrator who can post), then use <strong>Find Chat</strong> again.</li>
+  <li><strong>Mail is refused.</strong> The message says whether the user name or password was wrong or the secure connection couldn't be made. Check the port against the encryption, and use an app password where the provider asks for one.</li>
+</ul>
+<p>For a Mac that runs <a href="schedules.html">schedules</a> unattended, see <a href="schedules.html#unattended">Preparing a Mac for runs nobody watches</a>.</p>
+</main>
+</div>
+<footer class="site-footer">
+  <p>JEVision is free and open source under the <a href="https://github.com/dev-pikapik/JEVision/blob/main/LICENSE">MIT license</a>. Source, issues and discussions: <a href="https://github.com/dev-pikapik/JEVision">github.com/dev-pikapik/JEVision</a>.</p>
+</footer>
+</body>
+</html>

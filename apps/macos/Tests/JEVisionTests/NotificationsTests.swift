@@ -10,7 +10,11 @@ struct NotificationsTests {
     draft.telegram = true
     #expect(draft.settings() == .failure(.noChat))
     draft.chat = " -100123 "
+    draft.telegramWhen = .changed
+    draft.slack = true
+    draft.slackWhen = .failed
     draft.email = true
+    draft.emailWhen = .every
     draft.server = "smtp.acme.com"
     draft.port = "port"
     #expect(draft.settings() == .failure(.badPort("port")))
@@ -20,7 +24,9 @@ struct NotificationsTests {
     #expect(draft.settings() == .failure(.badRecipient("ann")))
     draft.to = "team@acme.com;\nann@acme.com, "
     let settings = try? draft.settings().get()
-    #expect(settings?.telegram == TelegramChat(chat: "-100123"))
+    #expect(settings?.slack == SlackChannel(when: .failed))
+    #expect(settings?.telegram == TelegramChat(chat: "-100123", when: .changed))
+    #expect(settings?.email?.when == .every)
     #expect(settings?.email?.port == 587)
     #expect(settings?.email?.to == ["team@acme.com", "ann@acme.com"])
     #expect(NotificationsDraft(settings!).settings() == .success(settings!))
@@ -28,6 +34,32 @@ struct NotificationsTests {
     draft.email = false
     #expect((try? draft.settings().get())?.email == nil)
     #expect(draft.server == "smtp.acme.com")
+    #expect(draft.emailWhen == .every)
+  }
+
+  @Test func eachChoiceOfWhenHasItsOwnExplanation() {
+    let whens: [NotifyWhen] = [.failed, .failedOrFixed, .changed, .every]
+    #expect(Set(whens.map(NotificationsText.explanation)).count == whens.count)
+  }
+
+  @Test func theChatSearchSaysWhatFoundNothingOrNoTokenMeans() {
+    let chat = FoundChat(id: "-1001", title: "QA team", kind: .group)
+    #expect(
+      NotificationsText.chatSearch(.success(FoundChats(bot: "@acme_bot", chats: [chat])))
+        == .found(bot: "@acme_bot", chats: [chat]))
+    #expect(
+      NotificationsText.chatSearch(.failure(NotifyError.Failed(reason: "Telegram can’t be reached")))
+        == .failed("Telegram can’t be reached"))
+    let none = NotificationsText.noChats(bot: "@acme_bot")
+    #expect(none.contains("@acme_bot") && none.contains("add @acme_bot to it"))
+    #expect(NotificationsText.kind(.group) != NotificationsText.kind(.channel))
+    #expect(NotificationsText.symbol(.person) != NotificationsText.symbol(.group))
+
+    let project = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    guard ProcessInfo.processInfo.environment[notificationSecretVariable(channel: .telegram)] == nil else { return }
+    #expect(
+      NotificationsText.chatSearch(Result { try findTelegramChats(project: project.path) })
+        == .failed("Set the Telegram bot token first."))
   }
 
   @Test func aRunWithoutTheSecretSaysWhatIsMissing() throws {
@@ -41,15 +73,26 @@ struct NotificationsTests {
        "attempts": [{"number": 1, "verdict": "failed", "durationMs": 1200, "steps": []}]}
       """
     try report.write(to: dir.appending(path: "report.json"), atomically: true, encoding: .utf8)
-    #expect(NotificationsText.notify(project: project.path, dir: dir.path) == nil)
+    #expect(NotificationsText.notify(project: project.path, dirs: [dir.path]) == nil)
 
     var settings = NotificationSettings.off
-    settings.slack = true
+    settings.slack = SlackChannel(when: .failedOrFixed)
     try saveNotificationSettings(project: project.path, settings: settings)
     #expect(try notificationSettings(project: project.path) == settings)
     guard ProcessInfo.processInfo.environment[notificationSecretVariable(channel: .slack)] == nil else { return }
     #expect(
-      NotificationsText.notify(project: project.path, dir: dir.path)
+      NotificationsText.notify(project: project.path, dirs: [dir.path])
         == "No message to Slack: Set the Slack webhook first.")
+
+    // Several runs are one batch: one summary, so one answer per channel, not one per run.
+    let second = project.appending(path: ".jevision/runs/20261019-094000-sign-up")
+    try FileManager.default.createDirectory(at: second, withIntermediateDirectories: true)
+    try report.write(to: second.appending(path: "report.json"), atomically: true, encoding: .utf8)
+    #expect(
+      NotificationsText.notify(project: project.path, dirs: [dir.path, second.path])
+        == "No message to Slack: Set the Slack webhook first.")
+    #expect(
+      NotificationsText.notify(project: project.path, dirs: [dir.path, project.appending(path: "gone").path])
+        .map { $0.hasPrefix("No messages about the runs were sent: ") } == true)
   }
 }

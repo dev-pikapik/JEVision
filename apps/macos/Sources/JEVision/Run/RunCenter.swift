@@ -64,6 +64,8 @@ final class RunCenter {
     var blocked = 0
     /// Blocked tests already saved in the history.
     var saved: Set<UInt32> = []
+    /// The folders of the runs the batch made, blocked ones included, for the summary message.
+    var runs: [String] = []
     var isStopping = false
 
     var total: Int { entries.count }
@@ -92,6 +94,8 @@ final class RunCenter {
     var added = 0
     /// The batch was stopped before every test ran.
     let stopped: Bool
+    /// Why the summary message to Slack, Telegram or email didn't go.
+    var notificationProblem: String?
   }
 
   /// The run that waits for a permission, a secret or a fix; shown as a sheet.
@@ -113,6 +117,8 @@ final class RunCenter {
   private(set) var breakpoints: [URL: Set<String>]
 
   @ObservationIgnored private var run: TestRun?
+  /// Counts the batches that ended, so a late answer from the services finds its own result.
+  @ObservationIgnored private var endedBatches = 0
   @ObservationIgnored private let input = InputWatcher()
   @ObservationIgnored private var hud: GlassPanel?
   /// Whether JEVision is hidden for the run.
@@ -236,11 +242,12 @@ final class RunCenter {
     for (index, entry) in batch.entries.enumerated() {
       guard case .blocked(let blocker) = entry.state, batch.saved.insert(UInt32(index)).inserted else { continue }
       batch.blocked += 1
-      _ = saveBlockedRun(
+      let saved = saveBlockedRun(
         project: batch.project.path(percentEncoded: false), test: entry.file, blocker: blocker,
         options: RunOptions(
           startAt: nil, retries: nil, environment: environment, vision: nil, localOnly: false, video: .off,
           addedAsDependency: entry.added))
+      if case .finished(let dir, _, _) = saved { batch.runs.append(dir) }
     }
   }
 
@@ -257,6 +264,25 @@ final class RunCenter {
     batchResult = summary
     if isOutOfTheWay { showApp() }
     AccessibilityNotification.Announcement(RunText.batchOutcome(summary)).post()
+    notify(about: batch, summary: summary)
+  }
+
+  /// One summary message about the batch, as the project's notification settings ask. A stopped
+  /// batch sends nothing. The services may take a while, so it goes out in the background.
+  private func notify(about batch: Batch, summary: BatchResult) {
+    endedBatches += 1
+    guard !summary.stopped, !batch.isStopping, !batch.runs.isEmpty else { return }
+    let (project, dirs, serial) = (batch.project.path(percentEncoded: false), batch.runs, endedBatches)
+    Task.detached { [weak self] in
+      guard let problem = NotificationsText.notify(project: project, dirs: dirs) else { return }
+      await self?.batchNotificationsFailed(problem, batch: serial)
+    }
+  }
+
+  /// The summary message of a batch didn't go; shown with its result while that is on screen.
+  private func batchNotificationsFailed(_ problem: String, batch serial: Int) {
+    guard serial == endedBatches else { return }
+    batchResult?.notificationProblem = problem
   }
 
   /// Starts the run; `false` when the emergency stop can't be armed.
@@ -297,7 +323,9 @@ final class RunCenter {
         requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, usage: ai.usage, video: videos.mode,
         keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
-      secrets: StoredSecrets(), listener: RunBridge(center: self, project: request.project.path, remote: remoteListener?(request.project)))
+      secrets: StoredSecrets(),
+      listener: RunBridge(
+        center: self, project: request.project.path, remote: remoteListener?(request.project), notifies: batch == nil))
     return true
   }
 
@@ -411,6 +439,7 @@ final class RunCenter {
     hud?.close()
     hud = nil
     if var batch {
+      if case .finished(let dir, _, _) = outcome { batch.runs.append(dir) }
       let ended: TestOutcome
       switch outcome {
       // It did all it was asked to without failing, so the tests after it can go on.
@@ -495,11 +524,14 @@ private final class RunBridge: RunListener {
   let center: RunCenter
   let project: String
   let remote: (any RunListener)?
+  /// Tells the project's channels about the run when it ends; a batch tells about all its runs at once.
+  let notifies: Bool
 
-  init(center: RunCenter, project: String, remote: (any RunListener)?) {
+  init(center: RunCenter, project: String, remote: (any RunListener)?, notifies: Bool) {
     self.center = center
     self.project = project
     self.remote = remote
+    self.notifies = notifies
   }
 
   func event(event: RunEvent) {
@@ -515,8 +547,8 @@ private final class RunBridge: RunListener {
       MainActor.assumeIsolated { center.finish(outcome) }
     }
     // Still on the run's thread, which has nothing else to do: the services may take a while.
-    guard case .finished(let dir, _, _) = outcome,
-      let problem = NotificationsText.notify(project: project, dir: dir)
+    guard notifies, case .finished(let dir, _, _) = outcome,
+      let problem = NotificationsText.notify(project: project, dirs: [dir])
     else { return }
     DispatchQueue.main.async { [center] in
       MainActor.assumeIsolated { center.notificationsFailed(problem, run: dir) }

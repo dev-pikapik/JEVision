@@ -80,7 +80,7 @@ into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one archite
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/schedule-dark.png"><img src="docs/media/schedule-light.png" width="400" alt=""></picture>
 <br><b>Runs on a schedule</b>
-<br>Every night, on weekdays or every few hours, with the environment you choose. A failed run sends a notification.
+<br>Every night, on weekdays or every few hours, with the environment you choose. A failed run sends a notification, and a message to Slack, Telegram or email if you set one up.
 </td>
 </tr></tbody>
 <tbody><tr>
@@ -412,6 +412,7 @@ jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
 jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
+jevision run tests/ --no-notify           # don't send the Slack, Telegram or email message
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
 jevision run tests/ --json                # print results as JSON; progress goes to standard error
 jevision validate tests/                  # report errors and warnings (--json for machines)
@@ -528,6 +529,43 @@ Runs need a logged-in user and an unlocked screen. A run due while the screen is
 skipped and recorded as "skipped: screen locked" — JEVision never types into a locked screen; for
 unattended runs turn off the automatic screen lock. The app posts a notification when a
 scheduled run fails, is skipped or can't start. Deleting every schedule removes the launch agent.
+
+</details>
+
+<a id="notifications"></a>
+<details>
+<summary><b>Notifications</b></summary>
+
+Choose **Settings → Notifications** to get a message in Slack, Telegram or email. Each channel
+has its own choice of when to send: **when a test fails**, **when a test fails or passes again**
+(the default), **when a test starts or stops failing** (a test that keeps failing says nothing
+more), or **after every run**. **Only for scheduled runs and CI** keeps runs you start yourself
+quiet. A stopped run sends nothing, and a failure in quarantine doesn't count as one.
+
+Run All, `jevision run` with several tests and a schedule with several tests send **one summary**
+(`Failed: 3 of 42 tests`, with the failed tests and why), not one message per test. Slack gets
+Block Kit; mail has a formatted part with a screenshot of the failed step, areas you hide and
+passwords already covered. For Telegram, write to the bot and click **Find Chat** instead of typing
+the chat ID. **Send Test Message** checks a channel.
+
+Settings are saved in `jevision.notifications.json` in the project folder (format 2; format 1 is
+still read):
+
+```json
+{
+  "format": 2,
+  "unattendedOnly": true,
+  "slack": { "when": "failedOrFixed" },
+  "telegram": { "chat": "-1001234567890", "when": "changed" },
+  "email": { "server": "smtp.gmail.com", "port": 465, "security": "tls", "user": "qa@example.com",
+             "from": "JEVision <qa@example.com>", "to": ["team@example.com"], "when": "failed" }
+}
+```
+
+`when` is `failed`, `failedOrFixed`, `changed` or `every`. The webhook, bot token and mail
+password are not in the file: they stay in the Keychain, or on CI come from
+`JEVISION_SLACK_WEBHOOK`, `JEVISION_TELEGRAM_TOKEN` and `JEVISION_SMTP_PASSWORD`. Add
+`--no-notify` to `jevision run` to send nothing.
 
 </details>
 

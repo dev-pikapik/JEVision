@@ -4,12 +4,14 @@ import JEVisionCore
 /// The notification settings as the form edits them: text as typed, and the channels that are
 /// off keep what was typed for them.
 struct NotificationsDraft: Equatable {
-  var when = NotifyWhen.failedOrFixed
   var unattendedOnly = false
   var slack = false
+  var slackWhen = NotifyWhen.failedOrFixed
   var telegram = false
+  var telegramWhen = NotifyWhen.failedOrFixed
   var chat = ""
   var email = false
+  var emailWhen = NotifyWhen.failedOrFixed
   var server = ""
   var port = "465"
   var security = MailSecurity.tls
@@ -21,15 +23,19 @@ struct NotificationsDraft: Equatable {
   init() {}
 
   init(_ settings: NotificationSettings) {
-    when = settings.when
     unattendedOnly = settings.unattendedOnly
-    slack = settings.slack
+    if let slack = settings.slack {
+      self.slack = true
+      slackWhen = slack.when
+    }
     if let telegram = settings.telegram {
       self.telegram = true
+      telegramWhen = telegram.when
       chat = telegram.chat
     }
     if let mail = settings.email {
       email = true
+      emailWhen = mail.when
       server = mail.server
       port = String(mail.port)
       security = mail.security
@@ -57,12 +63,13 @@ struct NotificationsDraft: Equatable {
       guard !addresses.isEmpty else { return .failure(.noRecipients) }
       if let bad = addresses.first(where: { !Self.looksLikeAddress($0) }) { return .failure(.badRecipient(bad)) }
       mail = MailServer(
-        server: trim(server), port: port, security: security, user: trim(user), from: trim(from), to: addresses)
+        server: trim(server), port: port, security: security, user: trim(user), from: trim(from), to: addresses,
+        when: emailWhen)
     }
     return .success(
       NotificationSettings(
-        when: when, unattendedOnly: unattendedOnly, slack: slack,
-        telegram: telegram ? TelegramChat(chat: trim(chat)) : nil, email: mail))
+        unattendedOnly: unattendedOnly, slack: slack ? SlackChannel(when: slackWhen) : nil,
+        telegram: telegram ? TelegramChat(chat: trim(chat), when: telegramWhen) : nil, email: mail))
   }
 
   /// `name@host` or `Name <name@host>`; the core checks the address in full.
@@ -92,6 +99,15 @@ enum NotificationsProblem: Error, Equatable {
   }
 }
 
+/// Where looking for the Telegram chat to post to stands.
+enum ChatSearch: Equatable {
+  case idle
+  case searching
+  /// The bot's address and the chats it has seen; none when nobody wrote to it.
+  case found(bot: String, chats: [FoundChat])
+  case failed(String)
+}
+
 enum NotificationsText {
   static func name(_ channel: NotifyChannel) -> String {
     switch channel {
@@ -116,6 +132,17 @@ enum NotificationsText {
     }
   }
 
+  /// What each choice of when to send a message means, in a sentence under the picker.
+  static func explanation(_ when: NotifyWhen) -> String {
+    switch when {
+    case .failed: String(localized: "A message for every test that fails.")
+    case .failedOrFixed: String(localized: "A message for every test that fails, and when a failing test passes again.")
+    case .changed:
+      String(localized: "A message when a test starts failing and when it passes again. A test that keeps failing says nothing more.")
+    case .every: String(localized: "A message after every run, passed or failed.")
+    }
+  }
+
   /// What went wrong with the messages after a run, or `nil` when every one was sent.
   static func problem(_ sent: [NotifySent]) -> String? {
     let failures = sent.compactMap { sent in
@@ -124,13 +151,47 @@ enum NotificationsText {
     return failures.isEmpty ? nil : failures.joined(separator: "\n")
   }
 
-  /// Sends the messages the project's settings ask for about the run in `dir`; what went wrong,
-  /// if anything. Waits for the services to answer.
-  static func notify(project: String, dir: String) -> String? {
+  /// Sends the message the project's settings ask for about the runs in `dirs`, one batch: one
+  /// message about a single run, one summary about several. What went wrong, if anything. Waits
+  /// for the services to answer.
+  static func notify(project: String, dirs: [String]) -> String? {
     do {
-      return problem(try notifyRun(project: project, dir: dir))
+      return problem(try notifyRuns(project: project, dirs: dirs))
     } catch {
-      return String(localized: "No messages about the run were sent: \(message(error))")
+      return dirs.count == 1
+        ? String(localized: "No messages about the run were sent: \(message(error))")
+        : String(localized: "No messages about the runs were sent: \(message(error))")
     }
+  }
+
+  static func chatSearch(_ result: Result<FoundChats, any Error>) -> ChatSearch {
+    switch result {
+    case .success(let found): .found(bot: found.bot, chats: found.chats)
+    case .failure(let error): .failed(message(error))
+    }
+  }
+
+  static func kind(_ kind: ChatKind) -> String {
+    switch kind {
+    case .person: String(localized: "Private chat")
+    case .group: String(localized: "Group")
+    case .channel: String(localized: "Channel")
+    }
+  }
+
+  static func symbol(_ kind: ChatKind) -> String {
+    switch kind {
+    case .person: "person.fill"
+    case .group: "person.3.fill"
+    case .channel: "megaphone.fill"
+    }
+  }
+
+  /// What to tell when no chat was found: the bot has to be written to first.
+  static func noChats(bot: String) -> String {
+    String(
+      localized:
+        "\(bot) hasn’t seen any chat yet. In Telegram, write something to \(bot). To use a group, add \(bot) to it and send a message there. Then find the chat again."
+    )
   }
 }

@@ -239,7 +239,13 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .git, id: "gitHubAccount", title: String(localized: "Account")),
         SettingsItem(tab: .git, id: "gitHubClientID", title: String(localized: "OAuth App Client ID")),
         SettingsItem(tab: .git, id: "pullRequests", title: String(localized: "Pull Requests")),
-        SettingsItem(tab: .notifications, id: "notifyWhen", title: String(localized: "Send a message")),
+        SettingsItem(
+          tab: .notifications, id: "slackWhen", title: String(localized: "Send a message to \(NotificationsText.name(.slack))")),
+        SettingsItem(
+          tab: .notifications, id: "telegramWhen",
+          title: String(localized: "Send a message to \(NotificationsText.name(.telegram))")),
+        SettingsItem(
+          tab: .notifications, id: "emailWhen", title: String(localized: "Send a message to \(NotificationsText.name(.email))")),
         SettingsItem(tab: .notifications, id: "unattendedOnly", title: String(localized: "Only for scheduled runs and CI")),
         SettingsItem(tab: .notifications, id: "slack", title: String(localized: "Post to Slack")),
         SettingsItem(tab: .notifications, id: "telegram", title: String(localized: "Post to Telegram")),

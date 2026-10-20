@@ -39,6 +39,7 @@
   <ul aria-labelledby="nav-run-tests">
     <li><a href="retries.html">Retries, flaky tests and quarantine</a></li>
     <li><a href="schedules.html">Schedules</a></li>
+    <li><a href="notifications.html">Notifications</a></li>
     <li><a href="reports.html">Run video and reports</a></li>
     <li><a href="vm.html">Virtual machines</a></li>
   </ul>
@@ -117,6 +118,7 @@ jevision --help</code></pre>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
     <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report.</td></tr>
+    <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
     <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
   </tbody>
 </table>
@@ -249,6 +251,7 @@ jevision run tests/ --junit junit.xml --html reports --video always</code></pre>
             junit.xml
             reports/</code></pre>
 <p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
+<p>To be told in Slack, Telegram or email when the run fails, set up <a href="notifications.html">Notifications</a> in the app and commit <code>jevision.notifications.json</code>; <code>jevision run</code> sends one summary when it finishes, and on CI reads the secrets from environment variables.</p>
 </main>
 </div>
 <footer class="site-footer">

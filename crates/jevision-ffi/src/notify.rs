@@ -1,17 +1,18 @@
 //! Messages about runs to Slack, Telegram and email: the project's settings for them, the
 //! secrets kept in the Keychain, a test message, and the message after a run.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use jevision_notify::{
-    Endpoints, FILE, MailSecurity, MailServer, NotificationSettings, NotifyChannel, NotifyError,
-    NotifyWhen, TelegramChat,
+    ChatKind, Endpoints, FILE, FoundChat, FoundChats, MailSecurity, MailServer,
+    NotificationSettings, NotifyChannel, NotifyError, NotifyWhen, SlackChannel, TelegramChat,
 };
 
 #[uniffi::remote(Enum)]
 pub enum NotifyWhen {
     Failed,
     FailedOrFixed,
+    Changed,
     Every,
 }
 
@@ -29,8 +30,14 @@ pub enum NotifyChannel {
 }
 
 #[uniffi::remote(Record)]
+pub struct SlackChannel {
+    pub when: NotifyWhen,
+}
+
+#[uniffi::remote(Record)]
 pub struct TelegramChat {
     pub chat: String,
+    pub when: NotifyWhen,
 }
 
 #[uniffi::remote(Record)]
@@ -41,15 +48,35 @@ pub struct MailServer {
     pub user: String,
     pub from: String,
     pub to: Vec<String>,
+    pub when: NotifyWhen,
 }
 
 #[uniffi::remote(Record)]
 pub struct NotificationSettings {
-    pub when: NotifyWhen,
     pub unattended_only: bool,
-    pub slack: bool,
+    pub slack: Option<SlackChannel>,
     pub telegram: Option<TelegramChat>,
     pub email: Option<MailServer>,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ChatKind {
+    Person,
+    Group,
+    Channel,
+}
+
+#[uniffi::remote(Record)]
+pub struct FoundChat {
+    pub id: String,
+    pub title: String,
+    pub kind: ChatKind,
+}
+
+#[uniffi::remote(Record)]
+pub struct FoundChats {
+    pub bot: String,
+    pub chats: Vec<FoundChat>,
 }
 
 #[uniffi::remote(Error)]
@@ -128,20 +155,30 @@ pub fn send_test_notification(project: String, channel: NotifyChannel) -> Result
     )
 }
 
-/// Tells the project's channels about the run in folder `dir` when its settings ask for it;
-/// one result per channel the message went to, none when no message was due. Takes as long as
-/// the services take to answer, so call it off the main thread.
+/// Tells the project's channels about the runs in the folders `dirs`, one batch, when the
+/// settings ask for it: one message about a single run, one summary about several. One result
+/// per channel the message went to, none when no message was due. Takes as long as the services
+/// take to answer, so call it off the main thread.
 #[uniffi::export]
-pub fn notify_run(project: String, dir: String) -> Result<Vec<NotifySent>, NotifyError> {
-    Ok(
-        jevision_notify::notify(Path::new(&project), Path::new(&dir))?
-            .into_iter()
-            .map(|sent| NotifySent {
-                channel: sent.channel,
-                failure: sent.result.err(),
-            })
-            .collect(),
-    )
+pub fn notify_runs(project: String, dirs: Vec<String>) -> Result<Vec<NotifySent>, NotifyError> {
+    let dirs: Vec<PathBuf> = dirs.into_iter().map(PathBuf::from).collect();
+    Ok(jevision_notify::notify(Path::new(&project), &dirs)?
+        .into_iter()
+        .map(|sent| NotifySent {
+            channel: sent.channel,
+            failure: sent.result.err(),
+        })
+        .collect())
+}
+
+/// The chats the project's Telegram bot has been written in, the latest first, found with the
+/// bot token on this Mac. Asks Telegram, so call it off the main thread.
+#[uniffi::export]
+pub fn find_telegram_chats(project: String) -> Result<FoundChats, NotifyError> {
+    let channel = NotifyChannel::Telegram;
+    let token = jevision_notify::secret(Path::new(&project), channel)
+        .ok_or(NotifyError::NoSecret { channel })?;
+    jevision_notify::find_chats(jevision_notify::TELEGRAM_API, &token)
 }
 
 /// Why a message wasn't sent, in English, for the command line.

@@ -357,6 +357,7 @@ final class TestSession: @unchecked Sendable {
     lock.withLock { current = nil }
     let results = zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) }
     printSummary(results, duration: Date().timeIntervalSince(started))
+    if request.notify, !lock.withLock({ stopped }) { notify(about: results.compactMap(\.dir)) }
     return results
   }
 
@@ -420,7 +421,6 @@ final class TestSession: @unchecked Sendable {
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
       printVerdict(report, dir: dir, html: html ?? dir)
-      if request.notify { notify(about: dir) }
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
       progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
@@ -430,22 +430,24 @@ final class TestSession: @unchecked Sendable {
     }
   }
 
-  /// Sends the messages the project's notification settings ask for, and says how it went.
-  private func notify(about dir: String) {
+  /// Sends the message the project's notification settings ask for about the runs in `dirs`, one
+  /// message about a single run and one summary about several, and says how it went.
+  private func notify(about dirs: [String]) {
+    guard !dirs.isEmpty else { return }
+    let lines: [String]
     do {
-      for sent in try notifyRun(project: project, dir: dir) {
+      lines = try notifyRuns(project: project, dirs: dirs).map { sent in
         let channel = notifyChannelName(channel: sent.channel)
-        if let failure = sent.failure {
-          progress.line("  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red))
-        } else {
-          progress.line("  Message sent to \(channel)")
-        }
+        guard let failure = sent.failure else { return "  Message sent to \(channel)" }
+        return "  " + progress.paint("✗ No message to \(channel): \(notifyErrorMessage(error: failure))", .red)
       }
     } catch let error as NotifyError {
-      progress.line("  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red))
+      lines = ["  " + progress.paint("✗ No messages sent: \(notifyErrorMessage(error: error))", .red)]
     } catch {
-      progress.line("  " + progress.paint("✗ No messages sent: \(error)", .red))
+      lines = ["  " + progress.paint("✗ No messages sent: \(error)", .red)]
     }
+    if !lines.isEmpty { progress.line() }
+    lines.forEach { progress.line($0) }
   }
 
   /// Time to take the hand off the keyboard after pressing Return.
