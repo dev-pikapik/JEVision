@@ -115,6 +115,7 @@
   <li>The <strong>block id</strong> is suggested from your name and the block's name, like <code>com.anna-smith.sign-in</code>. Change it to one you own, such as one starting with a domain name written backwards.</li>
   <li>For each value the block asks for, you can write a <strong>label</strong>, shown in the editor instead of the name, and a <strong>default</strong>, the value a test gets when it leaves that one out.</li>
   <li>Only the steps of the block and the pictures they use go in the package. Nothing else of your project does.</li>
+  <li>If a step runs a block you installed from someone else, the window shows it as <strong>Needs</strong> and the package says so too, so the person who installs yours gets the other one as well. See <a href="#dependencies">Blocks that use other blocks</a>.</li>
   <li>The window lists what it left out or what looks wrong, such as a picture that is missing.</li>
 </ul>
 <p>Send the file to a colleague, or <a href="#publish">publish it on GitHub</a>. Packages are plain files, so you can also write one by hand: see <a href="#package">The package format</a>.</p>
@@ -180,7 +181,7 @@
 </table>
 </div>
 <p>A block lists up to 50 others. It can't list itself, or the same block twice.</p>
-<p><strong>Share…</strong> doesn't make such a package: it refuses a block with a step that runs another block. Write the package by hand instead, as in the <a href="#example">example</a>.</p>
+<p><strong>Share…</strong> lists the installed blocks your block runs here by itself, each with the version you have installed, written as <code>^</code> that version, and the address you installed it from. It refuses a block with a step that runs one of your own blocks or a test, because those aren't in the package: make that block a package too, or write the package by hand, as in the <a href="#example">example</a>.</p>
 
 <h3 id="calling">Running the other block</h3>
 <p>A step runs the other block with a <a href="writing-tests.html#runTest"><code>runTest</code></a> block. Its <code>test</code> is the path from this block's <code>flow.json</code> to the other block's: installed blocks sit side by side in <code>blocks/</code>, so the path is <code>../ID.jevblock/flow.json</code>.</p>
@@ -231,14 +232,14 @@
 </ul>
 
 <h2 id="edit-installed">Changing an installed block</h2>
-<p>An installed block is read-only, because its next update would replace your changes. <strong>Edit Block</strong> opens it on the canvas to read, with the button <strong>Make this a block of the project</strong>. It copies the block into your own blocks, where you can change it:</p>
+<p>An installed block is read-only, because its next update would replace your changes. <strong>Open Block</strong> in the inspector of a <code>runTest</code> block, and <strong>Open</strong> beside the block in <strong>Custom Blocks…</strong>, show it on the canvas to read. A bar above it says so and has the button <strong>Make This a Block of the Project…</strong>; <strong>Make a Copy…</strong> in <strong>Custom Blocks…</strong> does the same. It copies the block into your own blocks, where you can change it:</p>
 <ul>
-  <li>The copy is <code>blocks/NAME.block.json</code>, named after the block, or <code>NAME 2</code> and so on when that name is taken. Its pictures and files go to <code>blocks/images</code> and <code>blocks/files</code>, under another name when a different file of that name is there already.</li>
+  <li>You choose the name of the copy, which starts as the block's name. The copy is <code>blocks/NAME.block.json</code>. Its pictures and files go to <code>blocks/images</code> and <code>blocks/files</code>, under another name when a different file of that name is there already.</li>
   <li>Steps that run another installed block keep running it.</li>
-  <li>JEVision then asks whether the tests that use the installed block should use the copy instead. If you agree, each of their <code>runTest</code> blocks runs the copy, and a value a test left out gets the default the block gave it, so the tests do what they did before. If you don't, the tests keep using the installed block.</li>
+  <li>A tick box, on by default, says <strong>Use the copy in the tests that use it</strong> and names them. If it is on, each of their <code>runTest</code> blocks runs the copy, and a value a test left out gets the default the block gave it, so the tests do what they did before. If it is off, the tests keep using the installed block. A test that is open with changes you haven't saved is left alone, and the window names it.</li>
   <li>The installed block stays. Remove it in <strong>Custom Blocks…</strong> once nothing uses it.</li>
 </ul>
-<p>A block whose steps run another file from inside its own package can't be copied, and says so.</p>
+<p>A block whose steps run another file from inside its own package can't be copied, and says so. The pictures a package's checks compare with can't be replaced with <strong>Accept as New Reference</strong> either: make the block your own first.</p>
 
 <h2 id="restore">Installing a project's blocks again</h2>
 <p><a href="#lock"><code>jevision.blocks.json</code></a> remembers each block installed from an address: the address and the version. Commit it with the tests, and anyone who opens the project, on a new Mac or after a fresh clone, can get the same blocks again.</p>

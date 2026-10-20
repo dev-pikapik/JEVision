@@ -268,10 +268,10 @@ jevision mcp --forget <var>Mac</var></code></pre>
 <h2 id="blocks"><code>jevision blocks</code></h2>
 <p>Lists, installs, updates and removes the <a href="custom-blocks.html">blocks that other people shared</a> in a project, as <strong>Install Block…</strong> and <strong>Custom Blocks…</strong> do in the app, and installs the blocks of a project again from <code>jevision.blocks.json</code>. Installed blocks are in the <code>blocks</code> folder of the project.</p>
 <pre><code>jevision blocks list [--project <var>folder</var>]
-jevision blocks install <var>source</var> [--yes] [--force] [--project <var>folder</var>]
+jevision blocks install <var>source</var> [--only <var>id</var>,…] [--yes] [--force] [--project <var>folder</var>]
 jevision blocks update [<var>id</var>] [--yes] [--force] [--project <var>folder</var>]
 jevision blocks remove <var>id</var> [--force] [--project <var>folder</var>]
-jevision blocks restore [--yes] [--force] [--project <var>folder</var>]</code></pre>
+jevision blocks restore [--only <var>id</var>,…] [--yes] [--force] [--project <var>folder</var>]</code></pre>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
@@ -289,6 +289,7 @@ jevision blocks restore [--yes] [--force] [--project <var>folder</var>]</code></
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
     <tr><td><code>--project <var>folder</var></code></td><td>The project to work in. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder.</td></tr>
+    <tr><td><code>--only <var>id</var>,…</code></td><td>With <code>install</code> and <code>restore</code>: work on these blocks only, with the blocks they need. Ids are separated by commas; an id the source or the list doesn't have is an error.</td></tr>
     <tr><td><code>--yes</code></td><td>Install after printing what the blocks do. For people who have read it, and for scripts.</td></tr>
     <tr><td><code>--force</code></td><td>Install the same version again, or an older one over a newer one; install a new version of a block that another installed block needs in another version; with <code>restore</code>, install a block whose version at its address isn't the one in <code>jevision.blocks.json</code>; or remove a block that tests or other blocks use.</td></tr>
   </tbody>
