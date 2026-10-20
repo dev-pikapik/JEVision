@@ -6,9 +6,9 @@ use std::path::Path;
 
 use crate::issue::Issue;
 use crate::model::{
-    AI_PROVIDERS, BLOCK_SUFFIX, BODY, Block, BlockKind, Compare, Condition, DatabaseExpect,
-    ExpectStatus, FileState, Flow, NamedValue, Point, Rect, Reference, TEST_SUFFIX, Target,
-    ValueTest, format_duration,
+    AI_PROVIDERS, BLOCK_SUFFIX, BODY, Block, BlockKind, ClipboardAction, Compare, Condition,
+    DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, Point, Rect, Reference, ScriptInput,
+    TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
 };
 
 pub const MAX_RETRIES: u32 = 10;
@@ -16,6 +16,8 @@ pub const MAX_REPEAT: u32 = 10_000;
 pub const MAX_TIMEOUT_MS: u64 = 60 * 60 * 1000;
 /// Most a scroll block may scroll, in lines or in pixels.
 pub const MAX_SCROLL: u32 = 10_000;
+/// Most a date and time block may move the date, in any unit.
+pub const MAX_TIME_SHIFT: i32 = 100_000;
 const MAX_ID_LEN: usize = 64;
 
 /// Lists every problem in `flow`, errors and warnings, in a stable order.
@@ -39,6 +41,7 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
     }
     graph(flow, &blocks, &mut out);
     unknown_variables(flow, &blocks, &mut out);
+    script_input_kinds(flow, &blocks, &mut out);
     // A test that runs another one may check the screen there.
     if !flow
         .blocks
@@ -73,6 +76,62 @@ fn unknown_variables(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
             }
         }
     }
+}
+
+/// Fails a script input that gets `${var.NAME}` when every block that saves NAME saves it as a
+/// kind of value the input can't take. A value saved as text may be anything once a run is on,
+/// so only a run finds out whether it fits.
+fn script_input_kinds(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
+    let mut made: HashMap<&str, Vec<ValueKind>> = HashMap::new();
+    for b in &flow.blocks {
+        match &b.kind {
+            BlockKind::Script { outputs, .. } => {
+                for o in outputs {
+                    made.entry(o.name.as_str()).or_default().push(o.kind);
+                }
+            }
+            kind => {
+                for (_, name) in saved_names(kind) {
+                    made.entry(name).or_default().push(ValueKind::Text);
+                }
+            }
+        }
+    }
+    for b in blocks {
+        let BlockKind::Script { inputs, .. } = &b.kind else {
+            continue;
+        };
+        for (i, input) in inputs.iter().enumerate() {
+            let Some(name) = whole_variable(&input.value) else {
+                continue;
+            };
+            let Some(kinds) = made.get(name) else {
+                continue;
+            };
+            let fits = |k: &ValueKind| {
+                [ValueKind::Text, input.kind].contains(k) || input.kind == ValueKind::Text
+            };
+            if !kinds.iter().any(fits) {
+                let from: BTreeSet<&str> = kinds.iter().map(|k| k.name()).collect();
+                out.push(
+                    Issue::error("flow.script.inputKind")
+                        .with("block", &b.id)
+                        .with("field", format!("inputs.{i}.value"))
+                        .with("name", &input.name)
+                        .with("type", input.kind.name())
+                        .with("variable", name)
+                        .with("from", from.into_iter().collect::<Vec<_>>().join(", ")),
+                );
+            }
+        }
+    }
+}
+
+/// NAME of a text that is nothing but `${var.NAME}`.
+fn whole_variable(text: &str) -> Option<&str> {
+    let text = text.trim();
+    let name = text.strip_prefix("${var.")?.strip_suffix('}')?;
+    (is_identifier(name) && placeholders(text).len() == 1).then_some(name)
 }
 
 /// [`validate`], plus warnings about files the test reads that are not in `dir`, the folder of
@@ -174,6 +233,12 @@ fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
             both
         }
         BlockKind::Scroll { at, .. } => image("at", at.as_ref()),
+        BlockKind::Script { inputs, .. } => inputs
+            .iter()
+            .enumerate()
+            .filter(|(_, i)| i.kind == ValueKind::Image)
+            .map(|(i, input)| (format!("inputs.{i}.value"), &input.value))
+            .collect(),
         BlockKind::Type { into, .. } => image("into", into.as_ref()),
         BlockKind::WaitFor {
             until: Appears(r), ..
@@ -270,7 +335,16 @@ pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
             .flatten()
             .collect()
         }
-        BlockKind::Script { inputs, .. } => values("inputs", inputs),
+        BlockKind::Script { inputs, .. } => inputs
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (format!("inputs.{i}.value"), v.value.as_str()))
+            .collect(),
+        BlockKind::Clipboard { action, .. } => match action {
+            ClipboardAction::Put { text } => vec![("text".to_owned(), text.as_str())],
+            ClipboardAction::Check { to, .. } => vec![("to".to_owned(), to.as_str())],
+            ClipboardAction::Read { .. } => Vec::new(),
+        },
         BlockKind::Command {
             command, folder, ..
         } => std::iter::once(("command".to_owned(), command.as_str()))
@@ -347,6 +421,11 @@ fn saved_names(kind: &BlockKind) -> Vec<(String, &str)> {
             .iter()
             .map(|n| ("saveAs".to_owned(), n.as_str()))
             .collect(),
+        BlockKind::Clipboard {
+            action: ClipboardAction::Read { save_as },
+            ..
+        }
+        | BlockKind::DateTime { save_as, .. } => vec![("saveAs".to_owned(), save_as.as_str())],
         _ => Vec::new(),
     }
 }
@@ -568,6 +647,9 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 out.push(err("flow.field.empty", "code"));
             }
             names(id, "inputs", inputs.iter().map(|i| i.name.as_str()), out);
+            for (i, input) in inputs.iter().enumerate() {
+                input_value(id, i, input, out);
+            }
             timeout(id, *timeout_ms, out);
         }
         BlockKind::Command {
@@ -651,6 +733,32 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             }
             timeout(id, *timeout_ms, out);
         }
+        BlockKind::Clipboard { action, .. } => {
+            if let ClipboardAction::Check { is, to, timeout_ms } = action {
+                if let Some(bad) = not_a_number(*is, to) {
+                    out.push(err("flow.value.notNumber", "to").with("value", bad));
+                }
+                timeout(id, *timeout_ms, out);
+            }
+        }
+        BlockKind::DateTime { format, shift, .. } => {
+            if format.is_empty() {
+                out.push(err("flow.field.empty", "format"));
+            } else if chrono::format::StrftimeItems::new(format)
+                .any(|item| item == chrono::format::Item::Error)
+            {
+                out.push(err("flow.dateTime.format", "format").with("value", format));
+            }
+            if let Some(TimeShift { amount, .. }) = shift {
+                if amount.unsigned_abs() > MAX_TIME_SHIFT.unsigned_abs() {
+                    out.push(
+                        err("flow.field.range", "shift.amount")
+                            .with("min", -MAX_TIME_SHIFT)
+                            .with("max", MAX_TIME_SHIFT),
+                    );
+                }
+            }
+        }
     }
     let saved = saved_names(&b.kind);
     for (i, (field, name)) in saved.iter().enumerate() {
@@ -683,14 +791,48 @@ fn condition(block: &str, at: &str, c: &Condition, out: &mut Vec<Issue>) {
             if v.of.trim().is_empty() {
                 out.push(err("flow.field.empty", "of"));
             }
-            let numeric = matches!(v.is, ValueTest::GreaterThan | ValueTest::LessThan);
-            if numeric && placeholders(&v.to).is_empty() && v.to.trim().parse::<f64>().is_err() {
-                out.push(err("flow.value.notNumber", "to").with("value", &v.to));
+            if let Some(bad) = not_a_number(v.is, &v.to) {
+                out.push(err("flow.value.notNumber", "to").with("value", bad));
             }
             return;
         }
     };
     reference(block, &format!("{at}reference"), r, out);
+}
+
+/// The text a greater-or-less test compares with when it is written out in full and is no
+/// number.
+fn not_a_number(test: ValueTest, to: &str) -> Option<&str> {
+    let numeric = matches!(test, ValueTest::GreaterThan | ValueTest::LessThan);
+    (numeric && placeholders(to).is_empty() && to.trim().parse::<f64>().is_err()).then_some(to)
+}
+
+/// A script input value written out in full must be one of the kind the input is given as: a
+/// picture is a PNG file, as the run needs it to be.
+fn input_value(block: &str, i: usize, input: &ScriptInput, out: &mut Vec<Issue>) {
+    if input.kind.is_text() || !placeholders(&input.value).is_empty() {
+        return;
+    }
+    let issue = |code: &str| {
+        Issue::error(code)
+            .with("block", block)
+            .with("field", format!("inputs.{i}.value"))
+    };
+    if input.value.trim().is_empty() {
+        out.push(issue("flow.field.empty"));
+        return;
+    }
+    let fits = input.kind.parse(&input.value).is_some_and(|v| {
+        input.kind != ValueKind::Image || v.to_ascii_lowercase().ends_with(".png")
+    });
+    if !fits {
+        out.push(
+            issue("flow.script.inputType")
+                .with("name", &input.name)
+                .with("type", input.kind.name())
+                .with("value", &input.value),
+        );
+    }
 }
 
 /// Input names: environment variable names, each once.

@@ -644,16 +644,35 @@ pub fn describe(f: &Failure) -> String {
             p("block"),
             p("name")
         ),
+        "run.script.badInput" => format!(
+            "Block {}: the input {} should be {}, but it is “{}”.",
+            p("block"),
+            p("name"),
+            value_kind(p("type")),
+            p("value")
+        ),
         "run.script.badOutput" => format!(
             "Block {}: {} should be {}, but the script wrote “{}”.",
             p("block"),
             p("name"),
-            match p("type") {
-                "number" => "a number",
-                _ => "true or false",
-            },
+            value_kind(p("type")),
             p("value")
         ),
+        "run.clipboard.mismatch" => format!(
+            "Block {}: the clipboard holds “{}”, which {} “{}” after {} s.",
+            p("block"),
+            p("actual"),
+            match p("test") {
+                "notEquals" => "is not different from",
+                "contains" => "does not contain",
+                "greaterThan" => "is not greater than",
+                "lessThan" => "is not less than",
+                _ => "is not equal to",
+            },
+            p("expected"),
+            p("seconds")
+        ),
+        "run.dateTime.failed" => format!("Block {}: {}.", p("block"), p("reason")),
         "run.command.exitCode" => format!(
             "Block {}: the command ended with exit code {} instead of {}{}",
             p("block"),
@@ -824,6 +843,17 @@ pub fn describe_vision(f: &Failure) -> String {
             p("model")
         ),
         code => code.to_owned(),
+    }
+}
+
+/// What a script value of this kind (the name of a `ValueKind`) looks like, after “should be”.
+fn value_kind(kind: &str) -> &'static str {
+    match kind {
+        "number" => "a number",
+        "image" => "the path of a PNG picture",
+        "area" => "an area written as x,y,width,height in fractions of the window",
+        "text" => "text",
+        _ => "true or false",
     }
 }
 

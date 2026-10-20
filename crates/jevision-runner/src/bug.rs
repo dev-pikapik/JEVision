@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use jevision_core::{
-    BLOCK_SUFFIX, BlockKind, Compare, Condition, FileState, Flow, Reference, ScriptLanguage,
-    Target, WaitUntil, format_duration,
+    BLOCK_SUFFIX, BlockKind, ClipboardAction, Compare, Condition, FileState, Flow, Modifiers,
+    Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
 };
 use sha2::{Digest, Sha256};
 
@@ -265,6 +265,8 @@ fn type_title(block_type: &str) -> String {
         "http" => "HTTP Request".to_owned(),
         "checkFile" => "Check File".to_owned(),
         "database" => "Database".to_owned(),
+        "clipboard" => "Clipboard".to_owned(),
+        "dateTime" => "Date And Time".to_owned(),
         other => other.to_owned(),
     }
 }
@@ -292,6 +294,7 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
             target: t,
             button,
             double,
+            modifiers,
             ..
         } => {
             let verb = match (button, double) {
@@ -299,11 +302,27 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
                 (_, true) => "Double-click",
                 _ => "Click",
             };
-            format!("{verb} {}", target(t))
+            format!("{verb} {}{}", target(t), holding(modifiers))
         }
         BlockKind::Hover { target: t, .. } => format!("Hover over {}", target(t)),
-        BlockKind::Drag { from, to, .. } => {
-            format!("Drag from {} to {}", target(from), target(to))
+        BlockKind::Drag {
+            from,
+            to,
+            button,
+            modifiers,
+            ..
+        } => {
+            let with = if button.is_left() {
+                ""
+            } else {
+                " with the right button"
+            };
+            format!(
+                "Drag from {} to {}{with}{}",
+                target(from),
+                target(to),
+                holding(modifiers)
+            )
         }
         BlockKind::Scroll {
             direction,
@@ -380,6 +399,56 @@ fn step_text(step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
             format!("Wait until `{path}` {state}")
         }
         BlockKind::Database { file, query, .. } => format!("Query `{file}`: `{query}`"),
+        BlockKind::Clipboard { action, .. } => match action {
+            ClipboardAction::Put { text } => format!("Put “{text}” on the clipboard"),
+            ClipboardAction::Read { save_as } => {
+                format!("Read the clipboard into `{save_as}`")
+            }
+            ClipboardAction::Check { is, to, .. } => {
+                format!("Check that the clipboard {} `{to}`", test_words(*is))
+            }
+        },
+        BlockKind::DateTime {
+            save_as,
+            format,
+            shift,
+            ..
+        } => {
+            let moved = shift.as_ref().map_or_else(String::new, |s| {
+                let unit = match s.unit {
+                    TimeUnit::Seconds => "second",
+                    TimeUnit::Minutes => "minute",
+                    TimeUnit::Hours => "hour",
+                    TimeUnit::Days => "day",
+                    TimeUnit::Weeks => "week",
+                    TimeUnit::Months => "month",
+                    TimeUnit::Years => "year",
+                };
+                let plural = if s.amount.abs() == 1 { "" } else { "s" };
+                format!(", moved by {} {unit}{plural}", s.amount)
+            });
+            format!("Save the date and time as `{save_as}` in the form `{format}`{moved}")
+        }
+    }
+}
+
+/// How a clipboard check compares, in words.
+fn test_words(test: ValueTest) -> &'static str {
+    match test {
+        ValueTest::Equals => "is",
+        ValueTest::NotEquals => "is not",
+        ValueTest::Contains => "contains",
+        ValueTest::GreaterThan => "is greater than",
+        ValueTest::LessThan => "is less than",
+    }
+}
+
+/// The keys held down during a click or a drag, as a phrase that ends a sentence, or nothing.
+fn holding(modifiers: &Modifiers) -> String {
+    if modifiers.is_empty() {
+        String::new()
+    } else {
+        format!(" holding {}", modifiers.names().join("+"))
     }
 }
 
@@ -536,6 +605,43 @@ mod tests {
                 ("Actual", "shots/2-003-inbox-after.png"),
                 ("Difference", "shots/2-003-inbox-diff.png"),
             ]
+        );
+    }
+
+    #[test]
+    fn keys_the_clipboard_and_dates_are_told_in_a_step() {
+        let flow = jevision_core::parse(
+            r#"{"format": 1, "name": "T", "app": "com.example.Mail", "start": "a",
+            "blocks": {
+              "a": {"type": "click", "target": {"description": "the file"}, "modifiers": ["cmd", "shift"], "next": "b"},
+              "b": {"type": "drag", "from": {"point": {"x": 0.1, "y": 0.1}}, "to": {"point": {"x": 0.5, "y": 0.5}}, "button": "right", "modifiers": ["option"], "next": "c"},
+              "c": {"type": "clipboard", "action": "put", "text": "hello", "next": "d"},
+              "d": {"type": "clipboard", "action": "check", "is": "contains", "to": "hel", "next": "e"},
+              "e": {"type": "dateTime", "saveAs": "day", "format": "%F", "shift": {"amount": -1, "unit": "weeks"}}
+            }}"#,
+        )
+        .unwrap();
+        let flows = HashMap::from([("t.flow.json".to_owned(), flow)]);
+        let told = |block: &str| {
+            let step: Step = serde_json::from_str(&format!(
+                r#"{{"seq":1,"test":"t.flow.json","block":"{block}","type":"x","status":"passed","durationMs":1}}"#
+            ))
+            .unwrap();
+            step_text(&step, &flows, "app")
+        };
+        assert_eq!(
+            told("a"),
+            "Click the file (found by description) holding cmd+shift"
+        );
+        assert_eq!(
+            told("b"),
+            "Drag from the point at 10.0% across, 10.0% down the window to the point at 50.0% across, 50.0% down the window with the right button holding option"
+        );
+        assert_eq!(told("c"), "Put “hello” on the clipboard");
+        assert_eq!(told("d"), "Check that the clipboard contains `hel`");
+        assert_eq!(
+            told("e"),
+            "Save the date and time as `day` in the form `%F`, moved by -1 week"
         );
     }
 

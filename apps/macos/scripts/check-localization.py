@@ -8,8 +8,9 @@ Command Line Tools, and the core built by scripts/build-core-apple.sh).
 
 Checks: every text in the code is in the catalog, every key in the catalog is still
 used, every language has a translation with the same format arguments as the text in
-the code (for keys like "flow.field.empty", its default value), and plural forms
-cover what the language needs.
+the code (for keys like "flow.field.empty", its default value), plural forms
+cover what the language needs, and a text with a key of its own passes the app's
+language (`bundle: .app, locale: .app`) so it changes with it.
 """
 import glob
 import json
@@ -77,6 +78,43 @@ def code_keys(strings_dir):
     return keys
 
 
+def close_of(source, i):
+    """Index of the parenthesis that closes the one before `i`, skipping texts and their \\( ) parts."""
+    depth = 1
+    while depth:
+        c = source[i]
+        if c == '"':
+            i += 1
+            while source[i] != '"':
+                if source[i] == '\\':
+                    i += 1
+                    if source[i] == '(':
+                        i = close_of(source, i + 1)
+                i += 1
+        elif c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        i += 1
+    return i - 1
+
+
+KEYED = re.compile(r'String\(\s*localized:\s*"[^"]*",\s*defaultValue:')
+
+
+def keyed_without_app_language():
+    """A text with a key of its own must pass the app's language itself (see AppLocalization.swift)."""
+    problems = []
+    for path in sorted(glob.glob(os.path.join(ROOT, 'Sources', 'JEVision', '**', '*.swift'), recursive=True)):
+        source = open(path, encoding='utf-8').read()
+        for found in KEYED.finditer(source):
+            end = close_of(source, source.index('(', found.start()) + 1)
+            if 'bundle: .app' not in source[found.start():end] or 'locale: .app' not in source[found.start():end]:
+                line = source.count('\n', 0, found.start()) + 1
+                problems.append(f'{os.path.relpath(path, ROOT)}:{line}: a text with a key needs "bundle: .app, locale: .app"')
+    return problems
+
+
 def specs(text):
     # Positions like %1$ may reorder arguments; only their types and count must match.
     return sorted(re.sub(r'(?<=%)\d+\$', '', m) for m in SPEC.findall(text.replace('%%', '')))
@@ -96,6 +134,7 @@ def check(strings_dir, env):
         if compiled.returncode:
             problems.append(f'catalog: xcstringstool can’t compile it: {compiled.stderr.strip()}')
 
+    problems += keyed_without_app_language()
     used = code_keys(strings_dir)
     if not used:
         problems.append(f'no texts found in {strings_dir}')

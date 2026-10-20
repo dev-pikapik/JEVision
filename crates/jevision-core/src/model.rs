@@ -154,6 +154,9 @@ pub enum BlockKind {
         button: MouseButton,
         #[serde(skip_serializing_if = "is_false")]
         double: bool,
+        /// Keys held down during the click.
+        #[serde(skip_serializing_if = "Modifiers::is_empty")]
+        modifiers: Modifiers,
         /// After clicking, wait until the screen changes; fail if it does not.
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
@@ -170,10 +173,15 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Presses the left button on `from`, moves to `to` holding it down, and lets go there.
+    /// Presses the button on `from`, moves to `to` holding it down, and lets go there.
     Drag {
         from: Target,
         to: Target,
+        #[serde(skip_serializing_if = "MouseButton::is_left")]
+        button: MouseButton,
+        /// Keys held down during the drag.
+        #[serde(skip_serializing_if = "Modifiers::is_empty")]
+        modifiers: Modifiers,
         /// After letting go, wait until the screen changes; fail if it does not.
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
@@ -276,7 +284,7 @@ pub enum BlockKind {
         code: String,
         /// Values may contain placeholders.
         #[serde(skip_serializing_if = "Vec::is_empty")]
-        inputs: Vec<NamedValue>,
+        inputs: Vec<ScriptInput>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         outputs: Vec<ScriptOutput>,
         #[serde(rename = "timeout", serialize_with = "duration")]
@@ -348,6 +356,109 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+    /// Puts text on the clipboard, reads it into a run variable, or checks what it holds.
+    Clipboard {
+        #[serde(flatten)]
+        action: ClipboardAction,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+    /// Keeps the current date and time, written as `format` and moved by `shift`, as the run
+    /// variable `save_as`.
+    DateTime {
+        save_as: String,
+        /// `strftime` pattern, e.g. `%d.%m.%Y %H:%M`; month and day names are in English.
+        #[serde(skip_serializing_if = "is_default_format")]
+        format: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        shift: Option<TimeShift>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+}
+
+/// What a clipboard block does.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(
+    tag = "action",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ClipboardAction {
+    /// Replaces the clipboard with the text, which may contain placeholders. Whatever the
+    /// clipboard held before is gone, and the text stays there after the run.
+    Put { text: String },
+    /// Keeps the text on the clipboard as a run variable.
+    Read { save_as: String },
+    /// Waits until the text on the clipboard passes the test against `to`, which may contain
+    /// placeholders; fails after `timeout`.
+    Check {
+        is: ValueTest,
+        to: String,
+        #[serde(rename = "timeout", serialize_with = "duration")]
+        timeout_ms: u64,
+    },
+}
+
+/// How far the date and time of a [`BlockKind::DateTime`] block are moved: negative goes back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct TimeShift {
+    pub amount: i32,
+    pub unit: TimeUnit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TimeUnit {
+    Seconds,
+    Minutes,
+    Hours,
+    Days,
+    Weeks,
+    Months,
+    Years,
+}
+
+/// Pattern of a date and time block that does not say another: `2026-03-31 14:05:09`.
+pub const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
+
+fn is_default_format(format: &String) -> bool {
+    format == DEFAULT_DATE_FORMAT
+}
+
+/// Keys held down while the mouse clicks or drags. In a file they are a list of `cmd`,
+/// `shift`, `option` and `ctrl`, in that order.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Modifiers {
+    pub command: bool,
+    pub shift: bool,
+    pub option: bool,
+    pub control: bool,
+}
+
+impl Modifiers {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Names of the keys held, as written in a file and in key combinations.
+    pub fn names(&self) -> Vec<&'static str> {
+        [
+            (self.command, "cmd"),
+            (self.shift, "shift"),
+            (self.option, "option"),
+            (self.control, "ctrl"),
+        ]
+        .into_iter()
+        .filter_map(|(held, name)| held.then_some(name))
+        .collect()
+    }
+}
+
+impl Serialize for Modifiers {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.names().serialize(s)
+    }
 }
 
 /// What an `if` way out checks.
@@ -397,21 +508,92 @@ pub struct NamedValue {
     pub value: String,
 }
 
+/// A value a script reads from the environment variable `name`, as `kind`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ScriptInput {
+    pub name: String,
+    #[serde(rename = "type", skip_serializing_if = "ValueKind::is_text")]
+    pub kind: ValueKind,
+    pub value: String,
+}
+
 /// A value a script reports, kept as the run variable `name`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ScriptOutput {
     pub name: String,
     #[serde(rename = "type")]
-    pub kind: OutputKind,
+    pub kind: ValueKind,
 }
 
+/// What a value a script takes or gives is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum OutputKind {
+pub enum ValueKind {
     Text,
     Number,
     /// Kept as `true` or `false`.
     Boolean,
+    /// The path of a PNG file: absolute, from the home folder (`~/`) or relative to the test.
+    Image,
+    /// A rectangle in fractions (0–1) of the window as `x,y,width,height`: `0.1,0.2,0.5,0.3`.
+    Area,
+}
+
+impl ValueKind {
+    pub const ALL: [Self; 5] = [
+        Self::Text,
+        Self::Number,
+        Self::Boolean,
+        Self::Image,
+        Self::Area,
+    ];
+
+    pub fn is_text(&self) -> bool {
+        *self == Self::Text
+    }
+
+    /// The name of the kind in a file.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Number => "number",
+            Self::Boolean => "boolean",
+            Self::Image => "image",
+            Self::Area => "area",
+        }
+    }
+
+    /// `value` written the way the kind keeps it, or `None` when it is not one: numbers as
+    /// written, yes/no answers as `true` or `false`, an area as four numbers in `x,y,width,height`
+    /// that lie inside the window. Whether an image path leads to a picture is for a run to find
+    /// out.
+    pub fn parse(self, value: &str) -> Option<String> {
+        let trimmed = value.trim();
+        let number = |text: &str| text.trim().parse::<f64>().ok().filter(|n| n.is_finite());
+        match self {
+            Self::Text => Some(value.to_owned()),
+            Self::Number => number(trimmed).map(|_| trimmed.to_owned()),
+            Self::Boolean => match trimmed.to_ascii_lowercase().as_str() {
+                "true" | "yes" | "1" => Some("true".to_owned()),
+                "false" | "no" | "0" => Some("false".to_owned()),
+                _ => None,
+            },
+            Self::Image => (!trimmed.is_empty()).then(|| trimmed.to_owned()),
+            Self::Area => {
+                let parts: Vec<f64> = trimmed.split(',').map(number).collect::<Option<_>>()?;
+                let [x, y, width, height] = parts[..] else {
+                    return None;
+                };
+                let area = Rect {
+                    x,
+                    y,
+                    width,
+                    height,
+                };
+                crate::validate::rect_fits(&area).then(|| format!("{x},{y},{width},{height}"))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -539,6 +721,12 @@ pub struct Rect {
 pub enum MouseButton {
     Left,
     Right,
+}
+
+impl MouseButton {
+    pub fn is_left(&self) -> bool {
+        *self == Self::Left
+    }
 }
 
 /// Which way a scroll moves the view: `down` brings what is further down into sight.
@@ -679,6 +867,8 @@ impl BlockKind {
             Self::Http { .. } => "http",
             Self::CheckFile { .. } => "checkFile",
             Self::Database { .. } => "database",
+            Self::Clipboard { .. } => "clipboard",
+            Self::DateTime { .. } => "dateTime",
         }
     }
 
@@ -696,6 +886,10 @@ impl BlockKind {
                 | Self::CheckFile { .. }
                 | Self::Database {
                     expect: Some(_),
+                    ..
+                }
+                | Self::Clipboard {
+                    action: ClipboardAction::Check { .. },
                     ..
                 }
         )
@@ -755,7 +949,9 @@ impl BlockKind {
             | Self::Command { next, .. }
             | Self::Http { next, .. }
             | Self::CheckFile { next, .. }
-            | Self::Database { next, .. } => {
+            | Self::Database { next, .. }
+            | Self::Clipboard { next, .. }
+            | Self::DateTime { next, .. } => {
                 out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
             }
         }

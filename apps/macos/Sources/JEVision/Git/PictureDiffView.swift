@@ -100,6 +100,7 @@ struct PictureDiffView: View {
         }
         .frame(maxWidth: 420)
       }
+      .unmirrored()
     case .overlay:
       VStack(alignment: .leading, spacing: 8) {
         frame(label: Text("After over before")) {

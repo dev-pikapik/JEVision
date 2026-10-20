@@ -249,6 +249,29 @@ pub fn describe(issue: &Issue) -> String {
             "\"{}\" isn't a number, so it can't be compared as greater or less.",
             p("value")
         ),
+        "flow.script.inputType" => format!(
+            "\"{}\" isn't a valid {} for the input {}: {}.",
+            p("value"),
+            p("type"),
+            p("name"),
+            match p("type") {
+                "number" => "write a number such as 3.5",
+                "boolean" => "write true or false",
+                "image" => "write the path of a PNG file",
+                _ => "write four numbers between 0 and 1 as x,y,width,height, such as 0.1,0.2,0.5,0.3",
+            }
+        ),
+        "flow.script.inputKind" => format!(
+            "the input {} takes a {}, but {} is saved as {}.",
+            p("name"),
+            p("type"),
+            p("variable"),
+            p("from")
+        ),
+        "flow.dateTime.format" => format!(
+            "\"{}\" isn't a date format; write letters after %, such as %Y-%m-%d %H:%M.",
+            p("value")
+        ),
         "flow.var.unknown" => format!(
             "no block of this test saves the value {}; the run stops here unless a test it runs saves it.",
             p("name")

@@ -324,9 +324,9 @@ readable diff.
 | --- | --- | --- |
 | `openApp` | actions | Opens the application under test, or another one by bundle identifier |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
-| `click` | actions | Clicks an image on screen, an element described in words (found by JEV) or a point, left or right, single or double; with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
+| `click` | actions | Clicks an image on screen, an element described in words (found by JEV) or a point, left or right, single or double, optionally holding ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]`); with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
 | `hover` | actions | Moves the pointer onto an image on screen, an element described in words or a point and leaves it there, to show a tooltip or a menu that opens on hover |
-| `drag` | actions | Presses the left button `from` one image, described element or point, moves holding it and lets go `to` another |
+| `drag` | actions | Presses the left or right `button` `from` one image, described element or point, moves holding it and lets go `to` another, optionally holding ⌃ ⌥ ⇧ ⌘ (`modifiers`) |
 | `scroll` | actions | Turns the scroll wheel `up`, `down`, `left` or `right` by an `amount` of `lines` or `pixels`, over the middle of the window or `at` an image, described element or point |
 | `type` | actions | Types text, optionally into a field found by its image or description |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
@@ -336,6 +336,9 @@ readable diff.
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file as a step |
 | `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |
+| `script` | data and system | Runs a `sh`, `zsh`, Python 3, Node or AppleScript script; its `inputs` are text, number, boolean, image (a PNG file) or area (`x,y,width,height` in fractions of the window), and its `outputs` become `${var.NAME}` of the same types; a value that doesn't fit its type is reported while editing |
+| `clipboard` | data and system | Puts text on the clipboard (`put`), keeps the clipboard text as a variable (`read`) or waits until it equals, contains or compares with a value (`check`); a test with it doesn't run beside another that uses the screen |
+| `dateTime` | data and system | Keeps the current date and time, written as a `strftime` `format` and moved by a `shift` such as `{ "amount": -2, "unit": "days" }`, as `${var.NAME}`; month and day names are in English |
 
 A reference can limit the comparison to an `area`, `ignore` regions that change on their own and
 `hide` regions that must not appear in reports. Areas use fractions of the window, from 0 to 1.
@@ -411,6 +414,7 @@ jevision run tests/ --env staging         # read ${env.NAME} from the staging en
 jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data table (--row 3 for one)
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
+jevision run tests/ --parallel 4          # up to 4 tests at once; those using the screen still take turns
 jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
 jevision run tests/ --no-notify           # don't send the Slack, Telegram or email message
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
@@ -477,6 +481,12 @@ jobs:
             junit.xml
             reports/
 ```
+
+You don't have to type it: **Settings › Advanced › Continuous Integration › Add to Project…**
+shows this file for the open project, with the secrets your tests use, and writes it as
+`.github/workflows/jevision.yml` at the top of the git repository the project is in. The preview
+comes first, and an existing file is replaced only after you confirm. Nothing is committed or
+pushed.
 
 </details>
 
@@ -594,7 +604,29 @@ display, such as "Standard display (1×)", and `report.json` has `virtualMachine
 `displayScale`.
 
 The step-by-step guide, with SSH, CI and limits such as Apple's two virtual machines per Mac:
-[docs/vm.html](docs/vm.html).
+[docs/vm.html](docs/vm.html). It opens from the app too: **Settings › Advanced › Learn**.
+
+</details>
+
+<a id="logs-crash-reports-and-the-example"></a>
+<details>
+<summary><b>Logs, crash reports and the example project</b></summary>
+
+All of it is under **Settings › Advanced** and stays on your Mac. Nothing is sent anywhere.
+
+- **Logs.** JEVision writes what it does to `~/Library/Logs/JEVision`: the project opened, a
+  run started and how it ended, and what went wrong. **Log detail** chooses *Errors only*,
+  *Normal* (the default) or *Detailed*, which adds every step of a run. The log rotates: it is
+  never larger than about 2 MB, and the oldest lines are deleted. Secrets and typed text are not
+  written, and anything that looks like a key, a token or a password is hidden. **Show in
+  Finder** opens the folder.
+- **Crash reports.** Off until you turn on **Save crash reports**. If JEVision crashes, macOS
+  hands it a report the next time it starts (MetricKit, up to a day later), and JEVision keeps
+  the last 20 in `~/Library/Application Support/JEVision/Crash Reports`. A report leaves your Mac
+  only when you choose it in a bug report: **Add a Crash Report** puts its summary into the
+  description, where you can read and change it before sending.
+- **Example project.** **Open the example project** copies a ready test for TextEdit into a
+  folder you choose and opens the copy. The example inside the app is never changed.
 
 </details>
 

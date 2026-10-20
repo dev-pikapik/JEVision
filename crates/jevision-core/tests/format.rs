@@ -651,6 +651,7 @@ fn a_target_described_in_words_round_trips_and_must_say_something() {
             target: Target::Description("the blue Save button".to_owned()),
             button: MouseButton::Left,
             double: false,
+            modifiers: Modifiers::default(),
             wait_for_change: false,
             next: Some("b".to_owned()),
         }
@@ -675,7 +676,7 @@ fn a_target_described_in_words_round_trips_and_must_say_something() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 20);
+    assert_eq!(specs.len(), 22);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -1182,4 +1183,287 @@ fn the_test_card_is_saved_in_canonical_form() {
         ),
         ["flow.field.type"]
     );
+}
+
+#[test]
+fn clicks_and_drags_hold_keys_and_a_button() {
+    let text = minimal(
+        r#"{"a": {"type": "click", "target": {"description": "the third file"}, "modifiers": ["ctrl", "cmd", "cmd"], "next": "b"},
+            "b": {"type": "drag", "from": {"point": {"x": 0.1, "y": 0.1}}, "to": {"point": {"x": 0.9, "y": 0.9}},
+                  "button": "right", "modifiers": ["option", "shift"], "next": "c"},
+            "c": {"type": "drag", "from": {"point": {"x": 0.1, "y": 0.1}}, "to": {"point": {"x": 0.9, "y": 0.9}}, "button": "left", "modifiers": []}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    let BlockKind::Click { modifiers, .. } = &flow.blocks[0].kind else {
+        panic!("not a click");
+    };
+    assert_eq!(
+        *modifiers,
+        Modifiers {
+            command: true,
+            control: true,
+            ..Modifiers::default()
+        }
+    );
+    let BlockKind::Drag {
+        button, modifiers, ..
+    } = &flow.blocks[1].kind
+    else {
+        panic!("not a drag");
+    };
+    assert_eq!(*button, MouseButton::Right);
+    assert_eq!(modifiers.names(), ["shift", "option"]);
+
+    let once = to_canonical_json(&flow);
+    assert!(once.contains("\"modifiers\": [\n        \"cmd\",\n        \"ctrl\"\n      ]"));
+    assert!(once.contains("\"button\": \"right\""));
+    // The left button and no keys are the defaults and are left out.
+    let last = once.split("\"c\"").last().unwrap_or_default();
+    assert!(!last.contains("button") && !last.contains("modifiers"));
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+
+    let bad = parse_err(&minimal(
+        r#"{"a": {"type": "click", "target": {"description": "x"}, "modifiers": ["fn"]},
+            "b": {"type": "drag", "from": {"description": "x"}, "to": {"description": "y"}, "button": "middle", "modifiers": "cmd"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>)> = bad
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field")))
+        .collect();
+    assert!(
+        found.contains(&("flow.field.value", Some("modifiers"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.value", Some("button"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.type", Some("modifiers"))),
+        "{found:?}"
+    );
+}
+
+const CLIPBOARD_AND_TIME: &str = r#"{
+  "format": 1, "name": "t", "app": "com.example.App", "start": "put",
+  "blocks": {
+    "put": {"type": "clipboard", "action": "put", "text": "order ${data.id}", "next": "read"},
+    "read": {"type": "clipboard", "action": "read", "saveAs": "copied", "next": "check"},
+    "check": {"type": "clipboard", "action": "check", "is": "contains", "to": "${var.copied}", "timeout": "5s", "next": "now"},
+    "now": {"type": "dateTime", "saveAs": "today", "format": "%d.%m.%Y", "shift": {"amount": -2, "unit": "days"}, "next": "stamp"},
+    "stamp": {"type": "dateTime", "saveAs": "stamp"}
+  }
+}"#;
+
+#[test]
+fn clipboard_and_date_blocks_round_trip_in_canonical_form() {
+    let flow = parse(CLIPBOARD_AND_TIME).unwrap();
+    assert_eq!(validate(&flow), vec![]);
+    assert_eq!(saved_variables(&flow), ["copied", "stamp", "today"]);
+    let once = to_canonical_json(&flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert!(once.contains("\"action\": \"check\",\n      \"is\": \"contains\""));
+    assert!(once.contains("\"timeout\": \"5s\""));
+    assert!(once.contains("\"shift\": {\n        \"amount\": -2,\n        \"unit\": \"days\""));
+    // The usual format is left out.
+    let stamp = once.split("\"stamp\": {").nth(1).unwrap();
+    assert!(!stamp.contains("format") && !stamp.contains("shift"));
+    let kind = |id: &str| &flow.blocks.iter().find(|b| b.id == id).unwrap().kind;
+    assert_eq!(
+        *kind("put"),
+        BlockKind::Clipboard {
+            action: ClipboardAction::Put {
+                text: "order ${data.id}".to_owned()
+            },
+            next: Some("read".to_owned()),
+        }
+    );
+    // Waiting for the clipboard to hold something is a check; a date and a put are not.
+    let ids = ["put", "read", "check", "now", "stamp"];
+    assert_eq!(
+        ids.map(|id| kind(id).checks()),
+        [false, false, true, false, false]
+    );
+    for name in ["clipboard", "dateTime"] {
+        let block = BlockKind::new(name, "x").unwrap();
+        assert_eq!(block.type_name(), name);
+    }
+}
+
+#[test]
+fn clipboard_and_date_blocks_are_validated() {
+    let parsed = parse_err(&minimal(
+        r#"{"a": {"type": "clipboard", "action": "paste", "text": "x"},
+            "b": {"type": "clipboard", "action": "put"},
+            "c": {"type": "clipboard", "action": "read", "text": "x", "saveAs": "v"},
+            "d": {"type": "clipboard", "action": "check", "to": "x"},
+            "e": {"type": "dateTime", "shift": {"amount": 1, "unit": "fortnights"}}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = parsed
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    for expected in [
+        ("flow.field.value", Some("a"), Some("action")),
+        ("flow.field.missing", Some("b"), Some("text")),
+        ("flow.field.unknown", Some("c"), Some("text")),
+        ("flow.field.missing", Some("d"), Some("is")),
+        ("flow.field.missing", Some("e"), Some("saveAs")),
+        ("flow.field.value", Some("e"), Some("shift.unit")),
+    ] {
+        assert!(
+            found.contains(&expected),
+            "{expected:?} missing in {found:?}"
+        );
+    }
+
+    let issues = issues_of(
+        r#"{"a": {"type": "clipboard", "action": "read", "saveAs": "1st", "next": "b"},
+            "b": {"type": "clipboard", "action": "check", "is": "greaterThan", "to": "many", "timeout": "0s", "next": "c"},
+            "c": {"type": "dateTime", "saveAs": "when", "format": "%Q", "shift": {"amount": 100001, "unit": "days"}, "next": "d"},
+            "d": {"type": "dateTime", "saveAs": "when2", "format": ""}}"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    for expected in [
+        ("flow.name.invalid", Some("a"), Some("saveAs")),
+        ("flow.value.notNumber", Some("b"), Some("to")),
+        ("flow.field.range", Some("b"), Some("timeout")),
+        ("flow.dateTime.format", Some("c"), Some("format")),
+        ("flow.field.range", Some("c"), Some("shift.amount")),
+        ("flow.field.empty", Some("d"), Some("format")),
+    ] {
+        assert!(
+            found.contains(&expected),
+            "{expected:?} missing in {found:?}"
+        );
+    }
+}
+
+#[test]
+fn script_values_have_types() {
+    let text = minimal(
+        r#"{"a": {"type": "script", "language": "python3", "code": "print(1)",
+            "inputs": [{"name": "LABEL", "value": "hi"},
+                       {"name": "COUNT", "type": "number", "value": "3"},
+                       {"name": "FLAG", "type": "boolean", "value": "yes"},
+                       {"name": "SHOT", "type": "image", "value": "refs/a.png"},
+                       {"name": "WHERE", "type": "area", "value": "0.1,0.2,0.5,0.3"}],
+            "outputs": [{"name": "shot", "type": "image"}, {"name": "box", "type": "area"}, {"name": "n", "type": "number"}]}}"#,
+    );
+    let flow = parse(&text).unwrap();
+    let once = to_canonical_json(&flow);
+    assert_eq!(parse(&once).unwrap(), flow);
+    assert!(
+        once.contains("\"name\": \"LABEL\",\n          \"value\": \"hi\""),
+        "text is the default and is left out"
+    );
+    assert!(once.contains(
+        "\"name\": \"SHOT\",\n          \"type\": \"image\",\n          \"value\": \"refs/a.png\""
+    ));
+    assert_eq!(saved_variables(&flow), ["box", "n", "shot"]);
+
+    // Before this, inputs had no type and outputs knew only three.
+    let old = parse(&minimal(
+        r#"{"a": {"type": "script", "language": "sh", "code": "true", "inputs": [{"name": "A", "value": "1"}], "outputs": [{"name": "o", "type": "boolean"}]}}"#,
+    ))
+    .unwrap();
+    assert!(matches!(
+        &old.blocks[0].kind,
+        BlockKind::Script { inputs, .. } if inputs[0].kind == ValueKind::Text
+    ));
+
+    let bad = parse_err(&minimal(
+        r#"{"a": {"type": "script", "language": "sh", "code": "true",
+            "inputs": [{"name": "A", "type": "colour", "value": "1"}],
+            "outputs": [{"name": "o", "type": "picture"}, {"name": "p"}]}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>)> = bad
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field")))
+        .collect();
+    assert!(
+        found.contains(&("flow.field.value", Some("inputs.0.type"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.value", Some("outputs.0.type"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.missing", Some("outputs.1.type"))),
+        "{found:?}"
+    );
+}
+
+#[test]
+fn script_values_must_fit_their_type() {
+    let issues = issues_of(
+        r#"{"a": {"type": "script", "language": "sh", "code": "true",
+            "inputs": [{"name": "N", "type": "number", "value": "three"},
+                       {"name": "B", "type": "boolean", "value": "maybe"},
+                       {"name": "I", "type": "image", "value": "refs/a.jpg"},
+                       {"name": "R", "type": "area", "value": "0.5,0.5,0.8,0.1"},
+                       {"name": "E", "type": "number", "value": " "},
+                       {"name": "OK", "type": "number", "value": "${data.count}"},
+                       {"name": "T", "value": "${var.box}"}],
+            "outputs": [{"name": "box", "type": "area"}], "next": "b"},
+            "b": {"type": "script", "language": "sh", "code": "true",
+            "inputs": [{"name": "S", "type": "image", "value": "${var.box}"},
+                       {"name": "AREA", "type": "area", "value": "${var.box}"},
+                       {"name": "TXT", "type": "text", "value": "${var.box}"},
+                       {"name": "FROMTEXT", "type": "number", "value": "${var.word}"}],
+            "next": "c"},
+            "c": {"type": "command", "command": "echo hi", "saveOutput": "word"}}"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    for expected in [
+        ("flow.script.inputType", Some("a"), Some("inputs.0.value")),
+        ("flow.script.inputType", Some("a"), Some("inputs.1.value")),
+        ("flow.script.inputType", Some("a"), Some("inputs.2.value")),
+        ("flow.script.inputType", Some("a"), Some("inputs.3.value")),
+        ("flow.field.empty", Some("a"), Some("inputs.4.value")),
+        ("flow.script.inputKind", Some("b"), Some("inputs.0.value")),
+    ] {
+        assert!(
+            found.contains(&expected),
+            "{expected:?} missing in {found:?}"
+        );
+    }
+    let wrong = found
+        .iter()
+        .filter(|f| f.0.starts_with("flow.script"))
+        .count();
+    assert_eq!(
+        wrong, 5,
+        "a placeholder or a variable that holds text may fit: {found:?}"
+    );
+    let kind = issues
+        .iter()
+        .find(|i| i.code == "flow.script.inputKind")
+        .unwrap();
+    assert_eq!(kind.param("variable"), Some("box"));
+    assert_eq!(kind.param("from"), Some("area"));
+
+    assert_eq!(
+        ValueKind::Area.parse(" 0.1, 0.2,0.5 ,0.3").as_deref(),
+        Some("0.1,0.2,0.5,0.3")
+    );
+    assert_eq!(ValueKind::Area.parse("0.1,0.2,0.5"), None);
+    assert_eq!(ValueKind::Area.parse("0.1,0.2,0.5,0.3,0.1"), None);
+    assert_eq!(ValueKind::Area.parse("0,0,1,1").as_deref(), Some("0,0,1,1"));
+    assert_eq!(ValueKind::Area.parse("0,0,0,1"), None);
+    assert_eq!(ValueKind::Number.parse(" 3.5\n").as_deref(), Some("3.5"));
+    assert_eq!(ValueKind::Number.parse("NaN"), None);
+    assert_eq!(ValueKind::Boolean.parse("Yes").as_deref(), Some("true"));
+    assert_eq!(ValueKind::Boolean.parse("0").as_deref(), Some("false"));
+    assert_eq!(ValueKind::Text.parse(" a ").as_deref(), Some(" a "));
+    assert_eq!(ValueKind::Image.parse("  "), None);
 }

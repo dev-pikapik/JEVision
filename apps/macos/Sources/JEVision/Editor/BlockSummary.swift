@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 
 /// The one line under a block's title that says what exactly it does.
 enum BlockSummary {
@@ -17,22 +18,25 @@ enum BlockSummary {
       guard let first = files.first else { return String(localized: "No file chosen") }
       let name = (first as NSString).lastPathComponent
       return files.count == 1 ? name : String(localized: "\(name) and \(files.count - 1) more")
-    case .click(let target, let button, let double, _, _):
+    case .click(let target, let button, let double, let modifiers, _, _):
       guard isUnset(target) else {
         let place = targetName(target)
         switch (button, double) {
-        case (.right, _): return String(localized: "Right-click \(place)")
-        case (.left, true): return String(localized: "Double-click \(place)")
-        case (.left, false): return String(localized: "Click \(place)")
+        case (.right, _): return holding(modifiers, String(localized: "Right-click \(place)"))
+        case (.left, true): return holding(modifiers, String(localized: "Double-click \(place)"))
+        case (.left, false): return holding(modifiers, String(localized: "Click \(place)"))
         }
       }
       return String(localized: "Choose what to click")
     case .hover(let target, _, _):
       return isUnset(target) ? String(localized: "Choose what to point at") : String(localized: "Point at \(targetName(target))")
-    case .drag(let from, let to, _, _):
-      return isUnset(from) || isUnset(to)
-        ? String(localized: "Choose what to drag and where")
+    case .drag(let from, let to, let button, let modifiers, _, _):
+      guard !isUnset(from), !isUnset(to) else { return String(localized: "Choose what to drag and where") }
+      let text =
+        button == .right
+        ? String(localized: "Right-drag \(spotName(from)) to \(spotName(to))")
         : String(localized: "Drag \(spotName(from)) to \(spotName(to))")
+      return holding(modifiers, text)
     case .scroll(let direction, let amount, let unit, let at, _, _):
       let much = unit == .lines ? String(localized: "\(Int(amount)) lines") : String(localized: "\(Int(amount)) px")
       guard let at, !isUnset(at) else {
@@ -119,6 +123,19 @@ enum BlockSummary {
       return inputs.sorted { $0.key < $1.key }
         .map { "\($0.key): \(secretName($0.value).map { String(localized: "secret \($0)") } ?? quoted($0.value, limit: 24))" }
         .joined(separator: " · ")
+    case .clipboard(let action, _):
+      switch action {
+      case .put(let text):
+        return text.isEmpty ? String(localized: "No text yet") : String(localized: "Put \(quoted(text, limit: 32)) on the clipboard")
+      case .read(let saveAs):
+        return saveAs.isEmpty ? String(localized: "Choose a name to save it as") : String(localized: "Read the clipboard → \(saveAs)")
+      case .check(let test, let to, let timeoutMs):
+        return String(localized: "Until the clipboard \(sign(of: test)) \(quoted(to)) · \(duration(timeoutMs))")
+      }
+    case .dateTime(let saveAs, let format, let shift, _):
+      guard !saveAs.isEmpty else { return String(localized: "Choose a name to save it as") }
+      let moved = shift.map { " · " + BlockInfo.timeUnitName($0.unit).lowercased() + " " + signed($0.amount) } ?? ""
+      return quoted(format, limit: 24) + moved + " → " + saveAs
     case .script(let language, let code, _, let outputs, _, _):
       let line = code.split(whereSeparator: \.isNewline).first { !$0.allSatisfy(\.isWhitespace) }
       guard let line else { return String(localized: "No code yet") }
@@ -149,17 +166,26 @@ enum BlockSummary {
     }
   }
 
+  /// `⌘ ` before what a click or drag does, when keys are held down.
+  private static func holding(_ modifiers: Modifiers, _ text: String) -> String {
+    modifiers.isEmpty ? text : String(localized: "\(text) holding \(modifiers.symbols)")
+  }
+
+  private static func signed(_ amount: Int32) -> String { amount > 0 ? "+\(amount)" : "\(amount)" }
+
   /// `${var.total} > 3`, with the symbols of the comparison so it reads the same in every language.
   static func valueCheck(_ check: ValueCheck) -> String {
-    let sign =
-      switch check.is {
-      case .equals: "="
-      case .notEquals: "≠"
-      case .contains: "∋"
-      case .greaterThan: ">"
-      case .lessThan: "<"
-      }
-    return "\(check.of) \(sign) \(quoted(check.to))"
+    "\(check.of) \(sign(of: check.is)) \(quoted(check.to))"
+  }
+
+  private static func sign(of test: ValueTest) -> String {
+    switch test {
+    case .equals: "="
+    case .notEquals: "≠"
+    case .contains: "∋"
+    case .greaterThan: ">"
+    case .lessThan: "<"
+    }
   }
 
   /// `refs/sign-in-button.png` → “sign in button”.
@@ -181,7 +207,7 @@ enum BlockSummary {
       }
       short = head.trimmingCharacters(in: .whitespaces) + "…"
     }
-    let language = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+    let language = AppLanguage.shared.locale
     return (language.quotationBeginDelimiter ?? "“") + short + (language.quotationEndDelimiter ?? "”")
   }
 

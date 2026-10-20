@@ -15,7 +15,10 @@ struct JEVisionApp: App {
   @State private var updates = Updates()
 
   init() {
-    _ = AppLanguage.atLaunch
+    AppLog.started()
+    if CrashReports.isEnabled { CrashCollector.apply(enabled: true) }
+    AppLanguage.shared.start()
+    ActiveKeyboard.shared.start()
     Appearance.saved.apply()
     let project = ProjectStore()
     let runs = RunCenter()
@@ -33,6 +36,7 @@ struct JEVisionApp: App {
   var body: some Scene {
     Window("JEVision", id: SceneID.main) {
       MainView()
+        .appLocale()
         .environment(project)
         .environment(permissions)
         .environment(runs)
@@ -44,6 +48,7 @@ struct JEVisionApp: App {
 
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()
+        .appLocale()
         .environment(permissions)
         .environment(project)
         .environment(records)
@@ -56,6 +61,7 @@ struct JEVisionApp: App {
 
     Window("Command Line Tool", id: SceneID.commandLineTool) {
       CommandLineToolView()
+        .appLocale()
     }
     .windowResizability(.contentSize)
     .defaultPosition(.center)
@@ -63,6 +69,7 @@ struct JEVisionApp: App {
 
     Window("Commit Changes", id: SceneID.commit) {
       CommitView()
+        .appLocale()
         .environment(project)
     }
     .defaultSize(width: 960, height: 640)
@@ -71,6 +78,7 @@ struct JEVisionApp: App {
     // A window of its own: as a sheet it is wider than the Settings window it would hang from.
     Window("Areas Always Hidden", id: SceneID.hiddenAreas) {
       ProjectHideEditor()
+        .appLocale()
         .environment(project)
     }
     .defaultPosition(.center)
@@ -78,6 +86,7 @@ struct JEVisionApp: App {
 
     Window("Statistics", id: SceneID.statistics) {
       StatisticsView()
+        .appLocale()
         .environment(project)
     }
     .defaultSize(width: 960, height: 760)
@@ -85,6 +94,7 @@ struct JEVisionApp: App {
 
     Window("Pull Requests", id: SceneID.pullRequests) {
       PullRequestsView()
+        .appLocale()
         .environment(project)
     }
     .defaultSize(width: 1040, height: 680)
@@ -92,6 +102,7 @@ struct JEVisionApp: App {
 
     Settings {
       SettingsView()
+        .appLocale()
         .environment(project)
         .environment(permissions)
         .environment(remote)

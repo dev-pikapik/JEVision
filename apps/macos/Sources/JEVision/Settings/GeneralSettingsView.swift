@@ -3,11 +3,10 @@ import SwiftUI
 struct GeneralSettingsView: View {
   @Environment(Updates.self) private var updates
   @AppStorage(Appearance.key) private var appearance = Appearance.system
-  @State private var language = AppLanguage.saved
-  @State private var asksToRestart = false
-  @State private var restartFailed = false
 
-  private var needsRestart: Bool { language != AppLanguage.atLaunch }
+  private var language: Binding<String> {
+    Binding(get: { AppLanguage.shared.saved }, set: { AppLanguage.shared.choose($0) })
+  }
 
   var body: some View {
     Form {
@@ -18,55 +17,32 @@ struct GeneralSettingsView: View {
         }
         .pickerStyle(.segmented)
         .settingAnchor("appearance")
-        Picker("Language", selection: $language) {
+        Picker("Language", selection: language) {
           Text("System").tag("")
           Divider()
           ForEach(AppLanguage.choices.dropFirst(), id: \.self) { Text(verbatim: AppLanguage.name($0)).tag($0) }
         }
         .settingAnchor("language")
-        if needsRestart {
-          LabeledContent {
-            Button("Restart", systemImage: "arrow.clockwise", action: restart)
-          } label: {
-            Text("Restart JEVision to switch the language")
-          }
-        }
       } footer: {
-        Text("JEVision collects no usage data. Nothing leaves this Mac unless a feature you turned on needs it.")
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 6) {
+          Text("Names that macOS draws itself, like File and Edit in the menu bar, change the next time JEVision opens.")
+          Text("JEVision collects no usage data. Nothing leaves this Mac unless a feature you turned on needs it.")
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
       }
       UpdatesSection(updates: updates)
       RestoreDefaultsSection(
         message: Text("Appearance and language follow the system again."),
-        isDefault: appearance == .system && language.isEmpty
+        isDefault: appearance == .system && language.wrappedValue.isEmpty
       ) {
         appearance = .system
-        language = ""
+        language.wrappedValue = ""
       }
     }
     .formStyle(.grouped)
     .onChange(of: appearance) { appearance.apply() }
-    .onChange(of: language) {
-      AppLanguage.save(language)
-      asksToRestart = needsRestart
-    }
-    .alert("Restart JEVision now?", isPresented: $asksToRestart) {
-      Button("Restart Now", action: restart)
-      Button("Later", role: .cancel) {}
-    } message: {
-      Text("The new language appears after JEVision opens again.")
-    }
-    .alert("Couldn’t restart JEVision", isPresented: $restartFailed) {
-      Button("OK") {}
-    } message: {
-      Text("Quit JEVision and open it again to switch the language.")
-    }
-  }
-
-  private func restart() {
-    restartFailed = !Relaunch.now()
   }
 }
 

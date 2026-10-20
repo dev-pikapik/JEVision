@@ -67,7 +67,7 @@ public final class Recorder: @unchecked Sendable {
     }
     thread.name = "JEVision recorder pictures"
     thread.start()
-    guard tap.start([.leftMouseDown, .leftMouseUp, .rightMouseDown, .scrollWheel, .keyDown]) else {
+    guard tap.start([.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .scrollWheel, .keyDown]) else {
       lock.withLock { running = false }
       return false
     }
@@ -143,9 +143,10 @@ public final class Recorder: @unchecked Sendable {
         characters: String(utf16CodeUnits: units, count: length), modifiers: modifiers,
         isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0, time: now)
       queue.async { [self] in key(press, ignoring: ignoring, frame: frame) }
-    } else if type == .leftMouseUp {
+    } else if type == .leftMouseUp || type == .rightMouseUp {
       let location = event.location
-      queue.async { [self] in release(at: location) }
+      let button: MouseButton = type == .rightMouseUp ? .right : .left
+      queue.async { [self] in release(at: location, button: button) }
     } else if type == .scrollWheel {
       let location = event.location
       // A trackpad scrolls by pixels, a mouse wheel by lines.
@@ -165,16 +166,22 @@ public final class Recorder: @unchecked Sendable {
       let location = event.location
       let button: MouseButton = type == .rightMouseDown ? .right : .left
       let count = Int(event.getIntegerValueField(.mouseEventClickState))
+      let modifiers = Modifiers(flags: event.flags)
       // Whose window is under the pointer now, before the click changes anything.
       let owner = Self.windowOwner(at: location)
-      queue.async { [self] in click(at: location, button: button, count: count, owner: owner, ignoring: ignoring, frame: frame) }
+      queue.async { [self] in
+        click(at: location, button: button, modifiers: modifiers, count: count, owner: owner, ignoring: ignoring, frame: frame)
+      }
     }
   }
 
-  private func click(at point: CGPoint, button: MouseButton, count: Int, owner: pid_t?, ignoring: Bool, frame: WindowFrame?) {
+  private func click(
+    at point: CGPoint, button: MouseButton, modifiers: Modifiers, count: Int, owner: pid_t?, ignoring: Bool, frame: WindowFrame?
+  ) {
     let inApp = !ignoring && owner.map(currentPIDs().contains) == true
     let element = inApp ? Accessibility.element(at: point, pids: currentPIDs()) : nil
-    let result = recording.click(at: point, button: button, count: count, inApp: inApp, frame: frame, element: element)
+    let result = recording.click(
+      at: point, button: button, modifiers: modifiers, count: count, inApp: inApp, frame: frame, element: element)
     switch result {
     case .recorded:
       publish(nil)
@@ -184,9 +191,9 @@ public final class Recorder: @unchecked Sendable {
     }
   }
 
-  private func release(at point: CGPoint) {
+  private func release(at point: CGPoint, button: MouseButton) {
     let element = Accessibility.element(at: point, pids: currentPIDs())
-    switch recording.release(at: point, element: element) {
+    switch recording.release(at: point, button: button, element: element) {
     case .recorded: publish(nil)
     case .outsideWindow: publish(.dragOutsideWindow)
     case .ignored: break

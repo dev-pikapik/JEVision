@@ -35,19 +35,11 @@ struct MainView: View {
       case .loading:
         ProgressView()
           .accessibilityLabel(Text("Looking for tests"))
-      case .ready where project.items.isEmpty:
-        EmptyStateView(
-          symbol: "record.circle",
-          title: Text("No tests yet"),
-          message: Text("Record what you do in an app — JEVision turns every step into a block. Or start with an empty test and add the steps yourself."),
-          action: Text("Record First Test…"),
-          perform: {
-            recordsNewTest = true
-            project.isCreatingTest = true
-          },
-          secondAction: Text("New Test…"), performSecond: { project.isCreatingTest = true })
       case .ready:
-        ProjectView()
+        ProjectView(recordFirstTest: {
+          recordsNewTest = true
+          project.isCreatingTest = true
+        })
       }
     }
     .sheet(isPresented: $project.isCreatingTest, onDismiss: recordCreatedTest) {

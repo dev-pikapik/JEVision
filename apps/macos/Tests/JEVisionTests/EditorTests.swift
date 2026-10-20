@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import Testing
 
 @testable import JEVision
@@ -18,10 +19,10 @@ struct BlockSummaryTests {
         == "Type secret ACME_PASSWORD into “password field”")
     #expect(summary(.type(text: "alice@example.com", into: nil, next: nil)) == "Type “alice@example.com”")
     #expect(
-      summary(.click(target: .image("refs/sign_in-button.png"), button: .left, double: false, waitForChange: false, next: nil))
+      summary(.click(target: .image("refs/sign_in-button.png"), button: .left, double: false, modifiers: .none, waitForChange: false, next: nil))
         == "Click “sign in button”")
     #expect(
-      summary(.click(target: .image(""), button: .left, double: false, waitForChange: false, next: nil))
+      summary(.click(target: .image(""), button: .left, double: false, modifiers: .none, waitForChange: false, next: nil))
         == "Choose what to click")
     #expect(summary(.pressKeys(keys: "cmd+shift+s", next: nil)) == "Press ⇧⌘S")
     #expect(summary(.openFile(files: ["docs/a.txt", "b.txt", "c.txt"], app: nil, newInstance: false, closeAfter: false, next: nil)) == "a.txt and 2 more")
@@ -88,9 +89,9 @@ struct BlockSummaryTests {
   @Test func describesPointerBlocks() {
     #expect(summary(.hover(target: .image(""), waitForChange: false, next: nil)) == "Choose what to point at")
     #expect(summary(.hover(target: .image("refs/help-icon.png"), waitForChange: false, next: nil)) == "Point at “help icon”")
-    #expect(summary(.drag(from: .image("refs/file.png"), to: .image(""), waitForChange: false, next: nil)) == "Choose what to drag and where")
+    #expect(summary(.drag(from: .image("refs/file.png"), to: .image(""), button: .left, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to drag and where")
     #expect(
-      summary(.drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), waitForChange: false, next: nil))
+      summary(.drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .left, modifiers: .none, waitForChange: false, next: nil))
         == "Drag “file” to “trash bin”")
     #expect(summary(.scroll(direction: .down, amount: 5, unit: .lines, at: nil, waitForChange: false, next: nil)) == "Scroll down 5 lines")
     #expect(summary(.scroll(direction: .up, amount: 3, unit: .lines, at: .image(""), waitForChange: false, next: nil)) == "Scroll up 3 lines")
@@ -99,17 +100,52 @@ struct BlockSummaryTests {
         == "Scroll right 240 px over “list”")
   }
 
+  @Test func describesKeysHeldAndButtonOfClickAndDrag() {
+    let held = Modifiers(command: true, shift: true, option: false, control: false)
+    #expect(
+      summary(.click(target: .image("refs/row.png"), button: .left, double: false, modifiers: held, waitForChange: false, next: nil))
+        == "Click “row” holding ⇧⌘")
+    #expect(
+      summary(.click(target: .image("refs/row.png"), button: .right, double: false, modifiers: held, waitForChange: false, next: nil))
+        == "Right-click “row” holding ⇧⌘")
+    #expect(
+      summary(
+        .drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .right, modifiers: .none, waitForChange: false, next: nil)
+      ) == "Right-drag “file” to “trash bin”")
+    #expect(
+      summary(
+        .drag(from: .image("refs/file.png"), to: .image("refs/trash_bin.png"), button: .left, modifiers: held, waitForChange: false, next: nil)
+      ) == "Drag “file” to “trash bin” holding ⇧⌘")
+  }
+
+  @Test func describesClipboardAndDateTimeBlocks() {
+    #expect(summary(.clipboard(action: .put(text: ""), next: nil)) == "No text yet")
+    #expect(summary(.clipboard(action: .put(text: "hello"), next: nil)) == "Put “hello” on the clipboard")
+    #expect(summary(.clipboard(action: .read(saveAs: "copied"), next: nil)) == "Read the clipboard → copied")
+    #expect(summary(.clipboard(action: .read(saveAs: ""), next: nil)) == "Choose a name to save it as")
+    #expect(
+      summary(.clipboard(action: .check(is: .contains, to: "ok", timeoutMs: 5000), next: nil))
+        == "Until the clipboard ∋ “ok” · \(BlockSummary.duration(5000))")
+    #expect(summary(.dateTime(saveAs: "", format: "%Y", shift: nil, next: nil)) == "Choose a name to save it as")
+    #expect(summary(.dateTime(saveAs: "today", format: "%Y-%m-%d", shift: nil, next: nil)) == "“%Y-%m-%d” → today")
+    #expect(
+      summary(.dateTime(saveAs: "due", format: "%Y-%m-%d", shift: TimeShift(amount: 3, unit: .days), next: nil))
+        == "“%Y-%m-%d” · days +3 → due")
+    #expect(
+      summary(.dateTime(saveAs: "old", format: "%H:%M", shift: TimeShift(amount: -1, unit: .hours), next: nil)) == "“%H:%M” · hours -1 → old")
+  }
+
   @Test func namesElementsDescribedInWords() {
     let save = Target.description("the blue Save button")
     let blank = Target.description(" \n")
     #expect(
-      summary(.click(target: save, button: .right, double: false, waitForChange: false, next: nil))
+      summary(.click(target: save, button: .right, double: false, modifiers: .none, waitForChange: false, next: nil))
         == "Right-click “the blue Save button”")
-    #expect(summary(.click(target: blank, button: .left, double: false, waitForChange: false, next: nil)) == "Choose what to click")
+    #expect(summary(.click(target: blank, button: .left, double: false, modifiers: .none, waitForChange: false, next: nil)) == "Choose what to click")
     #expect(summary(.hover(target: save, waitForChange: false, next: nil)) == "Point at “the blue Save button”")
     #expect(summary(.hover(target: blank, waitForChange: false, next: nil)) == "Choose what to point at")
     #expect(
-      summary(.drag(from: .description("the report"), to: .image("refs/trash_bin.png"), waitForChange: false, next: nil))
+      summary(.drag(from: .description("the report"), to: .image("refs/trash_bin.png"), button: .left, modifiers: .none, waitForChange: false, next: nil))
         == "Drag “the report” to “trash bin”")
     #expect(
       summary(.scroll(direction: .down, amount: 2, unit: .lines, at: save, waitForChange: false, next: nil))
@@ -257,7 +293,7 @@ struct FlowDocumentTests {
 
   private func nextOf(_ document: FlowDocument, _ id: String) -> String? {
     if case .pressKeys(_, let next) = document.block(id)?.kind { return next }
-    if case .click(_, _, _, _, let next) = document.block(id)?.kind { return next }
+    if case .click(_, _, _, _, _, let next) = document.block(id)?.kind { return next }
     return nil
   }
 

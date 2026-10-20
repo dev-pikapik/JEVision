@@ -7,110 +7,143 @@ struct AppCommands: Commands {
   let records: RecordCenter
   let updates: Updates
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.openURL) private var openURL
   @FocusedValue(\.canvasZoom) private var zoom
   @FocusedValue(\.canvasDocument) private var canvas
   @FocusedValue(\.blockPalette) private var blockPalette
 
   var body: some Commands {
     CommandGroup(after: .appInfo) {
-      if updates.isAvailable {
-        Button("Check for Updates…") { updates.check() }
-          .disabled(!updates.canCheck)
+      Group {
+        if updates.isAvailable {
+          Button("Check for Updates…") { updates.check() }
+            .disabled(!updates.canCheck)
+        }
       }
+      .appLocale()
     }
     CommandGroup(after: .appSettings) {
-      Button("Install Command Line Tool…") { openWindow(id: SceneID.commandLineTool) }
+      Group {
+        Button("Install Command Line Tool…") { openWindow(id: SceneID.commandLineTool) }
+      }
+      .appLocale()
     }
     CommandGroup(replacing: .newItem) {
-      Button("New Test…") { project.isCreatingTest = true }
-        .keyboardShortcut(Shortcuts.newTest)
-        .disabled(project.status != .ready)
-      Button("Open Project…") { project.choose() }
-        .keyboardShortcut(Shortcuts.openProject)
-      Button("Show Project in Finder") { project.revealRoot() }
-        .disabled(project.rootURL == nil)
-      Divider()
-      Button("Commit Changes…") { openWindow(id: SceneID.commit) }
-        .keyboardShortcut(Shortcuts.commit)
-        .disabled(git?.changes.isEmpty ?? true)
-      Button("New Pull Request…") { project.git.isComposingPullRequest = true }
-        .keyboardShortcut(Shortcuts.newPullRequest)
-        .disabled(git?.github == nil || git?.branch == nil || git?.hasCommits != true || project.git.activity != nil)
-      Button("Pull Requests") { openWindow(id: SceneID.pullRequests) }
-        .disabled(git?.github == nil)
+      Group {
+        Button("New Test…") { project.isCreatingTest = true }
+          .keyboardShortcut(Shortcuts.newTest)
+          .disabled(project.status != .ready)
+        Button("Open Project…") { project.choose() }
+          .keyboardShortcut(Shortcuts.openProject)
+        Button("Show Project in Finder") { project.revealRoot() }
+          .disabled(project.rootURL == nil)
+        Divider()
+        Button("Commit Changes…") { openWindow(id: SceneID.commit) }
+          .keyboardShortcut(Shortcuts.commit)
+          .disabled(git?.changes.isEmpty ?? true)
+        Button("New Pull Request…") { project.git.isComposingPullRequest = true }
+          .keyboardShortcut(Shortcuts.newPullRequest)
+          .disabled(git?.github == nil || git?.branch == nil || git?.hasCommits != true || project.git.activity != nil)
+        Button("Pull Requests") { openWindow(id: SceneID.pullRequests) }
+          .disabled(git?.github == nil)
+      }
+      .appLocale()
     }
     CommandGroup(after: .pasteboard) {
-      Button("Duplicate") { canvas?.duplicate() }
-        .keyboardShortcut("d")
-        .disabled(canvas?.picked.isEmpty ?? true)
-      Button("Link to Another Block") {
-        if canvas?.startLink() != true { NSSound.beep() }
+      Group {
+        Button("Duplicate") { canvas?.duplicate() }
+          .keyboardShortcut("d")
+          .disabled(canvas?.picked.isEmpty ?? true)
+        Button("Link to Another Block") {
+          if canvas?.startLink() != true { NSSound.beep() }
+        }
+        .keyboardShortcut("l")
+        .disabled(canvas?.selection == nil)
+        Button("Disconnect") {
+          if let canvas, let id = canvas.selection { canvas.disconnect(id) }
+        }
+        .keyboardShortcut(Shortcuts.disconnect)
+        .disabled(!canDisconnect)
       }
-      .keyboardShortcut("l")
-      .disabled(canvas?.selection == nil)
-      Button("Disconnect") {
-        if let canvas, let id = canvas.selection { canvas.disconnect(id) }
-      }
-      .keyboardShortcut(Shortcuts.disconnect)
-      .disabled(!canDisconnect)
+      .appLocale()
     }
     CommandGroup(before: .toolbar) {
-      Button("Command Palette…") { project.showsCommandPalette.toggle() }
-        .keyboardShortcut(Shortcuts.commandPalette)
-      Divider()
+      Group {
+        Button("Command Palette…") { project.showsCommandPalette.toggle() }
+          .keyboardShortcut(Shortcuts.commandPalette)
+        Divider()
+      }
+      .appLocale()
     }
     CommandGroup(after: .toolbar) {
-      Button("Zoom In") { zoom.map { $0.set(Zoom.step($0.value, up: true, in: $0.range)) } }
-        .keyboardShortcut("+")
-        .disabled(zoom.map { $0.value >= $0.range.upperBound } ?? true)
-      Button("Zoom Out") { zoom.map { $0.set(Zoom.step($0.value, up: false, in: $0.range)) } }
-        .keyboardShortcut("-")
-        .disabled(zoom.map { $0.value <= $0.range.lowerBound } ?? true)
-      Button("Zoom to Fit") { zoom?.fit() }
-        .keyboardShortcut("0")
-        .disabled(zoom == nil)
-      Button("Actual Size") { zoom?.set(1) }
-        .keyboardShortcut("0", modifiers: [.command, .option])
-        .disabled(zoom == nil)
-      Divider()
+      Group {
+        Button("Zoom In") { zoom.map { $0.set(Zoom.step($0.value, up: true, in: $0.range)) } }
+          .keyboardShortcut("+")
+          .disabled(zoom.map { $0.value >= $0.range.upperBound } ?? true)
+        Button("Zoom Out") { zoom.map { $0.set(Zoom.step($0.value, up: false, in: $0.range)) } }
+          .keyboardShortcut("-")
+          .disabled(zoom.map { $0.value <= $0.range.lowerBound } ?? true)
+        Button("Zoom to Fit") { zoom?.fit() }
+          .keyboardShortcut("0")
+          .disabled(zoom == nil)
+        Button("Actual Size") { zoom?.set(1) }
+          .keyboardShortcut("0", modifiers: [.command, .option])
+          .disabled(zoom == nil)
+        Divider()
+      }
+      .appLocale()
     }
-    CommandMenu("Test") {
-      Button("Run") { run(stepByStep: false) }
-        .keyboardShortcut(Shortcuts.run)
+    CommandMenu(String(localized: "Test")) {
+      Group {
+        Button("Run") { run(stepByStep: false) }
+          .keyboardShortcut(Shortcuts.run)
+          .disabled(!canRun)
+        Button("Run Step by Step") { run(stepByStep: true) }
+          .keyboardShortcut(Shortcuts.runStepByStep)
+          .disabled(!canRun)
+        Button("Run from Selected Block") { run(from: project.document?.selection) }
+          .keyboardShortcut(Shortcuts.runFromSelection)
+          .disabled(!canRun || project.document?.selection == nil)
+        Button("Run All Tests") {
+          guard let root = project.rootURL else { return }
+          runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
+        }
+        .keyboardShortcut(Shortcuts.runAll)
+        .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.items.isEmpty)
+        Button("Schedules…") { project.schedules.isShowingSheet = true }
+          .disabled(project.status != .ready)
+        Divider()
+        Button("Record") {
+          if let document = project.document { records.record(document) }
+        }
+        .keyboardShortcut(Shortcuts.record)
         .disabled(!canRun)
-      Button("Run Step by Step") { run(stepByStep: true) }
-        .keyboardShortcut(Shortcuts.runStepByStep)
-        .disabled(!canRun)
-      Button("Run from Selected Block") { run(from: project.document?.selection) }
-        .keyboardShortcut(Shortcuts.runFromSelection)
-        .disabled(!canRun || project.document?.selection == nil)
-      Button("Run All Tests") {
-        guard let root = project.rootURL else { return }
-        runs.runAll(project.items.flatMap(\.tests).map(\.url), in: root, title: String(localized: "All tests"))
+        Divider()
+        Button("Add Block…") { blockPalette?.open() }
+          .keyboardShortcut(Shortcuts.addBlock)
+          .disabled(blockPalette == nil)
+        Button { project.document?.addCondition() } label: {
+          selectionIsIf ? Text("Add Condition") : Text("Add If")
+        }
+          .keyboardShortcut(Shortcuts.addCondition)
+          .disabled(project.document?.flow == nil)
       }
-      .keyboardShortcut(Shortcuts.runAll)
-      .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.items.isEmpty)
-      Button("Schedules…") { project.schedules.isShowingSheet = true }
-        .disabled(project.status != .ready)
-      Divider()
-      Button("Record") {
-        if let document = project.document { records.record(document) }
-      }
-      .keyboardShortcut(Shortcuts.record)
-      .disabled(!canRun)
-      Divider()
-      Button("Add Block…") { blockPalette?.open() }
-        .keyboardShortcut(Shortcuts.addBlock)
-        .disabled(blockPalette == nil)
-      Button { project.document?.addCondition() } label: {
-        selectionIsIf ? Text("Add Condition") : Text("Add If")
-      }
-        .keyboardShortcut(Shortcuts.addCondition)
-        .disabled(project.document?.flow == nil)
+      .appLocale()
     }
-    // The default Help item searches a help book the app does not have.
+    // The Help menu itself, with its search of the menus, stays the system's. Its default item opens
+    // a help book the app does not have, so the guides and the welcome window take its place.
     CommandGroup(replacing: .help) {
-      Button("Welcome to JEVision") { openWindow(id: SceneID.onboarding) }
+      Group {
+        Button("Welcome to JEVision") { openWindow(id: SceneID.onboarding) }
+        Divider()
+        Button("Getting Started") { openURL(Guide.gettingStarted.url()) }
+        Button("Writing Tests") { openURL(Guide.writingTests.url()) }
+        Button("Checks") { openURL(Guide.checks.url()) }
+        Button("Questions and Answers") { openURL(Guide.faq.url()) }
+        Divider()
+        Button("All Documentation") { openURL(Guide.contents.url()) }
+      }
+      .appLocale()
     }
   }
 

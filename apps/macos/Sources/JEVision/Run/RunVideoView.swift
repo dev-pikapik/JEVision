@@ -68,9 +68,9 @@ struct RunVideoView: View {
             Button {
               Self.seek(player, to: step)
             } label: {
-              Circle()
-                .fill(failed ? Color.red : Color.secondary)
-                .frame(width: failed ? 10 : 8, height: failed ? 10 : 8)
+              Image(systemName: failed ? RunStatus.failed.dot : "circle.fill")
+                .foregroundStyle(failed ? RunStatus.failed.color : Color.secondary)
+                .font(failed ? .caption : .caption2)
                 .padding(5)
                 .contentShape(.rect)
             }
@@ -83,6 +83,7 @@ struct RunVideoView: View {
         }
       }
       .frame(height: 20)
+      .unmirrored()
       Text(verbatim: "\(Self.clock(time)) / \(Self.clock(duration))")
         .font(.caption.monospacedDigit())
         .foregroundStyle(.secondary)

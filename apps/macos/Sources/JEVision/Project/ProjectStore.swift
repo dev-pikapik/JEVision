@@ -42,7 +42,7 @@ final class ProjectStore {
   /// Tests whose recent runs both passed and failed without the test changing, by test file
   /// relative to the project, with the evidence.
   private(set) var flaky: [String: FlakyEvidence] = [:]
-  /// What the sidebar lists. Runs only while there are some.
+  /// What the sidebar lists.
   var sidebar = Sidebar.tests
   /// Folder of the run whose report is open.
   var selectedRun: SavedRun.ID?
@@ -85,6 +85,7 @@ final class ProjectStore {
       selection = selected.flatMap { FileManager.default.fileExists(atPath: url.appending(path: $0).path) ? $0 : nil }
     } else {
       status = .unavailable
+      AppLog.error("The project folder from last time can’t be opened", "project")
     }
   }
 
@@ -167,6 +168,26 @@ final class ProjectStore {
     selection = try DemoTest.write(into: rootURL)
   }
 
+  /// Copies the example project into a folder the person chooses and opens the copy; nothing
+  /// happens when they cancel.
+  func openExample() throws {
+    guard let source = ExampleProject.bundled() else { throw ExampleProject.Failure.missing }
+    let panel = NSOpenPanel()
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = false
+    panel.allowsMultipleSelection = false
+    panel.canCreateDirectories = true
+    panel.message = String(localized: "Choose where to put a copy of the example project")
+    panel.directoryURL = URL.documentsDirectory
+    panel.prompt = String(localized: "Copy Here")
+    guard panel.runModal() == .OK, let parent = panel.url else { return }
+    let copy = try ExampleProject.copy(source, into: parent)
+    AppLog.info("Example project copied to \(copy.path)", "project")
+    save(copy)
+    open(copy)
+    selection = ExampleProject.firstTest
+  }
+
   /// Renames the test file and the name inside it.
   func rename(_ item: ProjectItem, to newName: String) throws {
     let name = newName.trimmingCharacters(in: .whitespaces)
@@ -204,7 +225,9 @@ final class ProjectStore {
   /// Opens the report of the run saved in `dir`.
   func showRun(_ dir: URL) {
     sidebar = .runs
-    selectedRun = dir.path(percentEncoded: false)
+    // `path`, not `path(percentEncoded:)`: that one keeps the slash after a folder, and then the
+    // run no longer matches its row in the history, which is picked by the folder without it.
+    selectedRun = dir.path
   }
 
   /// Whether the test file, relative to the project, is still there.
@@ -226,7 +249,6 @@ final class ProjectStore {
     try FileManager.default.trashItem(at: run.url, resultingItemURL: nil)
     show(History(runs.filter { $0.id != run.id }))
     if selectedRun == run.id { selectedRun = nil }
-    if runs.isEmpty { sidebar = .tests }
   }
 
   /// Makes a run's screenshot the reference image `reference` (relative to the project). The old
@@ -377,6 +399,7 @@ final class ProjectStore {
   private func open(_ url: URL) {
     accessedURL?.stopAccessingSecurityScopedResource()
     accessedURL = url.startAccessingSecurityScopedResource() ? url : nil
+    AppLog.info("Project opened: \(url.path)", "project")
     rootURL = url
     name = FileManager.default.displayName(atPath: url.path)
     selection = nil
@@ -426,7 +449,6 @@ final class ProjectStore {
         {
           self.selectedRun = nil
         }
-        if saved.isEmpty, selectedRun == nil { sidebar = .tests }
         status = .ready
         if let selection, found.item(withID: selection) == nil,
           !FileManager.default.fileExists(atPath: url.appending(path: selection).path)

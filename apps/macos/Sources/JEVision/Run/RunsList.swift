@@ -37,7 +37,13 @@ struct RunsList: View {
       }
     }
     .overlay {
-      if days.isEmpty, !query.trimmingCharacters(in: .whitespaces).isEmpty {
+      if project.runs.isEmpty {
+        ContentUnavailableView {
+          Label("No runs yet", systemImage: "clock.arrow.circlepath")
+        } description: {
+          Text("Every run of a test is kept here.")
+        }
+      } else if days.isEmpty, !query.trimmingCharacters(in: .whitespaces).isEmpty {
         ContentUnavailableView.search(text: query)
       }
     }
@@ -197,8 +203,9 @@ private struct HealthBars: View {
   var body: some View {
     HStack(spacing: 2) {
       ForEach(Array(marks.enumerated()), id: \.offset) { _, mark in
-        RoundedRectangle(cornerRadius: 2)
-          .fill(color(mark))
+        Image(systemName: mark.status.dot)
+          .foregroundStyle(mark.status.color)
+          .font(.caption)
           .frame(maxWidth: 10)
           .frame(height: 13)
           .offset(y: mark == .failed ? 7 : -7)
@@ -209,14 +216,6 @@ private struct HealthBars: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("Recent runs"))
     .accessibilityValue(Text(verbatim: summary))
-  }
-
-  private func color(_ mark: HealthMark) -> Color {
-    switch mark {
-    case .passed: .green
-    case .flaky: .orange
-    case .failed: .red
-    }
   }
 
   private var summary: String {

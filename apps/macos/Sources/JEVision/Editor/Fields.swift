@@ -231,7 +231,7 @@ struct PlaceholderTextField: View {
       }
       .fixedSize()
     } label: {
-      Text("Insert a value that isn’t in the file")
+      Text("A secret or a value kept outside the test")
         .foregroundStyle(.secondary)
     }
     .alert("New Secret", isPresented: $isNamingSecret) {
@@ -276,6 +276,33 @@ struct TimeoutField: View {
     } label: {
       label
     }
+  }
+}
+
+/// The keys held down during a click or a drag.
+struct ModifiersField: View {
+  @Binding var modifiers: Modifiers
+
+  var body: some View {
+    LabeledContent {
+      HStack(spacing: 4) {
+        key("⌃", String(localized: "modifier.control", defaultValue: "Control", bundle: .app, locale: .app), \.control)
+        key("⌥", String(localized: "modifier.option", defaultValue: "Option", bundle: .app, locale: .app), \.option)
+        key("⇧", String(localized: "modifier.shift", defaultValue: "Shift", bundle: .app, locale: .app), \.shift)
+        key("⌘", String(localized: "modifier.command", defaultValue: "Command", bundle: .app, locale: .app), \.command)
+      }
+    } label: {
+      Text("Hold Keys")
+    }
+  }
+
+  private func key(_ symbol: String, _ name: String, _ path: WritableKeyPath<Modifiers, Bool>) -> some View {
+    Toggle(isOn: Binding(get: { modifiers[keyPath: path] }, set: { modifiers[keyPath: path] = $0 })) {
+      Text(verbatim: symbol)
+    }
+    .toggleStyle(.button)
+    .accessibilityLabel(Text(verbatim: name))
+    .help(name)
   }
 }
 

@@ -91,6 +91,7 @@ struct StatisticsView: View {
 private struct TestStatisticsView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openWindow) private var openWindow
+  @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
   let statistics: TestStatistics
   /// The runs the statistics were counted from, in the same order.
   let runs: [SavedRun]
@@ -178,8 +179,8 @@ private struct TestStatisticsView: View {
           Button {
             if runs.indices.contains(Int(run.index)) { open(runs[Int(run.index)]) }
           } label: {
-            RoundedRectangle(cornerRadius: 2)
-              .fill(Self.color(run.mark))
+            Image(systemName: run.mark.status.dot)
+              .foregroundStyle(run.mark.status.color)
               .frame(maxWidth: 12)
               .frame(height: 22)
           }
@@ -204,12 +205,9 @@ private struct TestStatisticsView: View {
       Chart {
         ForEach(statistics.trend, id: \.startMs) { point in
           let date = Date(timeIntervalSince1970: Double(point.startMs) / 1000)
-          BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", point.passed))
-            .foregroundStyle(by: .value("Result", String(localized: "Passed")))
-          BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", point.passedOnRetry))
-            .foregroundStyle(by: .value("Result", String(localized: "Passed on a retry")))
-          BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", point.failed))
-            .foregroundStyle(by: .value("Result", String(localized: "Failed")))
+          bar(date, Int(point.passed), String(localized: "Passed"))
+          bar(date, Int(point.passedOnRetry), String(localized: "Passed on a retry"))
+          bar(date, Int(point.failed), String(localized: "Failed"))
         }
       }
       .chartForegroundStyleScale([
@@ -227,6 +225,18 @@ private struct TestStatisticsView: View {
       }
       .chartYAxisLabel { Text("Average duration, s") }
       .frame(height: 140)
+    }
+  }
+
+  /// A bar of the runs with one `result`. Without color, each result keeps its own place beside
+  /// the others instead of being stacked on them and told apart by color alone.
+  @ChartContentBuilder private func bar(_ date: Date, _ runs: Int, _ result: String) -> some ChartContent {
+    let mark = BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", runs))
+      .foregroundStyle(by: .value("Result", result))
+    if differentiateWithoutColor {
+      mark.position(by: .value("Result", result))
+    } else {
+      mark
     }
   }
 
@@ -291,14 +301,6 @@ private struct TestStatisticsView: View {
   }
 
   // MARK: Words
-
-  static func color(_ mark: HealthMark) -> Color {
-    switch mark {
-    case .passed: .green
-    case .flaky: .orange
-    case .failed: .red
-    }
-  }
 
   static func describe(_ run: RecentRun) -> String {
     let result =
@@ -407,7 +409,7 @@ private struct ProjectStatisticsView: View {
             if index > 0 { Divider() }
             Button { show(test.file) } label: {
               HStack(spacing: 10) {
-                Circle().fill(TestStatisticsView.color(test.last)).frame(width: 8, height: 8)
+                Image(systemName: test.last.status.dot).foregroundStyle(test.last.status.color).font(.caption2)
                   .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                   Text(verbatim: test.name)
@@ -415,7 +417,7 @@ private struct ProjectStatisticsView: View {
                 }
                 Spacer()
                 value(test).monospacedDigit().foregroundStyle(.secondary)
-                Image(systemName: "chevron.right").foregroundStyle(.tertiary).accessibilityHidden(true)
+                Image(systemName: "chevron.forward").foregroundStyle(.tertiary).accessibilityHidden(true)
               }
               .padding(12)
               .contentShape(.rect)

@@ -9,10 +9,11 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Block, BlockKind, CanvasContent, CanvasSection, Compare, Condition, DatabaseExpect, ElseIf,
-    ExpectStatus, FileState, Flow, HttpMethod, MouseButton, NamedValue, Note, OutputKind, Point,
-    Priority, Rect, Reference, SavedValue, ScriptLanguage, ScriptOutput, ScrollDirection,
-    ScrollUnit, Target, TestStatus, TestType, ValueCheck, ValueTest, WaitUntil, parse_duration,
+    Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction, Compare, Condition,
+    DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod,
+    Modifiers, MouseButton, NamedValue, Note, Point, Priority, Rect, Reference, SavedValue,
+    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
+    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, parse_duration,
 };
 
 /// Oldest file format this build can read.
@@ -378,10 +379,33 @@ const LANGUAGES: &[(&str, ScriptLanguage)] = &[
     ("node", ScriptLanguage::Node),
     ("appleScript", ScriptLanguage::AppleScript),
 ];
-const OUTPUT_KINDS: &[(&str, OutputKind)] = &[
-    ("text", OutputKind::Text),
-    ("number", OutputKind::Number),
-    ("boolean", OutputKind::Boolean),
+const VALUE_KINDS: &[(&str, ValueKind)] = &[
+    ("text", ValueKind::Text),
+    ("number", ValueKind::Number),
+    ("boolean", ValueKind::Boolean),
+    ("image", ValueKind::Image),
+    ("area", ValueKind::Area),
+];
+const MODIFIERS: &[&str] = &["cmd", "shift", "option", "ctrl"];
+#[derive(Clone, Copy)]
+enum ClipboardMode {
+    Put,
+    Read,
+    Check,
+}
+const CLIPBOARD_MODES: &[(&str, ClipboardMode)] = &[
+    ("put", ClipboardMode::Put),
+    ("read", ClipboardMode::Read),
+    ("check", ClipboardMode::Check),
+];
+const TIME_UNITS: &[(&str, TimeUnit)] = &[
+    ("seconds", TimeUnit::Seconds),
+    ("minutes", TimeUnit::Minutes),
+    ("hours", TimeUnit::Hours),
+    ("days", TimeUnit::Days),
+    ("weeks", TimeUnit::Weeks),
+    ("months", TimeUnit::Months),
+    ("years", TimeUnit::Years),
 ];
 const METHODS: &[(&str, HttpMethod)] = &[
     ("GET", HttpMethod::Get),
@@ -559,6 +583,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let target = o.object("target", out).and_then(|t| target(t, out));
             let button = o.opt_choice("button", BUTTONS, out);
             let double = o.flag("double", out);
+            let modifiers = modifiers(&mut o, out);
             let wait_for_change = o.flag("waitForChange", out);
             let next = next(&mut o, out);
             all_present(|| {
@@ -566,6 +591,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     target: target?,
                     button: button.unwrap_or(MouseButton::Left),
                     double,
+                    modifiers,
                     wait_for_change,
                     next,
                 })
@@ -586,12 +612,16 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "drag" => {
             let from = o.object("from", out).and_then(|t| target(t, out));
             let to = o.object("to", out).and_then(|t| target(t, out));
+            let button = o.opt_choice("button", BUTTONS, out);
+            let modifiers = modifiers(&mut o, out);
             let wait_for_change = o.flag("waitForChange", out);
             let next = next(&mut o, out);
             all_present(|| {
                 Some(BlockKind::Drag {
                     from: from?,
                     to: to?,
+                    button: button.unwrap_or(MouseButton::Left),
+                    modifiers,
                     wait_for_change,
                     next,
                 })
@@ -739,28 +769,26 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let language = o.opt_choice("language", LANGUAGES, out);
             let language = o.require("language", language, out);
             let code = o.string("code", out);
-            let inputs = named_values(&mut o, "inputs", "value", out);
-            let outputs = named_values(&mut o, "outputs", "type", out).and_then(|all| {
-                all.into_iter()
-                    .enumerate()
-                    .map(|(i, v)| {
-                        let field = format!("outputs.{i}.type");
-                        let kind = OUTPUT_KINDS.iter().find(|(n, _)| *n == v.value);
-                        if kind.is_none() {
-                            out.push(
-                                o.issue("flow.field.value", &field)
-                                    .with("value", &v.value)
-                                    .with("allowed", "text, number, boolean"),
-                            );
-                        }
-                        kind.map(|(_, kind)| ScriptOutput {
-                            name: v.name,
-                            kind: *kind,
-                        })
-                    })
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .collect::<Option<Vec<_>>>()
+            let inputs = entries(&mut o, "inputs", out, |mut item, out| {
+                let name = item.string("name", out);
+                let kind = item.opt_choice("type", VALUE_KINDS, out);
+                let value = item.string("value", out);
+                item.finish(out);
+                Some(ScriptInput {
+                    name: name?,
+                    kind: kind.unwrap_or(ValueKind::Text),
+                    value: value?,
+                })
+            });
+            let outputs = entries(&mut o, "outputs", out, |mut item, out| {
+                let name = item.string("name", out);
+                let kind = item.opt_choice("type", VALUE_KINDS, out);
+                let kind = item.require("type", kind, out);
+                item.finish(out);
+                Some(ScriptOutput {
+                    name: name?,
+                    kind: kind?,
+                })
             });
             let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
             let next = next(&mut o, out);
@@ -855,6 +883,58 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     save_as,
                     expect: expect?,
                     timeout_ms: timeout_ms?,
+                    next,
+                })
+            })
+        }
+        "clipboard" => {
+            let mode = o.opt_choice("action", CLIPBOARD_MODES, out);
+            let action = match o.require("action", mode, out) {
+                Some(ClipboardMode::Put) => o
+                    .string("text", out)
+                    .map(|text| ClipboardAction::Put { text }),
+                Some(ClipboardMode::Read) => o
+                    .string("saveAs", out)
+                    .map(|save_as| ClipboardAction::Read { save_as }),
+                Some(ClipboardMode::Check) => {
+                    let is = o.opt_choice("is", VALUE_TESTS, out);
+                    let is = o.require("is", is, out);
+                    let to = o.string("to", out);
+                    let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
+                    all_present(|| {
+                        Some(ClipboardAction::Check {
+                            is: is?,
+                            to: to?,
+                            timeout_ms: timeout_ms?,
+                        })
+                    })
+                }
+                None => {
+                    o.known.extend(["text", "saveAs", "is", "to", "timeout"]);
+                    None
+                }
+            };
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::Clipboard {
+                    action: action?,
+                    next,
+                })
+            })
+        }
+        "dateTime" => {
+            let save_as = o.string("saveAs", out);
+            let format = o.opt_string("format", out);
+            let shift = match o.opt_object("shift", out) {
+                None => Some(None),
+                Some(s) => time_shift(s, out).map(Some),
+            };
+            let next = next(&mut o, out);
+            all_present(|| {
+                Some(BlockKind::DateTime {
+                    save_as: save_as?,
+                    format: format.unwrap_or_else(|| DEFAULT_DATE_FORMAT.to_owned()),
+                    shift: shift?,
                     next,
                 })
             })
@@ -990,24 +1070,67 @@ fn named_values(
     value_key: &'static str,
     out: &mut Out,
 ) -> Option<Vec<NamedValue>> {
+    entries(o, key, out, |mut item, out| {
+        let name = item.string("name", out);
+        let value = item.string(value_key, out);
+        item.finish(out);
+        Some(NamedValue {
+            name: name?,
+            value: value?,
+        })
+    })
+}
+
+/// The objects in the array `key`, each read by `read`; an absent array is an empty list.
+fn entries<'v, T>(
+    o: &mut Obj<'v>,
+    key: &'static str,
+    out: &mut Out,
+    read: impl Fn(Obj<'v>, &mut Out) -> Option<T>,
+) -> Option<Vec<T>> {
     let Some(items) = o.opt_array(key, out) else {
         return (!o.map.contains_key(key)).then(Vec::new);
     };
-    let found: Vec<Option<NamedValue>> = items
+    let found: Vec<Option<T>> = items
         .iter()
         .enumerate()
         .map(|(i, v)| {
-            let mut item = o.child(&format!("{key}.{i}"), v, out)?;
-            let name = item.string("name", out);
-            let value = item.string(value_key, out);
-            item.finish(out);
-            Some(NamedValue {
-                name: name?,
-                value: value?,
-            })
+            let item = o.child(&format!("{key}.{i}"), v, out)?;
+            read(item, out)
         })
         .collect();
     found.into_iter().collect()
+}
+
+/// `modifiers`: absent or a list of the keys held down.
+fn modifiers(o: &mut Obj<'_>, out: &mut Out) -> Modifiers {
+    let mut held = Modifiers::default();
+    for key in o.strings("modifiers", out).unwrap_or_default() {
+        match key.as_str() {
+            "cmd" => held.command = true,
+            "shift" => held.shift = true,
+            "option" => held.option = true,
+            "ctrl" => held.control = true,
+            _ => out.push(
+                o.issue("flow.field.value", &o.path_of("modifiers"))
+                    .with("value", key)
+                    .with("allowed", MODIFIERS.join(", ")),
+            ),
+        }
+    }
+    held
+}
+
+fn time_shift(mut o: Obj<'_>, out: &mut Out) -> Option<TimeShift> {
+    let amount = o.opt_int("amount", out);
+    let amount = o.require("amount", amount, out);
+    let unit = o.opt_choice("unit", TIME_UNITS, out);
+    let unit = o.require("unit", unit, out);
+    o.finish(out);
+    Some(TimeShift {
+        amount: amount?,
+        unit: unit?,
+    })
 }
 
 /// `expectStatus`: absent or `"success"`, `"any"`, or a status code.

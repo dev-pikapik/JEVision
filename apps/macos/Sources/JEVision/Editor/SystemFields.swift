@@ -16,10 +16,10 @@ struct InsertableValues {
 extension InspectorView {
   @ViewBuilder
   func scriptFields(
-    language: ScriptLanguage, code: String, inputs: [NamedValue], outputs: [ScriptOutput], timeoutMs: UInt64,
+    language: ScriptLanguage, code: String, inputs: [ScriptInput], outputs: [ScriptOutput], timeoutMs: UInt64,
     next: String?, context: FieldContext, values: InsertableValues
   ) -> some View {
-    let make = { (language: ScriptLanguage, code: String, inputs: [NamedValue], outputs: [ScriptOutput], timeout: UInt64) in
+    let make = { (language: ScriptLanguage, code: String, inputs: [ScriptInput], outputs: [ScriptOutput], timeout: UInt64) in
       BlockKind.script(language: language, code: code, inputs: inputs, outputs: outputs, timeoutMs: timeout, next: next)
     }
     Section {
@@ -37,13 +37,11 @@ extension InspectorView {
         .textSelection(.enabled)
     }
     Section {
-      NamedValuesEditor(
-        rows: bind("inputs", inputs) { make(language, code, $0, outputs, timeoutMs) },
-        namePrompt: Text(verbatim: "NAME"), valuePrompt: Text("Value"), field: "inputs", context: context)
+      ScriptInputsEditor(inputs: bind("inputs", inputs) { make(language, code, $0, outputs, timeoutMs) }, context: context)
     } header: {
       Text("Inputs")
     } footer: {
-      Text("Each input reaches the script as an environment variable. Values can use Insert placeholders, such as ${var.NAME}.")
+      Text("Each input reaches the script as an environment variable. Values can use Insert placeholders, such as ${var.NAME}. An image is the path of a PNG file; an area is x,y,width,height in fractions of the window, like 0.1,0.2,0.5,0.3.")
         .foregroundStyle(.secondary)
     }
     Section {
@@ -214,6 +212,116 @@ extension InspectorView {
     timeoutSection(timeoutMs, context: context) { make(file, query, saveAs, expect, $0) }
   }
 
+  @ViewBuilder
+  func clipboardFields(action: ClipboardAction, next: String?, context: FieldContext, values: InsertableValues) -> some View {
+    let make = { (action: ClipboardAction) in BlockKind.clipboard(action: action, next: next) }
+    Section {
+      Picker(selection: bind("action", ClipboardMode(action)) { make($0.action(from: action)) }) {
+        Text("Put Text on the Clipboard").tag(ClipboardMode.put)
+        Text("Read the Clipboard").tag(ClipboardMode.read)
+        Text("Wait Until It Holds").tag(ClipboardMode.check)
+      } label: {
+        Text("Action")
+      }
+    }
+    switch action {
+    case .put(let text):
+      Section {
+        PlaceholderTextField(
+          text: bind("text", text) { make(.put(text: $0)) }, values: values, label: Text("Text"),
+          prompt: Text("Text to put on the clipboard"))
+        IssueList(issues: context.issues("text"))
+      } footer: {
+        Text("Replaces what is on the clipboard. The text stays there after the run.")
+          .foregroundStyle(.secondary)
+      }
+    case .read(let saveAs):
+      Section {
+        TextField(text: bind("saveAs", saveAs) { make(.read(saveAs: $0)) }, prompt: Text(verbatim: "copied")) {
+          Text("Save As")
+        }
+        .font(.body.monospaced())
+        .autocorrectionDisabled()
+        IssueList(issues: context.issues("saveAs"))
+      } footer: {
+        Text("Later blocks read it as ${var.NAME}; it’s empty when the clipboard holds no text. The saved text shows in the run’s values, so don’t read the clipboard while it holds something private.")
+          .foregroundStyle(.secondary)
+      }
+    case .check(let test, let to, let timeoutMs):
+      Section {
+        Picker(selection: bind("is", test) { make(.check(is: $0, to: to, timeoutMs: timeoutMs)) }) {
+          Text("is equal to").tag(ValueTest.equals)
+          Text("isn’t equal to").tag(ValueTest.notEquals)
+          Text("contains").tag(ValueTest.contains)
+          Text("is greater than").tag(ValueTest.greaterThan)
+          Text("is less than").tag(ValueTest.lessThan)
+        } label: {
+          Text("Comparison")
+        }
+        PlaceholderTextField(
+          text: bind("to", to) { make(.check(is: test, to: $0, timeoutMs: timeoutMs)) }, values: values,
+          label: Text("Compare With"), prompt: Text("Text or number"))
+        IssueList(issues: context.issues("to"))
+      } footer: {
+        Text("Checks again until the clipboard holds it or the time limit passes.")
+          .foregroundStyle(.secondary)
+      }
+      timeoutSection(timeoutMs, context: context) { make(.check(is: test, to: to, timeoutMs: $0)) }
+    }
+  }
+
+  @ViewBuilder
+  func dateTimeFields(saveAs: String, format: String, shift: TimeShift?, next: String?, context: FieldContext) -> some View {
+    let make = { (saveAs: String, format: String, shift: TimeShift?) in
+      BlockKind.dateTime(saveAs: saveAs, format: format, shift: shift, next: next)
+    }
+    Section {
+      TextField(text: bind("saveAs", saveAs) { make($0, format, shift) }, prompt: Text(verbatim: "today")) {
+        Text("Save As")
+      }
+      .font(.body.monospaced())
+      .autocorrectionDisabled()
+      IssueList(issues: context.issues("saveAs"))
+      TextField(
+        text: bind("format", format) { make(saveAs, $0, shift) }, prompt: Text(verbatim: "%Y-%m-%d %H:%M:%S")
+      ) {
+        Text("Format")
+      }
+      .font(.body.monospaced())
+      .autocorrectionDisabled()
+      IssueList(issues: context.issues("format"))
+    } footer: {
+      Text("Later blocks read it as ${var.NAME}. In the format, \("%Y") is the year, \("%m") the month, \("%d") the day, \("%H") the hour, \("%M") the minute and \("%S") the second. Names of months and days are in English.")
+        .foregroundStyle(.secondary)
+    }
+    Section {
+      Toggle(isOn: bind("shift", shift != nil) { make(saveAs, format, $0 ? TimeShift(amount: -1, unit: .days) : nil) }) {
+        Text("Move the Time")
+      }
+      if let shift {
+        LabeledContent("Amount") {
+          TextField(
+            value: bind("shift", Int(shift.amount)) {
+              make(saveAs, format, TimeShift(amount: Int32(clamping: $0), unit: shift.unit))
+            }, format: .number
+          ) { Text("Amount") }
+            .labelsHidden()
+            .multilineTextAlignment(.trailing)
+            .frame(width: 80)
+        }
+        Picker(selection: bind("shift", shift.unit) { make(saveAs, format, TimeShift(amount: shift.amount, unit: $0)) }) {
+          ForEach(BlockInfo.timeUnits, id: \.self) { Text(BlockInfo.timeUnitName($0)).tag($0) }
+        } label: {
+          Text("Unit")
+        }
+      }
+      IssueList(issues: context.issues("shift"))
+    } footer: {
+      Text("A negative amount goes back in time: −1 day is yesterday.")
+        .foregroundStyle(.secondary)
+    }
+  }
+
   private func timeoutSection(
     _ timeoutMs: UInt64, context: FieldContext, _ make: @escaping (UInt64) -> BlockKind
   ) -> some View {
@@ -311,6 +419,117 @@ struct NamedValuesEditor: View {
   }
 }
 
+/// What a clipboard block does, as the inspector's picker offers it.
+private enum ClipboardMode: Hashable {
+  case put, read, check
+
+  init(_ action: ClipboardAction) {
+    switch action {
+    case .put: self = .put
+    case .read: self = .read
+    case .check: self = .check
+    }
+  }
+
+  /// The action of this mode, keeping the text and the setting of `old` where they still fit.
+  func action(from old: ClipboardAction) -> ClipboardAction {
+    let text =
+      switch old {
+      case .put(let text): text
+      case .check(_, let to, _): to
+      case .read: ""
+      }
+    switch (self, old) {
+    case (.put, _): return .put(text: text)
+    case (.read, .read): return old
+    case (.read, _): return .read(saveAs: "")
+    case (.check, .check): return old
+    case (.check, _): return .check(is: .equals, to: text, timeoutMs: 10_000)
+    }
+  }
+}
+
+/// A picker of the kinds of value a script takes or gives.
+private struct ValueKindPicker: View {
+  @Binding var kind: ValueKind
+
+  var body: some View {
+    Picker(selection: $kind) {
+      ForEach(BlockInfo.valueKinds, id: \.self) { Text(BlockInfo.valueKindName($0)).tag($0) }
+    } label: {
+      Text("Kind of Value")
+    }
+    .labelsHidden()
+    .fixedSize()
+  }
+}
+
+/// What a script reads: a name, a kind and a value for each input.
+struct ScriptInputsEditor: View {
+  @Binding var inputs: [ScriptInput]
+  let context: FieldContext
+
+  var body: some View {
+    ForEach(inputs.indices, id: \.self) { index in
+      HStack {
+        TextField(text: binding(index, \.name), prompt: Text(verbatim: "NAME")) { Text("Name") }
+          .labelsHidden()
+          .font(.body.monospaced())
+          .autocorrectionDisabled()
+          .accessibilityLabel(Text("Name \(index + 1)"))
+        ValueKindPicker(kind: kind(index))
+        Button("Remove", systemImage: "minus.circle") { inputs.remove(at: index) }
+          .labelStyle(.iconOnly)
+          .buttonStyle(.borderless)
+      }
+      HStack {
+        TextField(text: binding(index, \.value), prompt: prompt(inputs[index].kind)) { Text("Value") }
+          .labelsHidden()
+          .font(.body.monospaced())
+          .autocorrectionDisabled()
+          .accessibilityLabel(Text("Value \(index + 1)"))
+        if inputs[index].kind == .image {
+          Button("Choose…") {
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.png]
+            panel.directoryURL = context.folder
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            inputs[index].value = OutsideFileField.path(of: url, context: context)
+          }
+        }
+      }
+      IssueList(issues: context.issues("inputs.\(index)"))
+    }
+    Button("Add", systemImage: "plus") { inputs.append(ScriptInput(name: "", kind: .text, value: "")) }
+    IssueList(issues: context.issues("inputs").filter { $0.param("field") == "inputs" })
+  }
+
+  private func prompt(_ kind: ValueKind) -> Text {
+    switch kind {
+    case .text: Text("Value")
+    case .number: Text(verbatim: "3.5")
+    case .boolean: Text("true or false")
+    case .image: Text(verbatim: "refs/logo.png")
+    case .area: Text(verbatim: "0.1,0.2,0.5,0.3")
+    }
+  }
+
+  private func binding(_ index: Int, _ path: WritableKeyPath<ScriptInput, String>) -> Binding<String> {
+    Binding(
+      get: { index < inputs.count ? inputs[index][keyPath: path] : "" },
+      set: { new in
+        guard index < inputs.count else { return }
+        inputs[index][keyPath: path] = new
+      })
+  }
+
+  private func kind(_ index: Int) -> Binding<ValueKind> {
+    Binding(
+      get: { index < inputs.count ? inputs[index].kind : .text },
+      set: { if index < inputs.count { inputs[index].kind = $0 } })
+  }
+}
+
 /// What a script hands to later blocks: a name and the kind of value for each output.
 struct ScriptOutputsEditor: View {
   @Binding var outputs: [ScriptOutput]
@@ -324,15 +543,7 @@ struct ScriptOutputsEditor: View {
           .font(.body.monospaced())
           .autocorrectionDisabled()
           .accessibilityLabel(Text("Output \(index + 1)"))
-        Picker(selection: kind(index)) {
-          Text("Text").tag(OutputKind.text)
-          Text("Number").tag(OutputKind.number)
-          Text("True or False").tag(OutputKind.boolean)
-        } label: {
-          Text("Kind of Value")
-        }
-        .labelsHidden()
-        .fixedSize()
+        ValueKindPicker(kind: kind(index))
         Button("Remove", systemImage: "minus.circle") { outputs.remove(at: index) }
           .labelStyle(.iconOnly)
           .buttonStyle(.borderless)
@@ -348,7 +559,7 @@ struct ScriptOutputsEditor: View {
       set: { if index < outputs.count { outputs[index].name = $0 } })
   }
 
-  private func kind(_ index: Int) -> Binding<OutputKind> {
+  private func kind(_ index: Int) -> Binding<ValueKind> {
     Binding(
       get: { index < outputs.count ? outputs[index].kind : .text },
       set: { if index < outputs.count { outputs[index].kind = $0 } })

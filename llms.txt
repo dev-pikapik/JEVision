@@ -17,10 +17,10 @@ It is written in Rust (the core: file format, validation, runner, reports, MCP s
 - iPhone remote: browse tests, start a run (or one row of its data table), follow it and read reports from a paired iPhone.
 
 ## Block types
-`openApp`, `openFile`, `click`, `type`, `pressKeys`, `waitFor`, `check`, `if`, `repeat`, `runTest`, `useData`. Secrets are referenced as `${secret.NAME}`, environment values as `${env.NAME}`, data columns as `${data.COLUMN}`.
+`openApp`, `openFile`, `click`, `type`, `pressKeys`, `waitFor`, `check`, `if`, `repeat`, `runTest`, `useData`, `script`, `clipboard`, `dateTime`. `click` and `drag` can hold ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]`) and `drag` can use the right button; a `script` takes typed inputs and gives typed outputs (text, number, boolean, image, area); `clipboard` puts text, reads it into a variable or checks it; `dateTime` keeps the date and time, moved by an amount, as a variable. Secrets are referenced as `${secret.NAME}`, environment values as `${env.NAME}`, data columns as `${data.COLUMN}`.
 
 ## Command line
-- `jevision run <tests> [--env NAME] [--rows 2-4] [--retries N] [--junit FILE] [--html DIR] [--video MODE] [--json]`: run tests and save reports. Exit status 0 passed, 1 failed, 2 can't run.
+- `jevision run <tests> [--env NAME] [--rows 2-4] [--retries N] [--parallel [N]] [--junit FILE] [--html DIR] [--video MODE] [--json]`: run tests and save reports; `--parallel` runs tests that leave the screen alone side by side (tests that use it take turns). Exit status 0 passed, 1 failed, 2 can't run.
 - `jevision validate <tests>`: report errors and warnings.
 - `jevision fmt <tests> [--check]`: rewrite files in canonical form.
 - `jevision schedule run <project>`: run the project's schedules that are due.

@@ -7,6 +7,7 @@
 mod batch;
 mod board;
 mod canvas;
+mod ci;
 mod data;
 mod decode;
 mod diff;
@@ -34,6 +35,10 @@ pub use board::{
     LaidBoardEdge, LaidNode, OPEN_HEADER, blocks_area, is_image_file,
 };
 pub use canvas::CanvasItem;
+pub use ci::{
+    CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, ci_workflow, ci_workflow_text, repository_root,
+    write_ci_workflow,
+};
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
@@ -94,8 +99,8 @@ pub enum BlockGroup {
     /// Conditions and loops.
     Logic,
     SubTests,
-    /// Test data, and blocks that work without the screen: requests, files, databases,
-    /// commands and scripts.
+    /// Test data, and blocks that work without the screen: the clipboard, date and time,
+    /// requests, files, databases, commands and scripts.
     Data,
 }
 
@@ -126,6 +131,8 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),
     ("runTest", BlockGroup::SubTests, &[NEXT]),
     ("useData", BlockGroup::Data, &[BODY, NEXT]),
+    ("clipboard", BlockGroup::Data, &[NEXT]),
+    ("dateTime", BlockGroup::Data, &[NEXT]),
     ("http", BlockGroup::Data, &[NEXT]),
     ("database", BlockGroup::Data, &[NEXT]),
     ("checkFile", BlockGroup::Data, &[NEXT]),
