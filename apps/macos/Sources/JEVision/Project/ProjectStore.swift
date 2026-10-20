@@ -33,6 +33,10 @@ final class ProjectStore {
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
   var isCreatingTest = false
+  /// The block the Install Block sheet is reading or installing; set to show the sheet.
+  var installingBlock: BlockInstallModel?
+  /// The Custom Blocks sheet is shown.
+  var showsCustomBlocks = false
   /// The command palette (⌘K) is shown.
   var showsCommandPalette = false
   /// Saved runs, newest first.
@@ -113,6 +117,46 @@ final class ProjectStore {
     guard panel.runModal() == .OK, let url = panel.url else { return }
     save(url)
     open(url)
+  }
+
+  /// Shows the Install Block sheet, reading the block at `source` (a folder, a .zip file or an
+  /// address) at once when one is given.
+  func installBlock(from source: String? = nil) {
+    installingBlock = makeBlockInstaller(source: source)
+  }
+
+  /// Shows the Install Block sheet for a block a test needs: it reads the block from the address the
+  /// test knows, or waits for a file or an address when it doesn't know one.
+  func installBlock(for need: BlockNeed) {
+    installingBlock = makeBlockInstaller(source: need.source)
+    installingBlock?.need = need
+  }
+
+  /// A sheet model that installs blocks into this project: it reads `source` at once, or the
+  /// update of the installed block `id`, when one is given.
+  func makeBlockInstaller(source: String? = nil, updating id: String? = nil) -> BlockInstallModel? {
+    guard let rootURL else { return nil }
+    let model = BlockInstallModel(project: rootURL)
+    model.onInstalled = { [weak self] _ in self?.blocksChanged() }
+    if let id {
+      Task { await model.readUpdate(of: id) }
+    } else if let source {
+      Task { await model.read(source) }
+    }
+    return model
+  }
+
+  func makeCustomBlocks() -> CustomBlocksModel? {
+    guard let rootURL else { return nil }
+    let model = CustomBlocksModel(project: rootURL)
+    model.onChange = { [weak self] in self?.blocksChanged() }
+    return model
+  }
+
+  /// The blocks of the project changed: the library shows them, and the open test is checked again.
+  private func blocksChanged() {
+    library.reload()
+    document?.revalidate()
   }
 
   func reveal(_ item: ProjectItem) {
@@ -433,7 +477,7 @@ final class ProjectStore {
     undoManager?.setActionName(action)
   }
 
-  private func open(_ url: URL) {
+  func open(_ url: URL) {
     accessedURL?.stopAccessingSecurityScopedResource()
     accessedURL = url.startAccessingSecurityScopedResource() ? url : nil
     AppLog.info("Project opened: \(url.path)", "project")

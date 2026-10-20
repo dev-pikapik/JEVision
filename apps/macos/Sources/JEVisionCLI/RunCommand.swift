@@ -386,13 +386,16 @@ final class TestSession: @unchecked Sendable {
       emit(progress.paint("Also running, because other tests depend on them: \(added.joined(separator: ", "))", .dim) + "\n")
     }
     lock.withLock { outcomes = Array(repeating: nil, count: entries.count) }
-    while true {
+    func saveBlockedTests() {
       for (i, entry) in batch.entries().enumerated() where lock.withLock({ outcomes[i] == nil }) {
         if case .blocked(let blocker) = entry.state {
           let outcome = saveBlocked(entry, blocker)
           lock.withLock { outcomes[i] = outcome }
         }
       }
+    }
+    while true {
+      saveBlockedTests()
       if lock.withLock({ stopped }) { batch.stop() }
       // Nobody running now, so nothing can end while the plan is asked: no answer means none will come.
       let idle = lock.withLock { running.isEmpty }
@@ -404,6 +407,8 @@ final class TestSession: @unchecked Sendable {
       if batch.isOver() || (idle && !startedAny) { break }
       ended.wait()
     }
+    // A test that ended while the loop was deciding to stop may have blocked others just now.
+    saveBlockedTests()
     let results = lock.withLock { zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) } }
     printSummary(results, duration: Date().timeIntervalSince(started))
     if request.notify, !lock.withLock({ stopped }) { notify(about: results.compactMap(\.dir)) }

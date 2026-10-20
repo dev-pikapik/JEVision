@@ -74,14 +74,10 @@ pub fn import_ci_artifact(
 /// Writes the run files of `zip` to `staging`: `<run folder>/<file>` for every file under
 /// `.jevision/runs/`, wherever in the zip that folder is.
 fn unpack(zip: impl Read + Seek, staging: &Path) -> io::Result<()> {
-    let invalid = |e: zip::result::ZipError| match e {
-        zip::result::ZipError::Io(e) => e,
-        other => io::Error::new(io::ErrorKind::InvalidData, other),
-    };
-    let mut archive = ZipArchive::new(zip).map_err(invalid)?;
+    let mut archive = ZipArchive::new(zip).map_err(zip_invalid)?;
     let mut left = MAX_UNPACKED;
     for i in 0..archive.len() {
-        let mut entry = archive.by_index(i).map_err(invalid)?;
+        let mut entry = archive.by_index(i).map_err(zip_invalid)?;
         if !entry.is_file() || entry.is_symlink() {
             continue;
         }
@@ -93,26 +89,48 @@ fn unpack(zip: impl Read + Seek, staging: &Path) -> io::Result<()> {
             fs::create_dir_all(folder)?;
         }
         let mut file = fs::File::create(&target)?;
-        // The size the zip declares is not trusted: count what really comes out. A zip that
-        // can't be read to the end is broken; a file that can't be written is this Mac's trouble.
-        let mut chunk = [0; 64 * 1024];
-        loop {
-            let n = entry
-                .read(&mut chunk)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-            if n == 0 {
-                break;
-            }
-            left = left.checked_sub(n as u64).ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "the CI files unpack to more than 1 GB",
-                )
-            })?;
-            file.write_all(&chunk[..n])?;
+        if !copy_counted(&mut entry, &mut file, &mut left)? {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "the CI files unpack to more than 1 GB",
+            ));
         }
     }
     Ok(())
+}
+
+/// A zip that can't be read as an [`io::Error`]: [`io::ErrorKind::InvalidData`] when the zip is
+/// broken, the error itself when the disk is.
+pub(crate) fn zip_invalid(e: zip::result::ZipError) -> io::Error {
+    match e {
+        zip::result::ZipError::Io(e) => e,
+        other => io::Error::new(io::ErrorKind::InvalidData, other),
+    }
+}
+
+/// Copies what `from`, a file of a zip, holds to `to`, taking each byte from `left`; `false` when
+/// `left` runs out, with what fit already written. The size the zip declares is not trusted:
+/// what really comes out is counted. A zip that can't be read to the end is broken
+/// ([`io::ErrorKind::InvalidData`]); a file that can't be written is this Mac's trouble.
+pub(crate) fn copy_counted(
+    from: &mut impl Read,
+    to: &mut impl Write,
+    left: &mut u64,
+) -> io::Result<bool> {
+    let mut chunk = [0; 64 * 1024];
+    loop {
+        let n = from
+            .read(&mut chunk)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        if n == 0 {
+            return Ok(true);
+        }
+        let Some(rest) = left.checked_sub(n as u64) else {
+            return Ok(false);
+        };
+        *left = rest;
+        to.write_all(&chunk[..n])?;
+    }
 }
 
 /// The part of `name` after `.jevision/runs/` (the last such place in the path); `None` for a

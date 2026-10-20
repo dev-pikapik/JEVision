@@ -147,8 +147,12 @@ enum IssueText {
       return String(
         localized: "flow.dateTime.format",
         defaultValue: "“\(p("value"))” isn’t a date format. Write it like \("%Y-%m-%d %H:%M"): a letter after a percent sign stands for a part of the date.", bundle: .app, locale: .app)
+    case "flow.package.version":
+      return String(localized: "flow.package.version", defaultValue: "The version of the block must look like 1.2.0.", bundle: .app, locale: .app)
+    case "flow.package.source":
+      return String(localized: "flow.package.source", defaultValue: "The address of the block must start with https://.", bundle: .app, locale: .app)
     default:
-      return String(localized: "Unknown problem: \(issue.code)")
+      return BlockPackageText.message(issue) ?? String(localized: "Unknown problem: \(issue.code)")
     }
   }
 

@@ -38,6 +38,11 @@ struct AppCommands: Commands {
         Button("Show Project in Finder") { project.revealRoot() }
           .disabled(project.rootURL == nil)
         Divider()
+        Button("Install Block…") { project.installBlock() }
+          .disabled(project.status != .ready)
+        Button("Custom Blocks…") { project.showsCustomBlocks = true }
+          .disabled(project.status != .ready)
+        Divider()
         Button("Commit Changes…") { openWindow(id: SceneID.commit) }
           .keyboardShortcut(Shortcuts.commit)
           .disabled(git?.changes.isEmpty ?? true)

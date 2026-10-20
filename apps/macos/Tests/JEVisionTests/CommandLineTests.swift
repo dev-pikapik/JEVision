@@ -257,6 +257,31 @@ struct CommandLineToolTests {
     #expect(missing.err.contains("cannot read: No such file or directory"))
   }
 
+  @Test func aMissingBlockIsReportedWithItsVersionAndHowToInstallIt() throws {
+    let dir = try Scratch()
+    let step = { (package: String) in
+      #"{"format": 1, "name": "T", "app": "com.example.App", "start": "a", "blocks": {"a": {"type": "runTest", "test": "blocks/com.acme.sign-in.jevblock/flow.json"\#(package), "inputs": {}}}}"#
+    }
+    let known = try dir.file("known.flow.json", step(#", "package": {"version": "1.2.0", "source": "https://github.com/acme/sign-in"}"#))
+    let result = try jevision("validate", known)
+    #expect(result.status == 1)
+    #expect(
+      result.out.contains(
+        "needs the block com.acme.sign-in 1.2.0, which isn't installed in this project; install it with `jevision blocks install https://github.com/acme/sign-in` or remove this step."))
+
+    let old = try dir.file("old.flow.json", step(""))
+    let oldResult = try jevision("validate", old)
+    #expect(oldResult.out.contains("needs the block com.acme.sign-in, which isn't installed"))
+    #expect(oldResult.out.contains("`jevision blocks install <folder, .zip file or https address>`"))
+
+    let failure = Failure(
+      code: "run.block.notInstalled",
+      params: ["block": "a", "package": "com.acme.sign-in", "version": "1.2.0", "source": "https://github.com/acme/sign-in"])
+    #expect(
+      describeFailure(failure: failure)
+        == "Block a: the package com.acme.sign-in 1.2.0 is not installed; install it with `jevision blocks install https://github.com/acme/sign-in`, then run the test again.")
+  }
+
   @Test func validateFindsTestsWaitingForEachOther() throws {
     let dir = try Scratch()
     let test = { (name: String, after: String) in

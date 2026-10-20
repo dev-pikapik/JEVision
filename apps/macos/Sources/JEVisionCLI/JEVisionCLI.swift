@@ -39,6 +39,8 @@ enum JEVisionCLI {
       return ScheduleCommand(project: project).execute()
     case .issue(let request):
       return IssueCommand(request: request).execute()
+    case .blocks(let request):
+      return BlocksCommand(request: request).execute()
     }
   }
 }
@@ -105,6 +107,7 @@ enum Command: Equatable {
   case mcp(project: String?, action: MCPAction)
   case scheduleRun(project: String)
   case issue(IssueRequest)
+  case blocks(BlocksRequest)
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }
@@ -233,6 +236,10 @@ enum Command: Equatable {
         throw UsageError(message: "name one project folder", command: name)
       }
       return .scheduleRun(project: options.paths[1])
+    case "blocks":
+      let options = try Options.parse(rest, command: name, flags: ["--yes", "--force"], values: ["--project"])
+      if options.wantsHelp || options.paths.isEmpty { return .help(name) }
+      return .blocks(try blocksRequest(options))
     case "issue":
       let options = try Options.parse(
         rest, command: name, flags: ["--send", "--new"], values: ["--project", "--title", "--comment-on"])
@@ -259,6 +266,41 @@ enum Command: Equatable {
       let what = name.hasPrefix("-") ? "option" : "command"
       throw UsageError(message: "there is no \(what) “\(name)”")
     }
+  }
+}
+
+extension Command {
+  /// `blocks list|install <source>|update [id]|remove <id>`.
+  private static func blocksRequest(_ options: Options) throws(UsageError) -> BlocksRequest {
+    let name = "blocks"
+    let (action, arguments) = (options.paths[0], Array(options.paths.dropFirst()))
+    func argument(_ what: String) throws(UsageError) -> String {
+      guard arguments.count == 1 else { throw UsageError(message: "name one \(what)", command: name) }
+      return arguments[0]
+    }
+    let blocks: BlocksRequest.Action
+    switch action {
+    case "list":
+      guard arguments.isEmpty else { throw UsageError(message: "blocks list takes no arguments", command: name) }
+      blocks = .list
+    case "install": blocks = .install(source: try argument("block folder, .zip file or https address"))
+    case "remove": blocks = .remove(id: try argument("block id, such as com.acme.sign-in"))
+    case "update":
+      guard arguments.count <= 1 else { throw UsageError(message: "name one block id, or none for all", command: name) }
+      blocks = .update(id: arguments.first)
+    default:
+      throw UsageError(message: "there is no blocks command “\(action)”", command: name)
+    }
+    var request = BlocksRequest(action: blocks, project: options.values["--project"])
+    request.yes = options.flags.contains("--yes")
+    request.force = options.flags.contains("--force")
+    if request.yes, !["install", "update"].contains(action) {
+      throw UsageError(message: "--yes belongs to install and update", command: name)
+    }
+    if request.force, action == "list" {
+      throw UsageError(message: "--force belongs to install, update and remove", command: name)
+    }
+    return request
   }
 }
 
@@ -326,7 +368,7 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "fmt", "issue", "mcp", "schedule"]
+  static let commands = ["run", "validate", "fmt", "issue", "mcp", "schedule", "blocks"]
 
   static func usage(_ command: String?) -> String {
     switch command {
@@ -336,6 +378,7 @@ enum Help {
     case "issue": "Usage: jevision issue [<test or run>] [--send] [options]"
     case "mcp": "Usage: jevision mcp [--project <folder>]\n       jevision mcp --pair <code>\n       jevision mcp --remote <Mac> [--project <name>]\n       jevision mcp --forget <Mac>"
     case "schedule": "Usage: jevision schedule run <project>"
+    case "blocks": "Usage: jevision blocks list | install <folder, .zip or https address> | update [<id>] | remove <id> [options]"
     default: "Usage: jevision <command> [options]"
     }
   }
@@ -533,6 +576,43 @@ enum Help {
       get the values of secrets or API keys, and can't touch files outside the project folder.
 
       """
+    case "blocks":
+      """
+      Lists, installs, updates and removes the blocks others shared: a block is a set of
+      steps in a folder (ID.jevblock) or a .zip file, which tests run as one step. Blocks
+      live in the project, in blocks/, and the address each came from is kept in
+      jevision.blocks.json so it can be updated.
+
+      \(usage(command))
+
+      Commands:
+        list                      Show the installed blocks
+        install <source>          Show what a block does; install it with --yes. The source
+                                  is a block folder, a .zip file, or an https address of a
+                                  .zip file, a GitHub repository or a GitHub release
+        update [<id>]             Fetch the newest version of a block installed from an
+                                  address, or of all of them; install it with --yes
+        remove <id>               Remove a block
+
+      Options:
+        --project <folder>        Project folder. Default: the nearest folder at or above
+                                  the current one that has a .jevision folder, otherwise
+                                  the current folder
+        --yes                     Install or update after showing what the block does
+        --force                   Remove a block that tests use, install the version that
+                                  is installed again, or go back to an older version
+        -h, --help                Show this help
+
+      Installing shows the steps in plain words and, apart, the steps that run a script,
+      send network requests, use a database, open apps, type on the keyboard or use the
+      clipboard. Nothing is installed without --yes, and nothing in a block runs while it
+      is installed. Only https addresses are downloaded.
+
+      Exit status: 0 — done, 1 — nothing was installed or removed because of what the
+      block or the project says, or because --yes or --force is missing, 2 — the project,
+      block or address couldn’t be read.
+
+      """
     case "schedule":
       """
       Runs the schedules of a project that are due now, from jevision.schedule.json in the
@@ -571,6 +651,7 @@ enum Help {
         issue      Report a failed run as a GitHub issue
         mcp        Let AI assistants read, edit and run tests (MCP server)
         schedule   Run the schedules of a project that are due now
+        blocks     Install, update and remove blocks others shared
 
       Options:
         -h, --help     Show this help

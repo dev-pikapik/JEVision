@@ -17,6 +17,12 @@ enum ProjectScanner {
     return String(fileName.dropLast(suffix.count))
   }
 
+  /// The name of the test or custom block the file at `path` holds; a block installed from the
+  /// community is named by its id.
+  static func testName(path: String) -> String {
+    blockPackageId(path: path) ?? testName((path as NSString).lastPathComponent)
+  }
+
   /// Returns folders that contain tests (directly or deeper) and the tests themselves.
   /// Hidden items, packages and symbolic links are skipped. Throws if the folder can't be read.
   static func scan(_ root: URL) throws -> [ProjectItem] {

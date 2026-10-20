@@ -189,6 +189,7 @@ mod tests {
             display_scale: None,
             blocked: None,
             added_as_dependency: false,
+            packages: Vec::new(),
             rows: Vec::new(),
             attempts: attempts
                 .into_iter()

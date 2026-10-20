@@ -25,6 +25,7 @@ struct FieldContext {
 
 /// Problems shown right under the field they are about.
 struct IssueList: View {
+  @Environment(ProjectStore.self) private var project
   let issues: [Issue]
 
   var body: some View {
@@ -38,6 +39,10 @@ struct IssueList: View {
       .font(.callout)
       .foregroundStyle(isError ? .red : .orange)
       .fixedSize(horizontal: false, vertical: true)
+      if let need = BlockNeed(issue) {
+        Button("Install…") { project.installBlock(for: need) }
+          .help(Text("Opens the sheet that installs the block this step needs."))
+      }
     }
   }
 }
