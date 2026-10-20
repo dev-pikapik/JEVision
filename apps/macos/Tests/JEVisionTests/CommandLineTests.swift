@@ -122,6 +122,40 @@ struct CommandLineArgumentTests {
     for provider in AISettings.providers { #expect(help.contains(provider.id)) }
   }
 
+  @Test func parallelTakesAnOptionalNumber() throws {
+    let cores = RunRequest.defaultParallel
+    #expect(cores >= 1 && cores <= maxParallelRuns())
+    func parsed(_ arguments: String...) throws -> RunRequest {
+      guard case .run(let request) = try Command.parse(["run"] + arguments) else { throw UsageError(message: "not a run") }
+      return request
+    }
+    #expect(try parsed("t").parallel == nil, "without the flag the tests run one after another")
+    #expect(try parsed("t", "--parallel").parallel == cores)
+    #expect(try parsed("--parallel", "t").parallel == cores, "a path after --parallel stays a path")
+    #expect(try parsed("--parallel", "t").paths == ["t"])
+    #expect(try parsed("--parallel", "4", "t").parallel == 4)
+    #expect(try parsed("--parallel", "4", "t").paths == ["t"])
+    #expect(try parsed("t", "--parallel=3").parallel == 3)
+    #expect(try parsed("t", "--parallel", "1").parallel == 1)
+    #expect(try parsed("--parallel", "2", "--", "7").paths == ["7"], "a folder named 7 after --")
+    #expect(try parsed("--parallel", "--env", "ci", "t").environment == "ci")
+    var request = RunRequest(paths: ["t"])
+    request.parallel = 2
+    #expect(try Command.parse(["run", "t", "--parallel", "2"]) == .run(request))
+    #expect(Help.text("run").contains("--parallel [<n>]"))
+    #expect(try Command.parse(["run", "--parallel", "-h"]) == .help("run"))
+  }
+
+  @Test(arguments: [
+    (["run", "t", "--parallel", "0"], "--parallel needs a number of tests from 1 to 16, such as 4, not “0”"),
+    (["run", "t", "--parallel=17"], "--parallel needs a number of tests from 1 to 16, such as 4, not “17”"),
+    (["run", "t", "--parallel=many"], "--parallel needs a number of tests from 1 to 16, such as 4, not “many”"),
+    (["run", "t", "--parallel", "2", "--parallel"], "--parallel is given twice"),
+  ])
+  func parallelUsageErrors(arguments: [String], message: String) {
+    #expect(throws: UsageError(message: message, command: "run")) { try Command.parse(arguments) }
+  }
+
   @Test func dataRows() throws {
     #expect(try Command.parse(["run", "t", "--row", "3"]) == .run(RunRequest(paths: ["t"], rows: DataRowRange(first: 2, last: 2))))
     #expect(try Command.parse(["run", "t", "--rows", "2-4"]) == .run(RunRequest(paths: ["t"], rows: DataRowRange(first: 1, last: 3))))
@@ -471,6 +505,152 @@ struct CommandLineRunTests {
     #expect(junit.contains("<skipped message=\"Blocked: Login failed."))
   }
 
+  /// What a test that only runs a command and passes ends as: it checked nothing on the screen.
+  private static let ended = "nothingChecked"
+
+  /// A test of one command, which leaves the screen alone, in a folder `dir`.
+  private func quiet(_ dir: Scratch, _ name: String, _ command: String, after: [String] = []) throws -> String {
+    let needs = after.map { "\"\($0)\"" }.joined(separator: ", ")
+    let escaped = command.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    return try dir.file(
+      "\(name).flow.json",
+      """
+      {"format": 1, "name": "\(name)", "app": "com.example.App", "dependsOn": [\(needs)], "start": "run",
+        "blocks": {"run": {"type": "command", "command": "\(escaped)", "timeout": "60s"}}}
+      """)
+  }
+
+  private func session(
+    _ dir: Scratch, _ tests: [String], parallel: UInt32?, console: Console = Console(write: { _ in }),
+    hands: @escaping (TestRun) -> any Hands = { run in WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { run.isCancelled() }) }
+  ) -> (TestSession, RunRequest) {
+    var request = RunRequest(paths: tests, json: true)
+    request.parallel = parallel
+    request.junit = dir.url.appending(path: "junit.xml").path
+    return (TestSession(project: dir.url.path, tests: tests, request: request, progress: console, input: nil, makeHands: hands), request)
+  }
+
+  @Test func testsThatLeaveTheScreenAloneRunSideBySide() throws {
+    let dir = try Scratch()
+    // Each waits for the file of the other: one after another, the first would wait for nothing.
+    let wait = { (mine: String, theirs: String) in
+      "touch \(mine); for i in $(seq 200); do [ -f \(theirs) ] && exit 0; sleep 0.05; done; exit 1"
+    }
+    let first = try quiet(dir, "first", wait("one", "two"))
+    let second = try quiet(dir, "second", wait("two", "one"))
+    let (session, _) = session(dir, [first, second], parallel: 2)
+    let results = session.runAll()
+    #expect(results.map(\.verdict) == [Self.ended, Self.ended])
+  }
+
+  @Test func oneAfterAnotherIsTheDefault() throws {
+    let dir = try Scratch()
+    // The second only passes if the first has ended: it looks for the file the first leaves at its end.
+    let first = try quiet(dir, "first", "sleep 0.3; touch done")
+    let second = try quiet(dir, "second", "test -f done")
+    let (session, _) = session(dir, [first, second], parallel: nil)
+    #expect(session.runAll().map(\.verdict) == [Self.ended, Self.ended])
+  }
+
+  @Test func aTestStartsAfterItsDependencyEvenWithPlacesFree() throws {
+    let dir = try Scratch()
+    _ = try quiet(dir, "setup", "sleep 0.4; touch ready")
+    let user = try quiet(dir, "user", "test -f ready", after: ["setup.flow.json"])
+    let other = try quiet(dir, "other", "true")
+    let (session, _) = session(dir, [user, other], parallel: 4)
+    let results = session.runAll()
+    #expect(results.map(\.file) == ["setup.flow.json", "user.flow.json", "other.flow.json"])
+    #expect(results.map(\.verdict) == Array(repeating: Self.ended, count: 3), "user saw the file setup leaves")
+  }
+
+  @Test func aFailedDependencyBlocksItsTestsAndTheRestGoesOn() throws {
+    let dir = try Scratch()
+    _ = try quiet(dir, "setup", "exit 1")
+    let user = try quiet(dir, "user", "true", after: ["setup.flow.json"])
+    let other = try quiet(dir, "other", "true")
+    let (session, request) = session(dir, [user, other], parallel: 3)
+    let results = session.runAll()
+    #expect(results.map(\.verdict) == ["failed", "blocked", Self.ended])
+    var command = RunCommand(request: request)
+    let output = Lines()
+    command.output = Console(write: { output.append($0) })
+    command.progress = Console(write: { _ in })
+    #expect(command.finish(results) == .problems)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+    #expect(json["blocked"] as? Int == 1)
+    let tests = try #require(json["tests"] as? [[String: Any]])
+    #expect(tests[1]["blockedBy"] as? String == "Blocked: setup failed")
+  }
+
+  @Test func reportsKeepTheOrderOfTheTestsAndEachTestPrintsInOnePiece() throws {
+    let dir = try Scratch()
+    let slow = try quiet(dir, "slow", "sleep 0.6")
+    let fast = try quiet(dir, "fast", "true")
+    let printed = Lines()
+    let (session, request) = session(dir, [slow, fast], parallel: 2, console: Console(write: { printed.append($0) }))
+    let results = session.runAll()
+    #expect(results.map(\.file) == ["slow.flow.json", "fast.flow.json"], "the order the tests were given in")
+
+    let pieces = printed.parts.filter { $0.contains("Finished in") }
+    #expect(pieces.count == 2, "a test's lines are written together, when it ends")
+    guard pieces.count == 2 else { return }
+    #expect(pieces[0].contains("fast.flow.json") && pieces[1].contains("slow.flow.json"), "printed as they end")
+    #expect(printed.text.contains("up to 2 at a time"))
+
+    var command = RunCommand(request: request)
+    let output = Lines()
+    command.output = Console(write: { output.append($0) })
+    command.progress = Console(write: { _ in })
+    #expect(command.finish(results) == .ok)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+    let tests = try #require(json["tests"] as? [[String: Any]])
+    #expect(tests.map { $0["file"] as? String } == ["slow.flow.json", "fast.flow.json"])
+    let junit = try String(contentsOfFile: try #require(request.junit), encoding: .utf8)
+    let at = { (name: String) in junit.range(of: "name=\"\(name)\"")?.lowerBound }
+    #expect(try #require(at("slow")) < #require(at("fast")), "the JUnit report lists the tests in their order")
+  }
+
+  @Test func testsOnTheScreenTakeTurnsBesideQuietOnes() throws {
+    let dir = try Scratch()
+    let screen = { (name: String) in
+      try dir.file(
+        "\(name).flow.json",
+        #"{"format": 1, "name": "\#(name)", "app": "com.example.App", "start": "open", "blocks": {"open": {"type": "openApp"}}}"#)
+    }
+    let tests = [try screen("a"), try screen("b"), try screen("c"), try quiet(dir, "q", "sleep 0.2")]
+    let counter = ScreenCounter()
+    let (session, _) = session(dir, tests, parallel: 4) { run in CountingHands(counter: counter) }
+    let results = session.runAll()
+    #expect(results.count == 4)
+    #expect(counter.entered == 3, "every test on the screen ran")
+    #expect(counter.most == 1, "never two tests on the screen at once")
+  }
+
+  @Test func stoppingEndsEveryRunningTest() throws {
+    let dir = try Scratch()
+    let tests = [
+      try quiet(dir, "one", "touch one; sleep 30"), try quiet(dir, "two", "touch two; sleep 30"),
+      try quiet(dir, "three", "true", after: ["one.flow.json"]),
+    ]
+    let printed = Lines()
+    let (session, _) = session(dir, tests, parallel: 4, console: Console(write: { printed.append($0) }))
+    let finished = DispatchSemaphore(value: 0)
+    let results = Box<[TestResult]>()
+    Thread.detachNewThread {
+      results.value = session.runAll()
+      finished.signal()
+    }
+    let both = dir.url.appending(path: "one").path
+    for _ in 0..<200 where !(FileManager.default.fileExists(atPath: both) && FileManager.default.fileExists(atPath: dir.url.appending(path: "two").path)) {
+      usleep(50_000)
+    }
+    session.stop()
+    try #require(finished.wait(timeout: .now() + 20) == .success, "stopping didn’t end the tests")
+    #expect(results.value?.map(\.verdict) == ["cancelled", "cancelled", "notRun"])
+    #expect(printed.text.contains("Stopping…"))
+    #expect(printed.text.contains("2 stopped"))
+  }
+
   @Test func planFindsTestsAndTheProject() throws {
     let dir = try Scratch()
     try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)
@@ -566,10 +746,61 @@ private final class WaitingHands: Hands, @unchecked Sendable {
 
 private final class Lines: @unchecked Sendable {
   private let lock = NSLock()
-  private var parts: [String] = []
+  private var written: [String] = []
 
-  func append(_ part: String) { lock.withLock { parts.append(part) } }
-  var text: String { lock.withLock { parts.joined() } }
+  func append(_ part: String) { lock.withLock { written.append(part) } }
+  /// Each piece the console was given, as written.
+  var parts: [String] { lock.withLock { written } }
+  var text: String { lock.withLock { written.joined() } }
+}
+
+/// How many tests are on the screen at once.
+private final class ScreenCounter: @unchecked Sendable {
+  private let lock = NSLock()
+  private var now = 0
+  private(set) var most = 0
+  private(set) var entered = 0
+
+  func enter() {
+    lock.withLock {
+      now += 1
+      entered += 1
+      most = max(most, now)
+    }
+  }
+
+  func leave() { lock.withLock { now -= 1 } }
+}
+
+/// Hands that take a moment to open the app and count the tests doing it together.
+private final class CountingHands: Hands, @unchecked Sendable {
+  private let counter: ScreenCounter
+
+  init(counter: ScreenCounter) { self.counter = counter }
+
+  func openApp(app: String) throws(HandsError) {
+    counter.enter()
+    usleep(250_000)
+    counter.leave()
+  }
+
+  func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {}
+  func activate(app: String) throws(HandsError) {}
+  func quit(app: String) throws(HandsError) {}
+  func closeItems(items: [Openable], app: String?) throws(HandsError) {}
+  func capture(app: String) throws(HandsError) -> Screenshot { throw .NoWindow(app: app) }
+  func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? { nil }
+  func click(app: String, at: Point, button: MouseButton, doubleClick: Bool, modifiers: Modifiers) throws(HandsError) {}
+  func hover(app: String, at: Point) throws(HandsError) {}
+  func drag(app: String, path: [Point], button: MouseButton, modifiers: Modifiers) throws(HandsError) {}
+  func scroll(app: String, at: Point, direction: ScrollDirection, amount: UInt32, unit: ScrollUnit) throws(HandsError) {}
+  func typeText(text: String) throws(HandsError) {}
+  func pressKeys(keys: String) throws(HandsError) {}
+  func clipboard() throws(HandsError) -> String { "" }
+  func setClipboard(text: String) throws(HandsError) {}
+  func userInputDetected() -> Bool { false }
+  func startVideo(app: String, path: String, hide: [Rect]) throws(HandsError) {}
+  func stopVideo() throws(HandsError) {}
 }
 
 private final class Box<T>: @unchecked Sendable {

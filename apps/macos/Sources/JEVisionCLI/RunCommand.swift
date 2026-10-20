@@ -2,7 +2,7 @@ import Foundation
 import JEVisionCore
 import JEVisionHands
 
-/// `jevision run`: runs tests one after another on this Mac, the tests they depend on first, shows how it goes and saves reports.
+/// `jevision run`: runs tests on this Mac, one after another or side by side, the tests they depend on first, shows how it goes and saves reports.
 struct RunCommand {
   let request: RunRequest
   /// Progress and the summary; standard error when the result goes out as JSON.
@@ -274,7 +274,8 @@ struct TestResult {
   }
 }
 
-/// Runs the tests one at a time; `stop` cancels the one running and skips the rest.
+/// Runs the tests one at a time, or with `--parallel` side by side as the core's plan allows;
+/// `stop` cancels the ones running and skips the rest.
 final class TestSession: @unchecked Sendable {
   private let project: String
   private let tests: [String]
@@ -290,8 +291,14 @@ final class TestSession: @unchecked Sendable {
   /// The person's mouse and keyboard, watched while a test runs.
   private let input: InputWatcher?
   private let lock = NSLock()
-  private var current: TestRun?
+  /// The tests running now, by position in the plan.
+  private var running: [Int: TestRun] = [:]
+  private var outcomes: [TestResult.Outcome?] = []
   private var stopped = false
+  /// A test ended: the plan may have more to start.
+  private let ended = DispatchSemaphore(value: 0)
+  /// Keeps what goes to the console in pieces that stay whole.
+  private let printing = NSLock()
 
   init(
     project: String, tests: [String], request: RunRequest, progress: Console, input: InputWatcher?,
@@ -313,52 +320,86 @@ final class TestSession: @unchecked Sendable {
     self.makeHands = makeHands
   }
 
-  /// Stops the test that is running, which is then reported as cancelled, and the ones after it.
+  /// Stops the tests that are running, which are then reported as cancelled, and the ones after them.
   func stop() {
-    let (run, wasStopped) = lock.withLock {
+    let (runs, wasStopped) = lock.withLock {
       defer { stopped = true }
-      return (current, stopped)
+      return (Array(running.values), stopped)
     }
-    run?.cancel()
+    runs.forEach { $0.cancel() }
     guard !wasStopped else { return }
-    progress.line()
-    progress.line(progress.paint("Stopping…", .yellow))
+    emit("\n" + progress.paint("Stopping…", .yellow) + "\n")
+  }
+
+  /// Writes `text` in one piece, so it doesn't mix with what another test prints.
+  private func emit(_ text: String) {
+    printing.withLock { progress.write(text) }
   }
 
   func runAll() -> [TestResult] {
     let started = Date()
     let count = tests.count == 1 ? "1 test" : "\(tests.count) tests"
-    progress.line("Running \(count) in \(project). Press Esc twice or Ctrl-C to stop.")
-    // One at a time: tests that use the screen would take turns anyway, and each test's lines stay together.
+    let mode: RunMode = request.parallel.map { .parallel(limit: $0) } ?? .sequential
     let batch = TestBatch(
-      project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: .sequential)
+      project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: mode)
     let entries = batch.entries()
+    // Tests that use the screen take turns, so side by side only pays when one of them leaves it alone.
+    let limit = request.parallel ?? 1
+    let sideBySide = limit > 1 && entries.count > 1 && entries.contains { !$0.usesScreen }
+    emit(
+      "Running \(count) in \(project)" + (sideBySide ? ", up to \(limit) at a time" : "")
+        + ". Press Esc twice or Ctrl-C to stop.\n")
+    if limit > 1, entries.count > 1, !sideBySide {
+      emit(progress.paint("Every test uses the screen, so they run one at a time.", .dim) + "\n")
+    }
     let added = entries.filter(\.added).map(\.name)
     if !added.isEmpty {
-      progress.line(progress.paint("Also running, because other tests depend on them: \(added.joined(separator: ", "))", .dim))
+      emit(progress.paint("Also running, because other tests depend on them: \(added.joined(separator: ", "))", .dim) + "\n")
     }
-    var outcomes: [TestResult.Outcome?] = Array(repeating: nil, count: entries.count)
+    lock.withLock { outcomes = Array(repeating: nil, count: entries.count) }
     while true {
-      for (i, entry) in batch.entries().enumerated() where outcomes[i] == nil {
-        if case .blocked(let blocker) = entry.state { outcomes[i] = saveBlocked(entry, blocker) }
+      for (i, entry) in batch.entries().enumerated() where lock.withLock({ outcomes[i] == nil }) {
+        if case .blocked(let blocker) = entry.state {
+          let outcome = saveBlocked(entry, blocker)
+          lock.withLock { outcomes[i] = outcome }
+        }
       }
-      let run = TestRun()
-      let isStopped = lock.withLock {
-        current = run
-        return stopped
+      if lock.withLock({ stopped }) { batch.stop() }
+      // Nobody running now, so nothing can end while the plan is asked: no answer means none will come.
+      let idle = lock.withLock { running.isEmpty }
+      var startedAny = false
+      while let position = batch.startNext() {
+        startedAny = true
+        launch(Int(position), entry: entries[Int(position)], of: batch, sideBySide: sideBySide)
       }
-      if isStopped { batch.stop() }
-      guard let position = batch.startNext() else { break }
-      let entry = entries[Int(position)]
-      let outcome = self.run((project as NSString).appendingPathComponent(entry.file), entry: entry, with: run)
-      outcomes[Int(position)] = outcome
-      _ = batch.finish(position: position, outcome: Self.testOutcome(outcome))
+      if batch.isOver() || (idle && !startedAny) { break }
+      ended.wait()
     }
-    lock.withLock { current = nil }
-    let results = zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) }
+    let results = lock.withLock { zip(entries, outcomes).map { TestResult(file: $0.file, outcome: $1 ?? .notRun) } }
     printSummary(results, duration: Date().timeIntervalSince(started))
     if request.notify, !lock.withLock({ stopped }) { notify(about: results.compactMap(\.dir)) }
     return results
+  }
+
+  /// Starts the test at `position` on a thread of its own and wakes `runAll` when it is over. With
+  /// tests side by side, its lines are kept until it ends and then printed together.
+  private func launch(_ position: Int, entry: BatchEntry, of batch: TestBatch, sideBySide: Bool) {
+    let run = TestRun()
+    let isStopped = lock.withLock {
+      running[position] = run
+      return stopped
+    }
+    if isStopped { run.cancel() }
+    DispatchQueue.global().async { [self] in
+      let transcript = Transcript()
+      let console = sideBySide ? Console(write: { transcript.append($0) }, color: progress.color) : progress
+      let outcome = self.run((project as NSString).appendingPathComponent(entry.file), entry: entry, with: run, console: console)
+      if sideBySide { emit(transcript.text) }
+      lock.withLock { outcomes[position] = outcome }
+      _ = batch.finish(position: UInt32(position), outcome: Self.testOutcome(outcome))
+      lock.withLock { running[position] = nil }
+      ended.signal()
+    }
   }
 
   /// What the tests that depend on this one go by.
@@ -375,25 +416,25 @@ final class TestSession: @unchecked Sendable {
 
   /// Saves the run of a test that didn't start because a test it depends on didn't pass.
   private func saveBlocked(_ entry: BatchEntry, _ blocker: Blocker) -> TestResult.Outcome {
-    progress.line()
-    progress.line(progress.paint(entry.name, .bold) + progress.paint("  \(entry.file)", .dim))
-    progress.line("  " + progress.paint(describeBlocker(blocker: blocker), .yellow))
+    var text = "\n" + progress.paint(entry.name, .bold) + progress.paint("  \(entry.file)", .dim) + "\n"
+    text += "  " + progress.paint(describeBlocker(blocker: blocker), .yellow) + "\n"
     let outcome = saveBlockedRun(
       project: project, test: entry.file, blocker: blocker,
       options: RunOptions(
         startAt: nil, retries: nil, environment: request.environment, vision: nil, localOnly: localOnly,
         schedule: request.schedule, video: .off, addedAsDependency: entry.added))
+    defer { emit(text) }
     switch outcome {
     case .finished(let dir, let html, let report):
-      progress.line("  " + progress.paint("Report: \(html ?? dir)", .dim))
+      text += "  " + progress.paint("Report: \(html ?? dir)", .dim) + "\n"
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason):
-      progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
+      text += "  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red) + "\n"
       return .error(reason)
     }
   }
 
-  private func run(_ test: String, entry: BatchEntry, with run: TestRun) -> TestResult.Outcome {
+  private func run(_ test: String, entry: BatchEntry, with run: TestRun, console: Console) -> TestResult.Outcome {
     let flow = (try? String(contentsOfFile: test, encoding: .utf8)).flatMap { try? loadFlow(json: $0) }
     // Without branches and loops every block runs once, so the count tells how far the test is.
     let linear = flow?.blocks.allSatisfy {
@@ -403,12 +444,12 @@ final class TestSession: @unchecked Sendable {
       }
     }
     let listener = Progress(
-      console: progress, blockCount: linear == true && request.startAt == nil ? flow?.blocks.count : nil
+      console: console, blockCount: linear == true && request.startAt == nil ? flow?.blocks.count : nil
     ) { [input] in
       guard let input else { return run.resume() }
       Self.resumeWhenIdle(run, input: input)
     }
-    progress.line()
+    console.line()
     input?.ignoreInput(for: Self.handsOffTime)
     run.start(
       project: project, test: test, options: RunOptions(
@@ -420,10 +461,10 @@ final class TestSession: @unchecked Sendable {
     listener.done.wait()
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
-      printVerdict(report, dir: dir, html: html ?? dir)
+      printVerdict(report, dir: dir, html: html ?? dir, to: console)
       return .finished(dir: dir, html: html, report: report)
     case .failed(let reason)?:
-      progress.line("  " + progress.paint("✗ The run couldn’t be saved: \(reason)", .red))
+      console.line("  " + console.paint("✗ The run couldn’t be saved: \(reason)", .red))
       return .error(reason)
     case nil:
       return .error("The run ended without a result.")
@@ -472,49 +513,49 @@ final class TestSession: @unchecked Sendable {
     }
   }
 
-  private func printVerdict(_ report: RunReport, dir: String, html: String) {
+  private func printVerdict(_ report: RunReport, dir: String, html: String, to console: Console) {
     let took = duration(report.durationMs)
     let attempts = report.attempts.count
     let line =
       switch report.verdict {
       case .passed where report.nothingChecked:
-        progress.paint("Finished in \(took), but nothing was checked: the test has no check or wait block that looks at the screen", .yellow)
+        console.paint("Finished in \(took), but nothing was checked: the test has no check or wait block that looks at the screen", .yellow)
       case .passed:
-        progress.paint(
+        console.paint(
           report.flaky ? "Passed on attempt \(attempts) in \(took). It failed before, so it may be flaky." : "Passed in \(took)",
           .green)
-      case .failed where report.quarantined: progress.paint("Failed in \(took), in quarantine", .yellow)
-      case .failed: progress.paint("Failed in \(took)", .red)
-      case .cancelled: progress.paint("Stopped", .yellow)
-      case .blocked: progress.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
-      case .unknown: progress.paint("Unknown status", .yellow)
+      case .failed where report.quarantined: console.paint("Failed in \(took), in quarantine", .yellow)
+      case .failed: console.paint("Failed in \(took)", .red)
+      case .cancelled: console.paint("Stopped", .yellow)
+      case .blocked: console.paint(report.blocked.map { describeBlocker(blocker: $0) } ?? "Blocked", .yellow)
+      case .unknown: console.paint("Unknown status", .yellow)
       }
-    progress.line("  " + line)
+    console.line("  " + line)
     if !report.rows.isEmpty {
       let passed = report.rows.count { $0.verdict == .passed }
       let rows = report.rows.count == 1 ? "1 row" : "\(report.rows.count) rows"
-      progress.line("  \(passed) of \(rows) passed")
+      console.line("  \(passed) of \(rows) passed")
       for row in report.rows where row.verdict != .passed {
         let color: Console.Style = row.verdict == .cancelled ? .yellow : .red
         let verdict = row.verdict == .cancelled ? "stopped" : "failed"
-        progress.line("    " + progress.paint("\(row.row.title) \(verdict)", color))
+        console.line("    " + console.paint("\(row.row.title) \(verdict)", color))
       }
     }
     if report.verdict == .failed, let verdict = retryVerdict(report: report) {
-      progress.line("  " + describeRetryVerdict(verdict: verdict))
+      console.line("  " + describeRetryVerdict(verdict: verdict))
     }
     if report.quarantined {
       let reason = report.quarantineReason.map { " (\($0))" } ?? ""
-      progress.line(
+      console.line(
         "  In quarantine\(reason): "
           + (request.includeQuarantinedFailures ? "its failures count." : "its failures don't fail the run."))
     }
     if !report.baselinesCreated.isEmpty {
-      progress.line("  New reference images: \(report.baselinesCreated.joined(separator: ", ")). Look at them and commit them.")
+      console.line("  New reference images: \(report.baselinesCreated.joined(separator: ", ")). Look at them and commit them.")
     }
-    progress.line("  " + progress.paint("Report: \(html)", .dim))
+    console.line("  " + console.paint("Report: \(html)", .dim))
     if let video = report.video {
-      progress.line("  " + progress.paint("Video: \(URL(filePath: dir).appending(path: video).path)", .dim))
+      console.line("  " + console.paint("Video: \(URL(filePath: dir).appending(path: video).path)", .dim))
     }
   }
 
@@ -535,6 +576,15 @@ final class TestSession: @unchecked Sendable {
     progress.line()
     progress.line(progress.paint("\(total) in \(duration(UInt64(seconds * 1000))): ", .bold) + parts.joined(separator: ", "))
   }
+}
+
+/// What a test printed, held until it ends so the lines of tests side by side don't mix.
+private final class Transcript: @unchecked Sendable {
+  private let lock = NSLock()
+  private var parts: [String] = []
+
+  func append(_ part: String) { lock.withLock { parts.append(part) } }
+  var text: String { lock.withLock { parts.joined() } }
 }
 
 /// Prints a test's progress as it runs, from the run's thread.

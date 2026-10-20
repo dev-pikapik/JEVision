@@ -430,6 +430,7 @@ jevision run tests/ --env staging         # брать ${env.NAME} из окру
 jevision run tests/sign-in.flow.json --rows 2-4   # только строки 2–4 таблицы данных (--row 3 для одной)
 jevision run tests/ --junit junit.xml --html reports    # также сохранить отчёты JUnit XML и HTML
 jevision run tests/ --video always        # записывать видео каждого прогона (off, on-failure, always)
+jevision run tests/ --parallel 4          # до 4 тестов сразу; те, что трогают экран, идут по очереди
 jevision run tests/ --include-quarantined-failures   # учитывать и провалы тестов в карантине
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # проверка по смыслу другой моделью
 jevision run tests/ --json                # вывести результаты в JSON; ход прогона идёт в stderr

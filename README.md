@@ -414,6 +414,7 @@ jevision run tests/ --env staging         # read ${env.NAME} from the staging en
 jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data table (--row 3 for one)
 jevision run tests/ --junit junit.xml --html reports    # also save JUnit XML and HTML reports
 jevision run tests/ --video always        # record a video of every run (off, on-failure, always)
+jevision run tests/ --parallel 4          # up to 4 tests at once; those using the screen still take turns
 jevision run tests/ --include-quarantined-failures   # failures of tests in quarantine count too
 jevision run tests/ --no-notify           # don't send the Slack, Telegram or email message
 jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning with another model
