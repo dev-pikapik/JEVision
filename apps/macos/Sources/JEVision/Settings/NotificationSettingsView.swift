@@ -16,6 +16,7 @@ struct NotificationSettingsView: View {
   @State private var secretsVersion = 0
   @State private var testing: NotifyChannel?
   @State private var tested: (channel: NotifyChannel, problem: String?)?
+  @State private var chatSearch = ChatSearch.idle
 
   var body: some View {
     Form {
@@ -65,28 +66,23 @@ struct NotificationSettingsView: View {
 
   @ViewBuilder private func form(_ root: URL) -> some View {
     Section {
-      Picker("Send a message", selection: $draft.when) {
-        Text("When a test fails").tag(NotifyWhen.failed)
-        Text("When a test fails or passes again").tag(NotifyWhen.failedOrFixed)
-        Text("After every run").tag(NotifyWhen.every)
-      }
-      .settingAnchor("notifyWhen")
       Toggle(isOn: $draft.unattendedOnly) {
         Text("Only for scheduled runs and CI")
         Text("Runs you start yourself in JEVision send nothing.")
       }
       .settingAnchor("unattendedOnly")
     } footer: {
-      Text("A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing.")
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+      help(
+        "Run All and scheduled runs of several tests send one summary message, not one message per test. A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing."
+      )
     }
 
     Section {
       Toggle("Post to Slack", isOn: $draft.slack)
         .settingAnchor("slack")
       if draft.slack {
+        whenPicker(.slack, selection: $draft.slackWhen)
+          .settingAnchor("slackWhen")
         secretRow(.slack, root: root, label: Text("Webhook"))
         testRow(.slack)
       }
@@ -104,9 +100,12 @@ struct NotificationSettingsView: View {
       Toggle("Post to Telegram", isOn: $draft.telegram)
         .settingAnchor("telegram")
       if draft.telegram {
+        whenPicker(.telegram, selection: $draft.telegramWhen)
+          .settingAnchor("telegramWhen")
         secretRow(.telegram, root: root, label: Text("Bot token"))
         TextField(text: $draft.chat, prompt: Text(verbatim: "-1001234567890")) { Text("Chat ID") }
           .onSubmit { save(root) }
+        chatFinder
         testRow(.telegram)
       }
     } header: {
@@ -114,7 +113,7 @@ struct NotificationSettingsView: View {
     } footer: {
       if draft.telegram {
         help(
-          "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use the chat’s ID, such as -1001234567890, or @name for a public channel."
+          "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use Find Chat, or type the chat’s ID, such as -1001234567890, or @name for a public channel."
         )
       }
     }
@@ -123,6 +122,8 @@ struct NotificationSettingsView: View {
       Toggle("Send email", isOn: $draft.email)
         .settingAnchor("email")
       if draft.email {
+        whenPicker(.email, selection: $draft.emailWhen)
+          .settingAnchor("emailWhen")
         TextField(text: $draft.server, prompt: Text(verbatim: "smtp.gmail.com")) { Text("Mail server") }
         TextField(text: $draft.port, prompt: Text(verbatim: "465")) { Text("Port") }
         Picker(selection: $draft.security) {
@@ -172,6 +173,21 @@ struct NotificationSettingsView: View {
         "The webhook, bot token and password stay in the Keychain on this Mac. On CI, set them in the environment variables JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD. To run tests without messages, add --no-notify to jevision run."
       )
     }
+  }
+
+  /// The choice of which runs a channel is told about, with what it means under it.
+  private func whenPicker(_ channel: NotifyChannel, selection: Binding<NotifyWhen>) -> some View {
+    Picker(selection: selection) {
+      Text("When a test fails").tag(NotifyWhen.failed)
+      Text("When a test fails or passes again").tag(NotifyWhen.failedOrFixed)
+      Text("When a test starts or stops failing").tag(NotifyWhen.changed)
+      Text("After every run").tag(NotifyWhen.every)
+    } label: {
+      Text("Send a message")
+      Text(NotificationsText.explanation(selection.wrappedValue))
+    }
+    .accessibilityLabel(Text("Send a message to \(NotificationsText.name(channel))"))
+    .accessibilityHint(Text(NotificationsText.explanation(selection.wrappedValue)))
   }
 
   private var hasChanges: Bool {
@@ -258,6 +274,57 @@ struct NotificationSettingsView: View {
     }
   }
 
+  /// Lists the chats the bot has been written in, to pick the one to post to.
+  @ViewBuilder private var chatFinder: some View {
+    LabeledContent {
+      Button("Find Chat") { Task { await findChats() } }
+        .disabled(chatSearch == .searching)
+        .accessibilityHint(Text("Looks for the chats the bot has been written in"))
+    } label: {
+      switch chatSearch {
+      case .idle:
+        Text("Write to the bot in Telegram, then find its chat here instead of typing the ID.")
+      case .searching:
+        HStack {
+          ProgressView().controlSize(.small)
+          Text("Looking…")
+        }
+      case .failed(let problem):
+        Label {
+          Text(problem).textSelection(.enabled)
+        } icon: {
+          Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+        }
+      case .found(let bot, let chats) where chats.isEmpty:
+        Label {
+          Text(NotificationsText.noChats(bot: bot)).textSelection(.enabled)
+        } icon: {
+          Image(systemName: "questionmark.circle.fill").foregroundStyle(.orange)
+        }
+      case .found(let bot, _):
+        Text("Chats \(bot) has seen, the latest first. Choose where the messages go.")
+      }
+    }
+    if case .found(_, let chats) = chatSearch {
+      ForEach(chats, id: \.id) { chat in
+        let chosen = draft.chat.trimmingCharacters(in: .whitespacesAndNewlines) == chat.id
+        LabeledContent {
+          Button("Use") { draft.chat = chat.id }
+            .disabled(chosen)
+            .accessibilityLabel(Text("Use \(chat.title)"))
+        } label: {
+          Label {
+            Text(chat.title)
+            Text("\(NotificationsText.kind(chat.kind)) · ID \(chat.id)")
+          } icon: {
+            Image(systemName: chosen ? "checkmark.circle.fill" : NotificationsText.symbol(chat.kind))
+              .foregroundStyle(chosen ? .green : .secondary)
+          }
+        }
+      }
+    }
+  }
+
   private func secretName(_ channel: NotifyChannel) -> String {
     switch channel {
     case .slack: String(localized: "Slack webhook")
@@ -284,6 +351,7 @@ struct NotificationSettingsView: View {
       let settings = try notificationSettings(project: root.path)
       saved = settings
       draft = NotificationsDraft(settings)
+      chatSearch = .idle
       loadProblem = nil
     } catch {
       saved = nil
@@ -310,6 +378,14 @@ struct NotificationSettingsView: View {
     }
   }
 
+  private func findChats() async {
+    guard let root = project.rootURL else { return }
+    chatSearch = .searching
+    let path = root.path
+    let result = await Task.detached { Result { try findTelegramChats(project: path) } }.value
+    chatSearch = NotificationsText.chatSearch(result)
+  }
+
   private func test(_ channel: NotifyChannel) async {
     guard let root = project.rootURL, !hasChanges || save(root) else { return }
     testing = channel
@@ -326,7 +402,7 @@ struct NotificationSettingsView: View {
 
 extension NotificationSettings {
   /// Every channel off: what a project without the settings file has.
-  static let off = NotificationSettings(when: .failedOrFixed, unattendedOnly: false, slack: false, telegram: nil, email: nil)
+  static let off = NotificationSettings(unattendedOnly: false, slack: nil, telegram: nil, email: nil)
 }
 
 extension NotifyChannel: @retroactive Identifiable {

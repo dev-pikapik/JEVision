@@ -324,12 +324,13 @@ enum Help {
                             jevision.project.json) like any other failure. Without it
                             they still run, but don't change the exit status and are
                             skipped in the JUnit report
-        --no-notify         Don't send the messages about runs that
+        --no-notify         Don't send the message about the runs that
                             jevision.notifications.json in the project folder asks for
-                            (Slack, Telegram, email). The webhook, bot token and mail
-                            password come from the Keychain, or on CI from
-                            JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN and
-                            JEVISION_SMTP_PASSWORD
+                            (Slack, Telegram, email): one message for one test, one
+                            summary for several. A stopped run sends nothing. The
+                            webhook, bot token and mail password come from the
+                            Keychain, or on CI from JEVISION_SLACK_WEBHOOK,
+                            JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD
         --json              Print the result as JSON; progress goes to standard error
         -h, --help          Show this help
 

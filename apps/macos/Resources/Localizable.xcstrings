@@ -87,6 +87,16 @@
         }
       }
     },
+    "%@ hasn’t seen any chat yet. In Telegram, write something to %@. To use a group, add %@ to it and send a message there. Then find the chat again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ пока не видел ни одного чата. В Telegram напишите что-нибудь боту %2$@. Чтобы использовать группу, добавьте %3$@ в неё и отправьте там сообщение. Затем найдите чат ещё раз."
+          }
+        }
+      }
+    },
     "%@ in “%@”. The test will use the mouse and keyboard of this Mac until it ends." : {
       "localizations" : {
         "ru" : {
@@ -179,6 +189,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "%@ · ID %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · ID %2$@"
           }
         }
       }
@@ -1495,12 +1515,52 @@
         }
       }
     },
+    "A message after every run, passed or failed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение после каждого прогона, успешного или нет."
+          }
+        }
+      }
+    },
+    "A message for every test that fails, and when a failing test passes again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение о каждом упавшем тесте и о том, что упавший тест снова проходит."
+          }
+        }
+      }
+    },
+    "A message for every test that fails." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение о каждом упавшем тесте."
+          }
+        }
+      }
+    },
     "A message to Slack, Telegram or email when a test fails, or after every run." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщение в Slack, Telegram или на почту, когда тест падает, или после каждого прогона."
+          }
+        }
+      }
+    },
+    "A message when a test starts failing and when it passes again. A test that keeps failing says nothing more." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщение, когда тест начинает падать и когда он снова проходит. Тест, который продолжает падать, больше ничего не отправляет."
           }
         }
       }
@@ -1551,16 +1611,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стикер для тех, кто читает тест"
-          }
-        }
-      }
-    },
-    "A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тест на карантине сообщает о падении, только если выбрано «После каждого прогона». Остановленный прогон ничего не отправляет."
           }
         }
       }
@@ -3815,12 +3865,32 @@
         }
       }
     },
+    "Channel" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Канал"
+          }
+        }
+      }
+    },
     "Chat ID" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ID чата"
+          }
+        }
+      }
+    },
+    "Chats %@ has seen, the latest first. Choose where the messages go." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чаты, которые видел %@, последние первыми. Выберите, куда отправлять сообщения."
           }
         }
       }
@@ -6581,6 +6651,16 @@
         }
       }
     },
+    "Find Chat" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти чат"
+          }
+        }
+      }
+    },
     "Finish Recording" : {
       "localizations" : {
         "ru" : {
@@ -7171,6 +7251,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зелёный"
+          }
+        }
+      }
+    },
+    "Group" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Группа"
           }
         }
       }
@@ -8332,6 +8422,26 @@
         }
       }
     },
+    "Looking…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищем…"
+          }
+        }
+      }
+    },
+    "Looks for the chats the bot has been written in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ищет чаты, в которых боту писали"
+          }
+        }
+      }
+    },
     "Low" : {
       "localizations" : {
         "ru" : {
@@ -8372,12 +8482,12 @@
         }
       }
     },
-    "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use the chat’s ID, such as -1001234567890, or @name for a public channel." : {
+    "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use Find Chat, or type the chat’s ID, such as -1001234567890, or @name for a public channel." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и укажите ID чата, например -1001234567890, или @имя для публичного канала."
+            "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и нажмите «Найти чат» или укажите ID чата, например -1001234567890, или @имя для публичного канала."
           }
         }
       }
@@ -9166,6 +9276,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщения о прогоне не отправлены: %@"
+          }
+        }
+      }
+    },
+    "No messages about the runs were sent: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщения о прогонах не отправлены: %@"
           }
         }
       }
@@ -10980,6 +11100,16 @@
         }
       }
     },
+    "Private chat" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Личный чат"
+          }
+        }
+      }
+    },
     "Project Default (%u)" : {
       "localizations" : {
         "ru" : {
@@ -12378,6 +12508,16 @@
         }
       }
     },
+    "Run All and scheduled runs of several tests send one summary message, not one message per test. A test in quarantine sends a message about a failure only with “After every run”. A stopped run sends nothing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Запустить все» и запуски нескольких тестов по расписанию отправляют одно общее сообщение, а не по сообщению на каждый тест. Тест на карантине сообщает о падении, только если выбрано «После каждого прогона». Остановленный прогон ничего не отправляет."
+          }
+        }
+      }
+    },
     "Run Command" : {
       "localizations" : {
         "ru" : {
@@ -13514,6 +13654,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправлять сообщение"
+          }
+        }
+      }
+    },
+    "Send a message to %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправлять сообщение в %@"
           }
         }
       }
@@ -16908,6 +17058,16 @@
         }
       }
     },
+    "Use %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применить: %@"
+          }
+        }
+      }
+    },
     "Use Data" : {
       "localizations" : {
         "ru" : {
@@ -17354,6 +17514,16 @@
         }
       }
     },
+    "When a test starts or stops failing" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Когда тест начинает или перестаёт падать"
+          }
+        }
+      }
+    },
     "Where It Fails" : {
       "localizations" : {
         "ru" : {
@@ -17480,6 +17650,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без них macOS не даст JEVision видеть другие приложения и нажимать в них."
+          }
+        }
+      }
+    },
+    "Write to the bot in Telegram, then find its chat here instead of typing the ID." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Напишите боту в Telegram, затем найдите его чат здесь, не вводя ID вручную."
           }
         }
       }
