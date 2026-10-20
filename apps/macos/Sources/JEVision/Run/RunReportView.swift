@@ -546,7 +546,12 @@ private struct StepRow: View {
   }
 
   @ViewBuilder private func acceptButton(_ images: StepImages) -> some View {
-    if step.blockType == "check", step.status == .failed, let after = images.after, let reference = step.reference,
+    if step.blockType == "check", step.status == .failed, images.after != nil, let reference = step.reference,
+      blockPackageId(path: reference) != nil
+    {
+      Label("This picture belongs to a block from the community. Make the block your own to change it.", systemImage: "lock")
+        .foregroundStyle(.secondary)
+    } else if step.blockType == "check", step.status == .failed, let after = images.after, let reference = step.reference,
       let root = project.rootURL, let file = Baseline.file(reference, in: root)
     {
       // Read so the button comes back after Undo.

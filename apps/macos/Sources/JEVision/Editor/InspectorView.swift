@@ -624,8 +624,14 @@ struct InspectorView: View {
             IssueList(issues: context.issues("inputs.\(name)"))
           }
           if let url = block.url, let root = project.rootURL {
-            Button("Edit Block") { project.selection = RelativePath.from(root, to: url) }
-              .help(Text("Opens the custom block, so you can change its steps for every test that uses it."))
+            let open = { project.selection = RelativePath.from(root, to: url) }
+            if block.package == nil {
+              Button("Edit Block", action: open)
+                .help(Text("Opens the custom block, so you can change its steps for every test that uses it."))
+            } else {
+              Button("Open Block", action: open)
+                .help(Text("Shows its steps. To change them, make a copy."))
+            }
           }
         } header: {
           Text("Inputs")

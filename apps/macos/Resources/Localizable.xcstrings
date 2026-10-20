@@ -5235,6 +5235,16 @@
         }
       }
     },
+    "Canvas, read-only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Холст, только для чтения"
+          }
+        }
+      }
+    },
     "Can’t Show This Board" : {
       "localizations" : {
         "en" : {
@@ -7699,6 +7709,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Браузер по умолчанию (%@)"
+          }
+        }
+      }
+    },
+    "Default value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Default value of %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение по умолчанию для %@"
           }
         }
       }
@@ -11514,6 +11544,26 @@
         }
       }
     },
+    "Label" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подпись"
+          }
+        }
+      }
+    },
+    "Label of %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подпись для %@"
+          }
+        }
+      }
+    },
     "Language" : {
       "localizations" : {
         "ru" : {
@@ -12136,12 +12186,52 @@
         }
       }
     },
+    "Make This a Block of the Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать своим блоком проекта"
+          }
+        }
+      }
+    },
+    "Make This a Block of the Project…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать своим блоком проекта…"
+          }
+        }
+      }
+    },
+    "Make a Copy…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать копию…"
+          }
+        }
+      }
+    },
     "Make a bot with @BotFather and copy its token. Add the bot to the group or channel, then use Find Chat, or type the chat’s ID, such as -1001234567890, or @name for a public channel." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создайте бота через @BotFather и скопируйте его токен. Добавьте бота в группу или канал и нажмите «Найти чат» или укажите ID чата, например -1001234567890, или @имя для публичного канала."
+          }
+        }
+      }
+    },
+    "Make a copy of %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать копию «%@»"
           }
         }
       }
@@ -12188,6 +12278,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создайте первый тест"
+          }
+        }
+      }
+    },
+    "Makes a copy among the project’s own blocks, which you can change. The installed block stays." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Делает копию среди своих блоков проекта — её можно менять. Установленный блок остаётся."
           }
         }
       }
@@ -12656,6 +12756,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Требует вашего внимания"
+          }
+        }
+      }
+    },
+    "Needs: %@ %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужен: %1$@ %2$@"
           }
         }
       }
@@ -14178,6 +14288,16 @@
         }
       }
     },
+    "Open Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть блок"
+          }
+        }
+      }
+    },
     "Open Board" : {
       "localizations" : {
         "en" : {
@@ -15324,6 +15444,16 @@
         }
       }
     },
+    "People see the label instead of the name. The default value is used when a test leaves the input empty." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подпись видна вместо имени. Значение по умолчанию подставляется, когда тест оставляет вход пустым."
+          }
+        }
+      }
+    },
     "Per day" : {
       "localizations" : {
         "ru" : {
@@ -16218,6 +16348,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прочитать буфер → %@"
+          }
+        }
+      }
+    },
+    "Read-only block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок только для чтения"
           }
         }
       }
@@ -19638,6 +19778,16 @@
         }
       }
     },
+    "Shows its steps. To change them, make a copy." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает его шаги. Чтобы их изменить, сделайте копию."
+          }
+        }
+      }
+    },
     "Shows the moment this step began" : {
       "localizations" : {
         "ru" : {
@@ -21474,6 +21624,16 @@
         }
       }
     },
+    "The copy is made" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копия готова"
+          }
+        }
+      }
+    },
     "The day after %@ the test counts again: its failures fail Run All, the command line and the JUnit report." : {
       "localizations" : {
         "ru" : {
@@ -22666,6 +22826,16 @@
         }
       }
     },
+    "These tests have changes that aren’t saved, so they still use the installed block: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этих тестах есть несохранённые изменения, поэтому они по-прежнему используют установленный блок: %@."
+          }
+        }
+      }
+    },
     "These tests use it: %@. They will stop with a message that the block is missing." : {
       "localizations" : {
         "ru" : {
@@ -22738,6 +22908,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этому блоку ничего не нужно."
+          }
+        }
+      }
+    },
+    "This block comes from the community and can’t be edited here." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот блок из сообщества, здесь его нельзя изменить."
           }
         }
       }
@@ -23020,6 +23200,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот запуск не упал, поэтому сообщать не о чем."
+          }
+        }
+      }
+    },
+    "This picture belongs to a block from the community. Make the block your own to change it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта картинка принадлежит блоку из сообщества. Сделайте блок своим, чтобы изменить её."
           }
         }
       }
@@ -24012,6 +24202,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сделать снимок эталоном"
+          }
+        }
+      }
+    },
+    "Use the copy in the %lld tests that use it" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Use the copy in the %lld test that uses it"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Use the copy in the %lld tests that use it"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Использовать копию в %lld тесте, где стоит этот блок"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Использовать копию в %lld тестах, где стоит этот блок"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Использовать копию в %lld тестах, где стоит этот блок"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Использовать копию в %lld теста, где стоит этот блок"
+                }
+              }
+            }
           }
         }
       }
@@ -25056,6 +25298,58 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Введите веб-адрес, который начинается с http:// или https://."
+          }
+        }
+      }
+    },
+    "Write at most %lld characters." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Write at most %lld character."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Write at most %lld characters."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не больше %lld символа."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не больше %lld символов."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не больше %lld символов."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не больше %lld символа."
+                }
+              }
+            }
           }
         }
       }

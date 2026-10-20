@@ -35,6 +35,8 @@ final class ProjectStore {
   var isCreatingTest = false
   /// The block the Install Block sheet is reading or installing; set to show the sheet.
   var installingBlock: BlockInstallModel?
+  /// The installed block being copied among the project's own blocks; set to show the sheet.
+  var owningBlock: OwnBlockModel?
   /// The blocks jevision.blocks.json names that aren't installed on this Mac.
   private(set) var unrestored: [UnrestoredBlock] = []
   /// The person said Not Now to installing them; the offer comes back when the project opens again.
@@ -166,6 +168,18 @@ final class ProjectStore {
     return model
   }
 
+  /// A sheet model that copies the installed block `id` among the project's own blocks and opens the copy.
+  func makeOwnBlockModel(of id: String) -> OwnBlockModel? {
+    guard let rootURL else { return nil }
+    let name = library.entries.first { $0.package?.id == id }?.name ?? id
+    let model = OwnBlockModel(project: rootURL, id: id, name: name)
+    model.onMade = { [weak self] file in
+      self?.blocksChanged()
+      self?.selection = file
+    }
+    return model
+  }
+
   /// The blocks of the project changed: the library shows them, and the open test is checked again.
   private func blocksChanged() {
     library.reload()
@@ -191,6 +205,7 @@ final class ProjectStore {
   private func openSelection() {
     guard let rootURL, let selection,
       ProjectScanner.isTestFile(selection) || selection.lowercased().hasSuffix(ProjectLibrary.blockSuffix)
+        || blockPackageId(path: selection) != nil
     else {
       document = nil
       return
