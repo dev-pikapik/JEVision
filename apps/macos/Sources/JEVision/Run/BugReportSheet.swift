@@ -102,7 +102,7 @@ struct BugReportSheet: View {
             .fixedSize(horizontal: false, vertical: true)
         }
       }
-      CrashReportSection(text: $text)
+      DiagnosticsSection(text: $text)
       destination
     }
     .formStyle(.grouped)

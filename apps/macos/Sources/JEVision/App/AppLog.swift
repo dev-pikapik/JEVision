@@ -47,6 +47,22 @@ struct RotatingLog: Sendable {
     try handle.write(contentsOf: data)
   }
 
+  /// The newest whole lines, the oldest of them first, `limit` characters at most. They come from
+  /// the files before the newest too when it has only just started.
+  func tail(limit: Int) -> [String] {
+    var lines: [String] = []
+    var count = 0
+    for index in 0..<files {
+      guard let text = try? String(contentsOf: url(index), encoding: .utf8) else { break }
+      for line in text.split(whereSeparator: \.isNewline).reversed() {
+        count += line.count + 1
+        guard count <= limit else { return lines.reversed() }
+        lines.append(String(line))
+      }
+    }
+    return lines.reversed()
+  }
+
   private func rotate() throws {
     let manager = FileManager.default
     try? manager.removeItem(at: url(files - 1))
@@ -98,6 +114,13 @@ enum AppLog {
     let line = format(level, category, text, at: .now)
     // A log that can't be written is no reason to disturb what the person is doing.
     try? file.withLock { try $0.append(line) }
+  }
+
+  /// The newest lines of the log for a bug report, when the person chooses to add them: whole
+  /// lines up to `limit` characters, so the report stays within what GitHub takes, and masked once
+  /// more in case a line was written before a rule for its secret existed.
+  static func tail(limit: Int = 20_000) -> [String] {
+    file.withLock { $0.tail(limit: limit) }.map(LogRedaction.mask)
   }
 
   static func format(_ level: LogLevel, _ category: String, _ message: String, at date: Date) -> String {
