@@ -82,8 +82,8 @@ impl VisionSettings {
     }
 }
 
-/// The settings of each provider, asked for only when a check by meaning names that provider,
-/// so a run reads no API key it doesn't need.
+/// The settings of each provider, asked for only when a check by meaning names that provider
+/// or a block needs it, so a run reads no API key it doesn't need.
 #[uniffi::export(with_foreign)]
 pub trait ProviderSettings: Send + Sync {
     /// `None` when the provider isn't set up.
@@ -105,14 +105,18 @@ pub(crate) struct NamedJudge {
 }
 
 impl NamedJudge {
+    pub(crate) fn new(provider: Provider, source: &Arc<dyn ProviderSettings>) -> Self {
+        Self {
+            provider,
+            source: source.clone(),
+            client: OnceLock::new(),
+        }
+    }
+
     pub(crate) fn every(source: &Arc<dyn ProviderSettings>) -> Vec<Self> {
         Provider::ALL
             .into_iter()
-            .map(|provider| Self {
-                provider,
-                source: source.clone(),
-                client: OnceLock::new(),
-            })
+            .map(|provider| Self::new(provider, source))
             .collect()
     }
 
@@ -159,6 +163,13 @@ impl VisionJudge for NamedJudge {
         question: &jevision_runner::Question<'_>,
     ) -> Result<jevision_runner::Judgement, jevision_runner::VisionError> {
         self.client().judge(question)
+    }
+    fn locate(
+        &self,
+        screenshot: &jevision_runner::MaskedImage,
+        what: &str,
+    ) -> Result<Option<jevision_runner::Located>, jevision_runner::VisionError> {
+        self.client().locate(screenshot, what)
     }
 }
 
@@ -324,12 +335,12 @@ fn failed(client: &VisionClient, e: &jevision_runner::VisionError) -> VisionCall
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     /// Settings that note every provider asked for.
     #[derive(Default)]
-    struct Asked(std::sync::Mutex<Vec<String>>);
+    pub(crate) struct Asked(pub(crate) std::sync::Mutex<Vec<String>>);
 
     impl ProviderSettings for Asked {
         fn settings(&self, provider: String) -> Option<VisionSettings> {
@@ -364,6 +375,24 @@ mod tests {
         assert!(!openai.is_local());
         assert_eq!(openai.model(), Provider::OpenAi.default_model());
         assert_eq!(*asked.0.lock().unwrap(), ["ollama", "openai"]);
+    }
+
+    #[test]
+    fn a_named_judge_reads_its_settings_only_when_it_is_used() {
+        let asked = Arc::new(Asked::default());
+        let source: Arc<dyn ProviderSettings> = asked.clone();
+        let jev = NamedJudge::new(Provider::Jev, &source);
+        assert_eq!(jev.provider(), "JEV (TypeSafe AI)");
+        assert!(asked.0.lock().unwrap().is_empty());
+        assert!(!jev.is_local());
+        assert_eq!(jev.model(), Provider::Jev.default_model());
+        // JEV isn't set up: no key, so finding stops before anything is sent.
+        let picture = jevision_runner::MaskedImage::from_png(b"\x89PNG", &[]).unwrap();
+        assert_eq!(
+            jev.locate(&picture, "the Save button"),
+            Err(jevision_runner::VisionError::NoKey)
+        );
+        assert_eq!(*asked.0.lock().unwrap(), ["jev"]);
     }
 
     fn settings(provider: &str, address: &str, key: Option<&str>) -> VisionSettings {

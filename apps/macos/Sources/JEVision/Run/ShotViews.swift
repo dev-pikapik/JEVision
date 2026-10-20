@@ -91,6 +91,8 @@ struct ShotImage: View {
   let url: URL
   /// A picture shown on top, at the given opacity, to compare the two.
   var over: (base: URL, opacity: Double)?
+  /// Areas outlined on the picture, in fractions of it: where a model found an element.
+  var found: [Rect] = []
   let label: String
   let preview: (URL) -> Void
 
@@ -106,6 +108,17 @@ struct ShotImage: View {
           Picture(url: url).opacity(over.opacity)
         } else {
           Picture(url: url)
+            .overlay {
+              GeometryReader { g in
+                ForEach(found.indices, id: \.self) { i in
+                  let r = found[i]
+                  RoundedRectangle(cornerRadius: 3)
+                    .stroke(.red, lineWidth: 2)
+                    .frame(width: r.width * g.size.width, height: r.height * g.size.height)
+                    .offset(x: r.x * g.size.width, y: r.y * g.size.height)
+                }
+              }
+            }
         }
       }
       .clipShape(.rect(cornerRadius: 8))

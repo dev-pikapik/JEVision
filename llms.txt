@@ -10,6 +10,7 @@ It is written in Rust (the core: file format, validation, runner, reports, MCP s
 - Recording: clicks, typing and key presses in the app under test become blocks with a picture of the target; passwords become secrets kept in the Keychain.
 - Running: run a test, step through it (⌥⌘R) or start from any block, with breakpoints; moving the mouse pauses, Esc twice stops. Optional video of every run.
 - Reports and history: a screenshot of every step; checks show the screen, the reference image and their differences; export as HTML or JUnit XML; flaky tests are detected from history.
+- Find by description: a click or typing can target an element described in words (`{ "description": "the blue Save button" }`); JEV by TypeSafe AI finds it on the masked screenshot.
 - Checks by meaning: describe the screen in words and an AI model decides (Anthropic, OpenAI, Gemini, JEV by TypeSafe AI, Ollama, LM Studio or any OpenAI-compatible server).
 - Environments (`jevision.environments.json`), data-driven tests from CSV (`useData`), retries and quarantine (`jevision.project.json`), schedules (`jevision.schedule.json`).
 - Git and GitHub inside the app: commit, pull, push, branches, a visual diff of tests and pictures, pull requests.

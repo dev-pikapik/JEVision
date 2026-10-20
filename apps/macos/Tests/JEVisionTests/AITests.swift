@@ -86,7 +86,7 @@ struct VisionTextTests {
     "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
     "run.vision.badKey", "run.vision.unknownModel", "run.vision.rateLimited", "run.vision.serviceError",
     "run.vision.refused", "run.vision.badAnswer", "run.vision.limitReached", "run.vision.limitNear",
-    "run.vision.journalFailed",
+    "run.vision.journalFailed", "run.vision.cannotLocate", "run.vision.modelCannotLocate",
   ]
 
   @Test func everyProblemHasItsOwnWords() {

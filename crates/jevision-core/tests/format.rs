@@ -563,7 +563,9 @@ fn pointer_blocks_are_validated() {
             "b": {"type": "drag", "from": {"image": "refs/x.png"}, "to": {"image": "refs/x.png"}, "next": "c"},
             "c": {"type": "drag", "from": {"point": {"x": 0.5, "y": 0.5}}, "to": {"point": {"x": 0.5, "y": 0.5}}, "next": "d"},
             "d": {"type": "scroll", "direction": "left", "amount": 0, "next": "e"},
-            "e": {"type": "scroll", "direction": "right", "amount": 10001, "at": {"point": {"x": 2, "y": 0}}}}"#,
+            "e": {"type": "scroll", "direction": "right", "amount": 10001, "at": {"point": {"x": 2, "y": 0}}, "next": "f"},
+            "f": {"type": "drag", "from": {"description": "the inbox"}, "to": {"description": " the inbox "}, "next": "g"},
+            "g": {"type": "scroll", "direction": "down", "amount": 3, "at": {"description": " "}}}"#,
     );
     let found: Vec<(&str, &str, &str)> = issues
         .iter()
@@ -584,6 +586,8 @@ fn pointer_blocks_are_validated() {
             ("flow.field.range", "d", "amount"),
             ("flow.field.range", "e", "amount"),
             ("flow.point.invalid", "e", "at.point"),
+            ("flow.drag.samePlace", "f", "to"),
+            ("flow.field.empty", "g", "at.description"),
         ]
     );
     assert_eq!(issues[4].param("max"), Some("10000"));
@@ -632,6 +636,40 @@ fn model_edits_are_validated_too() {
 fn secrets_are_listed_by_name() {
     let flow = parse(ALL_BLOCKS).unwrap();
     assert_eq!(required_secrets(&flow), ["TOKEN"]);
+}
+
+#[test]
+fn a_target_described_in_words_round_trips_and_must_say_something() {
+    let flow = parse(&minimal(
+        r#"{"a": {"type": "click", "target": {"description": "the blue Save button"}, "next": "b"},
+            "b": {"type": "type", "text": "hi", "into": {"description": "the search field"}}}"#,
+    ))
+    .unwrap();
+    assert_eq!(
+        flow.blocks[0].kind,
+        BlockKind::Click {
+            target: Target::Description("the blue Save button".to_owned()),
+            button: MouseButton::Left,
+            double: false,
+            wait_for_change: false,
+            next: Some("b".to_owned()),
+        }
+    );
+    let json = to_canonical_json(&flow);
+    assert!(json.contains(r#""description": "the blue Save button""#));
+    assert_eq!(parse(&json).unwrap(), flow);
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
+
+    let issues = issues_of(r#"{"a": {"type": "click", "target": {"description": "  "}}}"#);
+    let found: Vec<(&str, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field")))
+        .collect();
+    assert_eq!(found, [("flow.field.empty", Some("target.description"))]);
+    assert_eq!(
+        describe(&issues[0]),
+        "Block \"a\", field \"target.description\": can't be empty."
+    );
 }
 
 #[test]

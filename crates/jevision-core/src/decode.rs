@@ -878,15 +878,16 @@ fn all_present<T>(build: impl FnOnce() -> Option<T>) -> Option<T> {
 }
 
 fn target(mut o: Obj<'_>, out: &mut Out) -> Option<Target> {
-    let which = o.one_of(&["image", "point"], out);
+    let which = o.one_of(&["image", "point", "description"], out);
     let t = match which {
         Some("image") => o.string("image", out).map(Target::Image),
+        Some("description") => o.string("description", out).map(Target::Description),
         Some(_) => o
             .object("point", out)
             .and_then(|p| point(p, out))
             .map(Target::Point),
         None => {
-            o.known.extend(["image", "point"]);
+            o.known.extend(["image", "point", "description"]);
             None
         }
     };

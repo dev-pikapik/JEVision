@@ -2,7 +2,8 @@ import JEVisionCore
 import JEVisionHands
 import SwiftUI
 
-/// Settings → AI: the model that checks screens by meaning.
+/// Settings → AI: the model that checks screens by meaning, and JEV, which finds the elements
+/// tests describe in words.
 struct AISettingsView: View {
   @AppStorage(AISettings.providerKey) private var providerID = ""
   @AppStorage(AISettings.localOnlyKey) private var localOnly = false
@@ -16,6 +17,10 @@ struct AISettingsView: View {
         tab: .ai,
         text: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       AISections()
+      if providerID != AISettings.finder, let jev = AISettings.providers.first(where: { $0.id == AISettings.finder }) {
+        ProviderSection(provider: jev, localOnly: localOnly, findsOnly: true)
+          .id("finder")
+      }
       FallbackSections()
       AIUsageSections()
       ProjectPrivacySection()
@@ -65,12 +70,12 @@ struct AISections: View {
       Toggle(isOn: $localOnly) {
         RowLabel(
           Text("Only models on this Mac"),
-          Text("Screenshots never go to a cloud service. Checks that would need one stop with a message."))
+          Text("Screenshots never go to a cloud service. Checks and finding by description that would need one stop with a message."))
       }
       .settingAnchor("localOnly")
     } footer: {
       if providerID.isEmpty {
-        Text("Without a provider, checks compare pictures only. JEVision sends nothing anywhere.")
+        Text("Without a provider, checks compare pictures only and send nothing anywhere.")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -117,6 +122,8 @@ private struct FallbackSections: View {
 private struct ProviderSection: View {
   let provider: VisionProvider
   let localOnly: Bool
+  /// Shown for finding elements by description only, while another provider checks by meaning.
+  var findsOnly = false
   @AppStorage private var model: String
   @AppStorage private var address: String
   @AppStorage private var pictures: Bool
@@ -135,9 +142,10 @@ private struct ProviderSection: View {
     case idle, running, works(String), confused(String), failed(String)
   }
 
-  init(provider: VisionProvider, localOnly: Bool) {
+  init(provider: VisionProvider, localOnly: Bool, findsOnly: Bool = false) {
     self.provider = provider
     self.localOnly = localOnly
+    self.findsOnly = findsOnly
     _model = AppStorage(wrappedValue: provider.defaultModel, AISettings.modelKey(provider.id))
     _address = AppStorage(wrappedValue: "", AISettings.addressKey(provider.id))
     _pictures = AppStorage(wrappedValue: true, AISettings.picturesKey(provider.id))
@@ -175,15 +183,32 @@ private struct ProviderSection: View {
       }
       testRow
     } header: {
-      Text(verbatim: provider.name)
+      if findsOnly {
+        Text("Finding by Description: \(provider.name)")
+      } else {
+        Text(verbatim: provider.name)
+      }
     } footer: {
       VStack(alignment: .leading, spacing: 6) {
-        destination
+        if !findsOnly { destination }
+        if provider.id == AISettings.finder {
+          Text(
+            "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. \(provider.name) finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest."
+          )
+        }
         if localOnly, !isLocal {
-          Label(
-            "Only models on this Mac are allowed, so checks by meaning with \(provider.name) stop with a message.",
-            systemImage: "exclamationmark.triangle")
-            .foregroundStyle(.orange)
+          Group {
+            if findsOnly {
+              Label(
+                "Only models on this Mac are allowed, so finding by description stops with a message.",
+                systemImage: "exclamationmark.triangle")
+            } else {
+              Label(
+                "Only models on this Mac are allowed, so checks by meaning with \(provider.name) stop with a message.",
+                systemImage: "exclamationmark.triangle")
+            }
+          }
+          .foregroundStyle(.orange)
         }
       }
       .font(.callout)

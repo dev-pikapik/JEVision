@@ -19,6 +19,7 @@ use std::net::IpAddr;
 use std::time::Duration;
 
 use base64::Engine;
+use jevision_core::Rect;
 use serde_json::{Value, json};
 
 /// How long one question may take, including a local model loading into memory.
@@ -50,6 +51,10 @@ whether the screenshot means the same — the same screen, state and content —
 differences in exact pixels, fonts, colours, positions, times and dates unless the expectation \
 mentions them. Flat boxes of one colour hide private parts of the screen on purpose; ignore \
 them. Give the probability that the answer is yes.";
+/// For JEV finding an element on a screenshot by its description.
+const JEV_LOCATE_INSTRUCTIONS: &str = "You find elements of app interfaces on screenshots for \
+automated tests. Flat boxes of one colour hide private parts of the screen on purpose; the \
+element is never one of them.";
 const JEV_SCREENSHOT: &str = "jevision-screenshot";
 const JEV_REFERENCE: &str = "jevision-reference";
 /// Sides JEV accepts, in pixels; it turns down pictures outside them instead of scaling.
@@ -258,6 +263,15 @@ pub struct Usage {
     pub output_tokens: u64,
 }
 
+/// Where an element described in words is on a screenshot.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Located {
+    /// In fractions (0–1) of the screenshot, from the top-left corner.
+    pub area: Rect,
+    /// How sure the model is of the box, from 0 to 1.
+    pub confidence: f64,
+}
+
 /// Why a question got no verdict. [`code`](Self::code) and [`params`](Self::params) name a
 /// localizable text.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -265,15 +279,36 @@ pub enum VisionError {
     NoPictures,
     NoModel,
     NoKey,
-    BadAddress { address: String },
-    Unreachable { address: String },
-    Timeout { seconds: u64 },
+    BadAddress {
+        address: String,
+    },
+    Unreachable {
+        address: String,
+    },
+    Timeout {
+        seconds: u64,
+    },
     BadKey,
-    UnknownModel { model: String },
-    RateLimited { message: String },
-    Service { status: u16, message: String },
-    Refused { message: String },
-    BadAnswer { answer: String },
+    UnknownModel {
+        model: String,
+    },
+    RateLimited {
+        message: String,
+    },
+    Service {
+        status: u16,
+        message: String,
+    },
+    Refused {
+        message: String,
+    },
+    BadAnswer {
+        answer: String,
+    },
+    /// The provider can't find elements by description; only JEV can.
+    CannotLocate,
+    /// The JEV model is older than the first one that finds elements.
+    ModelCannotLocate,
 }
 
 impl VisionError {
@@ -291,12 +326,19 @@ impl VisionError {
             Self::Service { .. } => "run.vision.serviceError",
             Self::Refused { .. } => "run.vision.refused",
             Self::BadAnswer { .. } => "run.vision.badAnswer",
+            Self::CannotLocate => "run.vision.cannotLocate",
+            Self::ModelCannotLocate => "run.vision.modelCannotLocate",
         }
     }
 
     pub fn params(&self) -> Vec<(&'static str, String)> {
         match self {
-            Self::NoPictures | Self::NoModel | Self::NoKey | Self::BadKey => Vec::new(),
+            Self::NoPictures
+            | Self::NoModel
+            | Self::NoKey
+            | Self::BadKey
+            | Self::CannotLocate
+            | Self::ModelCannotLocate => Vec::new(),
             Self::BadAddress { address } | Self::Unreachable { address } => {
                 vec![("address", address.clone())]
             }
@@ -335,6 +377,14 @@ pub trait VisionJudge: Send + Sync {
     /// Pictures stay on this computer.
     fn is_local(&self) -> bool;
     fn judge(&self, question: &Question<'_>) -> Result<Judgement, VisionError>;
+    /// Finds the element `what` describes on `screenshot`; `None` when it isn't there.
+    fn locate(
+        &self,
+        _screenshot: &MaskedImage,
+        _what: &str,
+    ) -> Result<Option<Located>, VisionError> {
+        Err(VisionError::CannotLocate)
+    }
 }
 
 /// Talks to one provider.
@@ -510,6 +560,21 @@ impl Client {
         }
     }
 
+    /// Settings without which no question is sent.
+    fn ready(&self) -> Result<(), VisionError> {
+        let c = &self.config;
+        if !c.pictures {
+            return Err(VisionError::NoPictures);
+        }
+        if c.model.trim().is_empty() {
+            return Err(VisionError::NoModel);
+        }
+        if c.provider.needs_key() && c.key().is_none() {
+            return Err(VisionError::NoKey);
+        }
+        Ok(())
+    }
+
     /// Up to [`EXCERPT`] characters of `text` on one line, the key masked.
     fn excerpt(&self, text: &str) -> String {
         let mut text = text.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -557,15 +622,7 @@ impl VisionJudge for Client {
             });
         }
         let c = &self.config;
-        if !c.pictures {
-            return Err(VisionError::NoPictures);
-        }
-        if c.model.trim().is_empty() {
-            return Err(VisionError::NoModel);
-        }
-        if c.provider.needs_key() && c.key().is_none() {
-            return Err(VisionError::NoKey);
-        }
+        self.ready()?;
         let (url, body) = request(c, question);
         let (status, text) = self.send(&url, Some(&body))?;
         if status != 200 {
@@ -582,6 +639,28 @@ impl VisionJudge for Client {
         })?;
         judgement.reason = self.excerpt(&judgement.reason);
         Ok(judgement)
+    }
+
+    fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Option<Located>, VisionError> {
+        let c = &self.config;
+        if c.provider != Provider::Jev {
+            return Err(VisionError::CannotLocate);
+        }
+        self.ready()?;
+        if !jev_locates(c.model.trim()) {
+            return Err(VisionError::ModelCannotLocate);
+        }
+        let (url, body, fill) = locate_request(c, screenshot, what);
+        let (status, text) = self.send(&url, Some(&body))?;
+        if status != 200 {
+            return Err(self.http_error(status, &text));
+        }
+        located(&text, fill).map_err(|e| match e {
+            VisionError::BadAnswer { answer } => VisionError::BadAnswer {
+                answer: self.excerpt(&answer),
+            },
+            other => other,
+        })
     }
 }
 
@@ -752,7 +831,7 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
             (format!("{base}/chat/completions"), body)
         }
         Provider::Jev => {
-            let asset = |png: &[u8]| json!({ "type": "image", "format": "png", "data_base64": b64(&jev_sized(png)) });
+            let asset = |png: &[u8]| jev_asset(&jev_sized(png));
             let mut state = json!({ "screenshot": JEV_SCREENSHOT });
             let mut assets = json!({ JEV_SCREENSHOT: asset(q.screenshot.png()) });
             if let Some(reference) = q.reference {
@@ -772,12 +851,59 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
     }
 }
 
+/// URL and JSON body that ask JEV where the element `what` describes is, and whether it is
+/// there at all: a box always has four edges, even around nothing. Also the share of the
+/// width and height of the sent picture that the screenshot fills.
+fn locate_request(c: &Config, screenshot: &MaskedImage, what: &str) -> (String, Value, (f64, f64)) {
+    let (png, fill) = jev_fitted(screenshot.png());
+    let what = what.trim();
+    let body = json!({
+        "model": c.model.trim(),
+        "state": { "screenshot": JEV_SCREENSHOT },
+        "assets": { JEV_SCREENSHOT: jev_asset(&png) },
+        "questions": {
+            "visible": {
+                "type": "noul",
+                "instructions": format!("{JEV_LOCATE_INSTRUCTIONS}\nIs this element visible in the screenshot {JEV_SCREENSHOT}: {what}? Give the probability that the answer is yes.")
+            },
+            "where": {
+                "type": "box",
+                "instructions": format!("{JEV_LOCATE_INSTRUCTIONS}\nThe element in the screenshot {JEV_SCREENSHOT}: {what}")
+            }
+        }
+    });
+    (format!("{}/v1/systemone", c.address()), body, fill)
+}
+
+/// JEV models before 1.14 can't answer where something is; names without a version, such as
+/// `jev-latest`, are taken to be new enough.
+fn jev_locates(model: &str) -> bool {
+    let version = model.strip_prefix("jev-").unwrap_or(model);
+    let mut parts = version.split('.').map(str::parse::<u32>);
+    match (parts.next(), parts.next()) {
+        (Some(Ok(major)), Some(Ok(minor))) => (major, minor) >= (1, 14),
+        _ => true,
+    }
+}
+
+fn jev_asset(png: &[u8]) -> Value {
+    let data = base64::engine::general_purpose::STANDARD.encode(png);
+    json!({ "type": "image", "format": "png", "data_base64": data })
+}
+
 /// `png` with every side within what JEV accepts: scaled to fit, and where the shape is too
 /// long for that, padded with [`MASK_COLOUR`] on the right or bottom. Bytes that are not a PNG
 /// pass as they are.
 fn jev_sized(png: &[u8]) -> std::borrow::Cow<'_, [u8]> {
+    jev_fitted(png).0
+}
+
+/// [`jev_sized`], with the share of the width and height that the picture fills; the rest is
+/// padding.
+fn jev_fitted(png: &[u8]) -> (std::borrow::Cow<'_, [u8]>, (f64, f64)) {
+    let whole = (1.0, 1.0);
     let Ok(picture) = image::Image::decode(png) else {
-        return png.into();
+        return (png.into(), whole);
     };
     let long = f64::from(picture.width.max(picture.height));
     let short = f64::from(picture.width.min(picture.height));
@@ -786,7 +912,7 @@ fn jev_sized(png: &[u8]) -> std::borrow::Cow<'_, [u8]> {
     } else if short < f64::from(JEV_MIN_SIDE) {
         (f64::from(JEV_MIN_SIDE) / short).min(f64::from(JEV_MAX_SIDE) / long)
     } else {
-        return png.into();
+        return (png.into(), whole);
     };
     let side = |s: u32| ((f64::from(s) * scale).round() as u32).max(1);
     let fitted = picture.resized(side(picture.width), side(picture.height));
@@ -803,7 +929,51 @@ fn jev_sized(png: &[u8]) -> std::borrow::Cow<'_, [u8]> {
         height,
         rgba,
     };
-    sized.encode().map_or_else(|_| png.into(), Into::into)
+    let fill = (
+        f64::from(fitted.width) / f64::from(width),
+        f64::from(fitted.height) / f64::from(height),
+    );
+    match sized.encode() {
+        Ok(bytes) => (bytes.into(), fill),
+        Err(_) => (png.into(), whole),
+    }
+}
+
+/// Reads where JEV saw the element from a successful response body; `None` when it is more
+/// likely not on the screenshot. `fill` is the share of the sent picture the screenshot fills.
+fn located(body: &str, (fill_x, fill_y): (f64, f64)) -> Result<Option<Located>, VisionError> {
+    let bad = || VisionError::BadAnswer {
+        answer: body.to_owned(),
+    };
+    let v: Value = serde_json::from_str(body).map_err(|_| bad())?;
+    let fraction = |v: &Value| v.as_f64().filter(|p| (0.0..=1.0).contains(p));
+    let visible = fraction(&v["answers"]["visible"]["noul"]).ok_or_else(bad)?;
+    if visible < 0.5 {
+        return Ok(None);
+    }
+    let answer = &v["answers"]["where"];
+    let edge = |name: &str| fraction(&answer["box"][name]).ok_or_else(bad);
+    let (top, bottom, left, right) = (edge("top")?, edge("bottom")?, edge("left")?, edge("right")?);
+    if left >= right || top >= bottom {
+        return Err(bad());
+    }
+    // Edges count from the whole sent picture, padding included.
+    let x = |e: f64| (e / fill_x).min(1.0);
+    let y = |e: f64| (e / fill_y).min(1.0);
+    let area = Rect {
+        x: x(left),
+        y: y(top),
+        width: x(right) - x(left),
+        height: y(bottom) - y(top),
+    };
+    if area.width <= 0.0 || area.height <= 0.0 {
+        // The box lies on the padding, off the screenshot.
+        return Ok(None);
+    }
+    Ok(Some(Located {
+        area,
+        confidence: fraction(&answer["confidence"]).unwrap_or(visible),
+    }))
 }
 
 /// Reads the verdict from a successful response body.

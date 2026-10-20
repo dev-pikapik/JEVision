@@ -3675,6 +3675,16 @@
         }
       }
     },
+    "By Description" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По описанию"
+          }
+        }
+      }
+    },
     "By Look" : {
       "localizations" : {
         "ru" : {
@@ -5891,6 +5901,16 @@
         }
       }
     },
+    "Describe the element in plain words. JEV (TypeSafe AI) finds it on the screen, and the pointer goes to its middle." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите элемент простыми словами. JEV (TypeSafe AI) найдёт его на экране, и указатель попадёт в его середину."
+          }
+        }
+      }
+    },
     "Describe what changed" : {
       "localizations" : {
         "ru" : {
@@ -6575,6 +6595,16 @@
         }
       }
     },
+    "Element" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемент"
+          }
+        }
+      }
+    },
     "Email" : {
       "localizations" : {
         "ru" : {
@@ -7201,6 +7231,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Искать"
+          }
+        }
+      }
+    },
+    "Finding an element by its description needs JEV (TypeSafe AI) and its API key." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы найти элемент по описанию, нужен JEV (TypeSafe AI) и его ключ API."
+          }
+        }
+      }
+    },
+    "Finding by Description: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск по описанию: %@"
           }
         }
       }
@@ -10584,6 +10634,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешены только модели на этом Mac, поэтому проверки по смыслу через %@ остановятся с сообщением."
+          }
+        }
+      }
+    },
+    "Only models on this Mac are allowed, so finding by description stops with a message." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешены только модели на этом Mac, поэтому поиск по описанию остановится с сообщением."
           }
         }
       }
@@ -14156,12 +14216,12 @@
         }
       }
     },
-    "Screenshots never go to a cloud service. Checks that would need one stop with a message." : {
+    "Screenshots never go to a cloud service. Checks and finding by description that would need one stop with a message." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки, которым такой сервис нужен, останавливаются с сообщением."
+            "value" : "Снимки экрана не уходят в облачные сервисы. Проверки и поиск по описанию, которым такой сервис нужен, останавливаются с сообщением."
           }
         }
       }
@@ -14658,6 +14718,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Настроить ИИ…"
+          }
+        }
+      }
+    },
+    "Set Up JEV…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить JEV…"
           }
         }
       }
@@ -16032,6 +16102,16 @@
         }
       }
     },
+    "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. %@ finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты могут кликать, наводить указатель, перетаскивать, прокручивать и вводить текст в элемент, описанный словами, например «синяя кнопка Сохранить». Его находит %@, какой бы провайдер ни проверял по смыслу, и получает снимок окна и описание; поля паролей и области, которые скрывает проект, закрашиваются. Для поиска нужна модель jev-1.14.0 или новее либо jev-latest."
+          }
+        }
+      }
+    },
     "Tests in a folder" : {
       "localizations" : {
         "ru" : {
@@ -16466,6 +16546,16 @@
         }
       }
     },
+    "The blue Save button" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синяя кнопка «Сохранить»"
+          }
+        }
+      }
+    },
     "The browser that opens the links." : {
       "localizations" : {
         "ru" : {
@@ -16894,6 +16984,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось добавить запись в тест: %@"
+          }
+        }
+      }
+    },
+    "The red outline shows where JEV found the element." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Красная рамка показывает, где JEV нашёл элемент."
           }
         }
       }
@@ -19144,12 +19244,12 @@
         }
       }
     },
-    "Without a provider, checks compare pictures only. JEVision sends nothing anywhere." : {
+    "Without a provider, checks compare pictures only and send nothing anywhere." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Без провайдера проверки сравнивают только картинки. JEVision ничего никуда не отправляет."
+            "value" : "Без провайдера проверки сравнивают только картинки и ничего никуда не отправляют."
           }
         }
       }
@@ -22502,6 +22602,38 @@
         }
       }
     },
+    "run.target.descriptionNotFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: “%@” wasn’t found on the screen."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: «%2$@» не найден на экране."
+          }
+        }
+      }
+    },
+    "run.target.noLocator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: finding an element by its description needs JEV (TypeSafe AI). Set it up in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%@»: чтобы найти элемент по описанию, нужен JEV (TypeSafe AI). Настройте его в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.target.notFound" : {
       "localizations" : {
         "en" : {
@@ -22630,6 +22762,22 @@
         }
       }
     },
+    "run.vision.cannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t find elements by description; only JEV (TypeSafe AI) can. Set up JEV in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ не умеет находить элементы по описанию — это умеет только JEV (TypeSafe AI). Настройте JEV в Настройках → ИИ."
+          }
+        }
+      }
+    },
     "run.vision.cloudBlocked" : {
       "localizations" : {
         "en" : {
@@ -22738,6 +22886,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ израсходовал $%2$@ из месячного лимита $%3$@. Проверки ИИ с ним остановлены до следующего месяца или пока лимит не поднят в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "run.vision.modelCannotLocate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The JEV model “%@” can’t find elements by description; jev-1.14.0 and newer or jev-latest can. Choose one in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель JEV «%@» не умеет находить элементы по описанию — это умеют jev-1.14.0 и новее или jev-latest. Выберите такую в Настройках → ИИ."
           }
         }
       }
