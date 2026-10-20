@@ -11,6 +11,7 @@ use jevision_core::{
     Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, TestCard,
     TestFilter, describe, parse, parse_block, to_canonical_json, validate_in,
 };
+use jevision_l10n::tr;
 use jevision_runner::{MaskedImage, Run, StepStatus, Verdict};
 
 use crate::{BugReport, draft_bug_report};
@@ -270,7 +271,9 @@ impl Server {
             .collect();
         let flaky = match args.get("flaky") {
             None | Some(Value::Null) => false,
-            Some(v) => v.as_bool().ok_or("\"flaky\" must be true or false.")?,
+            Some(v) => v
+                .as_bool()
+                .ok_or_else(|| tr!("mcp.arg.notBoolean", "flaky"))?,
         };
         let filter = TestFilter::from_words(
             optional(args, "testType")?,
@@ -285,7 +288,9 @@ impl Server {
             let entry = match fs::read_to_string(&file).map(|t| parse(&t)) {
                 // A test that can't be read has no card to choose it by.
                 Err(_) | Ok(Err(_)) if !filter.is_empty() => continue,
-                Err(e) => json!({ "path": path, "error": format!("can't be read: {e}") }),
+                Err(e) => {
+                    json!({ "path": path, "error": tr!("mcp.tests.unreadable", e.to_string()) })
+                }
                 Ok(Err(e)) => {
                     json!({ "path": path, "errors": e.issues.len(), "problems": described(&e.issues) })
                 }
@@ -322,10 +327,9 @@ impl Server {
             }
         }
         let summary = match (tests.len(), words.is_empty()) {
-            (0, true) if filter.is_empty() => "The project has no tests yet.".to_owned(),
-            (0, _) => "No test matches.".to_owned(),
-            (1, _) => "1 test.".to_owned(),
-            (n, _) => format!("{n} tests."),
+            (0, true) if filter.is_empty() => tr!("mcp.tests.none"),
+            (0, _) => tr!("mcp.tests.noMatch"),
+            (n, _) => tr!("mcp.tests.count", n),
         };
         Ok(vec![text(summary), pretty(&json!({ "tests": tests }))])
     }
@@ -345,7 +349,7 @@ impl Server {
         let content = match args.get("test") {
             Some(Value::String(s)) => s.clone(),
             Some(object @ Value::Object(_)) => object.to_string(),
-            _ => return Err("Give the test as a JSON object in \"test\".".to_owned()),
+            _ => return Err(tr!("mcp.write.noTest")),
         };
         let file = self.test_file(path)?;
         let flow = parse(&content).map_err(|e| not_saved(&e.issues))?;
@@ -355,12 +359,12 @@ impl Server {
         }
         let existed = file.exists();
         self.save(&file, &flow)?;
-        let done = if existed { "Saved" } else { "Created" };
-        Ok(vec![text(format!(
-            "{done} {}. {}",
-            self.relative(&file),
-            problems(&issues)
-        ))])
+        let (path, problems) = (self.relative(&file), problems(&issues));
+        Ok(vec![text(if existed {
+            tr!("mcp.write.saved", path, problems)
+        } else {
+            tr!("mcp.write.created", path, problems)
+        })])
     }
 
     fn add_blocks(&self, args: &Value) -> Content {
@@ -369,7 +373,7 @@ impl Server {
             .get("blocks")
             .filter(|b| b.as_array().is_some_and(|a| !a.is_empty()))
         else {
-            return Err("Give the blocks to add as a list in \"blocks\".".to_owned());
+            return Err(tr!("mcp.add.noBlocks"));
         };
         let mut flow = self.load(&file)?;
         let mut kinds = Vec::with_capacity(items.len());
@@ -385,11 +389,13 @@ impl Server {
             }
         }
         if !wrong.is_empty() {
-            return Err(format!("Nothing was added:\n{}", wrong.join("\n")));
+            return Err(tr!("mcp.add.nothingAdded", wrong.join("\n")));
         }
         let at_start = match args.get("atStart") {
             None | Some(Value::Null) => false,
-            Some(v) => v.as_bool().ok_or("\"atStart\" must be true or false.")?,
+            Some(v) => v
+                .as_bool()
+                .ok_or_else(|| tr!("mcp.arg.notBoolean", "atStart"))?,
         };
         let slot = place(
             &flow,
@@ -397,13 +403,13 @@ impl Server {
             optional(args, "after")?,
             optional(args, "edge")?,
         )?;
-        let ids = flow.insert_blocks(kinds, slot.as_ref()).ok_or(
-            "Nothing was added: only the last of the blocks may be an if block, since the blocks after it would have no single way in.",
-        )?;
+        let ids = flow
+            .insert_blocks(kinds, slot.as_ref())
+            .ok_or_else(|| tr!("mcp.add.ifNotLast"))?;
         self.save(&file, &flow)?;
         Ok(vec![
-            text(format!(
-                "Added {} to {}. {}",
+            text(tr!(
+                "mcp.add.done",
                 ids.iter()
                     .map(|id| format!("\"{id}\""))
                     .collect::<Vec<_>>()
@@ -424,8 +430,9 @@ impl Server {
         }
         flow.remove_block(id);
         self.save(&file, &flow)?;
-        Ok(vec![text(format!(
-            "Removed \"{id}\" from {}. {}",
+        Ok(vec![text(tr!(
+            "mcp.remove.done",
+            id,
             self.relative(&file),
             problems(&checked(&flow, &file))
         ))])
@@ -438,7 +445,11 @@ impl Server {
         for file in &files {
             let issues = match fs::read_to_string(file).map(|t| parse(&t)) {
                 Err(e) => {
-                    lines.push(format!("{}: can't be read: {e}", self.relative(file)));
+                    lines.push(tr!(
+                        "mcp.validate.unreadable",
+                        self.relative(file),
+                        e.to_string()
+                    ));
                     continue;
                 }
                 Ok(Err(e)) => e.issues,
@@ -451,7 +462,7 @@ impl Server {
 
     fn run_test(&self, args: &Value) -> Content {
         if !self.host.permissions().run_tests {
-            return Err("Running tests is turned off. Tests click and type on this Mac, so the person at it decides: they can turn on \"Allow assistants to run tests\" in JEVision → Settings → AI → Assistants. Ask them, then try again.".to_owned());
+            return Err(tr!("mcp.run.off"));
         }
         let target = self.resolve(required(args, "path")?)?;
         let retries = match args.get("retries") {
@@ -460,16 +471,14 @@ impl Server {
                 v.as_u64()
                     .and_then(|n| u32::try_from(n).ok())
                     .filter(|n| *n <= jevision_core::MAX_RETRIES)
-                    .ok_or(format!(
-                        "\"retries\" must be a whole number from 0 to {}.",
-                        jevision_core::MAX_RETRIES
-                    ))?,
+                    .ok_or_else(|| tr!("mcp.arg.retries", jevision_core::MAX_RETRIES))?,
             ),
         };
         let known = jevision_core::Environments::load(&self.project).map_err(|reason| {
-            format!(
-                "{} can't be read: {reason}",
-                jevision_core::ENVIRONMENTS_FILE
+            tr!(
+                "project.file.unreadable",
+                jevision_core::ENVIRONMENTS_FILE,
+                reason.to_string()
             )
         })?;
         let environment = match optional(args, "env")? {
@@ -478,15 +487,9 @@ impl Server {
                 if known.get(name).is_none() {
                     let names: Vec<&str> = known.all.keys().map(String::as_str).collect();
                     return Err(if names.is_empty() {
-                        format!(
-                            "The project has no environments: add them to {}.",
-                            jevision_core::ENVIRONMENTS_FILE
-                        )
+                        tr!("mcp.env.none", jevision_core::ENVIRONMENTS_FILE)
                     } else {
-                        format!(
-                            "There is no environment \"{name}\". The project has: {}.",
-                            names.join(", ")
-                        )
+                        tr!("mcp.env.unknown", name, names.join(", "))
                     });
                 }
                 Some(name.to_owned())
@@ -505,7 +508,7 @@ impl Server {
             .map(|f| self.relative(f))
             .collect();
         if let Some(problem) = self.host.readiness_problem() {
-            return Err(format!("This Mac can't run tests right now. {problem}"));
+            return Err(tr!("mcp.run.notReady", problem));
         }
         if self.host.permissions().ask_first {
             let mut apps: Vec<String> = Vec::new();
@@ -535,10 +538,7 @@ impl Server {
             self.host.clone(),
         )?;
         Ok(vec![
-            text(format!(
-                "Run {} started. Call get_run with run \"{}\" and wait to get the result.",
-                job.id, job.id
-            )),
+            text(tr!("mcp.run.started", &job.id, &job.id)),
             pretty(&json!({ "run": job.id, "tests": tests })),
         ])
     }
@@ -550,9 +550,7 @@ impl Server {
             Some(v) => v
                 .as_u64()
                 .filter(|s| *s <= MAX_WAIT_SECONDS)
-                .ok_or(format!(
-                    "\"wait\" must be a whole number of seconds from 0 to {MAX_WAIT_SECONDS}."
-                ))?,
+                .ok_or_else(|| tr!("mcp.arg.wait", MAX_WAIT_SECONDS))?,
         };
         Ok(vec![pretty(&job.status(Duration::from_secs(wait)))])
     }
@@ -560,10 +558,7 @@ impl Server {
     fn stop_run(&self, args: &Value) -> Content {
         let job = self.jobs.get(optional(args, "run")?)?;
         job.stop();
-        Ok(vec![text(format!(
-            "Run {} is stopping. Call get_run to see how it ended.",
-            job.id
-        ))])
+        Ok(vec![text(tr!("mcp.run.stopping", &job.id))])
     }
 
     /// The run of the report named in `args`; `None` when none is named.
@@ -573,14 +568,12 @@ impl Server {
         };
         let mut parts = Path::new(name).components();
         let (Some(Component::Normal(_)), None) = (parts.next(), parts.next()) else {
-            return Err(format!(
-                "\"{name}\" isn't a report name. Report names come from get_run, such as 2026-10-18-120000-sign-in."
-            ));
+            return Err(tr!("mcp.report.badName", name));
         };
         let dir = self.project.join(".jevision").join("runs").join(name);
         Run::load(&dir)
             .map(Some)
-            .map_err(|_| format!("There is no readable report \"{name}\"."))
+            .map_err(|_| tr!("mcp.report.notFound", name))
     }
 
     /// The bug report about the run of the report named in `args`, or the newest failed one.
@@ -593,7 +586,7 @@ impl Server {
                     runs.into_iter()
                         .find(|r| r.report.verdict == Verdict::Failed)
                 })
-                .ok_or("No run in this project has failed. Name the report with report.")?,
+                .ok_or_else(|| tr!("mcp.bug.noFailedRun"))?,
         };
         let draft = draft_bug_report(
             self.project.to_string_lossy().into_owned(),
@@ -601,7 +594,7 @@ impl Server {
             self.host.secrets(),
         )
         .map_err(|e| e.to_string())?
-        .ok_or("That run didn't fail, so there is no bug to report.")?;
+        .ok_or_else(|| tr!("mcp.bug.notFailed"))?;
         Ok((run, draft))
     }
 
@@ -627,18 +620,14 @@ impl Server {
             let chosen: Vec<&str> = chosen
                 .as_array()
                 .and_then(|labels| labels.iter().map(Value::as_str).collect())
-                .ok_or("\"screenshots\" must be a list of labels from draft_bug_report.")?;
+                .ok_or_else(|| tr!("mcp.arg.screenshots"))?;
             draft
                 .screenshots
                 .retain(|s| chosen.contains(&s.label.as_str()));
         }
         let comment_on = match args.get("commentOn") {
             None => None,
-            Some(number) => Some(
-                number
-                    .as_u64()
-                    .ok_or("\"commentOn\" must be an issue number.")?,
-            ),
+            Some(number) => Some(number.as_u64().ok_or_else(|| tr!("mcp.arg.commentOn"))?),
         };
         let project = self.project.to_string_lossy().into_owned();
         let (repo, hub) = crate::git::on_github(&project).map_err(|e| github_message(&e))?;
@@ -648,9 +637,12 @@ impl Server {
                 .open_issue_with(&github, &crate::bug::marker(&draft.fingerprint))
                 .map_err(|e| github_message(&e))?;
             if let Some(issue) = open {
-                return Err(format!(
-                    "Issue #{} \"{}\" ({}) is already open for this failure. Call again with commentOn: {} to add this run to it, or with newIssue: true to open another issue anyway.",
-                    issue.number, issue.title, issue.url, issue.number
+                return Err(tr!(
+                    "mcp.bug.alreadyOpen",
+                    issue.number,
+                    &issue.title,
+                    &issue.url,
+                    issue.number
                 ));
             }
         }
@@ -665,8 +657,8 @@ impl Server {
         )
         .map_err(|e| github_message(&e))?;
         Ok(vec![text(match comment_on {
-            Some(number) => format!("Added the run to issue #{number}: {url}"),
-            None => format!("Opened the issue: {url}"),
+            Some(number) => tr!("mcp.bug.commented", number, url),
+            None => tr!("mcp.bug.opened", url),
         })])
     }
 
@@ -676,11 +668,11 @@ impl Server {
             None => Run::list(&self.project)
                 .ok()
                 .and_then(|runs| runs.into_iter().next())
-                .ok_or("The project has no reports yet. Run a test with run_test.")?,
+                .ok_or_else(|| tr!("mcp.report.none"))?,
         };
         let images = optional(args, "images")?.unwrap_or("none");
         if !["none", "failed", "all"].contains(&images) {
-            return Err("\"images\" must be none, failed or all.".to_owned());
+            return Err(tr!("mcp.arg.images"));
         }
         let mut report = serde_json::to_value(&run.report).map_err(|e| e.to_string())?;
         explain_failures(&mut report);
@@ -708,10 +700,10 @@ impl Server {
                     continue;
                 }
                 let pictures = [
-                    ("before", &step.before),
-                    ("after", &step.after),
-                    ("expected", &step.expected),
-                    ("difference", &step.diff),
+                    (tr!("mcp.picture.before"), &step.before),
+                    (tr!("mcp.picture.after"), &step.after),
+                    (tr!("mcp.picture.expected"), &step.expected),
+                    (tr!("mcp.picture.difference"), &step.diff),
                 ];
                 for (label, picture) in pictures {
                     // Saved pictures are masked already; areas the project hides since are too.
@@ -723,12 +715,16 @@ impl Server {
                         continue;
                     };
                     if shown == MAX_IMAGES {
-                        content.push(text(format!("Only the first {MAX_IMAGES} screenshots are included; the HTML report has them all.")));
+                        content.push(text(tr!("mcp.report.tooManyImages", MAX_IMAGES)));
                         break 'steps;
                     }
-                    content.push(text(format!(
-                        "Attempt {}, step {} \"{}\" ({}): {label}",
-                        attempt.number, step.seq, step.block, step.block_type
+                    content.push(text(tr!(
+                        "mcp.report.picture",
+                        attempt.number,
+                        step.seq,
+                        &step.block,
+                        &step.block_type,
+                        label
                     )));
                     content.push(image(&picture));
                     shown += 1;
@@ -737,8 +733,8 @@ impl Server {
         }
         if shown == 0 {
             content.push(text(match images {
-                "failed" => "No failed step has screenshots.",
-                _ => "This report has no screenshots.",
+                "failed" => tr!("mcp.report.noFailedScreenshots"),
+                _ => tr!("mcp.report.noScreenshots"),
             }));
         }
         Ok(content)
@@ -746,16 +742,13 @@ impl Server {
 
     fn screenshot(&self, args: &Value) -> Content {
         if !self.host.permissions().screenshots {
-            return Err("Screenshots are turned off. The window may show private things, so the person at this Mac decides: they can turn on \"Allow assistants to take screenshots\" in JEVision → Settings → AI → Assistants. Ask them, then try again.".to_owned());
+            return Err(tr!("mcp.screenshot.off"));
         }
         let app = match (optional(args, "app")?, optional(args, "path")?) {
             (Some(app), _) => app.to_owned(),
             (None, Some(path)) => self.load(&self.test_file(path)?)?.app,
             (None, None) => {
-                return Err(
-                    "Name the app, such as com.apple.TextEdit, or a test whose app to picture."
-                        .to_owned(),
-                );
+                return Err(tr!("mcp.screenshot.noApp"));
             }
         };
         let hide = self.shareable_areas()?;
@@ -765,10 +758,11 @@ impl Server {
             .map_err(|e| hands_message(&e))?;
         let areas: Vec<_> = hide.iter().chain(&shot.secure).copied().collect();
         let picture = MaskedImage::from_png(&shot.png, &areas)
-            .map_err(|reason| format!("The screenshot can't be read: {reason}."))?;
-        let mut said = format!("The front window of {app}.");
+            .map_err(|reason| tr!("mcp.screenshot.unreadable", reason.to_string()))?;
+        let mut said = tr!("mcp.screenshot.window", app);
         if picture.is_masked() {
-            said.push_str(" Grey boxes cover private parts of it on purpose.");
+            said.push(' ');
+            said.push_str(&tr!("mcp.screenshot.masked"));
         }
         Ok(vec![text(said), image(&picture)])
     }
@@ -777,9 +771,9 @@ impl Server {
     /// Mac at all: an assistant may pass it on to a cloud service.
     fn shareable_areas(&self) -> Result<Vec<Rect>, String> {
         let settings = ProjectSettings::load(&self.project)
-            .map_err(|reason| format!("{PROJECT_FILE} can't be read: {reason}"))?;
+            .map_err(|reason| tr!("project.file.unreadable", PROJECT_FILE, reason.to_string()))?;
         if settings.local_only || self.host.run_options().local_only {
-            return Err("Screenshots stay on this Mac: \"Only models on this Mac\" is turned on for this project or in JEVision → Settings → AI, and an assistant may pass pictures on to a cloud service. Work from the report's text instead.".to_owned());
+            return Err(tr!("mcp.screenshot.localOnly"));
         }
         Ok(settings.hide)
     }
@@ -788,15 +782,10 @@ impl Server {
 
     /// `path` as a real path inside the project. Its last parts may not exist yet.
     fn resolve(&self, path: &str) -> Result<PathBuf, String> {
-        let outside = || {
-            format!(
-                "\"{path}\" isn't inside the project folder {}. Use a path relative to it, without ..",
-                self.project.display()
-            )
-        };
+        let outside = || tr!("mcp.path.outside", path, self.project.display().to_string());
         let given = Path::new(path.trim());
         if given.as_os_str().is_empty() {
-            return Err("Give a path relative to the project folder.".to_owned());
+            return Err(tr!("mcp.path.empty"));
         }
         let mut joined = if given.is_absolute() {
             PathBuf::from("/")
@@ -829,18 +818,14 @@ impl Server {
     fn test_file(&self, path: &str) -> Result<PathBuf, String> {
         let file = self.resolve(path)?;
         if !file.to_string_lossy().ends_with(TEST_SUFFIX) {
-            return Err(format!(
-                "\"{path}\" isn't a test file: their names end in {TEST_SUFFIX}."
-            ));
+            return Err(tr!("mcp.path.notTest", path, TEST_SUFFIX));
         }
         let hidden = file.strip_prefix(&self.project).is_ok_and(|rel| {
             rel.components()
                 .any(|c| c.as_os_str().to_string_lossy().starts_with('.'))
         });
         if hidden {
-            return Err(format!(
-                "\"{path}\" is in a hidden folder, where JEVision keeps no tests."
-            ));
+            return Err(tr!("mcp.path.hidden", path));
         }
         Ok(file)
     }
@@ -850,13 +835,13 @@ impl Server {
         if target.is_dir() {
             let files = self.collect(target)?;
             if files.is_empty() {
-                return Err(format!("{} has no tests.", self.relative(target)));
+                return Err(tr!("mcp.folder.noTests", self.relative(target)));
             }
             Ok(files)
         } else {
             let file = self.test_file(&self.relative(target))?;
             if !file.is_file() {
-                return Err(format!("There is no test {}.", self.relative(&file)));
+                return Err(tr!("mcp.test.notFound", self.relative(&file)));
             }
             Ok(vec![file])
         }
@@ -883,7 +868,7 @@ impl Server {
             Ok(())
         }
         if !folder.is_dir() {
-            return Err(format!("There is no folder {}.", self.relative(folder)));
+            return Err(tr!("mcp.folder.notFound", self.relative(folder)));
         }
         let mut files = Vec::new();
         walk(folder, &mut files).map_err(|e| self.io_error(folder, &e))?;
@@ -893,13 +878,7 @@ impl Server {
 
     fn load(&self, file: &Path) -> Result<Flow, String> {
         let content = fs::read_to_string(file).map_err(|e| self.io_error(file, &e))?;
-        parse(&content).map_err(|e| {
-            format!(
-                "{} can't be read as a test. Fix it with write_test first:\n{}",
-                self.relative(file),
-                list(&e.issues)
-            )
-        })
+        parse(&content).map_err(|e| tr!("mcp.test.invalid", self.relative(file), list(&e.issues)))
     }
 
     /// Writes `flow` in canonical form; a reader never sees half a file.
@@ -930,7 +909,7 @@ impl Server {
 
     fn io_error(&self, path: &Path, e: &std::io::Error) -> String {
         if e.kind() == std::io::ErrorKind::NotFound {
-            format!("There is no file {}.", self.relative(path))
+            tr!("mcp.file.notFound", self.relative(path))
         } else {
             format!("{}: {e}.", self.relative(path))
         }
@@ -951,13 +930,11 @@ fn place(
                 from: String::new(),
                 edge: START.to_owned(),
             })),
-            (_, Some(_)) => {
-                Err("Name the block in \"after\" whose way out \"edge\" is.".to_owned())
-            }
+            (_, Some(_)) => Err(tr!("mcp.edge.noAfter")),
         };
     };
     if at_start {
-        return Err("Give either \"after\" or \"atStart\", not both.".to_owned());
+        return Err(tr!("mcp.edge.both"));
     }
     let block = flow
         .blocks
@@ -967,9 +944,10 @@ fn place(
     let edge = edge.unwrap_or(NEXT);
     let edges = block.kind.edge_names();
     if !edges.iter().any(|e| e == edge) {
-        return Err(format!(
-            "A {} block has no \"{edge}\" way out; it has: {}.",
+        return Err(tr!(
+            "mcp.edge.unknown",
             block.kind.type_name(),
+            edge,
             edges.join(", ")
         ));
     }
@@ -982,10 +960,7 @@ fn place(
 fn no_block(flow: &Flow, id: &str) -> String {
     let mut ids: Vec<&str> = flow.blocks.iter().map(|b| b.id.as_str()).collect();
     ids.sort_unstable();
-    format!(
-        "There is no block \"{id}\". The blocks are: {}.",
-        ids.join(", ")
-    )
+    tr!("mcp.block.notFound", id, ids.join(", "))
 }
 
 /// A block as given, without the fields that join it to others: `add_blocks` makes those.
@@ -1048,14 +1023,14 @@ fn read_inside(dir: &Path, relative: &str) -> Option<Vec<u8>> {
 }
 
 fn not_saved(issues: &[Issue]) -> String {
-    format!("The test wasn't saved:\n{}", list(issues))
+    tr!("mcp.test.notSaved", list(issues))
 }
 
 fn problems(issues: &[Issue]) -> String {
     if issues.is_empty() {
-        "No problems found.".to_owned()
+        tr!("mcp.problems.none")
     } else {
-        format!("Problems:\n{}", list(issues))
+        tr!("mcp.problems.list", list(issues))
     }
 }
 
@@ -1076,8 +1051,8 @@ fn described(issues: &[Issue]) -> Vec<String> {
     issues
         .iter()
         .map(|i| match i.severity {
-            Severity::Error => format!("error: {}", describe(i)),
-            Severity::Warning => format!("warning: {}", describe(i)),
+            Severity::Error => tr!("mcp.problem.error", describe(i)),
+            Severity::Warning => tr!("mcp.problem.warning", describe(i)),
         })
         .collect()
 }
@@ -1086,14 +1061,14 @@ fn optional<'a>(args: &'a Value, name: &str) -> Result<Option<&'a str>, String> 
     match args.get(name) {
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(s)) => Ok(Some(s.as_str())),
-        Some(_) => Err(format!("\"{name}\" must be text.")),
+        Some(_) => Err(tr!("mcp.arg.notText", name)),
     }
 }
 
 fn required<'a>(args: &'a Value, name: &str) -> Result<&'a str, String> {
     optional(args, name)?
         .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| format!("\"{name}\" is required."))
+        .ok_or_else(|| tr!("mcp.arg.required", name))
 }
 
 fn pretty(value: &Value) -> Value {
@@ -1104,11 +1079,11 @@ fn pretty(value: &Value) -> Value {
 fn github_message(error: &jevision_git::GitError) -> String {
     use jevision_git::GitError::*;
     match error {
-        NotRepository | NoCommits => "The project isn't in a git repository yet, so there is no GitHub repository to file the issue in. The person can set it up in JEVision → Settings → Git.".to_owned(),
-        NoRemote | NotGitHub => "The project's repository isn't on GitHub, so the issue can't be filed there. Give the person the drafted text to file it by hand.".to_owned(),
-        NoGitHubCli | GitHubSignedOut | SignIn => "GitHub isn't connected. The person can sign in to GitHub in JEVision → Settings → Git.".to_owned(),
-        NoPermission => "The GitHub account can't open issues in this repository.".to_owned(),
-        other => format!("GitHub didn't take the bug report: {other}."),
+        NotRepository | NoCommits => tr!("mcp.github.notRepository"),
+        NoRemote | NotGitHub => tr!("mcp.github.notGitHub"),
+        NoGitHubCli | GitHubSignedOut | SignIn => tr!("mcp.github.signedOut"),
+        NoPermission => tr!("mcp.github.noPermission"),
+        other => tr!("mcp.github.failed", other.to_string()),
     }
 }
 

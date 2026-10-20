@@ -170,7 +170,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func capture(app: String) throws(HandsError) -> Screenshot {
     let (image, scale, window) = try captureWindow(app)
-    guard let png = Self.png(image) else { throw .Failed(reason: "The screenshot can’t be saved as PNG.") }
+    guard let png = Self.png(image) else { throw .Failed(reason: handsWords("hands.screenshot.notPng")) }
     let pids = Set(Self.runningApps(app).map(\.processIdentifier))
     return Screenshot(
       png: png, scale: scale, dark: Self.systemIsDark,
@@ -180,9 +180,9 @@ public final class MacHands: Hands, @unchecked Sendable {
   public func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? {
     guard let source = CGImageSourceCreateWithData(template as CFData, nil),
       let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
-    else { throw .Failed(reason: "The image to look for can’t be read.") }
+    else { throw .Failed(reason: handsWords("hands.image.unreadable")) }
     let (shot, scale, _) = try captureWindow(app)
-    guard let screen = Self.bitmap(shot) else { throw .Failed(reason: "The screenshot can’t be read.") }
+    guard let screen = Self.bitmap(shot) else { throw .Failed(reason: handsWords("hands.screenshot.unreadable")) }
     // The image may come from a display of another density: one taken on a Retina screen is
     // twice as large in pixels as the same button on a regular one, and the other way round.
     for factor in [1, scale > 1 ? scale : 0.5] {
@@ -378,7 +378,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func pressKeys(keys: String) throws(HandsError) {
     try requireInput()
-    guard let stroke = KeyStroke(keys) else { throw .Failed(reason: "“\(keys)” isn’t a key combination.") }
+    guard let stroke = KeyStroke(keys) else { throw .Failed(reason: handsWords("hands.keys.invalid", keys)) }
     try tap(stroke)
   }
 
@@ -390,7 +390,7 @@ public final class MacHands: Hands, @unchecked Sendable {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     guard pasteboard.setString(text, forType: .string) else {
-      throw .Failed(reason: "The clipboard didn’t take the text.")
+      throw .Failed(reason: handsWords("hands.clipboard.textRefused"))
     }
   }
 
@@ -408,13 +408,13 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func setClipboardImage(png: Data) throws(HandsError) {
     guard let tiff = NSBitmapImageRep(data: png)?.tiffRepresentation else {
-      throw .Failed(reason: "The file isn’t a picture the clipboard can hold.")
+      throw .Failed(reason: handsWords("hands.clipboard.notPicture"))
     }
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     // PNG for apps that take it, TIFF for the older ones that read only that.
     guard pasteboard.setData(png, forType: .png), pasteboard.setData(tiff, forType: .tiff) else {
-      throw .Failed(reason: "The clipboard didn’t take the picture.")
+      throw .Failed(reason: handsWords("hands.clipboard.pictureRefused"))
     }
   }
 
@@ -446,7 +446,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   private func post(_ event: CGEvent?) throws(HandsError) {
-    guard let event else { throw .Failed(reason: "The system didn’t create an input event.") }
+    guard let event else { throw .Failed(reason: handsWords("hands.event.refused")) }
     event.post(tap: .cghidEventTap)
   }
 

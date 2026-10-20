@@ -10,6 +10,7 @@ use std::path::Path;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use jevision_l10n::tr;
 use jevision_remote::{
     self as remote, AssistantClient, AssistantFailure, HostRecord, PairingOffer, RemoteError,
 };
@@ -72,7 +73,7 @@ impl Assistants {
         let link = self.link(session, device);
         let Ok(server) = link.server(project, &self.host) else {
             return Ok(json!({
-                "content": [text("The project folder is missing on the Mac.")],
+                "content": [text(tr!("mcp.remote.noProjectFolder"))],
                 "isError": true,
             }));
         };
@@ -230,7 +231,7 @@ pub(crate) fn serve(
     let io_error = |reason: &str| AssistantServerError::Io {
         reason: reason.to_owned(),
     };
-    let runtime = runtime().map_err(|_| io_error("the network could not be set up"))?;
+    let runtime = runtime().map_err(|_| io_error(&tr!("mcp.remote.networkSetup")))?;
     let client = runtime
         .block_on(AssistantClient::open(mac, Arc::new(Key(key)), network))
         .map_err(|e| io_error(&describe(e)))?;
@@ -322,11 +323,11 @@ fn failure(failure: AssistantFailure) -> (i64, String) {
 fn describe_pairing(error: RemoteError) -> String {
     use RemoteError::*;
     match error {
-        OfferWrongScheme | OfferMalformed | PairingCodeInvalid => "That isn't a pairing code from JEVision. Copy the whole command from JEVision → Settings → iPhone & Remote → Add an assistant.".to_owned(),
-        PairingCodeExpired => "The pairing code has expired. Show a new one in JEVision → Settings → iPhone & Remote.".to_owned(),
-        PairingCodeUsed => "The pairing code was already used. Show a new one in JEVision → Settings → iPhone & Remote.".to_owned(),
-        PairingLocked => "The Mac paused pairing after too many wrong codes. Try again in a few minutes.".to_owned(),
-        HostOffline => "The Mac can't be reached. Check that JEVision is open on it with remote access on, and that both computers are online.".to_owned(),
+        OfferWrongScheme | OfferMalformed | PairingCodeInvalid => tr!("mcp.pairing.invalidCode"),
+        PairingCodeExpired => tr!("mcp.pairing.codeExpired"),
+        PairingCodeUsed => tr!("mcp.pairing.codeUsed"),
+        PairingLocked => tr!("mcp.pairing.locked"),
+        HostOffline => tr!("mcp.pairing.hostOffline"),
         other => describe(other),
     }
 }
@@ -335,13 +336,13 @@ fn describe_pairing(error: RemoteError) -> String {
 fn describe(error: RemoteError) -> String {
     use RemoteError::*;
     match error {
-        NotPaired | Revoked | BadSignature => "This computer isn't paired with the Mac, or the Mac removed it. Pair it again with `jevision mcp --pair`, using the code JEVision shows in Settings → iPhone & Remote.".to_owned(),
-        NotAllowed => "The Mac doesn't let this computer use its tools. The person at the Mac can turn that on for it in JEVision → Settings → iPhone & Remote.".to_owned(),
-        HostOffline => "The Mac can't be reached. It may be asleep or offline, or JEVision may be closed on it. Ask the person at the Mac to open JEVision, then try again.".to_owned(),
-        Network => "The network of this computer isn't available.".to_owned(),
-        SignerFailed => "The key of this computer in the Keychain couldn't be used.".to_owned(),
-        ProjectNotFound => "The Mac shares no such project. Open the project in JEVision on that Mac; `--project NAME` must be its name.".to_owned(),
-        TooLarge => "The answer was too large to send.".to_owned(),
-        other => format!("The Mac couldn't do that ({other})."),
+        NotPaired | Revoked | BadSignature => tr!("mcp.remote.notPaired"),
+        NotAllowed => tr!("mcp.remote.notAllowed"),
+        HostOffline => tr!("mcp.remote.hostOffline"),
+        Network => tr!("mcp.remote.network"),
+        SignerFailed => tr!("mcp.remote.signerFailed"),
+        ProjectNotFound => tr!("mcp.remote.projectNotFound"),
+        TooLarge => tr!("mcp.remote.tooLarge"),
+        other => other.to_string(),
     }
 }

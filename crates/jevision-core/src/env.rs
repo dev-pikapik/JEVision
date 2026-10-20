@@ -7,9 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::{fs, io};
 
+use jevision_l10n::tr;
 use serde::{Deserialize, Serialize};
 
-use crate::issue::Issue;
+use crate::issue::{Issue, json_problem};
 use crate::model::Flow;
 use crate::validate::{is_identifier, placeholder_fields, placeholders};
 
@@ -46,27 +47,23 @@ struct File {
 impl Environments {
     /// Reads the text of an environments file; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let file: File = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
         if file.format > ENVIRONMENTS_FORMAT {
-            return Err(format!(
-                "the file has format {}, this version reads up to {ENVIRONMENTS_FORMAT}",
-                file.format
+            return Err(tr!(
+                "project.format.tooNew",
+                file.format,
+                ENVIRONMENTS_FORMAT
             ));
         }
         if file.format < 1 {
-            return Err(format!("\"format\" must be {ENVIRONMENTS_FORMAT}"));
+            return Err(tr!("project.format.invalid", ENVIRONMENTS_FORMAT));
         }
         for (name, values) in &file.environments {
             if !is_environment_name(name) {
-                return Err(format!(
-                    "\"{name}\" isn't a valid environment name; use letters, digits, - and _"
-                ));
+                return Err(tr!("env.name.invalid", name));
             }
             if let Some(bad) = values.keys().find(|key| !is_identifier(key)) {
-                return Err(format!(
-                    "\"{bad}\" in \"{name}\" isn't a valid value name; use letters, digits and _, \
-                     not starting with a digit"
-                ));
+                return Err(tr!("env.valueName.invalid", bad, name));
             }
         }
         if let Some(name) = file
@@ -74,9 +71,7 @@ impl Environments {
             .as_deref()
             .filter(|name| !file.environments.contains_key(*name))
         {
-            return Err(format!(
-                "the default environment \"{name}\" isn't one of \"environments\""
-            ));
+            return Err(tr!("env.default.unknown", name));
         }
         Ok(Self {
             all: file.environments,
@@ -353,7 +348,7 @@ mod tests {
             (r#"{"format":1,"envs":{}}"#, "unknown field"),
             (
                 r#"{"format":1,"default":"prod","environments":{"dev":{}}}"#,
-                "default environment \"prod\"",
+                "default environment “prod”",
             ),
         ] {
             let error = Environments::parse(bad).unwrap_err();
@@ -517,5 +512,17 @@ mod tests {
         for dir in [dir, named, broken] {
             fs::remove_dir_all(dir).unwrap();
         }
+    }
+
+    #[test]
+    fn problems_read_in_the_language_asked_for() {
+        assert_eq!(
+            Environments::parse(r#"{"format":1,"environments":{"st age":{}}}"#).unwrap_err(),
+            "“st age” isn’t a valid environment name; use letters, digits, - and _"
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "env.name.invalid", "st age"),
+            "«st age» не подходит как имя окружения: используйте буквы, цифры, - и _"
+        );
     }
 }

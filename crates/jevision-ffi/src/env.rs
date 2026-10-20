@@ -4,13 +4,14 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use jevision_core::{AddEnvironmentError, DataError, DataTable, Environments, SetValueError};
+use jevision_l10n::tr;
 
 use crate::{DataRowRange, Flow, Issue};
 
 /// The project's environments file can't be read.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum EnvironmentsError {
-    #[error("{file} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .file, .reason))]
     Unreadable { file: String, reason: String },
 }
 
@@ -53,17 +54,15 @@ fn load(project: &str) -> Result<Environments, EnvironmentsError> {
 /// Why an environment can't be added to a project.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NewEnvironmentError {
-    #[error("\"{name}\" isn't a valid environment name; use letters, digits, - and _")]
+    #[error("{}", tr!("env.name.invalid", .name))]
     InvalidName { name: String },
-    #[error("there's an environment \"{name}\" already")]
+    #[error("{}", tr!("env.name.taken", .name))]
     Taken { name: String },
-    #[error(
-        "\"{name}\" isn't a valid value name; use letters, digits and _, not starting with a digit"
-    )]
+    #[error("{}", tr!("env.value.invalidName", .name))]
     InvalidValueName { name: String },
-    #[error("{file} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .file, .reason))]
     Unreadable { file: String, reason: String },
-    #[error("{file} can't be saved: {reason}")]
+    #[error("{}", tr!("project.file.unwritable", .file, .reason))]
     Unwritable { file: String, reason: String },
 }
 
@@ -122,15 +121,13 @@ pub fn add_environment(
 /// Why a value of an environment can't be set.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum EnvironmentValueError {
-    #[error("there's no environment \"{name}\"")]
+    #[error("{}", tr!("env.unknown", .name))]
     UnknownEnvironment { name: String },
-    #[error(
-        "\"{name}\" isn't a valid value name; use letters, digits and _, not starting with a digit"
-    )]
+    #[error("{}", tr!("env.value.invalidName", .name))]
     InvalidValueName { name: String },
-    #[error("{file} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .file, .reason))]
     Unreadable { file: String, reason: String },
-    #[error("{file} can't be saved: {reason}")]
+    #[error("{}", tr!("project.file.unwritable", .file, .reason))]
     Unwritable { file: String, reason: String },
 }
 
@@ -231,7 +228,8 @@ impl From<DataRows> for DataTable {
 }
 
 /// Why a CSV file can't be used as a data table: `code` (such as `data.rowLength`) and the
-/// values its localized text refers to, such as `line`; `message` says it in English.
+/// values its localized text refers to, such as `line`; `message` says it in the current
+/// language.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum DataFileError {
     #[error("{message}")]

@@ -55,7 +55,9 @@ pub use env::{
 };
 pub use filter::{TestCard, TestFilter};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
-pub use issue::{Issue, IssueParam, ParseError, Severity, describe};
+pub use issue::{
+    Issue, IssueParam, ParseError, Severity, describe, describe_in, sentence, sentence_in,
+};
 pub use layout::{
     BLOCK_HEIGHT, BLOCK_WIDTH, FlowLayout, GRID, LaidBlock, LaidEdge, LaidFrame, LaidSlot, layout,
 };
@@ -72,7 +74,7 @@ pub use notes::{
 pub use package::{
     BlockManifest, Dependency, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
     PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, VersionReq,
-    app_version, block_with_version, check_package, describe_package_issue, install_command,
+    app_version, block_with_version, check_package, install_command, install_command_in,
     install_order, is_block_path, is_package_id, package_issue, package_of_path, parse_manifest,
     risky_steps, suggest_id,
 };
@@ -92,7 +94,7 @@ pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
     SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES, Schedule, ScheduleHistory,
-    ScheduleTests, ScheduledOutcome, ScheduledRun, SkipReason, TimeOfDay, Weekday,
+    ScheduleProblem, ScheduleTests, ScheduledOutcome, ScheduledRun, SkipReason, TimeOfDay, Weekday,
     begin_schedule_check, calendar_intervals, due_schedules, launch_agent_plist, load_schedules,
     parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
 };

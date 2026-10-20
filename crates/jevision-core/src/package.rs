@@ -13,10 +13,11 @@ use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 
+use jevision_l10n::{language, tr, tr_in};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::issue::{Issue, ParseError, describe};
+use crate::issue::{Issue, ParseError, describe, json_problem};
 use crate::model::{
     BlockKind, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
 };
@@ -217,8 +218,25 @@ impl VersionReq {
 impl FromStr for VersionReq {
     type Err = String;
 
-    /// Fails with what is wrong, as the end of a sentence.
+    /// Fails with what is wrong, as the end of a sentence in the process language.
     fn from_str(text: &str) -> Result<Self, String> {
+        Self::read(text).map_err(|bad| range_problem_in(&language(), &bad))
+    }
+}
+
+/// Why a version range can't be read, in `lang`, as the end of a sentence: `bad` is the
+/// comparison that isn't one, empty when the range is.
+pub(crate) fn range_problem_in(lang: &str, bad: &str) -> String {
+    if bad.is_empty() {
+        tr_in!(lang, "package.range.empty")
+    } else {
+        tr_in!(lang, "package.range.invalid", bad)
+    }
+}
+
+impl VersionReq {
+    /// Reads a range; fails with the comparison that isn't one, empty when the range is.
+    fn read(text: &str) -> Result<Self, String> {
         let text = text.trim();
         let mut words = text
             .split(|c: char| c.is_whitespace() || c == ',')
@@ -239,14 +257,10 @@ impl FromStr for VersionReq {
                 Some(next) => (format!("{word} {next}"), next),
                 None => (word.to_owned(), version),
             };
-            bounds.extend(comparison(op, version).ok_or_else(|| {
-                format!(
-                    "\"{shown}\" isn't a version range; write one like ^1.2.0, >=1.2.0 <2.0.0 or 1.x"
-                )
-            })?);
+            bounds.extend(comparison(op, version).ok_or(shown)?);
         }
         if text.is_empty() {
-            return Err("the version range is empty; write * for any version".to_owned());
+            return Err(String::new());
         }
         Ok(Self {
             text: text.to_owned(),
@@ -398,7 +412,7 @@ impl BlockManifest {
 /// Why a package or an operation on packages didn't work. Holds problems as localizable issues,
 /// the way [`ParseError`] does for a test file.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
-#[error("{}", .issues.iter().map(|i| describe_package_issue(i).unwrap_or_else(|| describe(i))).collect::<Vec<_>>().join(" "))]
+#[error("{}", .issues.iter().map(describe).collect::<Vec<_>>().join(" "))]
 pub struct PackageError {
     pub issues: Vec<Issue>,
 }
@@ -425,111 +439,6 @@ pub fn package_issue(code: &str, params: &[(&str, &str)]) -> Issue {
         .fold(Issue::error(code), |issue, (name, value)| {
             issue.with(name, value)
         })
-}
-
-/// Plain English for a problem with the packages a package needs, saying where it is the way
-/// [`describe`] does; `None` for the other problems, which `describe` tells.
-pub fn describe_package_issue(issue: &Issue) -> Option<String> {
-    let p = |name| issue.param(name).unwrap_or_default();
-    // `com.acme.helper ^1.2.0`, or the id alone when any version does.
-    let needed = |id: &str| match p("range") {
-        "" | "*" => id.to_owned(),
-        range => format!("{id} {range}"),
-    };
-    let text = match issue.code.as_str() {
-        "block.dependency.invalid" => {
-            format!("the dependency {} can't be used: {}.", p("id"), p("reason"))
-        }
-        "block.dependency.duplicate" => format!("the dependency {} is listed twice.", p("id")),
-        "block.dependency.self" => format!(
-            "{} is this block itself; a block can't need itself.",
-            p("id")
-        ),
-        "block.dependency.undeclared" => format!(
-            "runs {}, the block {}, which block.json doesn't list under dependencies; add it there.",
-            p("path"),
-            p("id")
-        ),
-        "block.dependency.missing" => format!(
-            "{} needs the block {}, which isn't installed; install it with `{}`.",
-            p("by"),
-            needed(p("id")),
-            install_command(p("source"))
-        ),
-        "block.dependency.unmet" => format!(
-            "{} needs the block {}, but {} is installed; install a version that fits.",
-            p("by"),
-            needed(p("id")),
-            block_with_version(p("id"), p("installed"))
-        ),
-        "block.dependency.cycle" => format!(
-            "the blocks need each other in a circle: {}. Remove one of these dependencies.",
-            p("chain")
-        ),
-        "block.dependency.breaks" => format!(
-            "{} needs the block {}, and this brings {}; update {} as well, or go ahead knowing it \
-             may stop working.",
-            p("id"),
-            needed(p("dependency")),
-            block_with_version(p("dependency"), p("found")),
-            p("id")
-        ),
-        "block.set.duplicate" => format!(
-            "two of the blocks to install have the id {}; only one of them can be installed.",
-            p("id")
-        ),
-        "block.set.tooMany" => format!(
-            "there are more than {} blocks here; point at the folder of the ones you need.",
-            p("max")
-        ),
-        "block.update.missing" => format!(
-            "the address {} came from no longer has it; it has {}.",
-            p("id"),
-            p("found")
-        ),
-        "block.export.nested" => format!(
-            "this block runs {}, and only steps that run an installed community block can go \
-             into a package; copy the steps of that block into this one instead.",
-            p("test")
-        ),
-        "block.copy.nested" => format!(
-            "this block runs {}, a file inside its package, so it can't be copied into the \
-             project's own blocks.",
-            p("test")
-        ),
-        "block.copy.failed" => format!(
-            "couldn't copy {} into the project's own blocks: {}.",
-            p("id"),
-            p("reason")
-        ),
-        "flow.block.dependencyUnmet" if p("installed").is_empty() => format!(
-            "the block {} needs the block {}, which isn't installed; install it with `{}`.",
-            p("by"),
-            needed(p("dependency")),
-            install_command(p("source"))
-        ),
-        "flow.block.dependencyUnmet" => format!(
-            "the block {} needs the block {}, but {} is installed; install a version that fits.",
-            p("by"),
-            needed(p("dependency")),
-            block_with_version(p("dependency"), p("installed"))
-        ),
-        _ => return None,
-    };
-    let place: Vec<String> = [("block", "Block"), ("edge", "edge"), ("field", "field")]
-        .into_iter()
-        .filter_map(|(name, label)| {
-            (issue.param(name))
-                .filter(|v| !v.is_empty())
-                .map(|v| format!("{label} \"{v}\""))
-        })
-        .collect();
-    let place = match place.join(", ") {
-        place if place.is_empty() && issue.code.starts_with("block.") => "Package".to_owned(),
-        place if place.is_empty() => "Test".to_owned(),
-        place => place[..1].to_uppercase() + &place[1..],
-    };
-    Some(format!("{place}: {text}"))
 }
 
 /// The path `path`, from a test, names a custom block: one the project made
@@ -559,11 +468,17 @@ pub fn block_with_version(id: &str, version: &str) -> String {
     }
 }
 
-/// The command that installs the package at `source`; without an address it says what to give.
+/// [`install_command_in`] in the process language.
 pub fn install_command(source: &str) -> String {
+    install_command_in(&language(), source)
+}
+
+/// The command that installs the package at `source`; without an address it says, in `lang`,
+/// what to give.
+pub fn install_command_in(lang: &str, source: &str) -> String {
     let plain = |b: u8| b.is_ascii_alphanumeric() || b"-._~:/%@+=".contains(&b);
     let source = if source.is_empty() {
-        "<folder, .zip file or https address>".to_owned()
+        tr_in!(lang, "package.install.anySource")
     } else if source.bytes().all(plain) {
         source.to_owned()
     } else {
@@ -870,17 +785,15 @@ impl<'a> Reader<'a> {
             }
             let Some(id) = id else { continue };
             let problem = |code: &str| Issue::error(code).with("field", &field).with("id", &id);
-            let invalid = |reason: &str| problem("block.dependency.invalid").with("reason", reason);
+            let invalid = |what: &str| problem("block.dependency.invalid").with("problem", what);
             let https = |s: &str| s.starts_with("https://") && is_web_address(s);
-            let issue = match range.as_deref().map_or(Ok(VersionReq::any()), str::parse) {
-                _ if !is_package_id(&id) => invalid(
-                    "its id must be three or more parts of lowercase letters, digits and - \
-                     joined by dots, like com.acme.helper",
-                ),
-                Err(reason) => invalid(&reason),
-                Ok(_) if !source.as_deref().is_none_or(https) => {
-                    invalid("its source must be an https address")
-                }
+            let issue = match range
+                .as_deref()
+                .map_or(Ok(VersionReq::any()), VersionReq::read)
+            {
+                _ if !is_package_id(&id) => invalid("id"),
+                Err(bad) => invalid("range").with("value", bad),
+                Ok(_) if !source.as_deref().is_none_or(https) => invalid("source"),
                 Ok(_) if own == Some(id.as_str()) => problem("block.dependency.self"),
                 Ok(_) if found.iter().any(|d| d.id == id) => problem("block.dependency.duplicate"),
                 Ok(version) => {
@@ -1297,26 +1210,32 @@ pub struct PackageLock {
 impl PackageLock {
     /// Reads the text of the lock file.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        let map = |key: &str, what: &str| match value.get(key) {
+        let value: Value = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
+        let map = |key: &str| match value.get(key) {
             None => Ok(Vec::new()),
             Some(Value::Object(map)) => map
                 .iter()
                 .map(|(id, v)| {
                     v.as_str()
                         .map(|v| (id.clone(), v))
-                        .ok_or_else(|| format!("the {what} of {id} must be text"))
+                        .ok_or_else(|| match key {
+                            "sources" => tr!("package.lock.sourceType", id),
+                            _ => tr!("package.lock.versionType", id),
+                        })
                 })
                 .collect(),
-            Some(_) => Err(format!("\"{key}\" must be an object")),
+            Some(_) => Err(match key {
+                "sources" => tr!("package.lock.sources"),
+                _ => tr!("package.lock.versions"),
+            }),
         };
-        let sources = (map("sources", "source")?.into_iter())
+        let sources = (map("sources")?.into_iter())
             .map(|(id, source)| (id, source.to_owned()))
             .collect();
-        let versions = (map("versions", "version")?.into_iter())
+        let versions = (map("versions")?.into_iter())
             .map(|(id, version)| {
                 (version.parse().map(|v| (id.clone(), v)))
-                    .map_err(|()| format!("the version of {id} must look like 1.2.0"))
+                    .map_err(|()| tr!("package.lock.version", id))
             })
             .collect::<Result<_, _>>()?;
         Ok(Self { sources, versions })

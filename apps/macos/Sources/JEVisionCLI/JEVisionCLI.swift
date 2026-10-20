@@ -6,23 +6,27 @@ import JEVisionHands
 @main
 enum JEVisionCLI {
   static func main() {
+    CLILanguage.apply(CLILanguage.resolve(environment: ProcessInfo.processInfo.environment, preferred: Locale.preferredLanguages))
     exit(execute(Array(CommandLine.arguments.dropFirst())).rawValue)
   }
 
+  /// Runs `arguments`. A `--lang` among them sets the language of what is printed from here on.
   static func execute(_ arguments: [String]) -> ExitStatus {
     let command: Command
     do {
-      command = try Command.parse(arguments)
+      let (language, rest) = try CLILanguage.extract(arguments)
+      if let language { CLILanguage.apply(language) }
+      command = try Command.parse(rest)
     } catch {
       Console.standardError.line("jevision: \(error.message)")
       Console.standardError.line(Help.usage(error.command))
       let more = error.command.map { "jevision \($0) --help" } ?? "jevision --help"
-      Console.standardError.line("Run “\(more)” for more.")
+      Console.standardError.line(words("cli.help.more", more))
       return .failure
     }
     switch command {
     case .help(let topic):
-      Console.standardOutput.write(Help.text(topic))
+      Console.standardOutput.line(Help.text(topic))
       return .ok
     case .version:
       Console.standardOutput.line("jevision \(jevisionVersion())")
@@ -115,7 +119,7 @@ enum Command: Equatable {
     switch name {
     case "-h", "--help", "help":
       guard let topic = rest.first else { return .help(nil) }
-      guard Help.commands.contains(topic) else { throw UsageError(message: "there is no command “\(topic)”") }
+      guard Help.commands.contains(topic) else { throw UsageError(message: words("cli.error.noCommand", topic)) }
       return .help(topic)
     case "-V", "--version":
       return .version
@@ -140,12 +144,12 @@ enum Command: Equatable {
       request.project = options.values["--project"]
       if let retries = options.values["--retries"] {
         guard let count = UInt32(retries) else {
-          throw UsageError(message: "--retries needs a whole number of times, such as 2, not “\(retries)”", command: name)
+          throw UsageError(message: words("cli.error.retriesNumber", retries), command: name)
         }
         request.retries = count
       }
       if options.values["--row"] != nil, options.values["--rows"] != nil {
-        throw UsageError(message: "use either --row or --rows, not both", command: name)
+        throw UsageError(message: words("cli.error.eitherOr", "--row", "--rows"), command: name)
       }
       if let rows = options.values["--rows"] ?? options.values["--row"] {
         do {
@@ -159,12 +163,12 @@ enum Command: Equatable {
       request.environment = options.values["--env"]
       request.startAt = options.values["--start-at"]
       if request.startAt != nil, request.paths.count > 1 || isFolder(request.paths[0]) {
-        throw UsageError(message: "--start-at works with one test file only", command: name)
+        throw UsageError(message: words("cli.error.startAtOneTest"), command: name)
       }
       request.provider = options.values["--provider"]
       if let provider = request.provider, AISettings.provider(provider) == nil {
         let ids = AISettings.providers.map(\.id).joined(separator: ", ")
-        throw UsageError(message: "there is no AI provider “\(provider)”; use one of: \(ids)", command: name)
+        throw UsageError(message: words("cli.error.noProvider", provider, ids), command: name)
       }
       request.model = options.values["--model"]
       request.junit = options.values["--junit"]
@@ -172,7 +176,7 @@ enum Command: Equatable {
       if let video = options.values["--video"] {
         guard let mode = VideoMode(name: video) else {
           let names = VideoMode.all.map(\.name).joined(separator: ", ")
-          throw UsageError(message: "--video needs one of: \(names), not “\(video)”", command: name)
+          throw UsageError(message: words("cli.error.videoMode", names, video), command: name)
         }
         request.video = mode
       }
@@ -195,7 +199,7 @@ enum Command: Equatable {
         }
         let most = maxParallelRuns()
         guard let limit = UInt32(given), (1...most).contains(limit) else {
-          throw UsageError(message: "--parallel needs a number of tests from 1 to \(most), such as 4, not “\(given)”", command: name)
+          throw UsageError(message: words("cli.error.parallelNumber", most, given), command: name)
         }
         request.parallel = limit
       }
@@ -204,20 +208,21 @@ enum Command: Equatable {
       let options = try Options.parse(rest, command: name, flags: [], values: ["--project", "--pair", "--remote", "--forget"])
       if options.wantsHelp { return .help(name) }
       if let extra = options.paths.first {
-        throw UsageError(message: "mcp takes no paths; name the project folder with --project, not “\(extra)”", command: name)
+        throw UsageError(message: words("cli.error.mcpNoPaths", extra), command: name)
       }
       let actions = ["--pair", "--remote", "--forget"].filter { options.values[$0] != nil }
       guard actions.count <= 1 else {
-        throw UsageError(message: "use one of \(actions.joined(separator: ", ")) at a time", command: name)
+        throw UsageError(message: words("cli.error.oneAtATime", actions.joined(separator: ", ")), command: name)
       }
       guard let option = actions.first, let value = options.values[option] else {
         return .mcp(project: options.values["--project"], action: .serve)
       }
       if value.trimmingCharacters(in: .whitespaces).isEmpty {
-        throw UsageError(message: "\(option) needs \(option == "--pair" ? "the code the Mac shows" : "the name of a Mac")", command: name)
+        throw UsageError(
+          message: option == "--pair" ? words("cli.error.pairNeedsCode") : words("cli.error.optionNeedsMac", option), command: name)
       }
       if option != "--remote", options.values["--project"] != nil {
-        throw UsageError(message: "--project goes with --remote or alone, not with \(option)", command: name)
+        throw UsageError(message: words("cli.error.projectWithRemote", option), command: name)
       }
       let action: MCPAction =
         switch option {
@@ -230,10 +235,10 @@ enum Command: Equatable {
       let options = try Options.parse(rest, command: name, flags: [])
       if options.wantsHelp || options.paths.isEmpty { return .help(name) }
       guard options.paths[0] == "run" else {
-        throw UsageError(message: "there is no schedule command “\(options.paths[0])”", command: name)
+        throw UsageError(message: words("cli.error.noScheduleCommand", options.paths[0]), command: name)
       }
       guard options.paths.count == 2 else {
-        throw UsageError(message: "name one project folder", command: name)
+        throw UsageError(message: words("cli.error.oneProject"), command: name)
       }
       return .scheduleRun(project: options.paths[1])
     case "blocks":
@@ -244,27 +249,26 @@ enum Command: Equatable {
       let options = try Options.parse(
         rest, command: name, flags: ["--send", "--new"], values: ["--project", "--title", "--comment-on"])
       if options.wantsHelp { return .help(name) }
-      guard options.paths.count <= 1 else { throw UsageError(message: "name one test file or run folder", command: name) }
+      guard options.paths.count <= 1 else { throw UsageError(message: words("cli.error.oneTestOrRun"), command: name) }
       var request = IssueRequest(target: options.paths.first, project: options.values["--project"])
       request.send = options.flags.contains("--send")
       request.title = options.values["--title"]
       request.newIssue = options.flags.contains("--new")
       if let number = options.values["--comment-on"] {
         guard let issue = UInt64(number.drop { $0 == "#" }) else {
-          throw UsageError(message: "--comment-on needs the number of an issue, such as 12, not “\(number)”", command: name)
+          throw UsageError(message: words("cli.error.commentOnNumber", number), command: name)
         }
         request.commentOn = issue
       }
       if request.commentOn != nil, request.newIssue {
-        throw UsageError(message: "use either --comment-on or --new, not both", command: name)
+        throw UsageError(message: words("cli.error.eitherOr", "--comment-on", "--new"), command: name)
       }
       if !request.send, request.commentOn != nil || request.newIssue {
-        throw UsageError(message: "--comment-on and --new say where --send files the report; add --send", command: name)
+        throw UsageError(message: words("cli.error.sendMissing"), command: name)
       }
       return .issue(request)
     default:
-      let what = name.hasPrefix("-") ? "option" : "command"
-      throw UsageError(message: "there is no \(what) “\(name)”")
+      throw UsageError(message: name.hasPrefix("-") ? words("cli.error.noOption", name) : words("cli.error.noCommand", name))
     }
   }
 }
@@ -274,41 +278,41 @@ extension Command {
   private static func blocksRequest(_ options: Options) throws(UsageError) -> BlocksRequest {
     let name = "blocks"
     let (action, arguments) = (options.paths[0], Array(options.paths.dropFirst()))
-    func argument(_ what: String) throws(UsageError) -> String {
-      guard arguments.count == 1 else { throw UsageError(message: "name one \(what)", command: name) }
+    func argument(_ missing: String) throws(UsageError) -> String {
+      guard arguments.count == 1 else { throw UsageError(message: missing, command: name) }
       return arguments[0]
     }
     let blocks: BlocksRequest.Action
     switch action {
     case "list":
-      guard arguments.isEmpty else { throw UsageError(message: "blocks list takes no arguments", command: name) }
+      guard arguments.isEmpty else { throw UsageError(message: words("cli.error.listNoArguments"), command: name) }
       blocks = .list
-    case "install": blocks = .install(source: try argument("block folder, .zip file or https address"))
-    case "remove": blocks = .remove(id: try argument("block id, such as com.acme.sign-in"))
+    case "install": blocks = .install(source: try argument(words("cli.error.oneBlockSource")))
+    case "remove": blocks = .remove(id: try argument(words("cli.error.oneBlockId")))
     case "update":
-      guard arguments.count <= 1 else { throw UsageError(message: "name one block id, or none for all", command: name) }
+      guard arguments.count <= 1 else { throw UsageError(message: words("cli.error.oneBlockIdOrNone"), command: name) }
       blocks = .update(id: arguments.first)
     case "restore":
-      guard arguments.isEmpty else { throw UsageError(message: "blocks restore takes no arguments", command: name) }
+      guard arguments.isEmpty else { throw UsageError(message: words("cli.error.restoreNoArguments"), command: name) }
       blocks = .restore
     default:
-      throw UsageError(message: "there is no blocks command “\(action)”", command: name)
+      throw UsageError(message: words("cli.error.noBlocksCommand", action), command: name)
     }
     var request = BlocksRequest(action: blocks, project: options.values["--project"])
     request.yes = options.flags.contains("--yes")
     request.force = options.flags.contains("--force")
     if let only = options.values["--only"] {
       request.only = only.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-      guard !request.only.isEmpty else { throw UsageError(message: "--only needs block ids, such as com.acme.sign-in", command: name) }
+      guard !request.only.isEmpty else { throw UsageError(message: words("cli.error.onlyNeedsIds"), command: name) }
       guard ["install", "restore"].contains(action) else {
-        throw UsageError(message: "--only belongs to install and restore", command: name)
+        throw UsageError(message: words("cli.error.onlyBelongs"), command: name)
       }
     }
     if request.yes, !["install", "update", "restore"].contains(action) {
-      throw UsageError(message: "--yes belongs to install, update and restore", command: name)
+      throw UsageError(message: words("cli.error.yesBelongs"), command: name)
     }
     if request.force, action == "list" {
-      throw UsageError(message: "--force belongs to install, update, remove and restore", command: name)
+      throw UsageError(message: words("cli.error.forceBelongs"), command: name)
     }
     return request
   }
@@ -346,12 +350,14 @@ struct Options {
       let parts = argument.split(separator: "=", maxSplits: 1).map(String.init)
       let name = parts[0]
       if flags.contains(name) {
-        guard parts.count == 1 else { throw UsageError(message: "\(name) takes no value", command: command) }
+        guard parts.count == 1 else { throw UsageError(message: words("cli.error.optionTakesNoValue", name), command: command) }
         options.flags.insert(name)
         continue
       }
       if optionalNumbers.contains(name) {
-        guard options.flags.insert(name).inserted else { throw UsageError(message: "\(name) is given twice", command: command) }
+        guard options.flags.insert(name).inserted else {
+          throw UsageError(message: words("cli.error.optionTwice", name), command: command)
+        }
         if parts.count == 2 {
           options.values[name] = parts[1]
         } else if let next = rest.first, next.allSatisfy({ $0 >= "0" && $0 <= "9" }) {
@@ -360,11 +366,11 @@ struct Options {
         continue
       }
       guard values.contains(name) else {
-        throw UsageError(message: "there is no option “\(argument)”", command: command)
+        throw UsageError(message: words("cli.error.noOption", argument), command: command)
       }
-      guard options.values[name] == nil else { throw UsageError(message: "\(name) is given twice", command: command) }
+      guard options.values[name] == nil else { throw UsageError(message: words("cli.error.optionTwice", name), command: command) }
       guard let value = parts.count == 2 ? parts[1] : rest.popFirst(), !value.isEmpty else {
-        throw UsageError(message: "\(name) needs a value", command: command)
+        throw UsageError(message: words("cli.error.optionNeedsValue", name), command: command)
       }
       options.values[name] = value
     }
@@ -372,7 +378,7 @@ struct Options {
   }
 
   func requirePaths(_ command: String) throws(UsageError) -> [String] {
-    guard !paths.isEmpty else { throw UsageError(message: "name at least one test file or folder", command: command) }
+    guard !paths.isEmpty else { throw UsageError(message: words("cli.error.noPaths"), command: command) }
     return paths
   }
 }
@@ -382,305 +388,28 @@ enum Help {
 
   static func usage(_ command: String?) -> String {
     switch command {
-    case "run": "Usage: jevision run <tests>… [options]"
-    case "validate": "Usage: jevision validate <tests>… [--json]"
-    case "fmt": "Usage: jevision fmt <tests>… [--check]"
-    case "issue": "Usage: jevision issue [<test or run>] [--send] [options]"
-    case "mcp": "Usage: jevision mcp [--project <folder>]\n       jevision mcp --pair <code>\n       jevision mcp --remote <Mac> [--project <name>]\n       jevision mcp --forget <Mac>"
-    case "schedule": "Usage: jevision schedule run <project>"
-    case "blocks":
-      "Usage: jevision blocks list | install <folder, .zip or https address> | update [<id>] | remove <id> | restore [options]"
-    default: "Usage: jevision <command> [options]"
+    case "run": words("cli.usage.run")
+    case "validate": words("cli.usage.validate")
+    case "fmt": words("cli.usage.fmt")
+    case "issue": words("cli.usage.issue")
+    case "mcp": words("cli.usage.mcp")
+    case "schedule": words("cli.usage.schedule")
+    case "blocks": words("cli.usage.blocks")
+    default: words("cli.usage.main")
     }
   }
 
   static func text(_ command: String?) -> String {
-    switch command {
-    case "run":
-      """
-      Runs tests on this Mac, one after another (or side by side with --parallel), and
-      saves a report of every run.
-      The tests a test runs after ("dependsOn") run before it, even when they aren't
-      named. When one of them doesn't pass, the tests that need it are blocked: they
-      don't run, and their reports say why.
-
-      \(usage(command))
-
-      Arguments:
-        <tests>…            Test files (.flow.json) or folders to search for them
-
-      Options:
-        --project <folder>  Project folder. Files the tests use must be inside it, and
-                            reports are saved in <folder>/.jevision/runs. Default: the
-                            nearest folder above the tests that has a .jevision folder,
-                            otherwise the current folder if it holds the tests
-        --env <name>        Environment from jevision.environments.json in the project
-                            folder whose values the tests read as ${env.NAME}, such as
-                            staging. Secrets come from the Keychain items of that
-                            environment first. Default: the "default" environment
-                            named in that file, if any
-        --retries <n>       Run a failed test up to <n> more times (instead of the
-                            number in the test, or the project's default from
-                            jevision.project.json)
-        --row <n>           Run a data-driven test with row <n> of its CSV table only,
-                            counting from 1 (the header line isn't a row)
-        --rows <which>      Rows of a data-driven test's CSV table to run: all (the
-                            default), one row such as 3, or a range such as 2-4. Each
-                            row runs the whole test and has its own retries
-        --start-at <block>  Start from this block instead of the first one (one test only)
-        --provider <id>     AI provider for checks by meaning instead of the one chosen
-                            in the app (Settings → AI): anthropic, openai, gemini, jev,
-                            ollama, lmstudio or openai-compatible
-        --model <name>      AI model for checks by meaning instead of the chosen one
-        --junit <file>      Also save a JUnit XML report of all the tests, for CI
-        --html <folder>     Also save the HTML report of every run in this folder
-        --video <when>      Record a video of the app: off, on-failure (keep it only
-                            when the test fails) or always. Default: as chosen in the
-                            app (Settings → Advanced), otherwise on-failure
-        --type <type>       Run only the named tests whose card says this type: smoke,
-                            regression or acceptance
-        --priority <level>  Run only tests with this priority: critical, high, medium
-                            or low
-        --status <status>   Run only tests with this status: draft, ready or outdated
-        --author <name>     Run only tests written by this author (case doesn't matter)
-        --flaky             Run only flaky tests: marked flaky in their card, or found
-                            flaky from their runs of the last 30 days. Filters combine:
-                            each test must fit all of them. A test whose card doesn't
-                            say a field the filter asks for isn't run. Fails when no
-                            test fits
-        --include-quarantined-failures
-                            Count failures of tests in quarantine (listed in
-                            jevision.project.json, until the date set there, if any)
-                            like any other failure. Without it they still run, but
-                            don't change the exit status and are skipped in the JUnit
-                            report. Once the date is past, the test counts again
-        --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a
-                            number, one per core of this Mac) instead of one after
-                            another. Tests that click, type, look at the screen or use
-                            the clipboard still run one at a time; only tests that
-                            leave the screen alone (commands, requests, files,
-                            databases, scripts, dates) run beside them. A test starts
-                            after the tests it runs after. Each test's lines are
-                            printed together when it ends, and reports keep the order
-                            of the tests. A folder named with digits only needs ./ in
-                            front: --parallel 4 ./2024
-        --no-notify         Don't send the message about the runs that
-                            jevision.notifications.json in the project folder asks for
-                            (Slack, Telegram, email): one message for one test, one
-                            summary for several. A stopped run sends nothing. The
-                            webhook, bot token and mail password come from the
-                            Keychain, or on CI from JEVISION_SLACK_WEBHOOK,
-                            JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD
-        --json              Print the result as JSON; progress goes to standard error
-        -h, --help          Show this help
-
-      While tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C
-      to stop. Running needs a logged-in user with an unlocked screen, and Screen &
-      System Audio Recording and Accessibility (Device Control and Data Access from
-      macOS 27) allowed for the app jevision runs in (Terminal or your CI agent).
-      Secrets (${secret.NAME}) come from environment variables or the Keychain. So do
-      API keys of AI providers, such as ANTHROPIC_API_KEY.
-
-      Exit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a
-      test failed or was stopped, 2 — wrong arguments, a file could not be read or written, or this Mac can't run tests now.
-
-      """
-    case "validate":
-      """
-      Checks test files for errors and warnings.
-
-      \(usage(command))
-
-      Arguments:
-        <tests>…    Test files (.flow.json) or folders to search for them
-
-      Options:
-        --json      Print the result as JSON
-        -h, --help  Show this help
-
-      Exit status: 0 — all good, 1 — problems found, 2 — wrong arguments, a folder with
-      no tests, or a file that could not be read.
-
-      """
-    case "fmt":
-      """
-      Rewrites test files in canonical form: fixed key order, blocks in reading order,
-      settings that are off or empty left out, and the click button, comparison and
-      wait timeout always written, so every change shows up as a small, readable diff.
-
-      \(usage(command))
-
-      Arguments:
-        <tests>…    Test files (.flow.json) or folders to search for them
-
-      Options:
-        --check     Only list the files that are not in canonical form; change nothing
-        -h, --help  Show this help
-
-      Exit status: 0 — all good, 1 — a file is not in canonical form or can't be read as
-      a test, 2 — wrong arguments, a folder with no tests, or a file that could not be
-      read or written.
-
-      """
-    case "issue":
-      """
-      Writes a bug report about a failed run: the steps, what was expected and what
-      happened, the cause, screenshots of the failed step and this Mac's versions. It is
-      printed for you to read; with --send it is filed as an issue of the project's GitHub
-      repository. Secret values are replaced with ••••, and areas the project always hides
-      are painted over in the screenshots, which are saved in the repository's
-      jevision-attachments branch.
-
-      \(usage(command))
-
-      Arguments:
-        <test or run>        A test file (.flow.json), to report its newest failed run, or
-                             the folder of a run in .jevision/runs. Default: the newest
-                             failed run of the project
-
-      Options:
-        --project <folder>   Project folder. Default: the nearest folder at or above the
-                             test (or the current folder) that has a .jevision folder
-        --send               File the report on GitHub and print the address of the issue
-        --title <text>       Title of the issue instead of the drafted one
-        --comment-on <n>     Add the report to issue n as a comment
-        --new                Open a new issue even when one about the same failure is open
-        -h, --help           Show this help
-
-      Sending uses the GitHub account JEVision is signed in to (Settings → Git), or the
-      token in GH_TOKEN or GITHUB_TOKEN when set. When an issue about the same failure is
-      already open, nothing is sent until you choose --comment-on or --new.
-
-      Exit status: 0 — printed or sent, 1 — not sent because an issue about the failure is
-      open, 2 — wrong arguments, no failed run, or GitHub didn't take the report.
-
-      """
-    case "mcp":
-      """
-      Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or
-      Copilot, over the Model Context Protocol. The assistant starts this command itself and
-      talks to it over standard input and output; add it to the assistant's MCP servers.
-
-      With --remote, the assistant uses the tools of another Mac instead: its projects, its
-      screen, its mouse and keyboard. Pair this computer with that Mac once: in JEVision on
-      it, open Settings → iPhone & Remote → Add an assistant and run the command it shows, which is
-      jevision mcp --pair with a one-time code. The traffic is end-to-end encrypted and
-      opens no ports; the key of this computer stays in its Keychain.
-
-      \(usage(command))
-
-      Options:
-        --project <folder>  Project folder whose tests the assistant may see. Default: the
-                            nearest folder at or above the current one that has a .jevision
-                            folder, otherwise the current folder. With --remote, the name
-                            of the project the Mac shares; without it, the only one it shares
-        --pair <code>       Pair this computer with the Mac showing the code
-        --remote <Mac>      Serve the tools of that paired Mac, by its name
-        --forget <Mac>      Forget a paired Mac on this computer. The Mac still lists it until
-                            the person there disconnects it in Settings → iPhone & Remote
-        -h, --help          Show this help
-
-      Assistants can list, read, write and check tests, read reports and see the test
-      format. Running tests and taking screenshots work only after you allow them in
-      JEVision → Settings → AI → Assistants on the Mac that does them; an assistant on
-      another Mac needs the Assistant switch on in Settings → iPhone & Remote too. Assistants never
-      get the values of secrets or API keys, and can't touch files outside the project folder.
-
-      """
-    case "blocks":
-      """
-      Lists, installs, updates and removes the blocks others shared: a block is a set of
-      steps in a folder (ID.jevblock) or a .zip file, which tests run as one step. Blocks
-      live in the project, in blocks/, and the address each came from is kept in
-      jevision.blocks.json so it can be updated and installed again on another Mac.
-
-      \(usage(command))
-
-      Commands:
-        list                      Show the installed blocks
-        install <source>          Show what the blocks at the source do; install them with
-                                  --yes. The source is a block folder, a folder or .zip file
-                                  of several blocks, or an https address of a .zip file, a
-                                  GitHub repository or a GitHub release
-        update [<id>]             Fetch the newest version of a block installed from an
-                                  address, or of all of them; install it with --yes
-        remove <id>               Remove a block
-        restore                   Fetch the blocks jevision.blocks.json names that aren't
-                                  installed, from the address of each; install them with --yes
-
-      Options:
-        --project <folder>        Project folder. Default: the nearest folder at or above
-                                  the current one that has a .jevision folder, otherwise
-                                  the current folder
-        --yes                     Install, update or restore after showing what the blocks do
-        --only <id>[,<id>…]       Install or restore only these blocks, and the blocks they
-                                  need
-        --force                   Remove a block that tests or other blocks use, install the
-                                  version that is installed again, go back to an older
-                                  version, install a block that an installed block needs in
-                                  another version, or restore a block whose address now has
-                                  another version than jevision.blocks.json keeps
-        -h, --help                Show this help
-
-      Installing shows the steps in plain words and, apart, the steps that run a script,
-      send network requests, use a database, open apps, type on the keyboard or use the
-      clipboard. A block that needs other blocks names them, with the versions that fit
-      and where to get them: the ones that aren't installed are fetched and shown too, and
-      installed first. Nothing is installed without --yes, and nothing in a block runs
-      while it is installed. Only https addresses are downloaded.
-
-      Exit status: 0 — done, 1 — nothing was installed or removed because of what the
-      block or the project says, or because --yes or --force is missing, 2 — the project,
-      block or address couldn’t be read.
-
-      """
-    case "schedule":
-      """
-      Runs the schedules of a project that are due now, from jevision.schedule.json in the
-      project folder. The JEVision app sets up macOS to start this command at the times of
-      the schedules you make in it (Test → Schedules…); you don’t need to run it yourself.
-
-      \(usage(command))
-
-      Arguments:
-        <project>   Project folder
-
-      Options:
-        -h, --help  Show this help
-
-      A schedule is due once for its latest time since the last check, even when the Mac
-      slept through it, unless that time is more than 12 hours ago. When the screen is
-      locked, nobody is logged in or macOS hasn’t allowed jevision to record the screen
-      and control the computer, the run is skipped and nothing is clicked or typed. What
-      came of every scheduled run is kept in .jevision/schedule-history.json, and reports
-      of the tests are saved like those of jevision run.
-
-      Exit status: 0 — nothing was due or all tests passed, 1 — a test failed or a run was
-      skipped, 2 — the project or its schedule file couldn’t be read, or a run couldn’t start.
-
-      """
-    default:
-      """
-      Runs, checks and formats JEVision tests.
-
-      \(usage(nil))
-
-      Commands:
-        run        Run tests on this Mac
-        validate   Check tests for errors and warnings
-        fmt        Rewrite tests in canonical form
-        issue      Report a failed run as a GitHub issue
-        mcp        Let AI assistants read, edit and run tests (MCP server)
-        schedule   Run the schedules of a project that are due now
-        blocks     Install, update, remove and restore blocks others shared
-
-      Options:
-        -h, --help     Show this help
-        -V, --version  Show the version
-
-      Run “jevision <command> --help” for the options of a command.
-
-      """
+    let usage = usage(command)
+    return switch command {
+    case "run": words("cli.help.run", usage)
+    case "validate": words("cli.help.validate", usage)
+    case "fmt": words("cli.help.fmt", usage)
+    case "issue": words("cli.help.issue", usage)
+    case "mcp": words("cli.help.mcp", usage)
+    case "blocks": words("cli.help.blocks", usage)
+    case "schedule": words("cli.help.schedule", usage)
+    default: words("cli.help.main", usage, catalogLanguages().joined(separator: ", "))
     }
   }
 }

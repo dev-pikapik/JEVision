@@ -193,8 +193,8 @@ struct CommandLineArgumentTests {
     (["run", "a", "--retries"], "--retries needs a value"),
     (["run", "a", "--junit", "x", "--junit", "y"], "--junit is given twice"),
     (["run", "a", "--row", "1", "--rows", "2"], "use either --row or --rows, not both"),
-    (["run", "a", "--rows", "4-2"], "\"4-2\" ends before it starts; write the smaller row first, like 2-4."),
-    (["run", "a", "--row", "0"], "\"0\" isn't a choice of data rows; write all, a row like 2 or a range like 2-4."),
+    (["run", "a", "--rows", "4-2"], "“4-2” ends before it starts; write the smaller row first, like 2-4."),
+    (["run", "a", "--row", "0"], "“0” isn’t a choice of data rows; write all, a row like 2 or a range like 2-4."),
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
     (
       ["run", "a", "--provider", "skynet"],
@@ -232,7 +232,7 @@ struct CommandLineToolTests {
     #expect(validated.out.contains("write-a-note.flow.json: 0 errors, 1 warning"))
     #expect(
       validated.out.contains(
-        "  warning Block \"check\", field \"reference.image\": refs/note.png doesn't exist yet"),
+        "  warning Block “check”, field “reference.image”: refs/note.png doesn’t exist yet"),
       "a missing reference is only a warning: the first run saves it")
     #expect(try jevision("fmt", "--check", Self.examples).status == 0)
   }
@@ -250,7 +250,7 @@ struct CommandLineToolTests {
     let failed = try jevision("validate", good, bad)
     #expect(failed.status == 1)
     #expect(failed.out.contains("\(bad): 1 error, 1 warning"))
-    #expect(failed.out.contains("  error   Block \"a\", edge \"next\": leads to \"gone\", but there is no such block.\n"))
+    #expect(failed.out.contains("  error   Block “a”, edge “next”: Leads to “gone”, but there’s no such block.\n"))
 
     let missing = try jevision("validate", dir.url.appending(path: "none.flow.json").path)
     #expect(missing.status == 2)
@@ -267,11 +267,11 @@ struct CommandLineToolTests {
     #expect(result.status == 1)
     #expect(
       result.out.contains(
-        "needs the block com.acme.sign-in 1.2.0, which isn't installed in this project; install it with `jevision blocks install https://github.com/acme/sign-in` or remove this step."))
+        "needs the block “com.acme.sign-in 1.2.0”, which isn’t installed in this project. Install it with `jevision blocks install https://github.com/acme/sign-in`, or remove the step."))
 
     let old = try dir.file("old.flow.json", step(""))
     let oldResult = try jevision("validate", old)
-    #expect(oldResult.out.contains("needs the block com.acme.sign-in, which isn't installed"))
+    #expect(oldResult.out.contains("needs the block “com.acme.sign-in”, which isn’t installed"))
     #expect(oldResult.out.contains("`jevision blocks install <folder, .zip file or https address>`"))
 
     let failure = Failure(
@@ -279,7 +279,7 @@ struct CommandLineToolTests {
       params: ["block": "a", "package": "com.acme.sign-in", "version": "1.2.0", "source": "https://github.com/acme/sign-in"])
     #expect(
       describeFailure(failure: failure)
-        == "Block a: the package com.acme.sign-in 1.2.0 is not installed; install it with `jevision blocks install https://github.com/acme/sign-in`, then run the test again.")
+        == "Block “a”: the community block com.acme.sign-in 1.2.0 isn’t installed; install it with `jevision blocks install https://github.com/acme/sign-in`, then run the test again.")
   }
 
   @Test func validateFindsTestsWaitingForEachOther() throws {
@@ -305,8 +305,8 @@ struct CommandLineToolTests {
     #expect(missing.status == 0, "warnings don't fail validation")
     #expect(missing.out == """
       \(test): 0 errors, 2 warnings
-        warning Block "a", field "target.image": button.png doesn't exist; the run will stop at this block until it's added.
-        warning Block "b", field "until.appears.image": button.png doesn't exist; the run will stop at this block until it's added.
+        warning Block “a”, field “target.image”: button.png doesn’t exist. The run will stop at this block until it’s added.
+        warning Block “b”, field “until.appears.image”: button.png doesn’t exist. The run will stop at this block until it’s added.
 
       """)
     _ = try dir.file("button.png", "png")
@@ -355,7 +355,7 @@ struct CommandLineToolTests {
     let file = try dir.file("t.flow.json", "{ not json")
     let result = try jevision("fmt", file)
     #expect(result.status == 1)
-    #expect(result.out.contains("error   Test: not valid JSON at line 1, column 3."))
+    #expect(result.out.contains("error   Test: The file isn’t valid JSON. Check line 1, column 3."))
     #expect(try String(contentsOfFile: file, encoding: .utf8) == "{ not json")
   }
 
@@ -378,10 +378,24 @@ struct CommandLineToolTests {
     #expect(try jevision("--version").out == "jevision \(jevisionVersion())\n")
   }
 
-  private func jevision(_ arguments: String...) throws -> (status: Int32, out: String, err: String) {
+  @Test func langWordsTheMessagesInThatLanguage() throws {
+    let result = try jevision("lint", language: "ru")
+    #expect(result.status == 2)
+    #expect(result.err.hasPrefix("jevision: команды «lint» нет\nИспользование: jevision <команда> [параметры]\n"))
+  }
+
+  @Test func langOfALanguageTheCatalogLacksIsAUsageError() throws {
+    let result = try jevision("--lang", "xx", "validate", language: nil)
+    #expect(result.status == 2)
+    #expect(result.out.isEmpty)
+    #expect(result.err.contains("xx") && result.err.contains(": en, ru\n"), "names the languages there are")
+  }
+
+  /// Runs the built `jevision`, in English unless `language` names another or is `nil`.
+  private func jevision(_ arguments: String..., language: String? = "en") throws -> (status: Int32, out: String, err: String) {
     let process = Process()
     process.executableURL = Bundle(for: Marker.self).bundleURL.deletingLastPathComponent().appending(path: "JEVisionCLI")
-    process.arguments = arguments
+    process.arguments = (language.map { ["--lang", $0] } ?? []) + arguments
     let out = Pipe()
     let err = Pipe()
     process.standardOutput = out
@@ -668,7 +682,7 @@ struct CommandLineRunTests {
     let results = session.runAll()
     #expect(results.map(\.file) == ["slow.flow.json", "fast.flow.json"], "the order the tests were given in")
 
-    let pieces = printed.parts.filter { $0.contains("Finished in") }
+    let pieces = printed.parts.filter { $0.contains("nothing was checked") }
     #expect(pieces.count == 2, "a test's lines are written together, when it ends")
     guard pieces.count == 2 else { return }
     #expect(pieces[0].contains("fast.flow.json") && pieces[1].contains("slow.flow.json"), "printed as they end")

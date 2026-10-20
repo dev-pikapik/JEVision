@@ -1,25 +1,82 @@
 //! Scheduled runs of a project: the schedule file, when schedules run, the launchd job that
 //! starts them and what came of them.
 
+use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
 
+use jevision_l10n::tr_in;
+
 use jevision_core::{
-    Repeat, Schedule, ScheduleTests, ScheduledOutcome as CoreOutcome, TimeOfDay, Weekday,
+    Repeat, Schedule, ScheduleProblem, ScheduleTests, ScheduledOutcome as CoreOutcome, TimeOfDay,
+    Weekday,
 };
 
 use jevision_runner::VideoMode;
 
-/// The schedule file can't be read or written, or the schedules in it can't run.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+/// A file of the schedules can't be read or written, or the schedules in it can't run. Swift
+/// shows it through `description`, the sentence in the process language.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Error)]
+#[uniffi::export(Display)]
 pub enum ScheduleError {
-    #[error("{file} can't be read: {reason}")]
+    /// The system can't read `file` and says why in `reason`.
     Unreadable { file: String, reason: String },
-    /// A schedule can't run as it is; `reason` says why.
-    #[error("{reason}")]
-    Invalid { reason: String },
-    #[error("{reason}")]
-    Unwritable { reason: String },
+    /// The schedules or their file can't be used as they are: `code` (such as
+    /// `schedule.everyHours` or `flow.json.syntax`) and the values its text refers to, `name` of
+    /// the schedule or `file` among them.
+    Invalid {
+        code: String,
+        params: HashMap<String, String>,
+    },
+    /// The system can't save `file` and says why in `reason`.
+    Unwritable { file: String, reason: String },
 }
+
+impl ScheduleError {
+    /// The sentence for the error in `lang`.
+    pub fn describe_in(&self, lang: &str) -> String {
+        match self {
+            Self::Unreadable { file, reason } => {
+                tr_in!(lang, "project.file.unreadable", file, reason)
+            }
+            Self::Invalid { code, params } => ScheduleProblem {
+                code: code.clone(),
+                params: params.clone().into_iter().collect(),
+            }
+            .describe_in(lang),
+            Self::Unwritable { file, reason } => {
+                tr_in!(lang, "project.file.unwritable", file, reason)
+            }
+        }
+    }
+}
+
+impl From<ScheduleProblem> for ScheduleError {
+    fn from(problem: ScheduleProblem) -> Self {
+        let ScheduleProblem { code, params } = problem;
+        let mut params: HashMap<_, _> = params.into_iter().collect();
+        let mut take = |name: &str| params.remove(name).unwrap_or_default();
+        match code.as_str() {
+            "project.file.unreadable" => Self::Unreadable {
+                file: take("file"),
+                reason: take("reason"),
+            },
+            "project.file.unwritable" => Self::Unwritable {
+                file: take("file"),
+                reason: take("reason"),
+            },
+            _ => Self::Invalid { code, params },
+        }
+    }
+}
+
+impl fmt::Display for ScheduleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.describe_in(&jevision_l10n::language()))
+    }
+}
+
+impl std::error::Error for ScheduleError {}
 
 /// Which tests a schedule runs. Paths are relative to the project folder.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -95,8 +152,15 @@ pub struct LaunchAgent {
     pub plist: String,
 }
 
-fn invalid(reason: String) -> ScheduleError {
-    ScheduleError::Invalid { reason }
+/// What keeps the schedule `name` from running: the problem `code` and the value it is about.
+fn invalid(name: &str, code: &str, (param, value): (&str, String)) -> ScheduleError {
+    ScheduleError::Invalid {
+        code: code.to_owned(),
+        params: HashMap::from([
+            ("name".to_owned(), name.to_owned()),
+            (param.to_owned(), value),
+        ]),
+    }
 }
 
 impl TryFrom<ProjectSchedule> for Schedule {
@@ -104,10 +168,8 @@ impl TryFrom<ProjectSchedule> for Schedule {
 
     fn try_from(s: ProjectSchedule) -> Result<Self, ScheduleError> {
         let at = TimeOfDay::new(s.hour, s.minute).ok_or_else(|| {
-            invalid(format!(
-                "schedule \"{}\": {}:{} isn't a time of day",
-                s.name, s.hour, s.minute
-            ))
+            let time = format!("{}:{:02}", s.hour, s.minute);
+            invalid(&s.name, "schedule.hourMinute.invalid", ("time", time))
         })?;
         let repeat = match s.repeats {
             ScheduleRepeat::Daily => Repeat::Daily,
@@ -115,10 +177,7 @@ impl TryFrom<ProjectSchedule> for Schedule {
                 days.into_iter()
                     .map(|day| {
                         Weekday::from_number(day).ok_or_else(|| {
-                            invalid(format!(
-                                "schedule \"{}\": {day} isn't a day of the week",
-                                s.name
-                            ))
+                            invalid(&s.name, "schedule.day.invalid", ("day", day.to_string()))
                         })
                     })
                     .collect::<Result<_, _>>()?,
@@ -182,13 +241,6 @@ fn to_core(schedules: Vec<ProjectSchedule>) -> Result<Vec<Schedule>, ScheduleErr
     schedules.into_iter().map(Schedule::try_from).collect()
 }
 
-fn unreadable(reason: String) -> ScheduleError {
-    ScheduleError::Unreadable {
-        file: jevision_core::SCHEDULE_FILE.to_owned(),
-        reason,
-    }
-}
-
 /// Name of the schedule file in a project folder.
 #[uniffi::export]
 pub fn schedule_file_name() -> String {
@@ -206,7 +258,7 @@ pub fn schedule_every_hours() -> Vec<u8> {
 pub fn project_schedules(project: String) -> Result<Vec<ProjectSchedule>, ScheduleError> {
     jevision_core::load_schedules(Path::new(&project))
         .map(|all| all.into_iter().map(Into::into).collect())
-        .map_err(unreadable)
+        .map_err(Into::into)
 }
 
 /// Checks `schedules` and saves them as the schedule file of `project`; with none, the file
@@ -216,10 +268,7 @@ pub fn save_project_schedules(
     project: String,
     schedules: Vec<ProjectSchedule>,
 ) -> Result<(), ScheduleError> {
-    let schedules = to_core(schedules)?;
-    jevision_core::schedules_to_json(&schedules).map_err(invalid)?;
-    jevision_core::save_schedules(Path::new(&project), &schedules)
-        .map_err(|reason| ScheduleError::Unwritable { reason })
+    jevision_core::save_schedules(Path::new(&project), &to_core(schedules)?).map_err(Into::into)
 }
 
 /// What keeps `schedule` from running, if anything; `others` are the project's other schedules.
@@ -233,7 +282,9 @@ pub fn schedule_problem(schedule: ProjectSchedule, others: Vec<ProjectSchedule>)
         Ok(schedule) => all.push(schedule),
         Err(e) => return Some(e.to_string()),
     }
-    jevision_core::schedules_to_json(&all).err()
+    jevision_core::schedules_to_json(&all)
+        .err()
+        .map(|problem| problem.to_string())
 }
 
 /// Local minute (minutes since 1970 in the local time zone) of the first run of `schedule`
@@ -252,7 +303,7 @@ pub fn begin_schedule_check(
 ) -> Result<Vec<ProjectSchedule>, ScheduleError> {
     jevision_core::begin_schedule_check(Path::new(&project), now)
         .map(|due| due.into_iter().map(Into::into).collect())
-        .map_err(unreadable)
+        .map_err(Into::into)
 }
 
 /// Adds a scheduled run to the history of `project`.
@@ -278,13 +329,13 @@ pub fn record_scheduled_run(project: String, run: ScheduledRun) -> Result<(), Sc
             outcome,
         },
     )
-    .map_err(|reason| ScheduleError::Unwritable { reason })
+    .map_err(Into::into)
 }
 
 /// Scheduled runs of `project` on this computer, newest first.
 #[uniffi::export]
 pub fn scheduled_runs(project: String) -> Result<Vec<ScheduledRun>, ScheduleError> {
-    let history = jevision_core::ScheduleHistory::load(Path::new(&project)).map_err(unreadable)?;
+    let history = jevision_core::ScheduleHistory::load(Path::new(&project))?;
     Ok(history
         .runs
         .into_iter()
@@ -365,12 +416,14 @@ mod tests {
         bad.repeats = ScheduleRepeat::EveryHours { hours: 5 };
         assert!(matches!(
             save_project_schedules(path.clone(), vec![bad.clone()]),
-            Err(ScheduleError::Invalid { .. })
+            Err(ScheduleError::Invalid { code, .. }) if code == "schedule.everyHours"
         ));
         assert!(schedule_problem(bad, vec![]).is_some());
+        assert!(schedule_problem(nightly(), vec![nightly()]).is_some());
+        let twice = to_core(vec![nightly(), nightly()]).unwrap();
         assert!(
-            schedule_problem(nightly(), vec![nightly()])
-                .unwrap()
+            ScheduleError::from(jevision_core::schedules_to_json(&twice).unwrap_err())
+                .describe_in("en")
                 .contains("two schedules")
         );
         assert_eq!(schedule_problem(nightly(), vec![]), None);
@@ -411,5 +464,70 @@ mod tests {
         );
         assert!(agent.plist.contains("<string>schedule</string>"));
         std::fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn names_the_file_a_problem_is_in() {
+        let project = std::env::temp_dir().join(format!(
+            "jevision-ffi-schedule-files-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(project.join(jevision_core::SCHEDULE_HISTORY_FILE)).unwrap();
+        let path = project.to_string_lossy().to_string();
+        std::fs::write(project.join(jevision_core::SCHEDULE_FILE), "{").unwrap();
+        let broken = project_schedules(path.clone()).unwrap_err();
+        assert!(matches!(&broken, ScheduleError::Invalid { code, params }
+                if code == "flow.json.syntax" && params["file"] == "jevision.schedule.json"));
+        assert_eq!(
+            broken.describe_in("ru"),
+            "не удаётся прочитать jevision.schedule.json: Файл не является корректным JSON. Проверьте строку 1, столбец 1."
+        );
+
+        std::fs::remove_file(project.join(jevision_core::SCHEDULE_FILE)).unwrap();
+        assert!(matches!(
+            begin_schedule_check(path.clone(), 0),
+            Err(ScheduleError::Unreadable { file, .. }) if file == jevision_core::SCHEDULE_HISTORY_FILE
+        ));
+        std::fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn words_a_time_that_is_no_time_of_day() {
+        let mut late = nightly();
+        late.hour = 25;
+        let error = Schedule::try_from(late).unwrap_err();
+        assert_eq!(
+            error,
+            ScheduleError::Invalid {
+                code: "schedule.hourMinute.invalid".into(),
+                params: HashMap::from([
+                    ("name".into(), "Nightly".into()),
+                    ("time".into(), "25:00".into()),
+                ]),
+            }
+        );
+        assert_eq!(
+            error.describe_in("en"),
+            "schedule “Nightly”: 25:00 isn’t a time of day"
+        );
+        assert_eq!(
+            error.describe_in("ru"),
+            "расписание «Nightly»: 25:00 — не время суток"
+        );
+    }
+
+    #[test]
+    fn words_a_day_that_is_no_day_of_the_week() {
+        let mut odd = nightly();
+        odd.repeats = ScheduleRepeat::Days { days: vec![1, 9] };
+        let error = Schedule::try_from(odd).unwrap_err();
+        assert_eq!(
+            error.describe_in("en"),
+            "schedule “Nightly”: 9 isn’t a day of the week"
+        );
+        assert_eq!(
+            error.describe_in("ru"),
+            "расписание «Nightly»: 9 — не день недели"
+        );
     }
 }

@@ -75,103 +75,117 @@ pub enum Permission {
 ///
 /// Codes travel between the two apps, so a variant is never renamed or reused. Each app shows
 /// the text of [`RemoteError::key`] in its own language.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RemoteError {
     /// The pairing code is wrong, was cancelled, or the Mac shows no code at the moment.
-    #[error("the pairing code is not valid")]
     PairingCodeInvalid,
-    #[error("the pairing code has expired")]
     PairingCodeExpired,
-    #[error("the pairing code has already been used")]
     PairingCodeUsed,
     /// Too many wrong attempts: the code no longer works and the Mac must show a new one.
-    #[error("pairing is locked after too many attempts")]
     PairingLocked,
     /// The phone's key or signature does not check out.
-    #[error("the device could not prove who it is")]
     BadSignature,
     /// The Mac does not know this phone: it was never paired or was removed.
-    #[error("this device is not paired with the Mac")]
     NotPaired,
     /// The Mac removed this phone while it was connected.
-    #[error("the Mac removed this device")]
     Revoked,
     /// The device's permission does not cover the request.
-    #[error("this device is not allowed to do that")]
     NotAllowed,
     /// Runs need the Mac unlocked: input would go to the lock screen.
-    #[error("the Mac is locked")]
     MacLocked,
-    #[error("a run is already in progress")]
     RunInProgress,
     /// Someone at the Mac declined the run.
-    #[error("the run was declined on the Mac")]
     DeclinedOnMac,
     /// The Mac cannot be reached: asleep, offline or JEVision is not running there.
-    #[error("the Mac cannot be reached")]
     HostOffline,
-    #[error("there is no such project")]
     ProjectNotFound,
-    #[error("there is no such test")]
     TestNotFound,
     /// The test file exists but cannot be read as a test.
-    #[error("the test cannot be read")]
     TestUnreadable,
-    #[error("there is no such run")]
     RunNotFound,
-    #[error("there is no such picture")]
     PictureNotFound,
     /// A path points outside the project folder.
-    #[error("the path is outside the project")]
     PathOutsideProject,
     /// A message is bigger than the protocol allows.
-    #[error("the message is too large")]
     TooLarge,
     /// The other side sent something this version does not understand.
-    #[error("the other side sent an unexpected message")]
     Protocol,
     /// The pairing QR code is not a JEVision one.
-    #[error("this is not a JEVision pairing code")]
     OfferWrongScheme,
     /// The pairing QR code is damaged or incomplete.
-    #[error("the pairing code is damaged")]
     OfferMalformed,
     /// The secret key the Mac app supplied is not 32 bytes long.
-    #[error("the secret key is not valid")]
     InvalidSecretKey,
     /// The relay address in the settings is not a valid URL.
-    #[error("the relay address is not valid")]
     InvalidRelayUrl,
     /// The phone's key could not sign, for example because the person cancelled Face ID.
-    #[error("the device key could not sign")]
     SignerFailed,
     /// The network could not be set up.
-    #[error("the network is not available")]
     Network,
-    #[error("remote access is not turned on")]
     HostNotRunning,
     /// Paired devices or the activity log could not be saved or read.
-    #[error("the remote access settings cannot be saved")]
     Storage,
     /// The Mac app failed to do what was asked.
-    #[error("the Mac could not do that")]
     HostFailed,
     /// The test's data table has no such row, or the test has no data table.
-    #[error("there is no such data row")]
     DataRowNotFound,
 }
 
 impl RemoteError {
     /// Localization key of the error's text, such as `remote.error.macLocked`.
     pub fn key(&self) -> String {
-        let code = serde_json::to_value(self).expect("an error code always serializes");
-        format!(
-            "remote.error.{}",
-            code.as_str().expect("error codes are strings")
-        )
+        self.text_key().to_owned()
+    }
+
+    fn text_key(self) -> &'static str {
+        match self {
+            Self::PairingCodeInvalid => "remote.error.pairingCodeInvalid",
+            Self::PairingCodeExpired => "remote.error.pairingCodeExpired",
+            Self::PairingCodeUsed => "remote.error.pairingCodeUsed",
+            Self::PairingLocked => "remote.error.pairingLocked",
+            Self::BadSignature => "remote.error.badSignature",
+            Self::NotPaired => "remote.error.notPaired",
+            Self::Revoked => "remote.error.revoked",
+            Self::NotAllowed => "remote.error.notAllowed",
+            Self::MacLocked => "remote.error.macLocked",
+            Self::RunInProgress => "remote.error.runInProgress",
+            Self::DeclinedOnMac => "remote.error.declinedOnMac",
+            Self::HostOffline => "remote.error.hostOffline",
+            Self::ProjectNotFound => "remote.error.projectNotFound",
+            Self::TestNotFound => "remote.error.testNotFound",
+            Self::TestUnreadable => "remote.error.testUnreadable",
+            Self::RunNotFound => "remote.error.runNotFound",
+            Self::PictureNotFound => "remote.error.pictureNotFound",
+            Self::PathOutsideProject => "remote.error.pathOutsideProject",
+            Self::TooLarge => "remote.error.tooLarge",
+            Self::Protocol => "remote.error.protocol",
+            // Either way the code scanned is not one to pair with, and the apps say so in one text.
+            Self::OfferWrongScheme | Self::OfferMalformed => "remote.error.offerMalformed",
+            Self::InvalidSecretKey => "remote.error.invalidSecretKey",
+            Self::InvalidRelayUrl => "remote.error.invalidRelayUrl",
+            Self::SignerFailed => "remote.error.signerFailed",
+            Self::Network => "remote.error.network",
+            Self::HostNotRunning => "remote.error.hostNotRunning",
+            Self::Storage => "remote.error.storage",
+            Self::HostFailed => "remote.error.hostFailed",
+            Self::DataRowNotFound => "remote.error.dataRowNotFound",
+        }
+    }
+
+    /// The error's text in `lang`.
+    pub fn text_in(&self, lang: &str) -> String {
+        jevision_l10n::text_in(lang, self.text_key(), &[])
     }
 }
+
+impl std::fmt::Display for RemoteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.text_in(&jevision_l10n::language()))
+    }
+}
+
+impl std::error::Error for RemoteError {}
 
 /// How an endpoint reaches the other side.
 #[derive(Debug, Clone, PartialEq, Eq)]

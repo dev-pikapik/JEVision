@@ -20,6 +20,7 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli"]
 
 [dependencies]
+jevision-l10n.workspace = true
 jevision-remote = { path = "../jevision-remote", default-features = false, features = ["client"] }
 jevision-runner.workspace = true
 serde_json.workspace = true

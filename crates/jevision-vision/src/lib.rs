@@ -1097,11 +1097,11 @@ fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
                 .filter(|p| (0.0..=1.0).contains(p))
                 .ok_or_else(|| bad(&v.to_string()))?;
             let passed = yes >= 0.5;
-            let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round();
+            let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round() as i64;
             let reason = if passed {
-                format!("JEV is {sure}% sure the screenshot meets the expectation.")
+                jevision_l10n::tr!("vision.jev.passed", sure)
             } else {
-                format!("JEV is {sure}% sure the screenshot does not meet the expectation.")
+                jevision_l10n::tr!("vision.jev.failed", sure)
             };
             Ok(Judgement {
                 passed,

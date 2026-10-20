@@ -424,7 +424,10 @@ async fn reports_errors_with_their_stable_codes() {
         Some(RemoteError::Storage)
     );
     assert_eq!(RemoteError::HostOffline.key(), "remote.error.hostOffline");
-    assert_eq!(RemoteError::MacLocked.to_string(), "the Mac is locked");
+    assert_eq!(
+        RemoteError::MacLocked.to_string(),
+        "The Mac’s screen is locked."
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -456,4 +459,55 @@ async fn runs_one_row_of_a_data_table() {
         .await
         .unwrap();
     assert_eq!(*setup.fake.rows.lock().unwrap(), [Some(1)]);
+}
+
+/// The only test that sets the process language: the others read codes, not words.
+#[test]
+fn texts_follow_the_language_the_app_sets() {
+    let before = current_language();
+    let failure = Failure {
+        code: "run.target.notFound".to_owned(),
+        params: HashMap::from([
+            ("block".to_owned(), "open".to_owned()),
+            ("image".to_owned(), "x.png".to_owned()),
+        ]),
+    };
+    set_language("en-US".to_owned());
+    assert_eq!(current_language(), "en");
+    assert_eq!(
+        describe_failure(failure.clone()),
+        "Block “open”: x.png wasn’t found on the screen."
+    );
+    assert_eq!(
+        branch_text("then".to_owned(), Some(2), None).as_deref(),
+        Some("Took “Yes”")
+    );
+    set_language("ru_RU".to_owned());
+    assert_eq!(current_language(), "ru");
+    assert_eq!(
+        describe_failure(failure),
+        "Блок «open»: картинка x.png не найдена на экране."
+    );
+    assert_eq!(
+        branch_text("then".to_owned(), Some(2), None).as_deref(),
+        Some("Выбран путь «Да»")
+    );
+    assert_eq!(
+        localized_text(
+            "screen.busy".to_owned(),
+            vec![
+                TextArg::Text {
+                    value: "jevision".to_owned()
+                },
+                TextArg::Text {
+                    value: "Sign in".to_owned()
+                },
+                TextArg::Text {
+                    value: "12:03".to_owned()
+                },
+            ]
+        ),
+        "Экран занят: jevision, тест Sign in, с 12:03"
+    );
+    set_language(before);
 }

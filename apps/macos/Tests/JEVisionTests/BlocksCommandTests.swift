@@ -264,7 +264,7 @@ struct BlocksCommandTests {
     let project = try folder()
     let http = run(.install(source: "http://example.com/block.zip"), in: project, yes: true)
     #expect(http.status == Exit.failure)
-    #expect(http.err.contains("only https addresses can be downloaded"))
+    #expect(http.err.contains("Only https addresses can be downloaded"))
     let missing = run(.install(source: project + "/nothing.zip"), in: project, yes: true)
     #expect(missing.status == Exit.failure)
     #expect(run(.remove(id: "com.anna.sign-in"), in: project).status == Exit.failure)

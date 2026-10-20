@@ -2,6 +2,7 @@
 //! GitHub comes from: `GH_TOKEN` or `GITHUB_TOKEN` when set (for CI), otherwise the Keychain item
 //! the sign-in saved. The token never leaves this crate, and is never written, logged or shown.
 
+use jevision_l10n::tr;
 use serde_json::Value;
 
 use crate::GitError;
@@ -122,7 +123,7 @@ impl DeviceFlow {
             // An unknown Client ID gets "Not Found".
             _ if status == 404 => Err(GitError::SignInUnavailable),
             _ => Err(GitError::Failed {
-                message: format!("GitHub answered with error {status}"),
+                message: tr!("git.error.githubStatus", status),
             }),
         }
     }
@@ -151,7 +152,7 @@ fn failure(error: &str, answer: &Value) -> GitError {
 
 fn unreadable() -> GitError {
     GitError::Failed {
-        message: "GitHub sent an answer that can't be read".into(),
+        message: tr!("git.error.githubUnreadable"),
     }
 }
 
@@ -204,7 +205,7 @@ mod keychain {
 
     fn failed(e: security_framework::base::Error) -> GitError {
         GitError::Failed {
-            message: format!("the Keychain refused: {e}"),
+            message: jevision_l10n::tr!("git.error.keychainRefused", e.to_string()),
         }
     }
 }
@@ -220,7 +221,7 @@ mod keychain {
 
     pub fn set(_: &str) -> Result<(), GitError> {
         Err(GitError::Failed {
-            message: "there's no Keychain on this computer; set GH_TOKEN instead".into(),
+            message: jevision_l10n::tr!("git.error.noKeychain"),
         })
     }
 

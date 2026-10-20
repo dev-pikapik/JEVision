@@ -20,11 +20,15 @@ mod run;
 mod screen;
 mod system;
 mod usage;
+mod words;
 
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
-pub use bug::{BugContext, BugDraft, BugPicture, bug_report, describe_block, mask_secrets};
+pub use bug::{
+    BugContext, BugDraft, BugPicture, bug_report, bug_report_in, describe_block, describe_block_in,
+    mask_secrets, picture_caption_in,
+};
 pub use ci::CiOrigin;
 pub use control::{PauseReason, RunControl};
 pub use import::{import_ci_artifact, imported_ci_artifacts};
@@ -40,17 +44,23 @@ pub use jevision_vision::{
 };
 pub use packages::{StagedSet, discard_staged, stage_source_set, zip_package};
 pub use report::{
-    Attempt, DataRow, Failure, NOTHING_CHECKED, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,
-    Step, StepStatus, UsedPackage, Verdict, VisionAnswer, branch_text, describe, describe_vision,
-    html, junit_xml,
+    Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
+    UsedPackage, Verdict, VisionAnswer, branch_text, branch_text_in, html, html_in, junit_xml,
+    junit_xml_in, nothing_checked_in,
 };
 pub use run::{
     Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, today, vision_failure,
 };
-pub use screen::{ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder};
+pub use screen::{
+    ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder,
+    describe_screen_holder_in,
+};
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,
     WARN_SHARE, default_prices, money, price_of,
+};
+pub use words::{
+    Phrase, describe, describe_in, describe_vision, describe_vision_in, phrase, vision_phrase,
 };
 
 /// Shown instead of a secret value wherever a secret would otherwise appear.
@@ -193,41 +203,68 @@ pub enum Openable {
     Url(String),
 }
 
-/// Why the operating system layer could not do something.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+/// Why the operating system layer could not do something. A run turns it into a failure that
+/// names the block; its `Display` is the same sentence without the block, in the process language.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HandsError {
     /// A system permission is missing; holds its name, e.g. `screenRecording`, `accessibility`.
-    #[error("permission `{0}` is not granted")]
     PermissionDenied(String),
-    #[error("application `{0}` is not installed")]
     AppNotFound(String),
-    #[error("application `{0}` has no open window")]
     NoWindow(String),
-    #[error("cannot open `{0}`")]
     CannotOpen(String),
     /// The screen is locked: there is nothing to look at, and keys would go to the lock screen.
-    #[error("the screen is locked")]
     ScreenLocked,
     /// The application would not quit when asked to start over, e.g. a question about unsaved
     /// changes is waiting for an answer.
-    #[error("application `{0}` is still running")]
     StillRunning(String),
     /// The window does not let its size or position be changed.
-    #[error("the window of `{0}` cannot be resized or moved")]
     WindowFixed(String),
     /// The window took another size or position than asked, e.g. because of its own limits.
     /// `what` is `size` or `position`; `wanted` and `actual` are written `900 × 600` for a size
     /// and `40, 60` for a position.
-    #[error("the {what} of the window of `{app}` should be {wanted} but is {actual}")]
     WindowDiffers {
         app: String,
         what: String,
         wanted: String,
         actual: String,
     },
-    #[error("{0}")]
+    /// What the platform said, as it said it.
     Failed(String),
 }
+
+impl std::fmt::Display for HandsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use jevision_l10n::tr;
+        let text = match self {
+            Self::PermissionDenied(p) => tr!(
+                "run.hands.permissionDenied",
+                words::permission_name(&jevision_l10n::language(), p)
+            ),
+            Self::AppNotFound(app) => tr!("mcp.hands.appNotFound", app),
+            Self::NoWindow(app) => tr!("mcp.hands.noWindow", app),
+            Self::CannotOpen(item) => tr!("mcp.hands.cannotOpen", item),
+            Self::ScreenLocked => tr!("mcp.hands.screenLocked"),
+            Self::StillRunning(app) => tr!("mcp.hands.stillRunning", app),
+            Self::WindowFixed(app) => tr!("mcp.hands.windowFixed", app),
+            Self::WindowDiffers {
+                app,
+                what,
+                wanted,
+                actual,
+            } if what == "position" => tr!("mcp.hands.windowDiffers.position", app, wanted, actual),
+            Self::WindowDiffers {
+                app,
+                wanted,
+                actual,
+                ..
+            } => tr!("mcp.hands.windowDiffers.size", app, wanted, actual),
+            Self::Failed(reason) => reason.clone(),
+        };
+        f.write_str(&text)
+    }
+}
+
+impl std::error::Error for HandsError {}
 
 /// Values for `${secret.NAME}` placeholders. Values are used only for typing; reports, events
 /// and logs show [`SECRET_MASK`] instead.

@@ -119,7 +119,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     input.expectsMediaDataInRealTime = true
     writer.add(input)
     guard writer.startWriting() else {
-      throw HandsError.Failed(reason: writer.error?.localizedDescription ?? "the video file can’t be written")
+      throw HandsError.Failed(reason: writer.error?.localizedDescription ?? handsWords("hands.video.unwritable"))
     }
     // Starting at the call's moment, not at the first picture, keeps step times in line with
     // the video even when the app shows its first window later.
@@ -190,7 +190,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     writer.finishWriting { [url] in
       if finishing.status == .completed { return done(nil) }
       try? FileManager.default.removeItem(at: url)
-      done(finishing.error?.localizedDescription ?? "the video couldn’t be finished")
+      done(finishing.error?.localizedDescription ?? handsWords("hands.video.unfinished"))
     }
   }
 

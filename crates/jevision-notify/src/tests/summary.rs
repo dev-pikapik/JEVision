@@ -63,11 +63,14 @@ fn a_batch_is_told_in_one_summary() {
         told.details.failures,
         [FailedTest {
             test: "sign-in".into(),
-            reason: "Secret PASSWORD is not set.".into()
+            reason: "The secret PASSWORD isn’t set. Set it in Test details.".into()
         }]
     );
     let lines = lines(&told);
-    assert_eq!(lines[0], "• sign-in: Secret PASSWORD is not set.");
+    assert_eq!(
+        lines[0],
+        "• sign-in: The secret PASSWORD isn’t set. Set it in Test details."
+    );
     assert_eq!(
         lines[1],
         "Passed: 1 · Failed: 1 · Skipped: 2 · Blocked: 1 · Took: 5.0 s · Project: shop · Schedule: Nightly"
@@ -113,6 +116,55 @@ fn the_summary_title_tells_the_most_important_thing() {
     nameless["file"] = json!("login/a.flow.json");
     let told = message("shop", &batch(vec![nameless, passed()]));
     assert_eq!(told.details.failures[0].test, "login/a.flow.json");
+}
+
+#[test]
+fn the_summary_title_is_told_in_the_language_asked_for() {
+    let passed = || of("a", "passed", None);
+    let title = |lang: &str, runs: &[Finished]| message_in(lang, "shop", runs).title;
+    let all_passed = |n: usize| batch((0..n).map(|_| passed()).collect());
+    let failed = |n: usize| {
+        let mut runs = vec![of("a", "failed", Some("x"))];
+        runs.extend((1..n).map(|_| passed()));
+        batch(runs)
+    };
+    let fixed = |n: usize| {
+        let mut runs: Vec<Finished> = (0..n)
+            .map(|_| finished(passed(), Some(of("a", "failed", Some("x")))))
+            .collect();
+        runs.push(finished(passed(), None));
+        runs
+    };
+    assert_eq!(title("en", &all_passed(2)), "Passed: 2 tests");
+    assert_eq!(title("ru", &all_passed(2)), "Пройдено: 2 теста");
+    assert_eq!(title("ru", &all_passed(5)), "Пройдено: 5 тестов");
+    assert_eq!(title("ru", &all_passed(21)), "Пройдено: 21 тест");
+    assert_eq!(title("en", &failed(5)), "Failed: 1 of 5 tests");
+    assert_eq!(title("ru", &failed(2)), "Провалено: 1 из 2 тестов");
+    assert_eq!(title("ru", &failed(21)), "Провалено: 1 из 21 теста");
+    for (n, en, ru) in [
+        (
+            1,
+            "Fixed: 1 test passing again",
+            "Исправлено: 1 тест снова проходит",
+        ),
+        (
+            2,
+            "Fixed: 2 tests passing again",
+            "Исправлено: 2 теста снова проходят",
+        ),
+        (
+            5,
+            "Fixed: 5 tests passing again",
+            "Исправлено: 5 тестов снова проходят",
+        ),
+    ] {
+        assert_eq!(title("en", &fixed(n)), en);
+        assert_eq!(title("ru", &fixed(n)), ru);
+    }
+    let told = message_in("ru", "shop", &fixed(1));
+    assert!(told.body.contains("Исправлены: a"), "{}", told.body);
+    assert!(told.body.contains("Проект: shop"), "{}", told.body);
 }
 
 #[test]

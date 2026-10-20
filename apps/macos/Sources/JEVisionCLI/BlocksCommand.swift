@@ -36,7 +36,7 @@ struct BlocksCommand {
 
   func execute() -> ExitStatus {
     guard let project = request.project ?? MCPCommand.defaultProject(), isFolder(project) else {
-      errors.line("jevision: there is no folder “\(request.project ?? FileManager.default.currentDirectoryPath)”")
+      errors.line("jevision: " + words("cli.error.noFolder", request.project ?? FileManager.default.currentDirectoryPath))
       return .failure
     }
     do {
@@ -60,17 +60,17 @@ struct BlocksCommand {
   private func list(_ project: String) -> ExitStatus {
     let blocks = listCommunityBlocks(project: project)
     guard !blocks.isEmpty else {
-      output.line("No blocks are installed in \(project).")
+      output.line(words("cli.blocks.none", project))
       return .ok
     }
     let width = blocks.map(\.manifest.id.count).max() ?? 0
     for block in blocks {
       let manifest = block.manifest
       let id = manifest.id.padding(toLength: width, withPad: " ", startingAt: 0)
-      output.line("\(id)  \(manifest.version)  \(manifest.name), by \(manifest.author)")
+      output.line(words("cli.blocks.listLine", id, manifest.version, manifest.name, manifest.author))
       let indent = String(repeating: " ", count: width + 2)
-      if let source = block.source { output.line("\(indent)from \(source)") }
-      if !manifest.dependencies.isEmpty { output.line("\(indent)needs \(Self.needs(manifest))") }
+      if let source = block.source { output.line(indent + words("cli.blocks.from", source)) }
+      if !manifest.dependencies.isEmpty { output.line(indent + words("cli.blocks.needs", Self.needs(manifest))) }
     }
     return .ok
   }
@@ -84,7 +84,7 @@ struct BlocksCommand {
     }
     guard let chosen else { return .problems }
     if packages.count > 1 {
-      output.line("\(packages.count) blocks in \(source)")
+      output.line(words("cli.blocks.inSource", packages.count, source))
       output.line()
     }
     return try install(chosen, in: project)
@@ -100,7 +100,7 @@ struct BlocksCommand {
       discard: { discardBlockStaging(folder: $0) },
       reading: { need in
         fetching = true
-        output.line("Needs \(Self.needed(need.id, need.range)) — fetching from \(need.source ?? "")")
+        output.line(words("cli.blocks.fetching", Self.needed(need.id, need.range), need.source ?? ""))
       })
     let all = previews + fetched.found.map(\.preview)
     defer { for preview in all where preview.temporary { discardBlockStaging(folder: preview.folder) } }
@@ -118,11 +118,11 @@ struct BlocksCommand {
     guard breaksOnly else { return .problems }
     guard request.yes else {
       output.line()
-      output.line("Not installed: add --yes to install it.")
+      output.line(words("cli.blocks.addYes"))
       return .problems
     }
     if !problems.isEmpty, !request.force {
-      errors.line("jevision: add --force to install it anyway")
+      errors.line("jevision: " + words("cli.blocks.installForce"))
       return .problems
     }
     var installing: [BlockPreview] = []
@@ -131,10 +131,10 @@ struct BlocksCommand {
       switch preview.change {
       case .same where !request.force:
         output.line()
-        output.line("\(manifest.name) \(manifest.version) is installed already; add --force to install it again.")
+        output.line(words("cli.blocks.sameVersion", manifest.name, manifest.version))
         continue
       case .downgrade(let from) where !request.force:
-        errors.line("jevision: \(manifest.id) \(from) is installed, which is newer than \(manifest.version); add --force to go back")
+        errors.line("jevision: " + words("cli.blocks.downgrade", manifest.id, from, manifest.version))
         return .problems
       default:
         installing.append(preview)
@@ -147,7 +147,7 @@ struct BlocksCommand {
       force: request.force)
     output.line()
     for block in blocks {
-      output.line("Installed \(block.manifest.name) \(block.manifest.version) (\(block.manifest.id)).")
+      output.line(words("cli.blocks.installed", block.manifest.name, block.manifest.version, block.manifest.id))
     }
     return .ok
   }
@@ -158,7 +158,7 @@ struct BlocksCommand {
     let items = try restoreBlockSources(project: project)
     let chosen = choose(
       items, id: \.id, needs: { $0.preview?.manifest.dependencies.map(\.id) ?? [] },
-      among: "the blocks of \(lock) that aren't installed")
+      among: words("cli.blocks.restorePlace", lock))
     var ready: [BlockPreview] = []
     var status = ExitStatus.ok
     defer {
@@ -168,10 +168,10 @@ struct BlocksCommand {
     }
     guard let chosen else { return .problems }
     guard !chosen.isEmpty else {
-      output.line("Everything in \(lock) is installed already.")
+      output.line(words("cli.blocks.restoreNothing", lock))
       return .ok
     }
-    output.line(chosen.count == 1 ? "1 block of \(lock) isn't installed." : "\(chosen.count) blocks of \(lock) aren't installed.")
+    output.line(words("cli.blocks.restoreMissing", chosen.count, lock))
     output.line()
     for item in chosen {
       switch item.state {
@@ -183,11 +183,10 @@ struct BlocksCommand {
           continue
         }
         let kept = Self.needed(item.id, item.lockedVersion ?? "")
-        errors.line(
-          "jevision: \(lock) keeps \(kept), and \(item.source) now has \(found); skipped — add --force to read what this version does and restore it")
+        errors.line("jevision: " + words("cli.blocks.restoreVersionChanged", lock, kept, item.source, found))
         status = .problems
       case .missing:
-        errors.line("jevision: \(item.source) no longer has \(item.id)")
+        errors.line("jevision: " + words("cli.blocks.restoreGone", item.source, item.id))
         status = .problems
       case .failed(let issues):
         for issue in issues { errors.line("jevision: \(item.id): \(describeIssue(issue: issue))") }
@@ -206,8 +205,9 @@ struct BlocksCommand {
     guard !request.only.isEmpty else { return all }
     let unknown = request.only.filter { name in !all.contains { id($0) == name } }
     guard unknown.isEmpty else {
-      let there = all.isEmpty ? "there are none" : "there are \(all.map(id).joined(separator: ", "))"
-      errors.line("jevision: no block \(unknown.joined(separator: ", ")) among \(place); \(there)")
+      let (names, there) = (unknown.joined(separator: ", "), all.map(id).joined(separator: ", "))
+      let text = all.isEmpty ? words("cli.blocks.onlyUnknownNone", names, place) : words("cli.blocks.onlyUnknown", names, place, there)
+      errors.line("jevision: " + text)
       return nil
     }
     var ids = Set(request.only)
@@ -231,7 +231,7 @@ struct BlocksCommand {
   private func update(_ id: String?, in project: String) throws -> ExitStatus {
     let ids = id.map { [$0] } ?? listCommunityBlocks(project: project).filter { $0.source != nil }.map(\.manifest.id)
     guard !ids.isEmpty else {
-      output.line("No block was installed from an address, so there is nothing to update.")
+      output.line(words("cli.blocks.nothingToUpdate"))
       return .ok
     }
     var status = ExitStatus.ok
@@ -239,7 +239,7 @@ struct BlocksCommand {
       let preview = try updateBlockPackage(project: project, id: id)
       if case .same = preview.change {
         discardBlockStaging(folder: preview.folder)
-        output.line("\(preview.manifest.name) \(preview.manifest.version) is the newest version.")
+        output.line(words("cli.blocks.newest", preview.manifest.name, preview.manifest.version))
         continue
       }
       status = max(status, try install([preview], in: project))
@@ -250,13 +250,13 @@ struct BlocksCommand {
   private func remove(_ id: String, in project: String) throws -> ExitStatus {
     let (tests, blocks) = (blockUsage(project: project, id: id), blockDependents(project: project, id: id))
     if !request.force, !tests.isEmpty || !blocks.isEmpty {
-      if !tests.isEmpty { errors.line("jevision: \(id) is used by \(tests.joined(separator: ", "))") }
-      if !blocks.isEmpty { errors.line("jevision: \(id) is needed by the installed blocks \(blocks.joined(separator: ", "))") }
-      errors.line("jevision: add --force to remove it anyway")
+      if !tests.isEmpty { errors.line("jevision: " + words("cli.blocks.usedBy", id, tests.joined(separator: ", "))) }
+      if !blocks.isEmpty { errors.line("jevision: " + words("cli.blocks.neededBy", id, blocks.joined(separator: ", "))) }
+      errors.line("jevision: " + words("cli.blocks.removeForce"))
       return .problems
     }
     try removeBlockPackage(project: project, id: id)
-    output.line("Removed \(id).")
+    output.line(words("cli.blocks.removed", id))
     return .ok
   }
 
@@ -264,41 +264,41 @@ struct BlocksCommand {
 
   private func show(_ preview: BlockPreview) {
     let manifest = preview.manifest
-    output.line("\(manifest.name) \(manifest.version) by \(manifest.author) (\(manifest.license))")
+    output.line(words("cli.blocks.title", manifest.name, manifest.version, manifest.author, manifest.license))
     output.line("  \(manifest.id)")
     if let description = manifest.description, !description.isEmpty { output.line("  \(description)") }
     if !manifest.inputs.isEmpty {
-      output.line("  Asks for: \(manifest.inputs.map(\.name).joined(separator: ", "))")
+      output.line("  " + words("cli.blocks.asksFor", manifest.inputs.map(\.name).joined(separator: ", ")))
     }
-    if !manifest.dependencies.isEmpty { output.line("  Needs: \(Self.needs(manifest))") }
-    if preview.source.hasPrefix("https://") { output.line("  From \(preview.source)") }
+    if !manifest.dependencies.isEmpty { output.line("  " + words("cli.blocks.needsBlocks", Self.needs(manifest))) }
+    if preview.source.hasPrefix("https://") { output.line("  " + words("cli.blocks.fromAddress", preview.source)) }
     switch preview.change {
     case .new: break
-    case .same: output.line("  This version is installed already.")
-    case .update(let from): output.line("  Version \(from) is installed; this is newer.")
-    case .downgrade(let from): output.line("  Version \(from) is installed; this is older.")
+    case .same: output.line("  " + words("cli.blocks.installedAlready"))
+    case .update(let from): output.line("  " + words("cli.blocks.newer", from))
+    case .downgrade(let from): output.line("  " + words("cli.blocks.older", from))
     }
     for issue in preview.issues {
-      let level = issue.severity == .error ? "Problem" : "Warning"
-      errors.line("  \(level): \(describeIssue(issue: issue))")
+      let text = describeIssue(issue: issue)
+      errors.line("  " + (issue.severity == .error ? words("cli.blocks.problem", text) : words("cli.blocks.warning", text)))
     }
     guard !preview.steps.isEmpty else { return }
     output.line()
-    output.line("What it does:")
+    output.line(words("cli.blocks.steps"))
     for (index, step) in preview.steps.enumerated() {
       output.line("  \(index + 1). \(step.text)")
     }
     let risky = preview.steps.enumerated().filter { $0.element.risk != nil }
     guard !risky.isEmpty else { return }
     output.line()
-    output.line(output.paint("Needs your attention:", .bold))
+    output.line(output.paint(words("cli.blocks.attention"), .bold))
     for risk in Self.riskOrder {
       let steps = risky.filter { $0.element.risk == risk }
       guard !steps.isEmpty else { continue }
       output.line(output.paint("  \(describeBlockRisk(risk: risk))", .yellow))
       for (index, step) in steps {
         let lines = (step.detail.isEmpty ? step.text : step.detail).split(separator: "\n", omittingEmptySubsequences: false)
-        output.line("    step \(index + 1): \(lines[0])")
+        output.line("    " + words("cli.blocks.step", index + 1, lines[0]))
         for line in lines.dropFirst() { output.line("      \(line)") }
       }
     }

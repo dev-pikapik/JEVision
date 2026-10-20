@@ -15,6 +15,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io, thread};
 
+use jevision_l10n::tr;
 use serde_json::{Value, json};
 
 /// How often a connected server shows it is still there.
@@ -156,7 +157,7 @@ impl Agents {
     /// assistant, why it may not go on.
     pub(super) fn ask(&self, ask: &Ask<'_>) -> Result<(), String> {
         if !fresh(&self.folder.join("listening"), LISTENING) {
-            return Err("JEVision isn't open, so nobody at this Mac could allow the run. Ask the person to open JEVision and try again, or to turn off \"Ask before an assistant runs a test\" in JEVision → Settings → AI → Assistants.".to_owned());
+            return Err(tr!("mcp.ask.notOpen"));
         }
         static NEXT: AtomicU32 = AtomicU32::new(0);
         let id = format!(
@@ -169,7 +170,7 @@ impl Agents {
             .lock()
             .as_ref()
             .and_then(|s| s.record["title"].as_str().map(str::to_owned))
-            .unwrap_or_else(|| "An assistant".to_owned());
+            .unwrap_or_else(|| tr!("mcp.ask.unnamed"));
         let now = unix(SystemTime::now());
         let asks = self.folder.join("asks");
         let (request, answer) = (
@@ -194,7 +195,7 @@ impl Agents {
             )
         });
         if let Err(e) = written {
-            return Err(format!("The person couldn't be asked: {e}."));
+            return Err(tr!("mcp.ask.failed", e.to_string()));
         }
         let deadline = Instant::now() + self.timeout;
         let allowed = loop {
@@ -210,11 +211,8 @@ impl Agents {
         let _ = fs::remove_file(&answer);
         match allowed {
             Some(true) => Ok(()),
-            Some(false) => Err("The person at this Mac didn't allow this run. Don't ask again unless they tell you to.".to_owned()),
-            None => Err(format!(
-                "The person at this Mac didn't answer within {} seconds, so the run didn't start. Ask them to look at JEVision, then try again.",
-                self.timeout.as_secs()
-            )),
+            Some(false) => Err(tr!("mcp.ask.denied")),
+            None => Err(tr!("mcp.ask.timeout", self.timeout.as_secs())),
         }
     }
 

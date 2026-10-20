@@ -9,6 +9,7 @@ use jevision_core::{
     BLOCK_SUFFIX, Reference, SettingsError, TEST_SUFFIX, describe, parse, resolve_test,
     set_reference_settings, to_canonical_json,
 };
+use jevision_l10n::tr;
 
 /// A block, in a test or a custom block of the project, that uses a picture file.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
@@ -60,23 +61,23 @@ pub struct ChangedFile {
 /// The edits can't be made, or taken back; no file was changed.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum ReferenceError {
-    #[error("{test} can't be read: {reason}")]
+    #[error("{}", tr!("project.file.unreadable", .test, .reason))]
     Unreadable { test: String, reason: String },
-    #[error("{test} has no block {block} with a picture at {field}")]
+    #[error("{}", tr!("reference.error.noSuchPicture", .test, .block, .field))]
     NoSuchPicture {
         test: String,
         block: String,
         field: String,
     },
-    #[error("The settings of block {block} in {test} don't fit: {reason}")]
+    #[error("{}", tr!("reference.error.rejected", .block, .test, .reason))]
     Rejected {
         test: String,
         block: String,
         reason: String,
     },
-    #[error("{test} was changed meanwhile, so it was left as it is")]
+    #[error("{}", tr!("reference.error.changed", .test))]
     Changed { test: String },
-    #[error("{test} can't be saved: {reason}")]
+    #[error("{}", tr!("project.file.unwritable", .test, .reason))]
     Unwritable { test: String, reason: String },
 }
 
@@ -157,8 +158,8 @@ fn plan(project: &Path, edits: &[ReferenceEdit]) -> Result<ReferenceChange, Refe
             test: (*test).to_owned(),
             reason,
         };
-        let path = inside(project, test)
-            .ok_or_else(|| unreadable("it is not a file of the project".to_owned()))?;
+        let path =
+            inside(project, test).ok_or_else(|| unreadable(tr!("reference.error.notInProject")))?;
         let before = fs::read_to_string(path).map_err(|e| unreadable(e.to_string()))?;
         let flow = parse(&before)
             .map_err(|e| unreadable(e.issues.iter().map(describe).collect::<Vec<_>>().join(" ")))?;
@@ -198,7 +199,7 @@ fn swap(project: &Path, files: &[ChangedFile], forward: bool) -> Result<(), Refe
         .map(|f| {
             inside(project, &f.path).ok_or_else(|| ReferenceError::Unreadable {
                 test: f.path.clone(),
-                reason: "it is not a file of the project".to_owned(),
+                reason: tr!("reference.error.notInProject"),
             })
         })
         .collect::<Result<Vec<_>, _>>()?;

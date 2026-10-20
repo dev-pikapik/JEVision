@@ -8,6 +8,7 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
+use jevision_l10n::tr;
 use serde_json::{Value, json};
 
 use crate::{FileChange, Git, GitError, Repo, display_url, find_tool};
@@ -287,7 +288,7 @@ impl GitHub {
         let written = std::io::copy(&mut body, to).map_err(|_| GitError::Unreachable)?;
         if written > limit {
             return Err(GitError::Failed {
-                message: "The files from the CI run are too large to download".into(),
+                message: tr!("git.error.artifactTooLarge"),
             });
         }
         Ok(())
@@ -466,7 +467,7 @@ impl GitHub {
         };
         if !pictures.is_empty() {
             let urls = self.attach(repo, pictures, title)?;
-            text.push_str("\n\n### Screenshots\n");
+            text.push_str(&format!("\n\n### {}\n", tr!("git.issue.screenshots")));
             for ((name, _), url) in pictures.iter().zip(urls) {
                 let name = name.rsplit('/').next().unwrap_or(name);
                 let label = name.strip_suffix(".png").unwrap_or(name);
@@ -658,7 +659,7 @@ impl Repo {
         for id in [base, head] {
             if id.len() < 7 || !id.chars().all(|c| c.is_ascii_hexdigit()) {
                 return Err(GitError::Failed {
-                    message: format!("`{id}` is not a commit"),
+                    message: tr!("git.error.notCommit", id),
                 });
             }
         }
@@ -806,7 +807,7 @@ fn parse(body: &str) -> Result<Value, GitError> {
 
 fn unreadable() -> GitError {
     GitError::Failed {
-        message: "GitHub sent an answer that can't be read".into(),
+        message: tr!("git.error.githubUnreadable"),
     }
 }
 
@@ -838,7 +839,7 @@ pub(crate) fn error(status: u16, body: &str) -> GitError {
                 .to_owned(),
         },
         _ if message.is_empty() => GitError::Failed {
-            message: format!("GitHub answered with error {status}"),
+            message: tr!("git.error.githubStatus", status),
         },
         _ => GitError::Failed { message },
     }

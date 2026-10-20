@@ -6,11 +6,16 @@ use std::sync::{Arc, Mutex};
 use serde_json::json;
 
 use super::*;
-use crate::message::{ci_run_url, duration};
+use crate::message::duration;
 
 mod chats;
 mod rich;
 mod summary;
+
+/// The page of the CI run the reports link to, when the tests themselves run on CI.
+fn ci_run_url() -> Option<String> {
+    jevision_runner::CiOrigin::from_env().and_then(|ci| ci.run_url)
+}
 
 fn folder(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("jevision-notify-{name}-{}", std::process::id()));
@@ -256,7 +261,7 @@ fn a_message_goes_to_the_channels_that_ask_for_it() {
     assert!(
         told.message
             .body
-            .starts_with("Blocked: login/open.flow.json doesn't exist\n")
+            .starts_with("Blocked: login/open.flow.json doesn’t exist\n")
     );
 
     let mut quarantined = finished(failed(), None);
@@ -330,7 +335,10 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
     let told = message("shop", &[finished(value, None)]);
     assert_eq!(told.title, "Failed: Sign in");
     let lines: Vec<&str> = told.body.lines().collect();
-    assert_eq!(lines[0], "Secret PASSWORD is not set.");
+    assert_eq!(
+        lines[0],
+        "The secret PASSWORD isn’t set. Set it in Test details."
+    );
     assert_eq!(
         lines[1],
         "Took: 12.3 s · File: login/sign-in.flow.json · Schedule: Nightly"
@@ -354,7 +362,7 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
     ]);
     let body = one(rows).body;
     assert!(
-        body.starts_with("Row 2: bob: Secret PASSWORD is not set.\n"),
+        body.starts_with("Row 2: bob: The secret PASSWORD isn’t set. Set it in Test details.\n"),
         "{body}"
     );
 
@@ -369,8 +377,47 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
         body.starts_with("Passed on retry 1 after failing — the test is flaky.\n"),
         "{body}"
     );
-    assert_eq!(duration(850), "850 ms");
-    assert_eq!(duration(125_000), "2 min 5 s");
+    assert_eq!(duration("en", 850), "850 ms");
+    assert_eq!(duration("en", 12_300), "12.3 s");
+    assert_eq!(duration("en", 125_000), "2 min 5 s");
+    assert_eq!(duration("ru", 850), "850 мс");
+    assert_eq!(duration("ru", 12_300), "12,3 с");
+    assert_eq!(duration("ru", 125_000), "2 мин 5 с");
+}
+
+#[test]
+fn a_message_and_its_errors_are_told_in_the_language_asked_for() {
+    let told = message_in("ru", "shop", &[finished(report("failed", None), None)]);
+    assert_eq!(told.title, "Провален: Sign in");
+    assert_eq!(told.lang, "ru");
+    assert!(told.body.contains("Длительность: 12,3 с"), "{}", told.body);
+    assert_eq!(
+        test_message_in("en", Path::new("/p/shop")).title,
+        "JEVision test message"
+    );
+    assert_eq!(
+        test_message_in("ru", Path::new("/p/shop")).title,
+        "Проверочное сообщение JEVision"
+    );
+
+    let missing = NotifyError::NoSecret {
+        channel: NotifyChannel::Telegram,
+    };
+    assert_eq!(
+        missing.text_in("en"),
+        "the Telegram bot token isn't on this Mac; add it in JEVision Settings → Notifications \
+         or set JEVISION_TELEGRAM_TOKEN"
+    );
+    assert_eq!(
+        missing.text_in("ru"),
+        "токена бота Telegram нет на этом Mac; добавьте его в Настройках JEVision → Уведомления \
+         или задайте JEVISION_TELEGRAM_TOKEN"
+    );
+    let off = NotifyError::NotSetUp {
+        channel: NotifyChannel::Slack,
+    };
+    assert_eq!(off.text_in("en"), "Slack isn't set up in this project");
+    assert_eq!(off.text_in("ru"), "Slack не настроен в этом проекте");
 }
 
 #[test]

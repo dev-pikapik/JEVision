@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use jevision_l10n::tr;
 use jevision_runner::{LimitState, UsageBook, VisionClient, VisionJudge};
 use jevision_vision::Message;
 use serde_json::{Value, json};
@@ -73,23 +74,23 @@ pub enum AiStep {
 /// Why a session stopped.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum AiError {
-    #[error("unknown AI provider `{provider}`")]
+    #[error("{}", tr!("ai.error.unknownProvider", .provider))]
     UnknownProvider { provider: String },
     /// The provider only checks screenshots: it can't write tests or explain failures.
-    #[error("{provider} only checks screenshots")]
+    #[error("{}", tr!("vision.error.onlyChecksScreenshots", .provider))]
     OnlyChecks { provider: String },
-    /// A `run.vision.*` code with its values, and the English sentence.
+    /// A `run.vision.*` code with its values, and its sentence in the current language.
     #[error("{message}")]
     Provider { failure: Failure, message: String },
     /// The run's report can't be read.
-    #[error("the report can't be read: {reason}")]
+    #[error("{}", tr!("ai.error.noReport", .reason))]
     NoReport { reason: String },
     /// The model's answers could not be used, even after it was asked to fix them.
-    #[error("the AI's answer can't be used: {problems}")]
+    #[error("{}", tr!("ai.error.unusable", .problems))]
     Unusable { problems: String },
-    #[error("the AI asked for more than {limit} tool calls")]
+    #[error("{}", tr!("ai.error.tooManyCalls", *.limit))]
     TooManyCalls { limit: u32 },
-    #[error("stopped")]
+    #[error("{}", tr!("ai.error.cancelled"))]
     Cancelled,
 }
 

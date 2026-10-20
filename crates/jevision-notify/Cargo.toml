@@ -9,11 +9,11 @@ repository.workspace = true
 
 [dependencies]
 jevision-core.workspace = true
+jevision-l10n.workspace = true
 jevision-runner.workspace = true
 lettre = { version = "0.11", default-features = false, features = ["builder", "ring", "rustls", "rustls-platform-verifier", "smtp-transport"] }
 serde.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true
 ureq = { version = "3.1", default-features = false, features = ["rustls"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

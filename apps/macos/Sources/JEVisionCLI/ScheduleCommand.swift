@@ -20,7 +20,7 @@ struct ScheduleCommand {
       defer { free(path) }
       return String(cString: path)
     }), isFolder(root) else {
-      Console.standardError.line("jevision: there is no folder “\(project)”")
+      Console.standardError.line("jevision: " + words("cli.error.noFolder", project))
       return .failure
     }
     var status = ExitStatus.ok
@@ -45,11 +45,11 @@ struct ScheduleCommand {
     let outcome: ScheduledOutcome
     var status: ExitStatus
     if let reason = blocker() {
-      progress.line("Skipped “\(schedule.name)”: \(Self.describe(reason))")
+      progress.line(Self.skipped(schedule.name, reason))
       outcome = .skipped(reason: reason)
       status = .problems
     } else {
-      progress.line("Schedule “\(schedule.name)”")
+      progress.line(words("cli.schedule.started", schedule.name))
       var request = RunRequest(paths: Self.paths(of: schedule.tests, in: root), project: root)
       request.environment = schedule.environment
       request.video = schedule.video
@@ -72,7 +72,7 @@ struct ScheduleCommand {
     do {
       try recordScheduledRun(project: root, run: run)
     } catch {
-      Console.standardError.line("jevision: the schedule history couldn’t be saved: \(error.localizedDescription)")
+      Console.standardError.line("jevision: " + words("cli.schedule.historyNotSaved", error.localizedDescription))
       status = .failure
     }
     return status
@@ -93,11 +93,12 @@ struct ScheduleCommand {
     return Readiness.problem() == nil ? nil : .notAllowed
   }
 
-  static func describe(_ reason: SkipReason) -> String {
+  /// The line for the schedule `name` that didn't run.
+  static func skipped(_ name: String, _ reason: SkipReason) -> String {
     switch reason {
-    case .screenLocked: "the screen is locked."
-    case .noUser: "nobody is logged in with a screen."
-    case .notAllowed: "macOS hasn’t allowed jevision to record the screen and control the computer."
+    case .screenLocked: words("cli.schedule.skippedLocked", name)
+    case .noUser: words("cli.schedule.skippedNoUser", name)
+    case .notAllowed: words("cli.schedule.skippedNotAllowed", name)
     }
   }
 }

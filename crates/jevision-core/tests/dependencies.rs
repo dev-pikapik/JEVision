@@ -122,7 +122,7 @@ fn version_ranges_follow_the_cargo_rules() {
         "~1.2.3 latest",
     ] {
         let error = bad.parse::<VersionReq>().unwrap_err();
-        assert!(error.contains("isn't a version range"), "{bad}: {error}");
+        assert!(error.contains("isn’t a version range"), "{bad}: {error}");
     }
     assert!(
         "".parse::<VersionReq>()
@@ -192,8 +192,8 @@ fn a_manifest_lists_the_packages_it_needs() {
             ("block.field.missing", "dependencies.8"),
         ]
     );
-    let said: Vec<String> = issues.iter().filter_map(describe_package_issue).collect();
-    assert!(said[1].contains("isn't a version range"), "{}", said[1]);
+    let said: Vec<String> = issues.iter().map(|i| describe_in("en", i)).collect();
+    assert!(said[1].contains("isn’t a version range"), "{}", said[1]);
     assert!(said[2].contains("https"), "{}", said[2]);
     assert!(said[4].contains("listed twice"), "{}", said[4]);
 }
@@ -215,9 +215,8 @@ fn a_package_runs_only_the_packages_it_declares() {
     assert_eq!(undeclared[0].param("id"), Some("com.acme.other"));
     assert_eq!(undeclared[0].param("block"), Some("a"));
     assert!(
-        describe_package_issue(&undeclared[0])
-            .unwrap()
-            .starts_with("Block \"a\": runs ../com.acme.other.jevblock/flow.json")
+        describe_in("en", &undeclared[0])
+            .starts_with("Block “a”: A step runs ../com.acme.other.jevblock/flow.json")
     );
     assert_eq!(
         codes(&check("../shared/close.flow.json")),
@@ -274,10 +273,10 @@ fn a_set_installs_dependencies_first_and_says_what_stops_it() {
     );
     assert_eq!(missing[0].param("by"), Some("com.acme.app"));
     assert_eq!(missing[1].param("source"), None);
-    let said = describe_package_issue(&missing[0]).unwrap();
+    let said = describe_in("en", &missing[0]);
     assert!(
         said.contains("com.acme.app needs the block com.acme.gone ^2.0.0")
-            && said.contains("`jevision blocks install https://github.com/acme/gone`"),
+            && said.contains("Install it from https://github.com/acme/gone."),
         "{said}"
     );
 
@@ -302,11 +301,7 @@ fn a_set_installs_dependencies_first_and_says_what_stops_it() {
         three[0].param("chain"),
         Some("com.acme.a → com.acme.b → com.acme.c → com.acme.a")
     );
-    assert!(
-        describe_package_issue(&three[0])
-            .unwrap()
-            .contains("in a circle: com.acme.a → com.acme.b")
-    );
+    assert!(describe_in("en", &three[0]).contains("in a circle: com.acme.a → com.acme.b"));
 
     let twice = error(&[], &[base.clone(), base.clone()], false);
     assert_eq!(codes(&twice), ["block.set.duplicate"]);
@@ -442,20 +437,15 @@ fn a_test_says_when_a_package_it_runs_lacks_what_it_needs() {
     ] {
         assert_eq!(missing[0].param(name), Some(value), "{name}");
     }
-    let said = describe_package_issue(&missing[0]).unwrap();
+    let said = describe_in("en", &missing[0]);
     assert!(
-        said.starts_with("Block \"a\", field \"test\": the block com.acme.app needs the block com.acme.helper ^1.0.0, which isn't installed")
-            && said.contains("`jevision blocks install https://github.com/acme/helper`"),
+        said.starts_with("Block “a”, field “test”: The block com.acme.app needs the block com.acme.helper ^1.0.0, which isn’t installed"),
         "{said}"
     );
     assert_eq!(unmet(&deeper).len(), 1);
     let old = unmet(&old);
     assert_eq!(old[0].param("installed"), Some("0.5.0"));
-    assert!(
-        describe_package_issue(&old[0])
-            .unwrap()
-            .contains("but com.acme.helper 0.5.0 is installed")
-    );
+    assert!(describe_in("en", &old[0]).contains("but com.acme.helper 0.5.0 is installed"));
     assert!(unmet(&fine).is_empty());
 }
 
@@ -761,9 +751,9 @@ fn a_shared_block_needs_the_installed_packages_it_runs() {
     .unwrap();
     let refused = export_package(&project, "blocks/Outer.block.json", &meta, &out).unwrap_err();
     assert_eq!(codes(&refused.issues), ["block.export.nested"]);
-    let said = describe_package_issue(&refused.issues[0]).unwrap();
+    let said = describe_in("en", &refused.issues[0]);
     assert!(
-        said.contains("runs Inner.block.json") && said.contains("installed community block"),
+        said.contains("runs “Inner.block.json”") && said.contains("installed community block"),
         "{said}"
     );
     fs::write(

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use jevision_core::{Flow, ProjectSettings, parse, required_secrets};
 use jevision_git::{GitError, GitHub, GitHubIssue, GitHubRepo};
-use jevision_runner::{BugContext, MaskedImage, Run, mask_secrets};
+use jevision_runner::{BugContext, MaskedImage, Run, mask_secrets, picture_caption_in};
 
 use crate::git::{on_github, repo};
 use crate::{ReportError, SecretSource};
@@ -26,7 +26,8 @@ pub struct BugReport {
 /// A picture of the failed step.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BugScreenshot {
-    /// `Expected`, `Actual` or `Difference`.
+    /// `Expected`, `Actual` or `Difference`, the same in every language; the app shows its
+    /// caption from the catalog key of the same name.
     pub label: String,
     /// The picture's file.
     pub path: String,
@@ -142,13 +143,12 @@ pub(crate) fn send(
             .canonicalize()
             .ok()
             .filter(|file| file.starts_with(&inside))
-            .ok_or_else(|| failed(format!("{} isn't a picture of this run", shot.path)))?;
+            .ok_or_else(|| failed(jevision_l10n::tr!("bug.picture.notInRun", &shot.path)))?;
         let png = std::fs::read(&file).map_err(|e| failed(e.to_string()))?;
         let masked = MaskedImage::from_png(&png, &settings.hide).map_err(failed)?;
-        pictures.push((
-            format!("{folder}/{}.png", shot.label),
-            masked.png().to_vec(),
-        ));
+        // The issue shows each picture under its file name, so the name is its caption.
+        let caption = picture_caption_in(&jevision_l10n::language(), &shot.label);
+        pictures.push((format!("{folder}/{caption}.png"), masked.png().to_vec()));
     }
     hub.report_bug(
         repo,

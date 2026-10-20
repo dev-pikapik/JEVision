@@ -1,6 +1,7 @@
 //! Finding the Telegram chat to post to: the chats a bot has been written in, from the updates
 //! Telegram keeps for it.
 
+use jevision_l10n::tr;
 use serde_json::{Value, json};
 
 use crate::{NotifyError, failed, telegram_call};
@@ -39,7 +40,9 @@ pub fn find_chats(api: &str, token: &str) -> Result<FoundChats, NotifyError> {
     let me = telegram_call(api, token, "getMe", &json!({}))?;
     let bot = match me["username"].as_str() {
         Some(name) => format!("@{name}"),
-        None => me["first_name"].as_str().unwrap_or("the bot").to_owned(),
+        None => me["first_name"]
+            .as_str()
+            .map_or_else(|| tr!("notify.chats.bot"), str::to_owned),
     };
     let updates = telegram_call(
         api,
@@ -51,10 +54,9 @@ pub fn find_chats(api: &str, token: &str) -> Result<FoundChats, NotifyError> {
         }),
     )
     .map_err(|e| match e {
-        NotifyError::Failed { reason } if reason.contains("webhook") => failed(
-            "This bot hands its messages to a webhook, so Telegram won't list its chats here. \
-             Make a new bot with @BotFather for JEVision, or type the chat ID yourself",
-        ),
+        NotifyError::Failed { reason } if reason.contains("webhook") => {
+            failed(tr!("notify.chats.webhook"))
+        }
         e => e,
     })?;
     Ok(FoundChats {
@@ -104,7 +106,7 @@ fn title_of(chat: &Value, id: &str) -> String {
     let name = format!("{} {}", text("first_name"), text("last_name"));
     let name = name.trim();
     match (name.is_empty(), text("username")) {
-        (true, "") => format!("Chat {id}"),
+        (true, "") => tr!("notify.chats.untitled", id),
         (true, user) => format!("@{user}"),
         (false, "") => name.to_owned(),
         (false, user) => format!("{name} (@{user})"),

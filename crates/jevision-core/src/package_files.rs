@@ -10,6 +10,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use jevision_l10n::tr;
 use serde_json::json;
 
 use crate::issue::{Issue, Severity};
@@ -127,8 +128,10 @@ fn read_text(dir: &Path, file: &str) -> Result<String, PackageError> {
             return Err(failure("block.file.missing", &[("file", file)]));
         }
         Err(e) => return Err(unreadable(e.to_string())),
-        Ok(meta) if !meta.is_file() => return Err(unreadable("not a file".to_owned())),
-        Ok(meta) if meta.len() > MAX_TEXT_FILE => return Err(unreadable("too large".to_owned())),
+        Ok(meta) if !meta.is_file() => return Err(unreadable(tr!("package.file.notFile"))),
+        Ok(meta) if meta.len() > MAX_TEXT_FILE => {
+            return Err(unreadable(tr!("package.file.tooLarge")));
+        }
         Ok(_) => {}
     }
     fs::read_to_string(&path).map_err(|e| unreadable(e.to_string()))

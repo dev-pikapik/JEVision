@@ -17,7 +17,7 @@ use crate::{Flow, Issue, Severity};
 /// the user's language.
 #[derive(Debug, Clone, PartialEq, thiserror::Error, uniffi::Error)]
 pub enum BlockPackageError {
-    #[error("block package problem")]
+    #[error("{}", jevision_l10n::tr!("block.package.problem"))]
     Failed { issues: Vec<Issue> },
 }
 
@@ -133,7 +133,7 @@ impl From<Risk> for BlockRisk {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BlockStep {
     pub block: String,
-    /// What the step does, in one English line.
+    /// What the step does, in one line in the current language.
     pub text: String,
     /// Set when the step needs the attention of whoever installs the package.
     pub risk: Option<BlockRisk>,
@@ -824,18 +824,22 @@ pub fn is_block_path(path: String) -> bool {
     jevision_core::is_block_path(&path)
 }
 
-/// What a kind of risk means, in English, for the command line and logs; the app writes its own.
+/// What a kind of risk means, in the current language.
 #[uniffi::export]
 pub fn describe_block_risk(risk: BlockRisk) -> String {
+    describe_block_risk_in(&jevision_l10n::language(), risk)
+}
+
+fn describe_block_risk_in(lang: &str, risk: BlockRisk) -> String {
+    use jevision_l10n::tr_in;
     match risk {
-        BlockRisk::Script => "Runs a script on this Mac",
-        BlockRisk::Http => "Sends requests over the network",
-        BlockRisk::Database => "Reads or changes a database",
-        BlockRisk::OpensApps => "Opens apps, files or web pages",
-        BlockRisk::Keyboard => "Types on the keyboard",
-        BlockRisk::Clipboard => "Uses the clipboard",
+        BlockRisk::Script => tr_in!(lang, "block.risk.script"),
+        BlockRisk::Http => tr_in!(lang, "block.risk.http"),
+        BlockRisk::Database => tr_in!(lang, "block.risk.database"),
+        BlockRisk::OpensApps => tr_in!(lang, "block.risk.opensApps"),
+        BlockRisk::Keyboard => tr_in!(lang, "block.risk.keyboard"),
+        BlockRisk::Clipboard => tr_in!(lang, "block.risk.clipboard"),
     }
-    .to_owned()
 }
 
 /// The id of the installed block whose steps `path` names, as in
@@ -1110,6 +1114,22 @@ mod tests {
         install_block_set(path.clone(), vec![item(&out.path, "")], false).unwrap();
         let err = update_block_package(path, "com.anna.sign-in".into()).unwrap_err();
         assert_eq!(codes(err), ["block.source.none"]);
+    }
+
+    #[test]
+    fn risks_read_in_russian_and_english() {
+        assert_eq!(
+            describe_block_risk_in("en", BlockRisk::Http),
+            "Sends requests over the network"
+        );
+        assert_eq!(
+            describe_block_risk_in("ru", BlockRisk::Http),
+            "Отправляет запросы по сети"
+        );
+        assert_eq!(
+            describe_block_risk(BlockRisk::Script),
+            "Runs a script on this Mac"
+        );
     }
 
     #[test]

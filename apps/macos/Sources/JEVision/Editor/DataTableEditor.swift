@@ -287,8 +287,8 @@ struct DataTableEditor: View {
   // MARK: Words
 
   private static func message(_ error: any Error) -> String {
-    guard case DataFileError.Invalid(let code, let params, _) = error else { return error.localizedDescription }
-    return IssueText.dataProblem(code) { params[$0] ?? "" }
+    guard case DataFileError.Invalid(_, _, let message) = error else { return error.localizedDescription }
+    return message
   }
 
   static func size(rows: Int, columns: Int) -> String {

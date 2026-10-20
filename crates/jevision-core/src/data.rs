@@ -6,9 +6,12 @@
 //! CR LF, a UTF-8 byte order mark is skipped, and blank lines are ignored.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::fs;
 use std::ops::RangeInclusive;
 use std::path::Path;
+
+use jevision_l10n::{language, tr, tr_in};
 
 use crate::issue::Issue;
 use crate::model::{BlockKind, Flow};
@@ -32,32 +35,66 @@ pub struct DataTable {
 }
 
 /// Why a file can't be used as a data table. Lines are counted from 1.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataError {
-    #[error("{reason}")]
-    Unreadable { reason: String },
-    #[error("{reason}")]
-    Unwritable { reason: String },
-    #[error("it isn't UTF-8 text")]
+    Unreadable {
+        reason: String,
+    },
+    Unwritable {
+        reason: String,
+    },
     NotText,
-    #[error("it's empty, but its first line must name the columns")]
     Empty,
-    #[error("column {column} on line 1 has no name")]
-    BlankColumn { column: usize },
-    #[error("two columns are named \"{name}\"")]
-    DuplicateColumn { name: String },
-    #[error("the quoted value that starts on line {line} is never closed")]
-    UnclosedQuote { line: usize },
-    #[error(
-        "line {line} has a quote inside a value; put the whole value in quotes and write the quote twice"
-    )]
-    StrayQuote { line: usize },
-    #[error("line {line} has {found} values, but the first line names {expected} columns")]
+    BlankColumn {
+        column: usize,
+    },
+    DuplicateColumn {
+        name: String,
+    },
+    UnclosedQuote {
+        line: usize,
+    },
+    StrayQuote {
+        line: usize,
+    },
     RowLength {
         line: usize,
         found: usize,
         expected: usize,
     },
+}
+
+impl std::error::Error for DataError {}
+
+impl fmt::Display for DataError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let params = self.params();
+        let param = |name: &str| {
+            params
+                .iter()
+                .find(|(n, _)| *n == name)
+                .map(|(_, value)| value.clone())
+                .unwrap_or_default()
+        };
+        f.write_str(&data_problem(&language(), self.code(), &param))
+    }
+}
+
+/// The text of the `data.*` problem `code` in `lang`, with the values `param` gives by name.
+pub(crate) fn data_problem(lang: &str, code: &str, param: &dyn Fn(&str) -> String) -> String {
+    let p = param;
+    match code {
+        "data.unreadable" => tr_in!(lang, "data.unreadable", p("reason")),
+        "data.unwritable" => tr_in!(lang, "data.unwritable", p("reason")),
+        "data.notText" => tr_in!(lang, "data.notText"),
+        "data.empty" => tr_in!(lang, "data.empty"),
+        "data.blankColumn" => tr_in!(lang, "data.blankColumn", p("column")),
+        "data.duplicateColumn" => tr_in!(lang, "data.duplicateColumn", p("name")),
+        "data.unclosedQuote" => tr_in!(lang, "data.unclosedQuote", p("line")),
+        "data.strayQuote" => tr_in!(lang, "data.strayQuote", p("line")),
+        "data.rowLength" => tr_in!(lang, "data.rowLength", p("line"), p("found"), p("expected")),
+        _ => p("reason"),
+    }
 }
 
 impl DataError {
@@ -278,7 +315,6 @@ pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
                     .with("block", &b.id)
                     .with("field", "file")
                     .with("path", file)
-                    .with("reason", e)
                     .with("problem", e.code());
                 out.push(
                     e.params()
@@ -352,12 +388,8 @@ pub fn parse_row_choice(text: &str) -> Result<Option<RangeInclusive<usize>>, Str
     };
     match range {
         Some((first, last)) if first <= last => Ok(Some(first - 1..=last - 1)),
-        Some((first, last)) => Err(format!(
-            "\"{text}\" ends before it starts; write the smaller row first, like {last}-{first}."
-        )),
-        None => Err(format!(
-            "\"{text}\" isn't a choice of data rows; write all, a row like 2 or a range like 2-4."
-        )),
+        Some((first, last)) => Err(tr!("data.rows.backwards", text, last, first)),
+        None => Err(tr!("data.rows.invalid", text)),
     }
 }
 
@@ -661,5 +693,38 @@ mod tests {
         assert_eq!(t.label(1), "b@x.io");
         assert_eq!(t.label(2), "");
         assert_eq!(t.label(9), "");
+    }
+
+    #[test]
+    fn problems_read_in_the_language_asked_for() {
+        let error = DataError::RowLength {
+            line: 3,
+            found: 1,
+            expected: 2,
+        };
+        assert_eq!(
+            error.to_string(),
+            "line 3 has 1 values, but the first line names 2 columns"
+        );
+        let params = error.params();
+        let param = |name: &str| {
+            params
+                .iter()
+                .find(|(n, _)| *n == name)
+                .map(|(_, value)| value.clone())
+                .unwrap_or_default()
+        };
+        assert_eq!(
+            data_problem("ru", error.code(), &param),
+            "в строке 3 значений: 1, а в первой строке названо столбцов: 2"
+        );
+        assert_eq!(
+            parse_row_choice("4-2"),
+            Err("“4-2” ends before it starts; write the smaller row first, like 2-4.".into())
+        );
+        assert_eq!(
+            jevision_l10n::tr_in!("ru", "data.rows.backwards", "4-2", 2, 4),
+            "«4-2» заканчивается раньше, чем начинается: сначала напишите меньшую строку, например 2-4."
+        );
     }
 }
