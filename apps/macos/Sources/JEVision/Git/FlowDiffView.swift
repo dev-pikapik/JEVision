@@ -169,6 +169,7 @@ struct DiffCanvas: View {
     .scaleEffect(scale, anchor: .topLeading)
     .frame(width: layout.width * scale, height: layout.height * scale, alignment: .topLeading)
     .frame(maxWidth: .infinity)
+    .unmirrored()
     .onGeometryChange(for: Double.self) { $0.size.width } action: { width = $0 }
     .accessibilityElement(children: .contain)
   }

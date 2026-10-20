@@ -107,6 +107,7 @@ struct BoardView: View {
   @ViewBuilder private var content: some View {
     if let board = boards.board {
       canvas(board, layout: boards.layout)
+        .unmirrored()
     } else if let problem = boards.problem {
       ContentUnavailableView {
         Label("Can’t Show This Board", systemImage: "exclamationmark.triangle")
@@ -594,7 +595,7 @@ struct BoardView: View {
       let tests = testsInside(node)
       return [
         BoardMenuItem(String(localized: "Rename Frame…"), symbol: "pencil") { open(node) },
-        BoardMenuItem(collapsed ? String(localized: "Unfold") : String(localized: "Fold"), symbol: collapsed ? "chevron.down" : "chevron.right") { fold(node) },
+        BoardMenuItem(collapsed ? String(localized: "Unfold") : String(localized: "Fold"), symbol: collapsed ? "chevron.down" : "chevron.forward") { fold(node) },
         BoardMenuItem(String(localized: "Run Tests in Frame"), symbol: "play.fill", enabled: canRun && !tests.isEmpty) { run(tests, title: frameTitle(node)) },
       ]
     case .text:

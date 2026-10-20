@@ -55,7 +55,7 @@ struct OnboardingView: View {
           Button("Skip", action: finish)
             .keyboardShortcut(.cancelAction)
         } else {
-          Button("Back", systemImage: "chevron.left") { go(to: Step(rawValue: step.rawValue - 1) ?? .welcome) }
+          Button("Back", systemImage: "chevron.backward") { go(to: Step(rawValue: step.rawValue - 1) ?? .welcome) }
             .keyboardShortcut("[", modifiers: .command)
         }
       }
@@ -101,9 +101,9 @@ struct OnboardingView: View {
   private var dots: some View {
     HStack(spacing: 8) {
       ForEach(Step.allCases, id: \.self) { item in
-        Circle()
+        Capsule()
           .fill(item == step ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary))
-          .frame(width: 7, height: 7)
+          .frame(width: item == step ? 20 : 7, height: 7)
       }
     }
     .accessibilityElement()

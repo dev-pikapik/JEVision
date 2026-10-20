@@ -231,7 +231,7 @@ struct PlaceholderTextField: View {
       }
       .fixedSize()
     } label: {
-      Text("Insert a value that isn’t in the file")
+      Text("A secret or a value kept outside the test")
         .foregroundStyle(.secondary)
     }
     .alert("New Secret", isPresented: $isNamingSecret) {
@@ -286,10 +286,10 @@ struct ModifiersField: View {
   var body: some View {
     LabeledContent {
       HStack(spacing: 4) {
-        key("⌃", String(localized: "modifier.control", defaultValue: "Control"), \.control)
-        key("⌥", String(localized: "modifier.option", defaultValue: "Option"), \.option)
-        key("⇧", String(localized: "modifier.shift", defaultValue: "Shift"), \.shift)
-        key("⌘", String(localized: "modifier.command", defaultValue: "Command"), \.command)
+        key("⌃", String(localized: "modifier.control", defaultValue: "Control", bundle: .app, locale: .app), \.control)
+        key("⌥", String(localized: "modifier.option", defaultValue: "Option", bundle: .app, locale: .app), \.option)
+        key("⇧", String(localized: "modifier.shift", defaultValue: "Shift", bundle: .app, locale: .app), \.shift)
+        key("⌘", String(localized: "modifier.command", defaultValue: "Command", bundle: .app, locale: .app), \.command)
       }
     } label: {
       Text("Hold Keys")

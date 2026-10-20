@@ -147,7 +147,8 @@ struct RemoteSettingsView: View {
         ProgressView().controlSize(.small)
       } else {
         Image(systemName: "checkmark.circle.fill")
-          .font(.system(size: 40))
+          .font(.largeTitle)
+          .imageScale(.large)
           .foregroundStyle(.green)
       }
     }

@@ -52,8 +52,7 @@ struct AISettingsView: View {
   }
 }
 
-/// The provider, its model and key, a connection test and what is sent where. Shared by
-/// Settings and the first-launch window.
+/// The provider and whether screenshots may leave this Mac.
 struct AISections: View {
   @AppStorage(AISettings.providerKey) private var providerID = ""
   @AppStorage(AISettings.localOnlyKey) private var localOnly = false
@@ -119,7 +118,8 @@ private struct FallbackSections: View {
   }
 }
 
-private struct ProviderSection: View {
+/// The details of one provider: address, model, key, a connection test. Shared by Settings and the first-launch window.
+struct ProviderSection: View {
   let provider: VisionProvider
   let localOnly: Bool
   /// Shown for finding elements by description only, while another provider checks by meaning.

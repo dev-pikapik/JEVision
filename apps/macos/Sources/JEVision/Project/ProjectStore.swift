@@ -42,7 +42,7 @@ final class ProjectStore {
   /// Tests whose recent runs both passed and failed without the test changing, by test file
   /// relative to the project, with the evidence.
   private(set) var flaky: [String: FlakyEvidence] = [:]
-  /// What the sidebar lists. Runs only while there are some.
+  /// What the sidebar lists.
   var sidebar = Sidebar.tests
   /// Folder of the run whose report is open.
   var selectedRun: SavedRun.ID?
@@ -225,7 +225,9 @@ final class ProjectStore {
   /// Opens the report of the run saved in `dir`.
   func showRun(_ dir: URL) {
     sidebar = .runs
-    selectedRun = dir.path(percentEncoded: false)
+    // `path`, not `path(percentEncoded:)`: that one keeps the slash after a folder, and then the
+    // run no longer matches its row in the history, which is picked by the folder without it.
+    selectedRun = dir.path
   }
 
   /// Whether the test file, relative to the project, is still there.
@@ -247,7 +249,6 @@ final class ProjectStore {
     try FileManager.default.trashItem(at: run.url, resultingItemURL: nil)
     show(History(runs.filter { $0.id != run.id }))
     if selectedRun == run.id { selectedRun = nil }
-    if runs.isEmpty { sidebar = .tests }
   }
 
   /// Makes a run's screenshot the reference image `reference` (relative to the project). The old
@@ -448,7 +449,6 @@ final class ProjectStore {
         {
           self.selectedRun = nil
         }
-        if saved.isEmpty, selectedRun == nil { sidebar = .tests }
         status = .ready
         if let selection, found.item(withID: selection) == nil,
           !FileManager.default.fileExists(atPath: url.appending(path: selection).path)

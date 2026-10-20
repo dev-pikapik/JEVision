@@ -89,7 +89,7 @@ enum GitText {
     case .added: "plus.circle.fill"
     case .modified: "pencil.circle.fill"
     case .deleted: "minus.circle.fill"
-    case .renamed: "arrow.right.circle.fill"
+    case .renamed: "arrow.forward.circle.fill"
     case .conflicted: "exclamationmark.triangle.fill"
     }
   }

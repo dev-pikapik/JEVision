@@ -152,7 +152,7 @@ struct FailureAnalysisCard: View {
 
   /// The language the app speaks, by its English name, for the AI to answer in.
   private static var language: String {
-    let code = Bundle.main.preferredLocalizations.first ?? "en"
+    let code = AppLanguage.shared.language
     return Locale(identifier: "en").localizedString(forLanguageCode: code) ?? "English"
   }
 

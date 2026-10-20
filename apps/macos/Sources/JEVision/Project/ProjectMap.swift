@@ -174,7 +174,7 @@ struct TestCard: View {
         Label {
           Text("After \(needs.formatted(.list(type: .and)))").lineLimit(2)
         } icon: {
-          Image(systemName: "arrow.turn.down.right").foregroundStyle(.tint)
+          Image(systemName: "arrow.turn.down.right").flipsForRightToLeftLayoutDirection(true).foregroundStyle(.tint)
         }
         .font(.caption)
         .foregroundStyle(.secondary)

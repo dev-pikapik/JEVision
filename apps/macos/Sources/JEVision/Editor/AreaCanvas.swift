@@ -40,6 +40,7 @@ struct AreaCanvas: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
     }
+    .unmirrored()
     .padding(16)
     .focusable()
     .focusEffectDisabled()
