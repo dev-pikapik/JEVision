@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use jevision_core::{Flow, layout, parse};
+use jevision_core::{Flow, Point, layout, parse};
 
 /// A test of about `n` blocks in one long chain: every few blocks an If whose branches join
 /// again, now and then a Repeat with a short body.
@@ -54,6 +54,40 @@ fn a_very_long_test_lays_out_in_about_linear_time() {
     let (small_took, large_took) = (time_layout(&small), time_layout(&large));
     println!(
         "{} blocks: {small_took:?}, {} blocks: {large_took:?}",
+        small.blocks.len(),
+        large.blocks.len()
+    );
+    assert!(
+        large_took < small_took * 64,
+        "{} blocks took {large_took:?}, more than 64 times the {small_took:?} of {} blocks",
+        large.blocks.len(),
+        small.blocks.len()
+    );
+}
+
+/// [`long_test`] with nine blocks in ten placed by hand where the automatic layout puts them; the
+/// rest look for a free place below the block before them.
+fn placed_by_hand(n: usize) -> Flow {
+    let mut flow = parse(&long_test(n)).unwrap();
+    for (i, b) in layout(&flow).blocks.iter().enumerate() {
+        if i % 10 != 0 {
+            let at = Point {
+                x: b.rect.x,
+                y: b.rect.y,
+            };
+            flow.canvas.positions.insert(b.id.clone(), at);
+        }
+    }
+    flow
+}
+
+#[test]
+fn a_very_long_test_placed_by_hand_lays_out_in_about_linear_time() {
+    let small = placed_by_hand(1_000);
+    let large = placed_by_hand(16_000);
+    let (small_took, large_took) = (time_layout(&small), time_layout(&large));
+    println!(
+        "{} blocks by hand: {small_took:?}, {} blocks: {large_took:?}",
         small.blocks.len(),
         large.blocks.len()
     );

@@ -782,40 +782,48 @@ fn free_layout(flow: &Flow, auto: &FlowLayout) -> FlowLayout {
         .rev()
         .map(|b| (b.id.as_str(), &b.kind))
         .collect();
-    let placed: HashSet<&str> = auto.blocks.iter().map(|b| b.id.as_str()).collect();
+    let auto_rects: HashMap<&str, Rect> = (auto.blocks.iter().rev())
+        .map(|b| (b.id.as_str(), b.rect))
+        .collect();
     let mut order: Vec<&str> = Vec::new();
+    let mut seen = HashSet::new();
     for b in flow.blocks_in_flow_order() {
-        if placed.contains(b.id.as_str()) && !order.contains(&b.id.as_str()) {
+        if auto_rects.contains_key(b.id.as_str()) && seen.insert(b.id.as_str()) {
             order.push(&b.id);
         }
     }
+    // The blocks that lead to each block, in order.
+    let mut leading: HashMap<&str, Vec<&str>> = HashMap::new();
+    for &o in &order {
+        for (_, t) in index[o].edges() {
+            leading.entry(t).or_default().push(o);
+        }
+    }
     let mut rects: HashMap<&str, Rect> = HashMap::new();
+    let mut placed = Placed::default();
     for &id in &order {
         if let Some(p) = flow.canvas.positions.get(id) {
-            rects.insert(id, block_rect(p.x, p.y));
+            let r = block_rect(p.x, p.y);
+            rects.insert(id, r);
+            placed.insert(r);
         }
     }
     for &id in &order {
         if rects.contains_key(id) {
             continue;
         }
-        let before = order
-            .iter()
-            .find(|&&o| rects.contains_key(o) && index[o].edges().iter().any(|(_, t)| *t == id));
+        let before = leading
+            .get(id)
+            .and_then(|from| from.iter().find(|&&o| rects.contains_key(o)));
         let mut r = match before {
             Some(o) => block_rect(rects[o].x, rects[o].y + BLOCK_HEIGHT + GAP),
-            None => {
-                auto.blocks
-                    .iter()
-                    .find(|b| b.id == id)
-                    .expect("placed")
-                    .rect
-            }
+            None => auto_rects[id],
         };
-        while rects.values().any(|o| overlaps(o, &r)) {
+        while placed.overlaps(&r) {
             r.x += BLOCK_WIDTH + COLUMN_GAP;
         }
         rects.insert(id, r);
+        placed.insert(r);
     }
 
     let mut out = FlowLayout {
@@ -917,6 +925,41 @@ fn slot(from: String, edge: &str, at: Point) -> LaidSlot {
             edge: edge.to_owned(),
         },
         at,
+    }
+}
+
+/// Blocks placed so far, by the squares they reach into, to find the ones near a place without
+/// looking at every block.
+#[derive(Default)]
+struct Placed(HashMap<(i64, i64), Vec<Rect>>);
+
+impl Placed {
+    /// Squares as wide and tall as a block with the room around it, so a block reaches into four
+    /// at most.
+    const SIZE: (f64, f64) = (BLOCK_WIDTH + 2.0 * GRID, BLOCK_HEIGHT + 2.0 * GRID);
+
+    /// The squares the rectangle `r`, with the room [`overlaps`] keeps around it, reaches into.
+    fn squares(r: &Rect) -> impl Iterator<Item = (i64, i64)> {
+        let at = |v: f64, size: f64| (v / size).floor() as i64;
+        let (w, h) = Self::SIZE;
+        let (x0, x1) = (at(r.x - GRID, w), at(r.x + r.width + GRID, w));
+        let (y0, y1) = (at(r.y - GRID, h), at(r.y + r.height + GRID, h));
+        (x0..=x1).flat_map(move |x| (y0..=y1).map(move |y| (x, y)))
+    }
+
+    fn insert(&mut self, r: Rect) {
+        for square in Self::squares(&r) {
+            self.0.entry(square).or_default().push(r);
+        }
+    }
+
+    /// Some block placed so far is too close to `r`.
+    fn overlaps(&self, r: &Rect) -> bool {
+        Self::squares(r).any(|square| {
+            self.0
+                .get(&square)
+                .is_some_and(|rects| rects.iter().any(|o| overlaps(o, r)))
+        })
     }
 }
 
