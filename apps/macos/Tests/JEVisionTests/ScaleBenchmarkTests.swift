@@ -5,51 +5,29 @@ import Testing
 @testable import JEVision
 
 /// How long the window takes on a made-up project of a thousand tests and thousands of saved
-/// runs, along the paths it takes. Each measurement prints `BENCH\t<name>\t<ms>`, the fastest of
-/// three; `scripts/bench-scale.sh --app` collects them. Heavy, so it runs only with
+/// runs, along the paths it takes. Each measurement prints `BENCH\t<name>\t<wall ms>\t<cpu ms>`,
+/// the least of three; `scripts/bench-scale.sh --app` collects them. Heavy, so it runs only with
 /// `JEVISION_SCALE=1`.
 @MainActor
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["JEVISION_SCALE"] == "1"), .serialized)
 struct ScaleBenchmarkTests {
-  private static var written: (root: URL, summary: SyntheticSummary)?
+  static func project() throws -> (root: URL, summary: SyntheticSummary) { try ScaleBench.project() }
 
-  /// The project, written once per process into the same temporary folder, which a later
-  /// process empties first. Its history ends now, so the window shows it as recent.
-  static func project() throws -> (root: URL, summary: SyntheticSummary) {
-    if let written { return written }
-    let root = FileManager.default.temporaryDirectory.appending(path: "jevision-scale-bench-app/Scale")
-    try? FileManager.default.removeItem(at: root)
-    let start = ContinuousClock.now
-    let summary = try writeSyntheticProject(
-      dir: root.path, spec: SyntheticSpec(endMs: UInt64(Date.now.timeIntervalSince1970 * 1000)))
-    report("app.generate.project", milliseconds(ContinuousClock.now - start))
-    written = (root, summary)
-    return (root, summary)
-  }
+  private static func milliseconds(_ duration: Duration) -> Double { ScaleBench.milliseconds(duration) }
 
-  private static func milliseconds(_ duration: Duration) -> Double {
-    Double(duration.components.seconds) * 1000 + Double(duration.components.attoseconds) / 1e15
-  }
-
-  private static func report(_ name: String, _ ms: Double) {
-    print("BENCH\t\(name)\t\(String(format: "%.3f", ms))")
+  /// Prints a measurement made by hand, with the CPU time when there is one.
+  private static func report(_ name: String, _ wall: Double, cpu: Double? = nil) {
+    ScaleBench.report(name, wall: wall, cpu: cpu)
   }
 
   /// Times `work` three times, prints the fastest and returns it in milliseconds.
   @discardableResult
   private func bench(_ name: String, _ work: () throws -> Void) rethrows -> Double {
-    let clock = ContinuousClock()
-    var best = Double.infinity
-    for _ in 0..<3 { best = min(best, Self.milliseconds(try clock.measure(work))) }
-    Self.report(name, best)
-    return best
+    try ScaleBench.bench(name, work).wall
   }
 
   private func bench(_ name: String, _ work: () async throws -> Void) async rethrows {
-    let clock = ContinuousClock()
-    var best = Double.infinity
-    for _ in 0..<3 { best = min(best, Self.milliseconds(try await clock.measure(work))) }
-    Self.report(name, best)
+    try await ScaleBench.bench(name, work)
   }
 
   /// Waits until `done`, looking every millisecond, for at most five minutes.
@@ -90,16 +68,17 @@ struct ScaleBenchmarkTests {
     let source = try #require(store.runs.first).dir
     let copies = (0..<50).map { runs.appending(path: String(format: "29991231-0000%02d-scale-bench", $0)) }
     let clock = ContinuousClock()
-    var best = Double.infinity
+    var best = (wall: Double.infinity, cpu: Double.infinity)
     for _ in 0..<3 {
       let start = clock.now
+      let cpu = ScaleBench.cpuMilliseconds()
       for copy in copies { try FileManager.default.copyItem(at: URL(filePath: source), to: copy) }
       try await wait(for: "the new runs to be listed") { store.runs.count == before + copies.count }
-      best = min(best, Self.milliseconds(clock.now - start))
+      best = (min(best.wall, Self.milliseconds(clock.now - start)), min(best.cpu, ScaleBench.cpuMilliseconds() - cpu))
       for copy in copies { try FileManager.default.removeItem(at: copy) }
       try await wait(for: "the deleted runs to go") { store.runs.count == before }
     }
-    Self.report("app.project.rescanDuringRun", best)
+    Self.report("app.project.rescanDuringRun", best.wall, cpu: best.cpu)
   }
 
   @Test func filteringTheSidebar() throws {
