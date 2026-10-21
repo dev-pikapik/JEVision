@@ -401,6 +401,12 @@ fn run_with(
 /// told hits it; one that is told goes on at once, however slow the machine is.
 const HANG_GUARD: Duration = Duration::from_secs(60);
 
+/// How long a run may take to end once told to, or once a command's timeout has passed. Far
+/// beyond what a woken thread needs on a busy machine, and far below the minute these tests make
+/// a run that is not woken wait, and below the ten seconds a sleep that only looks up now and then
+/// would take.
+const PROMPTLY: Duration = Duration::from_secs(5);
+
 /// [`run_with`], and each event is also sent to `seen` as it happens, so a test can act on what
 /// the run is doing and not on how much time has passed.
 fn run_with_seen(
@@ -1487,7 +1493,7 @@ fn cancel_stops_a_long_wait_at_once() {
         wait_until(|| !hands.looked_at().is_empty());
     });
     assert!(
-        after_cancel < Duration::from_secs(30),
+        after_cancel < PROMPTLY,
         "ended {after_cancel:?} after the cancel"
     );
     let report = run.report;
@@ -3273,7 +3279,7 @@ fn scripts_and_commands_fail_with_their_reason() {
         assert_eq!(failure.param(param), value, "{blocks}");
         assert!(!describe(failure).is_empty());
         // Only tells a command stopped at its timeout from one left to run its minute out.
-        assert!(clock.elapsed() < Duration::from_secs(30), "{blocks}");
+        assert!(clock.elapsed() < PROMPTLY, "{blocks}");
     }
 }
 
@@ -4292,7 +4298,7 @@ fn a_run_cancelled_while_it_waits_for_the_screen_does_nothing() {
         wait_for_event(events, |e| matches!(e, Event::WaitingForScreen { .. }));
     });
     assert!(
-        after_cancel < Duration::from_secs(30),
+        after_cancel < PROMPTLY,
         "ended {after_cancel:?} after the cancel"
     );
     assert_eq!(run.report.verdict, Verdict::Cancelled);
