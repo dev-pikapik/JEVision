@@ -41,6 +41,7 @@ mod run;
 mod schedule;
 mod signin;
 mod stats;
+mod synthetic;
 mod vision;
 
 pub use ai::*;
@@ -63,6 +64,7 @@ pub use remote::*;
 pub use run::*;
 pub use schedule::*;
 pub use stats::*;
+pub use synthetic::*;
 
 /// The text is not a readable test file.
 #[derive(Debug, thiserror::Error, uniffi::Error)]

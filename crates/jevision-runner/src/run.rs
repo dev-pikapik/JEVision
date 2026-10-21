@@ -699,7 +699,7 @@ fn row_hash(secrets: &HashMap<String, String>, table: &DataTable, row: usize) ->
 }
 
 /// SHA-256 of a test file's bytes in hex: runs with the same hash ran the same test.
-fn content_hash(bytes: &[u8]) -> String {
+pub fn content_hash(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     Sha256::digest(bytes)
         .iter()
@@ -3138,7 +3138,7 @@ fn relative(base: &Path, path: &Path) -> String {
 
 /// Makes `<project>/.jevision/runs/<YYYYMMDD-hhmmss>-<test>`, with a number added if two runs
 /// start in the same second.
-fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<PathBuf> {
+pub fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<PathBuf> {
     let runs = project.join(".jevision").join("runs");
     fs::create_dir_all(&runs)?;
     let digits: String = started_at.chars().filter(char::is_ascii_digit).collect();
@@ -3173,7 +3173,7 @@ fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<P
 }
 
 /// UTC time as `2026-10-18T14:30:05.123Z`.
-pub(crate) fn rfc3339(time: SystemTime) -> String {
+pub fn rfc3339(time: SystemTime) -> String {
     let since = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = since.as_secs() as i64;
     let (days, day_secs) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
