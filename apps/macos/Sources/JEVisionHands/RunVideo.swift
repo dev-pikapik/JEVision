@@ -234,30 +234,40 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     let rejoins = running != shown
     if moves { nextArea = area }
     Task {
-      var follows = false
+      var shows: Set<pid_t>?
       if rejoins,
-        let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        let apps = await Self.rejoining(
+          { try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false).applications },
+          pid: \.processID, running: { Set(MacHands.runningApps(app).map(\.processIdentifier)) })
       {
-        let apps = content.applications.filter { $0.bundleIdentifier == app }
-        // A new process joins the shareable content a moment after launch; until it does, the
-        // next check tries again.
-        if Set(apps.map(\.processID)) == running {
-          let filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
-          follows = (try? await stream.updateContentFilter(filter)) != nil
-        }
+        let filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
+        if (try? await stream.updateContentFilter(filter)) != nil { shows = Set(apps.map(\.processID)) }
       }
       var moved = false
       if let config {
         moved = (try? await stream.updateConfiguration(config)) != nil
       }
-      let isShown = follows, isMoved = moved
+      let isMoved = moved, nowShown = shows
       self.queue.async {
         self.isUpdating = false
         self.nextArea = nil
-        if isShown { self.shown = running }
+        if let nowShown { self.shown = nowShown }
         if isMoved { self.area = area }
       }
     }
+  }
+
+  /// The app's processes to show once `listed`, the shareable content, is back; on a busy Mac it
+  /// takes seconds, while the app may quit or open again. Those running by then, if all of them
+  /// are listed: a new process joins the list a moment after launch. `nil` while one isn't or no
+  /// process runs, so the picture stays as it is and the next check tries again.
+  static func rejoining<Listed>(
+    _ listed: () async -> [Listed]?, pid: (Listed) -> pid_t, running: () -> Set<pid_t>
+  ) async -> [Listed]? {
+    guard let listed = await listed() else { return nil }
+    let now = running()
+    let apps = listed.filter { now.contains(pid($0)) }
+    return !now.isEmpty && Set(apps.map(pid)) == now ? apps : nil
   }
 
   /// Looks for password fields in the app's windows again, off the recording queue.

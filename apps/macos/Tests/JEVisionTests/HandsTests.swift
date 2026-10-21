@@ -398,6 +398,27 @@ struct RunVideoTests {
     #expect(!RunVideo.paint(mask, on: try #require(made)))
   }
 
+  @Test func theVideoRejoinsTheAppThatRelaunchedWhileTheScreenWasListed() async {
+    // Listing what can be recorded takes seconds on a busy Mac; meanwhile process 1 quits and 2 starts.
+    var relaunched = false
+    let slowly: () async -> [pid_t]? = {
+      try? await Task.sleep(for: .milliseconds(50))
+      relaunched = true
+      return [2]
+    }
+    let rejoined = await RunVideo.rejoining(slowly, pid: { $0 }, running: { relaunched ? [2] : [1] })
+    #expect(rejoined == [2])
+    // The list can still have the process that quit.
+    #expect(await RunVideo.rejoining({ [1, 2] }, pid: { $0 }, running: { [2] }) == [2])
+  }
+
+  @Test func theVideoKeepsItsPictureWhileTheAppIsClosedOrNotListedYet() async {
+    #expect(await RunVideo.rejoining({ [] }, pid: { $0 }, running: { [] }) == nil)
+    #expect(await RunVideo.rejoining({ [1] }, pid: { $0 }, running: { [] }) == nil)
+    #expect(await RunVideo.rejoining({ [1] }, pid: { $0 }, running: { [1, 2] }) == nil)
+    #expect(await RunVideo.rejoining({ nil }, pid: { $0 }, running: { [1] }) == nil)
+  }
+
   @Test func videoSizeFitsAndIsEven() {
     #expect(RunVideo.videoSize(width: 1280, height: 800) == (1280, 800))
     #expect(RunVideo.videoSize(width: 3024, height: 1964) == (1920, 1246))
