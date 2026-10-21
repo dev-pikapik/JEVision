@@ -407,7 +407,7 @@ impl Program {
     /// The program ended: its last words.
     fn stopped(&mut self) -> McpError {
         // The error output may still be on its way. Something the program started can keep it
-        // open after the program is gone: wait for the end of it, but not for long.
+        // open after the program is gone: wait for the end of it, at most two seconds.
         let _ = self.child.wait();
         let _ = self.errors_read.recv_timeout(Duration::from_secs(2));
         let output = self
