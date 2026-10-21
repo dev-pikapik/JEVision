@@ -437,6 +437,8 @@ private final class Scratch {
 /// `jevision run` with hands that wait until the run is cancelled.
 @Suite(.serialized)
 struct CommandLineRunTests {
+  init() { OwnScreenLock.use() }
+
   /// The run starts with every thread of the system's shared queue stuck, as a busy machine, or a
   /// test running beside this one, leaves them: it must not wait for one to be free. They are let
   /// go as soon as it has started: stuck for longer, they would stop the tests beside this one.
