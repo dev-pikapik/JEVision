@@ -76,7 +76,7 @@ struct BugReportSheet: View {
         TextField("Title", text: $title)
         TextEditor(text: $text)
           .font(.body.monospaced())
-          .frame(minHeight: 230)
+          .frame(minHeight: 230, maxHeight: 300)
           .accessibilityLabel(Text("Description"))
       } header: {
         Text("Bug Report")

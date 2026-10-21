@@ -118,10 +118,24 @@ struct Symbols {
   private var starts: [String: UnsafeRawPointer] = [:]
 
   init() {
-    for index in 0..<_dyld_image_count() {
-      guard let header = _dyld_get_image_header(index), let uuid = Self.uuid(of: header) else { continue }
+    let headers = (0..<_dyld_image_count()).compactMap(_dyld_get_image_header) + [Self.dyld].compactMap(\.self)
+    for header in headers {
+      guard let uuid = Self.uuid(of: header) else { continue }
       starts[uuid] = UnsafeRawPointer(header)
     }
+  }
+
+  /// dyld itself, which is not in the list of loaded images but starts every main thread.
+  static var dyld: UnsafePointer<mach_header>? {
+    var info = task_dyld_info()
+    var count = mach_msg_type_number_t(MemoryLayout<task_dyld_info>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_DYLD_INFO), $0, &count)
+      }
+    }
+    guard result == KERN_SUCCESS else { return nil }
+    return UnsafePointer<dyld_all_image_infos>(bitPattern: UInt(info.all_image_info_addr))?.pointee.dyldImageLoadAddress
   }
 
   /// "function + 12" for the instruction `offset` bytes into the text segment of the binary with

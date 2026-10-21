@@ -138,6 +138,16 @@ struct CrashReportTests {
     #expect(summary.hasSuffix("dSYM:\n- JEVision \(other)"))
   }
 
+  @Test func theMainThreadStartsInDyldByName() async throws {
+    let dyld = try #require(Symbols.dyld)
+    let uuid = try #require(Symbols.uuid(of: dyld))
+    // The main thread's own stack, not the chain of async calls that `MainActor.run` would show;
+    // the test is async so that it runs off the main thread and can wait for it.
+    let root = try #require(DispatchQueue.main.sync { Thread.callStackReturnAddresses.last?.uintValue })
+    let offset = try #require(UInt64(exactly: Int(bitPattern: UInt(root)) - Int(bitPattern: dyld)))
+    #expect(Symbols().function(in: uuid, at: offset)?.hasPrefix("start + ") == true)
+  }
+
   @Test func swiftAndRustSymbolsReadAsTheCodeNamesThem() {
     #expect(Symbols.readable("$sSi") == "Swift.Int")
     #expect(Symbols.readable("_ZN15jevision_runner3run6Runner3run17h0123456789abcdefE") == "jevision_runner::run::Runner::run")
