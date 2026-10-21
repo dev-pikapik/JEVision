@@ -8,7 +8,7 @@
 //! so two of them on one screen would spoil each other. They share one lock on the screen;
 //! only tests that never touch it can run next to one that does.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
 use jevision_l10n::{language, tr_in};
@@ -126,10 +126,28 @@ pub struct BatchTest {
 }
 
 /// The tests of one run of several, in the order they may run, and how far they got.
+///
+/// Each start and finish costs as little as the tests it touches, so a batch of thousands of
+/// tests takes no longer per test than a short one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Batch {
     tests: Vec<BatchTest>,
     mode: RunMode,
+    /// Position of each test by its file.
+    index: HashMap<String, usize>,
+    /// Positions of the tests depending on each test, in batch order.
+    dependents: Vec<Vec<usize>>,
+    /// How many of its dependencies each test still waits for.
+    unmet: Vec<usize>,
+    /// Waiting tests whose dependencies all passed: `[0]` those that don't use the screen,
+    /// `[1]` those that do.
+    ready: [BTreeSet<usize>; 2],
+    running: usize,
+    running_on_screen: usize,
+    /// Tests waiting or running.
+    open: usize,
+    /// Tests whose state, or what they wait for, changed since [`Batch::take_changes`].
+    changes: Changes,
 }
 
 /// A test file as the batch sees it.
@@ -180,14 +198,52 @@ impl Batch {
                 state: TestState::Waiting,
             });
         }
-        let mut batch = Self { tests, mode };
+        let mut batch = Self::waiting(tests, mode);
         for (i, blocker) in blocked {
             if batch.tests[i].state == TestState::Waiting {
-                batch.tests[i].state = TestState::Blocked(blocker);
+                batch.set(i, TestState::Blocked(blocker));
                 batch.block_dependents(i);
             }
         }
+        batch.take_changes();
         batch
+    }
+
+    /// The batch of `tests`, every one waiting.
+    fn waiting(tests: Vec<BatchTest>, mode: RunMode) -> Self {
+        let index: HashMap<String, usize> = tests
+            .iter()
+            .enumerate()
+            .map(|(i, t)| (t.file.clone(), i))
+            .collect();
+        let mut dependents = vec![Vec::new(); tests.len()];
+        let mut ready = [BTreeSet::new(), BTreeSet::new()];
+        for (i, t) in tests.iter().enumerate() {
+            for dependency in &t.depends_on {
+                if let Some(&d) = index.get(dependency) {
+                    dependents[d].push(i);
+                }
+            }
+            if t.depends_on.is_empty() {
+                ready[usize::from(t.uses_screen)].insert(i);
+            }
+        }
+        Self {
+            unmet: tests.iter().map(|t| t.depends_on.len()).collect(),
+            open: tests.len(),
+            changes: Changes {
+                list: Vec::new(),
+                marked: vec![false; tests.len()],
+                screen_busy: false,
+            },
+            running: 0,
+            running_on_screen: 0,
+            tests,
+            mode,
+            index,
+            dependents,
+            ready,
+        }
     }
 
     pub fn tests(&self) -> &[BatchTest] {
@@ -200,37 +256,30 @@ impl Batch {
 
     /// Position of the test `file` in the batch.
     pub fn position(&self, file: &str) -> Option<usize> {
-        self.tests.iter().position(|t| t.file == file)
+        self.index.get(file).copied()
     }
 
     /// A test that may start now, marked as running; `None` while every test left waits.
     pub fn start_next(&mut self) -> Option<usize> {
-        let running: Vec<&BatchTest> = self
-            .tests
-            .iter()
-            .filter(|t| t.state == TestState::Running)
-            .collect();
         let limit = match self.mode {
             RunMode::Sequential => 1,
             RunMode::Parallel { limit } => limit.clamp(1, MAX_PARALLEL) as usize,
         };
-        if running.len() >= limit {
+        if self.running >= limit {
             return None;
         }
-        let screen_busy = running.iter().any(|t| t.uses_screen);
-        let i = (0..self.tests.len()).find(|&i| {
-            let t = &self.tests[i];
-            t.state == TestState::Waiting
-                && self.dependencies_passed(t)
-                && !(t.uses_screen && screen_busy)
-        })?;
-        self.tests[i].state = TestState::Running;
+        let quiet = self.ready[0].first();
+        let screen = self.ready[1]
+            .first()
+            .filter(|_| self.running_on_screen == 0);
+        let i = quiet.into_iter().chain(screen).min().copied()?;
+        self.set(i, TestState::Running);
         Some(i)
     }
 
     /// Records how the test at `i` did; returns the tests that are blocked by it.
     pub fn finish(&mut self, i: usize, outcome: TestOutcome) -> Vec<usize> {
-        self.tests[i].state = TestState::Done(outcome);
+        self.set(i, TestState::Done(outcome));
         match outcome {
             TestOutcome::Failed | TestOutcome::NotRun => self.block_dependents(i),
             TestOutcome::Passed | TestOutcome::Cancelled => Vec::new(),
@@ -239,19 +288,16 @@ impl Batch {
 
     /// Skips the tests still waiting, as cancelled; the ones running finish on their own.
     pub fn stop(&mut self) {
-        for t in &mut self.tests {
-            if t.state == TestState::Waiting {
-                t.state = TestState::Done(TestOutcome::Cancelled);
+        for i in 0..self.tests.len() {
+            if self.tests[i].state == TestState::Waiting {
+                self.set(i, TestState::Done(TestOutcome::Cancelled));
             }
         }
     }
 
     /// No test is waiting or running.
     pub fn is_over(&self) -> bool {
-        !self
-            .tests
-            .iter()
-            .any(|t| matches!(t.state, TestState::Waiting | TestState::Running))
+        self.open == 0
     }
 
     /// What the waiting test at `i` waits for; `None` when it isn't waiting.
@@ -260,33 +306,101 @@ impl Batch {
         if t.state != TestState::Waiting {
             return None;
         }
-        if let Some(dependency) = t.depends_on.iter().find(|d| !self.passed(d)) {
-            return Some(WaitingFor::Dependency {
-                test: dependency.clone(),
-            });
+        if self.unmet[i] > 0 {
+            if let Some(dependency) = t.depends_on.iter().find(|d| !self.passed(d)) {
+                return Some(WaitingFor::Dependency {
+                    test: dependency.clone(),
+                });
+            }
         }
         if self.mode == RunMode::Sequential {
             return Some(WaitingFor::Turn);
         }
-        let screen_busy = self
-            .tests
-            .iter()
-            .any(|o| o.state == TestState::Running && o.uses_screen);
-        Some(if t.uses_screen && screen_busy {
+        Some(if t.uses_screen && self.running_on_screen > 0 {
             WaitingFor::Screen
         } else {
             WaitingFor::Limit
         })
     }
 
-    fn passed(&self, file: &str) -> bool {
-        self.tests
-            .iter()
-            .any(|t| t.file == file && t.state == TestState::Done(TestOutcome::Passed))
+    /// Positions of the tests whose state, or what they wait for, changed since the last call,
+    /// in batch order; a test that changed and changed back can be among them.
+    pub fn take_changes(&mut self) -> Vec<usize> {
+        // The tests that use the screen and may start wait for it now, or no longer do.
+        let busy = self.running_on_screen > 0;
+        if self.mode != RunMode::Sequential && busy != self.changes.screen_busy {
+            for &j in &self.ready[1] {
+                self.changes.mark(j);
+            }
+        }
+        self.changes.screen_busy = busy;
+        let mut list = std::mem::take(&mut self.changes.list);
+        for &i in &list {
+            self.changes.marked[i] = false;
+        }
+        list.sort_unstable();
+        list
     }
 
-    fn dependencies_passed(&self, t: &BatchTest) -> bool {
-        t.depends_on.iter().all(|d| self.passed(d))
+    fn passed(&self, file: &str) -> bool {
+        self.index
+            .get(file)
+            .is_some_and(|&i| self.tests[i].state == TestState::Done(TestOutcome::Passed))
+    }
+
+    /// Puts the test at `i` in `state`, keeping count of what may start.
+    fn set(&mut self, i: usize, state: TestState) {
+        let screen = self.tests[i].uses_screen;
+        let old = std::mem::replace(&mut self.tests[i].state, state);
+        self.changes.mark(i);
+        match old {
+            TestState::Waiting => {
+                self.ready[usize::from(screen)].remove(&i);
+                self.open -= 1;
+            }
+            TestState::Running => {
+                self.running -= 1;
+                self.running_on_screen -= usize::from(screen);
+                self.open -= 1;
+            }
+            TestState::Done(TestOutcome::Passed) => self.count_passed(i, false),
+            TestState::Done(_) | TestState::Blocked(_) => {}
+        }
+        match self.tests[i].state {
+            TestState::Waiting => {
+                self.open += 1;
+                if self.unmet[i] == 0 {
+                    self.ready[usize::from(screen)].insert(i);
+                }
+            }
+            TestState::Running => {
+                self.running += 1;
+                self.running_on_screen += usize::from(screen);
+                self.open += 1;
+            }
+            TestState::Done(TestOutcome::Passed) => self.count_passed(i, true),
+            TestState::Done(_) | TestState::Blocked(_) => {}
+        }
+    }
+
+    /// Counts the test at `i` as passed, or as no longer passed, for the tests depending on it.
+    fn count_passed(&mut self, i: usize, passed: bool) {
+        for &j in &self.dependents[i] {
+            if passed {
+                self.unmet[j] -= 1;
+            } else {
+                self.unmet[j] += 1;
+            }
+            if self.tests[j].state == TestState::Waiting {
+                let ready = &mut self.ready[usize::from(self.tests[j].uses_screen)];
+                if self.unmet[j] == 0 {
+                    ready.insert(j);
+                } else {
+                    ready.remove(&j);
+                }
+                self.changes.mark(j);
+            }
+        }
     }
 
     /// Blocks every waiting test that depends on the test at `i`, and the ones depending on
@@ -313,11 +427,10 @@ impl Batch {
                 },
                 TestState::Waiting | TestState::Running => continue,
             };
-            let file = failed.file.clone();
-            for j in 0..self.tests.len() {
-                let t = &mut self.tests[j];
-                if t.state == TestState::Waiting && t.depends_on.contains(&file) {
-                    t.state = TestState::Blocked(blocker.clone());
+            for k in 0..self.dependents[i].len() {
+                let j = self.dependents[i][k];
+                if self.tests[j].state == TestState::Waiting {
+                    self.set(j, TestState::Blocked(blocker.clone()));
                     blocked.push(j);
                     queue.push(j);
                 }
@@ -325,6 +438,23 @@ impl Batch {
         }
         blocked.sort_unstable();
         blocked
+    }
+}
+
+/// Tests of a batch to tell about, each once.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Changes {
+    list: Vec<usize>,
+    marked: Vec<bool>,
+    /// A test used the screen when they were last taken.
+    screen_busy: bool,
+}
+
+impl Changes {
+    fn mark(&mut self, i: usize) {
+        if !std::mem::replace(&mut self.marked[i], true) {
+            self.list.push(i);
+        }
     }
 }
 
@@ -887,6 +1017,78 @@ mod tests {
             }
             started.sort_unstable();
             assert_eq!(started, (0..7).collect::<Vec<_>>(), "every test ran once");
+        }
+    }
+
+    #[test]
+    fn changes_name_every_test_that_looks_different_since_the_last_look() {
+        let read = || {
+            project(&[
+                ("setup.flow.json", quiet("Setup", &[])),
+                ("login.flow.json", test("Login", &["setup.flow.json"])),
+                ("inbox.flow.json", test("Inbox", &["login.flow.json"])),
+                ("api.flow.json", quiet("Api", &["setup.flow.json"])),
+                ("clock.flow.json", quiet("Clock", &[])),
+                ("files.flow.json", quiet("Files", &["clock.flow.json"])),
+                ("paste.flow.json", test("Paste", &[])),
+                ("draw.flow.json", test("Draw", &["clock.flow.json"])),
+            ])
+        };
+        let all = chosen(&[
+            "inbox.flow.json",
+            "api.flow.json",
+            "files.flow.json",
+            "paste.flow.json",
+            "draw.flow.json",
+        ]);
+        let look = |batch: &Batch| -> Vec<(TestState, Option<WaitingFor>)> {
+            (0..batch.tests().len())
+                .map(|i| (batch.tests()[i].state.clone(), batch.wait(i)))
+                .collect()
+        };
+        let modes = [
+            RunMode::Sequential,
+            RunMode::Parallel { limit: 2 },
+            RunMode::Parallel { limit: 4 },
+        ];
+        for mode in modes {
+            for failing in [None, Some("clock.flow.json"), Some("setup.flow.json")] {
+                let mut batch = Batch::plan(&all, mode, read());
+                assert_eq!(batch.take_changes(), Vec::<usize>::new());
+                let mut seen = look(&batch);
+                let mut check = |batch: &mut Batch, what: &str| {
+                    let now = look(batch);
+                    let changes = batch.take_changes();
+                    for i in 0..now.len() {
+                        if now[i] != seen[i] {
+                            assert!(changes.contains(&i), "{mode:?} {what}: {i} not told");
+                        }
+                    }
+                    assert!(changes.is_sorted() && changes.windows(2).all(|w| w[0] != w[1]));
+                    seen = now;
+                };
+                let mut running = Vec::new();
+                let mut finished = 0;
+                while !batch.is_over() {
+                    while let Some(i) = batch.start_next() {
+                        running.push(i);
+                        check(&mut batch, "start");
+                    }
+                    let i = running.remove(0);
+                    let outcome = if failing == Some(batch.tests()[i].file.as_str()) {
+                        TestOutcome::Failed
+                    } else {
+                        TestOutcome::Passed
+                    };
+                    batch.finish(i, outcome);
+                    check(&mut batch, "finish");
+                    finished += 1;
+                    if finished == 3 && failing.is_none() && mode != RunMode::Sequential {
+                        batch.stop();
+                        check(&mut batch, "stop");
+                    }
+                }
+            }
         }
     }
 
