@@ -43,8 +43,9 @@ jobs:
   timing:
     name: Core speed
     # Time is for a quiet machine to say, so the tests that hold the core to its time limits run
-    # alone, on main and on demand, and not beside the rest of a pull request's checks.
-    if: github.event_name != 'pull_request'
+    # alone on a runner of their own, and not beside the other tests. On a pull request too, so a
+    # slowdown shows before the merge; keep this check out of the required ones, since a runner
+    # that is slow that day says nothing about the change.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
