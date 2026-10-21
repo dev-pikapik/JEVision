@@ -17,6 +17,7 @@ mod machine;
 mod packages;
 mod report;
 mod run;
+mod saved;
 mod screen;
 mod system;
 mod usage;
@@ -49,9 +50,10 @@ pub use report::{
     junit_xml_in, nothing_checked_in,
 };
 pub use run::{
-    Run, RunOptions, Runner, VIDEO_FILE, VideoMode, content_hash, create_run_dir, prune_videos,
-    rfc3339, today, vision_failure,
+    Run, RunOptions, Runner, VIDEO_FILE, VideoMode, content_hash, create_run_dir, rfc3339, today,
+    vision_failure,
 };
+pub use saved::{PruneSummary, preview_prune_runs, prune_runs};
 pub use screen::{
     ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder,
     describe_screen_holder_in,

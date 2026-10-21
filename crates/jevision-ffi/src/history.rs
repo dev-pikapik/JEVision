@@ -1,9 +1,12 @@
-//! Runs saved in a project: listing them, reading one back and exporting its report.
+//! Runs saved in a project: listing them, reading one back, exporting its report and deleting
+//! the old ones.
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use jevision_runner::{Run, StepStatus, Verdict};
+use jevision_core::RunRetention;
+use jevision_runner::{PruneSummary, Run, StepStatus, Verdict};
 
 use crate::{DataRow, RunReport};
 
@@ -46,6 +49,91 @@ pub fn list_runs(project: String) -> Result<Vec<SavedRun>, ReportError> {
         .into_iter()
         .map(Into::into)
         .collect())
+}
+
+/// Runs saved in `<project>/.jevision/runs`, newest first, like [`list_runs`], but each attempt
+/// keeps only the steps that failed and the first step of every test file it ran: enough for
+/// lists, health and statistics. [`load_run`] reads a run whole, for its report and the marks on
+/// its blocks. Reports are read once per process and again only when one is written anew.
+#[uniffi::export]
+pub fn list_run_summaries(project: String) -> Result<Vec<SavedRun>, ReportError> {
+    Ok(Run::summaries(Path::new(&project))?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+}
+
+/// What a project shows from its saved runs at `now_ms` milliseconds since 1970, in one call:
+/// the runs as [`list_run_summaries`] gives them, the flaky tests as [`flaky_tests`] tells and
+/// the tests unreliable at least `suggest_after` times as [`quarantine_suggestions`] does.
+#[uniffi::export]
+pub fn project_history(
+    project: String,
+    now_ms: i64,
+    suggest_after: u32,
+) -> Result<ProjectHistory, ReportError> {
+    let runs = list_run_summaries(project)?;
+    let reports: Vec<RunReport> = runs.iter().map(|r| r.report.clone()).collect();
+    Ok(ProjectHistory {
+        flaky: flaky_tests(reports.clone(), now_ms),
+        unreliable: quarantine_suggestions(reports, now_ms, suggest_after),
+        runs,
+    })
+}
+
+/// See [`project_history`].
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ProjectHistory {
+    pub runs: Vec<SavedRun>,
+    /// By test file relative to the project folder.
+    pub flaky: HashMap<String, FlakyEvidence>,
+    /// By test file relative to the project folder.
+    pub unreliable: HashMap<String, QuarantineSuggestion>,
+}
+
+/// What deleting old runs freed, or would free.
+#[uniffi::remote(Record)]
+pub struct PruneSummary {
+    /// Run folders deleted whole.
+    pub removed_runs: u64,
+    /// Videos and screenshots deleted from runs that stay.
+    pub removed_media_files: u64,
+    pub freed_bytes: u64,
+}
+
+/// Deletes for good the saved runs of the project folder `project`, and the videos and
+/// screenshots of others, that `retention` doesn't keep at `now_ms` milliseconds since 1970.
+/// The newest run of each test stays, and so does a run still being written.
+#[uniffi::export]
+pub fn prune_runs(
+    project: String,
+    retention: RunRetention,
+    now_ms: i64,
+) -> Result<PruneSummary, ReportError> {
+    Ok(jevision_runner::prune_runs(
+        Path::new(&project),
+        &retention,
+        at(now_ms),
+    )?)
+}
+
+/// What [`prune_runs`] would delete, without deleting anything.
+#[uniffi::export]
+pub fn preview_prune_runs(
+    project: String,
+    retention: RunRetention,
+    now_ms: i64,
+) -> Result<PruneSummary, ReportError> {
+    Ok(jevision_runner::preview_prune_runs(
+        Path::new(&project),
+        &retention,
+        at(now_ms),
+    )?)
+}
+
+/// The time `ms` milliseconds after 1970; earlier times as 1970.
+fn at(ms: i64) -> SystemTime {
+    UNIX_EPOCH + Duration::from_millis(u64::try_from(ms).unwrap_or(0))
 }
 
 /// Reads the run saved in the folder `dir`.
@@ -939,6 +1027,50 @@ mod tests {
         assert_eq!(health.recent.len(), 20);
         assert_eq!(health.pass_percent, Some(100));
         assert_eq!(health.failing_since, None);
+    }
+
+    #[test]
+    fn project_history_tells_what_the_lists_do_and_old_runs_go() {
+        let root = std::env::temp_dir().join(format!(
+            "jevision-ffi-project-history-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let project = Folder(root);
+        let path = project.0.to_string_lossy().into_owned();
+        let save = |name: &str, started: &str, verdict: &str| {
+            let dir = project.0.join(".jevision/runs").join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            let json = report("login", started, verdict).replacen(
+                r#""flaky":false"#,
+                r#""flaky":false,"fileHash":"a""#,
+                1,
+            );
+            std::fs::write(dir.join("report.json"), json).unwrap();
+        };
+        save("1", "2026-10-17T09:00:00.000Z", "passed");
+        save("2", "2026-10-18T10:15:00.000Z", "failed");
+        save("3", "2026-04-01T08:00:00.000Z", "passed");
+        let now = unix_ms("2026-10-18T12:00:00Z").unwrap();
+
+        let history = project_history(path.clone(), now, 1).unwrap();
+        let listed = list_runs(path.clone()).unwrap();
+        let reports: Vec<RunReport> = listed.iter().map(|r| r.report.clone()).collect();
+        assert_eq!(history.runs, listed);
+        assert_eq!(history.flaky, flaky_tests(reports.clone(), now));
+        assert!(history.flaky.contains_key("login.flow.json"));
+        assert_eq!(history.unreliable, quarantine_suggestions(reports, now, 1));
+        assert!(history.unreliable.contains_key("login.flow.json"));
+
+        let keep = RunRetention {
+            max_age_days: Some(180),
+            ..RunRetention::default()
+        };
+        let preview = preview_prune_runs(path.clone(), keep, now).unwrap();
+        assert_eq!(preview.removed_runs, 1);
+        assert_eq!(list_runs(path.clone()).unwrap().len(), 3);
+        assert_eq!(prune_runs(path.clone(), keep, now).unwrap(), preview);
+        assert_eq!(list_run_summaries(path).unwrap().len(), 2);
     }
 
     #[test]

@@ -19,11 +19,11 @@ use jevision_core::{BoardNodeKind, Rect, SearchCandidate, TestOutcome};
 use jevision_ffi::{
     BoardIndex, RunOutcome, SyntheticSpec, TestBatch, TestFileSummary, data_issues,
     default_environment, dependency_issues, environment_issues, flaky_tests, folder_run_mode,
-    lay_out_board, layout_flow, list_community_blocks, list_runs, load_board, load_flow,
-    map_link_route, project_environments, project_map, project_schedules, project_settings,
-    project_statistics, quarantine_suggestions, rank_search, required_inputs, scheduled_runs,
-    sync_board_tests, test_health, test_statistics, test_summary, unrestored_blocks, validate_flow,
-    validate_flow_in,
+    lay_out_board, layout_flow, list_community_blocks, list_run_summaries, list_runs, load_board,
+    load_flow, map_link_route, project_environments, project_history, project_map,
+    project_schedules, project_settings, project_statistics, quarantine_suggestions, rank_search,
+    required_inputs, scheduled_runs, sync_board_tests, test_health, test_statistics, test_summary,
+    unrestored_blocks, validate_flow, validate_flow_in,
 };
 
 /// What the app's history ends at, so the saved runs are as recent as they look.
@@ -99,14 +99,24 @@ fn project_open_summaries() {
     });
 }
 
+/// Another way to the project, through a new link to its folder: what the core keeps of a
+/// project it has read before is kept by its path, so this one is read as for the first time.
+fn fresh_path(root: &Path) -> String {
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let link = root.with_file_name(format!("link-{n}"));
+    let _ = fs::remove_file(&link);
+    std::os::unix::fs::symlink(root, &link).unwrap();
+    path(&link)
+}
+
 /// Everything `ProjectStore.open` and `rescan` ask the core for, in their order.
 #[test]
 #[ignore = "heavy: a measurement, see the top of the file"]
 fn project_open_all() {
     let (root, summary) = project();
-    let project = path(root);
     let title = root.file_name().unwrap().to_string_lossy().into_owned();
-    bench("project.open.all", || {
+    let open = |project: String, history: bool| {
         project_environments(project.clone()).unwrap();
         default_environment(project.clone()).unwrap();
         let boards = files_in(root, "boards", ".canvas");
@@ -128,13 +138,27 @@ fn project_open_all() {
         unrestored_blocks(project.clone()).unwrap();
         project_settings(project.clone()).unwrap();
         let found = summaries(root);
-        let runs = list_runs(project.clone()).unwrap();
-        let reports: Vec<_> = runs.iter().map(|r| r.report.clone()).collect();
-        flaky_tests(reports.clone(), now_ms());
-        quarantine_suggestions(reports, now_ms(), 1);
+        let runs = if history {
+            project_history(project, now_ms(), 1).unwrap().runs
+        } else {
+            let runs = list_runs(project).unwrap();
+            let reports: Vec<_> = runs.iter().map(|r| r.report.clone()).collect();
+            flaky_tests(reports.clone(), now_ms());
+            quarantine_suggestions(reports, now_ms(), 1);
+            runs
+        };
         sync_board_tests(all, summary.tests.clone(), title.clone());
         (found, runs)
-    });
+    };
+    bench("project.open.all", || open(path(root), false));
+    // With the saved runs read as summaries, the first time and again with nothing changed.
+    bench_with(
+        "project.open.history",
+        || fresh_path(root),
+        |p| open(p, true),
+    );
+    let project = path(root);
+    bench("project.rescan.history", || open(project.clone(), true));
 }
 
 #[test]
@@ -345,6 +369,14 @@ fn runs_history() {
     let (root, _) = project();
     let project = path(root);
     bench("runs.list", || list_runs(project.clone()).unwrap());
+    bench_with(
+        "runs.summaries.cold",
+        || fresh_path(root),
+        |p| list_run_summaries(p).unwrap(),
+    );
+    bench("runs.summaries.warm", || {
+        list_run_summaries(project.clone()).unwrap()
+    });
     let reports: Vec<_> = list_runs(project)
         .unwrap()
         .into_iter()

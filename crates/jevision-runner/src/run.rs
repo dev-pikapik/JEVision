@@ -162,8 +162,12 @@ pub struct Run {
 impl Run {
     /// Reads the run saved in `dir`.
     pub fn load(dir: &Path) -> io::Result<Self> {
-        let text = fs::read_to_string(dir.join("report.json"))?;
-        let report: RunReport = serde_json::from_str(&text)
+        Self::parse(dir, &fs::read_to_string(dir.join("report.json"))?)
+    }
+
+    /// The run saved in `dir` with the report `text`.
+    pub(crate) fn parse(dir: &Path, text: &str) -> io::Result<Self> {
+        let report: RunReport = serde_json::from_str(text)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         if report.format > REPORT_FORMAT {
             return Err(io::Error::new(
@@ -318,6 +322,8 @@ impl Runner<'_> {
             .as_ref()
             .map(|s| (s.local_only, s.hide.clone(), s.ai_screen.clone()))
             .unwrap_or_default();
+        // A project whose settings can't be read keeps all its runs.
+        let retention = settings.as_ref().ok().map(ProjectSettings::run_retention);
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
             let default_retries = settings?.retries;
@@ -498,9 +504,13 @@ impl Runner<'_> {
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
         json.push('\n');
         fs::write(&path, json)?;
-        if let Some(age) = options.keep_videos_for {
-            // Old videos only cost disk space; failing to delete one must not fail this run.
-            let _ = prune_videos(&project, age, SystemTime::now());
+        if let Some(retention) = &retention {
+            crate::saved::prune_after_run(
+                &project,
+                retention,
+                options.keep_videos_for,
+                SystemTime::now(),
+            );
         }
         self.events.send(&Event::RunFinished {
             verdict: report.verdict,
@@ -569,28 +579,6 @@ impl Runner<'_> {
         });
         report.attempts.push(attempt);
     }
-}
-
-/// Deletes the videos of the project's runs last written more than `age` before `now`; their
-/// reports and screenshots stay. Returns how many were deleted.
-pub fn prune_videos(project: &Path, age: Duration, now: SystemTime) -> io::Result<usize> {
-    let entries = match fs::read_dir(project.join(".jevision").join("runs")) {
-        Ok(entries) => entries,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
-        Err(e) => return Err(e),
-    };
-    let mut deleted = 0;
-    for entry in entries {
-        let video = entry?.path().join(VIDEO_FILE);
-        let Ok(written) = fs::metadata(&video).and_then(|m| m.modified()) else {
-            continue;
-        };
-        if now.duration_since(written).is_ok_and(|old| old > age) {
-            fs::remove_file(&video)?;
-            deleted += 1;
-        }
-    }
-    Ok(deleted)
 }
 
 /// A vision model problem as a localizable failure: the error's code and values, with the

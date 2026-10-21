@@ -6,8 +6,8 @@
 //! how private the project's screens are: areas covered in every screenshot before it is saved
 //! or sent anywhere, and whether screenshots may go to AI models outside this computer, which
 //! AI the project asks for looking at screens and for writing and explaining tests (provider
-//! and model by name; API keys never go in the file), and which folders run their tests side
-//! by side rather than one after another.
+//! and model by name; API keys never go in the file), which folders run their tests side
+//! by side rather than one after another, and how long saved runs are kept.
 
 use std::path::{Component, Path};
 use std::{fs, io};
@@ -33,6 +33,13 @@ pub const QUARANTINE_DAYS: u64 = 14;
 pub const DEFAULT_QUARANTINE_AFTER: u32 = 3;
 /// Most flaky runs a project can ask for before quarantine is suggested.
 pub const MAX_QUARANTINE_AFTER: u32 = 10;
+
+/// Most days a project can keep its saved runs, or their videos and screenshots, for.
+pub const MAX_RETENTION_DAYS: u32 = 3650;
+/// Most saved runs of each test a project can keep.
+pub const MAX_RETENTION_RUNS: u32 = 100_000;
+/// Most megabytes a project can let its saved runs take.
+pub const MAX_RETENTION_MB: u32 = 10_000_000;
 
 /// The settings of a project.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -61,6 +68,63 @@ pub struct ProjectSettings {
     /// entry runs like the nearest folder above it that has one; the project folder, without
     /// one, runs one test after another.
     pub run_modes: Vec<FolderRunMode>,
+    /// How long saved runs are kept, when the project chose; `None` keeps them as
+    /// [`RunRetention::default`] says.
+    pub retention: Option<RunRetention>,
+}
+
+/// How much of its history a project keeps in `.jevision/runs`. Each limit is `None` for none.
+/// Whatever the limits, the latest run of every test and runs still going are kept.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct RunRetention {
+    /// Runs that started more than this many days ago are deleted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_age_days: Option<u32>,
+    /// Of the runs of one test, only this many of the latest are kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_runs_per_test: Option<u32>,
+    /// Videos and screenshots of runs older than this many days are deleted; their reports
+    /// stay.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_max_age_days: Option<u32>,
+    /// While the saved runs take more megabytes than this, the oldest are deleted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_total_mb: Option<u32>,
+}
+
+impl Default for RunRetention {
+    /// Reports for 180 days and at most 300 per test, videos and screenshots for 30 days, and
+    /// no limit on the space taken.
+    fn default() -> Self {
+        Self {
+            max_age_days: Some(180),
+            max_runs_per_test: Some(300),
+            media_max_age_days: Some(30),
+            max_total_mb: None,
+        }
+    }
+}
+
+impl RunRetention {
+    /// `Err` names the first limit that is out of range.
+    pub fn check(&self) -> Result<(), String> {
+        for (field, value, max) in [
+            ("maxAgeDays", self.max_age_days, MAX_RETENTION_DAYS),
+            ("maxRunsPerTest", self.max_runs_per_test, MAX_RETENTION_RUNS),
+            (
+                "mediaMaxAgeDays",
+                self.media_max_age_days,
+                MAX_RETENTION_DAYS,
+            ),
+            ("maxTotalMb", self.max_total_mb, MAX_RETENTION_MB),
+        ] {
+            if let Some(value) = value.filter(|v| !(1..=max).contains(v)) {
+                return Err(tr!("project.retention.range", field, value, max));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// What a project can choose an AI for.
@@ -206,6 +270,8 @@ struct File {
     ai: FileAi,
     #[serde(default, rename = "runModes", skip_serializing_if = "Vec::is_empty")]
     run_modes: Vec<RunModeEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    retention: Option<RunRetention>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -279,6 +345,9 @@ impl ProjectSettings {
         if let Some(twice) = run_modes.windows(2).find(|w| w[0].folder == w[1].folder) {
             return Err(tr!("project.runModes.twice", &twice[0].folder));
         }
+        if let Some(retention) = &file.retention {
+            retention.check()?;
+        }
         Ok(Self {
             retries: file.retries,
             quarantine,
@@ -288,6 +357,7 @@ impl ProjectSettings {
             ai_screen: file.ai.screen,
             ai_text: file.ai.text,
             run_modes,
+            retention: file.retention,
         })
     }
 
@@ -331,6 +401,7 @@ impl ProjectSettings {
                     },
                 })
                 .collect(),
+            retention: self.retention,
         };
         let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
         text.push('\n');
@@ -390,6 +461,21 @@ impl ProjectSettings {
     pub fn quarantine_threshold(&self) -> u32 {
         self.suggest_quarantine_after
             .unwrap_or(DEFAULT_QUARANTINE_AFTER)
+    }
+
+    /// How long the project keeps its saved runs: as it chose, otherwise the defaults.
+    pub fn run_retention(&self) -> RunRetention {
+        self.retention.unwrap_or_default()
+    }
+
+    /// Chooses how long the project keeps its saved runs; `None` goes back to the defaults.
+    /// `Err` names the first limit that is out of range.
+    pub fn set_retention(&mut self, retention: Option<RunRetention>) -> Result<(), String> {
+        if let Some(retention) = &retention {
+            retention.check()?;
+        }
+        self.retention = retention;
+        Ok(())
     }
 
     /// Replaces the areas hidden in every screenshot; `Err` names the first one that doesn't
@@ -622,10 +708,55 @@ mod tests {
                 r#"{"format":1,"suggestQuarantineAfter":11}"#,
                 "from 1 to 10",
             ),
+            (
+                r#"{"format":1,"retention":{"maxAgeDays":0}}"#,
+                "“maxAgeDays” in “retention” is 0; it must be from 1 to 3650",
+            ),
+            (
+                r#"{"format":1,"retention":{"maxTotalMb":10000001}}"#,
+                "from 1 to 10000000",
+            ),
+            (r#"{"format":1,"retention":{"days":30}}"#, "unknown field"),
         ] {
             let error = ProjectSettings::parse(text).unwrap_err();
             assert!(error.contains(says), "{text}: {error}");
         }
+    }
+
+    #[test]
+    fn keeps_how_long_runs_are_kept() {
+        let old = ProjectSettings::parse(r#"{"format":1,"retries":1}"#).unwrap();
+        assert_eq!(old.retention, None);
+        assert_eq!(old.run_retention(), RunRetention::default());
+        assert!(!old.to_json().contains("retention"));
+
+        let text = r#"{"format":1,"retention":{"mediaMaxAgeDays":7,"maxAgeDays":90}}"#;
+        let mut settings = ProjectSettings::parse(text).unwrap();
+        let chosen = RunRetention {
+            max_age_days: Some(90),
+            max_runs_per_test: None,
+            media_max_age_days: Some(7),
+            max_total_mb: None,
+        };
+        assert_eq!(settings.run_retention(), chosen);
+        let written = settings.to_json();
+        assert!(
+            written.contains(
+                "\"retention\": {\n    \"maxAgeDays\": 90,\n    \"mediaMaxAgeDays\": 7\n  }"
+            ),
+            "{written}"
+        );
+        assert_eq!(ProjectSettings::parse(&written).unwrap(), settings);
+
+        let too_long = RunRetention {
+            media_max_age_days: Some(MAX_RETENTION_DAYS + 1),
+            ..chosen
+        };
+        assert!(settings.set_retention(Some(too_long)).is_err());
+        assert_eq!(settings.retention, Some(chosen));
+        settings.set_retention(None).unwrap();
+        assert_eq!(settings.run_retention(), RunRetention::default());
+        assert_eq!(settings.to_json(), "{\n  \"format\": 1\n}\n");
     }
 
     #[test]
