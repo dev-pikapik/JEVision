@@ -40,27 +40,75 @@ pub fn report(name: &str, ms: f64) {
     println!("BENCH\t{name}\t{ms:.3}");
 }
 
-/// Times `work` three times, each on a fresh `setup`, prints the fastest and returns it in
-/// milliseconds; setting up isn't timed.
+/// How long something took, in milliseconds: by the clock on the wall, and of processor time
+/// the process spent, which other programs keeping the computer busy hardly change.
+#[derive(Debug, Clone, Copy)]
+pub struct Timing {
+    pub wall: f64,
+    pub cpu: f64,
+}
+
+impl Timing {
+    /// Both times divided by `n`, for one of `n` things done.
+    pub fn per(self, n: usize) -> Self {
+        Self {
+            wall: self.wall / n as f64,
+            cpu: self.cpu / n as f64,
+        }
+    }
+}
+
+/// Prints `BENCH\t<name>\t<wall ms>\t<cpu ms>`.
+pub fn report_timing(name: &str, timing: Timing) {
+    println!("BENCH\t{name}\t{:.3}\t{:.3}", timing.wall, timing.cpu);
+}
+
+/// Processor time, user and system, all threads of this process have spent, in milliseconds.
+pub fn cpu_ms() -> f64 {
+    let mut usage = std::mem::MaybeUninit::<libc::rusage>::zeroed();
+    // SAFETY: `getrusage` fills the struct it is given; `RUSAGE_SELF` is always valid.
+    let usage = unsafe {
+        assert_eq!(libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()), 0);
+        usage.assume_init()
+    };
+    let ms = |t: libc::timeval| t.tv_sec as f64 * 1000.0 + f64::from(t.tv_usec) / 1000.0;
+    ms(usage.ru_utime) + ms(usage.ru_stime)
+}
+
+/// Times `work` three times, each on a fresh `setup`, prints the fastest by the wall clock and
+/// by processor time and returns them; setting up isn't timed.
 pub fn bench_with<S, T>(
     name: &str,
     mut setup: impl FnMut() -> S,
     mut work: impl FnMut(S) -> T,
-) -> f64 {
+) -> Timing {
     let best = (0..3)
         .map(|_| {
             let input = setup();
+            let cpu = cpu_ms();
             let clock = Instant::now();
             std::hint::black_box(work(input));
-            clock.elapsed().as_secs_f64() * 1000.0
+            Timing {
+                wall: clock.elapsed().as_secs_f64() * 1000.0,
+                cpu: cpu_ms() - cpu,
+            }
         })
-        .fold(f64::INFINITY, f64::min);
-    report(name, best);
+        .fold(
+            Timing {
+                wall: f64::INFINITY,
+                cpu: f64::INFINITY,
+            },
+            |best, t| Timing {
+                wall: best.wall.min(t.wall),
+                cpu: best.cpu.min(t.cpu),
+            },
+        );
+    report_timing(name, best);
     best
 }
 
 /// [`bench_with`] without setting up.
-pub fn bench<T>(name: &str, mut work: impl FnMut() -> T) -> f64 {
+pub fn bench<T>(name: &str, mut work: impl FnMut() -> T) -> Timing {
     bench_with(name, || (), |()| work())
 }
 

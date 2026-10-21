@@ -1,6 +1,7 @@
 //! How long the core takes on a made-up project of a thousand tests and thousands of saved runs,
-//! along the paths the app takes. Each measurement prints `BENCH\t<name>\t<ms>`, the fastest of
-//! three; `scripts/bench-scale.sh` collects them. Heavy, so left out of the usual test run:
+//! along the paths the app takes. Each measurement prints `BENCH\t<name>\t<ms>\t<cpu ms>`, the
+//! fastest of three by the wall clock and by processor time; `scripts/bench-scale.sh` collects
+//! them. Heavy, so left out of the usual test run:
 //!
 //! `cargo test --release -p jevision-ffi --test scale_bench -- --ignored --nocapture --test-threads=1`
 
@@ -10,7 +11,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use common::{bench, bench_with, forget_runs_since, project, report, rss_kb, run_test, saved_runs};
+use common::{
+    bench, bench_with, forget_runs_since, project, report, report_timing, rss_kb, run_test,
+    saved_runs,
+};
 use jevision_core::{BoardNodeKind, Rect, SearchCandidate, TestOutcome};
 use jevision_ffi::{
     BoardIndex, RunOutcome, SyntheticSpec, TestBatch, TestFileSummary, data_issues,
@@ -163,7 +167,7 @@ fn search_rank() {
             }
         }
     });
-    report("search.rank", total / keystrokes as f64);
+    report_timing("search.rank", total.per(keystrokes));
 }
 
 #[test]
@@ -259,7 +263,7 @@ fn board_layout_and_visible() {
             index.visible(*area);
         }
     });
-    report("board.visible", total / viewports.len() as f64);
+    report_timing("board.visible", total.per(viewports.len()));
 }
 
 /// What `FlowDocument` does on opening the largest test: read, check every way the editor
@@ -329,9 +333,9 @@ fn runall_screenless() {
         },
     );
     forget_runs_since(root, &before);
-    report(
+    report_timing(
         "runall.screenless.per_test",
-        total / summary.screenless.len() as f64,
+        total.per(summary.screenless.len()),
     );
 }
 

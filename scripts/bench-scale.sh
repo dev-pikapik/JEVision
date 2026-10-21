@@ -1,10 +1,12 @@
 #!/bin/bash
 # Measures how long the core takes on a made-up project of a thousand tests and thousands of
-# saved runs, and writes one line per measurement, `name<TAB>milliseconds`, the fastest of three.
+# saved runs, and writes one line per measurement, `name<TAB>milliseconds`, the fastest of three,
+# then for the core `<TAB>milliseconds of processor time`, which a busy computer hardly changes.
 #   scripts/bench-scale.sh                    the core, into build/bench-scale.tsv
 #   scripts/bench-scale.sh --app              the window's paths too; needs scripts/build-core-apple.sh first
 #   scripts/bench-scale.sh --out FILE         write FILE instead
-#   scripts/bench-scale.sh --compare OLD.tsv  then show each measurement before, after and after / before
+#   scripts/bench-scale.sh --compare OLD.tsv  then show each measurement before, after and after / before,
+#                                             by the clock and, where both files have it, processor time
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -56,16 +58,20 @@ if ((APP)); then
 fi
 
 # A test's own output may follow the test runner's text on the same line.
-grep -o $'BENCH\t[^\t]*\t[0-9.]*' "$LOG" | cut -f2- >"$OUT"
+grep -Eo $'BENCH\t[^\t]*\t[0-9.]+(\t[0-9.]+)?' "$LOG" | cut -f2- >"$OUT"
 echo "==> $(wc -l <"$OUT" | tr -d ' ') measurements in $OUT"
 
 if [[ -n $OLD ]]; then
   awk -F'\t' '
-    NR == FNR { before[$1] = $2; next }
-    FNR == 1 { printf "%-40s %12s %12s %8s\n", "measurement", "before", "after", "ratio" }
+    function ratio(old, new) { return old != "" && old > 0 && new != "" ? sprintf("%.2f", new / old) : "-" }
+    function shown(value) { return value != "" ? value : "-" }
+    NR == FNR { before[$1] = $2; before_cpu[$1] = $3; next }
+    FNR == 1 {
+      printf "%-40s %12s %12s %8s %12s %12s %8s\n", "measurement", "before", "after", "ratio",
+        "cpu before", "cpu after", "ratio"
+    }
     {
-      had = $1 in before
-      ratio = had && before[$1] > 0 ? sprintf("%.2f", $2 / before[$1]) : "-"
-      printf "%-40s %12s %12s %8s\n", $1, had ? before[$1] : "-", $2, ratio
+      printf "%-40s %12s %12s %8s %12s %12s %8s\n", $1, shown(before[$1]), $2, ratio(before[$1], $2),
+        shown(before_cpu[$1]), shown($3), ratio(before_cpu[$1], $3)
     }' "$OLD" "$OUT"
 fi
