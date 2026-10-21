@@ -5,6 +5,7 @@
 //! The lock is a `flock` on the file: the system lets go of it when the process holding it
 //! ends, however it ends, so a crash never leaves the screen taken.
 
+use std::ffi::OsString;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -144,9 +145,21 @@ fn unlock(file: &File) {
 fn unlock(_: &File) {}
 
 /// The lock file every JEVision program on this Mac shares:
-/// `~/Library/Application Support/JEVision/screen.lock`.
+/// `~/Library/Application Support/JEVision/screen.lock`. A program that tests JEVision without
+/// driving the screen names a lock of its own in `JEVISION_SCREEN_LOCK`, and so does not wait for
+/// the runs of other programs, nor they for it.
 pub fn default_screen_lock() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME").filter(|h| !h.is_empty())?;
+    screen_lock_in(
+        std::env::var_os("JEVISION_SCREEN_LOCK"),
+        std::env::var_os("HOME"),
+    )
+}
+
+fn screen_lock_in(named: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
+    if let Some(named) = named.filter(|n| !n.is_empty()) {
+        return Some(PathBuf::from(named));
+    }
+    let home = home.filter(|h| !h.is_empty())?;
     Some(
         PathBuf::from(home)
             .join("Library/Application Support/JEVision")
@@ -184,6 +197,32 @@ mod tests {
             test: test.to_owned(),
             since: 1_700_000_000,
         }
+    }
+
+    #[test]
+    fn the_lock_is_the_one_in_the_library_unless_a_program_names_its_own() {
+        let home = || Some(OsString::from("/Users/me"));
+        assert_eq!(
+            screen_lock_in(None, home()),
+            Some(PathBuf::from(
+                "/Users/me/Library/Application Support/JEVision/screen.lock"
+            ))
+        );
+        assert_eq!(
+            screen_lock_in(Some(OsString::from("/tmp/mine.lock")), home()),
+            Some(PathBuf::from("/tmp/mine.lock"))
+        );
+        assert_eq!(
+            screen_lock_in(Some(OsString::from("/tmp/mine.lock")), None),
+            Some(PathBuf::from("/tmp/mine.lock"))
+        );
+        // An empty name is no name, as an empty home is no home.
+        assert_eq!(
+            screen_lock_in(Some(OsString::new()), home()),
+            screen_lock_in(None, home())
+        );
+        assert_eq!(screen_lock_in(None, Some(OsString::new())), None);
+        assert_eq!(screen_lock_in(None, None), None);
     }
 
     #[test]
