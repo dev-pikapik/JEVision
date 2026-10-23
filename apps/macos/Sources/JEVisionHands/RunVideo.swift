@@ -38,6 +38,8 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   private var isSearching = false
   private var writer: AVAssetWriter?
   private var input: AVAssetWriterInput?
+  /// The moment the video starts, on the host clock the pictures are stamped with.
+  private var origin = CMTime.invalid
   private var hasPicture = false
   /// Processes of the app the picture shows.
   private var shown: Set<pid_t> = []
@@ -73,7 +75,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     }
   }
 
-  /// Stops recording and finishes the file. Without a single picture no file is left.
+  /// Stops recording and finishes the file. Without a single picture of the app no file is left.
   func stop() throws(HandsError) {
     let failure = MacHands.wait { (done: @escaping @Sendable (String?) -> Void) in
       let stream = queue.sync {
@@ -122,7 +124,8 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
       throw HandsError.Failed(reason: writer.error?.localizedDescription ?? handsWords("hands.video.unwritable"))
     }
     // Starting at the call's moment, not at the first picture, keeps step times in line with
-    // the video even when the app shows its first window later.
+    // the video even when the app shows its first window later; that first picture stands in
+    // from this moment on.
     writer.startSession(atSourceTime: origin)
 
     let stream = SCStream(filter: filter, configuration: Self.configuration(size: size, area: area), delegate: self)
@@ -132,6 +135,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
       self.secure = secure
       self.writer = writer
       self.input = input
+      self.origin = origin
       self.stream = stream
       self.display = display
       self.size = size
@@ -144,9 +148,16 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
     guard type == .screen, sampleBuffer.isValid, Self.isComplete(sampleBuffer),
-      let input, input.isReadyForMoreMediaData, cover(sampleBuffer)
+      let input, input.isReadyForMoreMediaData, hasPicture || showsApp(), cover(sampleBuffer),
+      let picture = hasPicture ? sampleBuffer : Self.picture(sampleBuffer, at: origin)
     else { return }
-    if input.append(sampleBuffer) { hasPicture = true }
+    if input.append(picture) { hasPicture = true }
+  }
+
+  /// Whether the picture has the app in it: the stream shows the app's processes and one of
+  /// their windows is on screen. Before that the picture is empty, black but for the pointer.
+  private func showsApp() -> Bool {
+    !MacHands.windows(of: MacHands.runningApps(app).filter { shown.contains($0.processIdentifier) }).isEmpty
   }
 
   /// Paints over the hidden areas and password fields of every window of the app, where the
@@ -223,30 +234,40 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     let rejoins = running != shown
     if moves { nextArea = area }
     Task {
-      var follows = false
+      var shows: Set<pid_t>?
       if rejoins,
-        let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        let apps = await Self.rejoining(
+          { try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false).applications },
+          pid: \.processID, running: { Set(MacHands.runningApps(app).map(\.processIdentifier)) })
       {
-        let apps = content.applications.filter { $0.bundleIdentifier == app }
-        // A new process joins the shareable content a moment after launch; until it does, the
-        // next check tries again.
-        if Set(apps.map(\.processID)) == running {
-          let filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
-          follows = (try? await stream.updateContentFilter(filter)) != nil
-        }
+        let filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
+        if (try? await stream.updateContentFilter(filter)) != nil { shows = Set(apps.map(\.processID)) }
       }
       var moved = false
       if let config {
         moved = (try? await stream.updateConfiguration(config)) != nil
       }
-      let isShown = follows, isMoved = moved
+      let isMoved = moved, nowShown = shows
       self.queue.async {
         self.isUpdating = false
         self.nextArea = nil
-        if isShown { self.shown = running }
+        if let nowShown { self.shown = nowShown }
         if isMoved { self.area = area }
       }
     }
+  }
+
+  /// The app's processes to show once `listed`, the shareable content, is back; on a busy Mac it
+  /// takes seconds, while the app may quit or open again. Those running by then, if all of them
+  /// are listed: a new process joins the list a moment after launch. `nil` while one isn't or no
+  /// process runs, so the picture stays as it is and the next check tries again.
+  static func rejoining<Listed>(
+    _ listed: () async -> [Listed]?, pid: (Listed) -> pid_t, running: () -> Set<pid_t>
+  ) async -> [Listed]? {
+    guard let listed = await listed() else { return nil }
+    let now = running()
+    let apps = listed.filter { now.contains(pid($0)) }
+    return !now.isEmpty && Set(apps.map(pid)) == now ? apps : nil
   }
 
   /// Looks for password fields in the app's windows again, off the recording queue.
@@ -264,6 +285,16 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   }
 
   // MARK: Helpers
+
+  /// `sample` moved to `time`, so the video opens on the app's first picture rather than on
+  /// black while the app starts and the stream takes it in.
+  static func picture(_ sample: CMSampleBuffer, at time: CMTime) -> CMSampleBuffer? {
+    var timing = CMSampleTimingInfo(duration: sample.duration, presentationTimeStamp: time, decodeTimeStamp: .invalid)
+    var moved: CMSampleBuffer?
+    let status = CMSampleBufferCreateCopyWithNewTiming(
+      allocator: nil, sampleBuffer: sample, sampleTimingEntryCount: 1, sampleTimingArray: &timing, sampleBufferOut: &moved)
+    return status == noErr ? moved : nil
+  }
 
   /// Password fields of each of the app's windows, in fractions of the window.
   private static func secureFields(of app: String) -> [CGWindowID: [Rect]] {

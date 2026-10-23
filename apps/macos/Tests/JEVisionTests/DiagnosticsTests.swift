@@ -1,4 +1,5 @@
 import Foundation
+import MachO
 import Testing
 
 @testable import JEVision
@@ -38,6 +39,21 @@ struct LogTests {
     try log.append("another long line, it goes to a new file")
     #expect(try String(contentsOf: log.url(1), encoding: .utf8) == "a line much longer than ten bytes\n")
     #expect(try String(contentsOf: log.url(0), encoding: .utf8) == "another long line, it goes to a new file\n")
+  }
+
+  @Test func aBugReportGetsTheNewestWholeLinesAlsoFromTheFilesBefore() throws {
+    let folder = temporaryFolder()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let log = RotatingLog(folder: folder, maxBytes: 40, files: 3)
+    #expect(log.tail(limit: 1000).isEmpty)
+    // 15 bytes a line, two lines a file: the files kept hold lines 5 to 9.
+    for number in 1...9 { try log.append("line \(number) padding") }
+    #expect(log.tail(limit: 1000) == (5...9).map { "line \($0) padding" })
+    #expect(log.tail(limit: 45) == ["line 7 padding", "line 8 padding", "line 9 padding"])
+    #expect(log.tail(limit: 44) == ["line 8 padding", "line 9 padding"])
+
+    #expect(DiagnosticsSection.log([]) == nil)
+    #expect(DiagnosticsSection.log(["a", "b"]) == "### App log\nThe newest lines of JEVision’s log on this Mac, the oldest first:\n```\na\nb\n```")
   }
 
   @Test func levelsIncludeTheOnesBefore() {
@@ -99,6 +115,47 @@ struct CrashReportTests {
     #expect(summary.contains("- Reason: Namespace SIGSEGV, Code 0x2"))
     #expect(summary.contains("0  JEVision  0x100100000 +64\n1  libsystem_kernel.dylib"))
     #expect(!summary.contains("libsystem  0x1"))
+  }
+
+  @Test func framesOfALoadedBinaryNameTheirFunctionAndOthersNameTheirBuild() throws {
+    // libsystem_malloc stands in for the build that crashed: this process has the same one loaded.
+    let malloc = try #require(dlsym(dlopen(nil, RTLD_NOW), "malloc"))
+    var info = Dl_info()
+    #expect(dladdr(malloc, &info) != 0)
+    let start = try #require(info.dli_fbase)
+    let uuid = try #require(Symbols.uuid(of: start.assumingMemoryBound(to: mach_header.self)))
+    let offset = UnsafeRawPointer(start).distance(to: malloc) + 4
+    let other = "00000000-0000-0000-0000-0000000000AB"
+    let payload = Data(
+      """
+      {"crashDiagnostics":[{"callStackTree":{"callStacks":[{"threadAttributed":true,"callStackRootFrames":[
+        {"binaryName":"libsystem_malloc.dylib","binaryUUID":"\(uuid.lowercased())","address":16,"offsetIntoBinaryTextSegment":\(offset),
+         "subFrames":[{"binaryName":"JEVision","binaryUUID":"\(other)","address":32,"offsetIntoBinaryTextSegment":64}]}]}]}}]}
+      """.utf8)
+    let summary = try #require(CrashReports.summary(of: payload))
+    #expect(summary.contains("0  libsystem_malloc.dylib  0x10 +\(offset)  malloc + 4\n"))
+    #expect(summary.contains("1  JEVision  0x20 +64\n"))
+    #expect(summary.hasSuffix("dSYM:\n- JEVision \(other)"))
+  }
+
+  @Test func theMainThreadStartsInDyldByName() async throws {
+    let dyld = try #require(Symbols.dyld)
+    let uuid = try #require(Symbols.uuid(of: dyld))
+    // The main thread's own stack, not the chain of async calls that `MainActor.run` would show;
+    // the test is async so that it runs off the main thread and can wait for it.
+    let root = try #require(DispatchQueue.main.sync { Thread.callStackReturnAddresses.last?.uintValue })
+    let offset = try #require(UInt64(exactly: Int(bitPattern: UInt(root)) - Int(bitPattern: dyld)))
+    #expect(Symbols().function(in: uuid, at: offset)?.hasPrefix("start + ") == true)
+  }
+
+  @Test func swiftAndRustSymbolsReadAsTheCodeNamesThem() {
+    #expect(Symbols.readable("$sSi") == "Swift.Int")
+    #expect(Symbols.readable("_ZN15jevision_runner3run6Runner3run17h0123456789abcdefE") == "jevision_runner::run::Runner::run")
+    #expect(Symbols.readable("_ZN4core3ptr46drop_in_place$LT$alloc..vec..Vec$LT$u8$GT$$GT$17h0123456789abcdefE")
+      == "core::ptr::drop_in_place<alloc::vec::Vec<u8>>")
+    #expect(Symbols.readable("_ZN3app4main28_$u7b$$u7b$closure$u7d$$u7d$17h0123456789abcdefE") == "app::main::{{closure}}")
+    #expect(Symbols.readable("objc_msgSend") == "objc_msgSend")
+    #expect(Symbols.readable("_ZN3app99tooShortE") == "_ZN3app99tooShortE")
   }
 
   @Test func aFileWithoutACrashHasNoSummary() {

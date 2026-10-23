@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import CoreMedia
 import CoreVideo
 import Foundation
 import JEVisionCore
@@ -374,11 +375,48 @@ struct RunVideoTests {
     }
   }
 
+  @Test func theFirstPictureStandsInFromTheStartOfTheVideo() throws {
+    var made: CVPixelBuffer?
+    CVPixelBufferCreate(nil, 4, 4, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &made)
+    let image = try #require(made)
+    var format: CMVideoFormatDescription?
+    CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: image, formatDescriptionOut: &format)
+    let late = try CMSampleBuffer(
+      imageBuffer: image, formatDescription: try #require(format),
+      sampleTiming: CMSampleTimingInfo(
+        duration: .invalid, presentationTimeStamp: CMTime(value: 5, timescale: 1), decodeTimeStamp: .invalid))
+
+    let first = try #require(RunVideo.picture(late, at: CMTime(value: 2, timescale: 1)))
+    #expect(first.presentationTimeStamp == CMTime(value: 2, timescale: 1))
+    #expect(first.imageBuffer === image)
+  }
+
   @Test func paintLeavesOutPicturesOfAnotherFormat() throws {
     var made: CVPixelBuffer?
     CVPixelBufferCreate(nil, 4, 4, kCVPixelFormatType_32BGRA, nil, &made)
     let mask = VideoMask(areas: [PixelArea(x: 0, y: 0, width: 2, height: 2)], luma: 126, chromaBlue: 128, chromaRed: 128)
     #expect(!RunVideo.paint(mask, on: try #require(made)))
+  }
+
+  @Test func theVideoRejoinsTheAppThatRelaunchedWhileTheScreenWasListed() async {
+    // Listing what can be recorded takes seconds on a busy Mac; meanwhile process 1 quits and 2 starts.
+    var relaunched = false
+    let slowly: () async -> [pid_t]? = {
+      try? await Task.sleep(for: .milliseconds(50))
+      relaunched = true
+      return [2]
+    }
+    let rejoined = await RunVideo.rejoining(slowly, pid: { $0 }, running: { relaunched ? [2] : [1] })
+    #expect(rejoined == [2])
+    // The list can still have the process that quit.
+    #expect(await RunVideo.rejoining({ [1, 2] }, pid: { $0 }, running: { [2] }) == [2])
+  }
+
+  @Test func theVideoKeepsItsPictureWhileTheAppIsClosedOrNotListedYet() async {
+    #expect(await RunVideo.rejoining({ [] }, pid: { $0 }, running: { [] }) == nil)
+    #expect(await RunVideo.rejoining({ [1] }, pid: { $0 }, running: { [] }) == nil)
+    #expect(await RunVideo.rejoining({ [1] }, pid: { $0 }, running: { [1, 2] }) == nil)
+    #expect(await RunVideo.rejoining({ nil }, pid: { $0 }, running: { [1] }) == nil)
   }
 
   @Test func videoSizeFitsAndIsEven() {

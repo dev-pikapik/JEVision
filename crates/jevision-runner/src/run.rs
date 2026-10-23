@@ -413,10 +413,11 @@ impl Runner<'_> {
             Ok((root, start, environment, data))
         });
         // Held until the run's last block is done; a test that only talks to commands, files
-        // and servers leaves the screen to others.
-        let screen = if prepared.is_ok() {
+        // and servers leaves the screen to others and has nothing to show in a video.
+        let uses_screen = prepared.is_ok() && crate::screen::uses_screen(&project, &file);
+        let screen = if uses_screen {
             let waited = Instant::now();
-            let screen = self.take_screen(&project, &file, &report.test, options);
+            let screen = self.take_screen(&report.test, options);
             if waited.elapsed() > options.poll_interval {
                 clock = Instant::now();
             }
@@ -456,15 +457,16 @@ impl Runner<'_> {
             Ok((root, start, environment, data)) => {
                 // The video's clock starts just before the recording does; step markers count
                 // from it.
-                let video = if options.video != VideoMode::Off && !report.app.is_empty() {
-                    let start = Instant::now();
-                    self.hands
-                        .start_video(&report.app, &dir.join(VIDEO_FILE), &hide)
-                        .ok()
-                        .map(|()| start)
-                } else {
-                    None
-                };
+                let video =
+                    if options.video != VideoMode::Off && uses_screen && !report.app.is_empty() {
+                        let start = Instant::now();
+                        self.hands
+                            .start_video(&report.app, &dir.join(VIDEO_FILE), &hide)
+                            .ok()
+                            .map(|()| start)
+                    } else {
+                        None
+                    };
                 // A test with a data table runs once per row, each row with its own attempts.
                 let (table, passes) = match data {
                     Some((table, rows)) => (Some(table), rows.into_iter().map(Some).collect()),
@@ -571,22 +573,17 @@ impl Runner<'_> {
         Ok(run)
     }
 
-    /// Takes the screen if the test acts on it, waiting while another run has it: `Ok(None)`
-    /// when no lock is needed or the lock file can't be used (a locked-down home folder must
+    /// Takes the screen for a test that acts on it, waiting while another run has it: `Ok(None)`
+    /// when no lock is asked for or the lock file can't be used (a locked-down home folder must
     /// not stop tests that would otherwise run), `Err` when the run is cancelled while waiting.
     fn take_screen(
         &self,
-        project: &Path,
-        file: &str,
         test: &str,
         options: &RunOptions,
     ) -> Result<Option<ScreenLock>, Cancelled> {
         let Some(path) = &options.screen_lock else {
             return Ok(None);
         };
-        if !crate::screen::uses_screen(project, file) {
-            return Ok(None);
-        }
         let me = ScreenHolder::this_process(test);
         let mut announced = None;
         loop {

@@ -1,4 +1,5 @@
 import Foundation
+import MachO
 import MetricKit
 
 /// Crash reports of JEVision itself, kept on this Mac in the app's folder. They are saved only
@@ -69,11 +70,15 @@ struct CrashReports: Sendable {
     if let signal = (meta["signal"] as? Int) { lines.append("- Signal: \(signal)\(signalNames[signal].map { " (\($0))" } ?? "")") }
     if let type = text("exceptionType") { lines.append("- Exception type: \(type), code \(text("exceptionCode") ?? "–")") }
     if let reason = text("terminationReason"), !reason.isEmpty { lines.append("- Reason: \(reason)") }
-    let frames = crashedFrames(of: crash["callStackTree"] as? [String: Any])
+    let (frames, unnamed) = crashedFrames(of: crash["callStackTree"] as? [String: Any], symbols: Symbols())
     if !frames.isEmpty {
       lines += ["", "Frames of the thread that crashed, the innermost last:", "```"]
       lines += frames
       lines.append("```")
+    }
+    if !unnamed.isEmpty {
+      lines += ["", "Binaries of the frames without a function name, to look them up in that build's dSYM:"]
+      lines += unnamed.map { "- \($0.name) \($0.uuid)" }
     }
     return lines.joined(separator: "\n")
   }
@@ -83,21 +88,122 @@ struct CrashReports: Sendable {
   /// The most frames a bug report lists.
   private static let maxFrames = 60
 
-  private static func crashedFrames(of tree: [String: Any]?) -> [String] {
+  /// The frames as lines, each with its function when `symbols` knows the binary, and the
+  /// binaries whose frames stay a bare offset.
+  private static func crashedFrames(of tree: [String: Any]?, symbols: Symbols) -> ([String], [(name: String, uuid: String)]) {
     let stacks = tree?["callStacks"] as? [[String: Any]] ?? []
     let stack = stacks.first { $0["threadAttributed"] as? Bool == true } ?? stacks.first
     var frame = (stack?["callStackRootFrames"] as? [[String: Any]])?.first
     var lines: [String] = []
+    var unnamed: [(name: String, uuid: String)] = []
     while let current = frame, lines.count < maxFrames {
       let name = current["binaryName"] as? String ?? "?"
       let address = (current["address"] as? NSNumber).map { "0x" + String($0.uint64Value, radix: 16) } ?? "?"
-      let offset = (current["offsetIntoBinaryTextSegment"] as? NSNumber).map { " +\($0.uint64Value)" } ?? ""
-      lines.append("\(lines.count)  \(name)  \(address)\(offset)")
+      let offset = (current["offsetIntoBinaryTextSegment"] as? NSNumber)?.uint64Value
+      let uuid = current["binaryUUID"] as? String
+      let function = uuid.flatMap { uuid in offset.flatMap { symbols.function(in: uuid, at: $0) } }
+      lines.append("\(lines.count)  \(name)  \(address)\(offset.map { " +\($0)" } ?? "")\(function.map { "  \($0)" } ?? "")")
+      if function == nil, let uuid, !unnamed.contains(where: { $0.uuid == uuid }) { unnamed.append((name, uuid)) }
       frame = (current["subFrames"] as? [[String: Any]])?.first
     }
-    return lines
+    return (lines, unnamed)
   }
 }
+
+/// Function names for the frames of a crash, from the binaries this process has loaded: the app's
+/// own when it runs the build that crashed, and macOS's libraries when the system is the same. A
+/// binary is the same build only when its UUID matches, so a frame is never named after another one.
+struct Symbols {
+  /// The start of each loaded binary, where its text segment begins, by UUID.
+  private var starts: [String: UnsafeRawPointer] = [:]
+
+  init() {
+    let headers = (0..<_dyld_image_count()).compactMap(_dyld_get_image_header) + [Self.dyld].compactMap(\.self)
+    for header in headers {
+      guard let uuid = Self.uuid(of: header) else { continue }
+      starts[uuid] = UnsafeRawPointer(header)
+    }
+  }
+
+  /// dyld itself, which is not in the list of loaded images but starts every main thread.
+  static var dyld: UnsafePointer<mach_header>? {
+    var info = task_dyld_info()
+    var count = mach_msg_type_number_t(MemoryLayout<task_dyld_info>.size / MemoryLayout<natural_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+      $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_DYLD_INFO), $0, &count)
+      }
+    }
+    guard result == KERN_SUCCESS else { return nil }
+    return UnsafePointer<dyld_all_image_infos>(bitPattern: UInt(info.all_image_info_addr))?.pointee.dyldImageLoadAddress
+  }
+
+  /// "function + 12" for the instruction `offset` bytes into the text segment of the binary with
+  /// this UUID, or `nil` when no such binary is loaded or it has no name there.
+  func function(in uuid: String, at offset: UInt64) -> String? {
+    guard let start = starts[uuid.uppercased()], offset < UInt64(Int.max) else { return nil }
+    let address = start + Int(offset)
+    var info = Dl_info()
+    guard dladdr(address, &info) != 0, UnsafeRawPointer(info.dli_fbase) == start,
+      let name = info.dli_sname, let symbol = info.dli_saddr
+    else { return nil }
+    return "\(Self.readable(String(cString: name))) + \(UnsafeRawPointer(symbol).distance(to: address))"
+  }
+
+  /// The UUID the linker gave the binary at `header`, as MetricKit writes it.
+  static func uuid(of header: UnsafePointer<mach_header>) -> String? {
+    var command = UnsafeRawPointer(header) + MemoryLayout<mach_header_64>.size
+    for _ in 0..<header.pointee.ncmds {
+      let load = command.load(as: load_command.self)
+      if load.cmd == UInt32(LC_UUID) { return UUID(uuid: command.load(as: uuid_command.self).uuid).uuidString }
+      command += Int(load.cmdsize)
+    }
+    return nil
+  }
+
+  /// A Swift or Rust symbol as the code names it; C names stay as they are.
+  static func readable(_ symbol: String) -> String {
+    if let swift = swiftDemangle(symbol, symbol.utf8.count, nil, nil, 0) {
+      defer { free(swift) }
+      return String(cString: swift)
+    }
+    return rust(symbol) ?? symbol
+  }
+
+  /// `_ZN4core3ptr13drop_in_place17h0123456789abcdefE` → `core::ptr::drop_in_place`: Rust's
+  /// mangling, without the hash at the end. `nil` for anything else.
+  static func rust(_ symbol: String) -> String? {
+    guard symbol.hasPrefix("_ZN"), symbol.hasSuffix("E") else { return nil }
+    var rest = symbol.dropFirst(3).dropLast()
+    var parts: [String] = []
+    while !rest.isEmpty {
+      let digits = rest.prefix { $0.isASCII && $0.isNumber }
+      guard let length = Int(digits), rest.count >= digits.count + length else { return nil }
+      rest = rest.dropFirst(digits.count)
+      parts.append(String(rest.prefix(length)))
+      rest = rest.dropFirst(length)
+    }
+    if let hash = parts.last, hash.count == 17, hash.first == "h", hash.dropFirst().allSatisfy(\.isHexDigit) {
+      parts.removeLast()
+    }
+    guard !parts.isEmpty else { return nil }
+    let escapes = ["$LT$": "<", "$GT$": ">", "$LP$": "(", "$RP$": ")", "$RF$": "&", "$BP$": "*", "$C$": ",", "$SP$": "@"]
+    return parts.map { part in
+      let plain = (part.hasPrefix("_$") ? String(part.dropFirst()) : part).replacingOccurrences(of: "..", with: "::")
+      return escapes.reduce(plain) { $0.replacingOccurrences(of: $1.key, with: $1.value) }
+        .replacing(/\$u([0-9a-f]{2,6})\$/) { match in
+          UInt32(match.output.1, radix: 16).flatMap(Unicode.Scalar.init).map { String($0) } ?? String(match.output.0)
+        }
+    }.joined(separator: "::")
+  }
+}
+
+/// The Swift runtime's demangler: a string to free, or `nil` when the name isn't Swift's.
+@_silgen_name("swift_demangle")
+private func swiftDemangle(
+  _ name: UnsafePointer<CChar>, _ length: Int, _ buffer: UnsafeMutablePointer<CChar>?,
+  _ size: UnsafeMutablePointer<Int>?, _ flags: UInt32
+) -> UnsafeMutablePointer<CChar>?
 
 /// Saves the crash reports MetricKit hands over, once the person has agreed. macOS delivers the
 /// diagnostics of a crash at the next launch, up to a day later.

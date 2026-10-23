@@ -3653,6 +3653,16 @@
         }
       }
     },
+    "Add the Log" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить журнал"
+          }
+        }
+      }
+    },
     "Add the Workflow to the Project" : {
       "localizations" : {
         "ru" : {
@@ -4345,6 +4355,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Приложение"
+          }
+        }
+      }
+    },
+    "App log" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Журнал приложения"
           }
         }
       }
@@ -5341,12 +5361,12 @@
         }
       }
     },
-    "Can’t add the crash report" : {
+    "Can’t add it to the bug report" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не удаётся добавить отчёт о сбое"
+            "value" : "Не удаётся добавить это в отчёт об ошибке"
           }
         }
       }
@@ -7583,6 +7603,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отчёты о сбоях"
+          }
+        }
+      }
+    },
+    "Crash report" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отчёт о сбое"
           }
         }
       }
@@ -10265,6 +10295,16 @@
         }
       }
     },
+    "From This Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С этого Mac"
+          }
+        }
+      }
+    },
     "From Top" : {
       "localizations" : {
         "ru" : {
@@ -10785,6 +10825,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Наведение"
+          }
+        }
+      }
+    },
+    "How JEVision crashed, saved after you turned it on in Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как JEVision завершился со сбоем. Сохраняется, если это включено в настройках"
           }
         }
       }
@@ -14438,12 +14488,12 @@
         }
       }
     },
-    "Nothing is added unless you choose a report. It goes into the description above, where you can read and change it before sending." : {
+    "Nothing is added unless you choose it. It goes into the description above, where you can read and change it before sending." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отчёт добавляется, только если вы его выбрали. Он попадает в описание выше, где его можно прочитать и изменить перед отправкой."
+            "value" : "Ничего не добавляется, пока вы сами это не выберете. Выбранное попадает в описание выше, где его можно прочитать и изменить перед отправкой."
           }
         }
       }
@@ -22906,6 +22956,16 @@
         }
       }
     },
+    "The log is empty, or it can’t be read." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Журнал пуст, или его не удаётся прочитать."
+          }
+        }
+      }
+    },
     "The model answered, but described the picture wrong" : {
       "localizations" : {
         "ru" : {
@@ -22952,6 +23012,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать новую картинку"
+          }
+        }
+      }
+    },
+    "The newest lines of what JEVision did. Secrets are never in it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последние строки о том, что делал JEVision. Секретов в нём не бывает."
           }
         }
       }
