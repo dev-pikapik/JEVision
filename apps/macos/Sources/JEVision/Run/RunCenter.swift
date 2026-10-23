@@ -11,6 +11,9 @@ import Synchronization
 @MainActor
 @Observable
 final class RunCenter {
+  /// Posted when a run of a project, the notification's object, was saved in its history.
+  nonisolated static let runSaved = Notification.Name("JEVisionRunSaved")
+
   struct Request: Identifiable {
     let id = UUID()
     let document: FlowDocument
@@ -63,6 +66,8 @@ final class RunCenter {
     let title: String
     let project: URL
     let plan: TestBatch
+    /// The project's environments as the batch started: read once, not once per test.
+    let environments: ProjectEnvironments.Snapshot
     /// The tests of the batch, chosen and added for their dependents, as the plan last said.
     var entries: [BatchEntry]
     /// Tests running now.
@@ -189,9 +194,11 @@ final class RunCenter {
 
   /// What keeps `request` from running now: missing permissions, secrets and environment values
   /// unset in the chosen environment, errors in the test.
-  static func missing(for request: Request) -> (permissions: [Permission], values: MissingValues, errors: Int) {
+  static func missing(
+    for request: Request, in environments: ProjectEnvironments.Snapshot? = nil
+  ) -> (permissions: [Permission], values: MissingValues, errors: Int) {
     let permissions = Permission.allCases.filter { !$0.isGranted }
-    let environments = ProjectEnvironments.read(request.project)
+    let environments = environments ?? ProjectEnvironments.read(request.project)
     let values = request.document.flow.map {
       MissingValues(for: $0, in: environments, isSet: { SecretStore.isSet($0, environment: $1) })
     } ?? MissingValues()
@@ -200,10 +207,17 @@ final class RunCenter {
   }
 
   /// Runs the test, or asks for what it needs first.
-  func run(_ document: FlowDocument, in project: URL, from block: String? = nil, stepByStep: Bool = false) {
+  func run(
+    _ document: FlowDocument, in project: URL, from block: String? = nil, stepByStep: Bool = false,
+    addedAsDependency: Bool = false
+  ) {
     guard !isBusy, document.flow != nil else { return }
-    let request = Request(document: document, project: project, from: block, stepByStep: stepByStep)
-    if !start(request) { blocked = request }
+    let request = Request(
+      document: document, project: project, from: block, stepByStep: stepByStep, addedAsDependency: addedAsDependency)
+    let missing = Self.missing(for: request, in: batchEnvironments(of: project))
+    if !missing.permissions.isEmpty || !missing.values.isEmpty || missing.errors > 0 || !start(request) {
+      blocked = request
+    }
   }
 
   /// Runs `test`, relative to `project`, for a paired device, or says why it can't. Nothing
@@ -238,11 +252,17 @@ final class RunCenter {
     // Settings that can't be read fail each run with the reason; one after another is the safe way.
     let mode = (try? projectSettings(project: path)).map { folderRunMode(settings: $0, folder: folder) } ?? .sequential
     let plan = TestBatch(project: path, tests: tests.map { RelativePath.from(project, to: $0) }, mode: mode)
-    batch = Batch(title: title, project: project, plan: plan, entries: plan.entries())
+    batch = Batch(
+      title: title, project: project, plan: plan, environments: ProjectEnvironments.read(project), entries: plan.entries())
     runNextInBatch()
   }
 
   func dismissBatchResult() { batchResult = nil }
+
+  /// The environments the batch running in `project` started with.
+  private func batchEnvironments(of project: URL) -> ProjectEnvironments.Snapshot? {
+    batch.flatMap { $0.project == project ? $0.environments : nil }
+  }
 
   /// Starts every test of the batch its plan lets start now, and ends the batch once none runs and
   /// none can start. A test that can't start holds back the ones after it until its sheet is answered.
@@ -254,8 +274,8 @@ final class RunCenter {
         break
       }
       current.entries = current.plan.entries()
-      batch = current
       let entry = current.entries[Int(next)]
+      batch = current
       let document = FlowDocument(url: current.project.appending(path: entry.file), project: current.project)
       // Unreadable: it fails without a word.
       guard document.flow != nil else {
@@ -286,10 +306,11 @@ final class RunCenter {
     return entries[Int(position)].usesScreen
   }
 
-  /// Saves the tests the plan blocked since the last look, so the history shows why they didn't run.
+  /// Saves the tests blocked in `entries` and not saved yet, so the history shows why they didn't run.
   private func saveBlocked(_ batch: inout Batch) {
-    batch.entries = batch.plan.entries()
-    let environment = ProjectEnvironments.read(batch.project).selected?.name
+    let environment = batch.environments.selected?.name
+    let saved = batch.blocked
+    defer { if batch.blocked > saved { NotificationCenter.default.post(name: Self.runSaved, object: batch.project) } }
     for (index, entry) in batch.entries.enumerated() {
       guard case .blocked(let blocker) = entry.state, batch.saved.insert(UInt32(index)).inserted else { continue }
       batch.blocked += 1
@@ -305,6 +326,7 @@ final class RunCenter {
   private func endBatch() {
     guard var batch else { return }
     batch.plan.stop()
+    batch.entries = batch.plan.entries()
     saveBlocked(&batch)
     self.batch = nil
     let summary = BatchResult(
@@ -386,7 +408,8 @@ final class RunCenter {
       project: request.project.path, test: request.document.url.path,
       options: RunOptions(
         startAt: request.from, retries: choices.retries.map(UInt32.init),
-        environment: ProjectEnvironments.read(request.project).selected?.name, dataRows: choices.rows(in: table),
+        environment: (batchEnvironments(of: request.project) ?? ProjectEnvironments.read(request.project)).selected?.name,
+        dataRows: choices.rows(in: table),
         vision: ai.settings(), localOnly: ai.localOnly,
         requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, usage: ai.usage, video: videos.mode,
         keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency, language: AppLanguage.shared.language),
@@ -523,6 +546,7 @@ final class RunCenter {
     cancellable.withLock { $0.removeAll { $0 === ended.run } }
     let request = ended.request
     AppLog.runEnded(request.document.url, project: request.project, outcome: outcome)
+    if case .finished = outcome { NotificationCenter.default.post(name: Self.runSaved, object: request.project) }
     if var batch, let position = request.position {
       batch.running -= 1
       if case .finished(let dir, _, _) = outcome { batch.runs.append(dir) }
@@ -548,7 +572,9 @@ final class RunCenter {
         batch.notRun += 1
         verdict = .notRun
       }
-      _ = batch.plan.finish(position: position, outcome: verdict)
+      if !batch.plan.finish(position: position, outcome: verdict).isEmpty {
+        batch.entries = batch.plan.entries()
+      }
       self.batch = batch
       // A cancelled test stops the batch, the tests beside it too.
       if batch.isStopping { stop() }

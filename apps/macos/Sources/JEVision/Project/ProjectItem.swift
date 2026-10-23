@@ -14,11 +14,32 @@ struct ProjectItem: Identifiable, Hashable, Sendable {
   let testCount: Int
   let modified: Date?
   /// What a test is found by besides its file name: its name, description, details and block texts.
-  var keywords = ""
+  let keywords: String
   /// Someone marked the test as flaky in its details.
-  var markedFlaky = false
+  let markedFlaky: Bool
   /// What its card says: type, priority, status and author, to choose tests by.
-  var card = JEVisionCore.TestCard()
+  let card: JEVisionCore.TestCard
+  /// What the search looks in besides the file name: the folder and `keywords`, put together
+  /// once rather than on every letter typed.
+  let searchKeywords: String
+
+  init(
+    id: String, name: String, url: URL, kind: Kind, children: [ProjectItem], testCount: Int, modified: Date?,
+    keywords: String = "", markedFlaky: Bool = false, card: JEVisionCore.TestCard = JEVisionCore.TestCard()
+  ) {
+    self.id = id
+    self.name = name
+    self.url = url
+    self.kind = kind
+    self.children = children
+    self.testCount = testCount
+    self.modified = modified
+    self.keywords = keywords
+    self.markedFlaky = markedFlaky
+    self.card = card
+    let folder = id.split(separator: "/").dropLast().joined(separator: "/")
+    searchKeywords = folder + " " + keywords
+  }
 
   /// Children for an outline: `nil` marks a leaf.
   var outlineChildren: [ProjectItem]? { kind == .folder ? children : nil }

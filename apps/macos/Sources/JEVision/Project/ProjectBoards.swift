@@ -32,6 +32,9 @@ final class ProjectBoards {
   @ObservationIgnored var viewports: [String: BoardViewport] = [:]
   @ObservationIgnored private var project: URL?
   @ObservationIgnored private let defaults: UserDefaults
+  /// Each board file as last read or written, with whether it is the board of all tests: a board
+  /// is read again only when its file changes.
+  @ObservationIgnored private var known: [String: (stamp: FileStamp?, allTests: Bool)] = [:]
 
   static let selectionKey = "selectedBoards"
   nonisolated static let suffix = boardSuffix()
@@ -59,24 +62,46 @@ final class ProjectBoards {
 
   func open(_ url: URL) {
     project = url
+    known = [:]
     viewports = [:]
     renaming = nil
     request = nil
     reload()
   }
 
-  /// Reads the boards folder and the board in view again, after something changed on disk.
-  func reload() {
-    guard let folder else { return }
+  /// Reads the boards folder and the boards whose files changed, after something changed on
+  /// disk. Returns whether anything did since the app last read or wrote them.
+  @discardableResult
+  func reload() -> Bool {
+    guard let folder else { return false }
     let files = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
     let found = files.filter { $0.hasSuffix(Self.suffix) && $0.count > Self.suffix.count }
       .map { String($0.dropLast(Self.suffix.count)) }
       .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    if names != found { names = found }
-    let flagged = found.first { (try? read($0))?.allTests == true }
+    var changed = names != found
+    if changed { names = found }
+    var read: [String: Board] = [:]
+    var stale: Set<String> = []
+    var known: [String: (stamp: FileStamp?, allTests: Bool)] = [:]
+    for name in found {
+      let stamp = FileStamp(path: file(name).path)
+      if let old = self.known[name], old.stamp == stamp {
+        known[name] = old
+        continue
+      }
+      stale.insert(name)
+      read[name] = try? self.read(name)
+      known[name] = (stamp, read[name]?.allTests == true)
+    }
+    changed = changed || !stale.isEmpty
+    self.known = known
+    let flagged = found.first { known[$0]?.allTests == true }
     if allTests != flagged { allTests = flagged }
     let saved = (defaults.dictionary(forKey: Self.selectionKey) as? [String: String])?[project?.path ?? ""]
-    show(saved.flatMap { found.contains($0) ? $0 : nil } ?? flagged ?? found.first)
+    let shown = saved.flatMap { found.contains($0) ? $0 : nil } ?? flagged ?? found.first
+    // The board in view is read again only when its file changed or another board is shown.
+    if shown != current || board == nil || shown.map(stale.contains) == true { show(shown, read: shown.flatMap { read[$0] }) }
+    return changed
   }
 
   /// Puts the tests `tests` (relative to the project, in sidebar order) on the board of all
@@ -221,7 +246,8 @@ final class ProjectBoards {
     return clean.isEmpty ? String(localized: "Untitled Board") : clean
   }
 
-  private func show(_ name: String?) {
+  /// Shows the board `name`, as `read` when it was just read.
+  private func show(_ name: String?, read: Board? = nil) {
     if current != name { current = name }
     guard let name else {
       show(nil as Board?)
@@ -229,7 +255,7 @@ final class ProjectBoards {
       return
     }
     do {
-      show(try read(name))
+      show(try read ?? self.read(name))
       if problem != nil { problem = nil }
     } catch {
       show(nil as Board?)
@@ -253,7 +279,10 @@ final class ProjectBoards {
   }
 
   private func write(_ board: Board, to name: String) throws {
-    try saveBoard(board: board).write(to: file(name), atomically: true, encoding: .utf8)
+    let file = file(name)
+    try saveBoard(board: board).write(to: file, atomically: true, encoding: .utf8)
+    // What the app wrote itself isn't read back when the folder watcher hears of it.
+    known[name] = (FileStamp(path: file.path), board.allTests)
   }
 
   static func message(_ error: any Error) -> String {

@@ -9,13 +9,13 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs;
 use std::ops::RangeInclusive;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use jevision_l10n::{language, tr, tr_in};
 
 use crate::issue::Issue;
-use crate::model::{BlockKind, Flow};
-use crate::validate::{is_relative_path, placeholder_fields, placeholders, reachable};
+use crate::model::{Block, BlockKind, Flow};
+use crate::validate::{DiskCache, is_relative_path, placeholder_fields, placeholders, reachable};
 
 const DELIMITERS: [char; 3] = [',', ';', '\t'];
 
@@ -250,13 +250,14 @@ impl DataTable {
 /// The data table a run goes through row by row: the file of the first `useData` block the
 /// test comes to from its start, when it names one without placeholders.
 pub fn primary_data_file(flow: &Flow) -> Option<&str> {
+    let blocks: HashMap<&str, &Block> = flow.blocks.iter().map(|b| (b.id.as_str(), b)).collect();
     let mut seen = HashSet::new();
     let mut stack = vec![flow.start.as_str()];
     while let Some(id) = stack.pop() {
         if !seen.insert(id) {
             continue;
         }
-        let Some(block) = flow.blocks.iter().find(|b| b.id == id) else {
+        let Some(block) = blocks.get(id) else {
             continue;
         };
         if let BlockKind::UseData { file, .. } = &block.kind {
@@ -273,6 +274,11 @@ pub fn primary_data_file(flow: &Flow) -> Option<&str> {
 /// [`primary_data_file`], whose row stays chosen for the whole run. Missing files are left to
 /// [`crate::validate_in`].
 pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
+    data_issues(flow, dir, &mut DiskCache::default())
+}
+
+/// [`validate_data`], reading the tables through `disk`.
+pub(crate) fn data_issues(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Issue> {
     let mut out = Vec::new();
     let index: HashMap<&str, usize> = flow
         .blocks
@@ -291,8 +297,8 @@ pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
                 .collect()
         })
         .collect();
-    // Each table, `None` when it can't be read, with the blocks inside its loop.
-    let mut tables: Vec<(&str, Option<DataTable>, Vec<bool>)> = Vec::new();
+    // Each table file with the blocks inside its loop.
+    let mut read: Vec<(&str, PathBuf, Vec<bool>)> = Vec::new();
     for (i, b) in flow.blocks.iter().enumerate() {
         let BlockKind::UseData { file, body, .. } = &b.kind else {
             continue;
@@ -308,8 +314,7 @@ pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
             inside[i] = false;
         }
         let path = dir.join(file);
-        let table = DataTable::load(&path);
-        if let Err(e) = &table {
+        if let Err(e) = disk.read_table(&path) {
             if path.exists() {
                 let issue = Issue::error("flow.data.invalid")
                     .with("block", &b.id)
@@ -323,8 +328,13 @@ pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
                 );
             }
         }
-        tables.push((file, table.ok(), inside));
+        read.push((file, path, inside));
     }
+    // Each table, `None` when it can't be read, with the blocks inside its loop.
+    let tables: Vec<(&str, Option<&DataTable>, Vec<bool>)> = read
+        .into_iter()
+        .map(|(file, path, inside)| (file, disk.table(&path), inside))
+        .collect();
     let primary = primary_data_file(flow);
     for (i, b) in flow.blocks.iter().enumerate() {
         for (field, value) in placeholder_fields(&b.kind) {
@@ -333,15 +343,11 @@ pub fn validate_data(flow: &Flow, dir: &Path) -> Vec<Issue> {
                 .flatten()
                 .filter(|(ns, _)| *ns == "data")
             {
-                let usable: Vec<(&str, &Option<DataTable>)> = tables
+                // Nothing to check against, or a table that can't be read may have the column.
+                let usable: Option<Vec<(&str, &DataTable)>> = tables
                     .iter()
                     .filter(|(file, _, inside)| inside[i] || Some(*file) == primary)
-                    .map(|(file, table, _)| (*file, table))
-                    .collect();
-                // Nothing to check against, or a table that can't be read may have the column.
-                let usable: Option<Vec<(&str, &DataTable)>> = usable
-                    .into_iter()
-                    .map(|(file, table)| table.as_ref().map(|t| (file, t)))
+                    .map(|(file, table, _)| table.map(|t| (*file, t)))
                     .collect();
                 let Some(usable) = usable.filter(|u| !u.is_empty()) else {
                     continue;
@@ -673,6 +679,13 @@ mod tests {
         assert_eq!(issues[1].param("path"), Some("users.csv"));
         assert_eq!(issues[2].param("column"), Some("nope"));
         assert_eq!(issues[2].param("path"), Some("langs.csv, users.csv"));
+
+        let mut disk = DiskCache::default();
+        assert_eq!(data_issues(&flow, &dir, &mut disk), issues);
+        // The next test of the project uses the tables read for the first one.
+        fs::remove_file(dir.join("users.csv")).unwrap();
+        assert_eq!(data_issues(&flow, &dir, &mut disk), issues);
+        assert_ne!(validate_data(&flow, &dir), issues);
         fs::remove_dir_all(dir).unwrap();
     }
 

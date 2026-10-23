@@ -19,6 +19,9 @@ final class ProjectStore {
   private(set) var rootURL: URL?
   private(set) var name = ""
   private(set) var items: [ProjectItem] = []
+  /// Every test of `items`, at any depth, in sidebar order.
+  private(set) var tests: [ProjectItem] = []
+  private var itemsByID: [ProjectItem.ID: ProjectItem] = [:]
   /// The item selected in the sidebar; selected again on the next launch.
   var selection: ProjectItem.ID? {
     didSet {
@@ -54,6 +57,12 @@ final class ProjectStore {
   var showsCommandPalette = false
   /// Saved runs, newest first.
   private(set) var runs: [SavedRun] = []
+  /// `runs` by day, newest first.
+  private(set) var runDays: [RunHistory.Day] = []
+  /// Finds the runs a test shows among `runs`.
+  private(set) var runIndex = RunIndex()
+  /// The runs are being read for the first time since the project opened.
+  private(set) var isLoadingRuns = false
   /// The newest run of each test made on this Mac or started from it, by test file relative to
   /// the project: a CI run is of another checkout, and says nothing about the test here.
   private(set) var latestRuns: [String: SavedRun] = [:]
@@ -90,16 +99,34 @@ final class ProjectStore {
   let library = ProjectLibrary()
   /// Settings shared through the project's settings file: default retries, the tests in
   /// quarantine and when to suggest it.
-  private(set) var settings = ProjectSettings(retries: nil, quarantine: [])
+  private(set) var settings = ProjectSettings(retries: nil, quarantine: []) {
+    didSet { quarantined = nil }
+  }
   /// Why the project's settings file can't be read.
   private(set) var settingsProblem: String?
 
   /// The tests open on the board while it is shown; the board owns them.
   @ObservationIgnored weak var boardDocuments: BoardTestDocuments?
   @ObservationIgnored private var watcher: FolderWatcher?
-  @ObservationIgnored private var scanTask: Task<([ProjectItem], History), any Error>?
-  /// The folder whose security scope is in use while its project is open.
-  @ObservationIgnored private(set) var accessedURL: URL?
+  @ObservationIgnored private var scanTask: Task<Scan?, any Error>?
+  /// What the scans of the open project read from its tests.
+  @ObservationIgnored private(set) var scanCache = ProjectScanner.Cache()
+  /// The cache's stamp after the scan `items` came from.
+  @ObservationIgnored private var shownScan = -1
+  /// The tests last put on the board of all tests; `nil` when it must be looked at again.
+  @ObservationIgnored private var syncedTests: [String]?
+  @ObservationIgnored private(set) var runsFolder: RunsFolder?
+  @ObservationIgnored private var runsRead: Task<Void, Never>?
+  @ObservationIgnored private var isReadingRuns = false
+  /// Runs changed while they were being read: `true` asks to read them again at once.
+  @ObservationIgnored private var runsChangedMeanwhile: Bool?
+  /// Counts the changes of `runDays`.
+  @ObservationIgnored private var runsStamp = 0
+  @ObservationIgnored private var shownDays: (stamp: Int, query: String, source: RunSource?, days: [RunHistory.Day])?
+  /// The quarantine of each test, and the threshold, as the settings say until `until`.
+  @ObservationIgnored private var quarantined: (until: Date, byTest: [String: Quarantined], threshold: Int)?
+  @ObservationIgnored private var accessedURL: URL?
+  @ObservationIgnored private nonisolated(unsafe) var runSavedObserver: (any NSObjectProtocol)?
   @ObservationIgnored private(set) var summaryTask: Task<Void, Never>?
   @ObservationIgnored private let defaults: UserDefaults
   /// When a project is opened, for its place in the recent list.
@@ -124,10 +151,22 @@ final class ProjectStore {
     static let myTests = "myTestsProject"
   }
 
+  deinit {
+    if let runSavedObserver { NotificationCenter.default.removeObserver(runSavedObserver) }
+  }
+
   init(defaults: UserDefaults = Profile.current.defaults, clock: @escaping () -> Date = { .now }) {
     self.defaults = defaults
     self.clock = clock
-    ci.imported = { [weak self] in self?.rescan() }
+    ci.imported = { [weak self] in self?.refreshRuns(soon: true) }
+    runSavedObserver = NotificationCenter.default.addObserver(forName: RunCenter.runSaved, object: nil, queue: .main) {
+      [weak self] note in
+      let project = note.object as? URL
+      MainActor.assumeIsolated {
+        guard let self, let project, project.standardizedFileURL.path == self.rootURL?.standardizedFileURL.path else { return }
+        self.refreshRuns(soon: true)
+      }
+    }
     migrate()
     recent = recentProjectsDecode(json: defaults.string(forKey: Key.recent) ?? "")
     refreshSummaries()
@@ -246,7 +285,8 @@ final class ProjectStore {
     showsBoard = false
     items = []
     filter = TestFilter()
-    show(History([]))
+    show(Scan(items: [], stamp: -1, boardTests: []))
+    show(Runs(RunsFolder.Found(runs: [], index: RunIndex(), changed: [])))
     selectedRun = nil
     runSource = nil
     sidebar = .tests
@@ -495,6 +535,9 @@ final class ProjectStore {
 
   // MARK: Tests
 
+  /// The folder or test with this id.
+  func item(withID id: ProjectItem.ID) -> ProjectItem? { itemsByID[id] }
+
   private func openSelection() {
     guard let rootURL, let selection,
       ProjectScanner.isTestFile(selection) || selection.lowercased().hasSuffix(ProjectLibrary.blockSuffix)
@@ -510,7 +553,7 @@ final class ProjectStore {
   /// The folder new tests go to: the selected folder, or the folder of the selected test.
   private var targetFolder: (id: String, url: URL)? {
     guard let rootURL else { return nil }
-    guard let selection, let item = items.item(withID: selection) else { return ("", rootURL) }
+    guard let selection, let item = item(withID: selection) else { return ("", rootURL) }
     let id = item.kind == .folder ? item.id : item.parentPath
     return (id, id.isEmpty ? rootURL : rootURL.appending(path: id))
   }
@@ -651,8 +694,26 @@ final class ProjectStore {
 
   func moveToTrash(_ run: SavedRun) throws {
     try FileManager.default.trashItem(at: run.url, resultingItemURL: nil)
-    show(History(runs.filter { $0.id != run.id }))
+    // The list lets go of it at once; what the runs say about the tests follows from the next read.
+    runs.removeAll { $0.id == run.id }
+    runDays = runDays.compactMap { day in
+      var day = day
+      day.runs.removeAll { $0.id == run.id }
+      return day.runs.isEmpty ? nil : day
+    }
+    runsStamp += 1
     if selectedRun == run.id { selectedRun = nil }
+    refreshRuns(soon: true)
+  }
+
+  /// The runs the Runs list shows: of tests whose name contains `query`, started from `source`
+  /// (any when `nil`), newest first, by day.
+  func runDays(matching query: String, from source: RunSource?) -> [RunHistory.Day] {
+    let all = runDays
+    if let shown = shownDays, shown.stamp == runsStamp, shown.query == query, shown.source == source { return shown.days }
+    let days = RunHistory.days(all, matching: query, from: source)
+    shownDays = (runsStamp, query, source, days)
+    return days
   }
 
   /// Looks again at the reference images and at the tests open, after a reference was
@@ -667,17 +728,32 @@ final class ProjectStore {
   /// The quarantine of a test file, relative to the project, while it lasts: an entry whose last
   /// day is past is kept in the settings file but puts nothing in quarantine.
   func quarantine(of file: String) -> Quarantined? {
-    let today = localToday()
-    return settings.quarantine.first { $0.test == file && quarantineActive(entry: $0, today: today) }
+    quarantine.byTest[file]
   }
 
   /// Why the test is worth putting in quarantine: it was unreliable as many times in the last
   /// week as the project's threshold says, and isn't in quarantine yet.
   func quarantineSuggestion(for file: String) -> QuarantineSuggestion? {
-    guard let suggestion = unreliable[file], quarantine(of: file) == nil,
-      suggestion.events.count >= Int(quarantineThreshold(settings: settings))
+    let quarantine = quarantine
+    guard let suggestion = unreliable[file], quarantine.byTest[file] == nil, suggestion.events.count >= quarantine.threshold
     else { return nil }
     return suggestion
+  }
+
+  /// What the settings put in quarantine today, worked out once a day and settings rather than
+  /// once per row.
+  private var quarantine: (byTest: [String: Quarantined], threshold: Int) {
+    let settings = settings
+    if let quarantined, Date.now < quarantined.until { return (quarantined.byTest, quarantined.threshold) }
+    let today = localToday()
+    var byTest: [String: Quarantined] = [:]
+    for entry in settings.quarantine where byTest[entry.test] == nil && quarantineActive(entry: entry, today: today) {
+      byTest[entry.test] = entry
+    }
+    let threshold = Int(quarantineThreshold(settings: settings))
+    let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: .now)) ?? .distantFuture
+    quarantined = (tomorrow, byTest, threshold)
+    return (byTest, threshold)
   }
 
   /// The test file `url` as the quarantine names it: relative to the project, or `nil` outside it.
@@ -835,63 +911,160 @@ final class ProjectStore {
     selection = nil
     showsBoard = false
     showsCommandPalette = false
-    items = []
+    show(Scan(items: [], stamp: -1, boardTests: []))
     filter = TestFilter()
-    show(History([]))
+    show(Runs(RunsFolder.Found(runs: [], index: RunIndex(), changed: [])))
     selectedRun = nil
     runSource = nil
     sidebar = .tests
     status = .loading
     restoreDeclined = false
-    watcher = FolderWatcher(url: url) { [weak self] in self?.rescan() }
+    watcher = FolderWatcher(url: url) { [weak self] folders in self?.changed(Change(folders)) }
     git.open(url)
     environments.open(url)
     boards.open(url)
     schedules.open(url)
     ci.open(url)
     library.open(url)
-    rescan()
-  }
-
-  private func rescan() {
-    guard let url = rootURL else { return }
-    environments.reload()
-    boards.reload()
-    schedules.reload()
-    library.reload()
     reloadUnrestored()
     reloadSettings()
-    document?.revalidate()
+    scanCache = ProjectScanner.Cache()
+    syncedTests = nil
+    scanTests()
+    runsRead?.cancel()
+    runsRead = nil
+    isReadingRuns = false
+    runsChangedMeanwhile = nil
+    runsFolder = RunsFolder(project: url)
+    isLoadingRuns = true
+    refreshRuns(soon: true)
+  }
+
+  /// What a change on the disk asks to read again.
+  struct Change: OptionSet {
+    let rawValue: Int
+    static let tests = Change(rawValue: 1 << 0)
+    /// The settings, environments and lock files at the top of the project.
+    static let settings = Change(rawValue: 1 << 1)
+    static let library = Change(rawValue: 1 << 2)
+    static let boards = Change(rawValue: 1 << 3)
+    static let schedules = Change(rawValue: 1 << 4)
+    static let runs = Change(rawValue: 1 << 5)
+    static let git = Change(rawValue: 1 << 6)
+    static let everything: Change = [.tests, .settings, .library, .boards, .schedules, .runs, .git]
+
+    init(rawValue: Int) { self.rawValue = rawValue }
+
+    /// What changes in `folders`, relative to the project (`""` for the project folder itself), ask
+    /// for; all of it when `folders` is `nil`. A run writes its report and pictures in the runs
+    /// folder many times a second: that reads the runs again, not the tests.
+    init(_ folders: Set<String>?) {
+      guard let folders else {
+        self = .everything
+        return
+      }
+      self = []
+      for folder in folders {
+        let parts = folder.split(separator: "/")
+        switch parts.first {
+        case nil:
+          formUnion(.everything)
+        case ".jevision":
+          if parts.count == 1 {
+            formUnion([.runs, .schedules])
+          } else if parts[1] == "runs" {
+            formUnion(.runs)
+          } else {
+            formUnion(.schedules)
+          }
+        case ".git":
+          formUnion(.git)
+        // Tests are looked for outside hidden folders only.
+        case _ where parts.contains(where: { $0.hasPrefix(".") }):
+          continue
+        case ProjectBoards.folderName?:
+          formUnion([.boards, .tests, .git])
+        case ProjectLibrary.blocksFolder?, ProjectLibrary.templatesFolder?:
+          formUnion([.library, .tests, .git])
+        default:
+          formUnion([.tests, .git])
+        }
+      }
+    }
+  }
+
+  /// Reads again what changed on the disk.
+  private func changed(_ change: Change) {
+    guard rootURL != nil else { return }
+    if change.contains(.settings) {
+      environments.reload()
+      reloadSettings()
+    }
+    if change.contains(.boards), boards.reload() { syncedTests = nil }
+    if change.contains(.schedules) { schedules.reload() }
+    if change.contains(.library) { library.reload() }
+    if !change.isDisjoint(with: [.settings, .library]) { reloadUnrestored() }
+    if !change.isDisjoint(with: [.tests, .library]) { document?.revalidate() }
+    if change.contains(.tests) { scanTests() }
+    if change.contains(.runs) { refreshRuns() }
+    if change.contains(.git) { git.refresh() }
+  }
+
+  /// The tests a scan found, with what the window shows of them worked out off the main thread.
+  private struct Scan: Sendable {
+    let items: [ProjectItem]
+    let stamp: Int
+    let tests: [ProjectItem]
+    let byID: [ProjectItem.ID: ProjectItem]
+    /// The tests, relative to the project, in the order the board of all tests shows them.
+    let boardTests: [String]
+
+    init(items: [ProjectItem], stamp: Int, boardTests: [String]) {
+      self.items = items
+      self.stamp = stamp
+      tests = items.flatMap(\.tests)
+      var byID: [ProjectItem.ID: ProjectItem] = [:]
+      func add(_ items: [ProjectItem]) {
+        for item in items {
+          byID[item.id] = item
+          add(item.children)
+        }
+      }
+      add(items)
+      self.byID = byID
+      self.boardTests = boardTests
+    }
+  }
+
+  private func scanTests() {
+    guard let url = rootURL else { return }
     scanTask?.cancel()
-    let task = Task.detached(priority: .userInitiated) {
-      let items = try ProjectScanner.scan(url)
-      // Runs are a bonus to the tests: an unreadable history doesn't close the project.
-      return (items, History((try? listRuns(project: url.path)) ?? []))
+    let (cache, shown, title) = (scanCache, shownScan, name)
+    let task = Task.detached(priority: .userInitiated) { () throws -> Scan? in
+      let (items, stamp) = try ProjectScanner.scan(url, cache: cache)
+      // The folder changes all the time while a test runs; unchanged tests don't redraw anything.
+      guard stamp != shown else { return nil }
+      let boardTests = ProjectMap.groups(items, rootTitle: title).flatMap(\.tests).map(\.id)
+      return Scan(items: items, stamp: stamp, boardTests: boardTests)
     }
     scanTask = task
     Task { [weak self] in
       let result = await task.result
       guard let self, scanTask == task, !task.isCancelled else { return }
       switch result {
-      case .success(let (found, history)):
-        // The folder changes all the time while a test runs; unchanged lists don't redraw the sidebar.
-        if items != found { items = found }
-        boards.sync(tests: ProjectMap.groups(found, rootTitle: name).flatMap(\.tests).map(\.id), rootTitle: name)
-        show(history)
-        let saved = history.runs
-        if let selectedRun, !saved.contains(where: { $0.id == selectedRun }),
-          !FileManager.default.fileExists(atPath: selectedRun)
-        {
-          self.selectedRun = nil
+      case .success(let scan):
+        if let scan { show(scan) }
+        if syncedTests != boardTests {
+          boards.sync(tests: boardTests, rootTitle: name)
+          syncedTests = boardTests
         }
-        status = .ready
-        if let selection, found.item(withID: selection) == nil,
+        if status != .ready { status = .ready }
+        if let selection, item(withID: selection) == nil,
           !FileManager.default.fileExists(atPath: url.appending(path: selection).path)
         {
           self.selection = nil
         }
         document?.reload()
-        git.refresh()
       case .failure:
         // A moved or renamed folder is still found through the bookmark.
         if let entry = recent.first(where: { $0.path == url.path }), let moved = Self.folder(of: entry),
@@ -901,8 +1074,8 @@ final class ProjectStore {
           enter(moved, test: nil)
         } else if Self.existing(url) != nil {
           // The folder is there but can't be read, such as when macOS hasn't let the app into it.
-          items = []
-          show(History([]))
+          show(Scan(items: [], stamp: -1, boardTests: []))
+          show(Runs(RunsFolder.Found(runs: [], index: RunIndex(), changed: [])))
           status = .unavailable
         } else {
           // The Projects screen shows its card as missing, with a way to find it.
@@ -914,16 +1087,59 @@ final class ProjectStore {
     }
   }
 
+  /// The tests the board of all tests shows, as the last scan found them.
+  @ObservationIgnored private var boardTests: [String] = []
+
+  private func show(_ scan: Scan) {
+    shownScan = scan.stamp
+    items = scan.items
+    tests = scan.tests
+    itemsByID = scan.byID
+    boardTests = scan.boardTests
+  }
+
+  /// Reads the runs again, gathering the changes of a second into one read; `soon` reads them at
+  /// once, as after a run of this app.
+  func refreshRuns(soon: Bool = false) {
+    guard let folder = runsFolder else { return }
+    if isReadingRuns {
+      runsChangedMeanwhile = soon || runsChangedMeanwhile == true
+      return
+    }
+    if runsRead != nil {
+      guard soon else { return }
+      runsRead?.cancel()
+    }
+    runsRead = Task { [weak self] in
+      if !soon { try? await Task.sleep(for: .seconds(1)) }
+      guard !Task.isCancelled, let self else { return }
+      isReadingRuns = true
+      let runs = await Task.detached(priority: .userInitiated) { folder.read().map(Runs.init) }.value
+      guard folder === runsFolder else { return }
+      isReadingRuns = false
+      runsRead = nil
+      if let runs { show(runs) }
+      isLoadingRuns = false
+      if let soon = runsChangedMeanwhile {
+        runsChangedMeanwhile = nil
+        refreshRuns(soon: soon)
+      }
+    }
+  }
+
   /// Saved runs and what the project shows from them, worked out off the main thread: in a
   /// project with a long history that takes long enough to stall the window.
-  private struct History: Sendable {
-    let runs: [SavedRun]
+  private struct Runs: Sendable {
+    let found: RunsFolder.Found
+    let days: [RunHistory.Day]
     let latest: [String: SavedRun]
     let flaky: [String: FlakyEvidence]
     let unreliable: [String: QuarantineSuggestion]
 
-    init(_ runs: [SavedRun]) {
-      self.runs = runs
+    init(_ found: RunsFolder.Found) {
+      self.found = found
+      let runs = found.runs
+      days = RunHistory.days(runs)
       latest = ProjectMap.latestRuns(runs.filter(\.isHere))
       let reports = runs.map(\.report)
       let now = Int64(Date.now.timeIntervalSince1970 * 1000)
@@ -934,11 +1150,23 @@ final class ProjectStore {
     }
   }
 
-  private func show(_ history: History) {
-    if runs != history.runs { runs = history.runs }
-    if latestRuns != history.latest { latestRuns = history.latest }
-    if flaky != history.flaky { flaky = history.flaky }
-    if unreliable != history.unreliable { unreliable = history.unreliable }
+  private func show(_ new: Runs) {
+    runs = new.found.runs
+    runDays = new.days
+    runsStamp += 1
+    runIndex = new.found.index
+    // Each test's row shows its last run: rows redraw only when one of those is another run or changed.
+    let changed = new.found.changed
+    if new.latest.count != latestRuns.count
+      || new.latest.contains(where: { latestRuns[$0.key]?.id != $0.value.id || changed.contains($0.value.id) })
+    {
+      latestRuns = new.latest
+    }
+    if flaky != new.flaky { flaky = new.flaky }
+    if unreliable != new.unreliable { unreliable = new.unreliable }
+    if let selectedRun, runIndex.run(selectedRun) == nil, !FileManager.default.fileExists(atPath: selectedRun) {
+      self.selectedRun = nil
+    }
   }
 }
 

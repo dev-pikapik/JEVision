@@ -21,22 +21,40 @@ pub struct SearchCandidate {
 /// keywords. Among equal matches, a title that is the query itself goes first, then the order
 /// given.
 pub fn rank(query: &str, candidates: &[SearchCandidate]) -> Vec<usize> {
-    let query = fold(query);
-    let words: Vec<&str> = query.split_whitespace().collect();
-    let mut scored: Vec<(u32, bool, usize)> = candidates
-        .iter()
-        .enumerate()
-        .filter_map(|(i, c)| {
-            let title = fold(&c.title);
-            let keywords = fold(&c.keywords);
-            words
-                .iter()
-                .try_fold(0, |sum, word| Some(sum + score(word, &title, &keywords)?))
-                .map(|total| (total, title.split_whitespace().ne(words.iter().copied()), i))
-        })
-        .collect();
-    scored.sort_unstable();
-    scored.into_iter().map(|(_, _, i)| i).collect()
+    SearchIndex::new(candidates).rank(query)
+}
+
+/// Candidates read once for the many searches of a search field, one per key typed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SearchIndex {
+    /// Title and keywords of each candidate, as [`fold`] gives them.
+    folded: Vec<(String, String)>,
+}
+
+impl SearchIndex {
+    pub fn new(candidates: &[SearchCandidate]) -> Self {
+        Self {
+            folded: (candidates.iter())
+                .map(|c| (fold(&c.title), fold(&c.keywords)))
+                .collect(),
+        }
+    }
+
+    /// [`rank`] of `query` among the candidates.
+    pub fn rank(&self, query: &str) -> Vec<usize> {
+        let query = fold(query);
+        let words: Vec<&str> = query.split_whitespace().collect();
+        let mut scored: Vec<(u32, bool, usize)> = (self.folded.iter().enumerate())
+            .filter_map(|(i, (title, keywords))| {
+                words
+                    .iter()
+                    .try_fold(0, |sum, word| Some(sum + score(word, title, keywords)?))
+                    .map(|total| (total, title.split_whitespace().ne(words.iter().copied()), i))
+            })
+            .collect();
+        scored.sort_unstable();
+        scored.into_iter().map(|(_, _, i)| i).collect()
+    }
 }
 
 /// Words a test is found by besides its file name: its name, description, tags, preconditions,

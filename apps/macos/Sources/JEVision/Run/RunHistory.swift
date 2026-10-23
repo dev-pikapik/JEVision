@@ -182,6 +182,20 @@ enum RunHistory {
     return days
   }
 
+  /// `days`, from `days(_:)`, cut down to the runs of tests whose name contains `query`, started
+  /// from `source` (any when `nil`): the runs are already sorted and their times read.
+  static func days(_ days: [Day], matching query: String, from source: RunSource?) -> [Day] {
+    let query = query.trimmingCharacters(in: .whitespaces)
+    guard !query.isEmpty || source != nil else { return days }
+    return days.compactMap { day in
+      var day = day
+      day.runs.removeAll {
+        (source != nil && $0.source != source) || (!query.isEmpty && !$0.report.test.localizedStandardContains(query))
+      }
+      return day.runs.isEmpty ? nil : day
+    }
+  }
+
   /// The open run once the list shows only runs started from `source`: it stays only while the
   /// list still has it, so the report beside the list is always of a run in it.
   static func selection(_ id: SavedRun.ID?, in runs: [SavedRun], from source: RunSource?) -> SavedRun.ID? {

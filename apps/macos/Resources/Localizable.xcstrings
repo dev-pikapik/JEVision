@@ -17646,6 +17646,16 @@
         }
       }
     },
+    "Reading the runs…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Читаю запуски…"
+          }
+        }
+      }
+    },
     "Reads an SQLite database" : {
       "localizations" : {
         "ru" : {
@@ -45272,6 +45282,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«suggestQuarantineAfter» равно %lld, а должно быть от 1 до %lld"
+          }
+        }
+      }
+    },
+    "project.retention.range" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” in “retention” is %lld; it must be from 1 to %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» в «retention» равно %lld, а должно быть от 1 до %lld"
           }
         }
       }

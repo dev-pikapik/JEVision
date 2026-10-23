@@ -8,7 +8,7 @@ struct ProjectView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var query = ""
+  @State private var search = SidebarSearch()
   @State private var renaming: ProjectItem?
   @State private var newName = ""
   @State private var newBoardName = ""
@@ -17,14 +17,13 @@ struct ProjectView: View {
   /// Open folders; the folders around the selected test open by themselves.
   @State private var expanded: Set<ProjectItem.ID> = []
 
-  private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
-
   var body: some View {
     @Bindable var project = project
+    @Bindable var search = search
     NavigationSplitView {
       Group {
         if project.sidebar == .runs {
-          RunsList(query: query)
+          RunsList(query: search.text)
         } else {
           testList
         }
@@ -54,7 +53,7 @@ struct ProjectView: View {
         }
       }
       .searchable(
-        text: $query, placement: .sidebar,
+        text: $search.text, placement: .sidebar,
         prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search tests"))
       .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
     } detail: {
@@ -149,7 +148,6 @@ struct ProjectView: View {
   private var testList: some View {
     @Bindable var project = project
     let shown = project.filtered(project.items)
-    let found = isSearching ? ProjectScanner.tests(in: shown, matching: query) : []
     let selection = Binding<ProjectItem.ID?>(
       get: { project.showsBoard ? project.boards.current.map(Self.boardTag) : project.selection },
       set: { id in
@@ -160,8 +158,8 @@ struct ProjectView: View {
         }
       })
     return List(selection: selection) {
-        if isSearching {
-          ForEach(found) { row($0, showsPath: true) }
+        if search.isSearching {
+          ForEach(search.found) { row($0, showsPath: true) }
         } else {
           if !project.items.isEmpty {
             Section {
@@ -183,7 +181,8 @@ struct ProjectView: View {
         }
       }
       // A fresh list for search results: reusing the tree's rows left a ghost of the selected one.
-      .id(isSearching)
+      .id(search.isSearching)
+      .onChange(of: shown, initial: true) { search.search(in: shown) }
       .onChange(of: project.selection, initial: true) {
         guard let id = project.selection else { return }
         var folder = ""
@@ -193,9 +192,9 @@ struct ProjectView: View {
         }
       }
       .overlay {
-        if isSearching, found.isEmpty {
-          ContentUnavailableView.search(text: query)
-        } else if !isSearching, project.filtersTests, shown.isEmpty {
+        if search.isSearching, search.found.isEmpty {
+          ContentUnavailableView.search(text: search.query)
+        } else if !search.isSearching, project.filtersTests, shown.isEmpty {
           ContentUnavailableView {
             Label("No tests match", systemImage: "line.3.horizontal.decrease.circle")
           } description: {
@@ -330,6 +329,70 @@ struct ProjectView: View {
 
   private func attempt(_ action: () throws -> Void) {
     do { try action() } catch { failure = error.localizedDescription }
+  }
+}
+
+/// The sidebar's search. What is typed shows at once; the tests it finds follow once typing
+/// pauses, ranked off the main thread, so a project of a thousand tests never holds up a letter.
+/// A search started for older text never replaces what a newer one found.
+@MainActor
+@Observable
+final class SidebarSearch {
+  /// What is typed in the search field.
+  var text = "" {
+    didSet { if text != oldValue { search(after: Self.pause) } }
+  }
+  /// What `found` was found for: the text typed, once its search is done; empty while the
+  /// sidebar shows the folders.
+  private(set) var query = ""
+  /// The tests that match `query`, best first.
+  private(set) var found: [ProjectItem] = []
+  /// The sidebar lists what was found instead of the folders.
+  var isSearching: Bool { !query.isEmpty }
+
+  /// How long typing pauses before the tests are looked through.
+  static let pause = Duration.milliseconds(120)
+
+  @ObservationIgnored private var items: [ProjectItem] = []
+  @ObservationIgnored private var work: Task<Void, Never>?
+  @ObservationIgnored private let rank: @Sendable ([ProjectItem], String) -> [ProjectItem]
+
+  init(rank: @escaping @Sendable ([ProjectItem], String) -> [ProjectItem] = ProjectScanner.tests(in:matching:)) {
+    self.rank = rank
+  }
+
+  /// Searches `items`, the tests the sidebar lists, from now on; again at once while searching.
+  func search(in items: [ProjectItem]) {
+    self.items = items
+    search(after: .zero)
+  }
+
+  private func search(after pause: Duration) {
+    work?.cancel()
+    let text = text
+    guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+      work = nil
+      query = ""
+      found = []
+      return
+    }
+    let items = items
+    let rank = rank
+    work = Task {
+      if pause > .zero { try? await Task.sleep(for: pause) }
+      guard !Task.isCancelled else { return }
+      let found = await Self.ranked(items, text, rank)
+      guard !Task.isCancelled else { return }
+      self.found = found
+      query = text
+    }
+  }
+
+  @concurrent
+  private nonisolated static func ranked(
+    _ items: [ProjectItem], _ text: String, _ rank: @Sendable ([ProjectItem], String) -> [ProjectItem]
+  ) async -> [ProjectItem] {
+    rank(items, text)
   }
 }
 

@@ -2,9 +2,11 @@
 //! empty or out-of-range parameters, malformed placeholders.
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use crate::data::{DataError, DataTable};
 use crate::element::{ELEMENT_ROLES, ElementCheck, ElementQuery, ElementRole, ElementState};
+use crate::env::Environments;
 use crate::issue::Issue;
 use crate::model::{
     AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, CheckOf, ClipboardAction,
@@ -320,6 +322,47 @@ fn whole_variable(text: &str) -> Option<&str> {
 /// the test file. A missing reference of a check block is expected before the first run, which
 /// saves the screen as that reference; other missing files stop the run at their block.
 pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
+    validate_in_with(flow, dir, &mut DiskCache::default())
+}
+
+/// What [`validate_in_with`] read from disk, so that checking many tests of a project reads
+/// each shared file once. Keep it only while none of those files can change.
+#[derive(Default)]
+pub struct DiskCache {
+    exists: HashMap<PathBuf, bool>,
+    inputs: HashMap<PathBuf, Vec<String>>,
+    unmet: HashMap<(PathBuf, String), Vec<Issue>>,
+    environments: HashMap<PathBuf, Result<Environments, String>>,
+    tables: HashMap<PathBuf, Result<DataTable, DataError>>,
+}
+
+impl DiskCache {
+    fn exists(&mut self, path: PathBuf) -> bool {
+        *self
+            .exists
+            .entry(path)
+            .or_insert_with_key(|path| path.exists())
+    }
+
+    pub(crate) fn environments(&mut self, dir: &Path) -> Result<&Environments, &str> {
+        (self.environments.entry(dir.to_path_buf()))
+            .or_insert_with(|| Environments::find(dir))
+            .as_ref()
+            .map_err(String::as_str)
+    }
+
+    /// Reads the table at `path` unless it has been read; [`DiskCache::table`] then gives it.
+    pub(crate) fn read_table(&mut self, path: &Path) -> &Result<DataTable, DataError> {
+        (self.tables.entry(path.to_path_buf())).or_insert_with(|| DataTable::load(path))
+    }
+
+    pub(crate) fn table(&self, path: &Path) -> Option<&DataTable> {
+        self.tables.get(path).and_then(|table| table.as_ref().ok())
+    }
+}
+
+/// [`validate_in`], reading files through `disk`.
+pub fn validate_in_with(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Issue> {
     let mut out = validate(flow);
     let checked = out.len();
     // Labels are checked where their files are; a label left is one whose file is missing.
@@ -339,7 +382,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             if is_relative_path(&r.image)
                 && placeholders(&r.image).is_empty()
                 && resource_id(&r.image).is_none()
-                && !dir.join(&r.image).exists()
+                && !disk.exists(dir.join(&r.image))
             {
                 saved_by_check.insert(r.image.as_str());
                 out.push(reference_not_saved(&b.id, &r.image));
@@ -357,7 +400,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             && placeholders(path).is_empty()
             && resource_id(path).is_none()
             && !saved_by_check.contains(path)
-            && !dir.join(path).exists()
+            && !disk.exists(dir.join(path))
         {
             if let Some(package) = package_of_path(path).filter(|_| field == "test") {
                 out.push(not_installed(block, &field, path, package));
@@ -373,9 +416,9 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     }
     for b in &blocks {
         if let BlockKind::RunTest { test, inputs, .. } = &b.kind {
-            out.extend(dependencies_unmet(dir, &b.id, test));
-            for name in block_inputs(dir, test) {
-                if !inputs.contains_key(&name) {
+            out.extend(dependencies_unmet(dir, &b.id, test, disk));
+            for name in block_inputs(dir, test, disk) {
+                if !inputs.contains_key(name) {
                     out.push(
                         Issue::warning("flow.input.missing")
                             .with("block", &b.id)
@@ -386,8 +429,8 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             }
         }
     }
-    out.extend(crate::env::validate_environment_values(flow, dir));
-    out.extend(crate::data::validate_data(flow, dir));
+    out.extend(crate::env::environment_issues(flow, dir, disk));
+    out.extend(crate::data::data_issues(flow, dir, disk));
     let elsewhere = crate::check::path_warnings(flow, dir, &out);
     out.extend(elsewhere);
     out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
@@ -396,7 +439,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
 
 /// The packages that the package in `path`, relative to `dir`, needs, or those need in turn, and
 /// that aren't installed in a version that fits; `block` is the step that runs it.
-fn dependencies_unmet(dir: &Path, block: &str, path: &str) -> Vec<Issue> {
+fn dependencies_unmet(dir: &Path, block: &str, path: &str, disk: &mut DiskCache) -> Vec<Issue> {
     let file = dir.join(path);
     let (Some(id), Some(blocks)) = (
         package_of_path(path).filter(|_| is_relative_path(path) && placeholders(path).is_empty()),
@@ -404,8 +447,9 @@ fn dependencies_unmet(dir: &Path, block: &str, path: &str) -> Vec<Issue> {
     ) else {
         return Vec::new();
     };
-    crate::package_files::unmet_in(blocks, id)
-        .into_iter()
+    (disk.unmet.entry((blocks.to_path_buf(), id.to_owned())))
+        .or_insert_with(|| crate::package_files::unmet_in(blocks, id))
+        .iter()
         .map(|found| {
             let p = |name| found.param(name).unwrap_or_default();
             let mut issue = Issue::error("flow.block.dependencyUnmet")
@@ -428,20 +472,24 @@ fn dependencies_unmet(dir: &Path, block: &str, path: &str) -> Vec<Issue> {
 
 /// Inputs the custom block in `path`, relative to `dir`, reads and has no default for; none for a
 /// test or a file that can't be read.
-fn block_inputs(dir: &Path, path: &str) -> Vec<String> {
+fn block_inputs<'a>(dir: &Path, path: &str, disk: &'a mut DiskCache) -> &'a [String] {
     if !is_block_path(path) || !is_relative_path(path) || !placeholders(path).is_empty() {
-        return Vec::new();
+        return &[];
     }
-    let defaults = crate::input_defaults(&dir.join(path));
-    std::fs::read_to_string(dir.join(path))
-        .ok()
-        .and_then(|text| crate::parse(&text).ok())
-        .map(|flow| {
-            let mut names = required_inputs(&flow);
-            names.retain(|name| !defaults.contains_key(name));
-            names
+    disk.inputs
+        .entry(dir.join(path))
+        .or_insert_with_key(|file| {
+            let defaults = crate::input_defaults(file);
+            std::fs::read_to_string(file)
+                .ok()
+                .and_then(|text| crate::parse(&text).ok())
+                .map(|flow| {
+                    let mut names = required_inputs(&flow);
+                    names.retain(|name| !defaults.contains_key(name));
+                    names
+                })
+                .unwrap_or_default()
         })
-        .unwrap_or_default()
 }
 
 /// A check block's reference that isn't there yet: the first run saves the screen as it.

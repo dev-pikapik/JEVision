@@ -70,6 +70,13 @@ pub struct BatchEntry {
     pub state: BatchState,
 }
 
+/// A test of a batch whose state changed, at its position in the batch.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BatchChange {
+    pub position: u32,
+    pub state: BatchState,
+}
+
 /// The tests of one run of several, with the tests they depend on placed before them.
 #[derive(uniffi::Object)]
 pub struct TestBatch {
@@ -89,7 +96,8 @@ impl TestBatch {
 
     /// The tests in the order they may run.
     pub fn entries(&self) -> Vec<BatchEntry> {
-        let batch = self.lock();
+        let mut batch = self.lock();
+        batch.take_changes();
         batch
             .tests()
             .iter()
@@ -100,16 +108,21 @@ impl TestBatch {
                 depends_on: t.depends_on.clone(),
                 added: t.added,
                 uses_screen: t.uses_screen,
-                state: match &t.state {
-                    TestState::Waiting => BatchState::Waiting {
-                        reason: batch.wait(i).unwrap_or(WaitingFor::Turn),
-                    },
-                    TestState::Running => BatchState::Running,
-                    TestState::Done(outcome) => BatchState::Done { outcome: *outcome },
-                    TestState::Blocked(blocker) => BatchState::Blocked {
-                        blocker: blocker.clone(),
-                    },
-                },
+                state: state(&batch, i),
+            })
+            .collect()
+    }
+
+    /// The tests whose state changed since the last call of this or of `entries`, in batch
+    /// order: what to redraw after a start or a finish, without copying every test again.
+    pub fn changes(&self) -> Vec<BatchChange> {
+        let mut batch = self.lock();
+        batch
+            .take_changes()
+            .into_iter()
+            .map(|i| BatchChange {
+                position: index(i),
+                state: state(&batch, i),
             })
             .collect()
     }
@@ -153,6 +166,19 @@ impl TestBatch {
         self.batch
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+fn state(batch: &Batch, i: usize) -> BatchState {
+    match &batch.tests()[i].state {
+        TestState::Waiting => BatchState::Waiting {
+            reason: batch.wait(i).unwrap_or(WaitingFor::Turn),
+        },
+        TestState::Running => BatchState::Running,
+        TestState::Done(outcome) => BatchState::Done { outcome: *outcome },
+        TestState::Blocked(blocker) => BatchState::Blocked {
+            blocker: blocker.clone(),
+        },
     }
 }
 
@@ -216,7 +242,21 @@ mod tests {
             }
         );
         assert_eq!(batch.start_next(), Some(0));
+        assert_eq!(
+            batch.changes(),
+            [BatchChange {
+                position: 0,
+                state: BatchState::Running
+            }]
+        );
         assert_eq!(batch.finish(0, TestOutcome::Failed), vec![1]);
+        let changes = batch.changes();
+        assert_eq!(
+            changes.iter().map(|c| c.position).collect::<Vec<_>>(),
+            [0, 1]
+        );
+        assert_eq!(changes[1].state, batch.entries()[1].state);
+        assert_eq!(batch.changes(), []);
         let BatchState::Blocked { blocker } = &batch.entries()[1].state else {
             panic!("the dependent is blocked");
         };

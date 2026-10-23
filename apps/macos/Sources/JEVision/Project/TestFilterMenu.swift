@@ -51,6 +51,7 @@ struct TestFilterMenu: View {
 
   var body: some View {
     @Bindable var project = project
+    let authors = project.authors
     Menu {
       Picker("Priority", selection: $project.filter.priority) {
         Text("Any").tag(Priority?.none)
@@ -69,8 +70,8 @@ struct TestFilterMenu: View {
       }
       Picker("Author", selection: $project.filter.author) {
         Text("Anyone").tag(String?.none)
-        if !project.authors.isEmpty { Divider() }
-        ForEach(project.authors, id: \.self) { Text($0).tag(String?.some($0)) }
+        if !authors.isEmpty { Divider() }
+        ForEach(authors, id: \.self) { Text($0).tag(String?.some($0)) }
       }
       Toggle("Flaky Only", isOn: $project.filter.flaky)
       Divider()

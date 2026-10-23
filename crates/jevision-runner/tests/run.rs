@@ -10,7 +10,7 @@ use jevision_runner::{
     RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, ScreenHolder, ScreenLock,
     Screenshot, ScrollDirection, ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage,
     VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, WindowPosition,
-    WindowSize, describe_in, html_in, junit_xml_in, prune_videos,
+    WindowSize, describe_in, html_in, junit_xml_in, rfc3339,
 };
 
 // The tests read reports in English whatever language the machine runs in.
@@ -3366,27 +3366,53 @@ fn a_failed_run_keeps_one_video_for_all_its_tries() {
 }
 
 #[test]
-fn old_videos_are_pruned_and_reports_stay() {
+fn a_run_prunes_old_runs_as_the_project_says_now_and_then() {
     let p = Project::new();
+    p.test(r#""a":{"type":"pressKeys","keys":"a"}"#, "a", 0);
     let now = SystemTime::now();
     let day = Duration::from_secs(24 * 60 * 60);
-    p.write(".jevision/runs/old/report.json", "{}")
-        .write(".jevision/runs/old/video.mp4", "movie")
-        .write(".jevision/runs/new/video.mp4", "movie")
-        .write(".jevision/runs/none/report.json", "{}");
-    std::fs::File::options()
-        .write(true)
-        .open(p.0.join(".jevision/runs/old/video.mp4"))
-        .unwrap()
-        .set_modified(now - 31 * day)
-        .unwrap();
+    let saved = |name: &str, days: u32| {
+        let report = format!(
+            r#"{{"format":1,"test":"X","file":"x.flow.json","app":"{APP}","startedAt":"{}","durationMs":1,"verdict":"passed","flaky":false,"attempts":[]}}"#,
+            rfc3339(now - day * days)
+        );
+        p.write(&format!(".jevision/runs/{name}/report.json"), report)
+            .write(&format!(".jevision/runs/{name}/{VIDEO_FILE}"), "movie")
+            .write(&format!(".jevision/runs/{name}/shots/1.png"), "png");
+    };
+    saved("ancient", 200);
+    saved("old", 40);
+    saved("recent", 10);
+    let runs = p.0.join(".jevision/runs");
+    let options = RunOptions {
+        keep_videos_for: Some(7 * day),
+        ..options()
+    };
 
-    assert_eq!(prune_videos(&p.0, 30 * day, now).unwrap(), 1);
-    assert!(!p.0.join(".jevision/runs/old/video.mp4").exists());
-    assert!(p.0.join(".jevision/runs/old/report.json").exists());
-    assert!(p.0.join(".jevision/runs/new/video.mp4").exists());
-    assert_eq!(prune_videos(&p.0, 30 * day, now).unwrap(), 0);
-    assert_eq!(prune_videos(&p.0.join("elsewhere"), day, now).unwrap(), 0);
+    // Without settings the project keeps runs 180 days and their videos and screenshots 30;
+    // the app keeps videos 7.
+    run_with(
+        &p,
+        &Fake::new(solid([0, 0, 0])),
+        RunControl::new(),
+        &options,
+    );
+    assert!(!runs.join("ancient").exists());
+    assert!(runs.join("old/report.json").exists());
+    assert!(!runs.join("old").join(VIDEO_FILE).exists());
+    assert!(!runs.join("old/shots").exists());
+    assert!(!runs.join("recent").join(VIDEO_FILE).exists());
+    assert!(runs.join("recent/shots/1.png").exists());
+
+    // Not after every run: the next one soon after leaves the runs alone.
+    saved("recent", 10);
+    run_with(
+        &p,
+        &Fake::new(solid([0, 0, 0])),
+        RunControl::new(),
+        &options,
+    );
+    assert!(runs.join("recent").join(VIDEO_FILE).exists());
 }
 
 #[test]

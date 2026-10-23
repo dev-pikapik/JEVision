@@ -195,7 +195,7 @@ struct FlowCanvas: View {
     let order = document.order
     let run = runs.marks(for: document) ?? (outcomes, nil)
     let environment = project.environments.current
-    let reads = document.flow.map { blockEnvReads(flow: $0) } ?? [:]
+    let reads = document.environmentReads
     return ForEach(layout.blocks, id: \.id) { laid in
       if let block = document.block(laid.id) {
         let item = CanvasItem.block(id: laid.id)

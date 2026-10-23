@@ -187,8 +187,12 @@ pub struct Run {
 impl Run {
     /// Reads the run saved in `dir`.
     pub fn load(dir: &Path) -> io::Result<Self> {
-        let text = fs::read_to_string(dir.join(REPORT_FILE))?;
-        let report: RunReport = serde_json::from_str(&text)
+        Self::parse(dir, &fs::read_to_string(dir.join(REPORT_FILE))?)
+    }
+
+    /// The run saved in `dir` with the report `text`.
+    pub(crate) fn parse(dir: &Path, text: &str) -> io::Result<Self> {
+        let report: RunReport = serde_json::from_str(text)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         if report.format > REPORT_FORMAT {
             return Err(io::Error::new(
@@ -413,6 +417,8 @@ impl Runner<'_> {
                 )
             })
             .unwrap_or_default();
+        // A project whose settings can't be read keeps all its runs.
+        let retention = settings.as_ref().ok().map(ProjectSettings::run_retention);
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
             let default_retries = settings?.retries;
@@ -622,9 +628,13 @@ impl Runner<'_> {
         let run = Run { dir, report };
         // The run itself is saved; failing here only leaves the next CI job an older result.
         let _ = crate::last_results::record(&project, &run);
-        if let Some(age) = options.keep_videos_for {
-            // Old videos only cost disk space; failing to delete one must not fail this run.
-            let _ = prune_videos(&project, age, SystemTime::now());
+        if let Some(retention) = &retention {
+            crate::saved::prune_after_run(
+                &project,
+                retention,
+                options.keep_videos_for,
+                SystemTime::now(),
+            );
         }
         self.events.send(&Event::RunFinished {
             verdict: run.report.verdict,
@@ -689,28 +699,6 @@ impl Runner<'_> {
         });
         report.attempts.push(attempt);
     }
-}
-
-/// Deletes the videos of the project's runs last written more than `age` before `now`; their
-/// reports and screenshots stay. Returns how many were deleted.
-pub fn prune_videos(project: &Path, age: Duration, now: SystemTime) -> io::Result<usize> {
-    let entries = match fs::read_dir(project.join(".jevision").join("runs")) {
-        Ok(entries) => entries,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
-        Err(e) => return Err(e),
-    };
-    let mut deleted = 0;
-    for entry in entries {
-        let video = entry?.path().join(VIDEO_FILE);
-        let Ok(written) = fs::metadata(&video).and_then(|m| m.modified()) else {
-            continue;
-        };
-        if now.duration_since(written).is_ok_and(|old| old > age) {
-            fs::remove_file(&video)?;
-            deleted += 1;
-        }
-    }
-    Ok(deleted)
 }
 
 /// A vision model problem as a localizable failure: the error's code and values, with the
@@ -825,7 +813,7 @@ fn row_hash(secrets: &HashMap<String, String>, table: &DataTable, row: usize) ->
 }
 
 /// SHA-256 of a test file's bytes in hex: runs with the same hash ran the same test.
-fn content_hash(bytes: &[u8]) -> String {
+pub fn content_hash(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     Sha256::digest(bytes)
         .iter()
@@ -3567,7 +3555,7 @@ fn relative(base: &Path, path: &Path) -> String {
 
 /// Makes `<project>/.jevision/runs/<YYYYMMDD-hhmmss>-<test>`, with a number added if two runs
 /// start in the same second.
-fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<PathBuf> {
+pub fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<PathBuf> {
     let runs = project.join(".jevision").join("runs");
     fs::create_dir_all(&runs)?;
     let digits: String = started_at.chars().filter(char::is_ascii_digit).collect();
@@ -3691,7 +3679,7 @@ fn saved_runs(project: &Path) -> Vec<Vec<SavedRun>> {
 }
 
 /// UTC time as `2026-10-18T14:30:05.123Z`.
-pub(crate) fn rfc3339(time: SystemTime) -> String {
+pub fn rfc3339(time: SystemTime) -> String {
     let since = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let secs = since.as_secs() as i64;
     let (days, day_secs) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));

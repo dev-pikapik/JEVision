@@ -250,6 +250,7 @@ pub struct Attempt {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row: Option<DataRow>,
     /// In the order the blocks started.
+    #[serde(deserialize_with = "crate::saved::steps")]
     pub steps: Vec<Step>,
 }
 

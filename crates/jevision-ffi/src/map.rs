@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use jevision_core::{BlockKind, Point, Rect, Severity};
+use jevision_core::{BlockKind, DiskCache, Point, Rect, Severity};
 
 /// One test on the project map.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -32,9 +32,10 @@ pub struct MapTest {
 #[uniffi::export]
 pub fn project_map(project: String, tests: Vec<String>) -> Vec<MapTest> {
     let project = Path::new(&project);
+    let mut disk = DiskCache::default();
     tests
         .into_iter()
-        .map(|file| map_test(project, file))
+        .map(|file| map_test(project, file, &mut disk))
         .collect()
 }
 
@@ -45,7 +46,7 @@ pub fn map_link_route(from: Rect, to: Rect, others: Vec<Rect>) -> Vec<Point> {
     jevision_core::route_around(&from, &to, &others)
 }
 
-fn map_test(project: &Path, file: String) -> MapTest {
+fn map_test(project: &Path, file: String, disk: &mut DiskCache) -> MapTest {
     let path = project.join(&file);
     let flow = std::fs::read_to_string(&path)
         .ok()
@@ -74,7 +75,7 @@ fn map_test(project: &Path, file: String) -> MapTest {
         }
     }
     let folder = path.parent().unwrap_or(project);
-    let mut issues = jevision_core::validate_in(&flow, folder);
+    let mut issues = jevision_core::validate_in_with(&flow, folder, disk);
     issues.extend(jevision_core::dependency_issues(&flow, project, &file));
     let errors = issues
         .iter()

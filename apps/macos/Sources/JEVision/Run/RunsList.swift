@@ -11,7 +11,7 @@ struct RunsList: View {
 
   var body: some View {
     @Bindable var project = project
-    let days = RunHistory.days(project.runs, matching: query, from: project.runSource)
+    let days = project.runDays(matching: query, from: project.runSource)
     let isFiltering = !query.trimmingCharacters(in: .whitespaces).isEmpty
     List(selection: $project.selectedRun) {
       if let test = healthTest {
@@ -50,6 +50,8 @@ struct RunsList: View {
     .overlay {
       if days.isEmpty, !isFiltering, project.runSource == .ci {
         CIRunsUnavailable()
+      } else if project.runs.isEmpty, project.isLoadingRuns {
+        ProgressView("Reading the runs…")
       } else if project.runs.isEmpty {
         ContentUnavailableView {
           Label("No runs yet", systemImage: "clock.arrow.circlepath")
@@ -67,7 +69,7 @@ struct RunsList: View {
       }
     }
     .onDeleteCommand {
-      if let id = project.selectedRun, let run = project.runs.first(where: { $0.id == id }) { trash(run) }
+      if let run = project.runIndex.run(project.selectedRun) { trash(run) }
     }
     .alert(
       "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
@@ -81,7 +83,7 @@ struct RunsList: View {
   /// the selected run.
   private var healthTest: String? {
     if let selection = project.selection, ProjectScanner.isTestFile(selection) { return selection }
-    return project.selectedRun.flatMap { id in project.runs.first { $0.id == id }?.report.file }
+    return project.runIndex.run(project.selectedRun)?.report.file
   }
 
   private func trash(_ run: SavedRun) {

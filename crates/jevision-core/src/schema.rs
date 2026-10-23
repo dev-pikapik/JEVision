@@ -1034,6 +1034,7 @@ mod tests {
     fn settings_samples() -> Vec<Sample> {
         let project = ProjectSettings {
             clean_home: true,
+            retention: None,
             retries: Some(2),
             quarantine: vec![
                 Quarantined {

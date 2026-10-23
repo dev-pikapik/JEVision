@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::issue::{Issue, json_problem};
 use crate::model::Flow;
-use crate::validate::{is_identifier, placeholder_fields, placeholders};
+use crate::validate::{DiskCache, is_identifier, placeholder_fields, placeholders};
 
 /// Name of the environments file in the project folder.
 pub const ENVIRONMENTS_FILE: &str = "jevision.environments.json";
@@ -248,6 +248,11 @@ pub fn env_reads(flow: &Flow) -> BTreeMap<String, Vec<String>> {
 /// Problems with the `${env.NAME}` values a test in the folder `dir` reads: values no
 /// environment of the project has are errors, values some environments lack are warnings.
 pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
+    environment_issues(flow, dir, &mut DiskCache::default())
+}
+
+/// [`validate_environment_values`], reading the environments through `disk`.
+pub(crate) fn environment_issues(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Issue> {
     let used: Vec<_> = used(flow)
         .into_iter()
         .filter(|(_, _, name)| *name != ENVIRONMENT_NAME)
@@ -255,7 +260,7 @@ pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
     if used.is_empty() {
         return Vec::new();
     }
-    let environments = match Environments::find(dir) {
+    let environments = match disk.environments(dir) {
         Ok(environments) => environments,
         Err(reason) => {
             return vec![

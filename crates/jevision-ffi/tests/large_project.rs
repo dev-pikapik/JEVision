@@ -16,9 +16,9 @@ use std::time::{Duration, Instant};
 use jevision_core::{Board, BoardNodeKind, Point};
 use jevision_core::{Flow, Rect, SearchCandidate, Slot};
 use jevision_ffi::{
-    add_to_board, board_with_contents, flaky_tests, lay_out_board, layout_flow, list_runs,
-    load_board, load_flow, map_link_route, move_on_board, project_map, rank_search, remove_block,
-    save_board, save_flow, sync_board_tests, validate_flow_in,
+    SearchIndex, add_to_board, board_with_contents, flaky_tests, lay_out_board, layout_flow,
+    list_runs, load_board, load_flow, map_link_route, move_on_board, project_map, rank_search,
+    remove_block, save_board, save_flow, sync_board_tests, validate_flow_in,
 };
 use serde_json::{Map, Value, json};
 
@@ -386,10 +386,12 @@ fn a_large_project(bounded: bool) {
         })
         .collect();
     timed("search as you type", Duration::from_secs(1), || {
+        let index = SearchIndex::new(candidates.clone());
         for query in [
             "t", "te", "tes", "test", "test n", "test nu", "test 42", "area-3",
         ] {
-            rank_search(query.into(), candidates.clone());
+            let ranked = rank_search(query.into(), candidates.clone());
+            assert_eq!(index.rank(query.into()), ranked);
         }
     });
 
@@ -424,6 +426,11 @@ fn an_empty_project_has_nothing_and_does_not_fail() {
     assert!(flaky_tests(Vec::new(), 0).is_empty());
     assert!(rank_search("anything".into(), Vec::new()).is_empty());
     assert!(rank_search(String::new(), Vec::new()).is_empty());
+    assert!(
+        SearchIndex::new(Vec::new())
+            .rank("anything".into())
+            .is_empty()
+    );
     let card = Rect {
         x: 0.0,
         y: 0.0,

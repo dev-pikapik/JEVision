@@ -15,8 +15,17 @@ struct LastRun {
 
   /// `file` is the test relative to the project; `pinned` the run a report sent the user here from.
   init(file: String, flow: Flow, runs: [SavedRun], pinned: SavedRun.ID?) {
-    own = Self.own(file, in: runs)
-    shown = runs.first { $0.id == pinned } ?? Self.ran(file, in: runs)
+    self.init(file: file, flow: flow, own: Self.own(file, in: runs), shown: runs.first { $0.id == pinned } ?? Self.ran(file, in: runs))
+  }
+
+  /// The same from the project's `runIndex`, without looking through the runs: for what redraws often.
+  init(file: String, flow: Flow, index: RunIndex, pinned: SavedRun.ID?) {
+    self.init(file: file, flow: flow, own: index.own(file), shown: index.run(pinned) ?? index.ran(file))
+  }
+
+  private init(file: String, flow: Flow, own: SavedRun?, shown: SavedRun?) {
+    self.own = own
+    self.shown = shown
     results = shown.map {
       Dictionary(uniqueKeysWithValues: blockResults(flow: flow, file: file, report: $0.report).map { ($0.block, $0) })
     } ?? [:]
@@ -32,7 +41,11 @@ struct LastRun {
   /// The newest run made here in which blocks of `file` ran: its own, or one of a test that ran it.
   static func ran(_ file: String, in runs: [SavedRun]) -> SavedRun? {
     runs.first { run in
-      run.isHere && (run.report.file == file || decidingAttempt(report: run.report)?.steps.contains { $0.test == file } == true)
+      guard run.isHere else { return false }
+      if run.report.file == file { return true }
+      // The deciding attempt is one of the attempts: the core is asked which only when one went into `file`.
+      guard run.report.attempts.contains(where: { $0.steps.contains { $0.test == file } }) else { return false }
+      return decidingAttempt(report: run.report)?.steps.contains { $0.test == file } == true
     }
   }
 

@@ -120,8 +120,9 @@ pub use profile::{
     profile_keychain_service,
 };
 pub use project::{
-    AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
-    PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
+    AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER,
+    MAX_RETENTION_DAYS, MAX_RETENTION_MB, MAX_RETENTION_RUNS, PROJECT_FILE, PROJECT_FORMAT,
+    ProjectSettings, QUARANTINE_DAYS, Quarantined, RunRetention, default_quarantine_until,
     shared_folder,
 };
 pub use recent::{
@@ -145,12 +146,12 @@ pub use schedule::{
     launch_agent_plist, load_schedules, parse_schedules, record_scheduled_run, save_schedules,
     schedule_agent_label, schedules_to_json,
 };
-pub use search::{SearchCandidate, rank, test_keywords};
+pub use search::{SearchCandidate, SearchIndex, rank, test_keywords};
 pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};
 pub use validate::{
-    MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, MAX_WINDOW_OFFSET, MAX_WINDOW_SIDE,
-    MIN_WINDOW_SIDE, required_inputs, required_secrets, saved_variables, unbreakable_placeholders,
-    validate, validate_in,
+    DiskCache, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, MAX_WINDOW_OFFSET,
+    MAX_WINDOW_SIDE, MIN_WINDOW_SIDE, required_inputs, required_secrets, saved_variables,
+    unbreakable_placeholders, validate, validate_in, validate_in_with,
 };
 
 /// File format version written by this build. Files with an older `format` are upgraded on read.

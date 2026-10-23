@@ -27,6 +27,9 @@ struct EditorView: View {
   /// Files in the test's notes folder that no note holds any more; looked at again as notes come and
   /// go and as files are attached to them or taken off.
   @State private var unusedNoteFiles: UnusedNoteFiles?
+  /// What the saved runs say about the test, worked out when the test or the runs change: not on
+  /// every redraw, which selecting a block makes.
+  @State private var lastRun: LastRun?
   @Environment(\.layoutDirection) private var layoutDirection
   @FocusState private var canvasFocused: Bool
   private let apps = AppCatalog.shared
@@ -68,11 +71,7 @@ struct EditorView: View {
   }
 
   private func editor(_ flow: Flow) -> some View {
-    let lastRun = project.rootURL.map {
-      LastRun(
-        file: RelativePath.from($0, to: document.url), flow: flow, runs: project.runs, pinned: document.reportRun)
-    }
-    return canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
+    canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
       .unmirrored()
       .safeAreaInset(edge: .top, spacing: 0) {
         if document.isReadOnly { ReadOnlyBar(id: blockPackageId(path: document.url.path)) }
@@ -155,6 +154,12 @@ struct EditorView: View {
       .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: document.drafter == nil)
       .animation(reduceMotion ? nil : .snappy, value: runs.result)
       .onChange(of: document.flow) { runs.clearMarks(of: document) }
+      .onChange(of: LastRunInputs(flow: flow, runs: project.runs, pinned: document.reportRun), initial: true) {
+        lastRun = project.rootURL.map {
+          LastRun(
+            file: RelativePath.from($0, to: document.url), flow: flow, index: project.runIndex, pinned: document.reportRun)
+        }
+      }
       .onChange(of: document.saveError) { _, error in
         if let error { AccessibilityNotification.Announcement(String(localized: "Changes aren’t saved: \(error)")).post() }
       }
@@ -812,6 +817,13 @@ struct ZoomBar: View {
 }
 
 /// How the test's newest run ended and how long ago; a click opens its report.
+/// What `LastRun` is worked out from; the runs compare at once while the list is the same one.
+private struct LastRunInputs: Equatable {
+  let flow: Flow
+  let runs: [SavedRun]
+  let pinned: SavedRun.ID?
+}
+
 private struct LastRunChip: View {
   @Environment(ProjectStore.self) private var project
   let run: SavedRun?

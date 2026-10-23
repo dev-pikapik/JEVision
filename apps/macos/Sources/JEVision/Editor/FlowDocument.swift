@@ -46,6 +46,8 @@ final class FlowDocument {
   private var blockIssues: [String?: [Issue]] = [:]
   private var steps: [String: Int] = [:]
   private var linked: Set<String> = []
+  /// The environment variables each block reads, by block id.
+  private(set) var environmentReads: [String: [String]] = [:]
   /// Why the last change couldn't be written to the file.
   private(set) var saveError: String?
   /// The last change needs a newer file format than every other test of the project has, and
@@ -556,6 +558,7 @@ final class FlowDocument {
     flow = new
     issues = check(new)
     layout = layoutFlow(flow: new)
+    environmentReads = blockEnvReads(flow: new)
     picked = picked.filter { item in
       switch item {
       case .block(let id): new.blocks.contains { $0.id == id }

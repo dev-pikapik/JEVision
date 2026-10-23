@@ -16,6 +16,7 @@ struct RunReportView: View {
   /// Tests the steps belong to, as they are now: for the blocks' descriptions.
   @State private var flows: [String: Flow] = [:]
   @State private var attempt = 0
+  @State private var shown = Shown()
   @State private var expanded: Set<UInt32> = []
   @State private var preview: URL?
   @State private var failure: String?
@@ -36,7 +37,8 @@ struct RunReportView: View {
         ProgressView()
       }
     }
-    .task(id: dir) { load() }
+    .task(id: dir) { await load() }
+    .onChange(of: attempt) { if let run { shown = Shown(run, attempt: attempt) } }
     .alert(
       "Something went wrong", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
       presenting: failure
@@ -45,33 +47,70 @@ struct RunReportView: View {
     } message: { Text($0) }
   }
 
-  private func load() {
+  /// A run's report and what it opens with, read off the main thread: a long run has thousands of steps.
+  private struct Loaded: Sendable {
+    let run: SavedRun
+    let attempt: Int
+    let shown: Shown
+    let expanded: Set<UInt32>
+    let flows: [String: Flow]
+  }
+
+  private func load() async {
     do {
-      let loaded = try loadRun(dir: dir)
-      run = loaded
-      player = RunVideoView.file(of: loaded).map(AVPlayer.init(url:))
-      attempt = Self.decidingIndex(loaded.report)
-      // A failure or a new reference is what the report is opened for: show it at once.
-      let new = decidingAttempt(report: loaded.report)?.steps.filter { $0.status == .baselineCreated }.map(\.seq) ?? []
-      expanded = Set(new + (RunHistory.failedStep(loaded.report).map { [$0.seq] } ?? []))
-      if let root = project.rootURL {
-        let files = Set(loaded.report.attempts.flatMap { $0.steps.map(\.test) } + [loaded.report.file])
-        flows = files.reduce(into: [:]) { flows, file in
-          let text = try? String(contentsOf: root.appending(path: file), encoding: .utf8)
-          flows[file] = text.flatMap { try? loadFlow(json: $0) }
-        }
-      }
+      let loaded = try await Self.read(dir, root: project.rootURL)
+      guard !Task.isCancelled else { return }
+      run = loaded.run
+      player = RunVideoView.file(of: loaded.run).map(AVPlayer.init(url:))
+      attempt = loaded.attempt
+      shown = loaded.shown
+      expanded = loaded.expanded
+      flows = loaded.flows
     } catch {
       loadError = RunHistory.reason(error)
     }
   }
 
+  @concurrent private nonisolated static func read(_ dir: String, root: URL?) async throws -> Loaded {
+    let run = try loadRun(dir: dir)
+    let attempt = decidingIndex(run.report)
+    // A failure or a new reference is what the report is opened for: show it at once.
+    let new = decidingAttempt(report: run.report)?.steps.filter { $0.status == .baselineCreated }.map(\.seq) ?? []
+    let expanded = Set(new + (RunHistory.failedStep(run.report).map { [$0.seq] } ?? []))
+    var flows: [String: Flow] = [:]
+    if let root {
+      let files = Set(run.report.attempts.flatMap { $0.steps.map(\.test) } + [run.report.file])
+      flows = files.reduce(into: [:]) { flows, file in
+        let text = try? String(contentsOf: root.appending(path: file), encoding: .utf8)
+        flows[file] = text.flatMap { try? loadFlow(json: $0) }
+      }
+    }
+    return Loaded(run: run, attempt: attempt, shown: Shown(run, attempt: attempt), expanded: expanded, flows: flows)
+  }
+
+  /// The steps of the try in view and what is drawn from them, worked out when the try changes
+  /// rather than on every redraw.
+  private struct Shown: Sendable {
+    var steps: [Step] = []
+    var depths: [Int] = []
+    var images: [URL] = []
+    var failed: [Step] = []
+
+    init() {}
+
+    init(_ run: SavedRun, attempt: Int) {
+      let attempts = run.report.attempts
+      steps = attempts.indices.contains(attempt) ? attempts[attempt].steps : []
+      depths = RunReportView.depths(steps.map(\.test), in: run.report.file)
+      images = steps.flatMap { StepImages(step: $0, in: run.url).all }
+      failed = steps.filter { $0.status == .failed }
+    }
+  }
+
   private func report(_ run: SavedRun) -> some View {
     let report = run.report
-    let steps = report.attempts.indices.contains(attempt) ? report.attempts[attempt].steps : []
     let row = report.attempts.indices.contains(attempt) ? report.attempts[attempt].row : nil
     let tries = report.attempts.indices.filter { report.attempts[$0].row == row }
-    let images = steps.flatMap { StepImages(step: $0, in: run.url).all }
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         ReportHeader(
@@ -89,7 +128,7 @@ struct RunReportView: View {
         }
         if !report.packages.isEmpty { UsedPackagesView(packages: report.packages) }
         if let player {
-          RunVideoView(player: player, steps: steps)
+          RunVideoView(player: player, steps: shown.steps)
         }
         if !report.rows.isEmpty {
           RowResults(report: report, shown: row?.number) { number in
@@ -120,14 +159,15 @@ struct RunReportView: View {
               .fixedSize()
             }
           }
-          if steps.isEmpty {
+          if shown.steps.isEmpty {
             Text("The test stopped before its first step.")
               .foregroundStyle(.secondary)
               .padding(.vertical, 8)
           } else {
-            let depths = Self.depths(steps.map(\.test), in: report.file)
-            VStack(spacing: 0) {
-              ForEach(Array(steps.enumerated()), id: \.element.seq) { index, step in
+            // Lazy: a long run's thousands of steps are made as they scroll into view.
+            LazyVStack(spacing: 0) {
+              ForEach(shown.steps.indices, id: \.self) { index in
+                let step = shown.steps[index]
                 if index > 0 { Divider().padding(.leading, 44) }
                 StepRow(
                   step: step, run: run, flow: flows[step.test], isExpanded: expanded.contains(step.seq),
@@ -138,12 +178,12 @@ struct RunReportView: View {
                     }
                   },
                   preview: { preview = $0 })
-                .padding(.leading, Double(depths[index]) * 24)
+                .padding(.leading, Double(shown.depths[index]) * 24)
                 .accessibilityRotorEntry(id: step.seq, in: stepsNamespace)
               }
             }
             .accessibilityRotor(Text("Failed Steps")) {
-              ForEach(steps.filter { $0.status == .failed }, id: \.seq) { step in
+              ForEach(shown.failed, id: \.seq) { step in
                 AccessibilityRotorEntry(
                   Text("Step \(Int(step.seq)), \(BlockInfo.title(step.blockType))"), id: step.seq, in: stepsNamespace)
               }
@@ -158,7 +198,7 @@ struct RunReportView: View {
       .frame(maxWidth: 960)
       .frame(maxWidth: .infinity)
     }
-    .quickLookPreview($preview, in: images)
+    .quickLookPreview($preview, in: shown.images)
     .navigationTitle(report.test)
     .navigationSubtitle(Text("Run Report"))
   }
@@ -166,7 +206,7 @@ struct RunReportView: View {
   /// Index of the try that decided the verdict, the one a report is opened for.
   /// How deep each step, given by the test it belongs to, runs inside other tests and custom
   /// blocks: 0 for the steps of `file` itself, 1 for those of a test it runs, and so on.
-  static func depths(_ tests: [String], in file: String) -> [Int] {
+  nonisolated static func depths(_ tests: [String], in file: String) -> [Int] {
     var running = [file]
     return tests.map { test in
       if let level = running.lastIndex(of: test) {
@@ -178,7 +218,7 @@ struct RunReportView: View {
     }
   }
 
-  static func decidingIndex(_ report: RunReport) -> Int {
+  nonisolated static func decidingIndex(_ report: RunReport) -> Int {
     let deciding = decidingAttempt(report: report)
     return report.attempts.lastIndex { $0.number == deciding?.number && $0.row == deciding?.row }
       ?? max(0, report.attempts.count - 1)

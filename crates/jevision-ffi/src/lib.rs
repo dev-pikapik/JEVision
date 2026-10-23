@@ -46,6 +46,7 @@ mod run;
 mod schedule;
 mod signin;
 mod stats;
+mod synthetic;
 mod vision;
 
 pub use about::*;
@@ -71,6 +72,7 @@ pub use resources::*;
 pub use run::*;
 pub use schedule::*;
 pub use stats::*;
+pub use synthetic::*;
 
 /// The text is not a readable test file.
 #[derive(Debug, thiserror::Error, uniffi::Error)]
@@ -479,8 +481,29 @@ pub fn unbreakable_placeholders(text: String) -> String {
 /// Indices of the candidates that match `query`, best first; all of them for an empty query.
 #[uniffi::export]
 pub fn rank_search(query: String, candidates: Vec<SearchCandidate>) -> Vec<u32> {
-    jevision_core::rank(&query, &candidates)
-        .into_iter()
+    positions(jevision_core::rank(&query, &candidates))
+}
+
+/// The candidates of a search field, sent once: [`SearchIndex::rank`] then ranks each query
+/// typed as [`rank_search`] does, without sending them again.
+#[derive(uniffi::Object)]
+pub struct SearchIndex(jevision_core::SearchIndex);
+
+#[uniffi::export]
+impl SearchIndex {
+    #[uniffi::constructor]
+    pub fn new(candidates: Vec<SearchCandidate>) -> Self {
+        Self(jevision_core::SearchIndex::new(&candidates))
+    }
+
+    /// Indices of the candidates that match `query`, best first; all of them for an empty query.
+    pub fn rank(&self, query: String) -> Vec<u32> {
+        positions(self.0.rank(&query))
+    }
+}
+
+fn positions(indices: Vec<usize>) -> Vec<u32> {
+    (indices.into_iter())
         .filter_map(|i| u32::try_from(i).ok())
         .collect()
 }

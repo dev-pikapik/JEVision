@@ -7,8 +7,9 @@ use std::path::Path;
 use jevision_l10n::tr;
 
 use jevision_core::{
-    AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETRIES, PROJECT_FILE,
-    ProjectSettings, Quarantined, Rect, RunMode, default_quarantine_until,
+    AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETENTION_DAYS, MAX_RETENTION_MB,
+    MAX_RETENTION_RUNS, MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect, RunMode,
+    RunRetention, default_quarantine_until,
 };
 
 /// The project settings file can't be read or written, or the change isn't allowed.
@@ -40,6 +41,22 @@ pub struct ProjectSettings {
     pub run_modes: Vec<FolderRunMode>,
     #[uniffi(default = false)]
     pub clean_home: bool,
+    /// How long saved runs are kept; `None` keeps them as [`default_run_retention`] says.
+    #[uniffi(default = None)]
+    pub retention: Option<RunRetention>,
+}
+
+/// How long the saved runs of a project are kept; a limit that is `None` doesn't apply.
+#[uniffi::remote(Record)]
+pub struct RunRetention {
+    /// Runs older than this many days are deleted.
+    pub max_age_days: Option<u32>,
+    /// Only this many of the newest runs of each test are kept.
+    pub max_runs_per_test: Option<u32>,
+    /// Videos and screenshots older than this many days are deleted; the report stays.
+    pub media_max_age_days: Option<u32>,
+    /// The oldest runs are deleted while all of them together take more megabytes than this.
+    pub max_total_mb: Option<u32>,
 }
 
 /// What a project can choose an AI for.
@@ -139,6 +156,49 @@ pub fn set_default_retries(
         s.retries = retries;
         Ok(())
     })
+}
+
+/// Sets how long the project keeps its saved runs; `None` for the defaults of
+/// [`default_run_retention`]. Returns the saved settings.
+#[uniffi::export]
+pub fn set_run_retention(
+    project: String,
+    retention: Option<RunRetention>,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.set_retention(retention)
+            .map_err(|reason| ProjectSettingsError::Rejected { reason })
+    })
+}
+
+/// How long the project keeps its saved runs: as set, otherwise the defaults.
+#[uniffi::export]
+pub fn run_retention(settings: &ProjectSettings) -> RunRetention {
+    settings.run_retention()
+}
+
+/// How long a project keeps its saved runs when its settings don't say.
+#[uniffi::export]
+pub fn default_run_retention() -> RunRetention {
+    RunRetention::default()
+}
+
+/// The largest numbers of days, runs per test and megabytes a project may keep runs for.
+#[uniffi::export]
+pub fn run_retention_limits() -> RunRetentionLimits {
+    RunRetentionLimits {
+        days: MAX_RETENTION_DAYS,
+        runs_per_test: MAX_RETENTION_RUNS,
+        megabytes: MAX_RETENTION_MB,
+    }
+}
+
+/// The largest values of a [`RunRetention`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct RunRetentionLimits {
+    pub days: u32,
+    pub runs_per_test: u32,
+    pub megabytes: u32,
 }
 
 /// Lets the project's screenshots go only to AI models on this computer, or to any. Returns
@@ -303,6 +363,44 @@ fn change(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn how_long_runs_are_kept_is_saved_and_checked() {
+        let dir =
+            std::env::temp_dir().join(format!("jevision-ffi-retention-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = dir.to_string_lossy().into_owned();
+        let settings = project_settings(project.clone()).unwrap();
+        assert_eq!(settings.retention, None);
+        assert_eq!(run_retention(&settings), default_run_retention());
+
+        let keep = RunRetention {
+            max_age_days: Some(90),
+            max_runs_per_test: None,
+            media_max_age_days: Some(7),
+            max_total_mb: Some(2048),
+        };
+        let saved = set_run_retention(project.clone(), Some(keep)).unwrap();
+        assert_eq!(run_retention(&saved), keep);
+        assert_eq!(project_settings(project.clone()).unwrap(), saved);
+
+        let limits = run_retention_limits();
+        let too_long = RunRetention {
+            max_age_days: Some(limits.days + 1),
+            ..keep
+        };
+        assert!(matches!(
+            set_run_retention(project.clone(), Some(too_long)),
+            Err(ProjectSettingsError::Rejected { .. })
+        ));
+        assert_eq!(project_settings(project.clone()).unwrap(), saved);
+        assert_eq!(
+            set_run_retention(project.clone(), None).unwrap().retention,
+            None
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn changes_are_saved_and_a_broken_file_is_kept() {
