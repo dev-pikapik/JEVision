@@ -571,7 +571,7 @@ impl<'a> Generator<'a> {
                 let roots: Vec<usize> = (0..self.folders.len())
                     .filter(|&i| self.folders[i].depth < self.spec.depth)
                     .collect();
-                (!self.rng.chance(0.25)).then(|| *self.rng.pick(&roots))
+                (!roots.is_empty() && !self.rng.chance(0.25)).then(|| *self.rng.pick(&roots))
             };
         }
     }
@@ -1472,6 +1472,33 @@ mod tests {
         let mut out = BTreeMap::new();
         walk(dir, dir, &mut out);
         out
+    }
+
+    #[test]
+    fn single_level_projects_never_choose_a_parent_from_an_empty_list() {
+        let root = scratch("single-level");
+        for seed in 0..8 {
+            let dir = root.join(seed.to_string());
+            let summary = write_synthetic_project(
+                dir.display().to_string(),
+                SyntheticSpec {
+                    seed,
+                    tests: 4,
+                    folders: 2,
+                    depth: 1,
+                    reports: 3,
+                    ..small()
+                },
+            )
+            .unwrap();
+            assert_eq!(summary.tests.len(), 4);
+            assert_eq!(summary.depth, 1);
+            assert_eq!(summary.reports, 3);
+            for file in summary.tests {
+                jevision_core::parse(&fs::read_to_string(dir.join(file)).unwrap()).unwrap();
+            }
+        }
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
