@@ -54,6 +54,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   ) throws(HandsError) {
     let url = try appURL(app)
     if start != .asUsual, !terminate(Self.runningApps(app)), !isCancelled() { throw .StillRunning(app: app) }
+    guard !isCancelled() else { return }
     let running: NSRunningApplication?
     switch start {
     case .asUsual: running = try launch(url, arguments: arguments, environment: environment, newInstance: Self.startsCopy(app))
@@ -173,8 +174,7 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   public func quit(app: String) throws(HandsError) {
-    // An app that asks to save changes stays open; the run goes on.
-    _ = terminate(Self.runningApps(app))
+    guard terminate(Self.runningApps(app)) || isCancelled() else { throw .StillRunning(app: app) }
   }
 
   /// Asks the apps to quit and waits up to 10 s; false if one stays open, e.g. to ask whether to

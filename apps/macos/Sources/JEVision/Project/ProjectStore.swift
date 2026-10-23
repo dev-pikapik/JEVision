@@ -125,7 +125,7 @@ final class ProjectStore {
   @ObservationIgnored private var shownDays: (stamp: Int, query: String, source: RunSource?, days: [RunHistory.Day])?
   /// The quarantine of each test, and the threshold, as the settings say until `until`.
   @ObservationIgnored private var quarantined: (until: Date, byTest: [String: Quarantined], threshold: Int)?
-  @ObservationIgnored private var accessedURL: URL?
+  @ObservationIgnored private(set) var accessedURL: URL?
   @ObservationIgnored private nonisolated(unsafe) var runSavedObserver: (any NSObjectProtocol)?
   @ObservationIgnored private(set) var summaryTask: Task<Void, Never>?
   @ObservationIgnored private let defaults: UserDefaults

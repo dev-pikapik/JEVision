@@ -102,7 +102,7 @@ struct RunVideoView: View {
   }
 
   /// `m:ss` of a moment in the video.
-  static func clock(_ seconds: Double) -> String {
+  nonisolated static func clock(_ seconds: Double) -> String {
     let whole = Int(seconds.isFinite ? max(seconds, 0) : 0)
     return String(format: "%d:%02d", whole / 60, whole % 60)
   }
