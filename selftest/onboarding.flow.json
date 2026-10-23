@@ -54,21 +54,27 @@
       "next": "screenRecording"
     },
     "screenRecording": {
-      "type": "check",
-      "element": {
-        "id": "permissions.screenRecording",
-        "is": "titleEquals",
-        "to": "Allowed"
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "permissions.screenRecording",
+          "is": "titleEquals",
+          "to": "Allowed"
+        }
       },
+      "timeout": "10s",
       "next": "accessibility"
     },
     "accessibility": {
-      "type": "check",
-      "element": {
-        "id": "permissions.accessibility",
-        "is": "titleEquals",
-        "to": "Allowed"
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "permissions.accessibility",
+          "is": "titleEquals",
+          "to": "Allowed"
+        }
       },
+      "timeout": "10s",
       "next": "toAI"
     },
     "toAI": {

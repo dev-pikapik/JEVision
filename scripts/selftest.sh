@@ -10,6 +10,8 @@
 #
 #   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)"   the certificate the build is signed
 #                                          with; default: the first one in the Keychain
+#   JEVISION_SELFTEST_QUIT_KEYS=cmd+q      override quit keys when a keyboard utility remaps them
+#   JEVISION_SELFTEST_CLOSE_KEYS=cmd+w     override close-window keys for the same reason
 #   JEVISION_SELFTEST_SCREEN_LOCK=folder   take this folder as a lock while the test uses the screen,
 #                                          for people or tools that share one Mac (waits for a free lock)
 #   JEVISION_SELFTEST_WORK=folder          the working folder of the run, new or empty; default:
@@ -134,6 +136,32 @@ if [ "$(screen_locked)" != false ]; then
 fi
 
 ditto selftest "$PROJECT"
+# Only the disposable copy uses host-specific shortcuts; the source project stays portable.
+if [ -n "${JEVISION_SELFTEST_QUIT_KEYS:-}${JEVISION_SELFTEST_CLOSE_KEYS:-}" ]; then
+  swift - "$PROJECT" "${JEVISION_SELFTEST_QUIT_KEYS:-cmd+q}" "${JEVISION_SELFTEST_CLOSE_KEYS:-cmd+w}" <<'SWIFT'
+import Foundation
+let folder = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+let shortcuts = ["cmd+q": CommandLine.arguments[2], "cmd+w": CommandLine.arguments[3]]
+for file in try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+where file.lastPathComponent.hasSuffix(".flow.json") {
+  var test = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as! [String: Any]
+  guard var blocks = test["blocks"] as? [String: [String: Any]] else { continue }
+  var changed = false
+  for (id, var block) in blocks where block["type"] as? String == "pressKeys" {
+    if let keys = block["keys"] as? String, let replacement = shortcuts[keys], replacement != keys {
+      block["keys"] = replacement
+      blocks[id] = block
+      changed = true
+    }
+  }
+  if changed {
+    test["blocks"] = blocks
+    try JSONSerialization.data(withJSONObject: test, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+      .write(to: file, options: .atomic)
+  }
+}
+SWIFT
+fi
 # Examples and their reference images are changed by the tests (accepting a new reference), so
 # every run has its own copy.
 ditto examples "$WORK/examples"
