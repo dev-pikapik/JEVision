@@ -56,4 +56,5 @@ xcodebuild -create-xcframework \
 
 cp -R crates/jevision-ffi/swift/. "$PACKAGE/"
 rm -rf "$WORK"
+printf '%s\n' "$PROFILE" > "$PACKAGE/.build-profile"
 echo "==> Done: $PACKAGE"

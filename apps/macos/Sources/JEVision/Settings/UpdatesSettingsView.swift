@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 import SwiftUI
 
 /// Settings → Updates: which version this is, and how JEVision updates itself.
@@ -24,7 +25,9 @@ struct UpdatesSettingsView: View {
         footer(
           updates.isAvailable
             ? Text("JEVision installs only updates signed by the JEVision project, and never an older version than the one you have.")
-            : Text("This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub."))
+            : Profile.current.isolated
+              ? Text("Not available in a separate profile: updates are for the copy of JEVision you use every day.")
+              : Text("This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub."))
       }
       if updates.isAvailable {
         Section {

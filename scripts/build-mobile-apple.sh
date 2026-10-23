@@ -55,4 +55,5 @@ for target in "${TARGETS[@]}"; do ARGS+=(-library "target/$target/$PROFILE/$LIB"
 xcodebuild -create-xcframework "${ARGS[@]}" -output "$XCFRAMEWORK" >/dev/null
 
 rm -rf "$WORK"
+printf '%s\n' "$PROFILE" > "$FRAMEWORKS/.build-profile"
 echo "==> Done: $XCFRAMEWORK and $GENERATED/JEVisionMobile.swift"
