@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Settings language",
   "description": "Switches the language in Settings from English to Russian and back while JEVision runs: the label of the Language setting changes at once, without a restart.",

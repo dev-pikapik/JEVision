@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Add a line found by accessibility",
   "description": "Opens a copy of note.txt in TextEdit, waits for its text, adds a line in the text area found by accessibility, checks the text and quits TextEdit. It needs no reference picture, so it passes the first time, in light and dark mode alike.",

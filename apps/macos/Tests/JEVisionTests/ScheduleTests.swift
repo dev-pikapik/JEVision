@@ -262,7 +262,7 @@ struct ScheduleAgentsTests {
   @Test func aSeparateProfileLeavesThePersonsJobsAlone() throws {
     let home = try scratch()
     let project = try scratch()
-    let calls = Calls()
+    let calls = FakeLaunchd()
     var agents = try agents(in: home, calls: calls)
     let schedules = [daily("Nightly", at: 3, 0)]
     try agents.install(project, schedules: schedules)
@@ -502,25 +502,28 @@ struct ScheduleUndoTests {
     let project = try scratch()
     let (schedules, _) = try schedules(project)
     let undo = undoManager()
-    var replaces = false
-    var asked = 0
+    @MainActor final class Decision {
+      var replaces = false
+      var asked = 0
+    }
+    let decision = Decision()
     let ask: FileUndo.Ask = { _, _ in
-      asked += 1
-      return replaces
+      decision.asked += 1
+      return decision.replaces
     }
     try await save([daily("Nightly", at: 3, 0)], in: schedules, "Add Schedule", undo, ask: ask).value
     try saveProjectSchedules(project: project.path, schedules: [daily("Hourly", at: 4, 0)])
 
     undo.undo()
-    #expect(asked == 1)
+    #expect(decision.asked == 1)
     #expect(try projectSchedules(project: project.path).map(\.name) == ["Hourly"])
 
     try await save([daily("Nightly", at: 3, 0)], in: schedules, "Edit Schedule", undo, ask: ask).value
     try saveProjectSchedules(project: project.path, schedules: [daily("Weekly", at: 5, 0)])
-    replaces = true
+    decision.replaces = true
     undo.undo()
     try await settled(schedules)
-    #expect(asked == 2)
+    #expect(decision.asked == 2)
     #expect(try projectSchedules(project: project.path).map(\.name) == ["Hourly"])
     #expect(schedules.all.map(\.name) == ["Hourly"])
   }

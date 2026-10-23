@@ -165,7 +165,7 @@ echo "Self-test of $SUBJECT"
 echo "Working folder $WORK"
 START=$(date +%s)
 set +e
-"$JEVISION" run "${RUN[@]}" \
+JEVISION_PROFILE="$WORK/driver-profile" "$JEVISION" run "${RUN[@]}" \
   --through-app --app "$DRIVER" \
   --app-copy "$BUNDLE_ID=$SUBJECT" \
   --project "$PROJECT" --env selftest --lang en \

@@ -53,6 +53,19 @@ struct ScaleUIBenchmarkTests {
       }
     }
 
+    /// Async views load on the main actor too; yield between draws so their tasks can run.
+    func settleAsync(limit: Duration = .seconds(30), until done: () -> Bool) async {
+      let deadline = ContinuousClock.now + limit
+      var quiet = 0
+      while ContinuousClock.now < deadline {
+        let before = Self.mainCPU()
+        draw()
+        quiet = Self.mainCPU() - before < 1 ? quiet + 1 : 0
+        if quiet >= 4, done() { return }
+        try? await Task.sleep(for: .milliseconds(50))
+      }
+    }
+
     func close() {
       window.contentView = nil
       window.close()

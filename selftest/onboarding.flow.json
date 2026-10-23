@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Onboarding",
   "description": "The first launch with an empty profile: the welcome window goes through its steps, back once, shows both permissions as allowed, and closes onto the main window without a project.",

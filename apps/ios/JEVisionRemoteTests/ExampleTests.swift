@@ -9,22 +9,26 @@ struct ExampleSessionTests {
     return (session, try await session.listProjects()[0].name)
   }
 
-  /// Follows the run to its end and returns its events.
-  private func follow(_ session: any MacSession, _ project: String, _ run: String) async throws -> [RunEvent] {
-    var events: [RunEvent] = []
-    for try await update in session.runEvents(project: project, run: run) {
-      if case .event(let event) = update { events.append(event) }
-    }
-    return events
+  /// Follows the run to its end, including the final status of a run that ended before watching.
+  private func follow(_ session: any MacSession, _ project: String, _ run: String) async throws -> [RunUpdate] {
+    var updates: [RunUpdate] = []
+    for try await update in session.runEvents(project: project, run: run) { updates.append(update) }
+    return updates
   }
 
   @Test func aRunPlaysEveryRowToItsReport() async throws {
     let (session, project) = try await open(step: 0.01)
     let run = try await session.runTest(project: project, path: ExampleProject.people, row: nil)
 
-    let events = try await follow(session, project, run)
+    let updates = try await follow(session, project, run)
 
-    guard case .finished(.passed, _) = events.last else { Issue.record("ended with \(String(describing: events.last))"); return }
+    #expect(updates.contains { update in
+      switch update {
+      case .event(.finished(.passed, _)): true
+      case .status(let status): status.state == .finished && status.verdict == .passed
+      default: false
+      }
+    })
     let report = try await session.report(project: project, run: run)
     #expect(report.verdict == .passed)
     #expect(report.requestedBy == "Test iPhone")
@@ -32,6 +36,19 @@ struct ExampleSessionTests {
     #expect(report.attempts.allSatisfy { $0.steps.count == 4 })
     let tests = try await session.listTests(project: project)
     #expect(tests.first { $0.path == ExampleProject.people }?.lastRun?.run == run)
+  }
+
+  @Test func watchingAnAlreadyFinishedRunStartsWithItsFinalStatus() async throws {
+    let (session, project) = try await open(step: 0)
+    let run = try await session.runTest(project: project, path: ExampleProject.people, row: nil)
+    let updates = try await follow(session, project, run)
+    guard case .status(let status) = updates.first else {
+      Issue.record("A late watcher needs the saved status")
+      return
+    }
+    #expect(status.state == .finished && status.verdict == .passed)
+    #expect(updates.count == 1)
+    #expect(try await session.report(project: project, run: run).attempts.count == 3)
   }
 
   @Test func signInFailsAtItsCheckWithBothPictures() async throws {
@@ -83,10 +100,10 @@ struct ExampleModelTests {
     #expect(example.isExample && !model.isExample)
     #expect(example.lock.isUnlocked && example.hosts == [ExampleClient.mac])
     #expect(try await example.session(for: ExampleClient.mac).permission == .run)
-    #expect(model.hosts.isEmpty && store.load().isEmpty)
+    #expect(model.hosts.isEmpty && store.load().hosts.isEmpty)
 
     await example.forget(ExampleClient.mac)
-    #expect(example.hosts.isEmpty && !example.storageFailed)
+    #expect(example.hosts.isEmpty && example.storageProblem == nil)
   }
 
   @Test func pairingARealMacClosesTheExample() async throws {
