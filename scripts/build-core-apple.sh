@@ -22,6 +22,7 @@ LIB=libjevision_ffi.a
 OUT=build/apple
 PACKAGE=$OUT/JEVisionCore
 WORK=$OUT/work
+STAGED=$WORK/package
 
 case $PROFILE in
   release) CARGO_PROFILE=(--release) ;;
@@ -35,8 +36,8 @@ for target in "${TARGETS[@]}"; do
   cargo build --locked -p jevision-ffi --lib ${CARGO_PROFILE[@]+"${CARGO_PROFILE[@]}"} --target "$target"
 done
 
-rm -rf "$OUT"
-mkdir -p "$WORK/include" "$PACKAGE/Sources/JEVisionCore"
+rm -rf "$WORK"
+mkdir -p "$WORK/include" "$STAGED/Sources/JEVisionCore" "$PACKAGE"
 
 echo "==> Generating Swift bindings"
 cargo run --locked -q -p jevision-ffi --features bindgen --bin uniffi-bindgen-swift -- \
@@ -44,7 +45,7 @@ cargo run --locked -q -p jevision-ffi --features bindgen --bin uniffi-bindgen-sw
   --headers --modulemap \
   --module-name JEVisionCoreFFI --modulemap-filename module.modulemap
 cargo run --locked -q -p jevision-ffi --features bindgen --bin uniffi-bindgen-swift -- \
-  "target/${TARGETS[0]}/$PROFILE/$LIB" "$PACKAGE/Sources/JEVisionCore" --swift-sources
+  "target/${TARGETS[0]}/$PROFILE/$LIB" "$STAGED/Sources/JEVisionCore" --swift-sources
 
 echo "==> Creating JEVisionCoreFFI.xcframework"
 LIBS=()
@@ -52,9 +53,13 @@ for target in "${TARGETS[@]}"; do LIBS+=("target/$target/$PROFILE/$LIB"); done
 lipo -create "${LIBS[@]}" -output "$WORK/$LIB"
 xcodebuild -create-xcframework \
   -library "$WORK/$LIB" -headers "$WORK/include" \
-  -output "$PACKAGE/JEVisionCoreFFI.xcframework" >/dev/null
+  -output "$STAGED/JEVisionCoreFFI.xcframework" >/dev/null
 
-cp -R crates/jevision-ffi/swift/. "$PACKAGE/"
+cp -R crates/jevision-ffi/swift/. "$STAGED/"
+printf '%s\n' "$PROFILE" > "$STAGED/.build-profile"
+# Leave unchanged sources and the SwiftPM cache in place. A core implementation change must
+# relink its clients, but must not recompile an identical generated Swift API.
+rsync -rlc --delete --exclude .build --exclude .swiftpm "$STAGED/" "$PACKAGE/"
+touch "$PACKAGE/.build-stamp"
 rm -rf "$WORK"
-printf '%s\n' "$PROFILE" > "$PACKAGE/.build-profile"
 echo "==> Done: $PACKAGE"

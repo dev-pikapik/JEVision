@@ -34,7 +34,7 @@ These need your Apple account or your repository settings, so no script does the
       `cargo test --workspace`, `PROFILE=debug scripts/build-core-apple.sh`,
       `swift test --package-path build/apple/JEVisionCore`,
       `python3 apps/macos/scripts/check-localization.py`,
-      `swift build --package-path apps/macos`, `swift test --package-path apps/macos`, and the
+      `swift build --package-path apps/macos`, `swift test --package-path apps/macos --no-parallel`, and the
       iPhone app builds for the simulator (`xcodebuild -project apps/ios/JEVisionRemote.xcodeproj
       -scheme JEVisionRemote -destination 'generic/platform=iOS Simulator' ARCHS=arm64 build`).
 - [ ] The self-test is green: `scripts/selftest.sh` (needs an unlocked screen and the permissions

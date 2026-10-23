@@ -113,8 +113,9 @@ jobs:
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision fmt --check selftest
       - name: Self-test project is valid
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision validate selftest
+      # AppKit and application preferences are process-wide and shared by these UI tests.
       - name: Test app
-        run: swift test --package-path apps/macos
+        run: swift test --package-path apps/macos --no-parallel
 
   ios-app:
     name: iPhone app

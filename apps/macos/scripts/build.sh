@@ -24,7 +24,7 @@ ARCHS=${ARCHS:-arm64 x86_64}
 ROOT=../..
 CORE=$ROOT/build/apple/JEVisionCore
 FFI=$CORE/JEVisionCoreFFI.xcframework/macos-arm64_x86_64
-STAMP=$CORE/JEVisionCoreFFI.xcframework/Info.plist
+STAMP=$CORE/.build-stamp
 if [ ! -f "$STAMP" ] || [ "$(cat "$CORE/.build-profile" 2>/dev/null || true)" != "${PROFILE:-release}" ] || [ -n "$(find "$ROOT/crates" "$ROOT/Cargo.toml" "$ROOT/Cargo.lock" -newer "$STAMP" -print -quit)" ]; then
   "$ROOT/scripts/build-core-apple.sh"
 fi
