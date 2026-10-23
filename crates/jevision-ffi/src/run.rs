@@ -10,8 +10,8 @@ use jevision_core::{
     WindowPosition, WindowSize,
 };
 use jevision_runner::{
-    AppStart, CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot,
-    StepStatus, UsedPackage, Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
+    AppStart, CiOrigin, PauseReason, PixelArea, Provider, RetryVerdict, RunControl, Runner,
+    Screenshot, StepStatus, UsedPackage, Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
 use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
@@ -337,6 +337,11 @@ pub struct RunOptions {
     /// name, and JEV, which finds elements a test describes in words.
     #[uniffi(default = None)]
     pub providers: Option<Arc<dyn ProviderSettings>>,
+    /// The [`VisionProvider::id`](crate::VisionProvider) of the JEV route that finds the
+    /// elements a test describes in words; `None` or a provider that can't find them is JEV
+    /// itself.
+    #[uniffi(default = None)]
+    pub finder: Option<String>,
     /// Where AI calls are logged and the spending limits they are held to; `None` logs
     /// nothing and limits nothing.
     #[uniffi(default = None)]
@@ -474,7 +479,7 @@ pub(crate) fn run(
     let locator = options
         .providers
         .as_ref()
-        .map(|p| NamedJudge::new(jevision_runner::Provider::Jev, p));
+        .map(|p| NamedJudge::new(finder(&options), p));
     let runner = Runner {
         hands: &hands,
         secrets: &secrets,
@@ -496,6 +501,17 @@ pub(crate) fn run(
             reason: e.to_string(),
         },
     }
+}
+
+/// The JEV route that finds the elements a test describes in words: the one `options` name,
+/// else JEV itself.
+fn finder(options: &RunOptions) -> Provider {
+    options
+        .finder
+        .as_deref()
+        .and_then(Provider::from_id)
+        .filter(|p| p.is_jev())
+        .unwrap_or(Provider::Jev)
 }
 
 fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
@@ -1761,6 +1777,21 @@ pub(crate) mod tests {
         let rx = p.start_with(&TestRun::new(), Arc::new(Fake::default()), options);
         wait(&rx, Duration::from_secs(10));
         assert!(asked.0.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn described_elements_are_found_by_the_chosen_jev_route() {
+        let found_by = |name: Option<&str>| {
+            finder(&RunOptions {
+                finder: name.map(str::to_owned),
+                ..RunOptions::default()
+            })
+        };
+        assert_eq!(found_by(None), Provider::Jev);
+        assert_eq!(found_by(Some("jev-cloudflare")), Provider::JevCloudflare);
+        // Only a JEV route finds elements; any other name falls back to JEV itself.
+        assert_eq!(found_by(Some("openai")), Provider::Jev);
+        assert_eq!(found_by(Some("nope")), Provider::Jev);
     }
 
     #[test]

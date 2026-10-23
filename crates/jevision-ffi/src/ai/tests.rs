@@ -131,6 +131,7 @@ fn settings(model: &Model) -> VisionSettings {
         address: model.address.clone(),
         key: None,
         pictures: true,
+        account_id: String::new(),
     }
 }
 

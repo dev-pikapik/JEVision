@@ -1,11 +1,12 @@
 use std::io::{BufRead, BufReader, Read, Write};
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::thread;
 
 use super::*;
 
 const KEY: &str = "sk-test-0123456789abcdef";
+const ACCOUNT: &str = "0123456789abcdef0123456789abcdef";
 const SHOT: &[u8] = b"\x89PNG screenshot";
 const REFERENCE: &[u8] = b"\x89PNG reference";
 static SHOT_PICTURE: LazyLock<MaskedImage> =
@@ -20,6 +21,7 @@ fn config(provider: Provider, address: &str) -> Config {
         address: address.into(),
         key: provider.key_name().map(|_| KEY.to_owned()),
         pictures: true,
+        account_id: ACCOUNT.into(),
     }
 }
 
@@ -77,10 +79,14 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
         let c = config(provider, "http://localhost:9");
         let (url, body) = request(&c, &question());
         // JEV names its pictures instead of ordering them.
+        let input = match provider {
+            Provider::JevCloudflare => &body["input"],
+            _ => &body,
+        };
         let sent = match provider {
-            Provider::Jev => [JEV_SCREENSHOT, JEV_REFERENCE]
+            Provider::Jev | Provider::JevCloudflare => [JEV_SCREENSHOT, JEV_REFERENCE]
                 .iter()
-                .flat_map(|name| images(&body["assets"][name]))
+                .flat_map(|name| images(&input["assets"][name]))
                 .collect(),
             _ => images(&body),
         };
@@ -88,14 +94,15 @@ fn requests_carry_both_pictures_the_expectation_and_a_strict_answer_shape() {
         let text = body.to_string();
         assert!(text.contains("The cart shows 2 items"), "{provider:?}");
         assert!(!text.contains(KEY), "{provider:?} puts the key in the body");
-        if provider == Provider::Jev {
-            assert_eq!(body["questions"]["passed"]["type"], "noul");
+        if provider.is_jev() {
+            assert_eq!(input["questions"]["passed"]["type"], "noul");
         } else {
             assert!(text.contains("\"passed\"") && text.contains("\"reason\""));
         }
         let expected_url = match provider {
             Provider::Anthropic => "http://localhost:9/v1/messages",
             Provider::Jev => "http://localhost:9/v1/systemone",
+            Provider::JevCloudflare => &format!("http://localhost:9/accounts/{ACCOUNT}/ai/run"),
             Provider::Gemini => "http://localhost:9/v1beta/models/vision-model:generateContent",
             Provider::Ollama => "http://localhost:9/api/chat",
             _ => "http://localhost:9/chat/completions",
@@ -336,6 +343,7 @@ fn only_this_computer_counts_as_local() {
         Provider::OpenAi,
         Provider::Gemini,
         Provider::Jev,
+        Provider::JevCloudflare,
     ] {
         assert!(!local(cloud, ""));
     }
@@ -346,6 +354,50 @@ fn only_this_computer_counts_as_local() {
 struct Server {
     address: String,
     requests: Arc<Mutex<Vec<String>>>,
+}
+
+/// The head and body of the request the reader gets, as one text.
+fn read_request(reader: &mut BufReader<TcpStream>) -> String {
+    let mut head = String::new();
+    let mut length = 0;
+    loop {
+        let mut line = String::new();
+        reader.read_line(&mut line).unwrap();
+        if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+            length = v.trim().parse().unwrap();
+        }
+        head.push_str(&line);
+        if line == "\r\n" || line.is_empty() {
+            break;
+        }
+    }
+    let mut content = vec![0; length];
+    reader.read_exact(&mut content).unwrap();
+    head.push_str(&String::from_utf8_lossy(&content));
+    head
+}
+
+/// A server on this computer that promises all of `body` and drops the connection after the
+/// first `sent` bytes of it; its address.
+fn serve_cut(body: &str, sent: usize) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = format!("http://{}", listener.local_addr().unwrap());
+    let body = body.to_owned();
+    thread::spawn(move || {
+        let Ok((stream, _)) = listener.accept() else {
+            return;
+        };
+        let mut reader = BufReader::new(stream);
+        read_request(&mut reader);
+        let mut stream = reader.into_inner();
+        let _ = write!(
+            stream,
+            "HTTP/1.1 200 X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            &body[..sent]
+        );
+    });
+    address
 }
 
 fn serve(replies: Vec<(u16, String)>) -> Server {
@@ -359,23 +411,7 @@ fn serve(replies: Vec<(u16, String)>) -> Server {
                 return;
             };
             let mut reader = BufReader::new(stream);
-            let mut head = String::new();
-            let mut length = 0;
-            loop {
-                let mut line = String::new();
-                reader.read_line(&mut line).unwrap();
-                if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
-                    length = v.trim().parse().unwrap();
-                }
-                head.push_str(&line);
-                if line == "\r\n" || line.is_empty() {
-                    break;
-                }
-            }
-            let mut content = vec![0; length];
-            reader.read_exact(&mut content).unwrap();
-            head.push_str(&String::from_utf8_lossy(&content));
-            seen.lock().unwrap().push(head);
+            seen.lock().unwrap().push(read_request(&mut reader));
             let mut stream = reader.into_inner();
             let _ = write!(
                 stream,
@@ -642,20 +678,28 @@ fn a_box_on_the_padding_of_a_long_screenshot_is_off_the_screen() {
             r#"{{"answers": {{"visible": {{"noul": 0.9}}, "where": {{"box": {{"top": 0.1, "bottom": 0.3, "left": {left}, "right": {right}}}}}}}}}"#
         )
     };
-    let inside = located(&answer(0.1, 0.4), fill).unwrap().found.unwrap();
+    let inside = located(Provider::Jev, &answer(0.1, 0.4), fill)
+        .unwrap()
+        .found
+        .unwrap();
     assert_eq!(inside.area.x, 0.2);
     assert!((inside.area.width - 0.6).abs() < 1e-9);
     assert_eq!(inside.confidence, 0.9);
-    assert_eq!(located(&answer(0.6, 0.9), fill).unwrap().found, None);
+    assert_eq!(
+        located(Provider::Jev, &answer(0.6, 0.9), fill)
+            .unwrap()
+            .found,
+        None
+    );
     assert!(matches!(
-        located(&answer(0.4, 0.1), fill),
+        located(Provider::Jev, &answer(0.4, 0.1), fill),
         Err(VisionError::BadAnswer { .. })
     ));
 }
 
 #[test]
 fn only_jev_finds_elements_and_only_from_version_1_14() {
-    for provider in Provider::ALL.into_iter().filter(|p| *p != Provider::Jev) {
+    for provider in Provider::ALL.into_iter().filter(|p| !p.is_jev()) {
         let c = Client::new(
             config(provider, "http://127.0.0.1:9"),
             Duration::from_secs(1),
@@ -675,9 +719,24 @@ fn only_jev_finds_elements_and_only_from_version_1_14() {
         ..config(Provider::Jev, "http://127.0.0.1:9")
     };
     assert_eq!(locate(jev("jev-1.13.0")), VisionError::ModelCannotLocate);
-    for model in ["jev-1.14.0", "jev-2.0.1", "jev-latest", "jev-preview"] {
+    for model in [
+        "jev-1.14.0",
+        "jev-2.0.1",
+        "jev-latest",
+        "jev-preview",
+        "typesafe/jev-1.14.0",
+    ] {
         assert!(jev_locates(model), "{model}");
     }
+    assert!(!jev_locates("typesafe/jev-1.13.0"));
+    let on_cloudflare = |model: &str| Config {
+        model: model.into(),
+        ..config(Provider::JevCloudflare, "http://127.0.0.1:9")
+    };
+    assert_eq!(
+        locate(on_cloudflare("typesafe/jev-1.13.0")),
+        VisionError::ModelCannotLocate
+    );
     assert_eq!(
         locate(Config {
             pictures: false,
@@ -713,4 +772,508 @@ fn jev_says_how_sure_it_is_in_each_language() {
         ),
         "JEV (TypeSafe AI) умеет только проверять снимки экрана"
     );
+}
+
+#[test]
+fn jev_through_cloudflare_sends_what_typesafe_gets_wrapped_with_the_model_beside_it() {
+    let direct = request(&config(Provider::Jev, ""), &question()).1;
+    let (url, body) = request(&config(Provider::JevCloudflare, ""), &question());
+    assert_eq!(
+        url,
+        format!("https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/ai/run")
+    );
+    let mut input = direct.clone();
+    input.as_object_mut().unwrap().remove("model");
+    assert_eq!(body, json!({ "model": "vision-model", "input": input }));
+
+    let (direct_url, direct, direct_fill) =
+        locate_request(&config(Provider::Jev, ""), &SHOT_PICTURE, "the Save button");
+    let (url, body, fill) = locate_request(
+        &config(Provider::JevCloudflare, ""),
+        &SHOT_PICTURE,
+        "the Save button",
+    );
+    assert_eq!(direct_url, "https://api.typesafe.ai/v1/systemone");
+    assert!(url.ends_with(&format!("/accounts/{ACCOUNT}/ai/run")));
+    assert_eq!(fill, direct_fill);
+    let mut input = direct.clone();
+    input.as_object_mut().unwrap().remove("model");
+    assert_eq!(body, json!({ "model": "vision-model", "input": input }));
+
+    // The account goes into the address as the dashboard shows it, whatever the case typed.
+    let shouted = Config {
+        account_id: format!(" {} ", ACCOUNT.to_ascii_uppercase()),
+        ..config(Provider::JevCloudflare, "")
+    };
+    assert!(request(&shouted, &question()).0.contains(ACCOUNT));
+
+    // The token, and nothing TypeSafe AI asks for.
+    assert_eq!(
+        headers(&config(Provider::JevCloudflare, "")),
+        [("authorization", format!("Bearer {KEY}"))]
+    );
+    let p = Provider::JevCloudflare;
+    assert_eq!(
+        (p.id(), p.name(), p.key_name(), p.account_name()),
+        (
+            "jev-cloudflare",
+            "JEV via Cloudflare",
+            Some("CLOUDFLARE_API_TOKEN"),
+            Some("CLOUDFLARE_ACCOUNT_ID")
+        )
+    );
+    assert!(p.needs_key() && !p.address_editable() && p.may_lack_pictures() && !p.converses());
+    assert_eq!(p.default_model(), "typesafe/jev-1.14.0");
+    assert!(
+        Provider::ALL
+            .into_iter()
+            .filter(|p| p.account_name().is_some())
+            .eq([Provider::JevCloudflare])
+    );
+}
+
+/// The request body of a request the server saw, parsed.
+fn sent_body(request: &str) -> Value {
+    serde_json::from_str(&request[request.find("\r\n\r\n").unwrap() + 4..]).unwrap()
+}
+
+#[test]
+fn recorded_answers_of_cloudflare_are_read_from_their_wrapping() {
+    let judged = answer(Provider::JevCloudflare, &fixture("cloudflare-jev.json")).unwrap();
+    assert!(judged.passed && judged.reason.contains("72%"), "{judged:?}");
+    assert_eq!(
+        judged.usage,
+        Usage {
+            input_tokens: 7761,
+            output_tokens: 20
+        }
+    );
+
+    let search = located(
+        Provider::JevCloudflare,
+        &fixture("cloudflare-jev-box.json"),
+        (1.0, 1.0),
+    )
+    .unwrap();
+    assert_eq!(
+        search.usage,
+        Usage {
+            input_tokens: 11102,
+            output_tokens: 36
+        }
+    );
+    let found = search.found.unwrap();
+    assert_eq!((found.area.x, found.area.y), (0.6, 0.75));
+    assert!((found.area.width - 0.27).abs() < 1e-9 && (found.area.height - 0.11).abs() < 1e-9);
+    assert_eq!(found.confidence, 0.25);
+
+    // Each route reads only its own shape: TypeSafe AI's answer is not wrapped, Cloudflare's is.
+    let bad = |e| matches!(e, Err(VisionError::BadAnswer { .. }));
+    for unwrapped in [fixture("jev.json"), fixture("jev-box.json")] {
+        assert!(bad(answer(Provider::JevCloudflare, &unwrapped).map(|_| ())));
+        assert!(bad(located(
+            Provider::JevCloudflare,
+            &unwrapped,
+            (1.0, 1.0)
+        )
+        .map(|_| ())));
+    }
+    for wrapped in [
+        fixture("cloudflare-jev.json"),
+        fixture("cloudflare-jev-box.json"),
+    ] {
+        assert!(bad(answer(Provider::Jev, &wrapped).map(|_| ())));
+        assert!(bad(located(Provider::Jev, &wrapped, (1.0, 1.0)).map(|_| ())));
+    }
+    assert!(!answer(Provider::Jev, &fixture("jev.json")).unwrap().passed);
+    assert!(
+        located(Provider::Jev, &fixture("jev-box.json"), (1.0, 1.0))
+            .unwrap()
+            .found
+            .is_some()
+    );
+}
+
+#[test]
+fn jev_through_cloudflare_over_http() {
+    let server = serve(vec![
+        (200, fixture("cloudflare-jev.json")),
+        (200, fixture("cloudflare-jev-box.json")),
+    ]);
+    let c = client(Provider::JevCloudflare, &server.address);
+    assert!(c.judge(&question()).unwrap().passed);
+    assert!(
+        c.locate(&SHOT_PICTURE, "the blue Save button")
+            .unwrap()
+            .found
+            .is_some()
+    );
+
+    let requests = server.requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 2);
+    for sent in &requests {
+        assert!(
+            sent.starts_with(&format!("POST /accounts/{ACCOUNT}/ai/run ")),
+            "{sent}"
+        );
+        let lower = sent.to_ascii_lowercase();
+        assert!(lower.contains(&format!(
+            "authorization: bearer {}",
+            KEY.to_ascii_lowercase()
+        )));
+        assert!(!lower.contains("typesafe-danger-zone-images"), "{sent}");
+        let text = &sent[sent.find("\r\n\r\n").unwrap() + 4..];
+        assert!(!text.contains(KEY), "the token goes in a header only");
+        let body = sent_body(sent);
+        assert_eq!(body["model"], "vision-model");
+        assert!(body.get("questions").is_none() && body["input"]["questions"].is_object());
+        assert!(images(&body).contains(&SHOT.to_vec()));
+    }
+}
+
+#[test]
+fn cloudflare_failures_say_what_to_fix() {
+    let no_balance = fixture("cloudflare-no-balance.json");
+    let denied = fixture("cloudflare-denied.json");
+    let model = VisionError::UnknownModel {
+        model: "vision-model".into(),
+    };
+    let failed = |status, message: &str| VisionError::Service {
+        status,
+        message: message.into(),
+    };
+    let cases = [
+        (402, no_balance, VisionError::CloudflareNoBalance, true),
+        (401, denied.clone(), VisionError::CloudflareAccess, false),
+        (403, denied, VisionError::CloudflareAccess, false),
+        (
+            400,
+            fixture("cloudflare-image-size.json"),
+            VisionError::PictureSize,
+            false,
+        ),
+        (404, fixture("cloudflare-unknown-model.json"), model, false),
+        (
+            400,
+            r#"{"result":null,"success":false,"errors":[{"code":7000,"message":"Bad input"}]}"#
+                .into(),
+            failed(400, "Bad input"),
+            false,
+        ),
+        (
+            500,
+            fixture("cloudflare-failed.json"),
+            failed(500, "Model execution failed (Internal Error)"),
+            true,
+        ),
+        // Said with a status of 200: the service failing all the same.
+        (
+            200,
+            fixture("cloudflare-failed.json"),
+            failed(502, "Model execution failed (Internal Error)"),
+            true,
+        ),
+        (
+            200,
+            fixture("cloudflare-no-balance.json"),
+            failed(
+                502,
+                "Insufficient balance; add money to your gateway or use BYOK",
+            ),
+            true,
+        ),
+    ];
+    for (status, body, expected, unavailable) in cases {
+        let server = serve(vec![(status, body.clone()), (status, body)]);
+        let c = client(Provider::JevCloudflare, &server.address);
+        for error in [
+            c.judge(&question()).unwrap_err(),
+            c.locate(&SHOT_PICTURE, "the Save button").unwrap_err(),
+        ] {
+            assert_eq!(error, expected, "status {status}");
+            assert_eq!(error.unavailable(), unavailable, "status {status}");
+        }
+    }
+
+    // Only Cloudflare's own failures are read this way: TypeSafe AI's 402 stays an error of its
+    // service, and a 401 there is still the key.
+    let direct = serve(vec![(402, "{}".into()), (401, "{}".into())]);
+    let c = client(Provider::Jev, &direct.address);
+    assert_eq!(c.judge(&question()).unwrap_err(), failed(402, "{}"));
+    assert_eq!(c.judge(&question()).unwrap_err(), VisionError::BadKey);
+}
+
+#[test]
+fn a_cut_answer_of_cloudflare_is_an_error_not_a_verdict() {
+    let body = fixture("cloudflare-jev.json").trim_end().to_owned();
+    // The connection drops with part of the answer on the wire.
+    for sent in [0, body.len() / 2, body.len() - 1] {
+        let address = serve_cut(&body, sent);
+        let error = client(Provider::JevCloudflare, &address)
+            .judge(&question())
+            .unwrap_err();
+        assert_eq!(error, VisionError::Unreachable { address }, "{sent} bytes");
+        assert!(error.unavailable());
+    }
+    // The answer is whole on the wire and cut in itself, wherever.
+    for cut in 0..body.len() {
+        assert!(
+            matches!(
+                answer(Provider::JevCloudflare, &body[..cut]),
+                Err(VisionError::BadAnswer { .. })
+            ),
+            "cut at {cut}"
+        );
+    }
+    let box_body = fixture("cloudflare-jev-box.json").trim_end().to_owned();
+    for cut in 0..box_body.len() {
+        assert!(
+            matches!(
+                located(Provider::JevCloudflare, &box_body[..cut], (1.0, 1.0)),
+                Err(VisionError::BadAnswer { .. })
+            ),
+            "cut at {cut}"
+        );
+    }
+    let server = serve(vec![(200, body[..body.len() / 2].to_owned())]);
+    assert!(matches!(
+        client(Provider::JevCloudflare, &server.address).judge(&question()),
+        Err(VisionError::BadAnswer { .. })
+    ));
+}
+
+#[test]
+fn jev_through_cloudflare_needs_an_account_id_before_anything_is_sent() {
+    let server = serve(vec![
+        (200, fixture("cloudflare-jev.json")),
+        (200, fixture("cloudflare-jev.json")),
+    ]);
+    let with = |account: &str| {
+        Client::new(
+            Config {
+                account_id: account.into(),
+                ..config(Provider::JevCloudflare, &server.address)
+            },
+            Duration::from_secs(5),
+        )
+    };
+    assert_eq!(with("  ").judge(&question()), Err(VisionError::NoAccount));
+    assert_eq!(
+        with("").locate(&SHOT_PICTURE, "the Save button"),
+        Err(VisionError::NoAccount)
+    );
+    assert_eq!(with("").test(), Err(VisionError::NoAccount));
+    let wrong = [
+        "abc".to_owned(),
+        "g".repeat(32),
+        format!("{ACCOUNT}0"),
+        format!("dash.cloudflare.com/{ACCOUNT}"),
+        KEY.to_owned(),
+    ];
+    for account in &wrong {
+        let error = with(account).judge(&question()).unwrap_err();
+        assert_eq!(error, VisionError::BadAccount, "{account}");
+        // What was typed may be a secret that landed in the wrong field.
+        assert!(!format!("{error} {error:?}").contains(account));
+    }
+    assert!(server.requests.lock().unwrap().is_empty());
+
+    // As the dashboard shows it, in any case and with spaces around, it is sent.
+    assert!(
+        with(&format!(" {} ", ACCOUNT.to_ascii_uppercase()))
+            .judge(&question())
+            .is_ok()
+    );
+    assert!(with(ACCOUNT).judge(&question()).is_ok());
+    assert_eq!(server.requests.lock().unwrap().len(), 2);
+
+    // The others have no account to name.
+    for provider in Provider::ALL {
+        let c = Client::new(
+            Config {
+                account_id: String::new(),
+                ..config(provider, "")
+            },
+            Duration::from_secs(1),
+        );
+        assert_eq!(
+            c.ready().is_err(),
+            provider == Provider::JevCloudflare,
+            "{provider:?}"
+        );
+    }
+}
+
+#[test]
+fn the_token_never_shows_in_what_cloudflare_says() {
+    let said = |text: &str| {
+        format!(
+            r#"{{"result":null,"success":false,"errors":[{{"code":7000,"message":"{text}"}}],"messages":[]}}"#
+        )
+    };
+    let echo = format!("Bad input from {KEY}.");
+    let server = serve(vec![
+        (400, said(&echo)),
+        (429, said(&echo)),
+        (500, said(&echo)),
+        (200, said(&echo)),
+        (
+            200,
+            format!(r#"{{"result":{{"result":{{"answers":"{KEY}"}}}},"success":true}}"#),
+        ),
+    ]);
+    let c = client(Provider::JevCloudflare, &server.address);
+    let errors: Vec<VisionError> = (0..5).map(|_| c.judge(&question()).unwrap_err()).collect();
+    assert_eq!(
+        errors[0],
+        VisionError::Service {
+            status: 400,
+            message: format!("Bad input from {MASK}.")
+        }
+    );
+    assert!(matches!(&errors[1], VisionError::RateLimited { message } if message.contains(MASK)));
+    assert!(matches!(&errors[4], VisionError::BadAnswer { answer } if answer.contains(MASK)));
+    for e in &errors {
+        assert!(!format!("{e} {e:?}").contains(KEY), "{e:?}");
+    }
+    assert!(!format!("{:?}", c.config()).contains(KEY));
+}
+
+#[test]
+fn small_pictures_are_enlarged_for_cloudflare_before_they_are_sent() {
+    let png = image::Image {
+        width: 200,
+        height: 120,
+        rgba: [200, 30, 30, 255].repeat(200 * 120),
+    }
+    .encode()
+    .unwrap();
+    let small = MaskedImage::from_png(&png, &[]).unwrap();
+    let server = serve(vec![
+        (200, fixture("cloudflare-jev.json")),
+        (200, fixture("cloudflare-jev-box.json")),
+    ]);
+    let c = client(Provider::JevCloudflare, &server.address);
+    c.judge(&Question {
+        screenshot: &small,
+        reference: None,
+        ..question()
+    })
+    .unwrap();
+    c.locate(&small, "the red area").unwrap();
+    for sent in server.requests.lock().unwrap().iter() {
+        let pictures = images(&sent_body(sent));
+        assert_eq!(pictures.len(), 1);
+        let picture = image::Image::decode(&pictures[0]).unwrap();
+        // Cloudflare answers "Invalid image dimensions" for a side under 280; this is the shape
+        // of the small one, grown as a whole.
+        assert_eq!((picture.width, picture.height), (467, 280));
+    }
+}
+
+/// Asks the real JEV 1.14 through Cloudflare Workers AI about a drawn window: a yes, a no, a
+/// search and the settings check, four paid requests, and the two failures a wrong token and a
+/// wrong account give, which cost nothing. Run by hand, the secrets in the environment:
+/// `cargo test -p jevision-vision -- --ignored --nocapture real_jev`.
+#[test]
+#[ignore = "asks the real JEV through Cloudflare, which costs money and needs CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID"]
+fn real_jev_through_cloudflare() {
+    let (Ok(key), Ok(account)) = (
+        std::env::var("CLOUDFLARE_API_TOKEN"),
+        std::env::var("CLOUDFLARE_ACCOUNT_ID"),
+    ) else {
+        eprintln!(
+            "skipped: set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to ask the real JEV through Cloudflare"
+        );
+        return;
+    };
+    // A grey window with a title bar and a blue button with a white label at the bottom right.
+    let (width, height) = (640usize, 480usize);
+    let mut rgba = [235, 235, 235, 255].repeat(width * height);
+    let mut fill = |x: std::ops::Range<usize>, y: std::ops::Range<usize>, rgb: [u8; 3]| {
+        for y in y {
+            for x in x.clone() {
+                rgba[(y * width + x) * 4..][..3].copy_from_slice(&rgb);
+            }
+        }
+    };
+    fill(60..300, 80..120, [60, 60, 60]);
+    fill(400..560, 360..420, [10, 90, 240]);
+    fill(440..520, 385..395, [255, 255, 255]);
+    let png = image::Image {
+        width: width as u32,
+        height: height as u32,
+        rgba,
+    }
+    .encode()
+    .unwrap();
+    let picture = MaskedImage::from_png(&png, &[]).unwrap();
+    let config = Config {
+        provider: Provider::JevCloudflare,
+        model: Provider::JevCloudflare.default_model().into(),
+        address: String::new(),
+        key: Some(key),
+        pictures: true,
+        account_id: account,
+    };
+    let c = Client::new(config.clone(), TIMEOUT);
+    let started = std::time::Instant::now();
+    let ask = |expect| {
+        let began = std::time::Instant::now();
+        let judgement = c.judge(&Question {
+            expect,
+            screenshot: &picture,
+            reference: None,
+            model: "",
+        });
+        eprintln!("{:.1}s: {judgement:?}", began.elapsed().as_secs_f32());
+        judgement
+    };
+    let yes = ask("A blue button at the bottom right of a grey window.");
+    let no = ask("A red circle on a black background.");
+    let began = std::time::Instant::now();
+    let search = c.locate(&picture, "the blue button");
+    eprintln!("{:.1}s: {search:?}", began.elapsed().as_secs_f32());
+    let check = c.test();
+    eprintln!("settings check: {check:?}");
+
+    let yes = yes.unwrap();
+    assert!(yes.passed && yes.usage.input_tokens > 0, "{yes:?}");
+    assert!(!no.unwrap().passed);
+    let search = search.unwrap();
+    assert!(search.usage.input_tokens > 0, "{search:?}");
+    let found = search.found.expect("JEV sees the button");
+    let (x, y) = (
+        found.area.x + found.area.width / 2.0,
+        found.area.y + found.area.height / 2.0,
+    );
+    // The button: 400..560 of 640 across, 360..420 of 480 down.
+    assert!(
+        (0.625..0.875).contains(&x) && (0.75..0.875).contains(&y),
+        "{found:?}"
+    );
+    check.unwrap();
+    eprintln!("all in {:.1}s", started.elapsed().as_secs_f32());
+
+    // What a person sees for a wrong token and for another account's number.
+    let wrong = |config: Config| {
+        Client::new(config, TIMEOUT)
+            .judge(&Question {
+                expect: "A blue button.",
+                screenshot: &picture,
+                reference: None,
+                model: "",
+            })
+            .unwrap_err()
+    };
+    let token = wrong(Config {
+        key: Some("x".repeat(40)),
+        ..config.clone()
+    });
+    assert_eq!(token, VisionError::CloudflareAccess);
+    let other = wrong(Config {
+        account_id: "0".repeat(32),
+        ..config
+    });
+    assert_eq!(other, VisionError::CloudflareAccess);
 }

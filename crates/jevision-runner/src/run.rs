@@ -3707,6 +3707,37 @@ mod tests {
     use super::*;
 
     #[test]
+    fn cloudflare_failures_read_as_sentences_in_each_language() {
+        let judge = jevision_vision::Client::new(
+            jevision_vision::Config {
+                provider: Provider::JevCloudflare,
+                model: Provider::JevCloudflare.default_model().into(),
+                address: String::new(),
+                key: None,
+                pictures: true,
+                account_id: String::new(),
+            },
+            crate::TIMEOUT,
+        );
+        for (e, part) in [
+            (VisionError::NoAccount, "JEV via Cloudflare"),
+            (VisionError::BadAccount, "Account ID"),
+            (VisionError::CloudflareAccess, "Account ID"),
+            (VisionError::CloudflareNoBalance, "AI Gateway"),
+            (VisionError::PictureSize, "Cloudflare"),
+        ] {
+            let failure = vision_failure(&judge, &e);
+            for lang in ["en", "ru"] {
+                let text = crate::describe_vision_in(lang, &failure);
+                assert!(
+                    text.contains(part) && !text.contains("%@"),
+                    "{lang}: {text}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn utc_timestamps() {
         let t = UNIX_EPOCH + Duration::from_millis(1_700_000_000_123);
         assert_eq!(rfc3339(t), "2023-11-14T22:13:20.123Z");

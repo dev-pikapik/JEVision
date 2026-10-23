@@ -119,15 +119,69 @@ struct AISettingsTests {
     #expect(try setProjectAi(project: path, task: .screen, choice: nil).aiScreen == nil)
   }
 
-  @Test func everyProviderCanBeChosen() {
+  @Test func everyProviderCanBeChosen() throws {
     let providers = AISettings.providers
-    #expect(providers.map(\.name) == ["Anthropic", "OpenAI", "Google Gemini", "JEV (TypeSafe AI)", "Ollama", "LM Studio", "OpenAI-compatible server"])
+    #expect(
+      providers.map(\.name) == [
+        "Anthropic", "OpenAI", "Google Gemini", "JEV (TypeSafe AI)", "JEV via Cloudflare", "Ollama", "LM Studio",
+        "OpenAI-compatible server",
+      ])
     // Cloud services need a key; local servers list their models.
     for provider in providers where provider.needsKey {
       #expect(!provider.keyVariable.isEmpty && provider.defaultAddress.hasPrefix("https://"))
     }
     #expect(providers.filter(\.listsModels).map(\.id) == ["ollama", "lmstudio", "openai-compatible"])
-    #expect(providers.filter(\.mayLackPictures).map(\.id) == ["jev", "ollama", "lmstudio", "openai-compatible"])
+    #expect(providers.filter(\.mayLackPictures).map(\.id) == ["jev", "jev-cloudflare", "ollama", "lmstudio", "openai-compatible"])
+    #expect(providers.filter(\.findsElements).map(\.id) == ["jev", "jev-cloudflare"])
+    #expect(providers.filter { !$0.accountVariable.isEmpty }.map(\.id) == ["jev-cloudflare"])
+    let cloudflare = try #require(AISettings.provider("jev-cloudflare"))
+    #expect(cloudflare.keyVariable == "CLOUDFLARE_API_TOKEN" && cloudflare.accountVariable == "CLOUDFLARE_ACCOUNT_ID")
+    #expect(cloudflare.defaultModel == "typesafe/jev-1.14.0" && !cloudflare.addressEditable)
+  }
+
+  @Test func cloudflareAccountComesFromTheEnvironmentOrSettings() throws {
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let variable = "CLOUDFLARE_ACCOUNT_ID"
+    let before = ProcessInfo.processInfo.environment[variable]
+    defer {
+      if let before { setenv(variable, before, 1) } else { unsetenv(variable) }
+    }
+    unsetenv(variable)
+    let ai = AISettings(defaults)
+    let cloudflare = try #require(AISettings.provider("jev-cloudflare"))
+    let jev = try #require(AISettings.provider("jev"))
+    #expect(ai.accountID(for: cloudflare).isEmpty)
+    #expect(ai.settings(provider: "jev-cloudflare")?.accountId == "")
+
+    let saved = String(repeating: "a", count: 32)
+    let fromEnvironment = String(repeating: "b", count: 32)
+    defaults.set(saved, forKey: AISettings.accountKey("jev-cloudflare"))
+    #expect(ai.settings(provider: "jev-cloudflare")?.accountId == saved)
+    setenv(variable, fromEnvironment, 1)
+    #expect(ai.accountID(for: cloudflare) == fromEnvironment)
+    // Providers without an account never get one.
+    #expect(ai.accountID(for: jev).isEmpty)
+  }
+
+  @Test func elementsAreFoundByTheChosenJEVRoute() throws {
+    let suite = "jevision-tests-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let ai = AISettings(defaults)
+    #expect(ai.finderID() == AISettings.defaultFinder)
+    defaults.set("jev-cloudflare", forKey: AISettings.finderKey)
+    #expect(ai.finderID() == "jev-cloudflare")
+    // A JEV route that checks by meaning also finds elements.
+    defaults.set("jev", forKey: AISettings.providerKey)
+    #expect(ai.finderID() == "jev")
+    defaults.set("anthropic", forKey: AISettings.providerKey)
+    #expect(ai.finderID() == "jev-cloudflare")
+    #expect(ai.finderID(main: "jev") == "jev")
+    // Only a JEV route finds elements.
+    defaults.set("openai", forKey: AISettings.finderKey)
+    #expect(ai.finderID() == AISettings.defaultFinder)
   }
 }
 
@@ -137,13 +191,14 @@ struct VisionTextTests {
     "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey", "run.vision.badAddress", "run.vision.unreachable", "run.vision.timeout",
     "run.vision.badKey", "run.vision.unknownModel", "run.vision.rateLimited", "run.vision.serviceError",
     "run.vision.refused", "run.vision.badAnswer", "run.vision.limitReached", "run.vision.limitNear",
-    "run.vision.journalFailed", "run.vision.cannotLocate", "run.vision.modelCannotLocate",
+    "run.vision.journalFailed", "run.vision.cannotLocate", "run.vision.modelCannotLocate", "run.vision.noAccount",
+    "run.vision.badAccount", "run.vision.cloudflareAccess", "run.vision.cloudflareNoBalance", "run.vision.pictureSize",
   ]
 
   @Test func everyProblemHasItsOwnWords() {
     let params = [
       "provider": "Ollama", "model": "llava", "address": "http://localhost:11434", "seconds": "120", "status": "500",
-      "message": "Out of memory.", "answer": "maybe",
+      "message": "Out of memory.", "answer": "maybe", "account": "abc",
     ]
     var texts = Set<String>()
     for code in codes {

@@ -13,6 +13,8 @@ enum AIChoice: CaseIterable, Identifiable {
 
   var id: Self { self }
 
+  /// JEV straight from TypeSafe AI, or through the person's Cloudflare account.
+  static let jevRoutes = [AISettings.defaultFinder, "jev-cloudflare"]
   static let services = ["anthropic", "openai", "gemini"]
   static let localServers = ["ollama", "lmstudio"]
 
@@ -20,7 +22,7 @@ enum AIChoice: CaseIterable, Identifiable {
   init?(provider: String) {
     switch provider {
     case "": return nil
-    case AISettings.finder: self = .jev
+    case _ where Self.jevRoutes.contains(provider): self = .jev
     case _ where Self.localServers.contains(provider): self = .local
     default: self = .service
     }
@@ -31,7 +33,7 @@ enum AIChoice: CaseIterable, Identifiable {
   func provider(keeping saved: String, running: Set<String>) -> String {
     if AIChoice(provider: saved) == self { return saved }
     switch self {
-    case .jev: return AISettings.finder
+    case .jev: return Self.jevRoutes[0]
     case .service: return Self.services[0]
     case .local: return Self.localServers.first { running.contains($0) } ?? Self.localServers[0]
     }
@@ -188,7 +190,18 @@ struct AIStep: View {
 
   @ViewBuilder private func details(of choice: AIChoice) -> some View {
     switch choice {
-    case .jev: EmptyView()
+    case .jev:
+      Section {
+        Picker("Provider", selection: $providerID) {
+          ForEach(providerChoices(AIChoice.jevRoutes), id: \.id) { Text(verbatim: $0.name).tag($0.id) }
+        }
+        .pickerStyle(.segmented)
+      } footer: {
+        Text("Use a TypeSafe AI key, or reach JEV through Workers AI with your Cloudflare account.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
     case .service:
       Section {
         Picker("Service", selection: $providerID) {

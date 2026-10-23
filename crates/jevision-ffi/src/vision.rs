@@ -33,6 +33,11 @@ pub struct VisionProvider {
     pub lists_models: bool,
     /// The model may read only text; the user says whether it understands pictures.
     pub may_lack_pictures: bool,
+    /// The provider can find the elements tests describe in words.
+    pub finds_elements: bool,
+    /// Environment variable that can hold the account the requests go to; empty when the
+    /// provider needs none.
+    pub account_variable: String,
 }
 
 /// Which model to ask and how to reach it.
@@ -46,6 +51,9 @@ pub struct VisionSettings {
     pub key: Option<String>,
     /// The model understands pictures; checks that send screenshots stop when it doesn't.
     pub pictures: bool,
+    /// The account requests go to, for providers with a [`VisionProvider::account_variable`].
+    #[uniffi(default = "")]
+    pub account_id: String,
 }
 
 impl fmt::Debug for VisionSettings {
@@ -59,6 +67,7 @@ impl fmt::Debug for VisionSettings {
                 &self.key.as_ref().map(|_| jevision_runner::SECRET_MASK),
             )
             .field("pictures", &self.pictures)
+            .field("account_id", &self.account_id)
             .finish()
     }
 }
@@ -76,6 +85,7 @@ impl VisionSettings {
                 address: self.address.clone(),
                 key: self.key.clone(),
                 pictures: self.pictures,
+                account_id: self.account_id.clone(),
             },
             TIMEOUT,
         ))
@@ -138,6 +148,7 @@ impl NamedJudge {
                     address: s.address,
                     key: s.key,
                     pictures: s.pictures,
+                    account_id: s.account_id,
                 },
                 TIMEOUT,
             )
@@ -206,6 +217,8 @@ pub fn vision_providers() -> Vec<VisionProvider> {
             needs_key: p.needs_key(),
             lists_models: p.lists_models(),
             may_lack_pictures: p.may_lack_pictures(),
+            finds_elements: p.is_jev(),
+            account_variable: p.account_name().unwrap_or_default().into(),
         })
         .collect()
 }
@@ -402,6 +415,7 @@ pub(crate) mod tests {
             address: address.into(),
             key: key.map(Into::into),
             pictures: true,
+            account_id: String::new(),
         }
     }
 
@@ -415,6 +429,7 @@ pub(crate) mod tests {
                 "openai",
                 "gemini",
                 "jev",
+                "jev-cloudflare",
                 "ollama",
                 "lmstudio",
                 "openai-compatible"
@@ -444,7 +459,31 @@ pub(crate) mod tests {
             .filter(|p| p.may_lack_pictures)
             .map(|p| p.id)
             .collect();
-        assert_eq!(unsure, ["jev", "ollama", "lmstudio", "openai-compatible"]);
+        assert_eq!(
+            unsure,
+            [
+                "jev",
+                "jev-cloudflare",
+                "ollama",
+                "lmstudio",
+                "openai-compatible"
+            ]
+        );
+        let finders: Vec<_> = vision_providers()
+            .into_iter()
+            .filter(|p| p.finds_elements)
+            .map(|p| (p.id, p.account_variable))
+            .collect();
+        assert_eq!(
+            finders,
+            [
+                ("jev".to_owned(), String::new()),
+                (
+                    "jev-cloudflare".to_owned(),
+                    "CLOUDFLARE_ACCOUNT_ID".to_owned()
+                )
+            ]
+        );
         assert!(!vision_is_local(settings("nope", "", None)));
     }
 

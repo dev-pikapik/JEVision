@@ -86,7 +86,8 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
     let videos = VideoSettings.app
     return RunOptions(
       startAt: nil, retries: nil, vision: ai.settings(), localOnly: ai.localOnly, fallback: ai.fallback(),
-      providers: ai.namedProviders, usage: ai.usage, video: videos.mode, keepVideosDays: videos.keepDays,
+      providers: ai.namedProviders, finder: ai.finderID(), usage: ai.usage, video: videos.mode,
+      keepVideosDays: videos.keepDays,
       language: RunLanguage.app)
   }
 

@@ -592,7 +592,7 @@ fn parameters_are_checked() {
     assert_eq!(
         describe_in("en", &issues[10]),
         "Block “h”, field “reference.provider”: “skynet” isn’t an AI JEVision knows. Use one of: \
-         anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible."
+         anthropic, openai, gemini, jev, jev-cloudflare, ollama, lmstudio, openai-compatible."
     );
 }
 

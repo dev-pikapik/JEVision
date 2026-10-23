@@ -625,6 +625,9 @@ struct TargetEditor: View {
 
   private enum Way { case look, description, element, position, area }
 
+  /// The JEV route that finds elements, as the settings name it.
+  private var finderName: String { AISettings.provider(AISettings.app.finderID())?.name ?? "JEV" }
+
   private var way: Binding<Way> {
     Binding(
       get: {
@@ -702,8 +705,8 @@ struct TargetEditor: View {
       HStack(alignment: .firstTextBaseline) {
         Text(
           finderReady
-            ? "Describe the element in plain words. JEV (TypeSafe AI) finds it on the screen, and the pointer goes to its middle."
-            : "Finding an element by its description needs JEV (TypeSafe AI) and its API key."
+            ? "Describe the element in plain words. \(finderName) finds it on the screen, and the pointer goes to its middle."
+            : "Finding an element by its description needs \(finderName) to be set up."
         )
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -717,7 +720,10 @@ struct TargetEditor: View {
         }
       }
       .font(.callout)
-      .task { finderReady = AISettings.provider(AISettings.finder).map(AISettings.hasKey) ?? false }
+      .task {
+        let ai = AISettings.app
+        finderReady = AISettings.provider(ai.finderID()).map(ai.isSetUp) ?? false
+      }
     case .element:
       ElementQueryEditor(query: element)
     case .position:

@@ -411,7 +411,8 @@ final class RunCenter {
         environment: (batchEnvironments(of: request.project) ?? ProjectEnvironments.read(request.project)).selected?.name,
         dataRows: choices.rows(in: table),
         vision: ai.settings(), localOnly: ai.localOnly,
-        requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, usage: ai.usage, video: videos.mode,
+        requestedBy: request.requestedBy, fallback: ai.fallback(), providers: ai.namedProviders, finder: ai.finderID(),
+        usage: ai.usage, video: videos.mode,
         keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency, language: AppLanguage.shared.language),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
       secrets: StoredSecrets(), listener: listener)

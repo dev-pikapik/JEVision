@@ -18,10 +18,7 @@ struct AISettingsView: View {
         tab: .ai,
         text: Text("An AI model can check a screen from a sentence like “The cart shows 2 items”, where comparing pictures is too strict."))
       AISections()
-      if providerID != AISettings.finder, let jev = AISettings.providers.first(where: { $0.id == AISettings.finder }) {
-        ProviderSection(provider: jev, localOnly: localOnly, findsOnly: true)
-          .id("finder")
-      }
+      FinderSections()
       FallbackSections()
       ProjectAISection()
       AIUsageSections()
@@ -29,18 +26,22 @@ struct AISettingsView: View {
       MCPServersSection()
       AssistantsSection()
       RestoreDefaultsSection(
-        message: Text("No provider or fallback provider is chosen, models and addresses are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),
+        message: Text("No provider or fallback provider is chosen, models, addresses and Account IDs are forgotten, and assistants can’t run tests or take screenshots. API keys stay in the Keychain, and spending limits, prices and the project’s own settings stay as they are."),
         isDefault: providerID.isEmpty && fallbackID.isEmpty && !localOnly && !mayRun && !mayCapture && askFirst && Self.providerKeys.isEmpty,
         reset: reset)
     }
     .formStyle(.grouped)
   }
 
-  /// The saved model, address and picture setting of each provider.
+  /// The saved model, address, picture setting and account of each provider, and the JEV route
+  /// that finds elements.
   private static var providerKeys: [String] {
     let defaults = Profile.current.defaults
-    return AISettings.providers
-      .flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id), AISettings.picturesKey($0.id)] }
+    return
+      ([AISettings.finderKey]
+      + AISettings.providers.flatMap {
+        [AISettings.modelKey($0.id), AISettings.addressKey($0.id), AISettings.picturesKey($0.id), AISettings.accountKey($0.id)]
+      })
       .filter { defaults.object(forKey: $0) != nil }
   }
 
@@ -90,6 +91,30 @@ struct AISections: View {
   }
 }
 
+/// The JEV route that finds the elements tests describe in words, while a provider that can't
+/// find them checks by meaning.
+private struct FinderSections: View {
+  @AppStorage(AISettings.providerKey) private var providerID = ""
+  @AppStorage(AISettings.finderKey) private var finderID = ""
+  @AppStorage(AISettings.localOnlyKey) private var localOnly = false
+  private let finders = AISettings.providers.filter(\.findsElements)
+
+  var body: some View {
+    if AISettings.provider(providerID)?.findsElements != true,
+      let finder = finders.first(where: { $0.id == finderID }) ?? finders.first
+    {
+      Section {
+        Picker("Finding by Description", selection: Binding(get: { finder.id }, set: { finderID = $0 })) {
+          ForEach(finders, id: \.id) { Text(verbatim: $0.name).tag($0.id) }
+        }
+        .settingAnchor("finder")
+      }
+      ProviderSection(provider: finder, localOnly: localOnly, findsOnly: true)
+        .id("finder." + finder.id)
+    }
+  }
+}
+
 /// The provider asked when the main one can't answer, with its own model and key.
 private struct FallbackSections: View {
   @AppStorage(AISettings.providerKey) private var providerID = ""
@@ -130,6 +155,7 @@ struct ProviderSection: View {
   @AppStorage private var model: String
   @AppStorage private var address: String
   @AppStorage private var pictures: Bool
+  @AppStorage private var account: String
   @State private var models: [String] = []
   @State private var listing = Listing.idle
   @State private var test = Test.idle
@@ -152,13 +178,18 @@ struct ProviderSection: View {
     _model = AppStorage(wrappedValue: provider.defaultModel, AISettings.modelKey(provider.id))
     _address = AppStorage(wrappedValue: "", AISettings.addressKey(provider.id))
     _pictures = AppStorage(wrappedValue: true, AISettings.picturesKey(provider.id))
+    _account = AppStorage(wrappedValue: "", AISettings.accountKey(provider.id))
   }
 
   /// Read when needed, not on every redraw: the key comes from the Keychain.
   private var settings: VisionSettings {
     VisionSettings(
-      provider: provider.id, model: model, address: address, key: AISettings.key(for: provider), pictures: pictures)
+      provider: provider.id, model: model, address: address, key: AISettings.key(for: provider), pictures: pictures,
+      accountId: AISettings.app.accountID(for: provider))
   }
+
+  /// The provider reaches the model through an account of the person's, like Cloudflare's.
+  private var hasAccount: Bool { !provider.accountVariable.isEmpty }
 
   private var isLocal: Bool {
     visionIsLocal(settings: VisionSettings(provider: provider.id, model: "", address: address, key: nil, pictures: true))
@@ -175,6 +206,7 @@ struct ProviderSection: View {
           prompt: Text(verbatim: provider.defaultAddress.isEmpty ? "http://localhost:8080/v1" : provider.defaultAddress))
       }
       modelRow
+      if hasAccount { accountRow }
       if !provider.keyVariable.isEmpty { keyRow }
       if provider.mayLackPictures {
         Toggle(isOn: $pictures) {
@@ -194,9 +226,9 @@ struct ProviderSection: View {
     } footer: {
       VStack(alignment: .leading, spacing: 6) {
         if !findsOnly { destination }
-        if provider.id == AISettings.finder {
+        if provider.findsElements {
           Text(
-            "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. \(provider.name) finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest."
+            "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. \(provider.name) finds it and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest."
           )
         }
         if localOnly, !isLocal {
@@ -227,7 +259,8 @@ struct ProviderSection: View {
     }
     .sheet(isPresented: $settingKey) {
       SetSecretSheet(
-        name: provider.keyVariable, title: Text("API Key for \(provider.name)"),
+        name: provider.keyVariable,
+        title: hasAccount ? Text("API Token for \(provider.name)") : Text("API Key for \(provider.name)"),
         message: Text("The key is kept in the Keychain on this Mac and sent only to \(provider.name). JEVision never shows it."),
         service: AISettings.keyService
       ) { keyVersion += 1 }
@@ -309,12 +342,33 @@ struct ProviderSection: View {
           .disabled(fromEnvironment)
       }
     } label: {
-      RowLabel(
-        Text("API Key"),
-        fromEnvironment
-          ? Text("From the environment variable \(provider.keyVariable)")
-          : provider.needsKey ? nil : Text("Only if the server asks for one"))
+      if hasAccount {
+        RowLabel(
+          Text("API Token"),
+          fromEnvironment
+            ? Text("From the environment variable \(provider.keyVariable)")
+            : Text("On the Cloudflare dashboard, open Workers AI, choose Use REST API, then Create a Workers AI API Token."))
+      } else {
+        RowLabel(
+          Text("API Key"),
+          fromEnvironment
+            ? Text("From the environment variable \(provider.keyVariable)")
+            : provider.needsKey ? nil : Text("Only if the server asks for one"))
+      }
     }
+  }
+
+  @ViewBuilder private var accountRow: some View {
+    let fromEnvironment = SecretStore.isInEnvironment(provider.accountVariable)
+    TextField(text: fromEnvironment ? .constant(AISettings.app.accountID(for: provider)) : $account) {
+      RowLabel(
+        Text("Account ID"),
+        fromEnvironment
+          ? Text("From the environment variable \(provider.accountVariable)")
+          : Text("On the Cloudflare dashboard, open Workers AI and choose Use REST API. It’s also the 32 letters and digits after dash.cloudflare.com/ in the dashboard’s address."))
+    }
+    .disabled(fromEnvironment)
+    .settingAnchor("accountID")
   }
 
   @ViewBuilder private var testRow: some View {

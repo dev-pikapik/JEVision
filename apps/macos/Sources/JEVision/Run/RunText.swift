@@ -67,7 +67,7 @@ enum RunText {
     [
       "run.compare.meaningUnavailable", "run.vision.cloudBlocked", "run.vision.noPictures", "run.vision.noModel", "run.vision.noKey",
       "run.vision.badAddress", "run.vision.badKey", "run.vision.unknownModel", "run.vision.unreachable",
-      "run.vision.limitReached",
+      "run.vision.limitReached", "run.vision.noAccount", "run.vision.badAccount", "run.vision.cloudflareAccess",
       "run.target.noLocator", "run.vision.cannotLocate", "run.vision.modelCannotLocate",
     ].contains(failure.code)
   }

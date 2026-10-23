@@ -57,6 +57,7 @@ struct RunCommand {
     let session = TestSession(
       project: plan.project, tests: plan.tests, folder: plan.folder, request: request, progress: progress, input: input,
       vision: vision, fallback: vision.flatMap { ai.fallback(besides: $0.provider) }, providers: ai.namedProviders,
+      finder: ai.finderID(main: vision?.provider),
       usage: ai.usage,
       localOnly: ai.localOnly, keepVideosDays: videos.keepDays
     ) { run in
@@ -375,6 +376,8 @@ final class TestSession: @unchecked Sendable {
   private let vision: VisionSettings?
   private let fallback: VisionSettings?
   private let providers: ProviderSettings?
+  /// The JEV route that finds the elements tests describe in words.
+  private let finder: String?
   private let usage: AiUsageSettings?
   private let localOnly: Bool
   private let keepVideosDays: UInt32?
@@ -393,12 +396,13 @@ final class TestSession: @unchecked Sendable {
   init(
     project: String, tests: [String], folder: String = ".", request: RunRequest, progress: Console, input: InputWatcher?,
     vision: VisionSettings? = nil, fallback: VisionSettings? = nil, providers: ProviderSettings? = nil,
-    usage: AiUsageSettings? = nil,
+    finder: String? = nil, usage: AiUsageSettings? = nil,
     localOnly: Bool = false, keepVideosDays: UInt32? = nil, makeHands: @escaping (TestRun) -> any Hands
   ) {
     self.vision = vision
     self.fallback = fallback
     self.providers = providers
+    self.finder = finder
     self.usage = usage
     self.localOnly = localOnly
     self.keepVideosDays = keepVideosDays
@@ -577,7 +581,8 @@ final class TestSession: @unchecked Sendable {
       project: project, test: test, options: RunOptions(
         startAt: request.startAt, retries: request.retries, environment: request.environment, dataRows: request.rows,
         vision: vision,
-        localOnly: localOnly, schedule: request.schedule, fallback: fallback, providers: providers, usage: usage,
+        localOnly: localOnly, schedule: request.schedule, fallback: fallback, providers: providers, finder: finder,
+        usage: usage,
         video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added,
         language: RunLanguage.app, forceVision: request.forceAI),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)

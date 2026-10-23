@@ -162,8 +162,8 @@ impl AiTask {
                 AI_PROVIDERS.join(", ")
             ));
         }
-        if self == Self::Text && choice.provider == "jev" {
-            return Err(tr!("project.ai.jevText", key));
+        if self == Self::Text && matches!(choice.provider.as_str(), "jev" | "jev-cloudflare") {
+            return Err(tr!("project.ai.jevText", &choice.provider, key));
         }
         Ok(())
     }
@@ -1080,6 +1080,10 @@ mod tests {
             (
                 r#"{"format":1,"ai":{"text":{"provider":"jev"}}}"#,
                 "only checks screenshots",
+            ),
+            (
+                r#"{"format":1,"ai":{"text":{"provider":"jev-cloudflare"}}}"#,
+                "“jev-cloudflare” in “ai” → “text” can’t write tests",
             ),
             (
                 r#"{"format":1,"ai":{"screen":{"provider":"openai","key":"sk-1"}}}"#,

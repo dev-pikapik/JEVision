@@ -14,6 +14,7 @@ public struct AISettings {
   public static let assistantsCaptureKey = "assistants.allowScreenshots"
   public static let assistantsAskFirstKey = "assistants.askFirst"
   public static let fallbackKey = "ai.fallback"
+  public static let finderKey = "ai.finder"
   public static let pricesKey = "ai.prices"
 
   public static func modelKey(_ provider: String) -> String { "ai.model.\(provider)" }
@@ -21,6 +22,7 @@ public struct AISettings {
   public static func dailyLimitKey(_ provider: String) -> String { "ai.limit.daily.\(provider)" }
   public static func monthlyLimitKey(_ provider: String) -> String { "ai.limit.monthly.\(provider)" }
   public static func picturesKey(_ provider: String) -> String { "ai.pictures.\(provider)" }
+  public static func accountKey(_ provider: String) -> String { "ai.account.\(provider)" }
 
   /// The journal of every AI call, shared by the app and the `jevision` tool.
   public static var journal: URL {
@@ -83,13 +85,26 @@ public struct AISettings {
     defaults.object(forKey: Self.picturesKey(provider.id)) as? Bool ?? true
   }
 
+  /// The account requests go to, for a provider that has one: from the provider's environment
+  /// variable, else the saved one. Empty when there is none.
+  public func accountID(for provider: VisionProvider) -> String {
+    guard !provider.accountVariable.isEmpty else { return "" }
+    if let value = ProcessInfo.processInfo.environment[provider.accountVariable], !value.isEmpty { return value }
+    return defaults.string(forKey: Self.accountKey(provider.id)) ?? ""
+  }
+
+  /// The provider has its API key and, if it needs one, its account, without reading the key.
+  public func isSetUp(_ provider: VisionProvider) -> Bool {
+    Self.hasKey(provider) && (provider.accountVariable.isEmpty || !accountID(for: provider).isEmpty)
+  }
+
   /// What a run passes to the core: the chosen provider and model unless others are given.
   /// Nil when no provider is chosen.
   public func settings(provider id: String? = nil, model: String? = nil) -> VisionSettings? {
     guard let provider = Self.provider(id ?? providerID) else { return nil }
     return VisionSettings(
       provider: provider.id, model: model ?? self.model(for: provider), address: address(for: provider),
-      key: Self.key(for: provider), pictures: pictures(for: provider))
+      key: Self.key(for: provider), pictures: pictures(for: provider), accountId: accountID(for: provider))
   }
 
   /// The AI that writes tests and explains failures: the one the project names for it, else the
@@ -107,8 +122,15 @@ public struct AISettings {
     AiSafeguards(fallback: fallback(besides: settings.provider), usage: usage)
   }
 
-  /// The provider that finds the elements tests describe in words, whichever one is chosen.
-  public static let finder = "jev"
+  /// The JEV route that finds the elements tests describe in words when none is chosen.
+  public static let defaultFinder = "jev"
+
+  /// The JEV route that finds the elements tests describe in words: `main`, the provider that
+  /// checks by meaning, when it is one, else the one chosen for finding, else JEV itself.
+  public func finderID(main: String? = nil) -> String {
+    [main ?? providerID, defaults.string(forKey: Self.finderKey) ?? ""]
+      .first { Self.provider($0)?.findsElements == true } ?? Self.defaultFinder
+  }
 
   /// The settings of the providers that checks by meaning name and that blocks need besides the
   /// chosen one, read only when one is needed, so a run reads no API key it doesn't need.

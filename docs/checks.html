@@ -72,6 +72,7 @@
     <li><a href="#accept">When the app changed on purpose</a></li>
     <li><a href="#meaning">Checks by meaning</a></li>
     <li><a href="#models">AI models</a></li>
+    <li><a href="#jev-cloudflare">Connect JEV through Cloudflare</a></li>
     <li><a href="#which-ai">Which AI answers</a></li>
     <li><a href="#targets">Pictures of buttons and fields</a></li>
   </ul>
@@ -170,6 +171,7 @@
     <tr><td>OpenAI</td><td>In the cloud</td><td><code>OPENAI_API_KEY</code></td><td><code>openai</code></td></tr>
     <tr><td>Google Gemini</td><td>In the cloud</td><td><code>GEMINI_API_KEY</code></td><td><code>gemini</code></td></tr>
     <tr><td>JEV (TypeSafe AI)</td><td>In the cloud</td><td><code>TYPESAFE_API_KEY</code></td><td><code>jev</code></td></tr>
+    <tr><td>JEV via Cloudflare</td><td>In the cloud, paid from your Cloudflare account</td><td><code>CLOUDFLARE_API_TOKEN</code>, with the Account ID in Settings → AI or <code>CLOUDFLARE_ACCOUNT_ID</code></td><td><code>jev-cloudflare</code></td></tr>
     <tr><td>Ollama</td><td>On this Mac</td><td>None</td><td><code>ollama</code></td></tr>
     <tr><td>LM Studio</td><td>On this Mac</td><td>None</td><td><code>lmstudio</code></td></tr>
     <tr><td>OpenAI-compatible server</td><td>At the address you give</td><td><code>OPENAI_COMPATIBLE_API_KEY</code>, if the server asks for one</td><td><code>openai-compatible</code></td></tr>
@@ -184,6 +186,24 @@
   <li>On the command line, <code>--provider</code> and <code>--model</code> choose another model than the one in Settings for one run. The project's own choice, if it has one, still comes first. With <code>--force-ai</code> the run's provider and model answer every check, whatever the project or the check chooses: for CI, see <a href="cli.html#ci-ai">Checks by meaning in CI</a>.</li>
 </ul>
 
+<h3 id="jev-cloudflare">Connect JEV through Cloudflare</h3>
+<p>JEV, the model that checks screenshots and finds elements by their description, can be reached in two ways: from TypeSafe AI with its own key, or through your Cloudflare account. Through Cloudflare you need no key from TypeSafe AI, and the cost of each question is taken from the credits on your Cloudflare account. It is the same JEV model either way.</p>
+<p>You copy two things from the Cloudflare website into JEVision. The <strong>API token</strong> is a long secret text that lets JEVision ask Cloudflare for you. The <strong>Account ID</strong> is the number of your Cloudflare account, 32 letters and digits. Nothing is installed.</p>
+<ol>
+  <li><strong>Sign in</strong> at <a href="https://dash.cloudflare.com">dash.cloudflare.com</a>. If you have no account yet, create one: it takes a minute.</li>
+  <li><strong>Get the token and the Account ID.</strong> In the menu on the left, open <strong>Workers AI</strong> and choose <strong>Use REST API</strong>. Choose <strong>Create a Workers AI API Token</strong>, then <strong>Create API Token</strong>, then <strong>Copy API Token</strong>, and keep the text somewhere until step 4. On the same page, copy the value of <strong>Account ID</strong>. If you make the token yourself instead, it needs the permissions <strong>Workers AI – Read</strong> and <strong>Workers AI – Edit</strong>.</li>
+  <li><strong>Add credits.</strong> Cloudflare charges for each question to JEV from credits on your account. In the menu, open <strong>AI Gateway</strong>, and in the <strong>Credits Available</strong> card choose <strong>Manage</strong>. Add a payment method if Cloudflare asks for one, then top up the credits.</li>
+  <li><strong>Enter both in JEVision.</strong> Open <strong>Settings → AI</strong> and choose <strong>JEV via Cloudflare</strong> as the provider. If another provider checks by meaning, find <strong>Finding by Description</strong> in the same window and choose <strong>JEV via Cloudflare</strong> there. Paste the token into <strong>API Token</strong> and the number into <strong>Account ID</strong>. The token is saved in the Keychain of your Mac. The Account ID is not a secret and is saved in the settings. You can also copy the Account ID from the address bar of the dashboard: it is the 32 letters and digits after <code>dash.cloudflare.com/</code>.</li>
+  <li><strong>Test it.</strong> Choose <strong>Test Connection</strong>. JEVision asks JEV about a small built-in picture and tells you whether the answer came, or what to fix.</li>
+</ol>
+<p>If something is wrong, JEVision says what to do:</p>
+<ul>
+  <li><strong>“That isn’t a Cloudflare Account ID”.</strong> Copy the Account ID again from the Workers AI page. It is 32 letters a to f and digits, with no spaces or other text.</li>
+  <li><strong>“Cloudflare turned the request down”.</strong> The token is wrong, it has no permission for Workers AI, or the Account ID is from another Cloudflare account than the token. Create the token again as in step 2 and paste both again.</li>
+  <li><strong>“Your Cloudflare account has no credits left for AI”.</strong> Add credits as in step 3. Until you do, a fallback provider, if you chose one in Settings → AI, answers instead.</li>
+</ul>
+<p>On the command line, or on a CI machine, set the environment variables <code>CLOUDFLARE_API_TOKEN</code> and <code>CLOUDFLARE_ACCOUNT_ID</code> and name the provider for one run: <code>jevision run tests --provider jev-cloudflare</code>. Settings → AI shows when a value comes from the environment. For a project, <strong>Settings → AI → AI for this project</strong> and the <code>provider</code> of a check can choose <code>jev-cloudflare</code>; only the name is saved in the project, never the token. Versions of JEVision from before this route existed don’t know that name and report an unknown AI provider.</p>
+
 <h3 id="which-ai">Which AI answers</h3>
 <p>There are two jobs: <strong>checks by meaning</strong>, and <strong>writing and failure analysis</strong> (the app drafting a test from a description, and explaining why a run failed). For each, the most specific choice wins:</p>
 <ol>
@@ -194,9 +214,9 @@
 <p><code>jevision run --force-ai</code> turns this order around for checks by meaning: the run's own provider and model, from <code>--provider</code> and <code>--model</code> or Settings, answer every check, and the fallback provider isn't asked. See <a href="cli.html#ci-ai">Checks by meaning in CI</a>.</p>
 <p>Only the names of the provider and the model are saved in the project. API keys stay in the environment or the Keychain of each Mac, and never reach a test, the project file, a report or git.</p>
 <ul>
-  <li><strong>Fallback Provider.</strong> When the main provider can't be reached, times out, answers with a server error, is rate limited or has reached its spending limit, JEVision asks the fallback provider you chose in Settings → AI instead, and the report names who answered and why. Problems with the setup, such as a wrong key or an unknown model, are not covered up. A fallback is never used when it is the provider that just failed, and never breaks <strong>Only models on this Mac</strong>.</li>
+  <li><strong>Fallback Provider.</strong> When the main provider can't be reached, times out, answers with a server error, is rate limited, has reached its spending limit or, for JEV via Cloudflare, has no credits left, JEVision asks the fallback provider you chose in Settings → AI instead, and the report names who answered and why. Problems with the setup, such as a wrong key or an unknown model, are not covered up. A fallback is never used when it is the provider that just failed, and never breaks <strong>Only models on this Mac</strong>.</li>
   <li><strong>Spending.</strong> Every call is written to the spending journal, and counts toward the daily and monthly limits of its provider in Settings → AI: checks by meaning, drafting and failure analysis, and finding an element by its description, which asks JEV. A search that finds nothing costs tokens too and is counted. A provider at its limit stops the check or the search with a message.</li>
-  <li>Finding an element by its description always asks JEV: it is the only provider that returns where an element is.</li>
+  <li>Finding an element by its description always asks JEV, from TypeSafe AI or through Cloudflare as chosen in Settings → AI: it is the only model that returns where an element is.</li>
 </ul>
 
 <h2 id="targets">Pictures of buttons and fields</h2>

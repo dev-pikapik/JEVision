@@ -52,7 +52,7 @@ struct ProjectAISection: View {
   private func choice(_ task: AiTask, title: Text, anchor: String) -> some View {
     let chosen = current(task)
     // A text task can't use JEV, which only reads screenshots.
-    let providers = AISettings.providers.filter { task == .screen || $0.id != AISettings.finder }
+    let providers = AISettings.providers.filter { task == .screen || !$0.findsElements }
     Picker(selection: Binding(get: { chosen?.provider ?? "" }, set: { set(task, provider: $0, model: "") })) {
       Text("From Settings").tag("")
       Divider()

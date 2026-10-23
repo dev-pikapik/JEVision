@@ -1,7 +1,8 @@
 //! Asks vision models whether a screenshot shows what a test expects.
 //!
 //! [`Client`] talks to one provider over blocking HTTP(S): Anthropic, OpenAI, Google Gemini,
-//! JEV (TypeSafe AI), Ollama, LM Studio or any server with an OpenAI-compatible API. Answers are requested in a
+//! JEV (TypeSafe AI, directly or through Cloudflare Workers AI), Ollama, LM Studio or any server
+//! with an OpenAI-compatible API. Answers are requested in a
 //! fixed JSON shape (`passed`, `reason`) wherever the provider can enforce one, and read
 //! leniently where it cannot. The API key is sent only in a request header; error messages and
 //! answers have it masked. Pictures go out only as [`MaskedImage`]s, private areas painted
@@ -69,6 +70,8 @@ pub enum Provider {
     Gemini,
     /// TypeSafe AI's image-understanding model.
     Jev,
+    /// JEV through Cloudflare Workers AI, paid from the user's Cloudflare account.
+    JevCloudflare,
     Ollama,
     LmStudio,
     /// Any server with the OpenAI Chat Completions API, at an address of the user's choice.
@@ -76,11 +79,12 @@ pub enum Provider {
 }
 
 impl Provider {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Anthropic,
         Self::OpenAi,
         Self::Gemini,
         Self::Jev,
+        Self::JevCloudflare,
         Self::Ollama,
         Self::LmStudio,
         Self::OpenAiCompatible,
@@ -93,6 +97,7 @@ impl Provider {
             Self::OpenAi => "openai",
             Self::Gemini => "gemini",
             Self::Jev => "jev",
+            Self::JevCloudflare => "jev-cloudflare",
             Self::Ollama => "ollama",
             Self::LmStudio => "lmstudio",
             Self::OpenAiCompatible => "openai-compatible",
@@ -109,6 +114,7 @@ impl Provider {
             Self::OpenAi => "OpenAI",
             Self::Gemini => "Google Gemini",
             Self::Jev => "JEV (TypeSafe AI)",
+            Self::JevCloudflare => "JEV via Cloudflare",
             Self::Ollama => "Ollama",
             Self::LmStudio => "LM Studio",
             Self::OpenAiCompatible => "OpenAI-compatible server",
@@ -122,6 +128,7 @@ impl Provider {
             Self::OpenAi => "https://api.openai.com/v1",
             Self::Gemini => "https://generativelanguage.googleapis.com",
             Self::Jev => "https://api.typesafe.ai",
+            Self::JevCloudflare => "https://api.cloudflare.com/client/v4",
             Self::Ollama => "http://localhost:11434",
             Self::LmStudio => "http://localhost:1234/v1",
             Self::OpenAiCompatible => "",
@@ -135,6 +142,7 @@ impl Provider {
             Self::OpenAi => "gpt-5-mini",
             Self::Gemini => "gemini-2.5-flash",
             Self::Jev => "jev-latest",
+            Self::JevCloudflare => "typesafe/jev-1.14.0",
             Self::Ollama | Self::LmStudio | Self::OpenAiCompatible => "",
         }
     }
@@ -146,6 +154,7 @@ impl Provider {
             Self::OpenAi => Some("OPENAI_API_KEY"),
             Self::Gemini => Some("GEMINI_API_KEY"),
             Self::Jev => Some("TYPESAFE_API_KEY"),
+            Self::JevCloudflare => Some("CLOUDFLARE_API_TOKEN"),
             Self::OpenAiCompatible => Some("OPENAI_COMPATIBLE_API_KEY"),
             Self::Ollama | Self::LmStudio => None,
         }
@@ -155,8 +164,14 @@ impl Provider {
     pub fn needs_key(self) -> bool {
         matches!(
             self,
-            Self::Anthropic | Self::OpenAi | Self::Gemini | Self::Jev
+            Self::Anthropic | Self::OpenAi | Self::Gemini | Self::Jev | Self::JevCloudflare
         )
+    }
+
+    /// Name of the environment variable with the Cloudflare Account ID, for the provider that
+    /// runs the model in the user's Cloudflare account; questions fail without one.
+    pub fn account_name(self) -> Option<&'static str> {
+        (self == Self::JevCloudflare).then_some("CLOUDFLARE_ACCOUNT_ID")
     }
 
     /// The user may point it at another address than [`default_address`](Self::default_address).
@@ -173,8 +188,17 @@ impl Provider {
     pub fn may_lack_pictures(self) -> bool {
         matches!(
             self,
-            Self::Jev | Self::Ollama | Self::LmStudio | Self::OpenAiCompatible
+            Self::Jev
+                | Self::JevCloudflare
+                | Self::Ollama
+                | Self::LmStudio
+                | Self::OpenAiCompatible
         )
+    }
+
+    /// TypeSafe AI's JEV, by either route: the model that finds elements by description.
+    pub fn is_jev(self) -> bool {
+        matches!(self, Self::Jev | Self::JevCloudflare)
     }
 }
 
@@ -188,6 +212,9 @@ pub struct Config {
     pub key: Option<String>,
     /// The model understands pictures; without it, questions stop before anything is sent.
     pub pictures: bool,
+    /// The Cloudflare account that runs the model, for providers with an
+    /// [`account_name`](Provider::account_name); 32 hexadecimal digits. Not a secret.
+    pub account_id: String,
 }
 
 impl fmt::Debug for Config {
@@ -198,6 +225,7 @@ impl fmt::Debug for Config {
             .field("address", &self.address)
             .field("key", &self.key.as_ref().map(|_| MASK))
             .field("pictures", &self.pictures)
+            .field("account_id", &self.account_id)
             .finish()
     }
 }
@@ -318,13 +346,28 @@ pub enum VisionError {
     CannotLocate,
     /// The JEV model is older than the first one that finds elements.
     ModelCannotLocate,
+    /// The provider runs the model in a Cloudflare account, and none is named.
+    NoAccount,
+    /// What is named as a Cloudflare Account ID can't be one. It is not echoed: a wrong paste
+    /// may be a secret.
+    BadAccount,
+    /// Cloudflare turned down the API token, or the token can't use the account.
+    CloudflareAccess,
+    /// The Cloudflare account has no money left to pay for the model.
+    CloudflareNoBalance,
+    /// Cloudflare turned the picture down for its size, though pictures are fitted to what JEV
+    /// accepts before they are sent.
+    PictureSize,
 }
 
 impl VisionError {
     /// The provider is down or busy for now, rather than set up wrong: another may answer.
     pub fn unavailable(&self) -> bool {
         match self {
-            Self::Unreachable { .. } | Self::Timeout { .. } | Self::RateLimited { .. } => true,
+            Self::Unreachable { .. }
+            | Self::Timeout { .. }
+            | Self::RateLimited { .. }
+            | Self::CloudflareNoBalance => true,
             Self::Service { status, .. } => *status >= 500,
             _ => false,
         }
@@ -346,6 +389,11 @@ impl VisionError {
             Self::BadAnswer { .. } => "run.vision.badAnswer",
             Self::CannotLocate => "run.vision.cannotLocate",
             Self::ModelCannotLocate => "run.vision.modelCannotLocate",
+            Self::NoAccount => "run.vision.noAccount",
+            Self::BadAccount => "run.vision.badAccount",
+            Self::CloudflareAccess => "run.vision.cloudflareAccess",
+            Self::CloudflareNoBalance => "run.vision.cloudflareNoBalance",
+            Self::PictureSize => "run.vision.pictureSize",
         }
     }
 
@@ -356,7 +404,12 @@ impl VisionError {
             | Self::NoKey
             | Self::BadKey
             | Self::CannotLocate
-            | Self::ModelCannotLocate => Vec::new(),
+            | Self::ModelCannotLocate
+            | Self::NoAccount
+            | Self::BadAccount
+            | Self::CloudflareAccess
+            | Self::CloudflareNoBalance
+            | Self::PictureSize => Vec::new(),
             Self::BadAddress { address } | Self::Unreachable { address } => {
                 vec![("address", address.clone())]
             }
@@ -470,7 +523,11 @@ impl Client {
                     .filter_map(|m| m["id"].as_str().map(str::to_owned))
                     .collect()
             }
-            Provider::Anthropic | Provider::OpenAi | Provider::Gemini | Provider::Jev => Vec::new(),
+            Provider::Anthropic
+            | Provider::OpenAi
+            | Provider::Gemini
+            | Provider::Jev
+            | Provider::JevCloudflare => Vec::new(),
         };
         models.sort();
         models.dedup();
@@ -563,6 +620,16 @@ impl Client {
 
     fn http_error(&self, status: u16, body: &str) -> VisionError {
         let message = self.excerpt(&server_message(body));
+        if self.config.provider == Provider::JevCloudflare {
+            match status {
+                401 | 403 => return VisionError::CloudflareAccess,
+                402 => return VisionError::CloudflareNoBalance,
+                400 if server_message(body).contains("Invalid image dimensions") => {
+                    return VisionError::PictureSize;
+                }
+                _ => {}
+            }
+        }
         match status {
             401 => VisionError::BadKey,
             400 if body.contains("API_KEY_INVALID") => VisionError::BadKey,
@@ -571,6 +638,20 @@ impl Client {
             },
             429 => VisionError::RateLimited { message },
             _ => VisionError::Service { status, message },
+        }
+    }
+
+    /// POSTs `body` and returns the body of a successful answer. Cloudflare Workers AI says
+    /// `"success": false` in every failure, so a status of 200 with it is one as well: the
+    /// service failing, reported as 502.
+    fn post(&self, url: &str, body: &Value) -> Result<String, VisionError> {
+        let (status, text) = self.send(url, Some(body))?;
+        let refused = self.config.provider == Provider::JevCloudflare
+            && serde_json::from_str::<Value>(&text).is_ok_and(|v| v["success"] == false);
+        match (status, refused) {
+            (200, false) => Ok(text),
+            (200, true) => Err(self.http_error(502, &text)),
+            _ => Err(self.http_error(status, &text)),
         }
     }
 
@@ -585,6 +666,15 @@ impl Client {
         }
         if c.provider.needs_key() && c.key().is_none() {
             return Err(VisionError::NoKey);
+        }
+        if c.provider.account_name().is_some() {
+            let account = c.account_id.trim();
+            if account.is_empty() {
+                return Err(VisionError::NoAccount);
+            }
+            if account.len() != 32 || !account.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return Err(VisionError::BadAccount);
+            }
         }
         Ok(())
     }
@@ -638,10 +728,7 @@ impl VisionJudge for Client {
         let c = &self.config;
         self.ready()?;
         let (url, body) = request(c, question);
-        let (status, text) = self.send(&url, Some(&body))?;
-        if status != 200 {
-            return Err(self.http_error(status, &text));
-        }
+        let text = self.post(&url, &body)?;
         let mut judgement = answer(c.provider, &text).map_err(|e| match e {
             VisionError::BadAnswer { answer } => VisionError::BadAnswer {
                 answer: self.excerpt(&answer),
@@ -657,7 +744,7 @@ impl VisionJudge for Client {
 
     fn locate(&self, screenshot: &MaskedImage, what: &str) -> Result<Search, VisionError> {
         let c = &self.config;
-        if c.provider != Provider::Jev {
+        if !c.provider.is_jev() {
             return Err(VisionError::CannotLocate);
         }
         self.ready()?;
@@ -665,11 +752,8 @@ impl VisionJudge for Client {
             return Err(VisionError::ModelCannotLocate);
         }
         let (url, body, fill) = locate_request(c, screenshot, what);
-        let (status, text) = self.send(&url, Some(&body))?;
-        if status != 200 {
-            return Err(self.http_error(status, &text));
-        }
-        located(&text, fill).map_err(|e| match e {
+        let text = self.post(&url, &body)?;
+        located(c.provider, &text, fill).map_err(|e| match e {
             VisionError::BadAnswer { answer } => VisionError::BadAnswer {
                 answer: self.excerpt(&answer),
             },
@@ -697,11 +781,14 @@ fn headers(c: &Config) -> Vec<(&'static str, String)> {
             h.extend(key.map(|k| ("authorization", format!("Bearer {k}"))));
             h
         }
-        Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible | Provider::Ollama => {
-            key.map(|k| ("authorization", format!("Bearer {k}")))
-                .into_iter()
-                .collect()
-        }
+        Provider::OpenAi
+        | Provider::LmStudio
+        | Provider::OpenAiCompatible
+        | Provider::Ollama
+        | Provider::JevCloudflare => key
+            .map(|k| ("authorization", format!("Bearer {k}")))
+            .into_iter()
+            .collect(),
     }
 }
 
@@ -844,7 +931,7 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
             }
             (format!("{base}/chat/completions"), body)
         }
-        Provider::Jev => {
+        Provider::Jev | Provider::JevCloudflare => {
             let asset = |png: &[u8]| jev_asset(&jev_sized(png));
             let mut state = json!({ "screenshot": JEV_SCREENSHOT });
             let mut assets = json!({ JEV_SCREENSHOT: asset(q.screenshot.png()) });
@@ -852,15 +939,16 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
                 state["reference"] = json!(JEV_REFERENCE);
                 assets[JEV_REFERENCE] = asset(reference.png());
             }
-            let body = json!({
-                "model": model,
-                "state": state,
-                "assets": assets,
-                "questions": {
-                    "passed": { "type": "noul", "instructions": format!("{JEV_INSTRUCTIONS}\n{expected}") }
-                }
-            });
-            (format!("{base}/v1/systemone"), body)
+            jev_request(
+                c,
+                json!({
+                    "state": state,
+                    "assets": assets,
+                    "questions": {
+                        "passed": { "type": "noul", "instructions": format!("{JEV_INSTRUCTIONS}\n{expected}") }
+                    }
+                }),
+            )
         }
     }
 }
@@ -871,8 +959,7 @@ fn request(c: &Config, q: &Question<'_>) -> (String, Value) {
 fn locate_request(c: &Config, screenshot: &MaskedImage, what: &str) -> (String, Value, (f64, f64)) {
     let (png, fill) = jev_fitted(screenshot.png());
     let what = what.trim();
-    let body = json!({
-        "model": c.model.trim(),
+    let input = json!({
         "state": { "screenshot": JEV_SCREENSHOT },
         "assets": { JEV_SCREENSHOT: jev_asset(&png) },
         "questions": {
@@ -886,12 +973,38 @@ fn locate_request(c: &Config, screenshot: &MaskedImage, what: &str) -> (String, 
             }
         }
     });
-    (format!("{}/v1/systemone", c.address()), body, fill)
+    let (url, body) = jev_request(c, input);
+    (url, body, fill)
+}
+
+/// URL and JSON body that send `input` to JEV: to TypeSafe AI with the model in it, or to
+/// Cloudflare Workers AI, which takes the model beside it.
+fn jev_request(c: &Config, mut input: Value) -> (String, Value) {
+    let model = c.model.trim();
+    let base = c.address();
+    if c.provider == Provider::JevCloudflare {
+        let account = c.account_id.trim().to_ascii_lowercase();
+        let body = json!({ "model": model, "input": input });
+        return (format!("{base}/accounts/{account}/ai/run"), body);
+    }
+    input["model"] = json!(model);
+    (format!("{base}/v1/systemone"), input)
+}
+
+/// JEV's answer in a successful response body as TypeSafe AI gives it; Cloudflare Workers AI
+/// gives it in `result.result`. `None` when it isn't there.
+fn jev_answer(provider: Provider, v: Value) -> Option<Value> {
+    match provider {
+        Provider::JevCloudflare => v.pointer("/result/result").cloned(),
+        _ => Some(v),
+    }
 }
 
 /// JEV models before 1.14 can't answer where something is; names without a version, such as
-/// `jev-latest`, are taken to be new enough.
+/// `jev-latest`, are taken to be new enough. Cloudflare names them after their maker, as in
+/// `typesafe/jev-1.14.0`.
 fn jev_locates(model: &str) -> bool {
+    let model = model.rsplit('/').next().unwrap_or(model);
     let version = model.strip_prefix("jev-").unwrap_or(model);
     let mut parts = version.split('.').map(str::parse::<u32>);
     match (parts.next(), parts.next()) {
@@ -955,12 +1068,17 @@ fn jev_fitted(png: &[u8]) -> (std::borrow::Cow<'_, [u8]>, (f64, f64)) {
 
 /// Reads where JEV saw the element from a successful response body, and the tokens it used.
 /// `fill` is the share of the sent picture the screenshot fills.
-fn located(body: &str, (fill_x, fill_y): (f64, f64)) -> Result<Search, VisionError> {
+fn located(
+    provider: Provider,
+    body: &str,
+    (fill_x, fill_y): (f64, f64),
+) -> Result<Search, VisionError> {
     let bad = || VisionError::BadAnswer {
         answer: body.to_owned(),
     };
     let v: Value = serde_json::from_str(body).map_err(|_| bad())?;
-    let usage = usage(Provider::Jev, &v);
+    let v = jev_answer(provider, v).ok_or_else(bad)?;
+    let usage = usage(provider, &v);
     let found = |found| Ok(Search { found, usage });
     let fraction = |v: &Value| v.as_f64().filter(|p| (0.0..=1.0).contains(p));
     let visible = fraction(&v["answers"]["visible"]["noul"]).ok_or_else(bad)?;
@@ -998,6 +1116,7 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
         answer: text.to_owned(),
     };
     let v: Value = serde_json::from_str(body).map_err(|_| bad(body))?;
+    let v = jev_answer(provider, v).ok_or_else(|| bad(body))?;
     let mut judgement = verdict_of(provider, &v)?;
     judgement.usage = usage(provider, &v);
     Ok(judgement)
@@ -1007,7 +1126,7 @@ fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
 pub(crate) fn usage(provider: Provider, v: &Value) -> Usage {
     let count = |v: &Value| v.as_u64().unwrap_or_default();
     let (input, output) = match provider {
-        Provider::Anthropic | Provider::Jev => {
+        Provider::Anthropic | Provider::Jev | Provider::JevCloudflare => {
             let u = &v["usage"];
             (
                 count(&u["input_tokens"])
@@ -1091,7 +1210,7 @@ fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
             }
             verdict_in(&text(&message["content"]))
         }
-        Provider::Jev => {
+        Provider::Jev | Provider::JevCloudflare => {
             let yes = v["answers"]["passed"]["noul"]
                 .as_f64()
                 .filter(|p| (0.0..=1.0).contains(p))
@@ -1153,6 +1272,7 @@ fn server_message(body: &str) -> String {
     [
         &v["error"]["message"],
         &v["error"],
+        &v["errors"][0]["message"],
         &v["message"],
         &v["detail"],
     ]

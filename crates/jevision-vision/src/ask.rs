@@ -39,7 +39,7 @@ impl Message {
 impl Provider {
     /// Whether the provider holds a conversation. JEV only judges screenshots.
     pub fn converses(self) -> bool {
-        self != Self::Jev
+        !self.is_jev()
     }
 }
 
@@ -145,7 +145,7 @@ fn request(
             });
             Some((format!("{base}/v1/messages"), body))
         }
-        Provider::Jev => None,
+        Provider::Jev | Provider::JevCloudflare => None,
         Provider::Gemini => {
             let contents: Vec<Value> = messages
                 .iter()
@@ -284,7 +284,7 @@ fn answer(provider: Provider, body: &str) -> Result<Value, VisionError> {
         }
         Provider::Ollama => text(&v["message"]["content"]),
         // Never asked: it doesn't converse.
-        Provider::Jev => return Err(bad(body)),
+        Provider::Jev | Provider::JevCloudflare => return Err(bad(body)),
         Provider::OpenAi | Provider::LmStudio | Provider::OpenAiCompatible => {
             let message = &v["choices"][0]["message"];
             if let Some(refusal) = message["refusal"].as_str() {
@@ -410,6 +410,7 @@ mod tests {
                     address: "http://127.0.0.1:9".into(),
                     key: key.map(Into::into),
                     pictures: true,
+                    account_id: String::new(),
                 },
                 TIMEOUT,
             )

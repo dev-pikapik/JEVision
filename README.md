@@ -423,6 +423,7 @@ only and sends nothing anywhere.
 | OpenAI | in the cloud | `OPENAI_API_KEY` |
 | Google Gemini | in the cloud | `GEMINI_API_KEY` |
 | JEV (TypeSafe AI) | in the cloud | `TYPESAFE_API_KEY` |
+| JEV via Cloudflare | in the cloud, paid from your Cloudflare account | `CLOUDFLARE_API_TOKEN`, with the Account ID in Settings → AI or `CLOUDFLARE_ACCOUNT_ID` |
 | Ollama | on this Mac | none |
 | LM Studio | on this Mac | none |
 | OpenAI-compatible server | at the address you give | `OPENAI_COMPATIBLE_API_KEY`, if the server asks for one |
@@ -432,9 +433,9 @@ only and sends nothing anywhere.
   window screenshot and the description, to JEV. Nothing else is sent.
 - **Finding by description.** A `click`, `hover`, `drag`, `scroll` or `type` can target an element
   described in words, like `{ "description": "the blue Save button" }`. JEV finds it on the masked
-  screenshot and the report outlines where, so JEV
+  screenshot and the report outlines where, so JEV, from TypeSafe AI or through Cloudflare,
   must be set up here even when another provider checks by meaning; it needs model jev-1.14.0 or
-  newer, or jev-latest.
+  newer (`typesafe/jev-1.14.0` on Cloudflare), or jev-latest.
 - **Masking.** Before a picture leaves the Mac, solid grey blocks cover the regions the reference
   hides or ignores, the project's `hide` areas and every password field the Accessibility
   permission lets JEVision find. The report shows the picture exactly as it was sent, marked

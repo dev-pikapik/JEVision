@@ -189,6 +189,9 @@ struct CommandLineArgumentTests {
     #expect(run == .run(RunRequest(paths: ["t.flow.json"], provider: "ollama", model: "qwen2.5vl:7b")))
     let help = Help.text("run")
     for provider in AISettings.providers { #expect(help.contains(provider.id)) }
+    let cloudflare = try Command.parse(["run", "t.flow.json", "--provider", "jev-cloudflare"])
+    #expect(cloudflare == .run(RunRequest(paths: ["t.flow.json"], provider: "jev-cloudflare")))
+    #expect(help.contains("CLOUDFLARE_API_TOKEN") && help.contains("CLOUDFLARE_ACCOUNT_ID"))
     var forced = RunRequest(paths: ["t.flow.json"], provider: "openai")
     forced.forceAI = true
     #expect(try Command.parse(["run", "t.flow.json", "--provider", "openai", "--force-ai"]) == .run(forced))
@@ -330,7 +333,7 @@ struct CommandLineArgumentTests {
     (["run", "a", "--force-ai=yes"], "--force-ai takes no value"),
     (
       ["run", "a", "--provider", "skynet"],
-      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible"
+      "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, jev, jev-cloudflare, ollama, lmstudio, openai-compatible"
     ),
   ])
   func usageErrors(arguments: [String], message: String) {

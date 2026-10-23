@@ -309,7 +309,12 @@ pub fn vision_phrase(f: &Failure) -> Phrase {
         | "run.vision.noModel"
         | "run.vision.noKey"
         | "run.vision.badKey"
-        | "run.vision.cannotLocate" => Phrase::new(key, &[provider]),
+        | "run.vision.cannotLocate"
+        | "run.vision.noAccount" => Phrase::new(key, &[provider]),
+        "run.vision.badAccount"
+        | "run.vision.cloudflareAccess"
+        | "run.vision.cloudflareNoBalance"
+        | "run.vision.pictureSize" => Phrase::new(key, &[]),
         "run.vision.badAddress" => Phrase::new(key, &[p("address")]),
         "run.vision.unreachable" => Phrase::new(key, &[provider, p("address")]),
         "run.vision.timeout" => Phrase::new(key, &[provider, p("seconds")]),

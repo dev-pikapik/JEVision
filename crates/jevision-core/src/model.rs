@@ -1225,6 +1225,7 @@ pub const AI_PROVIDERS: &[&str] = &[
     "openai",
     "gemini",
     "jev",
+    "jev-cloudflare",
     "ollama",
     "lmstudio",
     "openai-compatible",
