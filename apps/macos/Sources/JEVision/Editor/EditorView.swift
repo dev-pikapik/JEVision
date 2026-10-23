@@ -60,6 +60,7 @@ struct EditorView: View {
     } message: { removal in
       Text(removalMessage(removal))
     }
+    .formatQuestion(document)
     .onChange(of: undoManager) { document.undoManager = undoManager }
     .sheet(item: Binding(get: { document.savingToLibrary }, set: { document.savingToLibrary = $0 })) { kind in
       SaveToLibrarySheet(kind: kind, document: document)
@@ -843,6 +844,24 @@ private struct LastRunChip: View {
   static func ago(_ date: Date, now: Date) -> String {
     guard now.timeIntervalSince(date) >= 60 else { return String(localized: "just now") }
     return date.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
+  }
+}
+
+extension View {
+  /// Asks before a change of `document` is saved in a newer file format than the rest of its
+  /// project has, wherever the test is edited: in the editor or on the board.
+  func formatQuestion(_ document: FlowDocument) -> some View {
+    alert(
+      "Save with file labels?", isPresented: Binding(get: { document.pendingFormat != nil }, set: { _ in }),
+      presenting: document.pendingFormat
+    ) { _ in
+      Button("Save with Labels") { document.saveWithLabels() }
+      Button("Keep Plain Paths", role: .cancel) { document.keepPlainPaths() }
+    } message: { pending in
+      Text(
+        "\(pending.description) Colleagues who open this test will need this version of JEVision or newer."
+      )
+    }
   }
 }
 

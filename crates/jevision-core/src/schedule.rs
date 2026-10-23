@@ -43,47 +43,65 @@ const DAY: i64 = 24 * 60;
 
 /// One schedule: these tests, at these times.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Schedule {
     /// Unique within the project; names the schedule in run history.
+    #[cfg_attr(test, schemars(length(min = 1, max = MAX_NAME_LEN), regex(pattern = r"^\S(.*\S)?$")))]
     pub name: String,
     pub tests: ScheduleTests,
     pub repeat: Repeat,
     /// Time of day of the run; for `everyHours`, the run the others count from.
     pub at: TimeOfDay,
     /// Environment of the project's environments file; absent uses its default.
+    #[cfg_attr(test, schemars(regex(pattern = crate::schema::environment_name())))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,
     /// `off`, `on-failure` or `always`; absent follows the app's setting.
+    #[cfg_attr(test, schemars(extend("enum" = SCHEDULE_VIDEO_MODES)))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video: Option<String>,
 }
 
 /// Which tests a schedule runs. Paths are relative to the project folder.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum ScheduleTests {
     /// Every test of the project.
     All,
     /// Every test in a folder and its subfolders.
-    Folder(String),
+    Folder(#[cfg_attr(test, schemars(regex(pattern = crate::schema::inside_project(""))))] String),
     /// These test files.
-    Files(Vec<String>),
+    Files(
+        #[cfg_attr(
+            test,
+            schemars(
+                length(min = 1),
+                inner(regex(pattern = crate::schema::inside_project(r"\.flow\.json"))),
+                extend("uniqueItems" = true)
+            )
+        )]
+        Vec<String>,
+    ),
 }
 
 /// On which days and how often a schedule runs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum Repeat {
     /// Every day at `at`.
     Daily,
     /// These days of the week at `at`.
-    Days(Vec<Weekday>),
+    Days(#[cfg_attr(test, schemars(length(min = 1), extend("uniqueItems" = true)))] Vec<Weekday>),
     /// Every so many hours, around the clock, in step with `at`.
-    EveryHours(u8),
+    EveryHours(#[cfg_attr(test, schemars(extend("enum" = EVERY_HOURS)))] u8),
 }
 
+/// A day of the week.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum Weekday {
     Sun,
@@ -279,9 +297,11 @@ impl fmt::Display for ScheduleProblem {
 impl std::error::Error for ScheduleProblem {}
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
-struct File {
+pub(crate) struct File {
     format: u32,
+    /// Each with a name of its own, whatever the case of its letters.
     schedules: Vec<Schedule>,
 }
 
@@ -623,17 +643,20 @@ fn xml_escape(text: &str) -> String {
 
 /// What came of one scheduled run.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduledRun {
     /// Name of the schedule.
     pub schedule: String,
     /// Milliseconds since 1970, UTC.
     pub started_at_ms: i64,
+    /// How long the run took, in milliseconds.
     pub duration_ms: u64,
     pub outcome: ScheduledOutcome,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(tag = "result", rename_all = "camelCase")]
 pub enum ScheduledOutcome {
     /// The tests ran; `failed` counts every test that didn't pass.
@@ -646,6 +669,7 @@ pub enum ScheduledOutcome {
 
 /// Why a scheduled run didn't start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum SkipReason {
     /// The screen was locked: input would go to the lock screen.
@@ -658,9 +682,10 @@ pub enum SkipReason {
 
 /// Scheduled runs of a project on this computer, and up to when schedules were checked.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleHistory {
-    format: u32,
+    pub(crate) format: u32,
     /// Local minute schedules were last checked at; runs up to it are done or missed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checked_at: Option<i64>,

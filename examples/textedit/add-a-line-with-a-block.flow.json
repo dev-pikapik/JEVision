@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Add a line with a shared block",
   "description": "Opens a copy of note.txt in TextEdit and adds a line with the block org.jevision.add-line, the way a block from the community is used, then checks how the window looks and quits TextEdit.",

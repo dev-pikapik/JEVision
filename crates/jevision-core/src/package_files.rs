@@ -20,6 +20,7 @@ use crate::package::{
     PackageError, PackageInput, PackageLock, Version, app_version, check_package, is_package_id,
     package_of_path, parse_manifest, unmet, visit_files,
 };
+use crate::resources::resolve_labels;
 use crate::validate::{is_relative_path, placeholders};
 use crate::{parse, resolve_test, to_canonical_json};
 
@@ -454,7 +455,13 @@ pub fn remove_package(project: &Path, id: &str) -> Result<(), PackageError> {
 
 /// The tests and blocks of `project`, as files relative to it, sorted.
 fn project_tests(project: &Path) -> Vec<String> {
-    fn walk(dir: &Path, prefix: &str, depth: usize, out: &mut Vec<String>) {
+    project_files(project, &[TEST_SUFFIX, BLOCK_SUFFIX])
+}
+
+/// The files of `project` with one of `endings`, relative to it and sorted, outside hidden
+/// folders and installed packages.
+pub(crate) fn project_files(project: &Path, endings: &[&str]) -> Vec<String> {
+    fn walk(dir: &Path, prefix: &str, depth: usize, endings: &[&str], out: &mut Vec<String>) {
         let Ok(entries) = fs::read_dir(dir) else {
             return;
         };
@@ -473,17 +480,15 @@ fn project_tests(project: &Path) -> Vec<String> {
                     || name.ends_with(PACKAGE_SUFFIX)
                     || depth >= 12;
                 if !skip {
-                    walk(&entry.path(), &format!("{path}/"), depth + 1, out);
+                    walk(&entry.path(), &format!("{path}/"), depth + 1, endings, out);
                 }
-            } else if kind.is_file()
-                && (name.ends_with(TEST_SUFFIX) || name.ends_with(BLOCK_SUFFIX))
-            {
+            } else if kind.is_file() && endings.iter().any(|e| name.ends_with(e)) {
                 out.push(path);
             }
         }
     }
     let mut files = Vec::new();
-    walk(project, "", 0, &mut files);
+    walk(project, "", 0, endings, &mut files);
     files.sort();
     files
 }
@@ -767,7 +772,7 @@ fn file_stem(name: &str) -> String {
 }
 
 /// The path from the folder of `file` to `to`, both relative to the project.
-fn relative(file: &str, to: &str) -> String {
+pub(crate) fn relative(file: &str, to: &str) -> String {
     let from: Vec<&str> = file.split('/').collect();
     let from = &from[..from.len() - 1];
     let to: Vec<&str> = to.split('/').collect();
@@ -851,6 +856,15 @@ pub fn export_package(
     };
     let text = fs::read_to_string(project.join(block_file)).map_err(|e| unreadable(&e))?;
     let mut flow = parse(&text)?;
+    // A package names its files by path: it goes to projects that don't have the labels.
+    let folder = project.join(block_file);
+    let labels = resolve_labels(&mut flow, folder.parent().unwrap_or(project), Some(project));
+    let missing: Vec<Issue> = (labels.issues.into_iter())
+        .filter(|i| i.code == "resource.missing")
+        .collect();
+    if !missing.is_empty() {
+        return Err(PackageError { issues: missing });
+    }
     // A step that runs an installed package keeps running it from beside this one, which then
     // needs it in the version installed here or a later one that keeps to it.
     let mut needs: BTreeMap<String, serde_json::Value> = BTreeMap::new();

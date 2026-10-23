@@ -1,0 +1,9 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "708192a3b4c5d6e7",
+  "kind": "image",
+  "hash": "sha256:704a27b666162bf85f398ea0b632071ad5888dc7d21a80fdf1dfa47b7203cee4",
+  "size": 69,
+  "name": "stamp.png"
+}

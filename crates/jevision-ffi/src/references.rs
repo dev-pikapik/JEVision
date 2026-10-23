@@ -6,8 +6,8 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use jevision_core::{
-    BLOCK_SUFFIX, Reference, SettingsError, TEST_SUFFIX, describe, parse, resolve_test,
-    set_reference_settings, to_canonical_json,
+    BLOCK_SUFFIX, Reference, ResourceStatus, SettingsError, TEST_SUFFIX, describe, parse,
+    resolve_labels, resolve_resource, resolve_test, set_reference_settings, to_canonical_json,
 };
 use jevision_l10n::tr;
 
@@ -88,25 +88,39 @@ pub enum ReferenceError {
 #[uniffi::export]
 pub fn reference_uses(project: String, reference: String) -> Vec<ReferenceUse> {
     let project = Path::new(&project);
-    // A path in no test's folder in particular, so only `.` and `..` are resolved.
-    let Some(picture) = resolve_test("x", &reference) else {
+    // A label stands for the file it names now; a path is in no test's folder in particular,
+    // so only `.` and `..` are resolved.
+    let picture = match resolve_resource(project, &reference) {
+        Some(ResourceStatus::Found { path, .. } | ResourceStatus::Detached { path, .. }) => {
+            Some(path)
+        }
+        Some(ResourceStatus::Missing { .. }) => None,
+        None => resolve_test("x", &reference),
+    };
+    let Some(picture) = picture else {
         return Vec::new();
     };
     let mut found = Vec::new();
     for test in test_files(project) {
-        let Some(flow) = fs::read_to_string(project.join(&test))
+        let Some(mut flow) = fs::read_to_string(project.join(&test))
             .ok()
             .and_then(|text| parse(&text).ok())
         else {
             continue;
         };
+        let folder = project.join(&test);
+        let labels = resolve_labels(&mut flow, folder.parent().unwrap_or(project), Some(project));
         for u in jevision_core::reference_uses(&flow, &test, &picture) {
+            // The picture as the block names it, which may be its label.
+            let image = (labels.paths.iter())
+                .find(|(block, _, path)| *block == u.block && *path == u.image)
+                .map_or(u.image, |(_, label, _)| label.clone());
             found.push(ReferenceUse {
                 test: test.clone(),
                 block: u.block,
                 block_type: u.block_type,
                 field: u.field,
-                image: u.image,
+                image,
                 dark: u.dark,
                 settings: u.settings,
             });

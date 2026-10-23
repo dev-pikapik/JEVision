@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ Colleagues who open this test will need this version of JEVision or newer." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Коллегам, которые откроют этот тест, понадобится эта версия JEVision или новее."
+          }
+        }
+      }
+    },
     "%@ To put a test in quarantine, choose Quarantine… in its menu in the sidebar. The settings are saved in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -1367,6 +1377,110 @@
         }
       }
     },
+    "%lld files go back to how they were on %@. The tests as they are now are backed up first, so you can return to them." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld file goes back to how it was on %2$@. The tests as they are now are backed up first, so you can return to them."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld files go back to how they were on %2$@. The tests as they are now are backed up first, so you can return to them."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld файла вернутся к виду на %2$@. Тесты в нынешнем виде сначала сохранятся в резервной копии, чтобы к ним можно было вернуться."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld файлов вернутся к виду на %2$@. Тесты в нынешнем виде сначала сохранятся в резервной копии, чтобы к ним можно было вернуться."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld файл вернётся к виду на %2$@. Тесты в нынешнем виде сначала сохранятся в резервной копии, чтобы к ним можно было вернуться."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld файла вернутся к виду на %2$@. Тесты в нынешнем виде сначала сохранятся в резервной копии, чтобы к ним можно было вернуться."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld files restored. The tests as they were just before are backed up too." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file restored. The tests as they were just before are backed up too."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files restored. The tests as they were just before are backed up too."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлено %lld файла. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлено %lld файлов. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлен %lld файл. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлено %lld файла. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld files · %@" : {
       "localizations" : {
         "ru" : {
@@ -2415,6 +2529,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение действует сразу, даже для теста, который уже идёт."
+          }
+        }
+      }
+    },
+    "A file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл"
           }
         }
       }
@@ -4819,6 +4943,16 @@
         }
       }
     },
+    "Backups of the tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Резервные копии тестов"
+          }
+        }
+      }
+    },
     "Before" : {
       "localizations" : {
         "ru" : {
@@ -4881,6 +5015,16 @@
         }
       }
     },
+    "Before JEVision changes the format of tests, it backs them up in the project, so you can go back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прежде чем менять формат тестов, JEVision сохраняет их резервную копию в проекте, чтобы можно было вернуться."
+          }
+        }
+      }
+    },
     "Before a screenshot goes to an AI model, JEVision paints over password fields, the areas each check hides, and the areas listed under “hide” in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -4907,6 +5051,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Слева — до, справа — после"
+          }
+        }
+      }
+    },
+    "Before the change, JEVision backs up these tests in the project." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед изменением JEVision сохранит резервную копию этих тестов в проекте."
           }
         }
       }
@@ -5483,6 +5637,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось изменить уведомления"
+          }
+        }
+      }
+    },
+    "Can’t change the project files" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось изменить файлы проекта"
           }
         }
       }
@@ -9767,6 +9931,16 @@
         }
       }
     },
+    "Files to get a label: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлов получат метку: %lld"
+          }
+        }
+      }
+    },
     "Fill in at least one of the kind, the title and the identifier. The title is the element’s label, exactly as accessibility reads it; it can hold ${var.NAME}. When several elements fit, the index picks one: 0 is the first, in the order the window lists them, usually from the top." : {
       "localizations" : {
         "ru" : {
@@ -9843,6 +10017,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Найти чат"
+          }
+        }
+      }
+    },
+    "Find File…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти файл…"
           }
         }
       }
@@ -10183,6 +10367,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Для каждой строки %@"
+          }
+        }
+      }
+    },
+    "For each row of the data file" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для каждой строки файла данных"
           }
         }
       }
@@ -11914,6 +12108,16 @@
         }
       }
     },
+    "JEVision makes one each time it changes the format of tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision делает её каждый раз, когда меняет формат тестов."
+          }
+        }
+      }
+    },
     "JEVision needs a few things to drive this Mac for you." : {
       "localizations" : {
         "ru" : {
@@ -12030,6 +12234,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить правку"
+          }
+        }
+      }
+    },
+    "Keep Plain Paths" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить обычные пути"
           }
         }
       }
@@ -15506,6 +15720,16 @@
         }
       }
     },
+    "Open the folder with your tests to change the format of its files." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы изменить формат её файлов."
+          }
+        }
+      }
+    },
     "Open the folder with your tests to choose how they start apps." : {
       "localizations" : {
         "ru" : {
@@ -16264,6 +16488,16 @@
         }
       }
     },
+    "Paths replaced by labels: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Путей заменится метками: %lld"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "ru" : {
@@ -16884,6 +17118,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Как в проекте"
+          }
+        }
+      }
+    },
+    "Project file format" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат файлов проекта"
           }
         }
       }
@@ -18602,6 +18846,16 @@
         }
       }
     },
+    "Restore Label" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить метку"
+          }
+        }
+      }
+    },
     "Restore Last Committed Version" : {
       "localizations" : {
         "ru" : {
@@ -18648,6 +18902,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Восстановить настройки по умолчанию?"
+          }
+        }
+      }
+    },
+    "Restore the tests from this backup?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить тесты из этой резервной копии?"
+          }
+        }
+      }
+    },
+    "Restore…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить…"
           }
         }
       }
@@ -19700,6 +19974,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить отчёт одним HTML-файлом со снимками или в формате JUnit XML для CI"
+          }
+        }
+      }
+    },
+    "Save with Labels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить с метками"
+          }
+        }
+      }
+    },
+    "Save with file labels?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить с метками файлов?"
           }
         }
       }
@@ -22350,6 +22644,26 @@
         }
       }
     },
+    "Tests changed: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено тестов: %lld"
+          }
+        }
+      }
+    },
+    "Tests changed: %lld. The backup from before the change is the one of %@ below." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено тестов: %1$lld. Резервная копия до изменения — копия от %2$@ ниже."
+          }
+        }
+      }
+    },
     "Tests in a folder" : {
       "localizations" : {
         "ru" : {
@@ -22400,6 +22714,16 @@
         }
       }
     },
+    "Tests that can’t be read and stay as they are: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестов не удалось прочитать, они останутся как есть: %lld"
+          }
+        }
+      }
+    },
     "Tests that must pass first. If one doesn’t, this test is blocked instead of run." : {
       "localizations" : {
         "ru" : {
@@ -22416,6 +22740,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тесты, которые работают с экраном, всё равно идут по очереди"
+          }
+        }
+      }
+    },
+    "Tests then find their pictures and tables even after the files are moved or renamed. Colleagues need this version of JEVision or newer to open the tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тогда тесты находят свои картинки и таблицы, даже если файлы перемещены или переименованы. Чтобы открыть такие тесты, коллегам понадобится эта версия JEVision или новее."
+          }
+        }
+      }
+    },
+    "Tests to change: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тестов изменится: %lld"
           }
         }
       }
@@ -24226,6 +24570,26 @@
         }
       }
     },
+    "There’s nothing to change. Tests that can’t be read and stay as they are: %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Менять нечего. Тестов не удалось прочитать, они останутся как есть: %lld"
+          }
+        }
+      }
+    },
+    "There’s nothing to change: no test in this project names a file by its path." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Менять нечего: ни один тест в этом проекте не указывает файл путём."
+          }
+        }
+      }
+    },
     "There’s nothing to send yet. Commit your changes first." : {
       "localizations" : {
         "ru" : {
@@ -25666,6 +26030,26 @@
         }
       }
     },
+    "Use File Labels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать метки файлов"
+          }
+        }
+      }
+    },
+    "Use File Labels…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать метки файлов…"
+          }
+        }
+      }
+    },
     "Use This Account" : {
       "localizations" : {
         "ru" : {
@@ -25712,6 +26096,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Столбец можно подставить в блок «Ввод текста» внутри цикла через «Вставить»."
+          }
+        }
+      }
+    },
+    "Use file labels in this project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать метки файлов в этом проекте"
+          }
+        }
+      }
+    },
+    "Use file labels in this project?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать метки файлов в этом проекте?"
           }
         }
       }
@@ -27648,6 +28052,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "точке %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "backup.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A backup can’t be made, so nothing was changed: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся сделать резервную копию, поэтому ничего не изменено: %@."
+          }
+        }
+      }
+    },
+    "backup.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s no backup “%@” in this project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этом проекте нет резервной копии «%@»."
           }
         }
       }
@@ -34179,13 +34615,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs, checks and formats JEVision tests.\n\n%1$@\n\nCommands:\n  run        Run tests on this Mac\n  validate   Check tests for errors and warnings\n  check      Check the project carries every file its tests read\n  fmt        Rewrite tests in canonical form\n  issue      Report a failed run as a GitHub issue\n  mcp        Let AI assistants read, edit and run tests (MCP server)\n  schedule   Run the schedules of a project that are due now\n  blocks     Install, update, remove and restore blocks others shared\n  version    Show the version; with --json, the file formats and protocols too\n\nOptions:\n  -h, --help     Show this help\n  -V, --version  Show the version\n  --lang <code>  Language of the messages, with any command: %2$@. Default:\n                 the Mac’s language, English when the CI variable is set\n\nExit status, for every command: 0 — all good, 1 — a test failed or problems found,\n2 — wrong arguments, 3 — a file couldn't be read or written, 4 — this Mac isn't ready\nto run tests, 5 — a file needs a newer JEVision.\n\nRun “jevision <command> --help” for the options of a command."
+            "value" : "Runs, checks and formats JEVision tests.\n\n%1$@\n\nCommands:\n  run        Run tests on this Mac\n  validate   Check tests for errors and warnings\n  check      Check the project carries every file its tests read\n  fmt        Rewrite tests in canonical form\n  issue      Report a failed run as a GitHub issue\n  mcp        Let AI assistants read, edit and run tests (MCP server)\n  schedule   Run the schedules of a project that are due now\n  blocks     Install, update, remove and restore blocks others shared\n  migrate    Name the files of a project’s tests by labels; list and restore backups\n  version    Show the version; with --json, the file formats and protocols too\n\nOptions:\n  -h, --help     Show this help\n  -V, --version  Show the version\n  --lang <code>  Language of the messages, with any command: %2$@. Default:\n                 the Mac’s language, English when the CI variable is set\n\nExit status, for every command: 0 — all good, 1 — a test failed or problems found,\n2 — wrong arguments, 3 — a file couldn't be read or written, 4 — this Mac isn't ready\nto run tests, 5 — a file needs a newer JEVision.\n\nRun “jevision <command> --help” for the options of a command."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускает, проверяет и форматирует тесты JEVision.\n\n%1$@\n\nКоманды:\n  run        Запустить тесты на этом Mac\n  validate   Проверить тесты на ошибки и предупреждения\n  check      Проверить, что в проекте есть все файлы, которые читают тесты\n  fmt        Переписать тесты в каноническом виде\n  issue      Сообщить о проваленном прогоне задачей на GitHub\n  mcp        Дать ИИ-ассистентам читать, править и запускать тесты (сервер MCP)\n  schedule   Выполнить расписания проекта, время которых пришло\n  blocks     Устанавливать, обновлять, удалять и восстанавливать блоки, которыми с вами поделились\n  version    Показать версию; с --json — ещё форматы файлов и протоколы\n\nПараметры:\n  -h, --help     Показать эту справку\n  -V, --version  Показать версию\n  --lang <код>   Язык сообщений, с любой командой: %2$@. По умолчанию — язык Mac, а если\n                 задана переменная CI — английский\n\nКод завершения у всех команд: 0 — всё в порядке, 1 — тест провален или найдены проблемы,\n2 — неверные аргументы, 3 — файл не удалось прочитать или записать, 4 — этот Mac не готов\nзапускать тесты, 5 — файлу нужна более новая JEVision.\n\nПараметры команды: «jevision <команда> --help»."
+            "value" : "Запускает, проверяет и форматирует тесты JEVision.\n\n%1$@\n\nКоманды:\n  run        Запустить тесты на этом Mac\n  validate   Проверить тесты на ошибки и предупреждения\n  check      Проверить, что в проекте есть все файлы, которые читают тесты\n  fmt        Переписать тесты в каноническом виде\n  issue      Сообщить о проваленном прогоне задачей на GitHub\n  mcp        Дать ИИ-ассистентам читать, править и запускать тесты (сервер MCP)\n  schedule   Выполнить расписания проекта, время которых пришло\n  blocks     Устанавливать, обновлять, удалять и восстанавливать блоки, которыми с вами поделились\n  migrate    Указать файлы тестов проекта метками; показать и вернуть резервные копии\n  version    Показать версию; с --json — ещё форматы файлов и протоколы\n\nПараметры:\n  -h, --help     Показать эту справку\n  -V, --version  Показать версию\n  --lang <код>   Язык сообщений, с любой командой: %2$@. По умолчанию — язык Mac, а если\n                 задана переменная CI — английский\n\nКод завершения у всех команд: 0 — всё в порядке, 1 — тест провален или найдены проблемы,\n2 — неверные аргументы, 3 — файл не удалось прочитать или записать, 4 — этот Mac не готов\nзапускать тесты, 5 — файлу нужна более новая JEVision.\n\nПараметры команды: «jevision <команда> --help»."
           }
         }
       }
@@ -34202,6 +34638,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открывает тесты проекта ИИ-ассистентам на этом Mac — Claude, Cursor, Copilot и другим — по\nпротоколу Model Context Protocol. Ассистент сам запускает эту команду и общается с ней\nчерез стандартные ввод и вывод; добавьте её в MCP-серверы ассистента.\n\nС --remote ассистент пользуется инструментами другого Mac: его проектами, экраном, мышью и\nклавиатурой. Один раз выполните сопряжение этого компьютера с тем Mac: в JEVision на нём\nоткройте Настройки → iPhone и удалённо → Добавить → Ассистент на другом компьютере и\nвыполните показанную команду — это jevision mcp --pair с одноразовым кодом. Трафик\nзашифрован из конца в конец и не открывает портов; ключ этого компьютера остаётся в его\nСвязке ключей.\n\n%@\n\nПараметры:\n  --project <папка>   Папка проекта, тесты которого может видеть ассистент. По умолчанию —\n                      ближайшая папка с папкой .jevision: текущая или одна из папок над\n                      ней, иначе текущая папка. С --remote — имя проекта, которым делится\n                      Mac; без него — единственный такой проект\n  --pair <код>        Выполнить сопряжение этого компьютера с Mac, который показывает код\n  --remote <Mac>      Открыть инструменты сопряжённого Mac по его имени\n  --forget <Mac>      Забыть сопряжённый Mac на этом компьютере. Mac показывает этот\n                      компьютер, пока человек за ним не отключит его в Настройках → iPhone\n                      и удалённо\n  -h, --help          Показать эту справку\n\nАссистенты могут перечислять, читать, писать и проверять тесты, читать отчёты и смотреть\nформат тестов. Запуск тестов и снимки экрана работают, только когда вы разрешите их в\nJEVision → Настройки → ИИ → Ассистенты на том Mac, где они выполняются; ассистенту на\nдругом Mac нужен ещё и включённый переключатель «Ассистент» в Настройках → iPhone и\nудалённо. Ассистенты никогда не получают значения секретов и API-ключей и не могут трогать\nфайлы вне папки проекта.\n\nКод завершения: 0 — ассистент отключился, Mac сопряжён или забыт, 2 — неверные аргументы,\nнет проекта или такой Mac не сопряжён, 3 — не удалось прочитать или записать список\nсопряжённых Mac, ключ этого компьютера, стандартный ввод или вывод, 4 — другой Mac\nнедоступен или у этого компьютера нет ключа."
+          }
+        }
+      }
+    },
+    "cli.help.migrate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Names the files of a project’s tests — pictures, tables and others — by labels that stay\nthe same when the files are moved or renamed in the project. Each labeled file gets a small\nlabel file next to it, such as login.png.jevmeta, which should go wherever the file goes.\nTests with labels open in this version of JEVision and newer.\n\n%@\n\nArguments:\n  <project>       Project folder. Default: the current folder\n\nOptions:\n  --dry-run       Say what would change, and change nothing\n  --backups       List the backups of tests made before each change, newest first\n  --restore <id>  Put back the tests of a backup; the tests as they are now are backed\n                  up first\n  --json          Print the result as JSON\n  -h, --help      Show this help\n\nBefore it changes tests, the command backs them up in .jevision/backups in the project.\nTests that can’t be read are listed and left as they are.\n\nExit status: 0 — done, 1 — some tests couldn’t be read and were left as they are, 2 — the\nproject couldn’t be read or written, or there is no such backup."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Указывает файлы тестов проекта — картинки, таблицы и другие — метками, которые не меняются,\nкогда файлы перемещают или переименовывают внутри проекта. Рядом с каждым файлом с меткой\nпоявляется небольшой файл метки, например login.png.jevmeta, — он должен переезжать вместе\nс файлом. Тесты с метками открываются в этой версии JEVision и новее.\n\n%@\n\nАргументы:\n  <проект>        Папка проекта. По умолчанию — текущая папка\n\nПараметры:\n  --dry-run       Показать, что изменится, ничего не меняя\n  --backups       Показать резервные копии тестов, сделанные перед каждым изменением,\n                  начиная с новых\n  --restore <id>  Вернуть тесты из резервной копии; тесты в нынешнем виде сначала тоже\n                  сохраняются в резервной копии\n  --json          Вывести результат в формате JSON\n  -h, --help      Показать эту справку\n\nПеред изменением команда сохраняет резервную копию тестов в .jevision/backups в папке\nпроекта. Тесты, которые не удалось прочитать, перечисляются и остаются как есть.\n\nКод завершения: 0 — готово, 1 — часть тестов не удалось прочитать, и они остались как есть,\n2 — не удалось прочитать или записать проект либо такой резервной копии нет."
           }
         }
       }
@@ -34586,6 +35038,346 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "несколько сопряжённых Mac называются «%1$@». Укажите один по началу его id: %2$@."
+          }
+        }
+      }
+    },
+    "cli.migrate.backup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup of the tests before the change: %1$@. To go back: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Резервная копия тестов до изменения: %1$@. Чтобы вернуться: %2$@"
+          }
+        }
+      }
+    },
+    "cli.migrate.changed" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changed %lld test:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Changed %lld tests:"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменены %lld теста:"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменены %lld тестов:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменён %lld тест:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменены %lld теста:"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cli.migrate.dryRun" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing was changed: this was a dry run."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не изменено: это была пробная проверка."
+          }
+        }
+      }
+    },
+    "cli.migrate.file" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — paths to labels: %2$lld, new label files: %3$lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — путей станет метками: %2$lld, новых файлов меток: %3$lld"
+          }
+        }
+      }
+    },
+    "cli.migrate.files" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld file"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld files"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файлов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файла"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cli.migrate.noBackups" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There are no backups of tests in this project yet."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этом проекте пока нет резервных копий тестов."
+          }
+        }
+      }
+    },
+    "cli.migrate.nothing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to change: no test names a file by its path."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Менять нечего: ни один тест не указывает файл путём."
+          }
+        }
+      }
+    },
+    "cli.migrate.restored" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Restored %1$lld file from backup %2$@. The tests as they were just before are backed up too:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Restored %1$lld files from backup %2$@. The tests as they were just before are backed up too:"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлены %1$lld файла из резервной копии %2$@. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии:"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлено %1$lld файлов из резервной копии %2$@. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлен %1$lld файл из резервной копии %2$@. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановлены %1$lld файла из резервной копии %2$@. Тесты в том виде, какими они были перед этим, тоже сохранены в резервной копии:"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cli.migrate.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can’t read %lld test, so it stays as it is:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Can’t read %lld tests, so they stay as they are:"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не удалось прочитать %lld теста, они останутся как есть:"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не удалось прочитать %lld тестов, они останутся как есть:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не удалось прочитать %lld тест, он останется как есть:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не удалось прочитать %lld теста, они останутся как есть:"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cli.migrate.wouldChange" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Would change %lld test:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Would change %lld tests:"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменятся %lld теста:"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменятся %lld тестов:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменится %lld тест:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Изменятся %lld теста:"
+                }
+              }
+            }
           }
         }
       }
@@ -36322,6 +37114,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Использование: jevision mcp [--project <папка>]\n               jevision mcp --pair <код>\n               jevision mcp --remote <Mac> [--project <имя>]\n               jevision mcp --forget <Mac>"
+          }
+        }
+      }
+    },
+    "cli.usage.migrate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage: jevision migrate [--dry-run | --backups | --restore <id>] [--json] [<project>]"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использование: jevision migrate [--dry-run | --backups | --restore <id>] [--json] [<проект>]"
           }
         }
       }
@@ -38504,6 +39312,22 @@
         }
       }
     },
+    "flow.format.2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pictures and files are named by a label, so tests keep working when the files are moved or renamed."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинки и файлы называются по метке, поэтому тесты продолжают работать, когда файлы переносят или переименовывают."
+          }
+        }
+      }
+    },
     "flow.format.missing" : {
       "localizations" : {
         "en" : {
@@ -38744,6 +39568,22 @@
         }
       }
     },
+    "flow.minVersion.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a JEVision version. Write it like 1.2.0."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не версия JEVision. Запишите её так: 1.2.0."
+          }
+        }
+      }
+    },
     "flow.name.duplicate" : {
       "localizations" : {
         "en" : {
@@ -38772,6 +39612,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» не подходит как имя: начните с буквы или _, дальше только буквы, цифры и _."
+          }
+        }
+      }
+    },
+    "flow.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This test was made in JEVision %@. Update JEVision to open it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест создан в JEVision %@ — обновите JEVision, чтобы открыть его."
           }
         }
       }
@@ -42490,6 +43346,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ создан. %@"
+          }
+        }
+      }
+    },
+    "mcp.write.needsRaise" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not saved. The test needs a newer file format than the other tests of the project: %@ An older JEVision couldn’t open the project after that, so the person has to agree to it in the app. Name the files by their paths instead."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сохранено. Тесту нужен более новый формат файла, чем у остальных тестов проекта: %@ После этого старый JEVision не сможет открыть проект, поэтому согласиться должен человек — в приложении. Назовите файлы путями."
           }
         }
       }
@@ -46450,6 +47322,166 @@
         }
       }
     },
+    "resource.detached" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file “%@” lost its label, and a file with the same content is at %@. Restore the label so that the test uses it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл «%1$@» потерял метку, а файл с тем же содержимым лежит в %2$@. Восстановите метку, чтобы тест использовал его."
+          }
+        }
+      }
+    },
+    "resource.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a file label. A label is res: followed by 16 letters and digits."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не метка файла. Метка — это res: и 16 букв и цифр."
+          }
+        }
+      }
+    },
+    "resource.labeled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ already has a label of its own. Use that label instead."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У файла %@ уже есть своя метка. Используйте её."
+          }
+        }
+      }
+    },
+    "resource.large" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file “%@” takes %@. Large files slow the repository down; keep them in Git LFS with git lfs track."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл «%1$@» занимает %2$@. Большие файлы замедляют репозиторий — храните их в Git LFS через git lfs track."
+          }
+        }
+      }
+    },
+    "resource.meta.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The label file has a wrong %@: “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле метки неверное поле %1$@: «%2$@»."
+          }
+        }
+      }
+    },
+    "resource.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file “%@” is missing. Find the file or put it back in the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не хватает файла «%@». Найдите файл или верните его в проект."
+          }
+        }
+      }
+    },
+    "resource.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ doesn’t exist."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ нет."
+          }
+        }
+      }
+    },
+    "resource.outside" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is outside the project folder or in a hidden folder. Put the file in the project folder first."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ лежит вне папки проекта или в скрытой папке. Сначала положите файл в папку проекта."
+          }
+        }
+      }
+    },
+    "resource.unreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be read: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл %1$@ не читается: %2$@."
+          }
+        }
+      }
+    },
+    "resource.unwritable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The label of %@ can’t be saved: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метку файла %1$@ не удаётся сохранить: %2$@."
+          }
+        }
+      }
+    },
     "result failure screenshot reference" : {
       "localizations" : {
         "ru" : {
@@ -47742,6 +48774,22 @@
         }
       }
     },
+    "run.resource.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the file “%@” is missing. Find the file or put it back in the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: не хватает файла «%2$@». Найдите файл или верните его в проект."
+          }
+        }
+      }
+    },
     "run.runTest.recursion" : {
       "localizations" : {
         "en" : {
@@ -48554,6 +49602,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "запускает другой тест"
+          }
+        }
+      }
+    },
+    "save.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ can’t be saved: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл %1$@ не сохраняется: %2$@."
+          }
+        }
+      }
+    },
+    "save.path.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” isn’t a path inside the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не путь внутри проекта."
           }
         }
       }

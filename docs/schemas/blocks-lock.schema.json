@@ -1,0 +1,32 @@
+{
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/blocks-lock.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Where the shared blocks installed in a project came from, in `jevision.blocks.json` in the project folder, so the whole team can update them. JEVision keeps it itself.",
+  "properties": {
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "sources": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "The address each package was installed from, by its id. A package installed from a file has none.",
+      "type": "object"
+    },
+    "versions": {
+      "additionalProperties": {
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+.*)?$",
+        "type": "string"
+      },
+      "description": "The version each package had when it was installed, by its id.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "format"
+  ],
+  "title": "JEVision installed blocks",
+  "type": "object"
+}

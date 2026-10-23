@@ -20,4 +20,6 @@ ureq = { version = "3.1", default-features = false, features = ["rustls"] }
 security-framework = "3.7"
 
 [dev-dependencies]
+jevision-schema.workspace = true
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+schemars.workspace = true

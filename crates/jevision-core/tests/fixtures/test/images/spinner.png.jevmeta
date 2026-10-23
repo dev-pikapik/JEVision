@@ -1,0 +1,9 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "6f708192a3b4c5d6",
+  "kind": "image",
+  "hash": "sha256:ae55cb87cb28f68efab1a1f7527c214e3f86899bd921385421820c1804bebcf0",
+  "size": 69,
+  "name": "spinner.png"
+}

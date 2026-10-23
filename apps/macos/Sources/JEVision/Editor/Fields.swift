@@ -65,7 +65,8 @@ struct IssueList: View {
   }
 }
 
-/// A file chosen in Finder and stored relative to the test.
+/// A file chosen in Finder and stored relative to the test, or by its label, which keeps
+/// naming the file when it is moved or renamed in the project.
 struct FilePathField: View {
   let label: Text
   @Binding var path: String
@@ -75,6 +76,11 @@ struct FilePathField: View {
   var appearanceVariants = false
   /// Names of the pictures blocks save, which can stand in for the file as `${var.NAME}`.
   var pictures: [String] = []
+  /// Why the chosen file is named by its path, or why a label could not be mended, for the
+  /// path the field had then.
+  @State private var problem: (path: String, text: String)?
+  /// Changes when a label gets its file back, so the field looks it up again.
+  @State private var relinks = 0
 
   private var url: URL { RelativePath.resolve(path, in: context.folder) }
   private var isWebAddress: Bool { path.hasPrefix("http://") || path.hasPrefix("https://") }
@@ -82,9 +88,11 @@ struct FilePathField: View {
   private var isPlaceholder: Bool { path.contains("${") }
 
   var body: some View {
+    let _ = relinks
+    let resource = RelativePath.resolution(path, in: context.folder)
     LabeledContent {
       HStack {
-        Text(path.isEmpty ? String(localized: "None") : path)
+        Text(shown(resource))
           .foregroundStyle(path.isEmpty ? .secondary : .primary)
           .truncationMode(.middle)
           .lineLimit(1)
@@ -111,22 +119,74 @@ struct FilePathField: View {
           .foregroundStyle(.secondary)
       }
     }
-    if !path.isEmpty, !isWebAddress, !isPlaceholder, path.first != "/" {
-      if AppearanceImage.url(path, in: context.folder, dark: false, variants: appearanceVariants) == nil {
-        Warning(text: Text("There’s no such file next to the test."))
-      } else if let root = context.projectRoot, !RelativePath.isInside(url, folder: root) {
-        Warning(text: Text("This file is outside the project, so other people won’t get it with the tests."))
+    if let problem, problem.path == path {
+      Warning(text: Text(problem.text))
+    }
+    switch resource {
+    case (let project, .detached(let file, let name))?:
+      Warning(text: Text(FileLabels.sentence("resource.detached", ["name": name, "path": shown(resource)])))
+      Button("Restore Label") { restoreLabel(file, in: project) }
+    case (let project, .missing(let name))?:
+      Warning(text: Text(FileLabels.sentence("resource.missing", ["name": name])))
+      Button("Find File…") { find(in: project) }
+    case .some:
+      EmptyView()
+    case nil:
+      if !path.isEmpty, !isWebAddress, !isPlaceholder, path.first != "/" {
+        if AppearanceImage.url(path, in: context.folder, dark: false, variants: appearanceVariants) == nil {
+          Warning(text: Text("There’s no such file next to the test."))
+        } else if let root = context.projectRoot, !RelativePath.isInside(url, folder: root) {
+          Warning(text: Text("This file is outside the project, so other people won’t get it with the tests."))
+        }
       }
     }
   }
 
+  /// The file as the person knows it: its path, never its label.
+  private func shown(_ resource: (project: URL, status: Resolution)?) -> String {
+    guard !path.isEmpty else { return String(localized: "None") }
+    if case (_, .missing(let name))? = resource { return name }
+    return RelativePath.path(of: path, in: context.folder)
+  }
+
   private func choose() {
+    guard let chosen = pick(from: path.isEmpty || isWebAddress || isPlaceholder ? context.folder : url.deletingLastPathComponent())
+    else { return }
+    let named = context.document.reference(to: chosen)
+    path = named.reference
+    problem = named.problem.map { (named.reference, $0) }
+  }
+
+  private func pick(from folder: URL) -> URL? {
     let panel = NSOpenPanel()
     panel.allowedContentTypes = types
     panel.allowsMultipleSelection = false
-    panel.directoryURL = path.isEmpty || isWebAddress || isPlaceholder ? context.folder : url.deletingLastPathComponent()
-    guard panel.runModal() == .OK, let chosen = panel.url else { return }
-    path = RelativePath.from(context.folder, to: chosen)
+    panel.directoryURL = folder
+    return panel.runModal() == .OK ? panel.url : nil
+  }
+
+  private func restoreLabel(_ file: String, in project: URL) {
+    do {
+      try restoreResourceLabel(project: project.path(percentEncoded: false), reference: path, file: file)
+      problem = nil
+    } catch {
+      problem = (path, FileLabels.message(error))
+    }
+    relinks += 1
+  }
+
+  /// Gives the label of a missing file to the file the person finds in its place.
+  private func find(in project: URL) {
+    guard let chosen = pick(from: context.folder) else { return }
+    do {
+      switch try relinkResource(project: project.path(percentEncoded: false), reference: path, file: chosen.path(percentEncoded: false)) {
+      case .labeled: problem = nil
+      case .useOther(let reference): path = reference
+      }
+    } catch {
+      problem = (path, FileLabels.message(error))
+    }
+    relinks += 1
   }
 }
 
@@ -150,7 +210,8 @@ enum AppearanceImage {
   /// one appearance.
   static func url(_ path: String, in folder: URL, dark: Bool, variants: Bool = false) -> URL? {
     guard !path.isEmpty else { return nil }
-    let (light, darkFile) = (path, referenceDarkVariant(image: path))
+    let light = RelativePath.path(of: path, in: folder)
+    let darkFile = referenceDarkVariant(image: light)
     let order = dark ? [darkFile, light] : variants ? [light, darkFile] : [light]
     return order.map { RelativePath.resolve($0, in: folder) }.first { FileManager.default.fileExists(atPath: $0.path) }
   }
@@ -468,6 +529,7 @@ struct ReferenceEditor: View {
 
   var body: some View {
     let isSaved = reference.image.contains("${")
+    let file = RelativePath.previewFile(of: reference.image, in: context.folder, dark: colorScheme == .dark)
     FilePathField(
       label: Text("Reference Image"), path: $reference.image, types: [.png], context: context, appearanceVariants: true,
       pictures: context.variables(of: .image))
@@ -487,9 +549,8 @@ struct ReferenceEditor: View {
         AreaLegend(reference: reference)
       }
     }
-    .task(id: "\(reference.image)#\(context.folder.path)#\(project.referenceChanges)#\(colorScheme)") {
-      picture = AppearanceImage.url(reference.image, in: context.folder, dark: colorScheme == .dark, variants: true)
-        .flatMap(ReferencePicture.init(url:))
+    .task(id: "\(file?.path ?? "")#\(project.referenceChanges)") {
+      picture = file.flatMap(ReferencePicture.init(url:))
     }
     IssueList(issues: context.issues(field + ".area") + context.issues(field + ".ignore") + context.issues(field + ".hide"))
     Picker(selection: mode) {

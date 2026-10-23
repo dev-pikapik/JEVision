@@ -1,4 +1,5 @@
 import Foundation
+import JEVisionCore
 
 /// Making a run's screenshot the reference image a Check compares with.
 enum Baseline {
@@ -11,10 +12,13 @@ enum Baseline {
     return (trashed as URL?) ?? url
   }
 
-  /// The reference file a report names, relative to the project; `nil` if it points outside it.
+  /// The reference file a report names, relative to the project or by its label; `nil` if it
+  /// points outside the project or its label's file is missing.
   static func file(_ reference: String, in project: URL) -> URL? {
+    let path = RelativePath.path(of: reference, in: project)
+    if case .missing? = RelativePath.resolution(path, in: project)?.status { return nil }
     let root = project.standardizedFileURL.path(percentEncoded: false)
-    let url = project.appending(path: reference).standardizedFileURL
+    let url = project.appending(path: path).standardizedFileURL
     let prefix = root.hasSuffix("/") ? root : root + "/"
     return url.path(percentEncoded: false).hasPrefix(prefix) ? url : nil
   }
@@ -31,6 +35,7 @@ enum Baseline {
       if let old { try? files.moveItem(at: old, to: reference) }
       throw error
     }
+    relabel(reference)
     return old
   }
 
@@ -39,6 +44,12 @@ enum Baseline {
     let files = FileManager.default
     if files.fileExists(atPath: reference.path) { try files.removeItem(at: reference) }
     if let old { try files.moveItem(at: old, to: reference) }
+    relabel(reference)
+  }
+
+  /// A labeled reference keeps its label once its picture changes: the label describes the new picture.
+  private static func relabel(_ reference: URL) {
+    _ = try? updateResourceLabel(file: reference.path(percentEncoded: false))
   }
 
   /// The screenshot already is the reference: the same bytes.

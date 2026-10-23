@@ -274,6 +274,7 @@ struct BoardView: View {
       let last = documents.lastRun(of: inspection.file, document: document, runs: project.runs).last
       InspectorView(document: document, id: inspection.block, failure: last?.failure(of: inspection.block))
         .frame(width: 340, height: 480)
+        .formatQuestion(document)
     }
   }
 

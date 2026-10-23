@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Sign in",
   "description": "Types the email and password into the sign-in form and checks the screen after signing in. Choose the two fields and the reference, and set LOGIN_EMAIL and the LOGIN_PASSWORD secret.",

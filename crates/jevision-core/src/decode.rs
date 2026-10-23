@@ -18,6 +18,8 @@ use crate::model::{
     TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
     WindowPosition, WindowSize, parse_duration, time_zone_known,
 };
+use crate::package::{Version, app_version};
+use crate::resources::{RESOURCE_KINDS, ResourceMeta, is_content_hash, is_resource_id};
 
 /// Oldest file format this build can read.
 pub(crate) const OLDEST_FORMAT: u32 = 1;
@@ -25,9 +27,21 @@ pub(crate) const OLDEST_FORMAT: u32 = 1;
 /// Upgrades the root object of a file by one format version.
 pub(crate) type Migration = fn(&mut Map<String, Value>);
 
-/// `MIGRATIONS[i]` upgrades a file from format `OLDEST_FORMAT + i` to the next version.
+/// `MIGRATIONS[i]` upgrades a file from format `OLDEST_FORMAT + i` to the next version, and
+/// `FORMAT_CHANGES[i]` is the catalog key of a sentence saying what that next version adds.
 /// Appending a step raises [`crate::FORMAT_VERSION`] by one.
-pub(crate) const MIGRATIONS: &[Migration] = &[];
+pub(crate) const MIGRATIONS: &[Migration] = &[to_labels];
+pub(crate) const FORMAT_CHANGES: &[&str] = &["flow.format.2"];
+const _: () = assert!(MIGRATIONS.len() == FORMAT_CHANGES.len());
+
+/// Format 2 lets a test name an image or file by its label (`res:…`, see [`crate::resources`])
+/// instead of its path. A format-1 file holds no labels, so nothing in it changes.
+fn to_labels(_: &mut Map<String, Value>) {}
+
+/// The steps that upgrade a `.jevmeta` file, the label of a resource, like [`MIGRATIONS`] for a
+/// test, and the newest format of it.
+pub(crate) const META_MIGRATIONS: &[Migration] = &[];
+pub(crate) const META_FORMAT: u32 = OLDEST_FORMAT + META_MIGRATIONS.len() as u32;
 
 /// Reads a test file, upgrading older formats to the current one.
 ///
@@ -36,27 +50,54 @@ pub(crate) const MIGRATIONS: &[Migration] = &[];
 /// a well-formed test (broken edges, empty text, out-of-range values) are left to
 /// [`crate::validate`], so an editor can still open such a test and let the user fix it.
 pub fn parse(text: &str) -> Result<Flow, ParseError> {
+    let map = versioned(text, MIGRATIONS)?;
+    let mut issues = Vec::new();
+    let flow = flow(Obj::root(&map), &mut issues);
+    match flow {
+        Some(flow) if issues.is_empty() => Ok(flow),
+        _ => Err(ParseError { issues }),
+    }
+}
+
+/// Reads a `.jevmeta` file, the label of a resource. Strict like [`parse`], and with the same
+/// rules for versions.
+pub fn parse_meta(text: &str) -> Result<ResourceMeta, ParseError> {
+    let map = versioned(text, META_MIGRATIONS)?;
+    let mut issues = Vec::new();
+    let meta = meta(Obj::root(&map), &mut issues);
+    match meta {
+        Some(meta) if issues.is_empty() => Ok(meta),
+        _ => Err(ParseError { issues }),
+    }
+}
+
+/// The root object of a file whose versions follow the rules of tests, brought to the newest
+/// format by `steps`. A file that says it needs a newer JEVision fails with that one problem,
+/// before anything else in it is looked at: a newer version may add fields this one rejects.
+fn versioned(text: &str, steps: &[Migration]) -> Result<Map<String, Value>, ParseError> {
     let fail = |issue| ParseError {
         issues: vec![issue],
     };
-    let mut root: Value = serde_json::from_str(text).map_err(|e| {
+    let root: Value = serde_json::from_str(text).map_err(|e| {
         fail(
             Issue::error("flow.json.syntax")
                 .with("line", e.line())
                 .with("column", e.column()),
         )
     })?;
-    let Value::Object(map) = &mut root else {
+    let Value::Object(mut map) = root else {
         return Err(fail(Issue::error("flow.json.notObject")));
     };
-    migrate(map, OLDEST_FORMAT, MIGRATIONS).map_err(fail)?;
-
-    let mut issues = Vec::new();
-    let flow = flow(Obj::root(map), &mut issues);
-    match flow {
-        Some(flow) if issues.is_empty() => Ok(flow),
-        _ => Err(ParseError { issues }),
+    let needs = map
+        .get("minVersion")
+        .and_then(Value::as_str)
+        .and_then(|text| text.parse::<Version>().ok())
+        .filter(|needs| *needs > app_version());
+    if let Some(needs) = needs {
+        return Err(fail(Issue::error("flow.needsNewer").with("version", needs)));
     }
+    migrate(&mut map, OLDEST_FORMAT, steps).map_err(fail)?;
+    Ok(map)
 }
 
 /// Reads one block (`type` and its fields, as under `blocks` in a file), for adding it to a
@@ -498,8 +539,56 @@ pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 10_000;
 /// Default for the time a script, command or HTTP request may take.
 pub const DEFAULT_TASK_TIMEOUT_MS: u64 = 30_000;
 
-fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
+/// The fields every versioned file starts with: where its JSON Schema is, which format it is in
+/// (checked by [`migrate`]) and the oldest JEVision that reads it.
+fn header(o: &mut Obj<'_>, out: &mut Out) {
+    o.opt_string("$schema", out);
     o.get("format");
+    if let Some(text) = o.opt_string("minVersion", out) {
+        if text.parse::<Version>().is_err() {
+            out.push(
+                o.issue("flow.minVersion.invalid", "minVersion")
+                    .with("value", text),
+            );
+        }
+    }
+}
+
+fn meta(mut o: Obj<'_>, out: &mut Out) -> Option<ResourceMeta> {
+    header(&mut o, out);
+    let id = o.string("id", out);
+    let kind = o.opt_choice("kind", RESOURCE_KINDS, out);
+    let kind = o.require("kind", kind, out);
+    let hash = o.string("hash", out);
+    let size = o.get("size").map(|v| v.as_u64());
+    if size == Some(None) {
+        o.wrong_type("size", "integer", out);
+    }
+    let size = o.require("size", size.flatten(), out);
+    let name = o.string("name", out);
+    let bad_name =
+        |n: &&str| n.is_empty() || *n == "." || *n == ".." || n.contains(['/', '\\', '\0']);
+    for (field, invalid) in [
+        ("id", id.as_deref().filter(|v| !is_resource_id(v))),
+        ("hash", hash.as_deref().filter(|v| !is_content_hash(v))),
+        ("name", name.as_deref().filter(bad_name)),
+    ] {
+        if let Some(value) = invalid {
+            out.push(o.issue("resource.meta.invalid", field).with("value", value));
+        }
+    }
+    o.finish(out);
+    Some(ResourceMeta {
+        id: id?,
+        kind: kind?,
+        hash: hash?,
+        size: size?,
+        name: name?,
+    })
+}
+
+fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
+    header(&mut o, out);
     let name = o.string("name", out);
     let description = o.opt_string("description", out);
     let icon = o.opt_string("icon", out);
@@ -1634,6 +1723,17 @@ mod tests {
         assert_eq!(code(r#"{"format": 0}"#), "flow.format.unsupported");
         assert_eq!(code(r#"{}"#), "flow.format.missing");
         assert_eq!(code(r#"{"format": "1"}"#), "flow.field.type");
+    }
+
+    #[test]
+    fn format_2_changes_nothing_in_a_format_1_test() {
+        let mut map = root(r#"{"format": 1, "name": "t", "blocks": {"a": {"file": "x.csv"}}}"#);
+        migrate(&mut map, OLDEST_FORMAT, &MIGRATIONS[..1]).unwrap();
+        assert_eq!(
+            map,
+            root(r#"{"format": 2, "name": "t", "blocks": {"a": {"file": "x.csv"}}}"#)
+        );
+        assert_eq!(FORMAT_CHANGES[0], "flow.format.2");
     }
 
     #[test]

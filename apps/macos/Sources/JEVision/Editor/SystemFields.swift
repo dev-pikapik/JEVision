@@ -584,21 +584,16 @@ struct ScriptInputsEditor: View {
           .labelStyle(.iconOnly)
           .buttonStyle(.borderless)
       }
-      HStack {
+      if inputs[index].kind == .image {
+        FilePathField(
+          label: Text("Value \(index + 1)"), path: binding(index, \.value), types: [.png], context: context,
+          pictures: context.variables(of: .image))
+      } else {
         TextField(text: binding(index, \.value), prompt: prompt(inputs[index].kind)) { Text("Value") }
           .labelsHidden()
           .font(.body.monospaced())
           .autocorrectionDisabled()
           .accessibilityLabel(Text("Value \(index + 1)"))
-        if inputs[index].kind == .image {
-          Button("Choose…") {
-            let panel = NSOpenPanel()
-            panel.allowedContentTypes = [.png]
-            panel.directoryURL = context.folder
-            guard panel.runModal() == .OK, let url = panel.url else { return }
-            inputs[index].value = OutsideFileField.path(of: url, context: context)
-          }
-        }
       }
       IssueList(issues: context.issues("inputs.\(index)"))
     }
@@ -608,10 +603,9 @@ struct ScriptInputsEditor: View {
 
   private func prompt(_ kind: ValueKind) -> Text {
     switch kind {
-    case .text: Text("Value")
+    case .text, .image: Text("Value")
     case .number: Text(verbatim: "3.5")
     case .boolean: Text("true or false")
-    case .image: Text(verbatim: "refs/logo.png")
     case .area: Text(verbatim: "0.1,0.2,0.5,0.3")
     }
   }

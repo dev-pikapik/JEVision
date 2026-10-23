@@ -16,7 +16,7 @@ enum BlockSummary {
       return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
-      let name = (first as NSString).lastPathComponent
+      let name = FileLabels.fileName(first) ?? String(localized: "A file")
       return files.count == 1 ? name : String(localized: "\(name) and \(files.count - 1) more")
     case .click(let target, let button, let double, let modifiers, _, _):
       guard isUnset(target) else {
@@ -127,7 +127,8 @@ enum BlockSummary {
     case .useData(let file, _, _):
       return file.isEmpty
         ? String(localized: "Choose a CSV file")
-        : String(localized: "For each row of \((file as NSString).lastPathComponent)")
+        : FileLabels.fileName(file).map { String(localized: "For each row of \($0)") }
+          ?? String(localized: "For each row of the data file")
     case .runTest(let test, _, let inputs, _):
       if test.isEmpty { return String(localized: "Choose a test") }
       guard isBlockPath(path: test), !inputs.isEmpty else {
@@ -211,10 +212,12 @@ enum BlockSummary {
   }
 
   /// `refs/sign-in-button.png` → “sign in button”; a picture a block saves, like
-  /// `${var.shot}`, as it is written.
+  /// `${var.shot}`, as it is written; a label by the name of its file, when an open project
+  /// knows it.
   static func imageName(_ path: String) -> String {
     if path.contains("${") { return quoted(path, limit: 32) }
-    let base = ((path as NSString).lastPathComponent as NSString).deletingPathExtension
+    guard let file = FileLabels.fileName(path) else { return String(localized: "an image") }
+    let base = (file as NSString).deletingPathExtension
     return quoted(base.replacing(/[-_]+/, with: " ").trimmingCharacters(in: .whitespaces))
   }
 

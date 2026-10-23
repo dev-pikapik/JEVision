@@ -84,6 +84,7 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
         "run.start.unknownBlock" => Phrase::new(key, &[p("block")]),
         "run.secret.missing" => Phrase::new(key, &[p("name")]),
         "run.input.missing" => Phrase::new(key, &[block, p("name")]),
+        "run.resource.missing" => Phrase::new(key, &[block, p("name")]),
         "run.block.notInstalled" => Phrase::new(
             "run.block.notInstalled.cli",
             &[

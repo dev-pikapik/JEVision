@@ -1,0 +1,9 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "1f0e2d3c4b5a6978",
+  "kind": "file",
+  "hash": "sha256:da58dfec275bdcebad53670b876c1a71719f3da0d953796454fccc2a5b202510",
+  "size": 16,
+  "name": "note.txt"
+}

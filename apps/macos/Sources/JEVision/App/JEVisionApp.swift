@@ -53,6 +53,7 @@ struct JEVisionApp: App {
         .environment(permissions)
         .environment(runs)
         .environment(records)
+        .environment(updates)
     }
     // Wide enough for the whole editor toolbar, Run and Record included, next to the sidebar.
     .defaultSize(width: 1200, height: 760)

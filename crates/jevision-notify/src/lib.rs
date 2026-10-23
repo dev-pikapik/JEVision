@@ -36,6 +36,7 @@ const TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Which runs a channel is told about.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum NotifyWhen {
     /// Every run that failed.
@@ -52,6 +53,7 @@ pub enum NotifyWhen {
 
 /// How the connection to the mail server is encrypted. There is no unencrypted mail.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum MailSecurity {
     /// TLS from the first byte, usually on port 465.
@@ -64,6 +66,7 @@ pub enum MailSecurity {
 
 /// The Slack channel of the webhook.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct SlackChannel {
     #[serde(default)]
@@ -72,9 +75,11 @@ pub struct SlackChannel {
 
 /// A Telegram chat a bot posts to.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct TelegramChat {
     /// The chat's id, like `-1001234567890` for a group, or `@channel` for a public channel.
+    #[cfg_attr(test, schemars(regex(pattern = r"\S")))]
     pub chat: String,
     #[serde(default)]
     pub when: NotifyWhen,
@@ -82,19 +87,23 @@ pub struct TelegramChat {
 
 /// Mail sent through an SMTP server.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct MailServer {
     /// The server's host name, like `smtp.gmail.com`.
+    #[cfg_attr(test, schemars(regex(pattern = r"\S")))]
     pub server: String,
+    #[cfg_attr(test, schemars(range(min = 1)))]
     pub port: u16,
     #[serde(default)]
     pub security: MailSecurity,
     /// The name to sign in with; empty for a server that takes mail without signing in.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub user: String,
-    /// The sender's address.
+    /// The sender's address, like `tests@acme.com` or `Tests <tests@acme.com>`.
     pub from: String,
     /// Addresses the mail goes to.
+    #[cfg_attr(test, schemars(length(min = 1)))]
     pub to: Vec<String>,
     #[serde(default)]
     pub when: NotifyWhen,
@@ -217,15 +226,22 @@ impl std::fmt::Display for NotifyError {
 impl std::error::Error for NotifyError {}
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct File {
     format: u32,
+    /// Only runs started by a schedule or on CI are told about, not the ones someone watched.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     unattended_only: bool,
+    /// Messages to the Slack channel of an incoming webhook. The webhook is secret and never
+    /// goes in this file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     slack: Option<SlackChannel>,
+    /// Messages a Telegram bot posts to a chat. The bot's token is secret and never goes in
+    /// this file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     telegram: Option<TelegramChat>,
+    /// Mail sent through an SMTP server. The password is secret and never goes in this file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     email: Option<MailServer>,
 }

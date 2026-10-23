@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Onboarding",
   "description": "Clicks the Continue button through three welcome screens and checks the screen that follows. Choose the button and the reference, and change the number of screens.",

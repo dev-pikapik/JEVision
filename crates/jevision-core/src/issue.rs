@@ -107,6 +107,31 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.format.unsupported" => {
             tr_in!(lang, "flow.format.unsupported", p("found"), p("oldest"))
         }
+        "flow.needsNewer" => tr_in!(lang, "flow.needsNewer", p("version")),
+        "flow.minVersion.invalid" => tr_in!(lang, "flow.minVersion.invalid", p("value")),
+        "resource.meta.invalid" => {
+            tr_in!(lang, "resource.meta.invalid", p("field"), p("value"))
+        }
+        "resource.missing" => tr_in!(lang, "resource.missing", p("name")),
+        "resource.detached" => tr_in!(lang, "resource.detached", p("name"), p("path")),
+        "resource.large" => {
+            tr_in!(
+                lang,
+                "resource.large",
+                p("name"),
+                megabytes(lang, p("size"))
+            )
+        }
+        "resource.outside" => tr_in!(lang, "resource.outside", p("path")),
+        "resource.notFound" => tr_in!(lang, "resource.notFound", p("path")),
+        "resource.unreadable" => tr_in!(lang, "resource.unreadable", p("path"), p("reason")),
+        "resource.unwritable" => tr_in!(lang, "resource.unwritable", p("path"), p("reason")),
+        "resource.labeled" => tr_in!(lang, "resource.labeled", p("path")),
+        "resource.invalid" => tr_in!(lang, "resource.invalid", p("value")),
+        "save.path.invalid" => tr_in!(lang, "save.path.invalid", p("path")),
+        "save.failed" => tr_in!(lang, "save.failed", p("path"), p("reason")),
+        "backup.failed" => tr_in!(lang, "backup.failed", p("reason")),
+        "backup.notFound" => tr_in!(lang, "backup.notFound", p("id")),
         "flow.block.unknownType" => {
             tr_in!(lang, "flow.block.unknownType", p("block"), p("type"))
         }

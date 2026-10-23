@@ -198,8 +198,10 @@ struct ReferenceAreaEditor: View {
     var needsPermission = false
   }
 
+  /// The picture's path, a labeled one included, for the appearance shown.
   private var imagePath: String {
-    appearance == .dark && !reference.image.isEmpty ? referenceDarkVariant(image: reference.image) : reference.image
+    let image = RelativePath.path(of: reference.image, in: context.folder)
+    return appearance == .dark && !image.isEmpty ? referenceDarkVariant(image: image) : image
   }
 
   private var imageURL: URL? {
@@ -216,7 +218,8 @@ struct ReferenceAreaEditor: View {
     let image = reference.wrappedValue.image
     let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     let url = AppearanceImage.url(image, in: context.folder, dark: dark, variants: true)
-    let isDark = url != nil && url == RelativePath.resolve(referenceDarkVariant(image: image), in: context.folder)
+    let darkImage = referenceDarkVariant(image: RelativePath.path(of: image, in: context.folder))
+    let isDark = url != nil && url == RelativePath.resolve(darkImage, in: context.folder)
     _appearance = State(initialValue: isDark ? .dark : .light)
     _picture = State(initialValue: url.flatMap(ReferencePicture.init(url:)))
   }
@@ -514,15 +517,20 @@ struct ReferenceAreaEditor: View {
         let file = RelativePath.resolve(path, in: context.folder)
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try png.write(to: file, options: .withoutOverwriting)
+        let named = context.document.reference(to: file)
         let undo = context.document.undoManager
         undo?.beginUndoGrouping()
-        change(nil) { $0.image = path }
-        context.document.trashOnUndo([file])
+        change(nil) { $0.image = named.reference }
+        context.document.trashOnUndo([file, URL(filePath: file.path(percentEncoded: false) + ".jevmeta")])
         undo?.endUndoGrouping()
         return
       }
-      let path = dark ? referenceDarkVariant(image: reference.image) : reference.image
-      let file = RelativePath.resolve(path, in: context.folder)
+      if case (_, .missing(let name))? = RelativePath.resolution(reference.image, in: context.folder) {
+        problem = Problem(message: FileLabels.sentence("resource.missing", ["name": name]))
+        return
+      }
+      let image = RelativePath.path(of: reference.image, in: context.folder)
+      let file = RelativePath.resolve(dark ? referenceDarkVariant(image: image) : image, in: context.folder)
       guard let root = project.rootURL, RelativePath.isInside(file, folder: root) else {
         problem = Problem(
           message: String(localized: "The reference image is outside the project, so JEVision doesn’t change it. Choose a picture inside the project in the inspector first."))

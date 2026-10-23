@@ -10,6 +10,7 @@ mod board;
 mod canvas;
 mod check;
 mod ci;
+mod compat;
 mod create;
 mod data;
 mod decode;
@@ -31,8 +32,11 @@ mod profile;
 mod project;
 mod recent;
 mod references;
+mod resources;
 mod route;
 mod schedule;
+#[cfg(test)]
+mod schema;
 mod search;
 mod template;
 mod validate;
@@ -52,13 +56,18 @@ pub use ci::{
     CI_ARTIFACT, CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, LAST_RESULTS_FILE, ci_workflow,
     ci_workflow_text, repository_root, write_ci_workflow,
 };
+pub use compat::{
+    BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS, MigratedFile,
+    MigrationProblem, MigrationReport, NewLabel, Requirement, SaveOutcome, TEST_SCHEMA,
+    list_backups, migrate_project, project_requirement, restore_backup, save_test,
+};
 pub use create::{
     CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,
     gitignore_add, gitignore_needs_run_folder, project_locations, project_name_problem,
 };
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{
-    DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, block_fields, parse, parse_block,
+    DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, block_fields, parse, parse_block, parse_meta,
     reference_fields, target_fields,
 };
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
@@ -121,6 +130,12 @@ pub use recent::{
     recent_projects_relocated, recent_projects_removed, recent_projects_set_pinned,
 };
 pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_settings};
+pub use resources::{
+    LARGE_RESOURCE_BYTES, META_SCHEMA, META_SUFFIX, RESOURCE_PREFIX, Relinked, ResolvedLabels,
+    ResourceKind, ResourceMeta, ResourceStatus, label_files, label_resource, refresh_resources,
+    relink_resource, remove_resource_label, resolve_labels, resolve_resource, resource_id,
+    resource_name, restore_resource_label, update_resource_label,
+};
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Count lines, then add one",
   "description": "A script counts the lines of note.txt. When the note has text, the test opens a copy in TextEdit, adds a line and quits TextEdit; an empty note ends the test.",

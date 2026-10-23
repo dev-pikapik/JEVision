@@ -14,6 +14,7 @@ use crate::model::{
 };
 use crate::notes::is_safe_name;
 use crate::package::{Version, is_block_path, package_of_path};
+use crate::resources::resource_id;
 
 pub const MAX_RETRIES: u32 = 10;
 pub const MAX_REPEAT: u32 = 10_000;
@@ -321,6 +322,10 @@ fn whole_variable(text: &str) -> Option<&str> {
 pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     let mut out = validate(flow);
     let checked = out.len();
+    // Labels are checked where their files are; a label left is one whose file is missing.
+    let mut resolved = flow.clone();
+    out.extend(crate::resources::resolve_labels(&mut resolved, dir, None).issues);
+    let flow = &resolved;
     let mut blocks: Vec<&Block> = flow.blocks.iter().collect();
     blocks.sort_by(|a, b| a.id.cmp(&b.id));
     let mut saved_by_check = HashSet::new();
@@ -333,6 +338,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
         {
             if is_relative_path(&r.image)
                 && placeholders(&r.image).is_empty()
+                && resource_id(&r.image).is_none()
                 && !dir.join(&r.image).exists()
             {
                 saved_by_check.insert(r.image.as_str());
@@ -349,6 +355,7 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
         // A path with placeholders names a file only once a run fills them in.
         if is_relative_path(path)
             && placeholders(path).is_empty()
+            && resource_id(path).is_none()
             && !saved_by_check.contains(path)
             && !dir.join(path).exists()
         {
@@ -997,7 +1004,9 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             loop_body(id, body, out);
         }
         BlockKind::UseData { file, body, .. } => {
-            path_with_extension(id, "file", file, ".csv", out);
+            if resource_id(file).is_none() {
+                path_with_extension(id, "file", file, ".csv", out);
+            }
             loop_body(id, body, out);
         }
         BlockKind::RunTest {
@@ -1253,7 +1262,9 @@ fn input_value(block: &str, i: usize, input: &ScriptInput, out: &mut Vec<Issue>)
         return;
     }
     let fits = input.kind.parse(&input.value).is_some_and(|v| {
-        input.kind != ValueKind::Image || v.to_ascii_lowercase().ends_with(".png")
+        input.kind != ValueKind::Image
+            || resource_id(&v).is_some()
+            || v.to_ascii_lowercase().ends_with(".png")
     });
     if !fits {
         out.push(

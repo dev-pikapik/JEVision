@@ -65,6 +65,19 @@ struct CommandLineArgumentTests {
     #expect(throws: UsageError.self) { try Command.parse(["run", "t.flow.json", "--flaky=yes"]) }
   }
 
+  @Test func migrateTakesOneActionAndOneProject() throws {
+    #expect(try Command.parse(["migrate"]) == .migrate(MigrateRequest(action: .migrate(dryRun: false))))
+    #expect(
+      try Command.parse(["migrate", "--dry-run", "--json", "p"])
+        == .migrate(MigrateRequest(action: .migrate(dryRun: true), project: "p", json: true)))
+    #expect(try Command.parse(["migrate", "--backups"]) == .migrate(MigrateRequest(action: .backups)))
+    #expect(try Command.parse(["migrate", "--restore=x", "p"]) == .migrate(MigrateRequest(action: .restore(id: "x"), project: "p")))
+    #expect(try Command.parse(["migrate", "-h"]) == .help("migrate"))
+    #expect(throws: UsageError.self) { try Command.parse(["migrate", "--backups", "--restore", "x"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["migrate", "a", "b"]) }
+    #expect(throws: UsageError.self) { try Command.parse(["migrate", "--restore"]) }
+  }
+
   @Test func videoSettings() throws {
     let suite = "jevision-tests-\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suite))
@@ -464,7 +477,9 @@ struct CommandLineToolTests {
 
     #expect(try jevision("fmt", file).status == 0)
     let formatted = try String(contentsOfFile: file, encoding: .utf8)
-    #expect(formatted.hasPrefix("{\n  \"format\": 1,\n") && formatted.hasSuffix("}\n"))
+    #expect(
+      formatted.hasPrefix("{\n  \"$schema\": \"https://dev-pikapik.github.io/JEVision/schemas/test.schema.json\",\n  \"format\": 1,\n")
+        && formatted.hasSuffix("}\n"))
 
     let again = try jevision("fmt", "--check", file)
     #expect(again.status == 0)
@@ -479,6 +494,48 @@ struct CommandLineToolTests {
     #expect(result.status == 1)
     #expect(result.out.contains("error   Test: The file isn’t valid JSON. Check line 1, column 3."))
     #expect(try String(contentsOfFile: file, encoding: .utf8) == "{ not json")
+  }
+
+  @Test func migrateLabelsTheFilesKeepsABackupAndRestoresIt() throws {
+    let dir = try Scratch()
+    let file = try dir.file("t.flow.json", valid)
+    _ = try dir.file("saved.png", "picture")
+
+    let dry = try jevision("migrate", "--dry-run", "--json", dir.url.path)
+    #expect(dry.status == 0)
+    let plan = try #require(try JSONSerialization.jsonObject(with: Data(dry.out.utf8)) as? [String: Any])
+    let planned = try #require((plan["files"] as? [[String: Any]])?.first)
+    #expect(planned["path"] as? String == "t.flow.json")
+    #expect(planned["newLabelFiles"] as? [String] == ["saved.png.jevmeta"])
+    #expect(plan["backup"] is NSNull)
+    #expect(try String(contentsOfFile: file, encoding: .utf8) == valid, "a dry run writes nothing")
+    #expect(!FileManager.default.fileExists(atPath: dir.url.appending(path: "saved.png.jevmeta").path))
+
+    let human = try jevision("migrate", "--dry-run", dir.url.path)
+    #expect(human.out.contains("Would change 1 test:\n  t.flow.json — paths to labels: 1, new label files: 1\n"))
+
+    let run = try jevision("migrate", "--json", dir.url.path)
+    #expect(run.status == 0)
+    let done = try #require(try JSONSerialization.jsonObject(with: Data(run.out.utf8)) as? [String: Any])
+    let backup = try #require(done["backup"] as? String)
+    let migrated = try String(contentsOfFile: file, encoding: .utf8)
+    #expect(migrated.contains("\"format\": 2,") && migrated.contains("\"image\": \"res:"))
+    #expect(FileManager.default.fileExists(atPath: dir.url.appending(path: "saved.png.jevmeta").path))
+    #expect(try jevision("migrate", dir.url.path).out == "Nothing to change: no test names a file by its path.\n")
+
+    let list = try jevision("migrate", "--backups", dir.url.path)
+    #expect(list.status == 0)
+    #expect(list.out.hasPrefix("\(backup)  ") && list.out.hasSuffix("  1 file\n"))
+
+    let restore = try jevision("migrate", "--restore", backup, dir.url.path)
+    #expect(restore.status == 0)
+    #expect(restore.out.hasPrefix("Restored 1 file from backup \(backup)."))
+    #expect(try String(contentsOfFile: file, encoding: .utf8) == valid)
+    #expect(try jevision("migrate", "--backups", dir.url.path).out.split(separator: "\n").count == 2, "the tests before the restore are kept too")
+
+    let unknown = try jevision("migrate", "--restore", "nope", dir.url.path)
+    #expect(unknown.status == 2)
+    #expect(unknown.err.hasPrefix("jevision: There’s no backup “nope”"))
   }
 
   @Test func aFolderWithoutTestsIsReported() throws {

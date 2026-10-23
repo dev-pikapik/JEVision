@@ -18,7 +18,7 @@ use crate::validate::{is_identifier, placeholder_fields, placeholders};
 pub const ENVIRONMENTS_FILE: &str = "jevision.environments.json";
 /// Format of the environments file written by this build.
 pub const ENVIRONMENTS_FORMAT: u32 = 1;
-const MAX_NAME_LEN: usize = 64;
+pub(crate) const MAX_NAME_LEN: usize = 64;
 /// The value every run has: `${env.ENVIRONMENT}` is the name of the environment chosen for it,
 /// empty when none is. An environment that has a value of this name itself keeps it.
 pub const ENVIRONMENT_NAME: &str = "ENVIRONMENT";
@@ -42,11 +42,26 @@ pub struct Environments {
 }
 
 #[derive(Deserialize, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
-struct File {
+pub(crate) struct File {
     format: u32,
+    /// The environment a run uses when none is chosen; one of `environments`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     default: Option<String>,
+    /// Every environment by its name, of letters, digits, `-` and `_`. Each holds its values by
+    /// name, which tests read as `${env.NAME}`.
+    #[cfg_attr(
+        test,
+        schemars(extend(
+            "propertyNames" = {"pattern": crate::schema::environment_name()},
+            "additionalProperties" = {
+                "type": "object",
+                "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+                "additionalProperties": {"type": "string"}
+            }
+        ))
+    )]
     environments: BTreeMap<String, EnvironmentValues>,
 }
 

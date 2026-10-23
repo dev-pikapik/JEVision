@@ -1,0 +1,280 @@
+{
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/board.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A board of a project: a `*.canvas` file in its `boards` folder, in the open JSON Canvas 1.0 format (jsoncanvas.org), so Obsidian opens it too. A test is a `file` node that points at its `*.flow.json`; what only JEVision uses sits under `jevision` keys. Keys JEVision doesn't know are kept as they are.",
+  "properties": {
+    "edges": {
+      "items": {
+        "description": "An arrow between two nodes. Keys JEVision doesn't know are kept.",
+        "properties": {
+          "color": {
+            "description": "One of the preset colors `1` to `6` (red, orange, yellow, green, cyan, purple), or `#rrggbb`; empty or left out for none.",
+            "pattern": "^([1-6]|#[0-9A-Fa-f]{6})?$",
+            "type": "string"
+          },
+          "fromEnd": {
+            "description": "`arrow` for an arrowhead at the start; there is none unless the file says so.",
+            "enum": [
+              "",
+              "none",
+              "arrow"
+            ]
+          },
+          "fromNode": {
+            "description": "The id of the node the arrow leaves.",
+            "type": "string"
+          },
+          "fromSide": {
+            "description": "The side of the node the arrow leaves; empty or left out for the side that faces the other node.",
+            "enum": [
+              "",
+              "top",
+              "right",
+              "bottom",
+              "left"
+            ]
+          },
+          "id": {
+            "description": "Unique among the nodes and arrows of the board.",
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "label": {
+            "description": "Text on the arrow.",
+            "type": "string"
+          },
+          "toEnd": {
+            "description": "`none` for no arrowhead at the end; there is one unless the file says not.",
+            "enum": [
+              "",
+              "none",
+              "arrow"
+            ]
+          },
+          "toNode": {
+            "description": "The id of the node the arrow points at.",
+            "type": "string"
+          },
+          "toSide": {
+            "description": "The side of the node the arrow arrives at; empty or left out for the side that faces the other node.",
+            "enum": [
+              "",
+              "top",
+              "right",
+              "bottom",
+              "left"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "fromNode",
+          "toNode"
+        ],
+        "type": "object"
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "jevision": {
+      "additionalProperties": false,
+      "description": "What only JEVision uses.",
+      "properties": {
+        "allTests": {
+          "description": "Every test of the project is on this board: new tests appear on it by themselves, in the frame of their folder, and deleted ones go away.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "nodes": {
+      "description": "In drawing order: later nodes are drawn over earlier ones, so frames come before what they hold.",
+      "items": {
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "text"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "jevision": {
+                  "maxProperties": 0
+                },
+                "text": {
+                  "description": "The note, in Markdown.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "file"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "file": {
+                  "description": "A file of the project, relative to the project folder with `/` between folders: a test when it ends in `.flow.json`, another board when it ends in `.canvas`.",
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "jevision": {
+                  "additionalProperties": false,
+                  "description": "What only JEVision uses.",
+                  "properties": {
+                    "open": {
+                      "description": "The card shows the blocks of the test inside it.",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "required": [
+                "file"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "link"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "jevision": {
+                  "maxProperties": 0
+                },
+                "url": {
+                  "description": "The address of the web page.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "group"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "jevision": {
+                  "additionalProperties": false,
+                  "description": "What only JEVision uses.",
+                  "properties": {
+                    "collapsed": {
+                      "description": "Folded to its title bar; what lies inside isn't shown.",
+                      "type": "boolean"
+                    },
+                    "folder": {
+                      "description": "The test folder it holds on the board of all tests, relative to the project; empty for the project folder.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "label": {
+                  "description": "The title of the frame.",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "description": "A thing on the board. Keys JEVision doesn't know are kept.",
+        "properties": {
+          "color": {
+            "description": "One of the preset colors `1` to `6` (red, orange, yellow, green, cyan, purple), or `#rrggbb`; empty or left out for none.",
+            "pattern": "^([1-6]|#[0-9A-Fa-f]{6})?$",
+            "type": "string"
+          },
+          "height": {
+            "description": "Board points; rounded to whole ones.",
+            "minimum": 0.5,
+            "type": "number"
+          },
+          "id": {
+            "description": "Unique among the nodes and arrows of the board.",
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "jevision": {
+            "type": "object"
+          },
+          "type": {
+            "description": "`text` for a note in Markdown, `file` for a test, another board or a picture, `link` for a web page and `group` for a frame.",
+            "enum": [
+              "text",
+              "file",
+              "link",
+              "group"
+            ]
+          },
+          "width": {
+            "description": "Board points; rounded to whole ones.",
+            "minimum": 0.5,
+            "type": "number"
+          },
+          "x": {
+            "description": "Board points from the board's origin, to the right.",
+            "type": "number"
+          },
+          "y": {
+            "description": "Board points from the board's origin, downwards.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "type": "object"
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    }
+  },
+  "title": "JEVision board",
+  "type": "object"
+}

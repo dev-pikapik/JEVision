@@ -1,0 +1,65 @@
+{
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The label of an image, table or other file of a project, which a test uses to name the file as `res:` and the label's `id` instead of by its path. It sits next to the file, named after it with `.jevmeta` added, such as `login.png.jevmeta`: move or rename the two together. JEVision writes it itself.",
+  "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "hash": {
+      "description": "`sha256:` and the SHA-256 of the file's content in 64 lowercase hex digits. With `size`, it finds the file again when it was moved without its `.jevmeta`.",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "id": {
+      "description": "The label, 16 lowercase hex digits: a test names the file as `res:` and the label.",
+      "pattern": "^[0-9a-f]{16}$",
+      "type": "string"
+    },
+    "kind": {
+      "description": "What the file is: an `image`, a `table` (a CSV or TSV file) or another `file`.",
+      "enum": [
+        "image",
+        "table",
+        "file"
+      ]
+    },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+.*)?$",
+      "type": "string"
+    },
+    "name": {
+      "description": "The name the file had when it got the label, without its folder; shown when the file can't be found.",
+      "not": {
+        "enum": [
+          ".",
+          ".."
+        ]
+      },
+      "pattern": "^[^/\\\\\\x00]+$",
+      "type": "string"
+    },
+    "size": {
+      "description": "Size of the file in bytes.",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "format",
+    "id",
+    "kind",
+    "hash",
+    "size",
+    "name"
+  ],
+  "title": "JEVision resource label",
+  "type": "object"
+}

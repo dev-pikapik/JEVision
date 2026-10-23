@@ -893,3 +893,87 @@ fn mail_to_a_server_of_an_untrusted_authority_is_refused() {
     assert!(reason.contains("secure connection"), "{reason}");
     assert!(!server.talk().contains("AUTH"));
 }
+
+const NOTIFICATIONS: jevision_schema::Kind = jevision_schema::Kind {
+    name: "notifications",
+    title: "JEVision notifications",
+    description: "How a project tells people how its test runs went, in \
+        `jevision.notifications.json` in the project folder: a message to Slack, Telegram or \
+        email, each with when to send it. Webhooks, tokens and passwords are secret and never go \
+        in this file.",
+    formats: &[FORMAT],
+    header: false,
+};
+
+#[test]
+fn the_notifications_schema_is_published_and_fits_the_files() {
+    use jevision_schema::Validator;
+
+    let schema = NOTIFICATIONS.schema::<File>();
+    NOTIFICATIONS.check_published(&schema);
+    let project = folder("schema");
+    let settings = NotificationSettings {
+        unattended_only: true,
+        slack: Some(SlackChannel {
+            when: NotifyWhen::Every,
+        }),
+        telegram: Some(TelegramChat {
+            chat: "@acme_tests".into(),
+            when: NotifyWhen::Changed,
+        }),
+        email: Some(MailServer {
+            server: "smtp.acme.com".into(),
+            port: 587,
+            security: MailSecurity::StartTls,
+            user: "qa@acme.com".into(),
+            from: "Tests <qa@acme.com>".into(),
+            to: vec!["team@acme.com".into()],
+            when: NotifyWhen::FailedOrFixed,
+        }),
+    };
+    settings.save(&project).unwrap();
+    let text = fs::read_to_string(project.join(FILE)).unwrap();
+    let file: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let validator = Validator::new(&schema);
+    let check = |file: &serde_json::Value| validator.check(file);
+    if let Err(problem) = check(&file) {
+        panic!("the settings don't fit their schema: {problem}");
+    }
+
+    let changed = |pointer: &str, value: serde_json::Value| {
+        let mut changed = file.clone();
+        let (parent, key) = pointer.rsplit_once('/').unwrap();
+        changed.pointer_mut(parent).unwrap()[key] = value;
+        changed
+    };
+    let mut no_format = file.clone();
+    no_format.as_object_mut().unwrap().remove("format");
+    for (wrong, what) in [
+        (no_format, "no format"),
+        (changed("/unatendedOnly", true.into()), "a misspelled key"),
+        (
+            changed("/$schema", NOTIFICATIONS.url().into()),
+            "the address of a schema",
+        ),
+        (changed("/minVersion", "0.1.0".into()), "a minVersion"),
+        (changed("/email/port", "587".into()), "text for a number"),
+        (changed("/email/port", 0.into()), "port 0"),
+        (changed("/email/to", json!([])), "mail to nobody"),
+        (changed("/email/server", " ".into()), "a blank server"),
+        (
+            changed("/slack", true.into()),
+            "the Slack switch of format 1",
+        ),
+        (
+            changed("/telegram/when", "sometimes".into()),
+            "an unknown when",
+        ),
+        (changed("/telegram/chat", "".into()), "no chat"),
+    ] {
+        assert!(
+            NotificationSettings::parse(&wrong.to_string()).is_err(),
+            "the reader takes {what}"
+        );
+        assert!(check(&wrong).is_err(), "the schema lets {what} through");
+    }
+}

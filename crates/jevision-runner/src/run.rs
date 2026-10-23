@@ -914,9 +914,26 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
             .with("test", &file)
             .with("errors", errors));
     }
+    // The run works with paths: a label becomes the path of its file now. A file that is
+    // missing stops the test here, so that no step makes a new reference in its place.
+    let mut flow = flow;
+    let dir = path.parent().unwrap_or(project);
+    for issue in jevision_core::resolve_labels(&mut flow, dir, Some(project)).issues {
+        let p = |name| issue.param(name).unwrap_or_default().to_owned();
+        match issue.code.as_str() {
+            "resource.missing" => {
+                return Err(Failure::new("run.resource.missing")
+                    .with("test", &file)
+                    .with("block", p("block"))
+                    .with("name", p("name")));
+            }
+            "resource.detached" => eprintln!("{file}: {}", jevision_core::describe(&issue)),
+            _ => {}
+        }
+    }
     Ok(TestFile {
         path: path.to_owned(),
-        dir: path.parent().unwrap_or(project).to_owned(),
+        dir: dir.to_owned(),
         file,
         flow,
     })

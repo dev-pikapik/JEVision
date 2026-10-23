@@ -25,6 +25,8 @@ final class FlowDocument {
   }
   /// Why the file can't be opened, when it can't.
   private(set) var failure: String?
+  /// The file was saved by a newer JEVision, which an update can open.
+  private(set) var needsNewerApp = false
   private(set) var issues: [Issue] = [] {
     didSet { blockIssues = Dictionary(grouping: issues) { $0.param("block") } }
   }
@@ -46,8 +48,18 @@ final class FlowDocument {
   private var linked: Set<String> = []
   /// Why the last change couldn't be written to the file.
   private(set) var saveError: String?
+  /// The last change needs a newer file format than every other test of the project has, and
+  /// waits for the person to agree before it is written.
+  private(set) var pendingFormat: PendingFormat?
+  /// The labels made here for files chosen in Finder, while the saved test names them: one it
+  /// no longer names goes again, as when the person keeps plain paths or undoes the choice.
+  private var madeLabels: Set<String> = []
+  /// The labels made here and taken off once the saved test no longer named them, with the file
+  /// each was on: Undo and Redo can bring back a change that names one, and then it goes back on
+  /// its file.
+  private var removedLabels: [String: String] = [:]
   /// The canvas shows what isn't in the file: a draft, or a change that couldn't be written.
-  var hasUnsavedChanges: Bool { beforeDraft != nil || saveError != nil }
+  var hasUnsavedChanges: Bool { beforeDraft != nil || saveError != nil || pendingFormat != nil }
   /// The block the inspector shows.
   var selection: String? {
     didSet {
@@ -95,6 +107,7 @@ final class FlowDocument {
   init(url: URL, project: URL? = nil) {
     self.url = url
     self.project = project
+    if let project { RelativePath.open(project: project) }
     isReadOnly = url.deletingLastPathComponent().pathComponents.contains { $0.hasSuffix(".jevblock") }
     reload()
   }
@@ -107,6 +120,7 @@ final class FlowDocument {
     } catch {
       flow = nil
       failure = error.localizedDescription
+      needsNewerApp = false
       return
     }
     guard text != savedText || flow == nil else { return }
@@ -116,14 +130,17 @@ final class FlowDocument {
       beforeDraft = nil
       savedText = text
       failure = nil
+      needsNewerApp = false
       set(loaded)
       if let selection, block(selection) == nil { self.selection = nil }
     } catch FlowError.Invalid(let found) {
       flow = nil
       failure = found.map(IssueText.line).joined(separator: "\n")
+      needsNewerApp = found.contains { ["flow.needsNewer", "flow.format.tooNew"].contains($0.code) }
     } catch {
       flow = nil
       failure = error.localizedDescription
+      needsNewerApp = false
     }
   }
 
@@ -535,6 +552,7 @@ final class FlowDocument {
   }
 
   private func set(_ new: Flow) {
+    putBackLabels(named: new)
     flow = new
     issues = check(new)
     layout = layoutFlow(flow: new)
@@ -570,17 +588,116 @@ final class FlowDocument {
     return issues
   }
 
-  private func save() {
+  /// Writes the change waiting for an answer in the newer format.
+  func saveWithLabels() {
+    pendingFormat = nil
+    save(allowRaise: true)
+  }
+
+  /// Writes the change waiting for an answer with the path of each file in place of its label,
+  /// and remembers that the project keeps plain paths.
+  func keepPlainPaths() {
+    FileLabels.setKeepsPlainPaths(true, in: place.project)
+    if let pendingFormat { savePlain(pendingFormat) }
+  }
+
+  /// What the test writes for `file`, chosen in Finder: its label or its path, as
+  /// `FileLabels.reference` says. A label made for it here goes again once the saved test no
+  /// longer names it.
+  func reference(to file: URL) -> (reference: String, problem: String?) {
+    let sidecar = file.path(percentEncoded: false) + ".jevmeta"
+    let labeled = FileManager.default.fileExists(atPath: sidecar)
+    let named = FileLabels.reference(to: file, from: url.deletingLastPathComponent())
+    if !labeled, named.problem == nil, FileManager.default.fileExists(atPath: sidecar) { madeLabels.insert(named.reference) }
+    return named
+  }
+
+  /// The project the test is saved in, and its path there.
+  private var place: (project: URL, path: String) {
+    guard let project, RelativePath.isInside(url, folder: project) else {
+      return (url.deletingLastPathComponent(), url.lastPathComponent)
+    }
+    return (project, RelativePath.from(project, to: url))
+  }
+
+  /// Writes the test in the lowest format that holds it. One that would be the first of the
+  /// project in a newer format waits for the person, unless the project keeps plain paths.
+  private func save(allowRaise: Bool = false) {
     guard let flow else { return }
-    let text = saveFlow(flow: flow)
+    let (project, path) = place
     do {
-      try text.write(to: url, atomically: true, encoding: .utf8)
-      savedText = text
-      saveError = nil
+      switch try saveTest(project: project.path(percentEncoded: false), path: path, flow: flow, allowRaise: allowRaise) {
+      case .saved:
+        let text = saveFlow(flow: flow)
+        savedText = text
+        saveError = nil
+        pendingFormat = nil
+        takeOffLabels(unnamedIn: text)
+      case .needsConfirmation(let format, let description):
+        let needs = PendingFormat(format: format, description: description)
+        if FileLabels.keepsPlainPaths(in: project) { savePlain(needs) } else { pendingFormat = needs }
+      }
+    } catch FlowError.Invalid(let issues) {
+      saveError = issues.map(IssueText.message).joined(separator: "\n")
     } catch {
       saveError = error.localizedDescription
     }
   }
+
+  /// Writes the test with paths in place of labels; saving it takes off the labels made here.
+  private func savePlain(_ needs: PendingFormat) {
+    pendingFormat = nil
+    guard let flow else { return }
+    let project = place.project.path(percentEncoded: false)
+    let plain = plainPaths(project: project, test: place.path, flow: flow)
+    if let name = plain.missing.first {
+      saveError = FileLabels.sentence("resource.missing", ["name": name])
+      return
+    }
+    // No label to put a path in place of: the format is newer for another reason, so the question stays.
+    guard plain.flow != flow else {
+      pendingFormat = needs
+      return
+    }
+    set(plain.flow)
+    save()
+  }
+
+  /// Takes each label made here that the saved test `text` no longer names off its file, unless
+  /// another test names it. One whose file is missing, as when Undo trashed a new picture, waits
+  /// for Redo to bring the file back.
+  private func takeOffLabels(unnamedIn text: String) {
+    let project = place.project.path(percentEncoded: false)
+    for reference in madeLabels where !text.contains("\"\(reference)\"") {
+      switch resolveResource(project: project, reference: reference) {
+      case .missing: continue
+      case .found(let file, _):
+        if (try? removeResourceLabel(project: project, reference: reference)) == true { removedLabels[reference] = file }
+      default: break
+      }
+      madeLabels.remove(reference)
+    }
+  }
+
+  /// Puts back on its file each label taken off that `flow` names again, as a label made here:
+  /// it goes again once the saved test no longer names it.
+  private func putBackLabels(named flow: Flow) {
+    guard !removedLabels.isEmpty else { return }
+    let text = saveFlow(flow: flow)
+    let project = place.project.path(percentEncoded: false)
+    for (reference, file) in removedLabels where text.contains("\"\(reference)\"") {
+      removedLabels[reference] = nil
+      if case .labeled? = try? relinkResource(project: project, reference: reference, file: file) {
+        madeLabels.insert(reference)
+      }
+    }
+  }
+}
+
+/// A newer file format a change needs, and what it adds.
+struct PendingFormat: Equatable {
+  let format: UInt32
+  let description: String
 }
 
 extension CanvasItem {

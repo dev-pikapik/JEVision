@@ -27,7 +27,7 @@ pub const IMAGES_FOLDER: &str = "images";
 pub const BOARD_SUFFIX: &str = ".canvas";
 const TEST_SUFFIX: &str = ".flow.json";
 /// Key of the fields only JEVision uses, on the board and on its nodes.
-const OURS: &str = "jevision";
+pub(crate) const OURS: &str = "jevision";
 
 /// Size of a test's card.
 pub const CARD_WIDTH: f64 = 14.0 * GRID;
@@ -224,8 +224,8 @@ pub fn blocks_area(card: &Rect, content: (f64, f64)) -> Rect {
     }
 }
 
-const SIDES: [&str; 4] = ["top", "right", "bottom", "left"];
-const ENDS: [&str; 2] = ["none", "arrow"];
+pub(crate) const SIDES: [&str; 4] = ["top", "right", "bottom", "left"];
+pub(crate) const ENDS: [&str; 2] = ["none", "arrow"];
 
 impl BoardNode {
     /// The test file this node shows, when it is a test's card.

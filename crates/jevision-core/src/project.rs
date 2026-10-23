@@ -107,9 +107,11 @@ impl AiTask {
 /// Which AI to ask: a provider by its id, and one of its models. The key and the address of the
 /// provider are the person's own and stay in the app's settings.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct AiChoice {
     /// One of [`AI_PROVIDERS`]; empty for the one the app's settings choose.
+    #[cfg_attr(test, schemars(extend("enum" = AI_PROVIDERS)))]
     pub provider: String,
     /// Empty for the model the settings choose for the provider.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -143,33 +145,57 @@ pub struct FolderRunMode {
     pub mode: RunMode,
 }
 
+/// How the tests of one folder run.
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(
+    test,
+    derive(schemars::JsonSchema),
+    schemars(extend(
+        "if" = {"properties": {"run": {"const": "sequential"}}},
+        "then" = {"properties": {"limit": {"type": "null"}}}
+    ))
+)]
 #[serde(deny_unknown_fields)]
 struct RunModeEntry {
+    /// Relative to the project folder, with `/` between folders; `.` is the project folder.
+    #[cfg_attr(test, schemars(regex(pattern = r"^[^/\\][^\\]*$")))]
     folder: String,
     run: RunKind,
+    /// Most tests that run at once, for `parallel` only.
+    #[cfg_attr(
+        test,
+        schemars(range(min = 2, max = MAX_PARALLEL), extend("default" = DEFAULT_PARALLEL))
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     limit: Option<u32>,
 }
 
+/// Whether the tests of the folder run one after another or side by side.
 #[derive(Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 enum RunKind {
+    /// One test after another.
     Sequential,
+    /// Several tests at once, each in its own copy of the application.
     Parallel,
 }
 
 /// A test in quarantine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct Quarantined {
     /// Test file, relative to the project folder, with `/` between folders.
+    #[cfg_attr(test, schemars(regex(pattern = r"^[^/\\][^\\]*\.flow\.json$")))]
     pub test: String,
     /// Why the test is in quarantine, such as a link to the bug that makes it fail.
+    #[cfg_attr(test, schemars(regex(pattern = r"\S")))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Last day the test is in quarantine, as `YYYY-MM-DD`; absent for a quarantine without an
     /// end.
+    #[cfg_attr(test, schemars(regex(pattern = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub until: Option<String>,
 }
@@ -186,29 +212,49 @@ impl Quarantined {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
-struct File {
+pub(crate) struct File {
     format: u32,
+    /// How many times a failed test is retried when its file doesn't say; without it, none.
+    #[cfg_attr(test, schemars(range(max = MAX_RETRIES)))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     retries: Option<u32>,
+    /// Tests in quarantine: they still run, but their failure doesn't fail Run All, the command
+    /// line or the JUnit report until their last day is past.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     quarantine: Vec<Quarantined>,
+    /// Flaky runs of a test within 7 days after which quarantine is suggested.
+    #[cfg_attr(
+        test,
+        schemars(
+            range(min = 1, max = MAX_QUARANTINE_AFTER),
+            extend("default" = DEFAULT_QUARANTINE_AFTER)
+        )
+    )]
     #[serde(
         default,
         rename = "suggestQuarantineAfter",
         skip_serializing_if = "Option::is_none"
     )]
     suggest_quarantine_after: Option<u32>,
+    /// Screenshots go only to AI models running on this computer; checks that would need a
+    /// cloud service fail instead.
     #[serde(
         default,
         rename = "localOnly",
         skip_serializing_if = "std::ops::Not::not"
     )]
     local_only: bool,
+    /// Areas of the window, in fractions from its top-left corner, covered in every screenshot
+    /// before it is saved or sent to an AI model.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     hide: Vec<Rect>,
+    /// The AI the project asks, when it doesn't leave the choice to the app's settings.
     #[serde(default, skip_serializing_if = "FileAi::is_empty")]
     ai: FileAi,
+    /// How the tests of folders run. A folder without an entry runs like the nearest folder
+    /// above it that has one; the project folder, without one, runs one test after another.
     #[serde(default, rename = "runModes", skip_serializing_if = "Vec::is_empty")]
     run_modes: Vec<RunModeEntry>,
     #[serde(
@@ -220,10 +266,23 @@ struct File {
 }
 
 #[derive(Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 struct FileAi {
+    /// The AI that checks screens by meaning. A check that names its own provider still asks
+    /// that one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     screen: Option<AiChoice>,
+    /// The AI that drafts tests and explains failed runs; `jev` only looks at screens, so it
+    /// can't be this one.
+    #[cfg_attr(
+        test,
+        schemars(extend("not" = {
+            "type": "object",
+            "properties": {"provider": {"const": "jev"}},
+            "required": ["provider"]
+        }))
+    )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     text: Option<AiChoice>,
 }

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Stamp the note with today's date",
   "description": "Writes today's date as a variable, pastes it from the clipboard at the end of a copy of note.txt in TextEdit, copies the note back and checks that the clipboard holds the date.",

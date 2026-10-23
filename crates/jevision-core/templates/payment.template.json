@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Payment",
   "description": "Fills in the card form, pays and checks the confirmation. Choose the fields, the Pay button and the reference, and set CARD_NUMBER, CARD_EXPIRY and the CARD_CVC secret.",

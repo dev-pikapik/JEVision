@@ -4,6 +4,7 @@ import SwiftUI
 /// What the editor shows for a test that can't be opened: why, and a way back to a version Git
 /// keeps of it. Undo takes a restore back.
 struct BrokenTestView: View {
+  @Environment(Updates.self) private var updates: Updates?
   @Environment(ProjectStore.self) private var project
   @Environment(\.undoManager) private var undoManager
   let document: FlowDocument
@@ -40,6 +41,10 @@ struct BrokenTestView: View {
           .help(Text("Pick any committed version of the test to put back."))
       }
       Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([document.url]) }
+      if document.needsNewerApp, let updates, updates.isAvailable {
+        Button("Check for Updates…") { updates.check() }
+          .disabled(!updates.canCheck)
+      }
     }
     .task(id: failure) {
       guard let root = project.rootURL, let path else { return }

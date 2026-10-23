@@ -1,0 +1,1933 @@
+{
+  "$defs": {
+    "Attachment": {
+      "description": "A file or link that comes with a note.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "description": "Name of a file saved next to the test.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "link": {
+              "description": "A web address, such as a page or a GitHub issue.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "link"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "BlockKind": {
+      "description": "What a block does, with its parameters and outgoing edges.\n\n`next` is the block that runs afterwards; a block without `next` ends the run (or, inside a loop body, the current pass). Paths are relative to the folder of the test file.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Launches an application and brings it to the front.",
+          "properties": {
+            "app": {
+              "description": "Bundle id; without it, the application under test opens.",
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "resetState": {
+              "description": "Quit a copy that is already running and start a fresh one that does not restore its windows, so every run begins from the same screen.",
+              "type": "boolean"
+            },
+            "type": {
+              "const": "openApp",
+              "type": "string"
+            },
+            "windowPosition": {
+              "$ref": "#/$defs/WindowPosition",
+              "description": "Move the main window once the app is up."
+            },
+            "windowSize": {
+              "$ref": "#/$defs/WindowSize",
+              "description": "Resize the main window once the app is up, so screenshots have the same size."
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Opens files or web addresses, each file from a fresh copy so the original stays intact.",
+          "properties": {
+            "app": {
+              "description": "Bundle id; without it, each file opens in its default application.",
+              "type": "string"
+            },
+            "closeAfter": {
+              "description": "When the attempt ends, passed or not, quit the apps this block started and close the copies of the files it opened.",
+              "type": "boolean"
+            },
+            "files": {
+              "description": "Relative file paths or `http(s)://` addresses. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "newInstance": {
+              "type": "boolean"
+            },
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "openFile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "files"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "button": {
+              "$ref": "#/$defs/MouseButton",
+              "default": "left"
+            },
+            "double": {
+              "type": "boolean"
+            },
+            "modifiers": {
+              "$ref": "#/$defs/Modifiers",
+              "description": "Keys held down during the click."
+            },
+            "next": {
+              "type": "string"
+            },
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "type": {
+              "const": "click",
+              "type": "string"
+            },
+            "waitForChange": {
+              "description": "After clicking, wait until the screen changes; fail if it does not.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "target"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Moves the pointer onto the target and leaves it there, to bring up tooltips and menus that open on hover.",
+          "properties": {
+            "modifiers": {
+              "$ref": "#/$defs/Modifiers",
+              "description": "Keys held down while the pointer moves."
+            },
+            "next": {
+              "type": "string"
+            },
+            "target": {
+              "$ref": "#/$defs/Target"
+            },
+            "type": {
+              "const": "hover",
+              "type": "string"
+            },
+            "waitForChange": {
+              "description": "After moving, wait until the screen changes; fail if it does not.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "target"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Presses the button on `from`, moves to `to` holding it down, and lets go there.",
+          "properties": {
+            "button": {
+              "$ref": "#/$defs/MouseButton"
+            },
+            "from": {
+              "$ref": "#/$defs/Target"
+            },
+            "modifiers": {
+              "$ref": "#/$defs/Modifiers",
+              "description": "Keys held down during the drag."
+            },
+            "next": {
+              "type": "string"
+            },
+            "to": {
+              "$ref": "#/$defs/Target"
+            },
+            "type": {
+              "const": "drag",
+              "type": "string"
+            },
+            "waitForChange": {
+              "description": "After letting go, wait until the screen changes; fail if it does not.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "from",
+            "to"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Turns the scroll wheel with the pointer over `at`, or over the middle of the window.",
+          "properties": {
+            "amount": {
+              "format": "uint32",
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "at": {
+              "$ref": "#/$defs/Target"
+            },
+            "direction": {
+              "$ref": "#/$defs/ScrollDirection"
+            },
+            "modifiers": {
+              "$ref": "#/$defs/Modifiers",
+              "description": "Keys held down while the wheel turns: `cmd` zooms in most applications."
+            },
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "scroll",
+              "type": "string"
+            },
+            "unit": {
+              "$ref": "#/$defs/ScrollUnit",
+              "default": "lines"
+            },
+            "waitForChange": {
+              "description": "After scrolling, wait until the screen changes; fail if it does not.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "direction",
+            "amount"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Types text, optionally clicking into a field first.",
+          "properties": {
+            "into": {
+              "$ref": "#/$defs/Target"
+            },
+            "next": {
+              "type": "string"
+            },
+            "text": {
+              "description": "May contain `${secret.NAME}`, `${env.NAME}` and `${data.COLUMN}` placeholders.",
+              "type": "string"
+            },
+            "type": {
+              "const": "type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Presses one key combination, e.g. `cmd+shift+s`.",
+          "properties": {
+            "keys": {
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "pressKeys",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "keys"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Waits for the screen to reach a state; fails after `timeout`.",
+          "properties": {
+            "next": {
+              "type": "string"
+            },
+            "timeout": {
+              "default": "10s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "waitFor",
+              "type": "string"
+            },
+            "until": {
+              "$ref": "#/$defs/WaitUntil"
+            }
+          },
+          "required": [
+            "type",
+            "until"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Waits a fixed time, whatever the screen shows.",
+          "properties": {
+            "duration": {
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "pause",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "duration"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Fails the run unless the screen matches the reference.",
+          "properties": {
+            "next": {
+              "type": "string"
+            },
+            "reference": {
+              "$ref": "#/$defs/Reference"
+            },
+            "type": {
+              "const": "check",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "reference"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Goes to `then` if the condition holds, else to the first of `elseIf` whose condition holds, otherwise to `else`.",
+          "oneOf": [
+            {
+              "description": "The screen matches the reference.",
+              "properties": {
+                "reference": {
+                  "$ref": "#/$defs/Reference"
+                }
+              },
+              "required": [
+                "reference"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "A value, usually a run variable, compares with another.",
+              "properties": {
+                "value": {
+                  "$ref": "#/$defs/ValueCheck"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "type": "object"
+            }
+          ],
+          "properties": {
+            "else": {
+              "type": "string"
+            },
+            "elseIf": {
+              "items": {
+                "$ref": "#/$defs/ElseIf"
+              },
+              "type": "array"
+            },
+            "then": {
+              "type": "string"
+            },
+            "type": {
+              "const": "if",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object",
+          "unevaluatedProperties": false
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs the chain starting at `body` `times` times, then goes to `next`. The body loops by linking back to this block.",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "times": {
+              "format": "uint32",
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "type": {
+              "const": "repeat",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "times",
+            "body"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs the chain starting at `body` once per row of a CSV file, then goes to `next`. Row values are available as `${data.COLUMN}`.",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "file": {
+              "description": "Path of the CSV file, relative to the folder of the test. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "useData",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "file",
+            "body"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs another test file in place, as a sub-process: a test, or a block of the project's own (a `*.block.json` file).",
+          "properties": {
+            "inputs": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Values of the `${input.NAME}` placeholders in the test it runs, by name. They may hold placeholders themselves, filled in where this block runs.",
+              "type": "object"
+            },
+            "next": {
+              "type": "string"
+            },
+            "package": {
+              "$ref": "#/$defs/PackageNeed",
+              "description": "The version and address of the package `test` belongs to, as its author had it installed: what a person needs to install it again when it is missing."
+            },
+            "test": {
+              "type": "string"
+            },
+            "type": {
+              "const": "runTest",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "test"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs a script. Inputs reach it as environment variables; it writes its outputs as `name=value` lines to the file named by `$JEV_OUTPUT`, and they become `${var.NAME}`. A script that exits with a code other than 0 fails the block.",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "inputs": {
+              "description": "Values may contain placeholders.",
+              "items": {
+                "$ref": "#/$defs/ScriptInput"
+              },
+              "type": "array"
+            },
+            "language": {
+              "$ref": "#/$defs/ScriptLanguage"
+            },
+            "next": {
+              "type": "string"
+            },
+            "outputs": {
+              "items": {
+                "$ref": "#/$defs/ScriptOutput"
+              },
+              "type": "array"
+            },
+            "timeout": {
+              "default": "30s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "script",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "language",
+            "code"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs a command line with `zsh -c`; fails unless it exits with `exitCode`.",
+          "properties": {
+            "command": {
+              "description": "May contain placeholders.",
+              "type": "string"
+            },
+            "exitCode": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "folder": {
+              "description": "Folder the command runs in, relative to the folder of the test; without it, there.",
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "saveOutput": {
+              "description": "Run variable that gets what the command printed, without the last line break.",
+              "type": "string"
+            },
+            "timeout": {
+              "default": "30s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "command",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "command"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Sends an HTTP request; fails unless the answer has the expected status.",
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "expectStatus": {
+              "$ref": "#/$defs/ExpectStatus"
+            },
+            "headers": {
+              "items": {
+                "$ref": "#/$defs/NamedValue"
+              },
+              "type": "array"
+            },
+            "method": {
+              "$ref": "#/$defs/HttpMethod",
+              "default": "GET"
+            },
+            "next": {
+              "type": "string"
+            },
+            "save": {
+              "description": "Parts of the answer kept as run variables.",
+              "items": {
+                "$ref": "#/$defs/SavedValue"
+              },
+              "type": "array"
+            },
+            "timeout": {
+              "default": "30s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "http",
+              "type": "string"
+            },
+            "url": {
+              "description": "May contain placeholders, as may header values and the body.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Waits until a file reaches a state; fails after `timeout`.",
+          "properties": {
+            "next": {
+              "type": "string"
+            },
+            "path": {
+              "description": "Relative to the folder of the test, absolute, or from the home folder (`~/`); may contain placeholders.",
+              "type": "string"
+            },
+            "timeout": {
+              "default": "10s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "checkFile",
+              "type": "string"
+            },
+            "until": {
+              "$ref": "#/$defs/FileState"
+            }
+          },
+          "required": [
+            "type",
+            "path",
+            "until"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Runs an SQL query on an SQLite database file. With `expect`, runs it again until the answer is as expected, and fails after `timeout`.",
+          "properties": {
+            "expect": {
+              "$ref": "#/$defs/DatabaseExpect"
+            },
+            "file": {
+              "description": "Relative to the folder of the test, absolute, or from the home folder (`~/`); may contain placeholders.",
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "query": {
+              "description": "May contain placeholders.",
+              "type": "string"
+            },
+            "saveAs": {
+              "description": "Run variable that gets the first value of the first row.",
+              "type": "string"
+            },
+            "timeout": {
+              "default": "10s",
+              "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+              "pattern": "^[0-9]+(ms|s|m)$",
+              "type": "string"
+            },
+            "type": {
+              "const": "database",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "file",
+            "query"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Puts text or a picture on the clipboard, reads its text, a picture or a list of files into a run variable, or checks the text it holds.",
+          "oneOf": [
+            {
+              "description": "Replaces the clipboard with the text, which may contain placeholders. Whatever the clipboard held before is gone, and the text stays there after the run.",
+              "properties": {
+                "action": {
+                  "const": "put",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "text"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Replaces the clipboard with a picture: the path of a PNG, or `${var.NAME}` of a variable of type image.",
+              "properties": {
+                "action": {
+                  "const": "put",
+                  "type": "string"
+                },
+                "image": {
+                  "description": "Path of a PNG file, or `${var.NAME}` of a variable of type image. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "image"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Keeps what is on the clipboard as a run variable: its text, a picture (a variable of type image) or the list of files, as text with one path to a line.",
+              "properties": {
+                "action": {
+                  "const": "read",
+                  "type": "string"
+                },
+                "content": {
+                  "$ref": "#/$defs/ClipboardContent"
+                },
+                "saveAs": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "saveAs"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Waits until the text on the clipboard passes the test against `to`, which may contain placeholders; fails after `timeout`.",
+              "properties": {
+                "action": {
+                  "const": "check",
+                  "type": "string"
+                },
+                "is": {
+                  "$ref": "#/$defs/ValueTest"
+                },
+                "timeout": {
+                  "default": "10s",
+                  "description": "A time: a whole number and `ms`, `s` or `m`, such as `500ms`, `10s` or `2m`.",
+                  "pattern": "^[0-9]+(ms|s|m)$",
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "is",
+                "to"
+              ],
+              "type": "object"
+            }
+          ],
+          "properties": {
+            "next": {
+              "type": "string"
+            },
+            "type": {
+              "const": "clipboard",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object",
+          "unevaluatedProperties": false
+        },
+        {
+          "additionalProperties": false,
+          "description": "Keeps the current date and time, written as `format` and moved by `shift`, as the run variable `saveAs`.",
+          "properties": {
+            "format": {
+              "default": "%Y-%m-%d %H:%M:%S",
+              "description": "`strftime` pattern, e.g. `%d.%m.%Y %H:%M`.",
+              "type": "string"
+            },
+            "language": {
+              "description": "Language of month and day names; without it, the language the app runs in.",
+              "enum": [
+                "en",
+                "ru"
+              ],
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "saveAs": {
+              "type": "string"
+            },
+            "shift": {
+              "$ref": "#/$defs/TimeShift"
+            },
+            "timeZone": {
+              "description": "Time zone the time is told in, an IANA name such as `Europe/Berlin` or `UTC`; without it, the time zone of the computer the test runs on.",
+              "type": "string"
+            },
+            "type": {
+              "const": "dateTime",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "saveAs"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CanvasContent": {
+      "additionalProperties": false,
+      "description": "The drawing of a test on the editor canvas: blocks placed by hand, section frames and sticky notes. Coordinates are canvas points from the top-left corner.",
+      "properties": {
+        "notes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Note"
+          },
+          "description": "Sticky notes, by id.",
+          "type": "object"
+        },
+        "positions": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "type": "object"
+          },
+          "default": {},
+          "description": "Top-left corners of blocks, by block id. Empty: every block is laid out automatically.",
+          "type": "object"
+        },
+        "sections": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CanvasSection"
+          },
+          "description": "Section frames, by id.",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "CanvasSection": {
+      "additionalProperties": false,
+      "description": "A titled frame that groups the blocks drawn inside it, like a heading in a text.",
+      "properties": {
+        "frame": {
+          "additionalProperties": false,
+          "description": "Where it is drawn, in canvas points from the top-left corner.",
+          "properties": {
+            "height": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "type": "object"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "frame"
+      ],
+      "type": "object"
+    },
+    "ClipboardContent": {
+      "description": "What a clipboard block reads.",
+      "enum": [
+        "text",
+        "image",
+        "files"
+      ],
+      "type": "string"
+    },
+    "DatabaseExpect": {
+      "description": "What a database query must answer.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The first value of the first row, as text; may contain placeholders.",
+          "properties": {
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "How many rows the query returns.",
+          "properties": {
+            "rows": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "rows"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ElseIf": {
+      "description": "One more exit of an `if`: taken when the earlier conditions did not hold and this one does.",
+      "oneOf": [
+        {
+          "description": "The screen matches the reference.",
+          "properties": {
+            "reference": {
+              "$ref": "#/$defs/Reference"
+            }
+          },
+          "required": [
+            "reference"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "A value, usually a run variable, compares with another.",
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/ValueCheck"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "type": "object"
+        }
+      ],
+      "properties": {
+        "then": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "unevaluatedProperties": false
+    },
+    "ExpectStatus": {
+      "description": "Status the answer must have: `success` for any of 200–299, `any`, or one status code.",
+      "oneOf": [
+        {
+          "enum": [
+            "success",
+            "any"
+          ]
+        },
+        {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        }
+      ]
+    },
+    "FileState": {
+      "oneOf": [
+        {
+          "enum": [
+            "exists",
+            "missing"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "changed",
+          "description": "Changed since the run started, or created during it.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Exists and contains the text, which may contain placeholders.",
+          "properties": {
+            "contains": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "contains"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "HttpMethod": {
+      "enum": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD"
+      ],
+      "type": "string"
+    },
+    "Modifiers": {
+      "description": "Keys held down: a list of `cmd`, `shift`, `option` and `ctrl`.",
+      "items": {
+        "enum": [
+          "cmd",
+          "shift",
+          "option",
+          "ctrl"
+        ]
+      },
+      "type": "array"
+    },
+    "MouseButton": {
+      "enum": [
+        "left",
+        "right",
+        "middle"
+      ],
+      "type": "string"
+    },
+    "NamedValue": {
+      "additionalProperties": false,
+      "description": "A name with a text, such as a script input or an HTTP header.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "description": "A sticky note on the canvas.",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/NoteAnchor",
+          "default": {
+            "type": "test"
+          },
+          "description": "What the note is about; a block's note moves with the block."
+        },
+        "attachments": {
+          "default": [],
+          "description": "Files and links that come with the note.",
+          "items": {
+            "$ref": "#/$defs/Attachment"
+          },
+          "type": "array"
+        },
+        "author": {
+          "default": "",
+          "description": "Who wrote the note; empty when unknown.",
+          "type": "string"
+        },
+        "frame": {
+          "additionalProperties": false,
+          "description": "Where it is drawn, in canvas points from the top-left corner.",
+          "properties": {
+            "height": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "type": "object"
+        },
+        "replies": {
+          "default": [],
+          "description": "The discussion under the note, oldest first.",
+          "items": {
+            "$ref": "#/$defs/Reply"
+          },
+          "type": "array"
+        },
+        "resolved": {
+          "$ref": "#/$defs/Resolved",
+          "description": "Set when the discussion is settled."
+        },
+        "text": {
+          "description": "Markdown.",
+          "type": "string"
+        },
+        "time": {
+          "default": "",
+          "description": "When the note was written, as an RFC 3339 timestamp; empty when unknown.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "frame"
+      ],
+      "type": "object"
+    },
+    "NoteAnchor": {
+      "description": "What a note is about.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The whole test; what notes without an anchor in older files are about.",
+          "properties": {
+            "type": {
+              "const": "test",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "One block of the test.",
+          "properties": {
+            "block": {
+              "type": "string"
+            },
+            "type": {
+              "const": "block",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "block"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The folder the test is in, and so all tests in it.",
+          "properties": {
+            "type": {
+              "const": "folder",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "PackageNeed": {
+      "additionalProperties": false,
+      "description": "The version of a community block a test was written with, and where to get it.",
+      "properties": {
+        "source": {
+          "description": "An https address of a repository, release or zip file.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Like `1.2.0`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "type": "object"
+    },
+    "Point": {
+      "additionalProperties": false,
+      "description": "A point in fractions (0–1) of the window, from the top-left corner.",
+      "properties": {
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
+    "Priority": {
+      "description": "How much it matters that the test passes.",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "type": "string"
+    },
+    "Rect": {
+      "additionalProperties": false,
+      "description": "A rectangle in fractions (0–1) of the image or window, from the top-left corner.",
+      "properties": {
+        "height": {
+          "format": "double",
+          "type": "number"
+        },
+        "width": {
+          "format": "double",
+          "type": "number"
+        },
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "Reference": {
+      "additionalProperties": false,
+      "dependentSchemas": {
+        "expect": {
+          "properties": {
+            "compare": {
+              "const": "meaning"
+            }
+          },
+          "required": [
+            "compare"
+          ]
+        },
+        "model": {
+          "properties": {
+            "compare": {
+              "const": "meaning"
+            }
+          },
+          "required": [
+            "compare"
+          ]
+        },
+        "provider": {
+          "properties": {
+            "compare": {
+              "const": "meaning"
+            }
+          },
+          "required": [
+            "compare"
+          ]
+        },
+        "threshold": {
+          "properties": {
+            "compare": {
+              "const": "similar"
+            }
+          }
+        }
+      },
+      "description": "A reference image (how the screen should look) and how to compare the screen with it.",
+      "else": {
+        "required": [
+          "image"
+        ]
+      },
+      "if": {
+        "properties": {
+          "compare": {
+            "const": "meaning"
+          },
+          "expect": {
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "compare",
+          "expect"
+        ]
+      },
+      "properties": {
+        "area": {
+          "$ref": "#/$defs/Rect",
+          "description": "Part of the image to compare; without it, the whole image."
+        },
+        "compare": {
+          "default": "similar",
+          "description": "`similar`: at least `threshold` alike; `exact`: pixel by pixel; `meaning`: a vision model judges that the screen shows what `expect` says, or means the same as the image when there is no `expect`.",
+          "enum": [
+            "similar",
+            "exact",
+            "meaning"
+          ]
+        },
+        "expect": {
+          "description": "For `meaning`: what the screen must show, in words.",
+          "type": "string"
+        },
+        "hide": {
+          "description": "Parts painted over in grey before a screenshot is sent anywhere or stored in a report.",
+          "items": {
+            "$ref": "#/$defs/Rect"
+          },
+          "type": "array"
+        },
+        "ignore": {
+          "description": "Parts left out of the comparison: clocks, avatars, counters.",
+          "items": {
+            "$ref": "#/$defs/Rect"
+          },
+          "type": "array"
+        },
+        "image": {
+          "description": "Path of the reference image, relative to the folder of the test. A check by meaning with `expect` may leave it out. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+          "type": "string"
+        },
+        "model": {
+          "description": "For `meaning`: the model of that provider to ask instead of its chosen one.",
+          "type": "string"
+        },
+        "provider": {
+          "description": "For `meaning`: the AI provider to ask instead of the one chosen in the settings.",
+          "enum": [
+            "anthropic",
+            "openai",
+            "gemini",
+            "jev",
+            "ollama",
+            "lmstudio",
+            "openai-compatible"
+          ]
+        },
+        "threshold": {
+          "default": 0.95,
+          "description": "How alike the screen must be for `similar`, above 0 and at most 1.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Reply": {
+      "additionalProperties": false,
+      "description": "One message in the discussion under a note.",
+      "properties": {
+        "author": {
+          "default": "",
+          "description": "Who wrote it; empty when unknown.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Unique among the replies of the note.",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "time": {
+          "default": "",
+          "description": "When it was written, as an RFC 3339 timestamp; empty when unknown.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "type": "object"
+    },
+    "Resolved": {
+      "additionalProperties": false,
+      "description": "Who settled the discussion under a note, and when.",
+      "properties": {
+        "by": {
+          "type": "string"
+        },
+        "time": {
+          "default": "",
+          "description": "An RFC 3339 timestamp; empty when unknown.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "by"
+      ],
+      "type": "object"
+    },
+    "SavedValue": {
+      "additionalProperties": false,
+      "description": "A part of an HTTP answer kept as the run variable `name`. `from` is `status`, `body`, a field of a JSON body such as `body.items[0].id`, or a header such as `header.Location`.",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "from"
+      ],
+      "type": "object"
+    },
+    "ScriptInput": {
+      "additionalProperties": false,
+      "description": "A value a script reads from the environment variable `name`, as `type`.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ValueKind"
+        },
+        "value": {
+          "description": "May contain placeholders; for an image, the path of a PNG file. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "ScriptLanguage": {
+      "enum": [
+        "sh",
+        "zsh",
+        "python3",
+        "node",
+        "appleScript"
+      ],
+      "type": "string"
+    },
+    "ScriptOutput": {
+      "additionalProperties": false,
+      "description": "A value a script reports, kept as the run variable `name`.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ValueKind"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "type": "object"
+    },
+    "ScrollDirection": {
+      "description": "Which way a scroll moves the view: `down` brings what is further down into sight.",
+      "enum": [
+        "up",
+        "down",
+        "left",
+        "right"
+      ],
+      "type": "string"
+    },
+    "ScrollUnit": {
+      "description": "What the amount of a scroll counts: wheel notches (lines), or points on screen.",
+      "enum": [
+        "lines",
+        "pixels"
+      ],
+      "type": "string"
+    },
+    "Target": {
+      "description": "Where on screen an action happens.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Found by look: the image of the element, located on the current screenshot. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+          "properties": {
+            "image": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "image"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A fixed point, in fractions of the window size.",
+          "properties": {
+            "point": {
+              "$ref": "#/$defs/Point"
+            }
+          },
+          "required": [
+            "point"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The middle of an area: `x,y,width,height` in fractions of the window size, or `${var.NAME}` of a variable of type area.",
+          "properties": {
+            "area": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "area"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Found by AI: the element described in words, like \"the blue Save button\".",
+          "properties": {
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "description"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TestStatus": {
+      "description": "Where the test is in its life: being written, ready to run, or out of date.",
+      "enum": [
+        "draft",
+        "ready",
+        "outdated"
+      ],
+      "type": "string"
+    },
+    "TestType": {
+      "description": "What kind of test it is.",
+      "enum": [
+        "smoke",
+        "regression",
+        "acceptance"
+      ],
+      "type": "string"
+    },
+    "TimeShift": {
+      "additionalProperties": false,
+      "description": "How far the date and time of a `dateTime` block are moved: negative goes back.",
+      "properties": {
+        "amount": {
+          "default": 0,
+          "format": "int32",
+          "maximum": 100000,
+          "minimum": -100000,
+          "type": "integer"
+        },
+        "unit": {
+          "$ref": "#/$defs/TimeUnit"
+        }
+      },
+      "required": [
+        "unit"
+      ],
+      "type": "object"
+    },
+    "TimeUnit": {
+      "enum": [
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "weeks",
+        "months",
+        "years"
+      ],
+      "type": "string"
+    },
+    "ValueCheck": {
+      "additionalProperties": false,
+      "description": "`of` `is` `to`: `${var.status}` equals `200`. Both sides may contain placeholders.",
+      "properties": {
+        "is": {
+          "$ref": "#/$defs/ValueTest"
+        },
+        "of": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "of",
+        "is",
+        "to"
+      ],
+      "type": "object"
+    },
+    "ValueKind": {
+      "description": "What a value a script takes or gives is.",
+      "oneOf": [
+        {
+          "enum": [
+            "text",
+            "number"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "boolean",
+          "description": "Kept as `true` or `false`.",
+          "type": "string"
+        },
+        {
+          "const": "image",
+          "description": "The path of a PNG file: absolute, from the home folder (`~/`) or relative to the test.",
+          "type": "string"
+        },
+        {
+          "const": "area",
+          "description": "A rectangle in fractions (0–1) of the window as `x,y,width,height`: `0.1,0.2,0.5,0.3`.",
+          "type": "string"
+        }
+      ]
+    },
+    "ValueTest": {
+      "oneOf": [
+        {
+          "enum": [
+            "equals",
+            "notEquals",
+            "contains",
+            "lessThan"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "greaterThan",
+          "description": "Both sides read as numbers.",
+          "type": "string"
+        }
+      ]
+    },
+    "WaitUntil": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The reference shows up on screen.",
+          "properties": {
+            "appears": {
+              "$ref": "#/$defs/Reference"
+            }
+          },
+          "required": [
+            "appears"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The reference is no longer on screen.",
+          "properties": {
+            "disappears": {
+              "$ref": "#/$defs/Reference"
+            }
+          },
+          "required": [
+            "disappears"
+          ],
+          "type": "object"
+        },
+        {
+          "const": "screenStable",
+          "description": "The screen stops changing.",
+          "type": "string"
+        }
+      ]
+    },
+    "WindowPosition": {
+      "additionalProperties": false,
+      "description": "Where the top-left corner of a window sits on the screen, in points. The origin is the top-left corner of the main display; a display to its left or above has negative numbers.",
+      "properties": {
+        "x": {
+          "format": "int32",
+          "maximum": 20000,
+          "minimum": -20000,
+          "type": "integer"
+        },
+        "y": {
+          "format": "int32",
+          "maximum": 20000,
+          "minimum": -20000,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
+    "WindowSize": {
+      "additionalProperties": false,
+      "description": "The size of a window in points.",
+      "properties": {
+        "height": {
+          "format": "uint32",
+          "maximum": 20000,
+          "minimum": 100,
+          "type": "integer"
+        },
+        "width": {
+          "format": "uint32",
+          "maximum": 20000,
+          "minimum": 100,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A JEVision test: a flowchart of blocks that drive and check an application. Tests are `*.flow.json` files; `*.block.json` files are blocks of the project's own, `*.template.json` files are templates, and `flow.json` is the test inside a community block.",
+  "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
+    "app": {
+      "description": "Bundle identifier of the application under test, e.g. `com.apple.TextEdit`.",
+      "type": "string"
+    },
+    "author": {
+      "description": "Who wrote the test or looks after it.",
+      "type": "string"
+    },
+    "blocks": {
+      "additionalProperties": {
+        "$ref": "#/$defs/BlockKind"
+      },
+      "description": "Blocks by id, in any order; saved in the order the flow reads.",
+      "type": "object"
+    },
+    "canvas": {
+      "$ref": "#/$defs/CanvasContent",
+      "description": "How the test is drawn; changes nothing in how it runs."
+    },
+    "dependsOn": {
+      "default": [],
+      "description": "Tests that must pass before this one runs, as paths relative to the folder of this test file. When one of them fails, this test is blocked instead of run.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "description": {
+      "description": "What the test checks.",
+      "type": "string"
+    },
+    "flaky": {
+      "default": false,
+      "description": "Someone marked the test as flaky: it sometimes fails for reasons outside the app.",
+      "type": "boolean"
+    },
+    "format": {
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows.",
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "icon": {
+      "description": "SF Symbol shown for a block made of this test (a `*.block.json` file); without it, the default one.",
+      "type": "string"
+    },
+    "link": {
+      "description": "Web address of the issue or requirement the test covers.",
+      "type": "string"
+    },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+.*)?$",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the test, as lists and reports show it.",
+      "type": "string"
+    },
+    "platform": {
+      "description": "Where the test is meant to run, such as `macOS 26`.",
+      "type": "string"
+    },
+    "preconditions": {
+      "description": "What must be true before the test starts, such as `Signed in as a teacher`.",
+      "type": "string"
+    },
+    "priority": {
+      "$ref": "#/$defs/Priority"
+    },
+    "retries": {
+      "description": "How many times a failed run is retried before it counts as failed; without it, as many as the project says.",
+      "format": "uint32",
+      "maximum": 10,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "start": {
+      "description": "Id of the first block to run.",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/TestStatus"
+    },
+    "tags": {
+      "default": [],
+      "description": "Words to sort and find tests by.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "testType": {
+      "$ref": "#/$defs/TestType"
+    }
+  },
+  "required": [
+    "format",
+    "name",
+    "app",
+    "start",
+    "blocks"
+  ],
+  "title": "JEVision test",
+  "type": "object"
+}

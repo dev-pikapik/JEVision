@@ -9,15 +9,22 @@ use std::collections::HashMap;
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::FORMAT_VERSION;
+use crate::compat::{Requirement, TEST_SCHEMA};
 use crate::element::{ElementCheck, ElementQuery};
 
 /// A UI test: metadata plus a flowchart that starts at `start`.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(
+    test,
+    derive(schemars::JsonSchema),
+    schemars(rename_all = "camelCase", deny_unknown_fields)
+)]
 pub struct Flow {
+    /// Name of the test, as lists and reports show it.
     pub name: String,
+    /// What the test checks.
     pub description: Option<String>,
-    /// SF Symbol shown for a block made of this test, see [`BLOCK_SUFFIX`]; `None` for the
+    /// SF Symbol shown for a block made of this test (a `*.block.json` file); without it, the
     /// default one.
     pub icon: Option<String>,
     /// Bundle identifier of the application under test, e.g. `com.apple.TextEdit`.
@@ -25,6 +32,8 @@ pub struct Flow {
     pub test_type: Option<TestType>,
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
+    /// Words to sort and find tests by.
+    #[cfg_attr(test, schemars(default))]
     pub tags: Vec<String>,
     /// What must be true before the test starts, such as `Signed in as a teacher`.
     pub preconditions: Option<String>,
@@ -35,70 +44,120 @@ pub struct Flow {
     /// Web address of the issue or requirement the test covers.
     pub link: Option<String>,
     /// Someone marked the test as flaky: it sometimes fails for reasons outside the app.
+    #[cfg_attr(test, schemars(default))]
     pub flaky: bool,
-    /// How many times a failed run is retried before it counts as failed; `None` uses the
-    /// project's default retries.
+    /// How many times a failed run is retried before it counts as failed; without it, as many
+    /// as the project says.
+    #[cfg_attr(test, schemars(range(max = crate::validate::MAX_RETRIES)))]
     pub retries: Option<u32>,
     /// Tests that must pass before this one runs, as paths relative to the folder of this test
     /// file. When one of them fails, this test is blocked instead of run.
+    #[cfg_attr(test, schemars(default))]
     pub depends_on: Vec<String>,
     /// Id of the first block to run.
     pub start: String,
-    /// Blocks in any order; saved in reading order, see [`Flow::blocks_in_flow_order`].
+    /// Blocks by id, in any order; saved in the order the flow reads.
+    #[cfg_attr(test, schemars(with = "std::collections::BTreeMap<String, BlockKind>"))]
     pub blocks: Vec<Block>,
     /// How the test is drawn; changes nothing in how it runs.
+    #[cfg_attr(test, schemars(default))]
     pub canvas: CanvasContent,
 }
 
 /// The drawing of a test on the editor canvas: blocks placed by hand, section frames and sticky
 /// notes. Coordinates are canvas points from the top-left corner.
 #[derive(Debug, Clone, Default, PartialEq)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct CanvasContent {
     /// Top-left corners of blocks, by block id. Empty: every block is laid out automatically.
+    #[cfg_attr(test, schemars(default, schema_with = "crate::schema::canvas_points"))]
     pub positions: HashMap<String, Point>,
+    /// Section frames, by id.
+    #[cfg_attr(
+        test,
+        schemars(
+            default,
+            skip_serializing_if = "Vec::is_empty",
+            with = "std::collections::BTreeMap<String, CanvasSection>"
+        )
+    )]
     pub sections: Vec<CanvasSection>,
+    /// Sticky notes, by id.
+    #[cfg_attr(
+        test,
+        schemars(
+            default,
+            skip_serializing_if = "Vec::is_empty",
+            with = "std::collections::BTreeMap<String, Note>"
+        )
+    )]
     pub notes: Vec<Note>,
 }
 
 /// A titled frame that groups the blocks drawn inside it, like a heading in a text.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct CanvasSection {
     /// Unique among the sections of the test.
+    #[cfg_attr(test, schemars(skip))]
     pub id: String,
     pub title: String,
+    #[cfg_attr(
+        test,
+        schemars(rename = "frame", schema_with = "crate::schema::canvas_rect")
+    )]
     pub rect: Rect,
 }
 
 /// A sticky note on the canvas.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Note {
     /// Unique among the notes of the test.
+    #[cfg_attr(test, schemars(skip))]
     pub id: String,
     /// Markdown.
     pub text: String,
     /// Who wrote the note; empty when unknown.
+    #[cfg_attr(test, schemars(default))]
     pub author: String,
     /// When the note was written, as an RFC 3339 timestamp; empty when unknown.
+    #[cfg_attr(test, schemars(default))]
     pub time: String,
     /// What the note is about; a block's note moves with the block.
+    #[cfg_attr(test, schemars(default))]
     pub anchor: NoteAnchor,
     /// Files and links that come with the note.
+    #[cfg_attr(test, schemars(default))]
     pub attachments: Vec<Attachment>,
     /// The discussion under the note, oldest first.
+    #[cfg_attr(test, schemars(default))]
     pub replies: Vec<Reply>,
     /// Set when the discussion is settled.
     pub resolved: Option<Resolved>,
+    #[cfg_attr(
+        test,
+        schemars(rename = "frame", schema_with = "crate::schema::canvas_rect")
+    )]
     pub rect: Rect,
 }
 
 /// What a note is about.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(
+    test,
+    derive(schemars::JsonSchema),
+    schemars(tag = "type", rename_all = "camelCase", deny_unknown_fields)
+)]
 pub enum NoteAnchor {
     /// The whole test; what notes without an anchor in older files are about.
     #[default]
     Test,
     /// One block of the test.
-    Block { id: String },
+    Block {
+        #[cfg_attr(test, schemars(rename = "block"))]
+        id: String,
+    },
     /// The folder the test is in, and so all tests in it.
     Folder,
 }
@@ -122,25 +181,32 @@ pub struct Attachment {
 
 /// One message in the discussion under a note.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Reply {
     /// Unique among the replies of the note.
     pub id: String,
     /// Who wrote it; empty when unknown.
+    #[cfg_attr(test, schemars(default))]
     pub author: String,
     /// When it was written, as an RFC 3339 timestamp; empty when unknown.
+    #[cfg_attr(test, schemars(default))]
     pub time: String,
     pub text: String,
 }
 
 /// Who settled the discussion under a note, and when.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Resolved {
     pub by: String,
     /// An RFC 3339 timestamp; empty when unknown.
+    #[cfg_attr(test, schemars(default))]
     pub time: String,
 }
 
+/// What kind of test it is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum TestType {
     Smoke,
@@ -148,7 +214,9 @@ pub enum TestType {
     Acceptance,
 }
 
+/// How much it matters that the test passes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum Priority {
     Critical,
@@ -157,7 +225,9 @@ pub enum Priority {
     Low,
 }
 
+/// Where the test is in its life: being written, ready to run, or out of date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum TestStatus {
     Draft,
@@ -178,6 +248,7 @@ pub struct Block {
 /// `next` is the block that runs afterwards; a block without `next` ends the run (or, inside a
 /// loop body, the current pass). Paths are relative to the folder of the test file.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -186,11 +257,12 @@ pub struct Block {
 pub enum BlockKind {
     /// Launches an application and brings it to the front.
     OpenApp {
-        /// Bundle id; `None` opens the application under test.
+        /// Bundle id; without it, the application under test opens.
         #[serde(skip_serializing_if = "Option::is_none")]
         app: Option<String>,
         /// Quit a copy that is already running and start a fresh one that does not restore its
         /// windows, so every run begins from the same screen.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         reset_state: bool,
         /// Resize the main window once the app is up, so screenshots have the same size.
@@ -211,14 +283,17 @@ pub enum BlockKind {
     /// Opens files or web addresses, each file from a fresh copy so the original stays intact.
     OpenFile {
         /// Relative file paths or `http(s)://` addresses.
+        #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
         files: Vec<String>,
-        /// Bundle id; `None` uses the system default application.
+        /// Bundle id; without it, each file opens in its default application.
         #[serde(skip_serializing_if = "Option::is_none")]
         app: Option<String>,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         new_instance: bool,
         /// When the attempt ends, passed or not, quit the apps this block started and close
         /// the copies of the files it opened.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         close_after: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -226,13 +301,17 @@ pub enum BlockKind {
     },
     Click {
         target: Target,
+        #[cfg_attr(test, schemars(default))]
         button: MouseButton,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         double: bool,
         /// Keys held down during the click.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Modifiers::is_empty")]
         modifiers: Modifiers,
         /// After clicking, wait until the screen changes; fail if it does not.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -243,9 +322,11 @@ pub enum BlockKind {
     Hover {
         target: Target,
         /// Keys held down while the pointer moves.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Modifiers::is_empty")]
         modifiers: Modifiers,
         /// After moving, wait until the screen changes; fail if it does not.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -255,12 +336,15 @@ pub enum BlockKind {
     Drag {
         from: Target,
         to: Target,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "MouseButton::is_left")]
         button: MouseButton,
         /// Keys held down during the drag.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Modifiers::is_empty")]
         modifiers: Modifiers,
         /// After letting go, wait until the screen changes; fail if it does not.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -269,14 +353,18 @@ pub enum BlockKind {
     /// Turns the scroll wheel with the pointer over `at`, or over the middle of the window.
     Scroll {
         direction: ScrollDirection,
+        #[cfg_attr(test, schemars(range(min = 1, max = crate::validate::MAX_SCROLL)))]
         amount: u32,
+        #[cfg_attr(test, schemars(default))]
         unit: ScrollUnit,
         #[serde(skip_serializing_if = "Option::is_none")]
         at: Option<Target>,
         /// Keys held down while the wheel turns: `cmd` zooms in most applications.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Modifiers::is_empty")]
         modifiers: Modifiers,
         /// After scrolling, wait until the screen changes; fail if it does not.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_false")]
         wait_for_change: bool,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -300,6 +388,13 @@ pub enum BlockKind {
     /// Waits for the screen to reach a state; fails after `timeout`.
     WaitFor {
         until: WaitUntil,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::wait_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -307,6 +402,7 @@ pub enum BlockKind {
     },
     /// Waits a fixed time, whatever the screen shows.
     Pause {
+        #[cfg_attr(test, schemars(schema_with = "crate::schema::duration"))]
         #[serde(rename = "duration", serialize_with = "duration")]
         duration_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -320,13 +416,14 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Goes to `then` if the condition holds, else to the first of `else_if` whose condition
+    /// Goes to `then` if the condition holds, else to the first of `elseIf` whose condition
     /// holds, otherwise to `else`.
     If {
         #[serde(flatten)]
         condition: Condition,
         #[serde(skip_serializing_if = "Option::is_none")]
         then: Option<String>,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         else_if: Vec<ElseIf>,
         #[serde(rename = "else", skip_serializing_if = "Option::is_none")]
@@ -335,6 +432,7 @@ pub enum BlockKind {
     /// Runs the chain starting at `body` `times` times, then goes to `next`.
     /// The body loops by linking back to this block.
     Repeat {
+        #[cfg_attr(test, schemars(range(min = 1, max = crate::validate::MAX_REPEAT)))]
         times: u32,
         body: String,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -343,13 +441,15 @@ pub enum BlockKind {
     /// Runs the chain starting at `body` once per row of a CSV file, then goes to `next`.
     /// Row values are available as `${data.COLUMN}`.
     UseData {
+        /// Path of the CSV file, relative to the folder of the test.
+        #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
         file: String,
         body: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
     /// Runs another test file in place, as a sub-process: a test, or a block of the project's
-    /// own, see [`BLOCK_SUFFIX`].
+    /// own (a `*.block.json` file).
     RunTest {
         test: String,
         /// The version and address of the package `test` belongs to, as its author had it
@@ -358,6 +458,7 @@ pub enum BlockKind {
         package: Option<PackageNeed>,
         /// Values of the `${input.NAME}` placeholders in the test it runs, by name. They may
         /// hold placeholders themselves, filled in where this block runs.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "sorted")]
         inputs: HashMap<String, String>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -370,27 +471,44 @@ pub enum BlockKind {
         language: ScriptLanguage,
         code: String,
         /// Values may contain placeholders.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         inputs: Vec<ScriptInput>,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         outputs: Vec<ScriptOutput>,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::task_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Runs a command line with `zsh -c`; fails unless it exits with `exit_code`.
+    /// Runs a command line with `zsh -c`; fails unless it exits with `exitCode`.
     Command {
         /// May contain placeholders.
         command: String,
-        /// Folder the command runs in, relative to the folder of the test; `None` runs it there.
+        /// Folder the command runs in, relative to the folder of the test; without it, there.
         #[serde(skip_serializing_if = "Option::is_none")]
         folder: Option<String>,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "is_zero")]
         exit_code: i32,
         /// Run variable that gets what the command printed, without the last line break.
         #[serde(skip_serializing_if = "Option::is_none")]
         save_output: Option<String>,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::task_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -398,18 +516,30 @@ pub enum BlockKind {
     },
     /// Sends an HTTP request; fails unless the answer has the expected status.
     Http {
+        #[cfg_attr(test, schemars(default))]
         method: HttpMethod,
         /// May contain placeholders, as may header values and the body.
         url: String,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         headers: Vec<NamedValue>,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "String::is_empty")]
         body: String,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "ExpectStatus::is_success")]
         expect_status: ExpectStatus,
         /// Parts of the answer kept as run variables.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         save: Vec<SavedValue>,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::task_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -421,6 +551,13 @@ pub enum BlockKind {
         /// contain placeholders.
         path: String,
         until: FileState,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::wait_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -429,7 +566,8 @@ pub enum BlockKind {
     /// Runs an SQL query on an SQLite database file. With `expect`, runs it again until the
     /// answer is as expected, and fails after `timeout`.
     Database {
-        /// A path as in [`BlockKind::CheckFile`].
+        /// Relative to the folder of the test, absolute, or from the home folder (`~/`); may
+        /// contain placeholders.
         file: String,
         /// May contain placeholders.
         query: String,
@@ -438,6 +576,13 @@ pub enum BlockKind {
         save_as: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         expect: Option<DatabaseExpect>,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::wait_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -452,18 +597,19 @@ pub enum BlockKind {
         next: Option<String>,
     },
     /// Keeps the current date and time, written as `format` and moved by `shift`, as the run
-    /// variable `save_as`.
+    /// variable `saveAs`.
     DateTime {
         save_as: String,
         /// `strftime` pattern, e.g. `%d.%m.%Y %H:%M`.
+        #[cfg_attr(test, schemars(default = "crate::schema::date_format", extend("default" = DEFAULT_DATE_FORMAT)))]
         #[serde(skip_serializing_if = "is_default_format")]
         format: String,
-        /// Language of month and day names, one of [`DATE_LANGUAGES`]; `None` is the language
-        /// the app runs in.
+        /// Language of month and day names; without it, the language the app runs in.
+        #[cfg_attr(test, schemars(extend("enum" = DATE_LANGUAGES)))]
         #[serde(skip_serializing_if = "Option::is_none")]
         language: Option<String>,
-        /// Time zone the time is told in, an IANA name such as `Europe/Berlin` or `UTC`; `None`
-        /// is the time zone of this computer.
+        /// Time zone the time is told in, an IANA name such as `Europe/Berlin` or `UTC`; without
+        /// it, the time zone of the computer the test runs on.
         #[serde(skip_serializing_if = "Option::is_none")]
         time_zone: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -475,6 +621,7 @@ pub enum BlockKind {
 
 /// What a clipboard block does.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(
     tag = "action",
     rename_all = "camelCase",
@@ -487,11 +634,16 @@ pub enum ClipboardAction {
     /// Replaces the clipboard with a picture: the path of a PNG, or `${var.NAME}` of a variable
     /// of type image.
     #[serde(rename = "put")]
-    PutImage { image: String },
+    PutImage {
+        /// Path of a PNG file, or `${var.NAME}` of a variable of type image.
+        #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
+        image: String,
+    },
     /// Keeps what is on the clipboard as a run variable: its text, a picture (a variable of
     /// type image) or the list of files, as text with one path to a line.
     Read {
         save_as: String,
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "ClipboardContent::is_text")]
         content: ClipboardContent,
     },
@@ -500,6 +652,13 @@ pub enum ClipboardAction {
     Check {
         is: ValueTest,
         to: String,
+        #[cfg_attr(
+            test,
+            schemars(
+                default = "crate::schema::wait_timeout",
+                schema_with = "crate::schema::duration"
+            )
+        )]
         #[serde(rename = "timeout", serialize_with = "duration")]
         timeout_ms: u64,
     },
@@ -507,6 +666,7 @@ pub enum ClipboardAction {
 
 /// What a clipboard block reads.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ClipboardContent {
     #[default]
@@ -540,14 +700,17 @@ impl ClipboardContent {
     }
 }
 
-/// How far the date and time of a [`BlockKind::DateTime`] block are moved: negative goes back.
+/// How far the date and time of a `dateTime` block are moved: negative goes back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct TimeShift {
+    #[cfg_attr(test, schemars(default, range(min = -crate::validate::MAX_TIME_SHIFT, max = crate::validate::MAX_TIME_SHIFT)))]
     pub amount: i32,
     pub unit: TimeUnit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum TimeUnit {
     Seconds,
@@ -611,6 +774,7 @@ impl Serialize for Modifiers {
 
 /// What an `if` way out checks.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum Condition {
     /// The screen matches the reference.
@@ -634,6 +798,7 @@ impl Condition {
 
 /// What a `check` looks at.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum CheckOf {
     /// The screen matches the reference.
@@ -655,6 +820,7 @@ impl CheckOf {
 
 /// `of` `is` `to`: `${var.status}` equals `200`. Both sides may contain placeholders.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct ValueCheck {
     pub of: String,
     pub is: ValueTest,
@@ -662,6 +828,7 @@ pub struct ValueCheck {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ValueTest {
     Equals,
@@ -674,6 +841,7 @@ pub enum ValueTest {
 
 /// A name with a text, such as a script input or an HTTP header.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct NamedValue {
     pub name: String,
     pub value: String,
@@ -681,6 +849,7 @@ pub struct NamedValue {
 
 /// The version of a community block a test was written with, and where to get it.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct PackageNeed {
     /// Like `1.2.0`.
     pub version: String,
@@ -689,17 +858,22 @@ pub struct PackageNeed {
     pub source: Option<String>,
 }
 
-/// A value a script reads from the environment variable `name`, as `kind`.
+/// A value a script reads from the environment variable `name`, as `type`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct ScriptInput {
     pub name: String,
+    #[cfg_attr(test, schemars(default))]
     #[serde(rename = "type", skip_serializing_if = "ValueKind::is_text")]
     pub kind: ValueKind,
+    /// May contain placeholders; for an image, the path of a PNG file.
+    #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
     pub value: String,
 }
 
 /// A value a script reports, kept as the run variable `name`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct ScriptOutput {
     pub name: String,
     #[serde(rename = "type")]
@@ -707,9 +881,11 @@ pub struct ScriptOutput {
 }
 
 /// What a value a script takes or gives is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ValueKind {
+    #[default]
     Text,
     Number,
     /// Kept as `true` or `false`.
@@ -790,6 +966,7 @@ pub fn parse_area(text: &str) -> Option<Rect> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ScriptLanguage {
     Sh,
@@ -799,9 +976,11 @@ pub enum ScriptLanguage {
     AppleScript,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
+    #[default]
     Get,
     Post,
     Put,
@@ -811,9 +990,10 @@ pub enum HttpMethod {
 }
 
 /// Status an HTTP answer must have for the block to pass.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ExpectStatus {
     /// Any of 200–299.
+    #[default]
     Success,
     Any,
     Exactly(u16),
@@ -846,12 +1026,14 @@ impl Serialize for ExpectStatus {
 /// A part of an HTTP answer kept as the run variable `name`. `from` is `status`, `body`, a
 /// field of a JSON body such as `body.items[0].id`, or a header such as `header.Location`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct SavedValue {
     pub name: String,
     pub from: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum FileState {
     Exists,
@@ -864,6 +1046,7 @@ pub enum FileState {
 
 /// What a database query must answer.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum DatabaseExpect {
     /// The first value of the first row, as text; may contain placeholders.
@@ -874,6 +1057,7 @@ pub enum DatabaseExpect {
 
 /// One more exit of an `if`: taken when the earlier conditions did not hold and this one does.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct ElseIf {
     #[serde(flatten)]
     pub condition: Condition,
@@ -883,9 +1067,11 @@ pub struct ElseIf {
 
 /// Where on screen an action happens.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum Target {
     /// Found by look: the image of the element, located on the current screenshot.
+    #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
     Image(String),
     /// A fixed point, in fractions of the window size.
     Point(Point),
@@ -900,21 +1086,28 @@ pub enum Target {
 
 /// The size of a window in points.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct WindowSize {
+    #[cfg_attr(test, schemars(range(min = crate::validate::MIN_WINDOW_SIDE, max = crate::validate::MAX_WINDOW_SIDE)))]
     pub width: u32,
+    #[cfg_attr(test, schemars(range(min = crate::validate::MIN_WINDOW_SIDE, max = crate::validate::MAX_WINDOW_SIDE)))]
     pub height: u32,
 }
 
 /// Where the top-left corner of a window sits on the screen, in points. The origin is the
 /// top-left corner of the main display; a display to its left or above has negative numbers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct WindowPosition {
+    #[cfg_attr(test, schemars(range(min = -crate::validate::MAX_WINDOW_OFFSET, max = crate::validate::MAX_WINDOW_OFFSET)))]
     pub x: i32,
+    #[cfg_attr(test, schemars(range(min = -crate::validate::MAX_WINDOW_OFFSET, max = crate::validate::MAX_WINDOW_OFFSET)))]
     pub y: i32,
 }
 
 /// A point in fractions (0–1) of the window, from the top-left corner.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Point {
     pub x: f64,
     pub y: f64,
@@ -922,6 +1115,7 @@ pub struct Point {
 
 /// A rectangle in fractions (0–1) of the image or window, from the top-left corner.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Rect {
     pub x: f64,
     pub y: f64,
@@ -929,9 +1123,11 @@ pub struct Rect {
     pub height: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum MouseButton {
+    #[default]
     Left,
     Right,
     Middle,
@@ -945,6 +1141,7 @@ impl MouseButton {
 
 /// Which way a scroll moves the view: `down` brings what is further down into sight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ScrollDirection {
     Up,
@@ -954,14 +1151,17 @@ pub enum ScrollDirection {
 }
 
 /// What the amount of a scroll counts: wheel notches (lines), or points on screen.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub enum ScrollUnit {
+    #[default]
     Lines,
     Pixels,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub enum WaitUntil {
     /// The reference shows up on screen.
@@ -1212,7 +1412,8 @@ pub fn else_if_index(name: &str) -> Option<usize> {
 impl Serialize for Flow {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         let mut map = s.serialize_map(None)?;
-        map.serialize_entry("format", &FORMAT_VERSION)?;
+        map.serialize_entry("$schema", TEST_SCHEMA)?;
+        map.serialize_entry("format", &Requirement::of(self).format)?;
         map.serialize_entry("name", &self.name)?;
         if let Some(d) = &self.description {
             map.serialize_entry("description", d)?;
@@ -1504,7 +1705,10 @@ impl Flow {
 impl Serialize for Reference {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         let mut map = s.serialize_map(None)?;
-        if !self.image.is_empty() || !matches!(self.compare, Compare::Meaning { .. }) {
+        // Only a meaning check that says what to expect is read without an image.
+        let needs_image =
+            !matches!(&self.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty());
+        if !self.image.is_empty() || needs_image {
             map.serialize_entry("image", &self.image)?;
         }
         match &self.compare {

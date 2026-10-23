@@ -1,124 +1,162 @@
 {
+  "$defs": {
+    "Dependency": {
+      "additionalProperties": false,
+      "description": "A package that another one runs: its steps call `../ID.jevblock/flow.json`.",
+      "properties": {
+        "id": {
+          "description": "The id of the package that is needed.",
+          "maxLength": 100,
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$",
+          "type": "string"
+        },
+        "source": {
+          "description": "An https address to install it from when it is missing.",
+          "maxLength": 500,
+          "pattern": "^https://",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "default": "*",
+          "description": "The versions that work: `*` for any; `1.2.0` or `=1.2.0` for exactly that one; `^1.2.0` for 1.2.0 up to 2.0.0 (up to 0.3.0 for `^0.2.0`); `~1.2.0`, `1.2.x` or `1.x` for a series; or comparisons with `>=`, `>`, `<` and `<=` joined by spaces or commas, like `>=1.2.0 <2.0.0`.",
+          "maxLength": 100,
+          "pattern": "\\S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "PackageInput": {
+      "additionalProperties": false,
+      "description": "What a package asks for each time its block is used: one `${input.NAME}` of its steps.",
+      "properties": {
+        "default": {
+          "description": "What the input holds when the test doesn't say.",
+          "maxLength": 500,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "description": "What to call it in the editor, when `name` isn't clear enough.",
+          "maxLength": 60,
+          "pattern": "\\S",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "The `NAME` of `${input.NAME}`: letters, digits and `_`, not starting with a digit.",
+          "maxLength": 100,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/block.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "JEVision block package: block.json",
-  "description": "Describes a block that people share. It sits in the folder ID.jevblock next to flow.json, the steps of the block.",
-  "type": "object",
-  "required": ["format", "id", "name", "version", "author", "license"],
   "additionalProperties": false,
+  "description": "A block that people share: `block.json` in the folder `ID.jevblock`, next to `flow.json` with the steps of the block.",
   "properties": {
-    "format": {
-      "description": "Format of this file. Always 1.",
-      "const": 1
-    },
-    "id": {
-      "description": "Three or more parts of lowercase letters, digits and hyphens, joined by dots, like com.acme.sign-in. The folder of the installed package is named after it.",
-      "type": "string",
+    "author": {
+      "description": "Who made the block.",
       "maxLength": 100,
-      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$"
+      "pattern": "\\S",
+      "type": "string"
     },
-    "name": {
-      "description": "What the block is called in the library.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 60
+    "dependencies": {
+      "description": "Other packages the steps run, which must be installed beside this one.",
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      },
+      "maxItems": 50,
+      "type": "array"
     },
     "description": {
       "description": "What the block does, in a sentence or two.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 500
+      "maxLength": 500,
+      "pattern": "\\S",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
     },
     "icon": {
-      "description": "Name of an SF Symbol the block is shown with, such as person.crop.circle.",
-      "type": "string",
+      "description": "SF Symbol the block is shown with, such as `person.crop.circle`.",
       "maxLength": 64,
-      "pattern": "^[a-z0-9.]+$"
+      "pattern": "^[a-z0-9.]+$",
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "version": {
-      "description": "Semantic version: MAJOR.MINOR.PATCH, with an optional -pre.release part.",
-      "$ref": "#/$defs/version"
-    },
-    "author": {
-      "description": "Who made the block.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
-    },
-    "license": {
-      "description": "Name of the license of the block, such as MIT.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
-    },
-    "minVersion": {
-      "description": "The oldest version of JEVision that can run the block.",
-      "$ref": "#/$defs/version"
+    "id": {
+      "description": "Like `com.acme.sign-in`: at least three parts of lowercase letters, digits and `-`, joined by dots. The folder of the installed package is named after it.",
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$",
+      "type": "string"
     },
     "inputs": {
-      "description": "What the block asks for each time a test uses it: one entry for every ${input.NAME} of its steps.",
-      "type": "array",
-      "maxItems": 50,
+      "description": "What the block asks for each time a test uses it: one entry for every `${input.NAME}` of its steps.",
       "items": {
-        "type": "object",
-        "required": ["name"],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "description": "The NAME of ${input.NAME}: letters, digits and underscores, not starting with a digit.",
-            "type": "string",
-            "maxLength": 100,
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-          },
-          "label": {
-            "description": "What to call the input in the editor, when the name isn't clear enough.",
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 60
-          },
-          "default": {
-            "description": "What the input holds when a test leaves it out.",
-            "type": "string",
-            "maxLength": 500
-          }
-        }
-      }
+        "$ref": "#/$defs/PackageInput"
+      },
+      "maxItems": 50,
+      "type": "array"
     },
-    "dependencies": {
-      "description": "Other block packages the steps run, as ../ID.jevblock/flow.json; each must be installed beside this one.",
-      "type": "array",
-      "maxItems": 50,
-      "items": {
-        "type": "object",
-        "required": ["id"],
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "description": "The id of the package that is needed.",
-            "type": "string",
-            "maxLength": 100,
-            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$"
-          },
-          "version": {
-            "description": "The versions that work, * for any when left out: 1.2.0 or =1.2.0 for exactly that one, ^1.2.0 for 1.2.0 up to 2.0.0 (up to 0.3.0 for ^0.2.0), ~1.2.0 for 1.2.x, 1.x and 1.2.x, or comparisons with >=, >, <, <= joined by spaces or commas, like >=1.2.0 <2.0.0.",
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100
-          },
-          "source": {
-            "description": "An https address to install the package from when it is missing.",
-            "type": "string",
-            "maxLength": 500,
-            "pattern": "^https://"
-          }
-        }
-      }
+    "license": {
+      "description": "Name of the license, such as `MIT`.",
+      "maxLength": 100,
+      "pattern": "\\S",
+      "type": "string"
+    },
+    "minVersion": {
+      "description": "Oldest JEVision that can run the block.",
+      "maxLength": 100,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+.*)?$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "name": {
+      "description": "What the block is called in the library.",
+      "maxLength": 60,
+      "pattern": "\\S",
+      "type": "string"
+    },
+    "version": {
+      "description": "Version of the block: `MAJOR.MINOR.PATCH`, with an optional `-pre.release` part.",
+      "maxLength": 100,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+.*)?$",
+      "type": "string"
     }
   },
-  "$defs": {
-    "version": {
-      "type": "string",
-      "maxLength": 100,
-      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z.-]+)?$"
-    }
-  }
+  "required": [
+    "format",
+    "id",
+    "name",
+    "version",
+    "author",
+    "license"
+  ],
+  "title": "JEVision block package",
+  "type": "object"
 }

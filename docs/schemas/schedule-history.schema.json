@@ -1,0 +1,145 @@
+{
+  "$defs": {
+    "ScheduledOutcome": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "The tests ran; `failed` counts every test that didn't pass.",
+          "properties": {
+            "failed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "passed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "const": "finished",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result",
+            "passed",
+            "failed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Nothing ran, so nothing touched the computer.",
+          "properties": {
+            "reason": {
+              "$ref": "#/$defs/SkipReason"
+            },
+            "result": {
+              "const": "skipped",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The tests couldn't start, such as with an environment the project doesn't have.",
+          "properties": {
+            "message": {
+              "type": "string"
+            },
+            "result": {
+              "const": "error",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result",
+            "message"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ScheduledRun": {
+      "additionalProperties": false,
+      "description": "What came of one scheduled run.",
+      "properties": {
+        "durationMs": {
+          "description": "How long the run took, in milliseconds.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ScheduledOutcome"
+        },
+        "schedule": {
+          "description": "Name of the schedule.",
+          "type": "string"
+        },
+        "startedAtMs": {
+          "description": "Milliseconds since 1970, UTC.",
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schedule",
+        "startedAtMs",
+        "durationMs",
+        "outcome"
+      ],
+      "type": "object"
+    },
+    "SkipReason": {
+      "description": "Why a scheduled run didn't start.",
+      "oneOf": [
+        {
+          "const": "screenLocked",
+          "description": "The screen was locked: input would go to the lock screen.",
+          "type": "string"
+        },
+        {
+          "const": "noUser",
+          "description": "Nobody was logged in with a screen.",
+          "type": "string"
+        },
+        {
+          "const": "notAllowed",
+          "description": "macOS hasn't allowed the tool to record the screen or control the computer.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/schedule-history.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "What came of the scheduled runs of a project on this computer, in `.jevision/schedule-history.json`. JEVision keeps it itself; it isn't shared.",
+  "properties": {
+    "checkedAt": {
+      "description": "Local minute schedules were last checked at; runs up to it are done or missed.",
+      "format": "int64",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "runs": {
+      "default": [],
+      "description": "Oldest first.",
+      "items": {
+        "$ref": "#/$defs/ScheduledRun"
+      },
+      "type": "array"
+    }
+  },
+  "title": "JEVision schedule history",
+  "type": "object"
+}

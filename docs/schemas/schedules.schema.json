@@ -1,0 +1,191 @@
+{
+  "$defs": {
+    "Repeat": {
+      "description": "On which days and how often a schedule runs.",
+      "oneOf": [
+        {
+          "const": "daily",
+          "description": "Every day at `at`.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "These days of the week at `at`.",
+          "properties": {
+            "days": {
+              "items": {
+                "$ref": "#/$defs/Weekday"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "days"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Every so many hours, around the clock, in step with `at`.",
+          "properties": {
+            "everyHours": {
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                6,
+                8,
+                12
+              ],
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "everyHours"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Schedule": {
+      "additionalProperties": false,
+      "description": "One schedule: these tests, at these times.",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimeOfDay",
+          "description": "Time of day of the run; for `everyHours`, the run the others count from."
+        },
+        "environment": {
+          "description": "Environment of the project's environments file; absent uses its default.",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Unique within the project; names the schedule in run history.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^\\S(.*\\S)?$",
+          "type": "string"
+        },
+        "repeat": {
+          "$ref": "#/$defs/Repeat"
+        },
+        "tests": {
+          "$ref": "#/$defs/ScheduleTests"
+        },
+        "video": {
+          "description": "`off`, `on-failure` or `always`; absent follows the app's setting.",
+          "enum": [
+            "off",
+            "on-failure",
+            "always"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "tests",
+        "repeat",
+        "at"
+      ],
+      "type": "object"
+    },
+    "ScheduleTests": {
+      "description": "Which tests a schedule runs. Paths are relative to the project folder.",
+      "oneOf": [
+        {
+          "const": "all",
+          "description": "Every test of the project.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Every test in a folder and its subfolders.",
+          "properties": {
+            "folder": {
+              "pattern": "^([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)(/([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+))*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "folder"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "These test files.",
+          "properties": {
+            "files": {
+              "items": {
+                "pattern": "^(([^./\\\\][^/\\\\]*|\\.[^./\\\\][^/\\\\]*|\\.\\.[^/\\\\]+)/)*[^/\\\\]*\\.flow\\.json$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "files"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TimeOfDay": {
+      "description": "A time of day as `HH:MM`, from `00:00` to `23:59`.",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+      "type": "string"
+    },
+    "Weekday": {
+      "description": "A day of the week.",
+      "enum": [
+        "sun",
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri",
+        "sat"
+      ],
+      "type": "string"
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/schedules.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "When the tests of a project run by themselves, in `jevision.schedule.json` in the project folder: each schedule names the tests, the days or hours, and the time of day.",
+  "properties": {
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "schedules": {
+      "description": "Each with a name of its own, whatever the case of its letters.",
+      "items": {
+        "$ref": "#/$defs/Schedule"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "format",
+    "schedules"
+  ],
+  "title": "JEVision schedules",
+  "type": "object"
+}

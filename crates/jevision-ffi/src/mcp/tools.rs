@@ -8,8 +8,9 @@ use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use jevision_core::{
-    Flow, Issue, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, Severity, Slot, TestCard,
-    TestFilter, describe, parse, parse_block, to_canonical_json, validate_in,
+    Flow, Issue, LABELS_FORMAT, NEXT, PROJECT_FILE, ProjectSettings, Rect, START, SaveOutcome,
+    Severity, Slot, TestCard, TestFilter, describe, label_files, parse, parse_block,
+    project_requirement, save_test, validate_in,
 };
 use jevision_l10n::tr;
 use jevision_runner::{MaskedImage, Run, StepStatus, Verdict};
@@ -367,6 +368,12 @@ impl Server {
             return Err(not_saved(&issues));
         }
         let existed = file.exists();
+        // A project that names files by their labels gets labels in this test too.
+        let mut flow = flow;
+        if project_requirement(&self.project).format >= LABELS_FORMAT {
+            label_files(&self.project, &self.relative(&file), &mut flow)
+                .map_err(|issue| describe(&issue))?;
+        }
         self.save(&file, &flow)?;
         let (path, problems) = (self.relative(&file), problems(&issues));
         Ok(vec![text(if existed {
@@ -906,21 +913,16 @@ impl Server {
     }
 
     /// Writes `flow` in canonical form; a reader never sees half a file.
+    /// Writes `flow` all at once. A test that would need a newer format than the project has
+    /// isn't written: that is for the person to agree to, in the app.
     fn save(&self, file: &Path, flow: &Flow) -> Result<(), String> {
-        let content = to_canonical_json(flow);
-        if fs::read_to_string(file).is_ok_and(|old| old == content) {
-            return Ok(());
+        match save_test(&self.project, &self.relative(file), flow, false) {
+            Ok(SaveOutcome::Saved) => Ok(()),
+            Ok(SaveOutcome::NeedsConfirmation { description, .. }) => {
+                Err(tr!("mcp.write.needsRaise", description))
+            }
+            Err(issue) => Err(describe(&issue)),
         }
-        let folder = file.parent().unwrap_or(&self.project);
-        fs::create_dir_all(folder).map_err(|e| self.io_error(folder, &e))?;
-        let name = file.file_name().unwrap_or_default().to_string_lossy();
-        let temporary = folder.join(format!(".{name}.saving"));
-        fs::write(&temporary, content)
-            .and_then(|()| fs::rename(&temporary, file))
-            .map_err(|e| {
-                let _ = fs::remove_file(&temporary);
-                self.io_error(file, &e)
-            })
     }
 
     fn relative(&self, path: &Path) -> String {

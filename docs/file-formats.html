@@ -68,6 +68,7 @@
     <li><a href="#canvas">The canvas</a></li>
     <li><a href="#blocks">Custom blocks and packages</a></li>
     <li><a href="#references">Reference images</a></li>
+    <li><a href="#labels">Resource labels</a></li>
     <li><a href="#environments">Environments</a></li>
     <li><a href="#project">Project settings</a></li>
     <li><a href="#schedule">Schedules</a></li>
@@ -76,7 +77,8 @@
     <li><a href="#report">Run reports</a></li>
     <li><a href="#schedule-history">Schedule history</a></li>
     <li><a href="#last-results">Last results</a></li>
-    <li><a href="#versions">Format versions</a></li>
+    <li><a href="#versions">Format versions and compatibility</a></li>
+    <li><a href="#schemas">JSON Schemas</a></li>
   </ul>
 </nav>
 
@@ -95,6 +97,8 @@
     <tr><td><code>jevision.project.json</code></td><td>Retries, quarantine and privacy for the whole project</td><td>Yes</td></tr>
     <tr><td><code>jevision.schedule.json</code></td><td><a href="schedules.html">Schedules</a></td><td>Yes</td></tr>
     <tr><td><code>jevision.notifications.json</code></td><td><a href="notifications.html">Notifications</a> to Slack, Telegram and email</td><td>Yes</td></tr>
+    <tr><td><code>*.jevmeta</code></td><td>The <a href="#labels">label</a> of the file with the same name, so that tests find it after it is moved or renamed</td><td>Yes</td></tr>
+    <tr><td><code>.jevision/backups/</code></td><td><a href="#backups">Copies of files</a> from before they were written in a newer format</td><td>No</td></tr>
     <tr><td><code>.jevision/runs/</code></td><td>Reports, screenshots and videos of runs</td><td>No</td></tr>
     <tr><td><code>.jevision/schedule-history.json</code></td><td>What came of scheduled runs on this Mac</td><td>No</td></tr>
     <tr><td><code>.jevision/last-results.json</code></td><td>The <a href="#last-results">last result of each test</a>, kept between CI runs</td><td>No</td></tr>
@@ -106,6 +110,7 @@
 <h2 id="test">Test files</h2>
 <p>A test is a JSON file whose name ends in <code>.flow.json</code>. It is UTF-8 text with the test's fields at the top and its blocks in <code>blocks</code>:</p>
 <pre><code>{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Save a note",
   "app": "com.apple.TextEdit",
@@ -188,10 +193,30 @@
 }</code></pre>
 <p>Ids are in alphabetical order, so git shows clean differences. Packages installed from a file have no entry. A file without <code>versions</code>, from an older JEVision, still reads; its packages count as installed in any version.</p>
 <p>A <code>runTest</code> block that runs a package keeps <code>"package": { "version": "1.2.0", "source": "https://github.com/acme/sign-in-block" }</code>, the version the test was made with and, when there is one, the address to install it from. Both are optional, and a test without <code>package</code> reads as before. When the package isn't installed, validation and runs name it with that version and say how to install it.</p>
-<p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="schemas/block.schema.json">JSON Schema</a> is part of this documentation.</p>
+<p>See <a href="custom-blocks.html#package">The package format</a> for every field and rule of <code>block.json</code>. Its <a href="#schemas">JSON Schema</a> checks the file in your editor.</p>
 
 <h2 id="references">Reference images</h2>
 <p>References and click targets are PNG images of part of the app's window, saved by the app next to the tests, usually in a <code>refs</code> folder. A reference for dark appearance has the same name with <code>.dark</code> before <code>.png</code>, such as <code>refs/inbox.dark.png</code>. See <a href="checks.html#dark">Dark appearance</a>. Paths in tests are relative to the test file and use <code>/</code>. A picture named by a variable, such as <code>{ "image": "${var.shot}" }</code>, is a PNG the run made or found, wherever it is on the Mac, and has no <code>.dark</code> version. See <a href="writing-tests.html#target">Target</a>.</p>
+
+<h2 id="labels">Resource labels</h2>
+<p>A test can name a picture, a table or another file by its label instead of its path. Then the test keeps working when the file is moved to another folder or renamed. A label is <code>res:</code> followed by 16 digits and lowercase letters from <code>a</code> to <code>f</code>, such as <code>res:3f9a0c1b2d4e5f60</code>. It lives next to the file, in a small text file with the same name and <code>.jevmeta</code> at the end: the label of <code>refs/inbox.png</code> is in <code>refs/inbox.png.jevmeta</code>.</p>
+<pre><code>{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "3f9a0c1b2d4e5f60",
+  "kind": "image",
+  "hash": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "size": 18734,
+  "name": "inbox.png"
+}</code></pre>
+<p><code>kind</code> is <code>image</code>, <code>table</code> (a CSV or TSV file) or <code>file</code>. <code>hash</code> and <code>size</code> describe the content, and <code>name</code> is the name the file had when it got its label. Commit the <code>.jevmeta</code> files together with the files they describe.</p>
+<p>Labels can name the pictures of targets and of <code>waitFor</code>, reference images, the table of <code>useData</code>, the files of <code>openFile</code>, the picture that <code>clipboard</code> puts and the picture inputs of a script. A reference for dark appearance has no label of its own: JEVision finds it by its name next to the light one, so <code>refs/inbox.dark.png</code> is found next to <code>refs/inbox.png</code>. When you move or rename <code>inbox.png</code>, move or rename <code>inbox.dark.png</code> with it in the same way, or the dark reference is no longer found. Paths that name something a test makes or reaches outside the project stay paths: the file of <code>checkFile</code>, the file of <code>database</code>, the folder of <code>command</code>, the test of <code>runTest</code>, <code>dependsOn</code>, files attached to notes, and packages.</p>
+<p>JEVision finds a file by its label wherever it is in the project, except in hidden folders such as <code>.git</code> and <code>.jevision</code>. When the label can't be found:</p>
+<ul>
+  <li>If a file with the same content is in the project, it was probably moved without its <code>.jevmeta</code>. The test still runs with that file and gets a warning; the app offers to put the label back.</li>
+  <li>If no such file is left, the test fails at the start with “the file … is missing” and the name the file had. JEVision never makes a new reference image in its place. The app offers to find the file: choose it, and the label moves to it. If the chosen file already has a label of its own, the test is changed to use that label instead.</li>
+</ul>
+<p>When a file and its <code>.jevmeta</code> are copied, the copy gets a new label the next time JEVision looks, and the original keeps its own. JEVision only labels files inside the project folder. A file of 50 MB or more gets a warning: large files slow a git repository down, so keep them in <a href="https://git-lfs.com">Git LFS</a> with <code>git lfs track</code>.</p>
 
 <h2 id="environments">Environments</h2>
 <p><code>jevision.environments.json</code>, in the project folder:</p>
@@ -302,10 +327,78 @@
 <p>If the file can't be read, it starts over: it is only a record and never stops a run. A file without <code>format</code> is read as format 1, and an older format is upgraded when a run saves the file. A file from a newer JEVision is left as it is: this version takes no last results from it and doesn't record its runs in it, so the newer version still finds everything it wrote.</p>
 <p>The app, <code>jevision</code> and the assistant's server may finish runs of the same project at once. Each takes its turn through <code>.jevision/last-results.json.lock</code> beside the file, so no result is lost. The lock file stays; it holds nothing.</p>
 
-<h2 id="versions">Format versions</h2>
-<p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. The <a href="#last-results">last results</a> are only a record, so a newer one is left alone without a word.</p>
+<h2 id="versions">Format versions and compatibility</h2>
+<p>Every JSON file JEVision writes, except the <a href="#schedule-history">schedule history</a>, starts with <code>"format"</code> and a number. Tests, custom blocks and templates start with <code>"$schema"</code> before it: the address of a JSON Schema, so that an editor such as Visual Studio Code can check the file and suggest fields as you type. Tests are at format <code>1</code>, or <code>2</code> when they name a file by its <a href="#labels">label</a>. The other files are at <code>1</code>, except the notification settings, which are at <code>2</code> (format 1 is still read).</p>
+<h3 id="lowest-format">The lowest format that holds the test</h3>
+<p>JEVision writes each test in the lowest format that holds what the test uses, not in the newest format it knows. So opening and saving a test never makes it unreadable for the JEVision that made it: a test without labels stays at format 1, however new the app. The first time a test needs a format that no other test of the project has yet, the app asks before it saves, because a JEVision older than that format can't open that test any more.</p>
+<h3 id="newer">Files from a newer JEVision</h3>
+<p>A JEVision that finds a newer format than it knows refuses the file with “The file uses format 3 from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. A test or a <a href="#labels">label</a> can also say which JEVision it needs, with <code>"minVersion": "1.4.0"</code> next to <code>"format"</code>. An older JEVision then says only “This test was made in JEVision 1.4.0. Update JEVision to open it.” instead of listing every field it doesn't know. JEVision doesn't write <code>minVersion</code> itself; it is there for tools that make tests.</p>
+<h3 id="backups">Backups</h3>
+<p>Before a file is written in a newer format than it had, JEVision copies it to <code>.jevision/backups/</code>, into a folder named after the time in UTC. A <code>backup.json</code> in that folder lists the files with the format each was in and the format it was written in. Restoring a backup puts those files back, after it backs up the files as they are now, so a restore can be undone the same way.</p>
+<p>The backups folder has a <code>.gitignore</code> of its own, so backups stay out of git even when the project's <code>.gitignore</code> doesn't mention <code>.jevision</code>. JEVision keeps the 20 newest backups and removes the oldest while all of them together take more than 500 MB. The newest backup is always kept.</p>
+<h3 id="migrate">Moving a project to the newest format</h3>
+<p><code>jevision migrate --dry-run</code> shows what moving the project to the newest format would change, and writes nothing: each test, custom block and template that names a file of the project by its path, the label that each path would become, the <code>.jevmeta</code> files that would be made, and the files that can't be read. <code>jevision migrate</code> makes the change. It backs up all the files it changes into one backup first, then writes each file whole, so a file is never left half-written. Files that can't be read are listed and left as they are.</p>
 <p><code>block.json</code> of a package has a <code>"format"</code> of its own, at <code>1</code>. A JEVision that finds a newer one refuses the package.</p>
-<p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, <code>modifiers</code> of a hover or scroll, the <code>area</code> and <code>element</code> targets, the <code>element</code> of a <code>check</code>, an <code>if</code> or a <code>waitFor</code>, the <code>arguments</code> and <code>environment</code> of an <code>openApp</code>, the <code>clipboard</code> and <code>dateTime</code> blocks with their <code>image</code>, <code>content</code>, <code>language</code> and <code>timeZone</code>, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
+<p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, <code>modifiers</code> of a hover or scroll, the <code>area</code> target, the <code>clipboard</code> and <code>dateTime</code> blocks with their <code>image</code>, <code>content</code>, <code>language</code> and <code>timeZone</code>, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
+
+<h2 id="schemas">JSON Schemas</h2>
+<p>Every kind of file has a JSON Schema, made from the code that reads and writes the file, so it describes the file as JEVision writes it. Editors that know JSON Schema, such as VS Code and the JetBrains IDEs, use it to point out a misspelled key or a wrong value as you type and to suggest the keys a place can have. The schemas are published at <code>https://dev-pikapik.github.io/JEVision/schemas/</code>:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">File</th><th scope="col">Schema</th></tr></thead>
+  <tbody>
+    <tr><td><code>*.flow.json</code>, <code>blocks/*.block.json</code>, <code>flow.json</code> of a package</td><td><a href="schemas/test.schema.json"><code>test.schema.json</code></a></td></tr>
+    <tr><td><code>*.jevmeta</code></td><td><a href="schemas/jevmeta.schema.json"><code>jevmeta.schema.json</code></a></td></tr>
+    <tr><td><code>block.json</code> of a package</td><td><a href="schemas/block.schema.json"><code>block.schema.json</code></a></td></tr>
+    <tr><td><code>jevision.blocks.json</code></td><td><a href="schemas/blocks-lock.schema.json"><code>blocks-lock.schema.json</code></a></td></tr>
+    <tr><td><code>jevision.environments.json</code></td><td><a href="schemas/environments.schema.json"><code>environments.schema.json</code></a></td></tr>
+    <tr><td><code>jevision.project.json</code></td><td><a href="schemas/project.schema.json"><code>project.schema.json</code></a></td></tr>
+    <tr><td><code>jevision.schedule.json</code></td><td><a href="schemas/schedules.schema.json"><code>schedules.schema.json</code></a></td></tr>
+    <tr><td><code>jevision.notifications.json</code></td><td><a href="schemas/notifications.schema.json"><code>notifications.schema.json</code></a></td></tr>
+    <tr><td><code>boards/*.canvas</code></td><td><a href="schemas/board.schema.json"><code>board.schema.json</code></a></td></tr>
+    <tr><td><code>.jevision/schedule-history.json</code></td><td><a href="schemas/schedule-history.schema.json"><code>schedule-history.schema.json</code></a></td></tr>
+  </tbody>
+</table>
+</div>
+<h3 id="schema-key">Tests and labels</h3>
+<p>Tests and <a href="#labels">resource labels</a> name their schema in their first key, <code>$schema</code>, so the editor finds the schema by itself, with nothing to set up:</p>
+<pre><code>{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
+  "format": 2,
+  "name": "Sign in",
+  …
+}</code></pre>
+<p>A test saved by an older JEVision has no <code>$schema</code>. JEVision adds it the next time it saves the test, and so does <a href="cli.html#fmt"><code>jevision fmt</code></a>.</p>
+<h3 id="schema-by-name">The other files</h3>
+<p>The other files have no <code>$schema</code>: JEVision doesn't write it there, and it refuses a settings file or a <code>block.json</code> with a key it doesn't know. Connect their schemas to their file names in the editor once.</p>
+<p>In VS Code, add this to your settings (<code>settings.json</code>). The last line makes VS Code read boards as JSON:</p>
+<pre><code>"json.schemas": [
+  { "fileMatch": ["**/*.jevblock/block.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/block.schema.json" },
+  { "fileMatch": ["jevision.blocks.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/blocks-lock.schema.json" },
+  { "fileMatch": ["jevision.environments.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/environments.schema.json" },
+  { "fileMatch": ["jevision.project.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/project.schema.json" },
+  { "fileMatch": ["jevision.schedule.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/schedules.schema.json" },
+  { "fileMatch": ["jevision.notifications.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/notifications.schema.json" },
+  { "fileMatch": ["**/boards/*.canvas"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/board.schema.json" },
+  { "fileMatch": ["**/.jevision/schedule-history.json"],
+    "url": "https://dev-pikapik.github.io/JEVision/schemas/schedule-history.schema.json" }
+],
+"files.associations": { "*.canvas": "json" }</code></pre>
+<p>In a JetBrains IDE, such as IntelliJ IDEA or WebStorm:</p>
+<ol>
+  <li>Open <b>Settings → Languages &amp; Frameworks → Schemas and DTDs → JSON Schema Mappings</b>.</li>
+  <li>Click <b>+</b> to add a mapping, give it a name such as “JEVision project settings”, and paste the address of the schema from the table into <b>Schema file or URL</b>, such as <code>https://dev-pikapik.github.io/JEVision/schemas/project.schema.json</code>.</li>
+  <li>Click <b>+</b> below it, choose a file path pattern, and type the file name from the table, such as <code>jevision.project.json</code>.</li>
+  <li>Do the same for each of the other files.</li>
+  <li>For boards, also open <b>Settings → Editor → File Types</b>, choose <b>JSON</b>, and add <code>*.canvas</code> to its file name patterns.</li>
+</ol>
 </main>
 </div>
 <footer class="site-footer">

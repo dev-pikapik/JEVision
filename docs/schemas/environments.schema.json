@@ -1,0 +1,41 @@
+{
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/environments.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Environments of a project, such as `staging` and `production`, in `jevision.environments.json` in the project folder: named sets of values that tests read as `${env.NAME}`, like the address of a server. Secrets never go here; tests read them as `${secret.NAME}`.",
+  "properties": {
+    "default": {
+      "description": "The environment a run uses when none is chosen; one of `environments`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "environments": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "propertyNames": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": "object"
+      },
+      "description": "Every environment by its name, of letters, digits, `-` and `_`. Each holds its values by name, which tests read as `${env.NAME}`.",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_-]{1,64}$"
+      },
+      "type": "object"
+    },
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    }
+  },
+  "required": [
+    "format",
+    "environments"
+  ],
+  "title": "JEVision environments",
+  "type": "object"
+}

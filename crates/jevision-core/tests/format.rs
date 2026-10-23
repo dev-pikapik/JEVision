@@ -163,6 +163,20 @@ fn canonical_form_is_idempotent_and_lossless() {
 }
 
 #[test]
+fn a_meaning_check_without_words_keeps_its_image_when_saved() {
+    for expect in ["", r#", "expect": """#, r#", "expect": "  ""#] {
+        let reference = format!(r#"{{"image": "", "compare": "meaning"{expect}}}"#);
+        let flow = parse(&minimal(&format!(
+            r#"{{"a": {{"type": "check", "reference": {reference}}}}}"#
+        )))
+        .unwrap();
+        let saved = to_canonical_json(&flow);
+        assert!(saved.contains(r#""image": """#), "{saved}");
+        assert_eq!(parse(&saved).unwrap(), flow, "{reference}");
+    }
+}
+
+#[test]
 fn canonical_form_fixes_order_and_defaults() {
     let once = canonicalize(ALL_BLOCKS).unwrap();
     let keys: Vec<&str> = once
@@ -173,9 +187,9 @@ fn canonical_form_fixes_order_and_defaults() {
     assert_eq!(
         keys,
         [
-            "format", "name", "app", "start", "blocks", "users", "launch", "doc", "name", "save",
-            "tip", "move", "list", "menu", "spinner", "settle", "branch", "again", "shared",
-            "done"
+            "$schema", "format", "name", "app", "start", "blocks", "users", "launch", "doc",
+            "name", "save", "tip", "move", "list", "menu", "spinner", "settle", "branch", "again",
+            "shared", "done"
         ]
     );
     assert!(once.contains("\"timeout\": \"2m\""));
@@ -203,13 +217,14 @@ fn reading_order_keeps_unreachable_blocks_last() {
 
 #[test]
 fn format_versions() {
-    assert_eq!(FORMAT_VERSION, 1);
+    assert_eq!(FORMAT_VERSION, 2);
     let with_format =
         |n: &str| minimal(r#"{"a": {"type": "openApp"}}"#).replace("\"format\": 1", n);
     assert!(parse(&with_format("\"format\": 1")).is_ok());
-    let too_new = parse_err(&with_format("\"format\": 2"));
+    assert!(parse(&with_format("\"format\": 2")).is_ok());
+    let too_new = parse_err(&with_format("\"format\": 3"));
     assert_eq!(codes(&too_new), ["flow.format.tooNew"]);
-    assert_eq!(too_new[0].param("supported"), Some("1"));
+    assert_eq!(too_new[0].param("supported"), Some("2"));
     assert_eq!(
         codes(&parse_err(&with_format("\"format\": 0"))),
         ["flow.format.unsupported"]
@@ -218,6 +233,66 @@ fn format_versions() {
         codes(&parse_err(&with_format("\"v\": 1"))),
         ["flow.format.missing"]
     );
+}
+
+#[test]
+fn a_test_is_written_in_the_lowest_format_that_holds_it() {
+    let plain = parse(&minimal(
+        r#"{"a": {"type": "click", "target": {"image": "go.png"}}}"#,
+    ));
+    let text = to_canonical_json(&plain.unwrap());
+    assert!(text.starts_with(&format!(
+        "{{\n  \"$schema\": \"{TEST_SCHEMA}\",\n  \"format\": 1,\n"
+    )));
+    let labeled =
+        minimal(r#"{"a": {"type": "click", "target": {"image": "res:0123456789abcdef"}}}"#)
+            .replace("\"format\": 1", "\"format\": 2");
+    let labeled = parse(&labeled).unwrap();
+    assert_eq!(Requirement::of(&labeled).format, LABELS_FORMAT);
+    assert!(to_canonical_json(&labeled).contains("\n  \"format\": 2,\n"));
+    let lowered = to_canonical_json(&labeled).replace("res:0123456789abcdef", "go.png");
+    assert!(
+        canonicalize(&lowered)
+            .unwrap()
+            .contains("\n  \"format\": 1,\n")
+    );
+}
+
+#[test]
+fn a_test_from_a_newer_jevision_says_which_one_to_get() {
+    let with =
+        |header: &str| minimal(r#"{"a": {"type": "openApp"}}"#).replace("\"format\": 1", header);
+    let newer = parse_err(&with(
+        r#""$schema": "x", "format": 9, "minVersion": "99.1.0", "future": true"#,
+    ));
+    assert_eq!(codes(&newer), ["flow.needsNewer"]);
+    assert_eq!(newer[0].param("version"), Some("99.1.0"));
+    assert_eq!(
+        sentence_in("en", &newer[0]),
+        "This test was made in JEVision 99.1.0. Update JEVision to open it."
+    );
+
+    assert!(
+        parse(&with(
+            r#""$schema": "x", "format": 1, "minVersion": "0.0.1""#
+        ))
+        .is_ok()
+    );
+    for (bad, code) in [
+        (r#""1.x""#, "flow.minVersion.invalid"),
+        (r#""""#, "flow.minVersion.invalid"),
+        ("1", "flow.field.type"),
+    ] {
+        let wrong = parse_err(&with(&format!(r#""format": 1, "minVersion": {bad}"#)));
+        assert_eq!(codes(&wrong), [code], "{bad}");
+    }
+    assert_eq!(
+        codes(&parse_err(&with(r#""format": 1, "unknown": 1"#))),
+        ["flow.field.unknown"]
+    );
+    let written =
+        to_canonical_json(&parse(&with(r#""format": 1, "minVersion": "0.0.1""#)).unwrap());
+    assert!(!written.contains("minVersion"));
 }
 
 #[test]
@@ -297,6 +372,7 @@ fn broken_edges_are_errors() {
 }
 
 const THREE_WAYS: &str = r#"{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "t",
   "app": "com.example.App",

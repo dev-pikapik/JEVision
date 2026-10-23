@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "AiChoice": {
+      "additionalProperties": false,
+      "description": "Which AI to ask: a provider by its id, and one of its models. The key and the address of the provider are the person's own and stay in the app's settings.",
+      "properties": {
+        "model": {
+          "description": "Empty for the model the settings choose for the provider.",
+          "type": "string"
+        },
+        "provider": {
+          "description": "One of `AI_PROVIDERS`; empty for the one the app's settings choose.",
+          "enum": [
+            "anthropic",
+            "openai",
+            "gemini",
+            "jev",
+            "ollama",
+            "lmstudio",
+            "openai-compatible"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
+    },
+    "FileAi": {
+      "additionalProperties": false,
+      "properties": {
+        "screen": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiChoice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The AI that checks screens by meaning. A check that names its own provider still asks that one."
+        },
+        "text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiChoice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The AI that drafts tests and explains failed runs; `jev` only looks at screens, so it can't be this one.",
+          "not": {
+            "properties": {
+              "provider": {
+                "const": "jev"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "Quarantined": {
+      "additionalProperties": false,
+      "description": "A test in quarantine.",
+      "properties": {
+        "reason": {
+          "description": "Why the test is in quarantine, such as a link to the bug that makes it fail.",
+          "pattern": "\\S",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "test": {
+          "description": "Test file, relative to the project folder, with `/` between folders.",
+          "pattern": "^[^/\\\\][^\\\\]*\\.flow\\.json$",
+          "type": "string"
+        },
+        "until": {
+          "description": "Last day the test is in quarantine, as `YYYY-MM-DD`; absent for a quarantine without an end.",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "test"
+      ],
+      "type": "object"
+    },
+    "Rect": {
+      "additionalProperties": false,
+      "description": "A rectangle in fractions (0–1) of the image or window, from the top-left corner.",
+      "properties": {
+        "height": {
+          "format": "double",
+          "type": "number"
+        },
+        "width": {
+          "format": "double",
+          "type": "number"
+        },
+        "x": {
+          "format": "double",
+          "type": "number"
+        },
+        "y": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "RunKind": {
+      "description": "Whether the tests of the folder run one after another or side by side.",
+      "oneOf": [
+        {
+          "const": "sequential",
+          "description": "One test after another.",
+          "type": "string"
+        },
+        {
+          "const": "parallel",
+          "description": "Several tests at once, each in its own copy of the application.",
+          "type": "string"
+        }
+      ]
+    },
+    "RunModeEntry": {
+      "additionalProperties": false,
+      "description": "How the tests of one folder run.",
+      "if": {
+        "properties": {
+          "run": {
+            "const": "sequential"
+          }
+        }
+      },
+      "properties": {
+        "folder": {
+          "description": "Relative to the project folder, with `/` between folders; `.` is the project folder.",
+          "pattern": "^[^/\\\\][^\\\\]*$",
+          "type": "string"
+        },
+        "limit": {
+          "default": 4,
+          "description": "Most tests that run at once, for `parallel` only.",
+          "format": "uint32",
+          "maximum": 16,
+          "minimum": 2,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "run": {
+          "$ref": "#/$defs/RunKind"
+        }
+      },
+      "required": [
+        "folder",
+        "run"
+      ],
+      "then": {
+        "properties": {
+          "limit": {
+            "type": "null"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/project.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Settings a project shares with everyone who runs its tests, in `jevision.project.json` in the project folder: retries, tests in quarantine, areas covered in every screenshot, the AI the project asks and the folders whose tests run side by side. API keys never go in this file.",
+  "properties": {
+    "ai": {
+      "$ref": "#/$defs/FileAi",
+      "description": "The AI the project asks, when it doesn't leave the choice to the app's settings."
+    },
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "hide": {
+      "description": "Areas of the window, in fractions from its top-left corner, covered in every screenshot before it is saved or sent to an AI model.",
+      "items": {
+        "$ref": "#/$defs/Rect"
+      },
+      "type": "array"
+    },
+    "localOnly": {
+      "description": "Screenshots go only to AI models running on this computer; checks that would need a cloud service fail instead.",
+      "type": "boolean"
+    },
+    "quarantine": {
+      "description": "Tests in quarantine: they still run, but their failure doesn't fail Run All, the command line or the JUnit report until their last day is past.",
+      "items": {
+        "$ref": "#/$defs/Quarantined"
+      },
+      "type": "array"
+    },
+    "retries": {
+      "description": "How many times a failed test is retried when its file doesn't say; without it, none.",
+      "format": "uint32",
+      "maximum": 10,
+      "minimum": 0,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "runModes": {
+      "description": "How the tests of folders run. A folder without an entry runs like the nearest folder above it that has one; the project folder, without one, runs one test after another.",
+      "items": {
+        "$ref": "#/$defs/RunModeEntry"
+      },
+      "type": "array"
+    },
+    "suggestQuarantineAfter": {
+      "default": 3,
+      "description": "Flaky runs of a test within 7 days after which quarantine is suggested.",
+      "format": "uint32",
+      "maximum": 10,
+      "minimum": 1,
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "format"
+  ],
+  "title": "JEVision project settings",
+  "type": "object"
+}

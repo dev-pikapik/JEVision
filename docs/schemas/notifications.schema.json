@@ -1,0 +1,174 @@
+{
+  "$defs": {
+    "MailSecurity": {
+      "description": "How the connection to the mail server is encrypted. There is no unencrypted mail.",
+      "oneOf": [
+        {
+          "const": "tls",
+          "description": "TLS from the first byte, usually on port 465.",
+          "type": "string"
+        },
+        {
+          "const": "startTls",
+          "description": "A plain connection upgraded with STARTTLS, usually on port 587; fails if the server can't upgrade.",
+          "type": "string"
+        }
+      ]
+    },
+    "MailServer": {
+      "additionalProperties": false,
+      "description": "Mail sent through an SMTP server.",
+      "properties": {
+        "from": {
+          "description": "The sender's address, like `tests@acme.com` or `Tests <tests@acme.com>`.",
+          "type": "string"
+        },
+        "port": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "security": {
+          "$ref": "#/$defs/MailSecurity",
+          "default": "tls"
+        },
+        "server": {
+          "description": "The server's host name, like `smtp.gmail.com`.",
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "to": {
+          "description": "Addresses the mail goes to.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "user": {
+          "description": "The name to sign in with; empty for a server that takes mail without signing in.",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/NotifyWhen",
+          "default": "failedOrFixed"
+        }
+      },
+      "required": [
+        "server",
+        "port",
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "NotifyWhen": {
+      "description": "Which runs a channel is told about.",
+      "oneOf": [
+        {
+          "const": "failed",
+          "description": "Every run that failed.",
+          "type": "string"
+        },
+        {
+          "const": "failedOrFixed",
+          "description": "Every run that failed, and the first pass after a failure.",
+          "type": "string"
+        },
+        {
+          "const": "changed",
+          "description": "The first failure of a test that passed before, and the first pass after a failure; a test that keeps failing says nothing more.",
+          "type": "string"
+        },
+        {
+          "const": "every",
+          "description": "Every run that finished.",
+          "type": "string"
+        }
+      ]
+    },
+    "SlackChannel": {
+      "additionalProperties": false,
+      "description": "The Slack channel of the webhook.",
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/NotifyWhen",
+          "default": "failedOrFixed"
+        }
+      },
+      "type": "object"
+    },
+    "TelegramChat": {
+      "additionalProperties": false,
+      "description": "A Telegram chat a bot posts to.",
+      "properties": {
+        "chat": {
+          "description": "The chat's id, like `-1001234567890` for a group, or `@channel` for a public channel.",
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/NotifyWhen",
+          "default": "failedOrFixed"
+        }
+      },
+      "required": [
+        "chat"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://dev-pikapik.github.io/JEVision/schemas/notifications.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "How a project tells people how its test runs went, in `jevision.notifications.json` in the project folder: a message to Slack, Telegram or email, each with when to send it. Webhooks, tokens and passwords are secret and never go in this file.",
+  "properties": {
+    "email": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MailServer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Mail sent through an SMTP server. The password is secret and never goes in this file."
+    },
+    "format": {
+      "const": 2,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "slack": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SlackChannel"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Messages to the Slack channel of an incoming webhook. The webhook is secret and never goes in this file."
+    },
+    "telegram": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TelegramChat"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Messages a Telegram bot posts to a chat. The bot's token is secret and never goes in this file."
+    },
+    "unattendedOnly": {
+      "description": "Only runs started by a schedule or on CI are told about, not the ones someone watched.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "format"
+  ],
+  "title": "JEVision notifications",
+  "type": "object"
+}

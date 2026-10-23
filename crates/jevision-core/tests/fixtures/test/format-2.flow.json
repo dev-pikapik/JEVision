@@ -1,0 +1,344 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
+  "format": 2,
+  "name": "Every block",
+  "description": "Every block type, with its optional fields filled in.",
+  "icon": "doc.text",
+  "app": "com.apple.TextEdit",
+  "testType": "regression",
+  "priority": "high",
+  "status": "ready",
+  "tags": [
+    "fixture",
+    "every-block"
+  ],
+  "preconditions": "TextEdit is installed",
+  "author": "Anna",
+  "platform": "macOS 26",
+  "link": "https://example.com/issues/1",
+  "flaky": true,
+  "retries": 2,
+  "dependsOn": [
+    "setup.flow.json"
+  ],
+  "start": "launch",
+  "blocks": {
+    "launch": {
+      "type": "openApp",
+      "app": "com.apple.TextEdit",
+      "resetState": true,
+      "windowSize": {
+        "width": 900,
+        "height": 600
+      },
+      "windowPosition": {
+        "x": 40,
+        "y": 60
+      },
+      "next": "doc"
+    },
+    "doc": {
+      "type": "openFile",
+      "files": [
+        "res:1f0e2d3c4b5a6978",
+        "https://example.com"
+      ],
+      "app": "com.apple.TextEdit",
+      "newInstance": true,
+      "closeAfter": true,
+      "next": "rows"
+    },
+    "rows": {
+      "type": "useData",
+      "file": "res:2a3b4c5d6e7f8091",
+      "body": "name",
+      "next": "wait"
+    },
+    "name": {
+      "type": "type",
+      "text": "${data.name}",
+      "into": {
+        "description": "the name field"
+      },
+      "next": "keys"
+    },
+    "keys": {
+      "type": "pressKeys",
+      "keys": "cmd+s",
+      "next": "menu"
+    },
+    "menu": {
+      "type": "click",
+      "target": {
+        "image": "res:3c4d5e6f708192a3"
+      },
+      "button": "right",
+      "double": true,
+      "modifiers": [
+        "cmd",
+        "shift"
+      ],
+      "waitForChange": true,
+      "next": "tip"
+    },
+    "tip": {
+      "type": "hover",
+      "target": {
+        "image": "res:4d5e6f708192a3b4"
+      },
+      "waitForChange": true,
+      "next": "move"
+    },
+    "move": {
+      "type": "drag",
+      "from": {
+        "image": "res:5e6f708192a3b4c5"
+      },
+      "to": {
+        "point": {
+          "x": 0.75,
+          "y": 0.5
+        }
+      },
+      "button": "right",
+      "modifiers": [
+        "option"
+      ],
+      "waitForChange": true,
+      "next": "list"
+    },
+    "list": {
+      "type": "scroll",
+      "direction": "down",
+      "amount": 240,
+      "unit": "pixels",
+      "at": {
+        "area": "0.25,0.5,0.5,0.25"
+      },
+      "waitForChange": true,
+      "next": "rows"
+    },
+    "wait": {
+      "type": "waitFor",
+      "until": {
+        "disappears": {
+          "image": "res:6f708192a3b4c5d6",
+          "compare": "exact"
+        }
+      },
+      "timeout": "2m",
+      "next": "settle"
+    },
+    "settle": {
+      "type": "pause",
+      "duration": "1500ms",
+      "next": "branch"
+    },
+    "branch": {
+      "type": "if",
+      "reference": {
+        "compare": "meaning",
+        "expect": "A dialog asks whether to save",
+        "provider": "openai",
+        "model": "gpt-5",
+        "area": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 0.5
+        }
+      },
+      "then": "again",
+      "elseIf": [
+        {
+          "value": {
+            "of": "${var.total}",
+            "is": "greaterThan",
+            "to": "3"
+          },
+          "then": "again"
+        }
+      ],
+      "else": "calc"
+    },
+    "again": {
+      "type": "repeat",
+      "times": 3,
+      "body": "shared",
+      "next": "calc"
+    },
+    "shared": {
+      "type": "runTest",
+      "test": "blocks/close.block.json",
+      "inputs": {
+        "button": "Don't Save"
+      },
+      "next": "again"
+    },
+    "calc": {
+      "type": "script",
+      "language": "python3",
+      "code": "import os\nopen(os.environ['JEV_OUTPUT'], 'a').write('total=3\\n')",
+      "inputs": [
+        {
+          "name": "SHOT",
+          "type": "image",
+          "value": "res:708192a3b4c5d6e7"
+        },
+        {
+          "name": "COUNT",
+          "type": "number",
+          "value": "2"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "total",
+          "type": "number"
+        }
+      ],
+      "timeout": "1m",
+      "next": "cmd"
+    },
+    "cmd": {
+      "type": "command",
+      "command": "ls",
+      "folder": "files",
+      "exitCode": 1,
+      "saveOutput": "listing",
+      "timeout": "20s",
+      "next": "api"
+    },
+    "api": {
+      "type": "http",
+      "method": "POST",
+      "url": "https://example.com/orders",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "body": "{\"item\": 1}",
+      "expectStatus": 201,
+      "save": [
+        {
+          "name": "order",
+          "from": "body.id"
+        }
+      ],
+      "timeout": "45s",
+      "next": "file"
+    },
+    "file": {
+      "type": "checkFile",
+      "path": "out/report.txt",
+      "until": {
+        "contains": "done"
+      },
+      "timeout": "15s",
+      "next": "db"
+    },
+    "db": {
+      "type": "database",
+      "file": "data/app.sqlite",
+      "query": "select count(*) from notes",
+      "saveAs": "notes",
+      "expect": {
+        "value": "1"
+      },
+      "timeout": "5s",
+      "next": "put"
+    },
+    "put": {
+      "type": "clipboard",
+      "action": "put",
+      "image": "res:708192a3b4c5d6e7",
+      "next": "stamp"
+    },
+    "stamp": {
+      "type": "dateTime",
+      "saveAs": "today",
+      "format": "%d.%m.%Y",
+      "language": "ru",
+      "timeZone": "Europe/Berlin",
+      "shift": {
+        "amount": -2,
+        "unit": "days"
+      },
+      "next": "done"
+    },
+    "done": {
+      "type": "check",
+      "reference": {
+        "image": "res:8192a3b4c5d6e7f8",
+        "compare": "similar",
+        "threshold": 0.9,
+        "ignore": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.2,
+            "height": 0.1
+          }
+        ]
+      }
+    }
+  },
+  "canvas": {
+    "positions": {
+      "doc": {
+        "x": 32,
+        "y": 160
+      },
+      "launch": {
+        "x": 32,
+        "y": 32
+      }
+    },
+    "sections": {
+      "prepare": {
+        "title": "Prepare",
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "width": 400,
+          "height": 112
+        }
+      }
+    },
+    "notes": {
+      "why": {
+        "text": "Every block, for the format tests",
+        "author": "Anna",
+        "time": "2026-10-18T09:30:00Z",
+        "anchor": {
+          "type": "block",
+          "block": "done"
+        },
+        "attachments": [
+          {
+            "file": "images/done.png"
+          },
+          {
+            "link": "https://example.com/issues/1"
+          }
+        ],
+        "replies": [
+          {
+            "id": "reply",
+            "author": "Bob",
+            "time": "2026-10-19T08:00:00Z",
+            "text": "@Anna done"
+          }
+        ],
+        "frame": {
+          "x": 448,
+          "y": 32,
+          "width": 224,
+          "height": 144
+        }
+      }
+    }
+  }
+}

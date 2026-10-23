@@ -65,6 +65,8 @@ enum JEVisionCLI {
       return IssueCommand(request: request).execute()
     case .blocks(let request):
       return BlocksCommand(request: request).execute()
+    case .migrate(let request):
+      return MigrateCommand(request: request).execute()
     }
   }
 
@@ -177,6 +179,7 @@ enum Command: Equatable {
   case scheduleRun(project: String)
   case issue(IssueRequest)
   case blocks(BlocksRequest)
+  case migrate(MigrateRequest)
 
   static func parse(_ arguments: [String]) throws(UsageError) -> Command {
     guard let name = arguments.first else { return .help(nil) }
@@ -349,6 +352,10 @@ enum Command: Equatable {
         throw UsageError(message: words("cli.error.sendMissing"), command: name)
       }
       return .issue(request)
+    case "migrate":
+      let options = try Options.parse(rest, command: name, flags: ["--dry-run", "--backups", "--json"], values: ["--restore"])
+      if options.wantsHelp { return .help(name) }
+      return .migrate(try migrateRequest(options))
     default:
       throw UsageError(message: name.hasPrefix("-") ? words("cli.error.noOption", name) : words("cli.error.noCommand", name))
     }
@@ -356,6 +363,25 @@ enum Command: Equatable {
 }
 
 extension Command {
+  /// `migrate [--dry-run | --backups | --restore <id>] [project-folder]`.
+  private static func migrateRequest(_ options: Options) throws(UsageError) -> MigrateRequest {
+    let name = "migrate"
+    let actions = ["--dry-run", "--backups"].filter(options.flags.contains) + options.values.keys.filter { $0 == "--restore" }
+    guard actions.count <= 1 else {
+      throw UsageError(message: words("cli.error.oneAtATime", actions.joined(separator: ", ")), command: name)
+    }
+    guard options.paths.count <= 1 else { throw UsageError(message: words("cli.error.oneProject"), command: name) }
+    let action: MigrateRequest.Action =
+      if let id = options.values["--restore"] {
+        .restore(id: id)
+      } else if options.flags.contains("--backups") {
+        .backups
+      } else {
+        .migrate(dryRun: options.flags.contains("--dry-run"))
+      }
+    return MigrateRequest(action: action, project: options.paths.first ?? ".", json: options.flags.contains("--json"))
+  }
+
   /// `blocks list|install <source>|update [id]|remove <id>|restore`.
   /// The copies `--app-copy ID=PATH` names: absolute paths by app id, a relative one taken from
   /// `current`.
@@ -495,7 +521,7 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "check", "fmt", "issue", "mcp", "schedule", "blocks", "version"]
+  static let commands = ["run", "validate", "check", "fmt", "issue", "mcp", "schedule", "blocks", "version", "migrate"]
 
   static func usage(_ command: String?) -> String {
     switch command {
@@ -508,6 +534,7 @@ enum Help {
     case "schedule": words("cli.usage.schedule")
     case "blocks": words("cli.usage.blocks")
     case "version": words("cli.usage.version")
+    case "migrate": words("cli.usage.migrate")
     default: words("cli.usage.main")
     }
   }
@@ -524,6 +551,7 @@ enum Help {
     case "blocks": words("cli.help.blocks", usage)
     case "schedule": words("cli.help.schedule", usage)
     case "version": words("cli.help.version", usage)
+    case "migrate": words("cli.help.migrate", usage)
     default: words("cli.help.main", usage, catalogLanguages().joined(separator: ", "))
     }
   }

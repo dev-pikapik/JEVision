@@ -13,9 +13,14 @@ chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 jevision-l10n.workspace = true
 chrono-tz = { version = "0.10", default-features = false }
 icu_normalizer = { version = "2.1", default-features = false, features = ["compiled_data"] }
+getrandom = "0.4"
 serde.workspace = true
 serde_json.workspace = true
+sha2 = { version = "0.11", default-features = false }
 thiserror.workspace = true
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = "0.2"
+[dev-dependencies]
+jevision-schema.workspace = true
+schemars.workspace = true

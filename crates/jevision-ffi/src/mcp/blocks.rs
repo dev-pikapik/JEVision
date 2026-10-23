@@ -2,7 +2,7 @@
 //! an example, and the shapes blocks share. Tests check that the list matches the core.
 
 use jevision_core::{
-    AI_PROVIDERS, ELEMENT_ROLES, ELEMENT_STATES, FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES,
+    AI_PROVIDERS, ELEMENT_ROLES, ELEMENT_STATES, LABELS_FORMAT, MAX_REPEAT, MAX_RETRIES,
     MAX_SCROLL, catalog,
 };
 use serde_json::{Value, json};
@@ -245,7 +245,10 @@ pub(crate) fn guide() -> Value {
         .collect();
     json!({
         "file": {
-            "format": format!("file format version, always {FORMAT_VERSION}"),
+            "format": format!(
+                "file format version: 1, or {LABELS_FORMAT} when the test names a file by its \
+                 label, res: and 16 hex digits"
+            ),
             "name": "name of the test",
             "app": "bundle id of the app under test, such as com.apple.TextEdit",
             "start": "id of the first block",

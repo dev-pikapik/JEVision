@@ -23,7 +23,8 @@ private let smokeTest = """
   let index = try #require(flow.blocks.firstIndex { $0.id == "new" })
   flow.blocks[index].kind = .pressKeys(keys: "cmd+shift+n", next: nil)
   let saved = saveFlow(flow: flow)
-  #expect(saved.hasPrefix("{\n  \"format\": \(formatVersion()),\n"))
+  // A test without labels keeps the oldest format, so every JEVision version opens it.
+  #expect(saved.hasPrefix("{\n  \"$schema\": \"https://dev-pikapik.github.io/JEVision/schemas/test.schema.json\",\n  \"format\": 1,\n"))
   #expect(saved.contains("\"keys\": \"cmd+shift+n\""))
   #expect(try loadFlow(json: saved) == flow)
 }

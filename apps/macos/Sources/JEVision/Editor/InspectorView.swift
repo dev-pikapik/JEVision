@@ -244,7 +244,7 @@ struct InspectorView: View {
           panel.allowsMultipleSelection = true
           panel.directoryURL = context.folder
           guard panel.runModal() == .OK else { return }
-          let added = panel.urls.map { RelativePath.from(context.folder, to: $0) }
+          let added = panel.urls.map { document.reference(to: $0).reference }
           document.update(id, field: "files") {
             $0 = make(files + added, app, newInstance, closeAfter)
           }

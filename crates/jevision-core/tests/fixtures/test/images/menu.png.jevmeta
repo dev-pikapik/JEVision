@@ -1,0 +1,9 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "3c4d5e6f708192a3",
+  "kind": "image",
+  "hash": "sha256:38cde640a8c23c5b3df30608d15afeb0d1680c1100eef2b86f6f9c0c689829f3",
+  "size": 69,
+  "name": "menu.png"
+}

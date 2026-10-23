@@ -333,6 +333,64 @@ struct RelativePathTests {
     #expect(!RelativePath.isInside(URL(filePath: "/pp/users.csv"), folder: URL(filePath: "/p")))
   }
 
+  @Test func findsALabeledFileWhereverItMovesInTheProject() throws {
+    let files = FileManager.default
+    let project = files.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? files.removeItem(at: project) }
+    let tests = project.appending(path: "tests")
+    try files.createDirectory(at: project.appending(path: ".jevision"), withIntermediateDirectories: true)
+    try files.createDirectory(at: tests.appending(path: "refs"), withIntermediateDirectories: true)
+    try files.createDirectory(at: project.appending(path: "pictures"), withIntermediateDirectories: true)
+    try Data("picture".utf8).write(to: tests.appending(path: "refs/a.png"))
+
+    let label = FileLabels.reference(to: tests.appending(path: "refs/a.png"), from: tests)
+    #expect(label.problem == nil)
+    #expect(label.reference.hasPrefix("res:"))
+    #expect(RelativePath.path(of: label.reference, in: tests) == "refs/a.png")
+
+    for name in ["a.png", "a.png.jevmeta"] {
+      try files.moveItem(at: tests.appending(path: "refs/\(name)"), to: project.appending(path: "pictures/\(name)"))
+    }
+    #expect(RelativePath.path(of: label.reference, in: tests) == "../pictures/a.png")
+    #expect(RelativePath.resolve(label.reference, in: tests).path == project.appending(path: "pictures/a.png").standardizedFileURL.path)
+    #expect(RelativePath.path(of: "refs/b.png", in: tests) == "refs/b.png", "a path stays a path")
+
+    let flow = try loadFlow(
+      json: #"{"format": 2, "name": "t", "app": "com.example.App", "start": "a", "blocks": {"a": {"type": "check", "reference": {"image": "\#(label.reference)"}}}}"#)
+    let root = project.path(percentEncoded: false)
+    let plain = plainPaths(project: root, test: "tests/t.flow.json", flow: flow)
+    #expect(plain.missing.isEmpty)
+    #expect(saveFlow(flow: plain.flow).contains(#""image": "../pictures/a.png""#))
+    #expect(FileLabels.fileName(label.reference) == "a.png")
+    #expect(BlockSummary.imageName(label.reference) == "“a”")
+    #expect(BlockSummary.imageName("res:89abcdef01234567") == "an image", "a label no open project has")
+
+    try files.removeItem(at: project.appending(path: "pictures/a.png"))
+    #expect(RelativePath.resolution(label.reference, in: tests)?.status == .missing(name: "a.png"))
+    #expect(plainPaths(project: root, test: "tests/t.flow.json", flow: flow).missing == ["a.png"], "a missing file keeps its label")
+  }
+
+  @Test func thePreviewFollowsALabeledPictureThatMoved() throws {
+    let files = FileManager.default
+    let project = files.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? files.removeItem(at: project) }
+    try files.createDirectory(at: project.appending(path: ".jevision"), withIntermediateDirectories: true)
+    for folder in ["refs", "archive"] {
+      try files.createDirectory(at: project.appending(path: folder), withIntermediateDirectories: true)
+    }
+    for name in ["note.png", "note.dark.png"] { try Data(name.utf8).write(to: project.appending(path: "refs/\(name)")) }
+    let label = FileLabels.reference(to: project.appending(path: "refs/note.png"), from: project).reference
+    let file = { (path: String) in project.appending(path: path).standardizedFileURL }
+    #expect(RelativePath.previewFile(of: label, in: project, dark: false) == file("refs/note.png"))
+    #expect(RelativePath.previewFile(of: label, in: project, dark: true) == file("refs/note.dark.png"))
+
+    for name in ["note.png", "note.png.jevmeta", "note.dark.png"] {
+      try files.moveItem(at: project.appending(path: "refs/\(name)"), to: project.appending(path: "archive/\(name)"))
+    }
+    #expect(RelativePath.previewFile(of: label, in: project, dark: false) == file("archive/note.png"))
+    #expect(RelativePath.previewFile(of: label, in: project, dark: true) == file("archive/note.dark.png"))
+  }
+
   @Test func picksTheImageForTheAppearanceAsRunsDo() throws {
     let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: folder) }
@@ -377,6 +435,183 @@ struct FlowDocumentTests {
     let url = folder.appending(path: "t.flow.json")
     try text.write(to: url, atomically: true, encoding: .utf8)
     return url
+  }
+
+  @Test func keepingPlainPathsTakesOffTheLabelsMadeForTheChangeOnly() throws {
+    let files = FileManager.default
+    let project = files.temporaryDirectory.appending(path: UUID().uuidString)
+    defer {
+      FileLabels.setKeepsPlainPaths(false, in: project)
+      try? files.removeItem(at: project)
+    }
+    try files.createDirectory(at: project.appending(path: ".jevision"), withIntermediateDirectories: true)
+    try files.createDirectory(at: project.appending(path: "refs"), withIntermediateDirectories: true)
+    for name in ["new", "old", "shared"] { try Data(name.utf8).write(to: project.appending(path: "refs/\(name).png")) }
+    let root = project.path(percentEncoded: false)
+    let old = try labelResource(project: root, file: "refs/old.png")
+    let url = project.appending(path: "t.flow.json")
+    let test = { (images: [String]) in
+      let blocks = images.enumerated().map { index, image in
+        let next = index + 1 < images.count ? #", "next": "b\#(index + 1)""# : ""
+        return #""b\#(index)": {"type": "click", "target": {"image": "\#(image)"}\#(next)}"#
+      }
+      return #"{"format": 1, "name": "T", "app": "com.example.App", "start": "b0", "blocks": {\#(blocks.joined(separator: ", "))}}"#
+    }
+    try test(["refs/new.png"]).write(to: url, atomically: true, encoding: .utf8)
+    let document = FlowDocument(url: url, project: project)
+    let new = document.reference(to: project.appending(path: "refs/new.png"))
+    let shared = document.reference(to: project.appending(path: "refs/shared.png"))
+    #expect(document.reference(to: project.appending(path: "refs/old.png")).reference == old)
+    try test([shared.reference]).write(to: project.appending(path: "other.flow.json"), atomically: true, encoding: .utf8)
+
+    document.change(try loadFlow(json: test([new.reference, old, shared.reference])), action: "Choose")
+    #expect(document.pendingFormat != nil, "the first label of the project waits for the person")
+    #expect(files.fileExists(atPath: project.appending(path: "refs/new.png.jevmeta").path))
+    #expect(try String(contentsOf: url, encoding: .utf8) == test(["refs/new.png"]))
+
+    document.keepPlainPaths()
+    #expect(document.pendingFormat == nil)
+    #expect(document.saveError == nil)
+    let saved = try String(contentsOf: url, encoding: .utf8)
+    #expect(["refs/new.png", "refs/old.png", "refs/shared.png"].allSatisfy { saved.contains(#""image": "\#($0)""#) })
+    #expect(!saved.contains("res:"))
+    #expect(!files.fileExists(atPath: project.appending(path: "refs/new.png.jevmeta").path), "made for the change")
+    #expect(files.fileExists(atPath: project.appending(path: "refs/old.png.jevmeta").path), "it had its label before")
+    #expect(files.fileExists(atPath: project.appending(path: "refs/shared.png.jevmeta").path), "another test names it")
+  }
+
+  @Test func redoAfterKeepingPlainPathsPutsTheLabelBack() throws {
+    let files = FileManager.default
+    for keepsPlainPaths in [true, false] {
+      let project = files.temporaryDirectory.appending(path: UUID().uuidString)
+      defer {
+        FileLabels.setKeepsPlainPaths(false, in: project)
+        try? files.removeItem(at: project)
+      }
+      try files.createDirectory(at: project.appending(path: ".jevision"), withIntermediateDirectories: true)
+      try files.createDirectory(at: project.appending(path: "refs"), withIntermediateDirectories: true)
+      for name in ["a", "b"] { try Data(name.utf8).write(to: project.appending(path: "refs/\(name).png")) }
+      let sidecar = project.appending(path: "refs/a.png.jevmeta").path
+      let url = project.appending(path: "t.flow.json")
+      let test = { (image: String, keys: String) in
+        #"{"format": 1, "name": "T", "app": "com.example.App", "start": "b0", "blocks": {"b0": {"type": "click", "target": {"image": "\#(image)"}, "next": "b1"}, "b1": {"type": "pressKeys", "keys": "\#(keys)"}}}"#
+      }
+      try test("refs/b.png", "a").write(to: url, atomically: true, encoding: .utf8)
+      let document = FlowDocument(url: url, project: project)
+      let undo = UndoManager()
+      undo.groupsByEvent = false
+      document.undoManager = undo
+      let change = { (flow: Flow) in
+        undo.beginUndoGrouping()
+        document.change(flow, action: "Change")
+        undo.endUndoGrouping()
+      }
+
+      let label = document.reference(to: project.appending(path: "refs/a.png")).reference
+      change(try loadFlow(json: test(label, "a")))
+      change(try loadFlow(json: test(label, "b")))
+      undo.undo()
+      #expect(document.pendingFormat != nil)
+      document.keepPlainPaths()
+      #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "refs/a.png""#))
+      #expect(!files.fileExists(atPath: sidecar), "made for the change")
+      FileLabels.setKeepsPlainPaths(keepsPlainPaths, in: project)
+
+      undo.redo()
+      #expect(document.saveError == nil, "keeps plain paths: \(keepsPlainPaths)")
+      if keepsPlainPaths {
+        let saved = try String(contentsOf: url, encoding: .utf8)
+        #expect(saved.contains(#""image": "refs/a.png""#) && saved.contains(#""keys": "b""#) && !saved.contains("res:"))
+        #expect(!files.fileExists(atPath: sidecar), "taken off again with the plain paths")
+      } else {
+        #expect(resolveResource(project: project.path(percentEncoded: false), reference: label) == .found(path: "refs/a.png", name: "a.png"))
+        #expect(document.pendingFormat != nil, "the question is asked again")
+        document.saveWithLabels()
+        #expect(document.saveError == nil)
+        #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "\#(label)""#))
+      }
+    }
+  }
+
+  /// A project with the pictures `refs/a.png` and `refs/b.png` and an open test, with Undo, that
+  /// clicks `b`; `test` is the test clicking another picture.
+  private func labeledProject() throws -> (project: URL, url: URL, document: FlowDocument, undo: UndoManager, test: (String) -> String) {
+    let files = FileManager.default
+    let project = files.temporaryDirectory.appending(path: UUID().uuidString)
+    try files.createDirectory(at: project.appending(path: ".jevision"), withIntermediateDirectories: true)
+    try files.createDirectory(at: project.appending(path: "refs"), withIntermediateDirectories: true)
+    for name in ["a", "b"] { try Data(name.utf8).write(to: project.appending(path: "refs/\(name).png")) }
+    let url = project.appending(path: "t.flow.json")
+    let test = { (image: String) in
+      #"{"format": 1, "name": "T", "app": "com.example.App", "start": "b0", "blocks": {"b0": {"type": "click", "target": {"image": "\#(image)"}}}}"#
+    }
+    try test("refs/b.png").write(to: url, atomically: true, encoding: .utf8)
+    let document = FlowDocument(url: url, project: project)
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    return (project, url, document, undo, test)
+  }
+
+  @Test func undoingAPickTakesItsLabelOffUntilRedo() throws {
+    let files = FileManager.default
+    let (project, url, document, undo, test) = try labeledProject()
+    defer {
+      FileLabels.setKeepsPlainPaths(false, in: project)
+      try? files.removeItem(at: project)
+    }
+    let sidecar = project.appending(path: "refs/a.png.jevmeta").path
+
+    let label = document.reference(to: project.appending(path: "refs/a.png")).reference
+    undo.beginUndoGrouping()
+    document.change(try loadFlow(json: test(label)), action: "Choose")
+    undo.endUndoGrouping()
+    #expect(document.pendingFormat != nil)
+    undo.undo()
+    #expect(document.pendingFormat == nil)
+    #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "refs/b.png""#))
+    #expect(!files.fileExists(atPath: sidecar), "no test names it")
+
+    undo.redo()
+    #expect(resolveResource(project: project.path(percentEncoded: false), reference: label) == .found(path: "refs/a.png", name: "a.png"))
+    #expect(document.pendingFormat != nil)
+    document.keepPlainPaths()
+    #expect(document.saveError == nil)
+    #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "refs/a.png""#))
+    #expect(!files.fileExists(atPath: sidecar), "made for the change")
+  }
+
+  @Test func aLabelOfAPictureUndoTrashedGoesOnceRedoBringsItBack() throws {
+    let files = FileManager.default
+    let (project, url, document, undo, test) = try labeledProject()
+    let trash = files.temporaryDirectory.appending(path: UUID().uuidString)
+    defer {
+      FileLabels.setKeepsPlainPaths(false, in: project)
+      try? files.removeItem(at: project)
+      try? files.removeItem(at: trash)
+    }
+    try files.createDirectory(at: trash, withIntermediateDirectories: true)
+    let picture = project.appending(path: "refs/a.png")
+    let sidecar = project.appending(path: "refs/a.png.jevmeta")
+
+    let label = document.reference(to: picture).reference
+    undo.beginUndoGrouping()
+    document.change(try loadFlow(json: test(label)), action: "Capture")
+    document.trashOnUndo([picture, sidecar]) { file in
+      let trashed = trash.appending(path: file.lastPathComponent)
+      try files.moveItem(at: file, to: trashed)
+      return trashed
+    }
+    undo.endUndoGrouping()
+    undo.undo()
+    #expect(!files.fileExists(atPath: picture.path))
+    #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "refs/b.png""#))
+
+    undo.redo()
+    #expect(files.fileExists(atPath: sidecar.path))
+    document.keepPlainPaths()
+    #expect(try String(contentsOf: url, encoding: .utf8).contains(#""image": "refs/a.png""#))
+    #expect(!files.fileExists(atPath: sidecar.path), "made for the change")
   }
 
   private func nextOf(_ document: FlowDocument, _ id: String) -> String? {

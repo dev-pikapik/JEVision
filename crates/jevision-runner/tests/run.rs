@@ -4172,6 +4172,47 @@ fn a_missing_picture_variable_is_an_error_never_a_baseline() {
     assert!(!Path::new("/nonexistent/shot.png").exists());
 }
 
+/// A test in the format that names files by their label, checking the picture `image`.
+fn labeled_check(p: &Project, image: &str) {
+    p.write(
+        "t.flow.json",
+        format!(
+            r#"{{"format":2,"name":"T","app":"{APP}","start":"check","blocks":{{"check":{{"type":"check","reference":{{"image":"{image}","compare":"exact"}}}}}}}}"#
+        ),
+    );
+}
+
+#[test]
+fn a_picture_named_by_its_label_is_found_where_it_was_moved() {
+    let p = Project::new();
+    p.write("refs/ok.png", solid([0, 0, 0]));
+    let label = jevision_core::label_resource(&p.0, Path::new("refs/ok.png")).unwrap();
+    std::fs::create_dir_all(p.0.join("pictures")).unwrap();
+    for name in ["ok.png", "ok.png.jevmeta"] {
+        std::fs::rename(p.0.join("refs").join(name), p.0.join("pictures").join(name)).unwrap();
+    }
+    labeled_check(&p, &label);
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+}
+
+#[test]
+fn a_missing_labeled_picture_fails_the_test_and_is_never_a_baseline() {
+    let p = Project::new();
+    p.write("refs/ok.png", solid([0, 0, 0]));
+    let label = jevision_core::label_resource(&p.0, Path::new("refs/ok.png")).unwrap();
+    std::fs::remove_file(p.0.join("refs/ok.png")).unwrap();
+    labeled_check(&p, &label);
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    assert_eq!(report.verdict, Verdict::Failed);
+    assert_eq!(failure_code(&report), "run.resource.missing");
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(failure.param("name"), "ok.png", "{failure:?}");
+    assert!(report.baselines_created.is_empty());
+    assert!(!p.0.join("refs/ok.png").exists());
+    assert!(!p.0.join(&label).exists());
+}
+
 #[test]
 fn an_area_is_a_target_written_in_the_test_or_kept_in_a_variable() {
     let p = Project::new();

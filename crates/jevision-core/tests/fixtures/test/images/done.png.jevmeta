@@ -1,0 +1,9 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json",
+  "format": 1,
+  "id": "8192a3b4c5d6e7f8",
+  "kind": "image",
+  "hash": "sha256:fef1094b3f0d1b696ad7ae73d9be113f03b5867a8a8eeb98bff13e5a4ce6bbdd",
+  "size": 69,
+  "name": "done.png"
+}

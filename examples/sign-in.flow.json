@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Sign in with valid credentials",
   "description": "Signs in with a known account and checks that the inbox appears.",

@@ -84,6 +84,35 @@ an error, not a blank.
 Example tests live in [`examples/`](examples). Each test is one `*.flow.json` file.
 Keep examples small, readable and pointed at public demo sites only.
 
+## Changing a file format
+
+People keep tests in git for years, so a file written by any JEVision must keep opening in
+every later one, and saving must never lock out the JEVision that made the file.
+
+- A new field or block that has a default doesn't change the format number: files without it
+  read as before. A field left at its default isn't written.
+- A change that older versions can't read raises the format by one. Add a step to
+  `MIGRATIONS` in `crates/jevision-core/src/decode.rs` that turns a file of the previous format
+  into the new one, with a test. Add its key to `FORMAT_CHANGES` and, under that key in the
+  string catalog, a sentence saying in plain words what the new format adds; the app shows it
+  when it asks before raising a project. Steps are never
+  changed or removed once released.
+- The writer saves each file in the lowest format that holds it. Extend `Requirement::of` in
+  `crates/jevision-core/src/compat.rs`, so that only files that use the new feature get the new
+  number.
+- Add a fixture for the new format, `crates/jevision-core/tests/fixtures/<kind>/format-<n>.*`,
+  saved by the new version with every field filled in. Never edit the fixtures of released
+  formats: `tests/fixtures.rs` checks that each one still opens, moves to the newest format
+  and saves without losing anything.
+- Add the number to the formats of the kind in `crates/jevision-core/src/schema.rs`, write
+  the JSON Schemas in `docs/schemas` again with
+  `JEVISION_WRITE_SCHEMAS=1 cargo test -p jevision-core -p jevision-notify --lib schema`, and
+  update the [file formats](https://dev-pikapik.github.io/JEVision/file-formats.html#versions)
+  page.
+
+After 1.0, the file formats page gets a table of which feature needs which format and which
+JEVision version first reads it, so that people know which version a project needs.
+
 ## Code of Conduct
 
 By participating you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

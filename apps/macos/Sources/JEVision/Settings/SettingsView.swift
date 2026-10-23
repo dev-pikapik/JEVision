@@ -265,6 +265,8 @@ struct SettingsItem: Identifiable {
         SettingsItem(tab: .notifications, id: "email", title: String(localized: "Send email")),
         SettingsItem(tab: .advanced, id: "retries", title: String(localized: "Retries")),
         SettingsItem(tab: .advanced, id: "cleanHome", title: String(localized: "Start apps as on their first launch")),
+        SettingsItem(tab: .advanced, id: "fileLabels", title: String(localized: "Use file labels in this project")),
+        SettingsItem(tab: .advanced, id: "backups", title: String(localized: "Backups of the tests")),
         SettingsItem(tab: .advanced, id: "commandLine", title: String(localized: "Run tests from Terminal and scripts")),
         SettingsItem(tab: .advanced, id: "continuousIntegration", title: String(localized: "Run tests on every pull request")),
         SettingsItem(tab: .advanced, id: "recordVideo", title: String(localized: "Record video")),

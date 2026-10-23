@@ -46,6 +46,9 @@ const MAX_SHORT_LEN: usize = 100;
 const MAX_ICON_LEN: usize = 64;
 const MAX_INPUTS: usize = 50;
 const MAX_DEPENDENCIES: usize = 50;
+/// The ids [`is_package_id`] takes, as a pattern of a JSON Schema.
+#[cfg(test)]
+const PACKAGE_ID: &str = r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?){2,}$";
 
 /// A semantic version, `MAJOR.MINOR.PATCH` with an optional `-pre.release` part: `1.2.0` is newer
 /// than `1.2.0-beta.2` and older than `1.10.0`. A `+build` part is accepted and ignored.
@@ -342,50 +345,83 @@ pub fn app_version() -> Version {
 
 /// What a package asks for each time its block is used: one `${input.NAME}` of its steps.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct PackageInput {
+    /// The `NAME` of `${input.NAME}`: letters, digits and `_`, not starting with a digit.
+    #[cfg_attr(
+        test,
+        schemars(length(max = MAX_SHORT_LEN), regex(pattern = "^[A-Za-z_][A-Za-z0-9_]*$"))
+    )]
     pub name: String,
     /// What to call it in the editor, when `name` isn't clear enough.
+    #[cfg_attr(test, schemars(length(max = MAX_NAME_LEN), regex(pattern = r"\S")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     /// What the input holds when the test doesn't say.
+    #[cfg_attr(test, schemars(length(max = MAX_TEXT_LEN)))]
     #[serde(rename = "default", skip_serializing_if = "Option::is_none")]
     pub default_value: Option<String>,
 }
 
 /// The contents of `block.json`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub struct BlockManifest {
     /// Like `com.acme.sign-in`: at least three parts of lowercase letters, digits and `-`,
     /// joined by dots. The folder of the installed package is named after it.
+    #[cfg_attr(test, schemars(length(max = MAX_ID_LEN), regex(pattern = PACKAGE_ID)))]
     pub id: String,
+    /// What the block is called in the library.
+    #[cfg_attr(test, schemars(length(max = MAX_NAME_LEN), regex(pattern = r"\S")))]
     pub name: String,
+    /// What the block does, in a sentence or two.
+    #[cfg_attr(test, schemars(length(max = MAX_TEXT_LEN), regex(pattern = r"\S")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// SF Symbol the block is shown with.
+    /// SF Symbol the block is shown with, such as `person.crop.circle`.
+    #[cfg_attr(test, schemars(length(max = MAX_ICON_LEN), regex(pattern = "^[a-z0-9.]+$")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
+    /// Version of the block: `MAJOR.MINOR.PATCH`, with an optional `-pre.release` part.
+    #[cfg_attr(test, schemars(length(max = MAX_SHORT_LEN)))]
     pub version: Version,
+    /// Who made the block.
+    #[cfg_attr(test, schemars(length(max = MAX_SHORT_LEN), regex(pattern = r"\S")))]
     pub author: String,
     /// Name of the license, such as `MIT`.
+    #[cfg_attr(test, schemars(length(max = MAX_SHORT_LEN), regex(pattern = r"\S")))]
     pub license: String,
     /// Oldest JEVision that can run the block.
+    #[cfg_attr(test, schemars(length(max = MAX_SHORT_LEN)))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_version: Option<Version>,
+    /// What the block asks for each time a test uses it: one entry for every `${input.NAME}`
+    /// of its steps.
+    #[cfg_attr(test, schemars(default, length(max = MAX_INPUTS)))]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<PackageInput>,
     /// Other packages the steps run, which must be installed beside this one.
+    #[cfg_attr(test, schemars(default, length(max = MAX_DEPENDENCIES)))]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<Dependency>,
 }
 
 /// A package that another one runs: its steps call `../ID.jevblock/flow.json`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 pub struct Dependency {
+    /// The id of the package that is needed.
+    #[cfg_attr(test, schemars(length(max = MAX_ID_LEN), regex(pattern = PACKAGE_ID)))]
     pub id: String,
-    /// The versions that work; `*` when `block.json` doesn't say.
+    /// The versions that work: `*` for any; `1.2.0` or `=1.2.0` for exactly that one; `^1.2.0`
+    /// for 1.2.0 up to 2.0.0 (up to 0.3.0 for `^0.2.0`); `~1.2.0`, `1.2.x` or `1.x` for a
+    /// series; or comparisons with `>=`, `>`, `<` and `<=` joined by spaces or commas, like
+    /// `>=1.2.0 <2.0.0`.
+    #[cfg_attr(test, schemars(default = "VersionReq::any", length(max = MAX_SHORT_LEN)))]
     pub version: VersionReq,
     /// An https address to install it from when it is missing.
+    #[cfg_attr(test, schemars(length(max = MAX_TEXT_LEN), regex(pattern = "^https://")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }

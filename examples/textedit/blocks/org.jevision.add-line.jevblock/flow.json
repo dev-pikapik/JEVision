@@ -1,4 +1,5 @@
 {
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
   "format": 1,
   "name": "Add a line",
   "description": "Types a line at the end of the document in front, in TextEdit.",
