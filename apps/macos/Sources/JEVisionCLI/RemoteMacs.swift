@@ -52,7 +52,7 @@ struct RemoteMacs {
 
   static var standard: RemoteMacs {
     RemoteMacs(
-      file: URL.applicationSupportDirectory.appending(path: "JEVision/Assistant/macs.json", directoryHint: .notDirectory))
+      file: Profile.current.supportFolder.appending(path: "Assistant/macs.json", directoryHint: .notDirectory))
   }
 
   private struct Entry: Codable {

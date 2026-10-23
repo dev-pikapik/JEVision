@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "name": "Add a line found by accessibility",
+  "description": "Opens a copy of note.txt in TextEdit, waits for its text, adds a line in the text area found by accessibility, checks the text and quits TextEdit. It needs no reference picture, so it passes the first time, in light and dark mode alike.",
+  "app": "com.apple.TextEdit",
+  "testType": "smoke",
+  "priority": "medium",
+  "status": "ready",
+  "tags": [
+    "example"
+  ],
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "openFile",
+      "files": [
+        "note.txt"
+      ],
+      "app": "com.apple.TextEdit",
+      "next": "ready"
+    },
+    "ready": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "role": "textArea",
+          "is": "valueContains",
+          "to": "Shopping list"
+        }
+      },
+      "timeout": "10s",
+      "next": "focus"
+    },
+    "focus": {
+      "type": "click",
+      "target": {
+        "element": {
+          "role": "textArea"
+        }
+      },
+      "button": "left",
+      "next": "end"
+    },
+    "end": {
+      "type": "pressKeys",
+      "keys": "cmd+down",
+      "next": "type"
+    },
+    "type": {
+      "type": "type",
+      "text": "- eggs\n",
+      "next": "check"
+    },
+    "check": {
+      "type": "check",
+      "element": {
+        "role": "textArea",
+        "is": "valueContains",
+        "to": "- bread\n- eggs\n"
+      },
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

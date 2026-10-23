@@ -199,18 +199,23 @@ pub(crate) mod keychain {
     /// The Keychain's "item not found".
     const NOT_FOUND: i32 = -25300;
 
+    /// A separate profile keeps its own token.
+    fn service() -> String {
+        jevision_core::keychain_service(KEYCHAIN_SERVICE)
+    }
+
     pub fn get() -> Option<String> {
-        let token = passwords::get_generic_password(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).ok()?;
+        let token = passwords::get_generic_password(&service(), KEYCHAIN_ACCOUNT).ok()?;
         String::from_utf8(token).ok().filter(|t| !t.is_empty())
     }
 
     pub fn set(token: &str) -> Result<(), GitError> {
-        passwords::set_generic_password(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT, token.as_bytes())
+        passwords::set_generic_password(&service(), KEYCHAIN_ACCOUNT, token.as_bytes())
             .map_err(failed)
     }
 
     pub fn delete() -> Result<(), GitError> {
-        match passwords::delete_generic_password(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT) {
+        match passwords::delete_generic_password(&service(), KEYCHAIN_ACCOUNT) {
             Err(e) if e.code() != NOT_FOUND => Err(failed(e)),
             _ => Ok(()),
         }

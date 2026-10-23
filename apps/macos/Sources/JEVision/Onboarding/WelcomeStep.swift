@@ -32,6 +32,7 @@ struct WelcomeStep: View {
       .buttonStyle(.glassProminent)
       .controlSize(.extraLarge)
       .keyboardShortcut(.defaultAction)
+      .accessibilityIdentifier(AccessibilityID.Onboarding.runDemo)
       Text("Opens TextEdit, adds a line to a note and checks the window. Takes about 10 seconds.")
         .font(.callout)
         .foregroundStyle(.secondary)

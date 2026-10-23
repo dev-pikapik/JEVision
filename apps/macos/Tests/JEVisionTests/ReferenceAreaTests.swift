@@ -119,13 +119,13 @@ struct ReferenceUndoTests {
 
     func edit(_ change: (inout Reference) -> Void) {
       document.update("c", field: "reference") { kind in
-        guard case .check(var reference, let next) = kind else { return }
+        guard case .check(.screen(var reference), let next) = kind else { return }
         change(&reference)
-        kind = .check(reference: reference, next: next)
+        kind = .check(of: .screen(reference), next: next)
       }
     }
     func ignored() -> [Rect] {
-      if case .check(let reference, _) = document.block("c")?.kind { return reference.ignore }
+      if case .check(.screen(let reference), _) = document.block("c")?.kind { return reference.ignore }
       return []
     }
 

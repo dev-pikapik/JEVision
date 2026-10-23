@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// The `jevision` command inside this app, and the link that puts it on the PATH.
@@ -34,6 +35,15 @@ struct CommandLineTool {
       return "This copy of JEVision doesn’t include the command line tool."
     }
     return nil
+  }
+
+  /// Why the tool can't be put on the PATH from this copy of the app, if it can't. The link is
+  /// the person's own, so a separate profile leaves it alone.
+  var installUnavailableReason: LocalizedStringKey? {
+    if Profile.current.isolated {
+      return "Not available in a separate profile: the jevision command is shared by everyone who uses JEVision on this Mac."
+    }
+    return unavailableReason
   }
 
   /// The first of `folders` that has a `jevision`, and what it is.
@@ -128,7 +138,7 @@ struct CommandLineToolView: View {
       }
       Section {
         LabeledContent("Status") { status }
-        if let reason = tool.unavailableReason {
+        if let reason = tool.installUnavailableReason {
           Text(reason)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -153,7 +163,7 @@ struct CommandLineToolView: View {
             .foregroundStyle(.secondary)
         }
       }
-      if showsAlternatives, tool.unavailableReason == nil {
+      if showsAlternatives, tool.installUnavailableReason == nil {
         Section("Without an administrator’s password") {
           ActionRow {
             Button("Install Just for Me", action: installForMe)

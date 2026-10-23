@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import Observation
 import Synchronization
 
@@ -61,8 +62,8 @@ final class AppLanguage: Observable, Sendable {
   /// launch and at every change.
   init(
     main: Bundle = .main,
-    defaults: UserDefaults = .standard,
-    domain: String = Bundle.main.bundleIdentifier ?? "",
+    defaults: UserDefaults = Profile.current.defaults,
+    domain: String = Profile.current.defaultsDomain,
     system: @escaping @Sendable () -> [String] = AppLanguage.systemLanguages,
     apply: @escaping @Sendable (String, String, String) -> Void = {
       setLanguage(tag: $0)
@@ -133,10 +134,25 @@ final class AppLanguage: Observable, Sendable {
     apply(language, locale.decimalSeparator ?? ".", locale.groupingSeparator ?? "")
   }
 
-  /// The Mac's languages in order of preference, as set now rather than when the app opened.
+  /// The Mac's languages in order of preference, as set now rather than when the app opened; or
+  /// the ones the app was started with, `-AppleLanguages "(de)"`, the way macOS starts any app in
+  /// another language. A language chosen in the app still wins over them.
   static func systemLanguages() -> [String] {
+    if let launched { return launched }
     let global = CFPreferencesCopyValue(key as CFString, kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
     return (global as? [String]) ?? Locale.preferredLanguages
+  }
+
+  private static let launched = launchLanguages(in: ProcessInfo.processInfo.arguments)
+
+  /// The languages of `-AppleLanguages` in `arguments`, written as a list, `(de, en)`, or as one
+  /// code; `nil` without them.
+  static func launchLanguages(in arguments: [String]) -> [String]? {
+    guard let index = arguments.firstIndex(of: "-" + key), arguments.indices.contains(index + 1) else { return nil }
+    let value = arguments[index + 1]
+    let list = (try? PropertyListSerialization.propertyList(from: Data(value.utf8), format: nil)) as? [String] ?? [value]
+    let languages = list.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    return languages.isEmpty ? nil : languages
   }
 
   /// Language names are written in their own language, so they never get translated.

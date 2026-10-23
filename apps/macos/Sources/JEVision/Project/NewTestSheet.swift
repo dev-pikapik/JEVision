@@ -23,8 +23,10 @@ struct NewTestSheet: View {
         .accessibilityAddTraits(.isHeader)
       Form {
         TextField(text: $name, prompt: Text("Sign in with a valid password")) { Text("Name") }
+          .accessibilityIdentifier(AccessibilityID.NewTest.name)
         LabeledContent("App") {
           AppPicker(bundleID: $app, noneTitle: Text("Choose App"))
+            .accessibilityIdentifier(AccessibilityID.NewTest.app)
         }
         if !records {
           TextField(
@@ -43,6 +45,7 @@ struct NewTestSheet: View {
         Spacer()
         Button("Cancel", role: .cancel) { dismiss() }
           .keyboardShortcut(.cancelAction)
+          .accessibilityIdentifier(AccessibilityID.NewTest.cancel)
         Button(records ? "Record" : "Create") {
           guard let app else { return }
           isCreating = true
@@ -63,6 +66,7 @@ struct NewTestSheet: View {
         }
         .keyboardShortcut(.defaultAction)
         .disabled(!canCreate || isCreating)
+        .accessibilityIdentifier(AccessibilityID.NewTest.create)
       }
     }
     .padding(20)

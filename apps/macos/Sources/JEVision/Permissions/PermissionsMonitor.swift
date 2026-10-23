@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 import Observation
 import Security
 
@@ -23,7 +24,7 @@ final class PermissionsMonitor {
   /// Asked for since JEVision last came to the front: the person is still in System Settings.
   @ObservationIgnored private var away: Set<Permission> = []
 
-  init(defaults: UserDefaults = .standard) {
+  init(defaults: UserDefaults = Profile.current.defaults) {
     self.defaults = defaults
     refresh()
     observer = NotificationCenter.default.addObserver(

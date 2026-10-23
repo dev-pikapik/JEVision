@@ -892,7 +892,8 @@ struct DatabaseExpectField: View {
   }
 }
 
-/// One condition of an `if`: how the screen looks, or a comparison of values.
+/// One condition of an `if`: how the screen looks, a comparison of values, or the state of an
+/// element.
 struct ConditionEditor: View {
   @Binding var condition: Condition
   /// Where the condition is in the block, such as `elseIf.0.`; empty for the first one.
@@ -900,21 +901,23 @@ struct ConditionEditor: View {
   let context: FieldContext
   let values: InsertableValues
 
-  private var isScreen: Binding<Bool> {
+  private var field: Binding<String> {
     Binding(
-      get: { condition.isScreen },
+      get: { condition.field },
       set: {
-        condition =
-          $0
-          ? .screen(Reference(image: "", compare: .similar(threshold: 0.95), area: nil, ignore: [], hide: []))
-          : .value(ValueCheck(of: "", is: .equals, to: ""))
+        switch $0 {
+        case "reference": condition = .screen(Reference.new)
+        case "value": condition = .value(ValueCheck(of: "", is: .equals, to: ""))
+        default: condition = .element(ElementCheck.new)
+        }
       })
   }
 
   var body: some View {
-    Picker(selection: isScreen) {
-      Text("The Screen").tag(true)
-      Text("A Value").tag(false)
+    Picker(selection: field) {
+      Text("The Screen").tag("reference")
+      Text("A Value").tag("value")
+      Text("An Element").tag("element")
     } label: {
       Text("Check")
     }
@@ -947,12 +950,31 @@ struct ConditionEditor: View {
       .font(.body.monospaced())
       .autocorrectionDisabled()
       IssueList(issues: context.issues(at + "value"))
+    case .element(let check):
+      ElementCheckEditor(
+        check: Binding(get: { check }, set: { condition = .element($0) }), field: at + "element", context: context)
     }
   }
 }
 
 extension Condition {
+  /// The field of the file the condition is written in.
+  var field: String {
+    switch self {
+    case .screen: "reference"
+    case .value: "value"
+    case .element: "element"
+    }
+  }
+}
+
+extension CheckOf {
   var isScreen: Bool {
     if case .screen = self { true } else { false }
   }
+}
+
+extension Reference {
+  /// What a new screen comparison starts as: a picture to choose, compared as similar.
+  static let new = Reference(image: "", compare: .similar(threshold: 0.95), area: nil, ignore: [], hide: [])
 }

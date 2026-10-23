@@ -6,8 +6,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use jevision_core::{
-    Blocker, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit, WindowPosition,
-    WindowSize,
+    Blocker, ElementNode, Modifiers, MouseButton, Point, Rect, ScrollDirection, ScrollUnit,
+    WindowPosition, WindowSize,
 };
 use jevision_runner::{
     AppStart, CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot,
@@ -124,7 +124,13 @@ pub enum AppStart {
 #[uniffi::export(with_foreign)]
 pub trait Hands: Send + Sync {
     /// Opens the application and brings it to the front, as `start` says.
-    fn open_app(&self, app: String, start: AppStart) -> Result<(), HandsError>;
+    fn open_app(
+        &self,
+        app: String,
+        start: AppStart,
+        arguments: Vec<String>,
+        environment: HashMap<String, String>,
+    ) -> Result<(), HandsError>;
     /// Whether the application runs in the App Sandbox, as its code signature says: macOS then
     /// keeps its data in a container and gives it a home folder there, whatever it is started
     /// with.
@@ -151,6 +157,10 @@ pub trait Hands: Send + Sync {
     fn activate(&self, app: String) -> Result<(), HandsError>;
     fn quit(&self, app: String) -> Result<(), HandsError>;
     fn capture(&self, app: String) -> Result<Screenshot, HandsError>;
+    /// The elements of the application's front window and of the menus it has open, as
+    /// accessibility reports them, an element before what is inside it; frames in fractions of
+    /// the front window. `PermissionDenied` with `accessibility` without that permission.
+    fn elements(&self, app: String) -> Result<Vec<ElementNode>, HandsError>;
     fn locate(
         &self,
         app: String,
@@ -590,8 +600,19 @@ pub fn save_blocked_run(
 struct HandsAdapter(Arc<dyn Hands>);
 
 impl jevision_runner::Hands for HandsAdapter {
-    fn open_app(&self, app: &str, start: AppStart) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.open_app(app.to_owned(), start)?)
+    fn open_app(
+        &self,
+        app: &str,
+        start: AppStart,
+        arguments: &[String],
+        environment: &HashMap<String, String>,
+    ) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.open_app(
+            app.to_owned(),
+            start,
+            arguments.to_vec(),
+            environment.clone(),
+        )?)
     }
 
     fn sandboxed(&self, app: &str) -> Result<bool, jevision_runner::HandsError> {
@@ -638,6 +659,10 @@ impl jevision_runner::Hands for HandsAdapter {
 
     fn capture(&self, app: &str) -> Result<Screenshot, jevision_runner::HandsError> {
         Ok(self.0.capture(app.to_owned())?)
+    }
+
+    fn elements(&self, app: &str) -> Result<Vec<ElementNode>, jevision_runner::HandsError> {
+        Ok(self.0.elements(app.to_owned())?)
     }
 
     fn locate(
@@ -1410,7 +1435,13 @@ pub(crate) mod tests {
     }
 
     impl Hands for Fake {
-        fn open_app(&self, app: String, _: AppStart) -> Result<(), HandsError> {
+        fn open_app(
+            &self,
+            app: String,
+            _: AppStart,
+            _: Vec<String>,
+            _: HashMap<String, String>,
+        ) -> Result<(), HandsError> {
             self.note(format!("open {app}"));
             Ok(())
         }
@@ -1446,6 +1477,9 @@ pub(crate) mod tests {
             Err(HandsError::PermissionDenied {
                 permission: "screenRecording".into(),
             })
+        }
+        fn elements(&self, _: String) -> Result<Vec<ElementNode>, HandsError> {
+            Ok(Vec::new())
         }
         fn locate(&self, _: String, _: Vec<u8>, _: f64) -> Result<Option<Point>, HandsError> {
             Ok(None)

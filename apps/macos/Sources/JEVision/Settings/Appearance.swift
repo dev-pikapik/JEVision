@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 
 enum Appearance: String, CaseIterable, Identifiable {
   case system, light, dark
@@ -6,7 +7,7 @@ enum Appearance: String, CaseIterable, Identifiable {
   static let key = "appearance"
 
   static var saved: Appearance {
-    Appearance(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .system
+    Appearance(rawValue: Profile.current.defaults.string(forKey: key) ?? "") ?? .system
   }
 
   var id: Self { self }

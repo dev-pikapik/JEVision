@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use crate::issue::{Issue, Severity};
 use crate::model::{
-    AttachmentKind, BLOCK_SUFFIX, Block, BlockKind, Flow, TEST_SUFFIX, dark_variant,
+    AttachmentKind, BLOCK_SUFFIX, Block, BlockKind, CheckOf, Flow, TEST_SUFFIX, dark_variant,
 };
 use crate::notes::note_file_path;
 use crate::package::package_of_path;
@@ -178,7 +178,10 @@ fn blocks(flow: &Flow, disk: &Disk, folder: &str) -> Vec<Issue> {
     let saved: HashSet<String> = sorted
         .iter()
         .filter_map(|b| match &b.kind {
-            BlockKind::Check { reference, .. } => match disk.look(folder, &reference.image) {
+            BlockKind::Check {
+                of: CheckOf::Screen(reference),
+                ..
+            } => match disk.look(folder, &reference.image) {
                 Look::Missing(file) => Some(file),
                 _ => None,
             },
@@ -223,7 +226,10 @@ fn blocks(flow: &Flow, disk: &Disk, folder: &str) -> Vec<Issue> {
 fn paths(kind: &BlockKind) -> Vec<(String, &str)> {
     let mut found = files_read(kind);
     match kind {
-        BlockKind::Check { reference, .. } => {
+        BlockKind::Check {
+            of: CheckOf::Screen(reference),
+            ..
+        } => {
             found.push(("reference.image".to_owned(), &reference.image));
         }
         BlockKind::Command {

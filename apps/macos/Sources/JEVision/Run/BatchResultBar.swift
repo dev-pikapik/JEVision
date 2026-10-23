@@ -1,3 +1,4 @@
+import JEVisionHands
 import SwiftUI
 
 /// How Run All or a folder's run went, at the bottom of the window, with the runs a click away.
@@ -40,7 +41,7 @@ struct BatchResultBar: View {
           .fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 12)
           Button("Notification Settings") {
-            UserDefaults.standard.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
+            Profile.current.defaults.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
             openSettings()
           }
           .buttonStyle(.glass)

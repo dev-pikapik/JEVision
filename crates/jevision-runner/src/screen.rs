@@ -167,12 +167,17 @@ fn screen_lock_in(named: Option<OsString>, home: Option<OsString>) -> Option<Pat
     if let Some(named) = named.filter(|n| !n.is_empty()) {
         return Some(PathBuf::from(named));
     }
-    let home = home.filter(|h| !h.is_empty())?;
-    Some(
-        PathBuf::from(home)
-            .join("Library/Application Support/JEVision")
-            .join("screen.lock"),
-    )
+    profile_screen_lock_in(home.map(PathBuf::from), jevision_core::profile_folder())
+}
+
+fn profile_screen_lock_in(home: Option<PathBuf>, profile: Option<PathBuf>) -> Option<PathBuf> {
+    let folder = match profile {
+        Some(profile) => profile.join("Support"),
+        None => home
+            .filter(|h| !h.as_os_str().is_empty())?
+            .join("Library/Application Support/JEVision"),
+    };
+    Some(folder.join("screen.lock"))
 }
 
 /// Whether the test `file` of `project` acts on the screen or looks at it, itself or through a
@@ -333,5 +338,26 @@ mod tests {
             describe_screen_holder_in("ru", None),
             "Экран занят: его использует другой прогон."
         );
+    }
+
+    #[test]
+    fn a_profile_keeps_its_own_screen_lock() {
+        let home = Some(PathBuf::from("/Users/me"));
+        assert_eq!(
+            profile_screen_lock_in(home.clone(), None),
+            Some(PathBuf::from(
+                "/Users/me/Library/Application Support/JEVision/screen.lock"
+            ))
+        );
+        assert_eq!(
+            profile_screen_lock_in(home, Some(PathBuf::from("/tmp/profile"))),
+            Some(PathBuf::from("/tmp/profile/Support/screen.lock"))
+        );
+        assert_eq!(
+            profile_screen_lock_in(None, Some(PathBuf::from("/tmp/profile"))),
+            Some(PathBuf::from("/tmp/profile/Support/screen.lock"))
+        );
+        assert_eq!(profile_screen_lock_in(Some(PathBuf::new()), None), None);
+        assert_eq!(profile_screen_lock_in(None, None), None);
     }
 }

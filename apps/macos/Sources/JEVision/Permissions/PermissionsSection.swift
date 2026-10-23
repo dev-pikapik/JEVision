@@ -63,6 +63,7 @@ struct PermissionRow: View {
           .foregroundStyle(granted ? .green : .orange)
           .contentTransition(.symbolEffect(.replace))
           .accessibilityLabel(granted ? Text("Allowed") : Text("Not allowed"))
+          .accessibilityIdentifier(AccessibilityID.Permissions.status(permission))
       }
     } label: {
       HStack(spacing: 10) {

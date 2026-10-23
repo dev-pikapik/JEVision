@@ -34,7 +34,7 @@ pub struct Compatibility {
 /// The formats and protocols of this build.
 #[uniffi::export]
 pub fn compatibility() -> Compatibility {
-    let iphone = protocol_version(jevision_remote::ALPN);
+    let iphone = protocol_version(jevision_remote::ALPN_PHONE);
     Compatibility {
         formats: formats(),
         iphone_protocol_oldest: iphone,

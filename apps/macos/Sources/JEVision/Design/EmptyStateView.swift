@@ -9,6 +9,9 @@ struct EmptyStateView: View {
   let perform: () -> Void
   var secondAction: Text?
   var performSecond: () -> Void = {}
+  /// Accessibility identifiers of the buttons, from `AccessibilityID`.
+  var actionID = ""
+  var secondActionID = ""
 
   var body: some View {
     ContentUnavailableView {
@@ -23,10 +26,12 @@ struct EmptyStateView: View {
         .buttonStyle(.glassProminent)
         .controlSize(.large)
         .keyboardShortcut(.defaultAction)
+        .accessibilityIdentifier(actionID)
       if let secondAction {
         Button(action: performSecond) { secondAction }
           .buttonStyle(.glass)
           .controlSize(.large)
+          .accessibilityIdentifier(secondActionID)
       }
     }
   }

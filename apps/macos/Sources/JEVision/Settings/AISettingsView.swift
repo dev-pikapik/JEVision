@@ -38,7 +38,7 @@ struct AISettingsView: View {
 
   /// The saved model, address and picture setting of each provider.
   private static var providerKeys: [String] {
-    let defaults = UserDefaults.standard
+    let defaults = Profile.current.defaults
     return AISettings.providers
       .flatMap { [AISettings.modelKey($0.id), AISettings.addressKey($0.id), AISettings.picturesKey($0.id)] }
       .filter { defaults.object(forKey: $0) != nil }
@@ -51,7 +51,7 @@ struct AISettingsView: View {
     mayRun = false
     mayCapture = false
     askFirst = true
-    Self.providerKeys.forEach(UserDefaults.standard.removeObject(forKey:))
+    Self.providerKeys.forEach(Profile.current.defaults.removeObject(forKey:))
   }
 }
 

@@ -1,0 +1,149 @@
+{
+  "format": 1,
+  "name": "Settings language",
+  "description": "Switches the language in Settings from English to Russian and back while JEVision runs: the label of the Language setting changes at once, without a restart.",
+  "app": "io.github.dev-pikapik.jevision",
+  "testType": "acceptance",
+  "priority": "high",
+  "status": "ready",
+  "tags": [
+    "selftest"
+  ],
+  "start": "start",
+  "blocks": {
+    "start": {
+      "type": "runTest",
+      "test": "blocks/start-jevision.block.json",
+      "inputs": {
+        "onboardingDone": "YES",
+        "profile": "settings-language"
+      },
+      "next": "main"
+    },
+    "main": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "main.openProject",
+          "is": "present"
+        }
+      },
+      "timeout": "30s",
+      "next": "settings"
+    },
+    "settings": {
+      "type": "pressKeys",
+      "keys": "cmd+,",
+      "next": "english"
+    },
+    "english": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "settings.language",
+          "is": "titleEquals",
+          "to": "Language"
+        }
+      },
+      "timeout": "10s",
+      "next": "system"
+    },
+    "system": {
+      "type": "check",
+      "element": {
+        "id": "settings.language",
+        "is": "valueEquals",
+        "to": "System"
+      },
+      "next": "openList"
+    },
+    "openList": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "settings.language"
+        }
+      },
+      "button": "left",
+      "next": "chooseRussian"
+    },
+    "chooseRussian": {
+      "type": "click",
+      "target": {
+        "element": {
+          "role": "menuItem",
+          "title": "Русский"
+        }
+      },
+      "button": "left",
+      "next": "russian"
+    },
+    "russian": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "settings.language",
+          "is": "titleEquals",
+          "to": "Язык"
+        }
+      },
+      "timeout": "10s",
+      "next": "russianChosen"
+    },
+    "russianChosen": {
+      "type": "check",
+      "element": {
+        "id": "settings.language",
+        "is": "valueEquals",
+        "to": "Русский"
+      },
+      "next": "openListAgain"
+    },
+    "openListAgain": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "settings.language"
+        }
+      },
+      "button": "left",
+      "next": "chooseEnglish"
+    },
+    "chooseEnglish": {
+      "type": "click",
+      "target": {
+        "element": {
+          "role": "menuItem",
+          "title": "English"
+        }
+      },
+      "button": "left",
+      "next": "englishAgain"
+    },
+    "englishAgain": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "settings.language",
+          "is": "titleEquals",
+          "to": "Language"
+        }
+      },
+      "timeout": "10s",
+      "next": "englishChosen"
+    },
+    "englishChosen": {
+      "type": "check",
+      "element": {
+        "id": "settings.language",
+        "is": "valueEquals",
+        "to": "English"
+      },
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

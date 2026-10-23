@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import Observation
 
 /// The project folder the user opened, remembered between launches and kept in sync with the disk.
@@ -123,7 +124,7 @@ final class ProjectStore {
     static let myTests = "myTestsProject"
   }
 
-  init(defaults: UserDefaults = .standard, clock: @escaping () -> Date = { .now }) {
+  init(defaults: UserDefaults = Profile.current.defaults, clock: @escaping () -> Date = { .now }) {
     self.defaults = defaults
     self.clock = clock
     ci.imported = { [weak self] in self?.rescan() }

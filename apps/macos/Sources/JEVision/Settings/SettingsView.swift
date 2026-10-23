@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 import SwiftUI
 
 struct SettingsView: View {
@@ -117,7 +118,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
   static let iconSize: CGFloat = 20
 
   static var saved: SettingsTab {
-    SettingsTab(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .general
+    SettingsTab(rawValue: Profile.current.defaults.string(forKey: key) ?? "") ?? .general
   }
 
   var id: Self { self }

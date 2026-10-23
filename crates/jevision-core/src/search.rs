@@ -1,7 +1,10 @@
 //! Ranking for the editor's search fields: the block palette, the command palette and the
 //! project's test list.
 
-use crate::{BlockKind, ClipboardAction, Compare, Condition, Flow, Reference, Target, WaitUntil};
+use crate::{
+    BlockKind, CheckOf, ClipboardAction, Compare, Condition, ElementCheck, ElementQuery, Flow,
+    Reference, Target, WaitUntil,
+};
 
 /// Something a search can find: what it is called, and other words it answers to.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,48 +62,71 @@ pub fn test_keywords(flow: &Flow) -> String {
             words.push(provider);
         }
     }
+    fn element<'a>(e: &'a ElementQuery, words: &mut Vec<&'a str>) {
+        words.extend([e.id.as_str(), e.title.as_str()]);
+    }
+    fn element_check<'a>(e: &'a ElementCheck, words: &mut Vec<&'a str>) {
+        element(&e.element, words);
+        words.extend(e.is.text());
+    }
+    fn target<'a>(t: &'a Target, words: &mut Vec<&'a str>) {
+        match t {
+            Target::Image(text) | Target::Description(text) => words.push(text),
+            Target::Element(e) => element(e, words),
+            Target::Point(_) | Target::Area(_) => {}
+        }
+    }
     fn condition<'a>(c: &'a Condition, words: &mut Vec<&'a str>) {
         match c {
             Condition::Screen(r) => reference(r, words),
             Condition::Value(v) => words.extend([v.of.as_str(), v.to.as_str()]),
+            Condition::Element(e) => element_check(e, words),
         }
     }
     for block in &flow.blocks {
         match &block.kind {
-            BlockKind::OpenApp { app, .. } => words.extend(app.as_deref()),
+            BlockKind::OpenApp {
+                app,
+                arguments,
+                environment,
+                ..
+            } => {
+                words.extend(app.as_deref());
+                words.extend(arguments.iter().map(String::as_str));
+                words.extend(environment.values().map(String::as_str));
+            }
             BlockKind::OpenFile { files, app, .. } => {
                 words.extend(files.iter().map(String::as_str));
                 words.extend(app.as_deref());
             }
-            BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => {
-                if let Target::Image(text) | Target::Description(text) = target {
-                    words.push(text);
-                }
+            BlockKind::Click { target: t, .. } | BlockKind::Hover { target: t, .. } => {
+                target(t, &mut words);
             }
             BlockKind::Drag { from, to, .. } => {
-                for target in [from, to] {
-                    if let Target::Image(text) | Target::Description(text) = target {
-                        words.push(text);
-                    }
-                }
+                target(from, &mut words);
+                target(to, &mut words);
             }
             BlockKind::Scroll { at, .. } => {
-                if let Some(Target::Image(text) | Target::Description(text)) = at {
-                    words.push(text);
+                if let Some(t) = at {
+                    target(t, &mut words);
                 }
             }
             BlockKind::Type { text, into, .. } => {
                 words.push(text);
-                if let Some(Target::Image(text) | Target::Description(text)) = into {
-                    words.push(text);
+                if let Some(t) = into {
+                    target(t, &mut words);
                 }
             }
             BlockKind::PressKeys { keys, .. } => words.push(keys),
             BlockKind::WaitFor { until, .. } => match until {
                 WaitUntil::Appears(r) | WaitUntil::Disappears(r) => reference(r, &mut words),
+                WaitUntil::Element(e) => element_check(e, &mut words),
                 WaitUntil::ScreenStable => {}
             },
-            BlockKind::Check { reference: r, .. } => reference(r, &mut words),
+            BlockKind::Check { of, .. } => match of {
+                CheckOf::Screen(r) => reference(r, &mut words),
+                CheckOf::Element(e) => element_check(e, &mut words),
+            },
             BlockKind::If {
                 condition: c,
                 else_if,

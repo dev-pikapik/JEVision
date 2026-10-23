@@ -182,7 +182,7 @@ struct BugReportSheet: View {
   }
 
   private func openGitSettings() {
-    UserDefaults.standard.set(SettingsTab.git.rawValue, forKey: SettingsTab.key)
+    Profile.current.defaults.set(SettingsTab.git.rawValue, forKey: SettingsTab.key)
     openSettings()
   }
 

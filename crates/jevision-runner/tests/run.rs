@@ -5,12 +5,12 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    AppStart, CiOrigin, DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage,
-    Modifiers, MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run,
-    RunControl, RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot,
-    ScrollDirection, ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage, VIDEO_FILE,
-    Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize,
-    describe_in, html_in, junit_xml_in, prune_videos,
+    AppStart, CiOrigin, DataRow, ElementNode, Event, Hands, HandsError, Judgement, Limit, Located,
+    MaskedImage, Modifiers, MouseButton, Openable, PauseReason, Point, Price, Question,
+    RetryVerdict, Run, RunControl, RunOptions, RunReport, Runner, ScreenHolder, ScreenLock,
+    Screenshot, ScrollDirection, ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage,
+    VIDEO_FILE, Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, WindowPosition,
+    WindowSize, describe_in, html_in, junit_xml_in, prune_videos,
 };
 
 // The tests read reports in English whatever language the machine runs in.
@@ -74,6 +74,8 @@ struct State {
     clipboard_files: Vec<String>,
     /// Put on the clipboard after the first look at it, as another application would.
     after_look: Option<String>,
+    /// What accessibility says about the window, a list per look; the last one stays.
+    elements: Vec<Vec<ElementNode>>,
 }
 
 impl Fake {
@@ -122,10 +124,22 @@ impl Fake {
 }
 
 impl Hands for Fake {
-    fn open_app(&self, app: &str, start: AppStart) -> Result<(), HandsError> {
+    fn open_app(
+        &self,
+        app: &str,
+        start: AppStart,
+        arguments: &[String],
+        environment: &HashMap<String, String>,
+    ) -> Result<(), HandsError> {
+        let suffix = if arguments.is_empty() && environment.is_empty() {
+            String::new()
+        } else {
+            let environment: std::collections::BTreeMap<_, _> = environment.iter().collect();
+            format!(" {arguments:?} {environment:?}")
+        };
         match start {
-            AppStart::AsUsual => self.note(format!("open {app}")),
-            AppStart::Fresh => self.note(format!("open {app} fresh")),
+            AppStart::AsUsual => self.note(format!("open {app}{suffix}")),
+            AppStart::Fresh => self.note(format!("open {app} fresh{suffix}")),
             AppStart::CleanHome { home } => {
                 let empty = std::fs::read_dir(&home).unwrap().next().is_none();
                 self.note(format!("open {app} in an empty home: {empty}"));
@@ -138,6 +152,14 @@ impl Hands for Fake {
             }
         }
         Ok(())
+    }
+    fn elements(&self, _: &str) -> Result<Vec<ElementNode>, HandsError> {
+        let mut s = self.state.lock().unwrap();
+        Ok(if s.elements.len() > 1 {
+            s.elements.remove(0)
+        } else {
+            s.elements.first().cloned().unwrap_or_default()
+        })
     }
     fn sandboxed(&self, _: &str) -> Result<bool, HandsError> {
         Ok(self.state.lock().unwrap().sandboxed)
@@ -4967,4 +4989,230 @@ fn a_lock_file_that_cannot_be_used_does_not_stop_the_test() {
     };
     let (run, _) = run_with(&p, &Fake::new(solid([1, 2, 3])), RunControl::new(), &broken);
     assert_eq!(run.report.verdict, Verdict::Passed);
+}
+
+/// An element of the window as accessibility reports it.
+fn node(role: &str, id: &str, title: &str, frame: (f64, f64, f64, f64)) -> ElementNode {
+    ElementNode {
+        role: role.to_owned(),
+        subrole: String::new(),
+        id: id.to_owned(),
+        title: title.to_owned(),
+        description: String::new(),
+        value: String::new(),
+        placeholder: String::new(),
+        enabled: true,
+        selected: false,
+        frame: jevision_core::Rect {
+            x: frame.0,
+            y: frame.1,
+            width: frame.2,
+            height: frame.3,
+        },
+    }
+}
+
+/// A window with a Save button, a name field holding `name` and two rows.
+fn form(name: &str, save_enabled: bool) -> Vec<ElementNode> {
+    vec![
+        node("AXWindow", "", "Edit", (0.0, 0.0, 1.0, 1.0)),
+        ElementNode {
+            enabled: save_enabled,
+            ..node("AXButton", "save", "Save", (0.5, 0.5, 0.25, 0.2))
+        },
+        ElementNode {
+            value: name.to_owned(),
+            ..node("AXTextField", "name", "", (0.1, 0.1, 0.5, 0.1))
+        },
+        node("AXRow", "", "", (0.0, 0.3, 1.0, 0.1)),
+        node("AXRow", "", "", (0.0, 0.4, 1.0, 0.1)),
+    ]
+}
+
+fn failure_text(report: &RunReport) -> String {
+    describe(report.attempts.last().unwrap().failure.as_ref().unwrap())
+}
+
+#[test]
+fn open_app_passes_arguments_and_environment_with_their_placeholders_filled() {
+    let p = Project::new();
+    p.write(
+        "jevision.environments.json",
+        r#"{"format":1,"environments":{"staging":{"HOST":"s.example.com"}}}"#,
+    )
+    .test(
+        r#""open":{"type":"openApp","resetState":true,
+                   "arguments":["--host","${env.HOST}","--password=${secret.ACME_PASSWORD}"],
+                   "environment":{"TOKEN":"${secret.ACME_PASSWORD}","MODE":"test"}}"#,
+        "open",
+        0,
+    );
+    let staging = RunOptions {
+        environment: Some("staging".into()),
+        ..options()
+    };
+    let hands = Fake::new(solid([0, 0, 0]));
+    let (run, events) = run_with(&p, &hands, RunControl::new(), &staging);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        [format!(
+            "open {APP} fresh [\"--host\", \"s.example.com\", \"--password={SECRET}\"] \
+             {{\"MODE\": \"test\", \"TOKEN\": \"{SECRET}\"}}"
+        )]
+    );
+    assert!(!outputs(&run, &events).contains(SECRET));
+}
+
+#[test]
+fn an_element_target_acts_on_the_middle_of_the_element() {
+    let p = Project::new();
+    p.test(
+        r#""save":{"type":"click","target":{"element":{"role":"button","title":"Save"}},"next":"name"},
+           "name":{"type":"type","text":"Ann","into":{"element":{"id":"name"}},"next":"row"},
+           "row":{"type":"hover","target":{"element":{"role":"row","index":1}}}"#,
+        "save",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form("", true)]);
+    let report = run(&p, &hands).report;
+    assert_eq!(
+        report.verdict,
+        Verdict::Passed,
+        "{:?}",
+        report.attempts[0].failure
+    );
+    // The window is 20 × 10 points: the button's middle is at (0.625, 0.6) of it.
+    let log = hands.log();
+    assert_eq!(log[0], "click Left 12.5 6");
+    assert!(log[1].starts_with("click Left 7 1.5"), "{log:?}");
+    assert_eq!(log.last().unwrap(), "hover 10 4.5");
+}
+
+#[test]
+fn an_element_that_is_missing_or_too_vague_stops_with_what_the_window_has() {
+    let p = Project::new();
+    p.test(
+        r#""open":{"type":"click","target":{"element":{"role":"button","title":"Open"}}}"#,
+        "open",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form("", true)]);
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.element.notFound");
+    assert_eq!(
+        failure_text(&report),
+        "Block “open”: no element in the window matches. Looked for: button “Open”.\n\
+         Similar ones in the window: button “Save” with id “save”."
+    );
+    assert!(hands.log().is_empty());
+
+    p.test(
+        r#""row":{"type":"click","target":{"element":{"role":"row"}}}"#,
+        "row",
+        0,
+    );
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.element.ambiguous");
+    assert_eq!(
+        failure_text(&report),
+        "Block “row”: 2 elements match, but the block needs one. Looked for: row. \
+         Found: row (index 0), row (index 1). Be more specific: add an id, a title or an index \
+         (0 is the first)."
+    );
+
+    let empty = Fake::new(solid([0, 0, 0]));
+    let report = run(&p, &empty).report;
+    assert_eq!(failure_code(&report), "run.element.notFound");
+    assert!(
+        failure_text(&report).contains("Accessibility sees no elements in this window"),
+        "{}",
+        failure_text(&report)
+    );
+}
+
+#[test]
+fn if_follows_the_state_of_an_element() {
+    let p = Project::new();
+    p.test(
+        r#""if":{"type":"if","element":{"id":"save","is":"enabled"},
+                 "elseIf":[{"element":{"id":"name","is":"valueEquals","to":"${secret.ACME_PASSWORD}"},"then":"secret"}],
+                 "then":"yes","else":"no"},
+           "yes":{"type":"pressKeys","keys":"y"},
+           "secret":{"type":"pressKeys","keys":"s"},
+           "no":{"type":"pressKeys","keys":"n"}"#,
+        "if",
+        0,
+    );
+    let enabled = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form("", true)]);
+    let report = run(&p, &enabled).report;
+    assert_eq!(enabled.log(), ["keys y"]);
+    let step = &report.attempts[0].steps[0];
+    assert_eq!(step.branch.as_deref(), Some("then"));
+    assert_eq!(step.branch_condition.as_deref(), Some("#save enabled"));
+
+    let typed = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form(SECRET, false)]);
+    let (secret_run, events) = run_with(&p, &typed, RunControl::new(), &options());
+    assert_eq!(typed.log(), ["keys s"]);
+    assert!(!outputs(&secret_run, &events).contains(SECRET));
+
+    let disabled = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form("Bo", false)]);
+    run(&p, &disabled);
+    assert_eq!(disabled.log(), ["keys n"]);
+}
+
+#[test]
+fn wait_for_an_element_looks_until_it_is_as_expected() {
+    let p = Project::new();
+    p.test(
+        r#""wait":{"type":"waitFor","until":{"element":{"role":"button","title":"Save","is":"enabled"}},"timeout":"5s"}"#,
+        "wait",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0]))
+        .with(|s| s.elements = vec![vec![], form("", false), form("", false), form("", true)]);
+    let report = run(&p, &hands).report;
+    assert_eq!(
+        report.verdict,
+        Verdict::Passed,
+        "{:?}",
+        report.attempts[0].failure
+    );
+    assert!(hands.state.lock().unwrap().elements.len() == 1);
+
+    p.test(
+        r#""wait":{"type":"waitFor","until":{"element":{"title":"Saved","is":"present"}},"timeout":"50ms"}"#,
+        "wait",
+        0,
+    );
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.waitFor.elementTimeout");
+    assert_eq!(
+        failure_text(&report),
+        "Block “wait”: waited 0.05 s, but the element didn’t become as expected. \
+         Element: element “Saved”. Expected: in the window. Actual: not in the window.\n\
+         Similar ones in the window: button “Save” with id “save”."
+    );
+}
+
+#[test]
+fn check_an_element_says_what_differs() {
+    let p = Project::new();
+    p.test(
+        r#""name":{"type":"check","element":{"id":"name","is":"valueContains","to":"Bo"},"next":"save"},
+           "save":{"type":"check","element":{"role":"button","is":"disabled"}}"#,
+        "name",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.elements = vec![form("Bob", true)]);
+    let report = run(&p, &hands).report;
+    assert_eq!(failure_code(&report), "run.element.state");
+    assert_eq!(
+        failure_text(&report),
+        "Block “save”: the element is not as expected. Element: button. Expected: disabled. \
+         Actual: enabled."
+    );
+    let steps = last_steps(&report);
+    assert_eq!(steps[0].status, StepStatus::Passed);
+    assert!(steps[1].after.is_some(), "the report shows the window");
 }

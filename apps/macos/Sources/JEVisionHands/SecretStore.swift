@@ -55,13 +55,14 @@ public enum SecretStore {
   }
 
   public static func save(_ value: String, for name: String, in service: String = tests) throws {
+    let service = Profile.current.keychainService(service)
     let data = Data(value.utf8)
-    var status = SecItemUpdate(query(name, service) as CFDictionary, [kSecValueData: data] as CFDictionary)
+    var status = SecItemUpdate(item(name, service) as CFDictionary, [kSecValueData: data] as CFDictionary)
     if status == errSecItemNotFound {
-      var item = query(name, service)
-      item[kSecValueData] = data
-      item[kSecAttrLabel] = "\(service): \(name)"
-      status = SecItemAdd(item as CFDictionary, nil)
+      var entry = item(name, service)
+      entry[kSecValueData] = data
+      entry[kSecAttrLabel] = "\(service): \(name)"
+      status = SecItemAdd(entry as CFDictionary, nil)
     }
     try check(status)
   }
@@ -78,7 +79,12 @@ public enum SecretStore {
     }
   }
 
+  /// The item of `name` in `service`, in this process's profile.
   private static func query(_ name: String, _ service: String) -> [CFString: Any] {
+    item(name, Profile.current.keychainService(service))
+  }
+
+  private static func item(_ name: String, _ service: String) -> [CFString: Any] {
     [kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: name]
   }
 }

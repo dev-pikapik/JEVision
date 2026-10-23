@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import UniformTypeIdentifiers
 
 /// The files that come with notes. They are copied next to the test, so that they move, are
@@ -11,7 +12,7 @@ enum NoteFiles {
 
   /// The size from which a file is large, in bytes; a megabyte is the million bytes Finder shows.
   static var largeSize: Int64 {
-    let megabytes = UserDefaults.standard.object(forKey: largeKey) as? Int ?? largeDefault
+    let megabytes = Profile.current.defaults.object(forKey: largeKey) as? Int ?? largeDefault
     return Int64(max(megabytes, 1)) * 1_000_000
   }
 

@@ -452,7 +452,7 @@ struct ReferenceEditor: View {
     let inherited = resolveAiChoice(settings: project.settings, task: .screen, block: AiChoice(provider: meaning.provider, model: ""))
     if !inherited.model.isEmpty { return inherited.model }
     return AISettings.provider(inherited.provider.isEmpty ? aiProvider : inherited.provider)
-      .map { AISettings(.standard).model(for: $0) } ?? ""
+      .map { AISettings.app.model(for: $0) } ?? ""
   }
 
   /// Why there is no model to show in the empty field; said under it, where the line can wrap.
@@ -538,7 +538,7 @@ struct ReferenceEditor: View {
           .fixedSize(horizontal: false, vertical: true)
         Spacer(minLength: 4)
         Button("Set Up AI…") {
-          UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+          Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
           openSettings()
         }
         .buttonStyle(.link)
@@ -552,8 +552,8 @@ struct ReferenceEditor: View {
   }
 }
 
-/// Where to click: an element found by its picture or by JEV from a description, a fixed point
-/// in the window, or the middle of an area.
+/// Where to click: an element found by its picture, by JEV from a description or by
+/// accessibility, a fixed point in the window, or the middle of an area.
 struct TargetEditor: View {
   @Binding var target: Target
   let field: String
@@ -562,7 +562,7 @@ struct TargetEditor: View {
   /// JEV has an API key; read from the Keychain when a description is shown, not on every redraw.
   @State private var finderReady = true
 
-  private enum Way { case look, description, position, area }
+  private enum Way { case look, description, element, position, area }
 
   private var way: Binding<Way> {
     Binding(
@@ -570,6 +570,7 @@ struct TargetEditor: View {
         switch target {
         case .image: .look
         case .description: .description
+        case .element: .element
         case .point: .position
         case .area: .area
         }
@@ -578,6 +579,7 @@ struct TargetEditor: View {
         switch $0 {
         case .look: target = .image("")
         case .description: target = .description("")
+        case .element: target = .element(ElementCheck.new.element)
         case .position: target = .point(Point(x: 0.5, y: 0.5))
         case .area: target = .area("")
         }
@@ -594,6 +596,12 @@ struct TargetEditor: View {
     Binding(
       get: { if case .description(let text) = target { text } else { "" } },
       set: { target = .description($0) })
+  }
+
+  private var element: Binding<ElementQuery> {
+    Binding(
+      get: { if case .element(let query) = target { query } else { ElementCheck.new.element } },
+      set: { target = .element($0) })
   }
 
   private var image: Binding<String> {
@@ -617,6 +625,7 @@ struct TargetEditor: View {
     Picker(selection: way) {
       Text("By Look").tag(Way.look)
       Text("By Description").tag(Way.description)
+      Text("By Accessibility").tag(Way.element)
       Text("By Position").tag(Way.position)
       Text("By Area").tag(Way.area)
     } label: {
@@ -640,7 +649,7 @@ struct TargetEditor: View {
         if !finderReady {
           Spacer(minLength: 4)
           Button("Set Up JEV…") {
-            UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
             openSettings()
           }
           .buttonStyle(.link)
@@ -648,6 +657,8 @@ struct TargetEditor: View {
       }
       .font(.callout)
       .task { finderReady = AISettings.provider(AISettings.finder).map(AISettings.hasKey) ?? false }
+    case .element:
+      ElementQueryEditor(query: element)
     case .position:
       PercentField(label: Text("From Left"), value: coordinate(\.x))
       PercentField(label: Text("From Top"), value: coordinate(\.y))

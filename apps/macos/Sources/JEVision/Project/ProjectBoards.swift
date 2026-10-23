@@ -1,6 +1,7 @@
 import AppKit
 import ImageIO
 import JEVisionCore
+import JEVisionHands
 import Observation
 
 /// The boards of the open project: `*.canvas` files in its boards folder, one of them in view.
@@ -36,7 +37,7 @@ final class ProjectBoards {
   nonisolated static let suffix = boardSuffix()
   nonisolated static let folderName = boardsFolder()
 
-  init(defaults: UserDefaults = .standard) {
+  init(defaults: UserDefaults = Profile.current.defaults) {
     self.defaults = defaults
   }
 

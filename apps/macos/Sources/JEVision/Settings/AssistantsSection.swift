@@ -111,7 +111,10 @@ struct AssistantsSection: View {
     if case .installed(let link) = tool.state() { command = link.path }
     var args = ["mcp"]
     if let root = project.rootURL { args += ["--project", root.path] }
-    let entry: [String: Any] = ["mcpServers": ["jevision": ["command": command, "args": args]]]
+    var server: [String: Any] = ["command": command, "args": args]
+    // The assistant of a separate profile reads that profile's settings and asks there too.
+    if let folder = Profile.current.folder { server["env"] = [Profile.variable: folder.path(percentEncoded: false)] }
+    let entry: [String: Any] = ["mcpServers": ["jevision": server]]
     let data = try? JSONSerialization.data(withJSONObject: entry, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     return data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
   }

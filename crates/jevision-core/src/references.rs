@@ -3,7 +3,7 @@
 
 use crate::issue::{Issue, Severity};
 use crate::validate::{placeholders, reference as validate_reference};
-use crate::{BlockKind, Condition, Flow, Reference, Target, ValueKind, WaitUntil};
+use crate::{BlockKind, CheckOf, Condition, Flow, Reference, Target, ValueKind, WaitUntil};
 use crate::{dark_variant, resolve_test};
 
 /// A block that uses a picture file.
@@ -94,10 +94,7 @@ fn compared<'a>(field: String, reference: &'a Reference) -> Named<'a> {
 }
 
 fn shown<'a>(field: String, condition: &'a Condition) -> Option<Named<'a>> {
-    match condition {
-        Condition::Screen(r) => Some(compared(field, r)),
-        Condition::Value(_) => None,
-    }
+    condition.reference().map(|r| compared(field, r))
 }
 
 /// Every picture a block names.
@@ -120,7 +117,10 @@ fn pictures(kind: &BlockKind) -> Vec<Named<'_>> {
             until: WaitUntil::Disappears(r),
             ..
         } => vec![compared("until.disappears".to_owned(), r)],
-        BlockKind::Check { reference, .. } => vec![compared("reference".to_owned(), reference)],
+        BlockKind::Check {
+            of: CheckOf::Screen(reference),
+            ..
+        } => vec![compared("reference".to_owned(), reference)],
         BlockKind::If {
             condition, else_if, ..
         } => {
@@ -186,7 +186,13 @@ pub fn set_reference_settings(
 
 fn reference_mut<'a>(kind: &'a mut BlockKind, field: &str) -> Option<&'a mut Reference> {
     let condition = match (kind, field) {
-        (BlockKind::Check { reference, .. }, "reference") => return Some(reference),
+        (
+            BlockKind::Check {
+                of: CheckOf::Screen(reference),
+                ..
+            },
+            "reference",
+        ) => return Some(reference),
         (
             BlockKind::WaitFor {
                 until: WaitUntil::Appears(r),
@@ -210,7 +216,7 @@ fn reference_mut<'a>(kind: &'a mut BlockKind, field: &str) -> Option<&'a mut Ref
     };
     match condition {
         Condition::Screen(r) => Some(r),
-        Condition::Value(_) => None,
+        Condition::Value(_) | Condition::Element(_) => None,
     }
 }
 

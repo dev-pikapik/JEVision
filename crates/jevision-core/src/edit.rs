@@ -4,11 +4,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS};
+use crate::element::{ElementCheck, ElementState};
 use crate::model::{
-    BODY, Block, BlockKind, ClipboardAction, Compare, Condition, DEFAULT_DATE_FORMAT, ELSE, ElseIf,
-    ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NEXT, Reference,
-    ScriptLanguage, ScrollDirection, ScrollUnit, THEN, Target, ValueCheck, ValueTest, WaitUntil,
-    else_if_index,
+    BODY, Block, BlockKind, CheckOf, ClipboardAction, Compare, Condition, DEFAULT_DATE_FORMAT,
+    ELSE, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NEXT,
+    Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN, Target, ValueCheck, ValueTest,
+    WaitUntil, else_if_index,
 };
 
 /// How far a new scroll block scrolls, in lines.
@@ -39,6 +40,8 @@ impl BlockKind {
                 reset_state: false,
                 window_size: None,
                 window_position: None,
+                arguments: Vec::new(),
+                environment: HashMap::new(),
                 next: None,
             },
             "openFile" => Self::OpenFile {
@@ -98,7 +101,7 @@ impl BlockKind {
                 next: None,
             },
             "check" => Self::Check {
-                reference: reference(),
+                of: CheckOf::Screen(reference()),
                 next: None,
             },
             "if" => Self::If {
@@ -190,8 +193,8 @@ impl BlockKind {
     }
 
     /// Adds a condition to an `if`, checked after all the others. Until it is linked elsewhere,
-    /// its way out leads where `else` does. After a value check it checks the same value, so
-    /// that each way out can stand for one answer. `false` for other blocks.
+    /// its way out leads where `else` does. After a value or element check it checks the same
+    /// value or element, so that each way out can stand for one answer. `false` for other blocks.
     pub fn add_condition(&mut self) -> bool {
         let Self::If {
             condition,
@@ -208,6 +211,14 @@ impl BlockKind {
                 of: v.of.clone(),
                 is: ValueTest::Equals,
                 to: String::new(),
+            }),
+            Condition::Element(e) => Condition::Element(ElementCheck {
+                element: e.element.clone(),
+                is: match &e.is {
+                    is if is.text().is_some() => is.with_text(String::new()),
+                    ElementState::Present => ElementState::Absent,
+                    _ => ElementState::Present,
+                },
             }),
             Condition::Screen(_) => Condition::Screen(empty_reference()),
         };

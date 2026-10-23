@@ -49,17 +49,22 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   // MARK: Apps
 
-  public func openApp(app: String, start: AppStart) throws(HandsError) {
+  public func openApp(
+    app: String, start: AppStart, arguments: [String] = [], environment: [String: String] = [:]
+  ) throws(HandsError) {
     let url = try appURL(app)
     if start != .asUsual, !terminate(Self.runningApps(app)), !isCancelled() { throw .StillRunning(app: app) }
     let running: NSRunningApplication?
     switch start {
-    case .asUsual: running = try launch(url)
-    case .fresh: running = try launch(url, arguments: Self.forgetLastSession)
+    case .asUsual: running = try launch(url, arguments: arguments, environment: environment, newInstance: Self.startsCopy(app))
+    case .fresh: running = try launch(url, arguments: Self.forgetLastSession + arguments, environment: environment, newInstance: Self.startsCopy(app))
     case .cleanHome(let home):
       // A new copy, so one that is still quitting can't take the launch with the real home.
+      var isolatedEnvironment = environment
+      isolatedEnvironment["HOME"] = home
+      isolatedEnvironment["CFFIXED_USER_HOME"] = home
       running = try launch(
-        url, arguments: Self.forgetLastSession, environment: ["HOME": home, "CFFIXED_USER_HOME": home],
+        url, arguments: Self.forgetLastSession + arguments, environment: isolatedEnvironment,
         newInstance: true)
     }
     waitForWindow(running.map { [$0] } ?? Self.runningApps(app))
@@ -96,11 +101,11 @@ public final class MacHands: Hands, @unchecked Sendable {
       groups[opener, default: []].append(url)
     }
     for (opener, urls) in groups {
-      let id = Bundle(url: opener)?.bundleIdentifier
+      let id = app ?? Bundle(url: opener)?.bundleIdentifier
       let wasRunning = !newInstance && id.map { !Self.runningApps($0).isEmpty } == true
       let config = NSWorkspace.OpenConfiguration()
       config.activates = true
-      config.createsNewApplicationInstance = newInstance
+      config.createsNewApplicationInstance = newInstance || app.map(Self.startsCopy) == true
       let result = Self.wait { done in
         NSWorkspace.shared.open(urls, withApplicationAt: opener, configuration: config) { app, error in
           done((app?.processIdentifier, error?.localizedDescription))
@@ -180,6 +185,14 @@ public final class MacHands: Hands, @unchecked Sendable {
   }
 
   // MARK: Screen
+
+  /// The elements of the app's front window and of its open menus, from accessibility.
+  public func elements(app: String) throws(HandsError) -> [ElementNode] {
+    guard AXIsProcessTrusted() else { throw .PermissionDenied(permission: "accessibility") }
+    let apps = Self.runningApps(app)
+    guard let front = Self.frontWindow(of: apps) else { throw .NoWindow(app: app) }
+    return Accessibility.elements(pids: Set(apps.map(\.processIdentifier)), window: front.bounds)
+  }
 
   public func capture(app: String) throws(HandsError) -> Screenshot {
     let (image, scale, window) = try captureWindow(app)
@@ -503,12 +516,28 @@ public final class MacHands: Hands, @unchecked Sendable {
   // MARK: Helpers
 
   private func appURL(_ app: String) throws(HandsError) -> URL {
+    if let copy = AppCopies.copy(of: app) { return copy }
     guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) else { throw .AppNotFound(app: app) }
     return url
   }
 
+  /// The processes of `app`: those started from its copy when a run uses one.
   public static func runningApps(_ app: String) -> [NSRunningApplication] {
-    NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
+    guard let copy = AppCopies.copy(of: app) else {
+      return NSRunningApplication.runningApplications(withBundleIdentifier: app).filter { !$0.isTerminated }
+    }
+    // Asked by id rather than taken from NSWorkspace's list, which changes only while the main
+    // run loop runs: the command line tool's doesn't, and would never see the copy start.
+    let ids = AppCopies.identifiers(of: app, copy: copy)
+    return ids.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:)).filter {
+      !$0.isTerminated && AppCopies.isApp(app, bundle: $0.bundleURL, identifier: $0.bundleIdentifier, copy: copy)
+    }
+  }
+
+  /// Whether opening `app` starts a process of its own: a copy that isn't running yet, which
+  /// would otherwise bring forward the installed app with the same id.
+  private static func startsCopy(_ app: String) -> Bool {
+    AppCopies.copy(of: app) != nil && runningApps(app).isEmpty
   }
 
   /// Makes an app start with empty windows instead of the ones it had when it last quit.
@@ -573,16 +602,26 @@ public final class MacHands: Hands, @unchecked Sendable {
     windows.first { $0.bounds.width >= 100 && $0.bounds.height >= 40 } ?? windows.first
   }
 
-  /// The apps' ordinary windows on screen, front to back; bounds in global points, top-left origin.
+  /// The apps' windows a person works in on screen, front to back; bounds in global points,
+  /// top-left origin.
   static func windows(of apps: [NSRunningApplication]) -> [(id: CGWindowID, bounds: CGRect, title: String?)] {
     let pids = Set(apps.map(\.processIdentifier))
     guard !pids.isEmpty,
       let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
         as? [[String: Any]]
     else { return [] }
-    return list.compactMap { info in
+    return windows(of: pids, in: list)
+  }
+
+  /// Layers of the windows a person works in: ordinary windows, and the panels that wait for an
+  /// answer over all of them, such as Open and Save.
+  static let workLayers: Set<Int> = [Int(CGWindowLevelForKey(.normalWindow)), Int(CGWindowLevelForKey(.modalPanelWindow))]
+
+  /// The windows of `pids` in `list`, `CGWindowListCopyWindowInfo` output, that a person works in.
+  static func windows(of pids: Set<pid_t>, in list: [[String: Any]]) -> [(id: CGWindowID, bounds: CGRect, title: String?)] {
+    list.compactMap { info in
       guard let pid = info[kCGWindowOwnerPID as String] as? pid_t, pids.contains(pid),
-        info[kCGWindowLayer as String] as? Int == 0,
+        let layer = info[kCGWindowLayer as String] as? Int, workLayers.contains(layer),
         let id = info[kCGWindowNumber as String] as? CGWindowID,
         let dict = info[kCGWindowBounds as String] as? NSDictionary,
         let bounds = CGRect(dictionaryRepresentation: dict), bounds.width > 1, bounds.height > 1

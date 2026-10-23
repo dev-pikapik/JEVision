@@ -258,6 +258,24 @@ struct ScheduleAgentsTests {
     #expect(throws: (any Error).self) { try agents.install(try scratch(), schedules: [daily("Nightly", at: 3, 0)]) }
     #expect(calls.list.isEmpty)
   }
+
+  @Test func aSeparateProfileLeavesThePersonsJobsAlone() throws {
+    let home = try scratch()
+    let project = try scratch()
+    let calls = Calls()
+    var agents = try agents(in: home, calls: calls)
+    let schedules = [daily("Nightly", at: 3, 0)]
+    try agents.install(project, schedules: schedules)
+    calls.list = []
+
+    agents.isAvailable = false
+    #expect(agents.state(of: project, schedules: schedules) == (false, false))
+    #expect(agents.projects().isEmpty)
+    #expect(throws: (any Error).self) { try agents.install(project, schedules: [daily("Early", at: 5, 0)]) }
+    try agents.remove(project)
+    #expect(calls.list.isEmpty)
+    #expect(FileManager.default.fileExists(atPath: agents.file(for: project).path))
+  }
 }
 
 @MainActor

@@ -8,6 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+jevision-core.workspace = true
 jevision-l10n.workspace = true
 base64 = "0.23"
 libc = "0.2"

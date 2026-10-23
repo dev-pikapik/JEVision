@@ -578,7 +578,7 @@ extension Recording {
       Reference(image: try path(picture), compare: .similar(threshold: minSimilarity), area: area, ignore: [], hide: [])
     }
     return switch step {
-    case .openApp: .openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, next: nil)
+    case .openApp: .openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, arguments: [], environment: [:], next: nil)
     case .click(let t, let button, let double, let modifiers):
       .click(target: try target(t), button: button, double: double, modifiers: modifiers, waitForChange: false, next: nil)
     case .drag(let from, let to, let button, let modifiers):
@@ -589,7 +589,7 @@ extension Recording {
     case .secret(let name, let into): .type(text: "${secret.\(name)}", into: try into.map(target), next: nil)
     case .pressKeys(let keys): .pressKeys(keys: keys, next: nil)
     case .waitFor(let picture): .waitFor(until: .appears(try reference(picture)), timeoutMs: waitTimeoutMs, next: nil)
-    case .check(let picture, let area): .check(reference: try reference(picture, area: area), next: nil)
+    case .check(let picture, let area): .check(of: .screen(try reference(picture, area: area)), next: nil)
     case .wait: .pause(durationMs: manualWaitMs, next: nil)
     }
   }

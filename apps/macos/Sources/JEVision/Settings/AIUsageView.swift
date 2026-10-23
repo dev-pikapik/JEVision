@@ -125,7 +125,7 @@ struct AIUsageSections: View {
         .fixedSize(horizontal: false, vertical: true)
     }
     .onChange(of: prices) {
-      AISettings.save(prices: prices, in: .standard)
+      AISettings.save(prices: prices, in: Profile.current.defaults)
       version += 1
     }
   }

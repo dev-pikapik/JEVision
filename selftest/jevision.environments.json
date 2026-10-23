@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "default": "selftest",
+  "environments": {
+    "selftest": {
+      "SELFTEST_EXAMPLES": "",
+      "SELFTEST_PROFILES": "",
+      "SELFTEST_REPO": "",
+      "SELFTEST_WORK": ""
+    }
+  }
+}

@@ -16,6 +16,7 @@ struct RunCommand {
   }
 
   func execute() -> ExitStatus {
+    AppCopies.use(request.appCopies.mapValues { URL(filePath: $0, directoryHint: .isDirectory) })
     do {
       return finish(try runTests())
     } catch {

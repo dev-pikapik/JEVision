@@ -15,7 +15,20 @@ struct Keys {
 }
 
 impl Hands for Keys {
-    fn open_app(&self, _: &str, _: bool) -> Result<(), HandsError> {
+    fn sandboxed(&self, _: &str) -> Result<bool, HandsError> {
+        Ok(false)
+    }
+    fn elements(&self, _: &str) -> Result<Vec<jevision_core::ElementNode>, HandsError> {
+        Ok(Vec::new())
+    }
+
+    fn open_app(
+        &self,
+        _: &str,
+        _: jevision_runner::AppStart,
+        _: &[String],
+        _: &std::collections::HashMap<String, String>,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn arrange_window(

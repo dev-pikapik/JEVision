@@ -4,11 +4,13 @@
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::path::Path;
 
+use crate::element::{ELEMENT_ROLES, ElementCheck, ElementQuery, ElementRole, ElementState};
 use crate::issue::Issue;
 use crate::model::{
-    AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, ClipboardAction, Compare,
-    Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, NoteAnchor, Point, Rect,
-    Reference, ScriptInput, TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest, format_duration,
+    AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, CheckOf, ClipboardAction,
+    Compare, Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, NoteAnchor,
+    Point, Rect, Reference, ScriptInput, TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest,
+    WaitUntil, format_duration,
 };
 use crate::notes::is_safe_name;
 use crate::package::{Version, is_block_path, package_of_path};
@@ -274,7 +276,10 @@ fn kind_fields(kind: &BlockKind) -> Vec<KindField<'_>> {
                 )
             })
             .collect(),
-        BlockKind::Check { reference, .. } => image("reference.image", &reference.image),
+        BlockKind::Check {
+            of: CheckOf::Screen(reference),
+            ..
+        } => image("reference.image", &reference.image),
         BlockKind::WaitFor {
             until: Appears(r), ..
         } => image("until.appears.image", &r.image),
@@ -321,7 +326,11 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     let mut saved_by_check = HashSet::new();
     let mut read = Vec::new();
     for &b in &blocks {
-        if let BlockKind::Check { reference: r, .. } = &b.kind {
+        if let BlockKind::Check {
+            of: CheckOf::Screen(r),
+            ..
+        } = &b.kind
+        {
             if is_relative_path(&r.image)
                 && placeholders(&r.image).is_empty()
                 && !dir.join(&r.image).exists()
@@ -556,9 +565,71 @@ pub(crate) fn placeholder_fields(kind: &BlockKind) -> Vec<(String, &str)> {
     fields
 }
 
+/// The texts of an element a block picks: `{at}element.id` and `{at}element.title`.
+fn element_fields<'a>(at: &str, e: &'a ElementQuery) -> Vec<(String, &'a str)> {
+    vec![
+        (format!("{at}element.id"), e.id.as_str()),
+        (format!("{at}element.title"), e.title.as_str()),
+    ]
+}
+
+/// [`element_fields`] and the text the element is compared with.
+fn element_check_fields<'a>(at: &str, c: &'a ElementCheck) -> Vec<(String, &'a str)> {
+    let mut fields = element_fields(at, &c.element);
+    fields.extend(c.is.text().map(|to| (format!("{at}element.to"), to)));
+    fields
+}
+
+fn target_fields<'a>(field: &str, t: Option<&'a Target>) -> Vec<(String, &'a str)> {
+    match t {
+        Some(Target::Element(e)) => element_fields(&format!("{field}."), e),
+        _ => Vec::new(),
+    }
+}
+
 fn text_fields(kind: &BlockKind) -> Vec<(String, &str)> {
     match kind {
-        BlockKind::Type { text, .. } => vec![("text".to_owned(), text.as_str())],
+        BlockKind::OpenApp {
+            arguments,
+            environment,
+            ..
+        } => {
+            let mut fields: Vec<_> = arguments
+                .iter()
+                .enumerate()
+                .map(|(i, a)| (format!("arguments.{i}"), a.as_str()))
+                .collect();
+            let mut given: Vec<(&String, &String)> = environment.iter().collect();
+            given.sort();
+            fields.extend(
+                given
+                    .into_iter()
+                    .map(|(name, value)| (format!("environment.{name}"), value.as_str())),
+            );
+            fields
+        }
+        BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => {
+            target_fields("target", Some(target))
+        }
+        BlockKind::Drag { from, to, .. } => {
+            let mut both = target_fields("from", Some(from));
+            both.extend(target_fields("to", Some(to)));
+            both
+        }
+        BlockKind::Scroll { at, .. } => target_fields("at", at.as_ref()),
+        BlockKind::Type { text, into, .. } => {
+            let mut fields = vec![("text".to_owned(), text.as_str())];
+            fields.extend(target_fields("into", into.as_ref()));
+            fields
+        }
+        BlockKind::WaitFor {
+            until: WaitUntil::Element(e),
+            ..
+        } => element_check_fields("until.", e),
+        BlockKind::Check {
+            of: CheckOf::Element(e),
+            ..
+        } => element_check_fields("", e),
         BlockKind::OpenFile { files, .. } => files
             .iter()
             .enumerate()
@@ -585,14 +656,14 @@ fn text_fields(kind: &BlockKind) -> Vec<(String, &str)> {
                     .enumerate()
                     .map(|(i, c)| (format!("elseIf.{i}."), &c.condition)),
             );
-            all.filter_map(|(at, c)| match c {
-                Condition::Value(v) => Some([
+            all.flat_map(|(at, c)| match c {
+                Condition::Value(v) => vec![
                     (format!("{at}value.of"), v.of.as_str()),
                     (format!("{at}value.to"), v.to.as_str()),
-                ]),
-                Condition::Screen(_) => None,
+                ],
+                Condition::Element(e) => element_check_fields(&at, e),
+                Condition::Screen(_) => Vec::new(),
             })
-            .flatten()
             .collect()
         }
         BlockKind::Script { inputs, .. } => inputs
@@ -767,9 +838,17 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             app,
             window_size,
             window_position,
+            environment,
             ..
         } => {
             app_id(id, app.as_deref(), out);
+            let mut names: Vec<&String> = environment.keys().collect();
+            names.sort();
+            for name in names.into_iter().filter(|n| !is_identifier(n)) {
+                out.push(
+                    err("flow.name.invalid", &format!("environment.{name}")).with("value", name),
+                );
+            }
             for (field, side) in window_size.iter().flat_map(|s| {
                 [
                     ("windowSize.width", s.width),
@@ -816,6 +895,7 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 (Target::Description(a), Target::Description(b)) => {
                     !a.trim().is_empty() && a.trim() == b.trim()
                 }
+                (Target::Element(a), Target::Element(b)) => !a.is_empty() && a == b,
                 _ => false,
             };
             if same {
@@ -852,6 +932,7 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             match until {
                 Appears(r) => reference(id, "until.appears", r, out),
                 Disappears(r) => reference(id, "until.disappears", r, out),
+                Element(e) => element_check(id, "until.element", e, out),
                 ScreenStable => {}
             }
             if !(1..=MAX_TIMEOUT_MS).contains(timeout_ms) {
@@ -871,7 +952,10 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 );
             }
         }
-        BlockKind::Check { reference: r, .. } => reference(id, "reference", r, out),
+        BlockKind::Check { of, .. } => match of {
+            CheckOf::Screen(r) => reference(id, "reference", r, out),
+            CheckOf::Element(e) => element_check(id, "element", e, out),
+        },
         BlockKind::If {
             condition: first,
             else_if,
@@ -890,11 +974,13 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                             || matches!(&r.compare, Compare::Meaning { expect, .. } if !expect.trim().is_empty())
                     }
                     Condition::Value(v) => !v.of.is_empty(),
+                    Condition::Element(e) => !e.element.is_empty(),
                 };
                 if filled && earlier.into_iter().any(|e| *e == case.condition) {
                     let field = match case.condition {
                         Condition::Screen(_) => "reference",
                         Condition::Value(_) => "value",
+                        Condition::Element(_) => "element",
                     };
                     out.push(
                         Issue::warning("flow.if.sameCondition")
@@ -1107,8 +1193,41 @@ fn condition(block: &str, at: &str, c: &Condition, out: &mut Vec<Issue>) {
             }
             return;
         }
+        Condition::Element(e) => return element_check(block, &format!("{at}element"), e, out),
     };
     reference(block, &format!("{at}reference"), r, out);
+}
+
+/// An element is picked by at least one of its id, kind and label, and the kind is one a test
+/// can name.
+fn element(block: &str, field: &str, e: &ElementQuery, out: &mut Vec<Issue>) {
+    let issue =
+        |code: &str, field: String| Issue::error(code).with("block", block).with("field", field);
+    if e.is_empty() {
+        out.push(issue("flow.element.empty", field.to_owned()));
+    }
+    if !e.role.is_empty() && ElementRole::named(&e.role).is_none() {
+        let allowed: Vec<&str> = ELEMENT_ROLES.iter().map(|r| r.name).collect();
+        out.push(
+            issue("flow.field.value", format!("{field}.role"))
+                .with("value", &e.role)
+                .with("allowed", allowed.join(", ")),
+        );
+    }
+}
+
+/// [`element`], and a text to look for in the value or label.
+fn element_check(block: &str, field: &str, c: &ElementCheck, out: &mut Vec<Issue>) {
+    element(block, field, &c.element, out);
+    if let ElementState::ValueContains(to) | ElementState::TitleContains(to) = &c.is
+        && to.is_empty()
+    {
+        out.push(
+            Issue::error("flow.field.empty")
+                .with("block", block)
+                .with("field", format!("{field}.to")),
+        );
+    }
 }
 
 /// The text a greater-or-less test compares with when it is written out in full and is no
@@ -1281,6 +1400,7 @@ fn target(block: &str, field: &str, t: &Target, out: &mut Vec<Issue>) {
                 );
             }
         }
+        Target::Element(e) => element(block, &format!("{field}.element"), e, out),
     }
 }
 

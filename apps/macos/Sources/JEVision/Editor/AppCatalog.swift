@@ -130,6 +130,7 @@ private struct AppList: View {
     VStack(spacing: 0) {
       TextField(text: $query, prompt: Text("Search apps")) { Text("Search apps") }
         .textFieldStyle(.roundedBorder)
+        .accessibilityIdentifier(AccessibilityID.AppPicker.search)
         .padding(10)
         .onSubmit { if let first = highlighted ?? matches.first?.bundleID { choose(first) } }
       List(selection: $highlighted) {
@@ -150,6 +151,7 @@ private struct AppList: View {
           .onTapGesture { choose(app.bundleID) }
           .accessibilityAddTraits(.isButton)
           .accessibilityAction { choose(app.bundleID) }
+          .accessibilityIdentifier(AccessibilityID.AppPicker.app)
         }
       }
       .overlay {

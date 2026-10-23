@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "name": "Start JEVision",
+  "description": "Starts the copy of JEVision under test in English, with a profile of its own: the folder named profile in the profiles of the self-test, empty at its first start. onboardingDone YES starts it as if the welcome window had been closed before, NO shows the welcome window as at the first launch.",
+  "app": "io.github.dev-pikapik.jevision",
+  "start": "open",
+  "blocks": {
+    "open": {
+      "type": "openApp",
+      "resetState": true,
+      "arguments": ["-AppleLanguages", "(en)", "-onboardingDone", "${input.onboardingDone}"],
+      "environment": { "JEVISION_PROFILE": "${env.SELFTEST_PROFILES}/${input.profile}" }
+    }
+  }
+}

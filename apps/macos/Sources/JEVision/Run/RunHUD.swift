@@ -15,7 +15,8 @@ final class GlassPanel {
 
   /// `height` defaults to what `content` needs.
   init(_ content: some View, width: Double, height: Double? = nil) {
-    let view = FirstMouseHostingView(rootView: content.environment(\.controlActiveState, .key))
+    let view = FirstMouseHostingView(
+      rootView: content.environment(\.controlActiveState, .key).defaultAppStorage(Profile.current.defaults))
     size = NSSize(width: width, height: height ?? view.fittingSize.height)
     panel = HUDPanel(
       contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,

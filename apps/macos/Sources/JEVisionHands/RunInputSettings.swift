@@ -18,10 +18,7 @@ public struct RunInputSettings: Equatable, Sendable {
   public init() {}
 
   /// The app's settings, from the app or from the `jevision` tool.
-  public static var app: RunInputSettings {
-    let own = Bundle.main.bundleIdentifier == AISettings.appDomain
-    return RunInputSettings(own ? .standard : UserDefaults(suiteName: AISettings.appDomain) ?? .standard)
-  }
+  public static var app: RunInputSettings { RunInputSettings(Profile.current.appDefaults) }
 
   public init(_ defaults: UserDefaults) {
     pausesOnMouse = defaults.object(forKey: Self.pausesOnMouseKey) as? Bool ?? true

@@ -1,7 +1,7 @@
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
-@main
 struct JEVisionApp: App {
   @State private var project: ProjectStore
   @State private var permissions = PermissionsMonitor()
@@ -48,6 +48,7 @@ struct JEVisionApp: App {
     Window("JEVision", id: SceneID.main) {
       MainView(appDelegate: appDelegate)
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
         .environment(permissions)
         .environment(runs)
@@ -60,6 +61,7 @@ struct JEVisionApp: App {
     Window("Welcome to JEVision", id: SceneID.onboarding) {
       OnboardingView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(permissions)
         .environment(project)
         .environment(records)
@@ -73,6 +75,7 @@ struct JEVisionApp: App {
     Window("Command Line Tool", id: SceneID.commandLineTool) {
       CommandLineToolView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
     }
     .windowResizability(.contentSize)
     .defaultPosition(.center)
@@ -81,6 +84,7 @@ struct JEVisionApp: App {
     Window("Commit Changes", id: SceneID.commit) {
       CommitView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
     }
     .defaultSize(width: 960, height: 640)
@@ -90,6 +94,7 @@ struct JEVisionApp: App {
     Window("Areas Always Hidden", id: SceneID.hiddenAreas) {
       ProjectHideEditor()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
     }
     .defaultPosition(.center)
@@ -98,6 +103,7 @@ struct JEVisionApp: App {
     Window("Statistics", id: SceneID.statistics) {
       StatisticsView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
     }
     .defaultSize(width: 960, height: 760)
@@ -106,6 +112,7 @@ struct JEVisionApp: App {
     Window("Pull Requests", id: SceneID.pullRequests) {
       PullRequestsView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
     }
     .defaultSize(width: 1040, height: 680)
@@ -114,6 +121,7 @@ struct JEVisionApp: App {
     Settings {
       SettingsView()
         .appLocale()
+        .defaultAppStorage(Profile.current.defaults)
         .environment(project)
         .environment(permissions)
         .environment(remote)

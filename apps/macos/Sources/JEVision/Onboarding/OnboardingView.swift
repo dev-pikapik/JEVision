@@ -7,6 +7,15 @@ struct OnboardingView: View {
 
   private enum Step: Int, CaseIterable {
     case welcome, permissions, ai, firstTest
+
+    var accessibilityID: String {
+      switch self {
+      case .welcome: AccessibilityID.Onboarding.welcome
+      case .permissions: AccessibilityID.Onboarding.permissions
+      case .ai: AccessibilityID.Onboarding.ai
+      case .firstTest: AccessibilityID.Onboarding.firstTest
+      }
+    }
   }
 
   @AppStorage(doneKey) private var done = false
@@ -34,6 +43,8 @@ struct OnboardingView: View {
         case .firstTest: FirstTestStep(app: $app, myTests: project.rootURL == nil ? project.myTestsName : nil, record: recordFirstTest, runDemo: runDemo)
         }
       }
+      .accessibilityElement(children: .contain)
+      .accessibilityIdentifier(step.accessibilityID)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .transition(reduceMotion ? .opacity : .push(from: .trailing))
       bottomBar
@@ -54,9 +65,11 @@ struct OnboardingView: View {
         if step == .welcome {
           Button("Skip", action: finish)
             .keyboardShortcut(.cancelAction)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.skip)
         } else {
           Button("Back", systemImage: "chevron.backward") { go(to: Step(rawValue: step.rawValue - 1) ?? .welcome) }
             .keyboardShortcut("[", modifiers: .command)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.back)
         }
       }
       .buttonStyle(.glass)
@@ -69,25 +82,32 @@ struct OnboardingView: View {
         case .welcome:
           Button("Set Up Step by Step") { go(to: .permissions) }
             .buttonStyle(.glass)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.next)
         case .permissions where monitor.allGranted && wantsDemo:
           Button("Run the Demo Test", systemImage: "play.fill", action: runDemo)
             .buttonStyle(.glassProminent)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.runDemo)
         case .permissions where monitor.allGranted:
           Button("Continue") { go(to: .ai) }
             .buttonStyle(.glassProminent)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.next)
         case .permissions:
           Button("Later") { go(to: .ai) }
             .buttonStyle(.glass)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.next)
         case .ai where aiProvider.isEmpty:
           Button("Skip") { go(to: .firstTest) }
             .buttonStyle(.glass)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.next)
         case .ai:
           Button("Continue") { go(to: .firstTest) }
             .buttonStyle(.glassProminent)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.next)
         case .firstTest:
           Button("Skip", action: finish)
             .buttonStyle(.glass)
             .keyboardShortcut(.cancelAction)
+            .accessibilityIdentifier(AccessibilityID.Onboarding.skip)
         }
       }
       .keyboardShortcut(step == .welcome ? nil : .defaultAction)

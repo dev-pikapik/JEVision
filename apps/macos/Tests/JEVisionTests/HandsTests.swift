@@ -194,6 +194,23 @@ struct FrontWindowTests {
     #expect(MacHands.overlays(above: 5, bounds: finder, pids: [1], in: list) == [8])
     #expect(MacHands.overlays(above: 8, bounds: finder, pids: [1], in: list) == [])
   }
+
+  @Test func anOpenPanelIsAWindowToWorkIn() {
+    func info(_ id: Int, pid: Int, layer: Int) -> [String: Any] {
+      [
+        kCGWindowNumber as String: CGWindowID(id), kCGWindowOwnerPID as String: pid_t(pid), kCGWindowLayer as String: layer,
+        kCGWindowBounds as String: CGRect(x: 100, y: 100, width: 600, height: 400).dictionaryRepresentation,
+      ]
+    }
+    let list = [
+      info(9, pid: 1, layer: 101),  // an open menu
+      info(8, pid: 1, layer: 8),  // the Open panel
+      info(7, pid: 2, layer: 0),  // another app's window
+      info(5, pid: 1, layer: 0),  // the window behind the panel
+      info(4, pid: 1, layer: 3),  // a floating palette
+    ]
+    #expect(MacHands.windows(of: [1], in: list).map(\.id) == [8, 5])
+  }
 }
 
 struct KeyStrokeTests {

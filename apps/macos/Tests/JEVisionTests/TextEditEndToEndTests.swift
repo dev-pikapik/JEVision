@@ -6,7 +6,7 @@ import Testing
 @testable import JEVisionHands
 
 /// Runs examples/textedit for real: TextEdit opens on the screen, gets typed into, is checked
-/// against its reference image and quits. Needs a logged-in session and Screen Recording and
+/// against its reference image, or by what it tells accessibility, and quits. Needs a logged-in session and Screen Recording and
 /// Accessibility for the app the tests run from, so it runs only when asked to.
 @Suite(
   .serialized,
@@ -56,6 +56,22 @@ struct TextEditEndToEndTests {
     #expect(junit.contains("<failure"))
   }
 
+  @Test func findsTheTextAreaAndChecksItsTextByAccessibility() throws {
+    let project = try Self.copyOfExample()
+    defer {
+      Self.quitTextEdit()
+      try? FileManager.default.removeItem(at: project)
+    }
+
+    let run = try Self.run(project, test: "add-a-line-by-accessibility.flow.json")
+    #expect(run.report.verdict == .passed)
+    #expect(run.report.baselinesCreated.isEmpty)
+    let steps = try #require(run.report.attempts.last?.steps)
+    #expect(steps.first { $0.block == "check" }?.status == .passed)
+    let text = try String(contentsOf: project.appending(path: "note.txt"), encoding: .utf8)
+    #expect(!text.contains("eggs"), "the run typed into a copy of the note")
+  }
+
   // MARK: Helpers
 
   private struct Finished {
@@ -76,7 +92,7 @@ struct TextEditEndToEndTests {
     return project
   }
 
-  private static func run(_ project: URL) throws -> Finished {
+  private static func run(_ project: URL, test: String = test) throws -> Finished {
     let run = TestRun()
     let listener = Listener()
     run.start(

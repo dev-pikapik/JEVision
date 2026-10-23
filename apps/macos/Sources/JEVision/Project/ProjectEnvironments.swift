@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import Observation
 
 /// The environments of the open project, such as Staging and Production, and the one runs use.
@@ -21,7 +22,7 @@ final class ProjectEnvironments {
 
   static let selectionKey = "selectedEnvironments"
 
-  init(defaults: UserDefaults = .standard) {
+  init(defaults: UserDefaults = Profile.current.defaults) {
     self.defaults = defaults
   }
 
@@ -135,7 +136,7 @@ final class ProjectEnvironments {
 
   /// The environments of `project` and the one chosen for it on this Mac: the saved choice, or
   /// else the file's default, or else the first one.
-  static func read(_ project: URL, defaults: UserDefaults = .standard) -> Snapshot {
+  static func read(_ project: URL, defaults: UserDefaults = Profile.current.defaults) -> Snapshot {
     do {
       let path = project.path(percentEncoded: false)
       let all = try projectEnvironments(project: path)

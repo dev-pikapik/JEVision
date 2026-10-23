@@ -12,7 +12,7 @@ enum BlockSummary {
 
   private static func plainText(_ kind: BlockKind, appName: (String) -> String, testApp: String?) -> String {
     switch kind {
-    case .openApp(let app, _, _, _, _):
+    case .openApp(let app, _, _, _, _, _, _):
       return (app ?? testApp).map(appName) ?? String(localized: "The app under test")
     case .openFile(let files, _, _, _, _):
       guard let first = files.first else { return String(localized: "No file chosen") }
@@ -80,10 +80,17 @@ enum BlockSummary {
         return String(localized: "Until \(referenceName(reference)) disappears · \(limit)")
       case .screenStable:
         return String(localized: "Until the screen stops changing · \(limit)")
+      case .element(let check):
+        guard !isUnset(check.element) else { return String(localized: "Choose an element to wait for") }
+        return String(localized: "Until \(elementCheck(check)) · \(limit)")
       }
     case .pause(let durationMs, _):
       return duration(durationMs)
-    case .check(let reference, _):
+    case .check(.element(let check), _):
+      guard !isUnset(check.element) else { return String(localized: "Choose an element to check") }
+      let text = elementCheck(check)
+      return text.prefix(1).uppercased() + text.dropFirst()
+    case .check(.screen(let reference), _):
       if let expect = expectation(reference) {
         return judged(String(localized: "Screen shows \(quoted(expect, limit: 40))"), by: reference)
       }
@@ -108,6 +115,11 @@ enum BlockSummary {
           check.of.isEmpty
           ? String(localized: "Choose a value to check")
           : String(localized: "If \(valueCheck(check))")
+      case .element(let check):
+        first =
+          isUnset(check.element)
+          ? String(localized: "Choose an element to check")
+          : String(localized: "If \(elementCheck(check))")
       }
       return elseIf.isEmpty ? first : first + " · " + String(localized: "or \(elseIf.count) more")
     case .repeat(let times, _, _):
@@ -239,6 +251,7 @@ enum BlockSummary {
     case .point(let p): String(localized: "at \(percent(p.x)), \(percent(p.y))")
     case .description(let text): quoted(text, limit: 40)
     case .area(let area): String(localized: "area \(quoted(area, limit: 32))")
+    case .element(let query): describeElement(query: query)
     }
   }
 
@@ -249,16 +262,28 @@ enum BlockSummary {
     case .point(let p): "\(percent(p.x)), \(percent(p.y))"
     case .description(let text): quoted(text, limit: 40)
     case .area(let area): quoted(area, limit: 32)
+    case .element(let query): describeElement(query: query)
     }
   }
 
-  /// A picture not chosen, an element not described or an area not given yet.
+  /// A picture not chosen, an element not described or picked, or an area not given yet.
   private static func isUnset(_ target: Target) -> Bool {
     switch target {
     case .image(let path): path.isEmpty
     case .description(let text), .area(let text): text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     case .point: false
+    case .element(let query): isUnset(query)
     }
+  }
+
+  /// An element with nothing to tell it by: no id, kind or title.
+  private static func isUnset(_ query: ElementQuery) -> Bool {
+    query.id.isEmpty && query.role.isEmpty && query.title.isEmpty
+  }
+
+  /// An element and the state it should be in: `button “Save” — enabled`.
+  static func elementCheck(_ check: ElementCheck) -> String {
+    "\(describeElement(query: check.element)) — \(describeElementState(state: check.is))"
   }
 
   private static func referenceName(_ reference: Reference) -> String {

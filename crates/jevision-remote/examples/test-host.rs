@@ -376,6 +376,9 @@ impl Player {
                                         _ => reference.image.clone(),
                                     },
                                     Condition::Value(check) => check.of.clone(),
+                                    Condition::Element(check) => {
+                                        jevision_core::element_check_name(check)
+                                    }
                                 },
                             )),
                             _ => None,

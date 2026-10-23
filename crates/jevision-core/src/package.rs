@@ -19,7 +19,7 @@ use serde_json::{Map, Value};
 
 use crate::issue::{Issue, ParseError, describe, json_problem};
 use crate::model::{
-    BlockKind, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
+    BlockKind, CheckOf, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
 };
 use crate::package_files::package_flow_path;
 use crate::resolve_test;
@@ -1070,7 +1070,7 @@ fn image_texts_mut(kind: &mut BlockKind) -> Vec<&mut String> {
     fn condition(c: &mut Condition) -> Option<&mut String> {
         match c {
             Condition::Screen(r) => reference(r),
-            Condition::Value(_) => None,
+            Condition::Value(_) | Condition::Element(_) => None,
         }
     }
     match kind {
@@ -1087,7 +1087,10 @@ fn image_texts_mut(kind: &mut BlockKind) -> Vec<&mut String> {
             until: WaitUntil::Appears(r) | WaitUntil::Disappears(r),
             ..
         }
-        | BlockKind::Check { reference: r, .. } => reference(r).into_iter().collect(),
+        | BlockKind::Check {
+            of: CheckOf::Screen(r),
+            ..
+        } => reference(r).into_iter().collect(),
         BlockKind::If {
             condition: c,
             else_if,

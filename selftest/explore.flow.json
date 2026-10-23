@@ -1,0 +1,200 @@
+{
+  "format": 1,
+  "name": "Explore",
+  "description": "x",
+  "app": "io.github.dev-pikapik.jevision",
+  "start": "s0",
+  "blocks": {
+    "s0": {
+      "type": "runTest",
+      "test": "blocks/start-jevision.block.json",
+      "inputs": {
+        "onboardingDone": "YES",
+        "profile": "explore"
+      },
+      "next": "s1"
+    },
+    "s1": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "main.openProject",
+          "is": "present"
+        }
+      },
+      "timeout": "30s",
+      "next": "s2"
+    },
+    "s2": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 0; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax1-main.txt'",
+      "timeout": "30s",
+      "next": "s3"
+    },
+    "s3": {
+      "type": "pressKeys",
+      "keys": "cmd+,",
+      "next": "s4"
+    },
+    "s4": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax4-settings.txt'",
+      "timeout": "30s",
+      "next": "s5"
+    },
+    "s5": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "settings.language"
+        }
+      },
+      "button": "left",
+      "next": "s6"
+    },
+    "s6": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 1; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax5-menu.txt'",
+      "timeout": "30s",
+      "next": "s7"
+    },
+    "s7": {
+      "type": "pressKeys",
+      "keys": "escape",
+      "next": "s8"
+    },
+    "s8": {
+      "type": "pressKeys",
+      "keys": "cmd+w",
+      "next": "s9"
+    },
+    "s9": {
+      "type": "script",
+      "language": "sh",
+      "code": "mkdir -p \"$FOLDER\"",
+      "inputs": [
+        {
+          "name": "FOLDER",
+          "value": "${env.SELFTEST_WORK}/projects/explore"
+        }
+      ],
+      "timeout": "30s",
+      "next": "s10"
+    },
+    "s10": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "main.openProject"
+        }
+      },
+      "button": "left",
+      "next": "s11"
+    },
+    "s11": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax2-panel.txt'",
+      "timeout": "30s",
+      "next": "s12"
+    },
+    "s12": {
+      "type": "pressKeys",
+      "keys": "cmd+shift+g",
+      "next": "s13"
+    },
+    "s13": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax3-goto.txt'",
+      "timeout": "30s",
+      "next": "s14"
+    },
+    "s14": {
+      "type": "type",
+      "text": "${env.SELFTEST_WORK}/projects/explore\n",
+      "next": "s15"
+    },
+    "s15": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax3b-typed.txt'",
+      "timeout": "30s",
+      "next": "s16"
+    },
+    "s16": {
+      "type": "pressKeys",
+      "keys": "return",
+      "next": "s17"
+    },
+    "s17": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "project.newTest",
+          "is": "present"
+        }
+      },
+      "timeout": "15s",
+      "next": "s18"
+    },
+    "s18": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 1; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax6-project.txt'",
+      "timeout": "30s",
+      "next": "s19"
+    },
+    "s19": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "project.newTest"
+        }
+      },
+      "button": "left",
+      "next": "s20"
+    },
+    "s20": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax7-sheet.txt'",
+      "timeout": "30s",
+      "next": "s21"
+    },
+    "s21": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "newTest.app"
+        }
+      },
+      "button": "left",
+      "next": "s22"
+    },
+    "s22": {
+      "type": "script",
+      "language": "sh",
+      "code": "sleep 2; '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/axdump' /Subject/JEVision.app '/private/tmp/claude-501/-Users-pikapik-Documents-GitHub-JEVision/fc6ce30b-1c64-454d-8702-d8e807679bba/scratchpad/c1/ax8-popover.txt'",
+      "timeout": "30s",
+      "next": "s23"
+    },
+    "s23": {
+      "type": "pressKeys",
+      "keys": "escape",
+      "next": "s24"
+    },
+    "s24": {
+      "type": "pressKeys",
+      "keys": "escape",
+      "next": "s25"
+    },
+    "s25": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

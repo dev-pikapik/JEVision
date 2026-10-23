@@ -7,15 +7,16 @@ use std::collections::HashMap;
 
 use serde_json::{Map, Value};
 
+use crate::element::{ELEMENT_STATES, ElementCheck, ElementQuery, ElementState};
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection, ClipboardAction,
-    ClipboardContent, Compare, Condition, DATE_LANGUAGES, DEFAULT_DATE_FORMAT, DatabaseExpect,
-    ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NamedValue, Note,
-    NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue,
-    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target, TestStatus,
-    TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition,
-    WindowSize, parse_duration, time_zone_known,
+    Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection, CheckOf,
+    ClipboardAction, ClipboardContent, Compare, Condition, DATE_LANGUAGES, DEFAULT_DATE_FORMAT,
+    DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton,
+    NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
+    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target,
+    TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
+    WindowPosition, WindowSize, parse_duration, time_zone_known,
 };
 
 /// Oldest file format this build can read.
@@ -711,12 +712,16 @@ fn block_kind(o: &mut Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let window_position = o
                 .opt_object("windowPosition", out)
                 .and_then(|p| window_position(p, out));
+            let arguments = o.strings("arguments", out).unwrap_or_default();
+            let environment = texts(o, "environment", out);
             let next = next(o, out);
             Some(BlockKind::OpenApp {
                 app,
                 reset_state,
                 window_size,
                 window_position,
+                arguments,
+                environment,
                 next,
             })
         }
@@ -861,16 +866,22 @@ fn block_kind(o: &mut Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "check" => {
-            let reference = o
-                .object("reference", out)
-                .and_then(|mut r| reference(&mut r, out));
+            let of = match o.one_of(&["reference", "element"], out) {
+                Some("reference") => o
+                    .object("reference", out)
+                    .and_then(|mut r| reference(&mut r, out))
+                    .map(CheckOf::Screen),
+                Some(_) => o
+                    .object("element", out)
+                    .and_then(|e| element_check(e, out))
+                    .map(CheckOf::Element),
+                None => {
+                    o.known.extend(["reference", "element"]);
+                    None
+                }
+            };
             let next = next(o, out);
-            all_present(|| {
-                Some(BlockKind::Check {
-                    reference: reference?,
-                    next,
-                })
-            })
+            all_present(|| Some(BlockKind::Check { of: of?, next }))
         }
         "if" => {
             let condition = condition(o, out);
@@ -917,21 +928,7 @@ fn block_kind(o: &mut Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 None => Some(None),
                 Some(p) => package_need(p, out).map(Some),
             };
-            let inputs = o
-                .opt_object("inputs", out)
-                .map(|i| {
-                    let mut values = HashMap::new();
-                    for (name, value) in i.map {
-                        match value {
-                            Value::String(v) => {
-                                values.insert(name.clone(), v.clone());
-                            }
-                            _ => i.wrong_type(name, "string", out),
-                        }
-                    }
-                    values
-                })
-                .unwrap_or_default();
+            let inputs = texts(o, "inputs", out);
             let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::RunTest {
@@ -1174,17 +1171,22 @@ fn all_present<T>(build: impl FnOnce() -> Option<T>) -> Option<T> {
 }
 
 fn target(o: &mut Obj<'_>, out: &mut Out) -> Option<Target> {
-    let which = o.one_of(&["image", "point", "description", "area"], out);
+    const KEYS: [&str; 5] = ["image", "point", "description", "area", "element"];
+    let which = o.one_of(&KEYS, out);
     let t = match which {
         Some("image") => o.string("image", out).map(Target::Image),
         Some("area") => o.string("area", out).map(Target::Area),
         Some("description") => o.string("description", out).map(Target::Description),
+        Some("element") => o
+            .object("element", out)
+            .and_then(|e| element(e, out))
+            .map(Target::Element),
         Some(_) => o
             .object("point", out)
             .and_then(|p| point(p, out))
             .map(Target::Point),
         None => {
-            o.known.extend(["image", "point", "description", "area"]);
+            o.known.extend(KEYS);
             None
         }
     };
@@ -1266,22 +1268,72 @@ fn else_ifs(o: &mut Obj<'_>, out: &mut Out) -> Option<Vec<ElseIf>> {
     cases.into_iter().collect()
 }
 
-/// What an `if`, or one of its `elseIf` cases, checks: `reference` or `value`.
+/// What an `if`, or one of its `elseIf` cases, checks: `reference`, `value` or `element`.
 fn condition(o: &mut Obj<'_>, out: &mut Out) -> Option<Condition> {
-    match o.one_of(&["reference", "value"], out) {
+    const KEYS: [&str; 3] = ["reference", "value", "element"];
+    match o.one_of(&KEYS, out) {
         Some("reference") => o
             .object("reference", out)
             .and_then(|mut r| reference(&mut r, out))
             .map(Condition::Screen),
+        Some("element") => o
+            .object("element", out)
+            .and_then(|e| element_check(e, out))
+            .map(Condition::Element),
         Some(_) => o
             .object("value", out)
             .and_then(|v| value_check(v, out))
             .map(Condition::Value),
         None => {
-            o.known.extend(["reference", "value"]);
+            o.known.extend(KEYS);
             None
         }
     }
+}
+
+/// The fields that pick an element: `id`, `role`, `title` and `index`, all optional here.
+fn element_query(o: &mut Obj<'_>, out: &mut Out) -> ElementQuery {
+    ElementQuery {
+        id: o.opt_string("id", out).unwrap_or_default(),
+        role: o.opt_string("role", out).unwrap_or_default(),
+        title: o.opt_string("title", out).unwrap_or_default(),
+        index: o.opt_uint("index", out),
+    }
+}
+
+fn element(mut o: Obj<'_>, out: &mut Out) -> Option<ElementQuery> {
+    let query = element_query(&mut o, out);
+    o.finish(out);
+    Some(query)
+}
+
+/// An element and what is expected of it: `is`, with `to` for the states that compare text.
+fn element_check(mut o: Obj<'_>, out: &mut Out) -> Option<ElementCheck> {
+    let element = element_query(&mut o, out);
+    let is = o.opt_string("is", out);
+    let is = o.require("is", is, out);
+    let to = o.opt_string("to", out);
+    let is = is.and_then(|name| {
+        if !ELEMENT_STATES.contains(&name.as_str()) {
+            out.push(
+                o.issue("flow.field.value", &o.path_of("is"))
+                    .with("value", name)
+                    .with("allowed", ELEMENT_STATES.join(", ")),
+            );
+            return None;
+        }
+        if ElementState::compares_text(&name) {
+            let to = o.require("to", to.clone(), out)?;
+            return ElementState::named(&name, to);
+        }
+        if to.is_some() {
+            out.push(o.issue("flow.element.toNeedsText", &o.path_of("to")));
+            return None;
+        }
+        ElementState::named(&name, String::new())
+    });
+    o.finish(out);
+    Some(ElementCheck { element, is: is? })
 }
 
 fn value_check(mut o: Obj<'_>, out: &mut Out) -> Option<ValueCheck> {
@@ -1295,6 +1347,23 @@ fn value_check(mut o: Obj<'_>, out: &mut Out) -> Option<ValueCheck> {
         is: is?,
         to: to?,
     })
+}
+
+/// An object of texts by name, such as the inputs of a test it runs; absent is empty.
+fn texts(o: &mut Obj<'_>, key: &'static str, out: &mut Out) -> HashMap<String, String> {
+    let Some(map) = o.opt_object(key, out) else {
+        return HashMap::new();
+    };
+    let mut values = HashMap::new();
+    for (name, value) in map.map {
+        match value {
+            Value::String(v) => {
+                values.insert(name.clone(), v.clone());
+            }
+            _ => map.wrong_type(name, "string", out),
+        }
+    }
+    values
 }
 
 /// A list of `{"name": …, value_key: …}` objects, such as script inputs or HTTP headers.
@@ -1496,9 +1565,14 @@ fn wait_until(o: &Obj<'_>, value: &Value, out: &mut Out) -> Option<WaitUntil> {
     if value.as_str() == Some("screenStable") {
         return Some(WaitUntil::ScreenStable);
     }
+    const KEYS: [&str; 3] = ["appears", "disappears", "element"];
     let mut until = o.child("until", value, out)?;
-    let which = until.one_of(&["appears", "disappears"], out);
+    let which = until.one_of(&KEYS, out);
     let result = which.and_then(|key| {
+        if key == "element" {
+            let e = until.object(key, out)?;
+            return element_check(e, out).map(WaitUntil::Element);
+        }
         let r = until
             .object(key, out)
             .and_then(|mut r| reference(&mut r, out))?;
@@ -1509,7 +1583,7 @@ fn wait_until(o: &Obj<'_>, value: &Value, out: &mut Out) -> Option<WaitUntil> {
         })
     });
     if which.is_none() {
-        until.known.extend(["appears", "disappears"]);
+        until.known.extend(KEYS);
     }
     until.finish(out);
     result

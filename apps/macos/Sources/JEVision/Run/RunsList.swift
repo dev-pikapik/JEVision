@@ -1,4 +1,5 @@
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// The project's run history in the sidebar, newest first, by day.
@@ -224,7 +225,7 @@ private struct CIRunsUnavailable: View {
   }
 
   private func show(_ tab: SettingsTab) {
-    UserDefaults.standard.set(tab.rawValue, forKey: SettingsTab.key)
+    Profile.current.defaults.set(tab.rawValue, forKey: SettingsTab.key)
     openSettings()
   }
 }

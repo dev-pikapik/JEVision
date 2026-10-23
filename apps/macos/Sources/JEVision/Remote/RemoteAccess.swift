@@ -100,8 +100,8 @@ final class RemoteAccess {
   static let activityLimit: UInt32 = 200
 
   init(
-    runs: RunCenter, project: ProjectStore, defaults: UserDefaults = .standard,
-    stateDirectory: URL = URL.applicationSupportDirectory.appending(path: "JEVision/Remote", directoryHint: .isDirectory),
+    runs: RunCenter, project: ProjectStore, defaults: UserDefaults = Profile.current.defaults,
+    stateDirectory: URL = Profile.current.supportFolder.appending(path: "Remote", directoryHint: .isDirectory),
     secretKey: @escaping () throws -> Data = RemoteAccess.keychainKey
   ) {
     self.runs = runs

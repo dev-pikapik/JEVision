@@ -7,12 +7,15 @@ struct ScheduleChip: View {
   var body: some View {
     let schedules = project.schedules
     let next = schedules.all.compactMap { ProjectSchedules.nextRun(of: $0) }.min()
-    let needsAttention = schedules.problem != nil || (!schedules.all.isEmpty && !schedules.isOn)
+    let needsAttention =
+      schedules.problem != nil || (!schedules.all.isEmpty && !schedules.isOn && schedules.agents.isAvailable)
     let text =
       if schedules.problem != nil {
         String(localized: "Schedules can’t be read")
       } else if schedules.all.isEmpty {
         String(localized: "No Schedules")
+      } else if !schedules.agents.isAvailable {
+        String(localized: "Schedules are off in this profile")
       } else if !schedules.isOn {
         String(localized: "Schedules are off on this Mac")
       } else if let next {

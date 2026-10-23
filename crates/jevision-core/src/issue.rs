@@ -140,6 +140,8 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.reference.thresholdNeedsSimilar" => {
             tr_in!(lang, "flow.reference.thresholdNeedsSimilar")
         }
+        "flow.element.empty" => tr_in!(lang, "flow.element.empty"),
+        "flow.element.toNeedsText" => tr_in!(lang, "flow.element.toNeedsText"),
         "flow.field.empty" => tr_in!(lang, "flow.field.empty"),
         "flow.field.range" => tr_in!(lang, "flow.field.range", p("min"), p("max")),
         "flow.app.invalid" => tr_in!(lang, "flow.app.invalid", p("value")),

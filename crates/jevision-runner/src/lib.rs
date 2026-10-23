@@ -38,7 +38,8 @@ pub use control::{PauseReason, RunControl};
 pub use import::{import_ci_artifact, imported_ci_artifacts};
 pub use jevision_core::{DataError, DataTable};
 pub use jevision_core::{
-    Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit, WindowPosition, WindowSize,
+    ElementNode, Modifiers, MouseButton, Point, ScrollDirection, ScrollUnit, WindowPosition,
+    WindowSize,
 };
 pub use jevision_vision::image::{PictureDiff, picture_diff};
 pub use jevision_vision::{
@@ -80,7 +81,13 @@ pub const SECRET_MASK: &str = "••••";
 pub trait Hands: Send + Sync {
     /// Launches the application (or finds it running) and brings it to the front, as `start`
     /// says; returns once it can take input.
-    fn open_app(&self, app: &str, start: AppStart) -> Result<(), HandsError>;
+    fn open_app(
+        &self,
+        app: &str,
+        start: AppStart,
+        arguments: &[String],
+        environment: &HashMap<String, String>,
+    ) -> Result<(), HandsError>;
     /// Whether the application runs in the App Sandbox, as its code signature says. macOS then
     /// keeps the app's data in a container of its own and gives it a home folder there, whatever
     /// it is started with.
@@ -110,6 +117,11 @@ pub trait Hands: Send + Sync {
     fn quit(&self, app: &str) -> Result<(), HandsError>;
     /// Captures the application's front window.
     fn capture(&self, app: &str) -> Result<Screenshot, HandsError>;
+    /// The elements of the application's front window and of the menus it has open, as
+    /// accessibility reports them, an element before what is inside it; frames in fractions of
+    /// the front window. [`HandsError::PermissionDenied`] with `accessibility` without that
+    /// permission.
+    fn elements(&self, app: &str) -> Result<Vec<ElementNode>, HandsError>;
     /// Finds the PNG `template` in the application's front window and returns its centre, in
     /// points from the window's top-left corner, or
     /// `None` when no place is at least `min_similarity` (0–1) alike.

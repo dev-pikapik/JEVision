@@ -70,6 +70,8 @@
     <li><a href="#filter">Choosing tests by their cards</a></li>
     <li><a href="#parallel">Running tests side by side</a></li>
     <li><a href="#screen">One run at a time on the screen</a></li>
+    <li><a href="#app-copy">Testing a copy of an app</a></li>
+    <li><a href="#through-app">Running through the app</a></li>
     <li><a href="#run-json">The result of <code>run --json</code></a></li>
     <li><a href="#validate"><code>jevision validate</code></a></li>
     <li><a href="#check"><code>jevision check</code></a></li>
@@ -148,6 +150,9 @@ jevision --help</code></pre>
     <tr><td><code>--junit <var>file</var></code></td><td>Also save a <a href="reports.html#junit">JUnit XML report</a> of all the tests, for CI.</td></tr>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
+    <tr><td><code>--app-copy <var>id</var>=<var>path</var></code></td><td>Test the copy of an app at <var>path</var> instead of the installed app whose id is <var>id</var>, such as <code>--app-copy com.example.Notes=build/Notes.app</code>. Give it once for each app. See <a href="#app-copy">Testing a copy of an app</a>.</td></tr>
+    <tr><td><code>--through-app</code></td><td>Run inside the JEVision app instead of the terminal, so only JEVision needs the screen and keyboard permissions. See <a href="#through-app">Running through the app</a>.</td></tr>
+    <tr><td><code>--app <var>path</var></code></td><td>The JEVision app to run in with <code>--through-app</code>, when the <code>jevision</code> you run isn't part of one.</td></tr>
     <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report. A test whose quarantine <code>until</code> day is past counts either way.</td></tr>
     <tr><td><code>--parallel [<var>n</var>]</code></td><td>Run up to <var>n</var> tests at the same time, 1 to 16, instead of one after another. Without a number: one per core of this Mac; <code>--parallel 1</code> runs them one after another. Without this option, tests run as the project sets for their folder. Tests that use the screen still take turns. See <a href="#parallel">below</a>. A folder named with digits only needs <code>./</code> in front: <code>--parallel 4 ./2024</code>.</td></tr>
     <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
@@ -215,6 +220,27 @@ Side by side, as jevision.project.json sets for the folder “login”. Add --pa
 <p>When another run has it, the test waits and says who has it, then starts as soon as the screen is free:</p>
 <pre><code>  Screen busy: JEVision, test Sign in, since 12:03. Waiting for it.</code></pre>
 <p>Nothing needs cleaning up: if the run that has the screen crashes or is stopped, the Mac frees the lock by itself. <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> stops a run that waits, and it is reported as cancelled.</p>
+
+<h2 id="app-copy">Testing a copy of an app</h2>
+<p>Tests name the app they use by its id, such as <code>com.example.Notes</code>, so they normally open the app installed under that id. To test another copy of it, for example the one you just built, name the copy with <code>--app-copy</code>:</p>
+<pre><code>jevision run tests/ --app-copy com.example.Notes=build/Notes.app</code></pre>
+<ul>
+  <li><strong>Only the copy is used.</strong> Wherever a test names <code>com.example.Notes</code>, the run opens, looks at, records and quits the app at <code>build/Notes.app</code>. The installed app can stay open: the copy starts on its own next to it, and the test never touches the installed one.</li>
+  <li><strong>The path</strong> is a folder ending in <code>.app</code>, absolute or from the current folder.</li>
+  <li><strong>Several apps</strong>: give <code>--app-copy</code> once for each, such as <code>--app-copy com.example.Notes=Notes.app --app-copy com.example.Sync=Sync.app</code>. Apps that aren't named are the installed ones, as always.</li>
+</ul>
+
+<h2 id="through-app">Running through the app</h2>
+<p>macOS asks for the Screen &amp; System Audio Recording and Accessibility permissions for the app that <code>jevision</code> runs in: Terminal, your editor or your CI agent, each one separately. With <code>--through-app</code>, the JEVision app runs the tests instead, so allowing JEVision once is enough wherever you start the run from:</p>
+<pre><code>jevision run tests/ --through-app</code></pre>
+<p>It works the same as without it: what the run prints shows in your terminal, <kbd>Ctrl</kbd>-<kbd>C</kbd> stops the run, and the exit status is the run's own. The app runs in the background with no window and no Dock icon, gets your current folder and environment variables, and quits when the run ends. If the app can't be found or opened, or quits before the run ends, the exit status is <code>2</code> and the message says why.</p>
+<p>The app it uses is the first one found of:</p>
+<ol>
+  <li>the JEVision app the <code>jevision</code> you run comes from, when it was installed with <strong>JEVision → Install Command Line Tool…</strong>;</li>
+  <li>the app named with <code>--app <var>path</var></code>;</li>
+  <li>the app named by the <code>JEVISION_APP</code> environment variable;</li>
+  <li><code>/Applications/JEVision.app</code>, then <code>~/Applications/JEVision.app</code>.</li>
+</ol>
 
 <h2 id="run-json">The result of <code>run --json</code></h2>
 <p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>
@@ -446,7 +472,7 @@ jevision blocks restore --yes</code></pre>
 <ul>
   <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal, from a CI agent started in that session, or over SSH as that same user while they stay logged in at the screen, as in a <a href="vm.html#ssh">virtual machine</a>; not as a system service;</li>
   <li><strong>the screen is unlocked</strong>;</li>
-  <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong>. The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>.</li>
+  <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong>. The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>. With <a href="#through-app"><code>--through-app</code></a> that app is JEVision itself.</li>
 </ul>
 
 <h2 id="ci">Running in CI</h2>

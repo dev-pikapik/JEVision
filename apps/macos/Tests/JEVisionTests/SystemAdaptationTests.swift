@@ -37,6 +37,15 @@ struct AppLanguageTests {
     #expect(AppLanguage.resolve(saved: "", system: ["de-DE", "fr-FR"], available: ["en", "ru"]) == "en")
   }
 
+  @Test func languagesTheAppIsStartedWithStandInForTheMacs() {
+    #expect(AppLanguage.launchLanguages(in: ["JEVision", "-AppleLanguages", "(en)"]) == ["en"])
+    #expect(AppLanguage.launchLanguages(in: ["JEVision", "-AppleLanguages", "(\"de-DE\", en)", "-x"]) == ["de-DE", "en"])
+    #expect(AppLanguage.launchLanguages(in: ["JEVision", "-AppleLanguages", "ru"]) == ["ru"])
+    #expect(AppLanguage.launchLanguages(in: ["JEVision", "-AppleLanguages", "()"]) == nil)
+    #expect(AppLanguage.launchLanguages(in: ["JEVision", "-AppleLanguages"]) == nil)
+    #expect(AppLanguage.launchLanguages(in: ["JEVision"]) == nil)
+  }
+
   @Test func theLocaleSpeaksTheLanguageInTheRegionOfTheMac() {
     let locale = AppLanguage.locale(language: "ru", in: Locale(identifier: "en_US"))
     #expect(locale.language.languageCode == .russian)

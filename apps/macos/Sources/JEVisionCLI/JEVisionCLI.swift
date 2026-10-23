@@ -7,11 +7,12 @@ import JEVisionHands
 enum JEVisionCLI {
   static func main() {
     CLILanguage.apply(CLILanguage.resolve(environment: ProcessInfo.processInfo.environment, preferred: Locale.preferredLanguages))
-    exit(execute(Array(CommandLine.arguments.dropFirst())).rawValue)
+    exit(execute(Array(CommandLine.arguments.dropFirst())))
   }
 
-  /// Runs `arguments`. A `--lang` among them sets the language of what is printed from here on.
-  static func execute(_ arguments: [String]) -> ExitStatus {
+  /// Runs `arguments` and returns the exit status. A `--lang` among them sets the language of
+  /// what is printed from here on.
+  static func execute(_ arguments: [String]) -> Int32 {
     let command: Command
     do {
       let (language, rest) = try CLILanguage.extract(arguments)
@@ -25,6 +26,22 @@ enum JEVisionCLI {
       Console.standardError.line(words("cli.help.more", more))
       return .usage
     }
+    if case .run(let request) = command, request.throughApp {
+      let app: URL
+      do {
+        app = try ThroughApp.findApp(
+          executable: Bundle.main.executableURL, given: request.app, environment: ProcessInfo.processInfo.environment,
+          home: FileManager.default.homeDirectoryForCurrentUser, current: FileManager.default.currentDirectoryPath)
+      } catch {
+        Console.standardError.line("jevision: \(error.message)")
+        return ExitStatus.failure.rawValue
+      }
+      return ThroughApp(arguments: ThroughApp.forwarded(arguments), app: app).execute()
+    }
+    return perform(command).rawValue
+  }
+
+  private static func perform(_ command: Command) -> ExitStatus {
     switch command {
     case .help(let topic):
       Console.standardOutput.line(Help.text(topic))
@@ -136,6 +153,12 @@ struct RunRequest: Equatable {
   var json = false
   /// Most tests to run side by side; `nil` runs them one after another.
   var parallel: UInt32?
+  /// Copies of apps to use instead of the installed ones: absolute paths by the app id they
+  /// stand for.
+  var appCopies: [String: String] = [:]
+  /// Run inside JEVision.app, the one at `app` if given, rather than in this process.
+  var throughApp = false
+  var app: String?
 
   /// What `--parallel` alone means: a test per core, the most the core allows at once.
   static var defaultParallel: UInt32 {
@@ -185,12 +208,12 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify", "--flaky", "--force-ai"],
+        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify", "--flaky", "--force-ai", "--through-app"],
         values: [
-          "--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video",
+          "--app", "--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video",
           "--type", "--priority", "--status", "--author",
         ],
-        optionalNumbers: ["--parallel"])
+        optionalNumbers: ["--parallel"], repeated: ["--app-copy"])
       if options.wantsHelp { return .help(name) }
       var request = RunRequest(paths: try options.requirePaths(name))
       request.project = options.values["--project"]
@@ -245,6 +268,12 @@ enum Command: Equatable {
       }
       request.notify = !options.flags.contains("--no-notify")
       request.json = options.flags.contains("--json")
+      request.appCopies = try appCopies(options.lists["--app-copy"] ?? [])
+      request.throughApp = options.flags.contains("--through-app")
+      request.app = options.values["--app"]
+      if request.app != nil, !request.throughApp {
+        throw UsageError(message: words("cli.error.appNeedsThroughApp"), command: name)
+      }
       if options.flags.contains("--parallel") {
         guard let given = options.values["--parallel"] else {
           request.parallel = RunRequest.defaultParallel
@@ -328,6 +357,29 @@ enum Command: Equatable {
 
 extension Command {
   /// `blocks list|install <source>|update [id]|remove <id>|restore`.
+  /// The copies `--app-copy ID=PATH` names: absolute paths by app id, a relative one taken from
+  /// `current`.
+  static func appCopies(
+    _ values: [String], current: String = FileManager.default.currentDirectoryPath
+  ) throws(UsageError) -> [String: String] {
+    var copies: [String: String] = [:]
+    for value in values {
+      let parts = value.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+      guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else {
+        throw UsageError(message: words("cli.error.appCopyFormat", value), command: "run")
+      }
+      let id = parts[0]
+      let path = absolutePath(parts[1], in: current)
+      guard copies[id] == nil else { throw UsageError(message: words("cli.error.appCopyTwice", id), command: "run") }
+      guard (path as NSString).pathExtension == "app" else {
+        throw UsageError(message: words("cli.error.appCopyNotApp", parts[1]), command: "run")
+      }
+      guard isFolder(path) else { throw UsageError(message: words("cli.error.appCopyMissing", path), command: "run") }
+      copies[id] = path
+    }
+    return copies
+  }
+
   private static func blocksRequest(_ options: Options) throws(UsageError) -> BlocksRequest {
     let name = "blocks"
     let (action, arguments) = (options.paths[0], Array(options.paths.dropFirst()))
@@ -378,11 +430,13 @@ struct Options {
   var paths: [String] = []
   var flags: Set<String> = []
   var values: [String: String] = [:]
+  /// Values of the options that may be given more than once, in order.
+  var lists: [String: [String]] = [:]
   var wantsHelp = false
 
   static func parse(
     _ arguments: [String], command: String, flags: Set<String>, values: Set<String> = [],
-    optionalNumbers: Set<String> = []
+    optionalNumbers: Set<String> = [], repeated: Set<String> = []
   ) throws(UsageError) -> Options {
     var options = Options()
     var rest = arguments[...]
@@ -418,14 +472,18 @@ struct Options {
         }
         continue
       }
-      guard values.contains(name) else {
+      guard values.contains(name) || repeated.contains(name) else {
         throw UsageError(message: words("cli.error.noOption", argument), command: command)
       }
       guard options.values[name] == nil else { throw UsageError(message: words("cli.error.optionTwice", name), command: command) }
       guard let value = parts.count == 2 ? parts[1] : rest.popFirst(), !value.isEmpty else {
         throw UsageError(message: words("cli.error.optionNeedsValue", name), command: command)
       }
-      options.values[name] = value
+      if repeated.contains(name) {
+        options.lists[name, default: []].append(value)
+      } else {
+        options.values[name] = value
+      }
     }
     return options
   }

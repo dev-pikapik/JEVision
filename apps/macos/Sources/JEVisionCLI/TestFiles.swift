@@ -152,6 +152,13 @@ private func walk(_ folder: String, into files: inout [String]) throws {
   }
 }
 
+/// `given` as an absolute path without `.`, `..` or a trailing slash; a relative one is in
+/// `current`.
+func absolutePath(_ given: String, in current: String) -> String {
+  let path = (given as NSString).expandingTildeInPath
+  return ((path.hasPrefix("/") ? path : current + "/" + path) as NSString).standardizingPath
+}
+
 func isFolder(_ path: String) -> Bool {
   var isDirectory: ObjCBool = false
   return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue

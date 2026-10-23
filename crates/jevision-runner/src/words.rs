@@ -4,6 +4,7 @@
 //! says the same thing in the language the person chose.
 
 use crate::report::{Failure, percent};
+use jevision_core::{ElementQuery, ElementState, describe_element_in, describe_state_in};
 use jevision_l10n::{Arg, text_in};
 
 /// A text of the catalog and the values it refers to, before it is put into a language.
@@ -122,6 +123,26 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
             &[block, seconds, p("target"), p("dark")],
         ),
         "run.waitFor.timeout" => Phrase::new(key, &[block, seconds, p("target")]),
+        "run.waitFor.elementTimeout" => {
+            let (element, expected, actual) = element_check_in(lang, f);
+            let near = similar_elements(lang, f);
+            Phrase::new(key, &[block, seconds, &element, &expected, &actual, &near])
+        }
+        "run.element.notFound" => {
+            let (element, near) = (elements_in(lang, p("element")), similar_elements(lang, f));
+            Phrase::new(key, &[block, &element, &near])
+        }
+        "run.element.ambiguous" => {
+            let (element, found) = (
+                elements_in(lang, p("element")),
+                elements_in(lang, p("found")),
+            );
+            Phrase::new(key, &[block, p("count"), &element, &found])
+        }
+        "run.element.state" => {
+            let (element, expected, actual) = element_check_in(lang, f);
+            Phrase::new(key, &[block, &element, &expected, &actual])
+        }
         "run.check.mismatch" => {
             let (similarity, threshold) =
                 (share(lang, p("similarity")), share(lang, p("threshold")));
@@ -227,6 +248,43 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
             Phrase::new(key, &[block, p("actual"), p("expected"), seconds])
         }
         _ => Phrase::new("run.unknown", &[&unknown(f)]),
+    }
+}
+
+/// Elements a failure names, kept as JSON, in `lang`: `button “Save”, text “Done”`.
+pub(crate) fn elements_in(lang: &str, json: &str) -> String {
+    let queries: Vec<ElementQuery> = serde_json::from_str(json).unwrap_or_default();
+    queries
+        .iter()
+        .map(|q| describe_element_in(lang, q))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// A state of an element a failure names by `name` and the text it compares, in `lang`.
+pub(crate) fn element_state_in(lang: &str, name: &str, text: &str) -> String {
+    ElementState::named(name, text.to_owned())
+        .map_or_else(|| name.to_owned(), |state| describe_state_in(lang, &state))
+}
+
+/// The element a failure of a check names, what was expected of it and what it was, in `lang`.
+pub(crate) fn element_check_in(lang: &str, f: &Failure) -> (String, String, String) {
+    let p = |name: &str| f.param(name);
+    (
+        elements_in(lang, p("element")),
+        element_state_in(lang, p("is"), p("to")),
+        element_state_in(lang, p("now"), p("actual")),
+    )
+}
+
+/// What the window has instead of a missing element, on a line of its own, or nothing.
+fn similar_elements(lang: &str, f: &Failure) -> String {
+    match elements_in(lang, f.param("similar")) {
+        near if !near.is_empty() => {
+            text_in(lang, "run.element.similar", &[Arg::from(near.as_str())])
+        }
+        _ if f.param("elements") == "0" => text_in(lang, "run.element.noElements", &[]),
+        _ => String::new(),
     }
 }
 

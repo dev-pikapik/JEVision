@@ -8,10 +8,10 @@ use std::{fs, io};
 
 use jevision_l10n::tr;
 
+use crate::atomic::write as write_atomically;
 use crate::folder::project_files;
 use crate::model::TEST_SUFFIX;
 use crate::project::{PROJECT_FILE, ProjectSettings};
-use crate::atomic::write as write_atomically;
 
 /// The `.gitignore` line that keeps the run folder, `.jevision` with its reports, screenshots
 /// and videos, out of the repository.

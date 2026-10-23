@@ -1,21 +1,23 @@
 //! A bug report from a failed run: what to file in the project's issue tracker so that a
 //! developer can see what broke without opening JEVision.
 
+use jevision_core::parse;
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
 use jevision_core::{
-    BLOCK_SUFFIX, BlockKind, ClipboardAction, ClipboardContent, Compare, Condition, FileState,
-    Flow, Modifiers, Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil,
-    format_duration, is_block_path, package_of_path, parse,
+    BLOCK_SUFFIX, BlockKind, CheckOf, ClipboardAction, ClipboardContent, Compare, Condition,
+    ElementCheck, FileState, Flow, Modifiers, Reference, ScriptLanguage, Target, TimeUnit,
+    ValueTest, WaitUntil, describe_element_in, describe_state_in, format_duration, is_block_path,
+    package_of_path,
 };
 use jevision_l10n::{text_in, tr_in};
 use sha2::{Digest, Sha256};
 
 use crate::report::{duration, percent};
 use crate::system::sign;
-use crate::words::{block_name, block_title, share, wait_target};
+use crate::words::{block_name, block_title, element_check_in, share, wait_target};
 use crate::{
     Attempt, Failure, RetryVerdict, RunReport, SECRET_MASK, Step, StepStatus, UsedPackage, Verdict,
 };
@@ -362,6 +364,15 @@ pub fn describe_block_in(
         ),
         Target::Description(what) => tr_in!(lang, "bug.target.description", what.trim()),
         Target::Area(area) => tr_in!(lang, "bug.target.area", area.to_string()),
+        Target::Element(query) => {
+            tr_in!(lang, "bug.target.element", describe_element_in(lang, query))
+        }
+    };
+    let element = |check: &ElementCheck| {
+        (
+            describe_element_in(lang, &check.element),
+            describe_state_in(lang, &check.is),
+        )
     };
     match kind {
         BlockKind::OpenApp { app: other, .. } => {
@@ -447,6 +458,10 @@ pub fn describe_block_in(
                 WaitUntil::Appears(r) => tr_in!(lang, "bug.wait.appears", &r.image),
                 WaitUntil::Disappears(r) => tr_in!(lang, "bug.wait.disappears", &r.image),
                 WaitUntil::ScreenStable => text_in(lang, "bug.wait.screenStable", &[]),
+                WaitUntil::Element(check) => {
+                    let (element, state) = element(check);
+                    tr_in!(lang, "bug.wait.element", element, state)
+                }
             };
             tr_in!(
                 lang,
@@ -458,14 +473,26 @@ pub fn describe_block_in(
         BlockKind::Pause { duration_ms, .. } => {
             tr_in!(lang, "bug.block.pause", format_duration(*duration_ms))
         }
-        BlockKind::Check { reference, .. } => {
-            tr_in!(lang, "bug.block.check", looks_like(lang, reference))
+        BlockKind::Check {
+            of: CheckOf::Screen(reference),
+            ..
+        } => tr_in!(lang, "bug.block.check", looks_like(lang, reference)),
+        BlockKind::Check {
+            of: CheckOf::Element(check),
+            ..
+        } => {
+            let (element, state) = element(check);
+            tr_in!(lang, "bug.block.checkElement", element, state)
         }
         BlockKind::If { condition, .. } => match condition {
             Condition::Screen(reference) => {
                 tr_in!(lang, "bug.block.ifScreen", looks_like(lang, reference))
             }
             Condition::Value(v) => tr_in!(lang, "bug.block.ifValue", &v.of, sign(v.is), &v.to),
+            Condition::Element(check) => {
+                let (element, state) = element(check);
+                tr_in!(lang, "bug.block.ifElement", element, state)
+            }
         },
         BlockKind::Repeat { times, .. } => tr_in!(lang, "bug.block.repeat", *times),
         BlockKind::UseData { file, .. } => tr_in!(lang, "bug.block.useData", file),
@@ -604,7 +631,10 @@ fn expected_and_actual(
         "run.check.meaningMismatch" => {
             let expected = match block {
                 Some(
-                    BlockKind::Check { reference, .. }
+                    BlockKind::Check {
+                        of: CheckOf::Screen(reference),
+                        ..
+                    }
                     | BlockKind::If {
                         condition: Condition::Screen(reference),
                         ..
@@ -625,6 +655,18 @@ fn expected_and_actual(
             ),
             text_in(lang, "bug.actual.waitFor", &[]),
         ),
+        "run.element.state" | "run.waitFor.elementTimeout" => {
+            let (element, expected, actual) = element_check_in(lang, failure);
+            (
+                tr_in!(
+                    lang,
+                    "bug.expected.element",
+                    capitalized(&element),
+                    expected
+                ),
+                format!("{}.", capitalized(&actual)),
+            )
+        }
         "run.target.notFound" => (
             tr_in!(lang, "bug.expected.targetFound", p("image")),
             text_in(lang, "bug.actual.targetNotFound", &[]),
@@ -912,5 +954,50 @@ mod tests {
         assert_eq!(picture_caption_in("ru", "Difference"), "Разница");
         assert_eq!(picture_caption_in("ru", "Expected"), "Ожидается");
         assert_eq!(picture_caption_in("ru", "Other"), "Other");
+    }
+
+    #[test]
+    fn elements_are_told_in_steps_and_failures() {
+        let flow = jevision_core::parse(
+            r#"{"format": 1, "name": "Save", "app": "com.example.App", "start": "click",
+            "blocks": {
+              "click": {"type": "click", "target": {"element": {"role": "button", "title": "Save"}}, "next": "wait"},
+              "wait": {"type": "waitFor", "until": {"element": {"id": "done", "is": "present"}}, "next": "if"},
+              "if": {"type": "if", "element": {"role": "checkBox", "is": "selected"}, "then": "check"},
+              "check": {"type": "check", "element": {"id": "name", "is": "valueEquals", "to": "Ann"}}
+            }}"#,
+        )
+        .unwrap();
+        let told = |id: &str, lang: &str| {
+            let block = flow.blocks.iter().find(|b| b.id == id).unwrap();
+            describe_block_in(lang, &block.kind, &flow.app, &[])
+        };
+        assert_eq!(
+            told("click", "en"),
+            "Click button “Save” (found by accessibility)"
+        );
+        assert_eq!(
+            told("wait", "en"),
+            "Wait up to 10s until this holds: element with id “done” — in the window"
+        );
+        assert_eq!(told("if", "en"), "If: checkbox — selected");
+        assert_eq!(
+            told("check", "ru"),
+            "Проверить: элемент с id «name» — значение «Ann»"
+        );
+        let failure = Failure::new("run.element.state")
+            .with("block", "check")
+            .with("element", r#"[{"id":"name","role":"textField"}]"#)
+            .with("is", "valueEquals")
+            .with("to", "Ann")
+            .with("now", "valueEquals")
+            .with("actual", "Bo");
+        assert_eq!(
+            expected_and_actual("en", &failure, None),
+            (
+                "Text field with id “name” — value “Ann”.".to_owned(),
+                "Value “Bo”.".to_owned()
+            )
+        );
     }
 }

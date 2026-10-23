@@ -170,7 +170,7 @@ final class RunCenter {
   private static let declinedKey = "gitIgnoreDeclined"
   private static let breakpointsKey = "breakpoints"
 
-  init(defaults: UserDefaults = .standard, starts: Starter? = nil, makeRun: @escaping () -> TestRun = { TestRun() }) {
+  init(defaults: UserDefaults = Profile.current.defaults, starts: Starter? = nil, makeRun: @escaping () -> TestRun = { TestRun() }) {
     self.defaults = defaults
     self.starts = starts
     self.makeRun = makeRun

@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// Settings → Advanced → Command Line: whether `jevision` is installed, and how to run the project with it.
@@ -11,7 +12,7 @@ struct CommandLineSection: View {
 
   var body: some View {
     Section {
-      if let reason = tool.unavailableReason {
+      if let reason = tool.installUnavailableReason {
         Text(reason)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -31,7 +32,7 @@ struct CommandLineSection: View {
     } header: {
       Text("Command Line")
     } footer: {
-      if tool.unavailableReason == nil, project.rootURL != nil {
+      if tool.installUnavailableReason == nil, project.rootURL != nil {
         Text("Runs every test of the open project and saves the results as JUnit XML and HTML reports.")
           .font(.callout)
           .foregroundStyle(.secondary)
@@ -246,7 +247,7 @@ struct ResetSettingsSection: View {
   }
 
   private func reset() {
-    SettingsReset.reset(.standard, domain: Bundle.main.bundleIdentifier ?? "")
+    SettingsReset.reset(Profile.current.defaults, domain: Profile.current.defaultsDomain)
     restartFailed = !Relaunch.now()
   }
 }

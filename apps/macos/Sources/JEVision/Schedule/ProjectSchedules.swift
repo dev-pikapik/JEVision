@@ -29,7 +29,7 @@ final class ProjectSchedules {
   private var changes = 0
   @ObservationIgnored private var lastChange: Task<Result<Void, any Error>, Never>?
 
-  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = .standard) {
+  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = Profile.current.defaults) {
     self.agents = agents
     self.defaults = defaults
   }

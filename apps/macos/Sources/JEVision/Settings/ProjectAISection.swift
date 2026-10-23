@@ -64,7 +64,7 @@ struct ProjectAISection: View {
     if let chosen, let provider = AISettings.provider(chosen.provider) {
       TextField(
         text: Binding(get: { chosen.model }, set: { set(task, provider: chosen.provider, model: $0) }),
-        prompt: Text(verbatim: AISettings(.standard).model(for: provider))
+        prompt: Text(verbatim: AISettings.app.model(for: provider))
       ) { Text("Model for \(provider.name)") }
     }
   }

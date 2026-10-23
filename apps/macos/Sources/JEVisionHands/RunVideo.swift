@@ -96,7 +96,8 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
   private func begin(at origin: CMTime) async throws {
     let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-    let apps = content.applications.filter { $0.bundleIdentifier == app }
+    let pids = Set(MacHands.runningApps(app).map(\.processIdentifier))
+    let apps = content.applications.filter { pids.contains($0.processID) }
     guard let display = Self.display(showing: app, in: content) else { throw HandsError.NoWindow(app: app) }
     let filter = SCContentFilter(display: display, including: apps, exceptingWindows: [])
     let size = Self.videoSize(of: display, scale: Double(filter.pointPixelScale))
@@ -229,7 +230,6 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     let moves = area != self.area
     guard running != shown || moves else { return }
     isUpdating = true
-    let app = self.app
     let config = moves ? Self.configuration(size: size, area: area) : nil
     let rejoins = running != shown
     if moves { nextArea = area }

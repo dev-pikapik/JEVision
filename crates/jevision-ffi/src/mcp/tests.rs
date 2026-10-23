@@ -65,7 +65,13 @@ struct FakeHands {
 }
 
 impl Hands for FakeHands {
-    fn open_app(&self, _: String, _: AppStart) -> Result<(), HandsError> {
+    fn open_app(
+        &self,
+        _: String,
+        _: AppStart,
+        _: Vec<String>,
+        _: std::collections::HashMap<String, String>,
+    ) -> Result<(), HandsError> {
         Ok(())
     }
     fn sandboxed(&self, _: String) -> Result<bool, HandsError> {
@@ -93,6 +99,9 @@ impl Hands for FakeHands {
     }
     fn capture(&self, _: String) -> Result<Screenshot, HandsError> {
         Ok(screen())
+    }
+    fn elements(&self, _: String) -> Result<Vec<jevision_core::ElementNode>, HandsError> {
+        Ok(Vec::new())
     }
     fn locate(&self, _: String, _: Vec<u8>, _: f64) -> Result<Option<Point>, HandsError> {
         Ok(None)

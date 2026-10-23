@@ -24,19 +24,16 @@ public struct AISettings {
 
   /// The journal of every AI call, shared by the app and the `jevision` tool.
   public static var journal: URL {
-    URL.applicationSupportDirectory.appending(path: "JEVision/ai-usage.jsonl", directoryHint: .notDirectory)
+    Profile.current.supportFolder.appending(path: "ai-usage.jsonl", directoryHint: .notDirectory)
   }
 
   /// Where the app and every `jevision mcp` meet: who connected, and what the person is asked.
   public static var assistantsFolder: URL {
-    URL.applicationSupportDirectory.appending(path: "JEVision/Assistants", directoryHint: .isDirectory)
+    Profile.current.supportFolder.appending(path: "Assistants", directoryHint: .isDirectory)
   }
 
   /// The app's settings, from the app or from the `jevision` tool.
-  public static var app: AISettings {
-    let own = Bundle.main.bundleIdentifier == appDomain
-    return AISettings(own ? .standard : UserDefaults(suiteName: appDomain) ?? .standard)
-  }
+  public static var app: AISettings { AISettings(Profile.current.appDefaults) }
 
   public static var providers: [VisionProvider] { visionProviders() }
 
@@ -67,7 +64,7 @@ public struct AISettings {
 
   /// Picks up what the app changed since this process last read its settings.
   public func refresh() {
-    CFPreferencesAppSynchronize(Self.appDomain as CFString)
+    CFPreferencesAppSynchronize(Profile.current.appDefaultsDomain as CFString)
   }
 
   /// The chosen model, or the provider's suggestion.

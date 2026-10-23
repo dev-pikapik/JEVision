@@ -15,6 +15,7 @@ mod data;
 mod decode;
 mod diff;
 mod edit;
+mod element;
 mod env;
 mod filter;
 mod folder;
@@ -26,6 +27,7 @@ mod model;
 mod notes;
 mod package;
 mod package_files;
+mod profile;
 mod project;
 mod recent;
 mod references;
@@ -61,6 +63,11 @@ pub use decode::{
 };
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
+pub use element::{
+    ELEMENT_ROLES, ELEMENT_STATES, ElementCheck, ElementNode, ElementQuery, ElementRole,
+    ElementState, Missing, Observation, describe_element_in, describe_elements_in,
+    describe_state_in, element_check_name, element_name,
+};
 pub use env::{
     AddEnvironmentError, ENVIRONMENT_NAME, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT,
     EnvironmentValues, Environments, SetValueError, env_reads, required_env_values,
@@ -98,6 +105,10 @@ pub use package_files::{
     input_defaults, install_folder, installed, list_installed, make_own_block, package_flow_path,
     package_folder, read_package, remove_package, restore_entries, skipped_links_warning,
     switch_tests_to_copy, unmet_dependencies, usage,
+};
+pub use profile::{
+    PROFILE_VARIABLE, keychain_service, profile_folder, profile_folder_from,
+    profile_keychain_service,
 };
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,

@@ -11,10 +11,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    AiChoice, BlockKind, Blocker, ClipboardAction, ClipboardContent, Compare, Condition,
-    DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ENVIRONMENT_NAME, ExpectStatus, FileState, Flow,
-    PROJECT_FILE, PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target,
-    ValueKind, WaitUntil, dark_variant, else_if_edge, parse_area,
+    AiChoice, BlockKind, Blocker, CheckOf, ClipboardAction, ClipboardContent, Compare, Condition,
+    DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ENVIRONMENT_NAME, ElementCheck, ElementNode,
+    ElementQuery, ElementState, ExpectStatus, FileState, Flow, Missing, PROJECT_FILE, PackageNeed,
+    Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil,
+    dark_variant, element_check_name, else_if_edge, parse_area,
 };
 
 use crate::app_settings;
@@ -38,6 +39,8 @@ use jevision_vision::{MaskedImage, Provider};
 /// How far a pixel channel may be off and still count as the same colour when comparing by
 /// similarity; absorbs font smoothing and colour-profile noise.
 const SIMILAR_TOLERANCE: u8 = 16;
+/// How many of the elements that answer a query too vaguely a failure lists.
+const LISTED_ELEMENTS: usize = 5;
 /// The screen counts as settled when two looks in a row are at least this alike.
 const STABLE_SIMILARITY: f64 = 0.999;
 /// Longest side, in pixels, of a picture sent to a vision model; larger ones cost more and
@@ -1259,13 +1262,23 @@ impl Exec<'_> {
             BlockKind::OpenApp {
                 app,
                 reset_state,
+                arguments,
+                environment,
                 window_size,
                 window_position,
                 next,
             } => {
                 let app = app.clone().unwrap_or_else(|| t.flow.app.clone());
+                let arguments = arguments
+                    .iter()
+                    .map(|a| self.substitute(id, a))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let environment = environment
+                    .iter()
+                    .map(|(name, value)| Ok((name.clone(), self.substitute(id, value)?)))
+                    .collect::<Result<HashMap<_, _>, Stop>>()?;
                 let (start, note) = self.app_start(id, &app, *reset_state)?;
-                self.hands(id, |h| h.open_app(&app, start))?;
+                self.hands(id, |h| h.open_app(&app, start, &arguments, &environment))?;
                 step.note = note;
                 if window_size.is_some() || window_position.is_some() {
                     self.hands(id, |h| {
@@ -1428,7 +1441,30 @@ impl Exec<'_> {
                 self.poll(id, Duration::from_millis(*duration_ms), || Ok(None::<()>))?;
                 Ok(next.clone())
             }
-            BlockKind::Check { reference, next } => {
+            BlockKind::Check {
+                of: CheckOf::Element(check),
+                next,
+            } => {
+                let check = self.fill_check(id, check)?;
+                let nodes = self.elements(id)?;
+                self.snapshot(step, "after")?;
+                let seen = check
+                    .observe(&nodes)
+                    .map_err(|found| fail(self.ambiguous(id, &check.element, &found)))?;
+                match seen.element {
+                    _ if seen.holds => Ok(next.clone()),
+                    None => Err(fail(self.not_found(id, &check.element, &nodes))),
+                    Some(_) => Err(fail(self.element_failure(
+                        Failure::new("run.element.state").with("block", id),
+                        &check,
+                        &seen.now,
+                    ))),
+                }
+            }
+            BlockKind::Check {
+                of: CheckOf::Screen(reference),
+                next,
+            } => {
                 let shot = self.capture(id)?;
                 match self.evaluate(t, id, reference, &shot, true, &mut None)? {
                     Ok(e) => {
@@ -1460,9 +1496,11 @@ impl Exec<'_> {
                 else_if,
                 otherwise,
             } => {
-                // Screen conditions are checked on one screenshot, taken only if there is one;
-                // the first condition that holds wins.
+                // Screen conditions are checked on one screenshot and element conditions on one
+                // look at the window, each taken only if needed; the first condition that holds
+                // wins.
                 let mut shot = None;
+                let mut nodes = None;
                 let cases = std::iter::once((THEN.to_owned(), condition, then)).chain(
                     else_if
                         .iter()
@@ -1488,6 +1526,17 @@ impl Exec<'_> {
                                 first.get_or_insert(e);
                             }
                             (passed, condition_name(reference))
+                        }
+                        Condition::Element(written) => {
+                            let check = self.fill_check(id, written)?;
+                            let nodes = match &mut nodes {
+                                Some(nodes) => &*nodes,
+                                slot => slot.insert(self.elements(id)?),
+                            };
+                            let seen = check.observe(nodes).map_err(|found| {
+                                fail(self.ambiguous(id, &check.element, &found))
+                            })?;
+                            (seen.holds, element_check_name(written))
                         }
                         Condition::Value(check) => {
                             let of = self.substitute(id, &check.of)?;
@@ -1998,6 +2047,9 @@ impl Exec<'_> {
         timeout_ms: u64,
         step: &mut Step,
     ) -> Result<(), Stop> {
+        if let WaitUntil::Element(check) = until {
+            return self.wait_for_element(id, check, timeout_ms, step);
+        }
         let timeout = Duration::from_millis(timeout_ms);
         let mut last: Option<Screenshot> = None;
         let mut sent = None;
@@ -2072,6 +2124,7 @@ impl Exec<'_> {
                 })?;
                 (reached, "screenStable", None)
             }
+            WaitUntil::Element(_) => unreachable!("handled above"),
         };
         // A dark window compared with the light picture only: the usual reason for waiting in
         // vain, so the failure names the picture that is missing.
@@ -2104,6 +2157,43 @@ impl Exec<'_> {
             }));
         }
         Ok(())
+    }
+
+    /// Waits until an element of the window is as `check` expects; an element that isn't there
+    /// yet is simply not the state waited for.
+    fn wait_for_element(
+        &self,
+        id: &str,
+        check: &ElementCheck,
+        timeout_ms: u64,
+        step: &mut Step,
+    ) -> Result<(), Stop> {
+        let check = self.fill_check(id, check)?;
+        let mut last = None;
+        let reached = self.poll(id, Duration::from_millis(timeout_ms), || {
+            let nodes = self.elements(id)?;
+            let seen = check
+                .observe(&nodes)
+                .map_err(|found| fail(self.ambiguous(id, &check.element, &found)))?;
+            let (holds, now) = (seen.holds, seen.now);
+            last = Some((now, nodes));
+            Ok(holds.then_some(()))
+        })?;
+        self.snapshot(step, "after")?;
+        match (reached, last) {
+            (None, Some((now, nodes))) => {
+                let failure = Failure::new("run.waitFor.elementTimeout")
+                    .with("block", id)
+                    .with("seconds", seconds(timeout_ms));
+                let failure = self.element_failure(failure, &check, &now);
+                Err(fail(if now == ElementState::Absent {
+                    self.near(failure, &check.element, &nodes)
+                } else {
+                    failure
+                }))
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Waits until the screen differs from `before`, the look before the action, or from the
@@ -2518,7 +2608,7 @@ impl Exec<'_> {
     ) -> Result<Point, Stop> {
         let image = match target {
             Target::Image(image) => image,
-            Target::Point(_) | Target::Description(_) | Target::Area(_) => {
+            Target::Point(_) | Target::Description(_) | Target::Area(_) | Target::Element(_) => {
                 let captured;
                 let shot = match shot {
                     Some(shot) => shot,
@@ -2534,6 +2624,7 @@ impl Exec<'_> {
                         self.find_described(t, id, what, shot, &window, step)?
                     }
                     Target::Area(area) => self.area_centre(id, area)?,
+                    Target::Element(query) => self.element_centre(id, query)?,
                     Target::Image(_) => unreachable!("handled above"),
                 };
                 // The test keeps the point as fractions of the window; hands click in points.
@@ -2593,6 +2684,108 @@ impl Exec<'_> {
             x: area.x + area.width / 2.0,
             y: area.y + area.height / 2.0,
         })
+    }
+
+    /// The centre of the element `query` asks for, in fractions of the window.
+    fn element_centre(&self, id: &str, query: &ElementQuery) -> Result<Point, Stop> {
+        let query = self.fill_query(id, query)?;
+        let nodes = self.elements(id)?;
+        let area = match query.find(&nodes) {
+            Ok(node) => node.frame,
+            Err(Missing::NotFound(_)) => return Err(fail(self.not_found(id, &query, &nodes))),
+            Err(Missing::Ambiguous(found)) => return Err(fail(self.ambiguous(id, &query, &found))),
+        };
+        Ok(Point {
+            x: area.x + area.width / 2.0,
+            y: area.y + area.height / 2.0,
+        })
+    }
+
+    /// The elements of the window of the app under test.
+    fn elements(&self, id: &str) -> Result<Vec<ElementNode>, Stop> {
+        let app = self.app();
+        self.hands(id, |h| h.elements(&app))
+    }
+
+    /// `query` with the values of its placeholders.
+    fn fill_query(&self, id: &str, query: &ElementQuery) -> Result<ElementQuery, Stop> {
+        Ok(ElementQuery {
+            id: self.substitute(id, &query.id)?,
+            title: self.substitute(id, &query.title)?,
+            ..query.clone()
+        })
+    }
+
+    /// `check` with the values of its placeholders.
+    fn fill_check(&self, id: &str, check: &ElementCheck) -> Result<ElementCheck, Stop> {
+        let is = match check.is.text() {
+            Some(text) => check.is.with_text(self.substitute(id, text)?),
+            None => check.is.clone(),
+        };
+        Ok(ElementCheck {
+            element: self.fill_query(id, &check.element)?,
+            is,
+        })
+    }
+
+    /// Elements for a failure, as JSON a failure can carry in any language; secrets are masked
+    /// before the escaping could hide them from [`Self::redact`].
+    fn elements_param<'q>(&self, queries: impl IntoIterator<Item = &'q ElementQuery>) -> String {
+        let shown: Vec<_> = queries
+            .into_iter()
+            .map(|q| ElementQuery {
+                id: self.mask(&q.id),
+                title: self.mask(&q.title),
+                ..q.clone()
+            })
+            .collect();
+        serde_json::to_string(&shown).unwrap_or_default()
+    }
+
+    /// `failure` naming the element `check` looked at, what it expected and what it saw.
+    fn element_failure(
+        &self,
+        failure: Failure,
+        check: &ElementCheck,
+        now: &ElementState,
+    ) -> Failure {
+        failure
+            .with("element", self.elements_param([&check.element]))
+            .with("is", check.is.name())
+            .with("to", check.is.text().unwrap_or_default())
+            .with("now", now.name())
+            .with("actual", now.text().unwrap_or_default())
+    }
+
+    /// `failure` with the elements of the window like the one `query` asks for.
+    fn near(&self, failure: Failure, query: &ElementQuery, nodes: &[ElementNode]) -> Failure {
+        let similar: Vec<_> = query.similar(nodes).iter().map(|n| n.as_query()).collect();
+        failure
+            .with("similar", self.elements_param(&similar))
+            .with("elements", nodes.len())
+    }
+
+    fn not_found(&self, id: &str, query: &ElementQuery, nodes: &[ElementNode]) -> Failure {
+        let failure = Failure::new("run.element.notFound")
+            .with("block", id)
+            .with("element", self.elements_param([query]));
+        self.near(failure, query, nodes)
+    }
+
+    /// Several elements answer `query`: the first few are listed with the index that picks each.
+    fn ambiguous(&self, id: &str, query: &ElementQuery, found: &[&ElementNode]) -> Failure {
+        let listed: Vec<_> = (0..)
+            .zip(found.iter().take(LISTED_ELEMENTS))
+            .map(|(i, n)| ElementQuery {
+                index: Some(i),
+                ..n.as_query()
+            })
+            .collect();
+        Failure::new("run.element.ambiguous")
+            .with("block", id)
+            .with("count", found.len())
+            .with("element", self.elements_param([query]))
+            .with("found", self.elements_param(&listed))
     }
 
     /// Asks the locator where the element `what` describes is on `shot`, private areas covered;

@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 import Network
 import Observation
 import SwiftUI
@@ -23,6 +24,12 @@ enum OptionalPermission: CaseIterable, Identifiable {
     case .notifications: String(localized: "To tell you when a scheduled test fails or is skipped")
     case .localNetwork: String(localized: "To let the iPhone app find this Mac on the same Wi-Fi")
     }
+  }
+
+  /// Why the permission isn't asked for in this copy of the app, if it isn't.
+  var unavailableReason: String? {
+    self == .notifications && Profile.current.isolated
+      ? String(localized: "Off in a separate profile, which runs no schedules.") : nil
   }
 
   var symbol: String {
@@ -103,7 +110,7 @@ final class OptionalPermissions {
   private let defaults: UserDefaults
   @ObservationIgnored private var browser: NWBrowser?
 
-  init(defaults: UserDefaults = .standard) {
+  init(defaults: UserDefaults = Profile.current.defaults) {
     self.defaults = defaults
   }
 
@@ -192,32 +199,12 @@ private struct OptionalPermissionRow: View {
   var body: some View {
     let status = permissions.status(of: permission)
     LabeledContent {
-      HStack(spacing: 10) {
-        Group {
-          switch status {
-          case .notAsked:
-            Button("Allow", systemImage: "checkmark.circle") { permissions.allow(permission) }
-              .buttonStyle(.glassProminent)
-          case .denied:
-            Button("Open Settings", systemImage: "arrow.up.forward.app", action: permission.openSettings)
-              .buttonStyle(.glassProminent)
-              .help(Text("Opens this list in System Settings"))
-          case .unknown:
-            Button("Open Settings", systemImage: "arrow.up.forward.app", action: permission.openSettings)
-              .buttonStyle(.glass)
-              .help(Text("Opens this list in System Settings"))
-          case .allowed:
-            Button("Turn Off", systemImage: "arrow.up.forward.app", action: permission.openSettings)
-              .buttonStyle(.glass)
-              .help(Text("Opens this list in System Settings"))
-          }
-        }
-        .labelStyle(.titleAndIcon)
-        Image(systemName: Self.symbol(status))
-          .font(.title2)
-          .foregroundStyle(status == .allowed ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
-          .contentTransition(.symbolEffect(.replace))
-          .accessibilityLabel(Text(Self.title(status)))
+      if let reason = permission.unavailableReason {
+        Text(reason)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      } else {
+        controls(status)
       }
     } label: {
       HStack(spacing: 10) {
@@ -232,6 +219,36 @@ private struct OptionalPermissionRow: View {
       }
     }
     .settingAnchor("optionalPermission.\(permission.id)")
+  }
+
+  private func controls(_ status: OptionalStatus) -> some View {
+    HStack(spacing: 10) {
+      Group {
+        switch status {
+        case .notAsked:
+          Button("Allow", systemImage: "checkmark.circle") { permissions.allow(permission) }
+            .buttonStyle(.glassProminent)
+        case .denied:
+          Button("Open Settings", systemImage: "arrow.up.forward.app", action: permission.openSettings)
+            .buttonStyle(.glassProminent)
+            .help(Text("Opens this list in System Settings"))
+        case .unknown:
+          Button("Open Settings", systemImage: "arrow.up.forward.app", action: permission.openSettings)
+            .buttonStyle(.glass)
+            .help(Text("Opens this list in System Settings"))
+        case .allowed:
+          Button("Turn Off", systemImage: "arrow.up.forward.app", action: permission.openSettings)
+            .buttonStyle(.glass)
+            .help(Text("Opens this list in System Settings"))
+        }
+      }
+      .labelStyle(.titleAndIcon)
+      Image(systemName: Self.symbol(status))
+        .font(.title2)
+        .foregroundStyle(status == .allowed ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+        .contentTransition(.symbolEffect(.replace))
+        .accessibilityLabel(Text(Self.title(status)))
+    }
   }
 
   /// Shape and colour tell the state apart; an unfinished question is a dotted circle.

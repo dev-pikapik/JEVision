@@ -5,16 +5,18 @@
 //! the core model itself instead of a converted copy.
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use jevision_core::{
     Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent,
-    CanvasItem, CanvasSection, CheckedTest, ClipboardAction, ClipboardContent, Compare, Condition,
-    DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField,
-    Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton,
-    NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
-    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit,
-    SearchCandidate, Severity, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
-    TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
+    CanvasItem, CanvasSection, CheckOf, CheckedTest, ClipboardAction, ClipboardContent, Compare,
+    Condition, DatabaseExpect, ElementCheck, ElementNode, ElementQuery, ElementState, ElseIf,
+    ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue, IssueParam,
+    LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note, NoteAnchor,
+    PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue, ScriptInput,
+    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
+    Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind,
+    ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -135,6 +137,21 @@ pub fn jevision_version() -> String {
     env!("CARGO_PKG_VERSION").to_owned()
 }
 
+/// The folder of a separate profile, `JEVISION_PROFILE`, as an absolute path: `value` as set,
+/// relative to `current`. `None` when `value` is empty.
+#[uniffi::export]
+pub fn profile_folder(value: String, current: String) -> Option<String> {
+    jevision_core::profile_folder_from(Some(value.into()), current.into())
+        .map(|folder| folder.to_string_lossy().into_owned())
+}
+
+/// The Keychain service that stands for `service` in the profile `profile`; `service` itself
+/// for the person's own keys.
+#[uniffi::export]
+pub fn profile_keychain_service(service: String, profile: Option<String>) -> String {
+    jevision_core::profile_keychain_service(&service, profile.as_deref().map(Path::new))
+}
+
 /// Reads a test file's text, upgrading older formats.
 #[uniffi::export]
 pub fn load_flow(json: String) -> Result<Flow, FlowError> {
@@ -213,6 +230,40 @@ pub fn date_languages() -> Vec<String> {
 #[uniffi::export]
 pub fn time_zone_known(name: String) -> bool {
     jevision_core::time_zone_known(&name)
+}
+
+/// A kind of interface element a test can ask for, with what people call it.
+#[derive(uniffi::Record)]
+pub struct ElementKind {
+    /// The name in a test file: `textField`.
+    pub name: String,
+    /// What it is called in the current language, in lower case: `text field`.
+    pub label: String,
+}
+
+/// The kinds of element a test can ask for, in the order the editor offers them.
+#[uniffi::export]
+pub fn element_kinds() -> Vec<ElementKind> {
+    let lang = jevision_l10n::language();
+    jevision_core::ELEMENT_ROLES
+        .iter()
+        .map(|r| ElementKind {
+            name: r.name.to_owned(),
+            label: r.label_in(&lang),
+        })
+        .collect()
+}
+
+/// The element a query asks for in the current language: `button “Save” with id “save”`.
+#[uniffi::export]
+pub fn describe_element(query: ElementQuery) -> String {
+    jevision_core::describe_element_in(&jevision_l10n::language(), &query)
+}
+
+/// What a check expects of an element in the current language: `enabled`, `value “Alice”`.
+#[uniffi::export]
+pub fn describe_element_state(state: ElementState) -> String {
+    jevision_core::describe_state_in(&jevision_l10n::language(), &state)
 }
 
 /// Every block type, in palette order.
@@ -756,6 +807,8 @@ pub enum BlockKind {
         reset_state: bool,
         window_size: Option<WindowSize>,
         window_position: Option<WindowPosition>,
+        arguments: Vec<String>,
+        environment: HashMap<String, String>,
         next: Option<String>,
     },
     OpenFile {
@@ -815,7 +868,7 @@ pub enum BlockKind {
         next: Option<String>,
     },
     Check {
-        reference: Reference,
+        of: CheckOf,
         next: Option<String>,
     },
     If {
@@ -945,9 +998,58 @@ pub struct ElseIf {
 }
 
 #[uniffi::remote(Enum)]
+pub enum CheckOf {
+    Screen(Reference),
+    Element(ElementCheck),
+}
+
+#[uniffi::remote(Enum)]
 pub enum Condition {
     Screen(Reference),
     Value(ValueCheck),
+    Element(ElementCheck),
+}
+
+#[uniffi::remote(Record)]
+pub struct ElementQuery {
+    pub id: String,
+    pub role: String,
+    pub title: String,
+    pub index: Option<u32>,
+}
+
+#[uniffi::remote(Record)]
+pub struct ElementCheck {
+    pub element: ElementQuery,
+    pub is: ElementState,
+}
+
+#[uniffi::remote(Enum)]
+pub enum ElementState {
+    Present,
+    Absent,
+    Enabled,
+    Disabled,
+    Selected,
+    NotSelected,
+    ValueEquals(String),
+    ValueContains(String),
+    TitleEquals(String),
+    TitleContains(String),
+}
+
+#[uniffi::remote(Record)]
+pub struct ElementNode {
+    pub role: String,
+    pub subrole: String,
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub value: String,
+    pub placeholder: String,
+    pub enabled: bool,
+    pub selected: bool,
+    pub frame: Rect,
 }
 
 #[uniffi::remote(Record)]
@@ -1053,6 +1155,7 @@ pub enum Target {
     Point(Point),
     Description(String),
     Area(String),
+    Element(ElementQuery),
 }
 
 #[uniffi::remote(Record)]
@@ -1107,6 +1210,7 @@ pub enum WaitUntil {
     Appears(Reference),
     Disappears(Reference),
     ScreenStable,
+    Element(ElementCheck),
 }
 
 #[uniffi::remote(Record)]

@@ -2979,6 +2979,16 @@
         }
       }
     },
+    "Add Argument" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить аргумент"
+          }
+        }
+      }
+    },
     "Add Arrow" : {
       "localizations" : {
         "en" : {
@@ -3489,6 +3499,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить значение"
+          }
+        }
+      }
+    },
+    "Add Variable" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить переменную"
           }
         }
       }
@@ -4189,6 +4209,16 @@
         }
       }
     },
+    "An Element" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемент"
+          }
+        }
+      }
+    },
     "An assistant sees the front window of an app, which may show private information." : {
       "localizations" : {
         "ru" : {
@@ -4225,6 +4255,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Исчезнет картинка"
+          }
+        }
+      }
+    },
+    "An interface element is in a state" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемент интерфейса в нужном состоянии"
           }
         }
       }
@@ -4325,6 +4365,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все"
+          }
+        }
+      }
+    },
+    "Any Kind" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Любой вид"
           }
         }
       }
@@ -4455,6 +4505,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Области, которые проект всегда скрывает, закрашены. Снимки сохраняются в ветке «jevision-attachments» репозитория, поэтому их видят все, у кого есть доступ к репозиторию."
+          }
+        }
+      }
+    },
+    "Argument %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аргумент %lld"
+          }
+        }
+      }
+    },
+    "Arguments" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аргументы"
           }
         }
       }
@@ -5175,6 +5245,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Кнопка"
+          }
+        }
+      }
+    },
+    "By Accessibility" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через универсальный доступ"
           }
         }
       }
@@ -6225,6 +6305,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите модель ИИ в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "Choose an element to check" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите элемент для проверки"
+          }
+        }
+      }
+    },
+    "Choose an element to wait for" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите элемент, которого ждать"
           }
         }
       }
@@ -9063,6 +9163,16 @@
         }
       }
     },
+    "Environment Variables" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переменные окружения"
+          }
+        }
+      }
+    },
     "Environment: %@" : {
       "localizations" : {
         "ru" : {
@@ -9653,6 +9763,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создаёт задачу на GitHub о последнем падении открытого теста."
+          }
+        }
+      }
+    },
+    "Fill in at least one of the kind, the title and the identifier. The title is the element’s label, exactly as accessibility reads it; it can hold ${var.NAME}. When several elements fit, the index picks one: 0 is the first, in the order the window lists them, usually from the top." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заполните хотя бы одно: вид, заголовок или идентификатор. Заголовок — подпись элемента в точности так, как её читает универсальный доступ; в нём можно писать ${var.NAME}. Когда подходит несколько элементов, номер выбирает один из них: 0 — первый в том порядке, в каком их перечисляет окно, обычно сверху."
           }
         }
       }
@@ -10879,6 +10999,16 @@
         }
       }
     },
+    "Identifier" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идентификатор"
+          }
+        }
+      }
+    },
     "If" : {
       "localizations" : {
         "ru" : {
@@ -11089,6 +11219,16 @@
         }
       }
     },
+    "In the Logs folder of the separate profile" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В папке Logs отдельного профиля"
+          }
+        }
+      }
+    },
     "In the Logs folder of your Library" : {
       "localizations" : {
         "ru" : {
@@ -11099,12 +11239,32 @@
         }
       }
     },
+    "In the Support folder of the separate profile" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В папке Support отдельного профиля"
+          }
+        }
+      }
+    },
     "Include %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Включить %@"
+          }
+        }
+      }
+    },
+    "Index" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Номер"
           }
         }
       }
@@ -11387,6 +11547,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В ветку"
+          }
+        }
+      }
+    },
+    "Is disabled" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недоступен"
+          }
+        }
+      }
+    },
+    "Is enabled" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступен"
+          }
+        }
+      }
+    },
+    "Is in the window" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Есть в окне"
+          }
+        }
+      }
+    },
+    "Is selected or checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбран или отмечен"
+          }
+        }
+      }
+    },
+    "Isn’t in the window" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет в окне"
+          }
+        }
+      }
+    },
+    "Isn’t selected or checked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не выбран и не отмечен"
           }
         }
       }
@@ -11920,6 +12140,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ключи хранятся в Связке ключей на этом Mac. В тесты, журналы, отчёты и git они не попадают."
+          }
+        }
+      }
+    },
+    "Kind" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вид"
           }
         }
       }
@@ -14160,6 +14390,26 @@
         }
       }
     },
+    "Not available in a separate profile: the jevision command is shared by everyone who uses JEVision on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недоступно в отдельном профиле: команда jevision общая для всех, кто пользуется JEVision на этом Mac."
+          }
+        }
+      }
+    },
+    "Not available in a separate profile: updates are for the copy of JEVision you use every day." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недоступно в отдельном профиле: обновления — для копии JEVision, которой вы пользуетесь каждый день."
+          }
+        }
+      }
+    },
     "Not committed yet" : {
       "localizations" : {
         "ru" : {
@@ -14614,6 +14864,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ОК"
+          }
+        }
+      }
+    },
+    "Off in a separate profile, which runs no schedules." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключено в отдельном профиле: расписания в нём не работают."
           }
         }
       }
@@ -16180,6 +16440,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Физический Mac"
+          }
+        }
+      }
+    },
+    "Pick One of Several" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать один из нескольких"
           }
         }
       }
@@ -19554,6 +19824,16 @@
         }
       }
     },
+    "Schedules are off in this profile" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания в этом профиле выключены"
+          }
+        }
+      }
+    },
     "Schedules are off on this Mac" : {
       "localizations" : {
         "ru" : {
@@ -19570,6 +19850,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся прочитать расписания"
+          }
+        }
+      }
+    },
+    "Schedules don’t run in a separate profile." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В отдельном профиле расписания не работают."
+          }
+        }
+      }
+    },
+    "Schedules don’t run in a separate profile: macOS would start them for everyone who uses JEVision on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В отдельном профиле расписания не работают: macOS запускала бы их для всех, кто пользуется JEVision на этом Mac."
           }
         }
       }
@@ -20192,6 +20492,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправлено. Проверьте %@."
+          }
+        }
+      }
+    },
+    "Separate profile" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отдельный профиль"
           }
         }
       }
@@ -21480,6 +21790,16 @@
         }
       }
     },
+    "State" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Состояние"
+          }
+        }
+      }
+    },
     "Statistics" : {
       "localizations" : {
         "ru" : {
@@ -22410,6 +22730,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Папка теста"
+          }
+        }
+      }
+    },
+    "The app gets them only when this block starts it: one already running keeps its own. Values can hold ${env.NAME}, ${var.NAME} and ${data.COLUMN}." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение получает их, только когда его запускает этот блок: уже запущенное остаётся со своими. В значениях можно писать ${env.NAME}, ${var.NAME} и ${data.COLUMN}."
           }
         }
       }
@@ -24138,6 +24468,16 @@
         }
       }
     },
+    "This copy of JEVision keeps its settings, logs and keys in this folder, apart from yours. Schedules, installing the command line tool, updates and notifications are off in it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта копия JEVision хранит настройки, журналы и ключи в этой папке, отдельно от ваших. Расписания, установка инструмента командной строки, обновления и уведомления в ней выключены."
+          }
+        }
+      }
+    },
     "This failure is already reported in an open issue. Adding this run to it keeps the reports in one place." : {
       "localizations" : {
         "ru" : {
@@ -24240,6 +24580,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этом месяце: %@"
+          }
+        }
+      }
+    },
+    "This name is already used above, so this row is left out." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это имя уже есть выше, поэтому строка не учитывается."
           }
         }
       }
@@ -24490,6 +24840,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заголовок"
+          }
+        }
+      }
+    },
+    "Title contains" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заголовок содержит"
+          }
+        }
+      }
+    },
+    "Title is" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заголовок равен"
           }
         }
       }
@@ -25078,6 +25448,16 @@
         }
       }
     },
+    "Until %@ · %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать, пока: %1$@ · %2$@"
+          }
+        }
+      }
+    },
     "Until the clipboard %@ %@ · %@" : {
       "localizations" : {
         "ru" : {
@@ -25536,6 +25916,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Имя значения"
+          }
+        }
+      }
+    },
+    "Value contains" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение содержит"
+          }
+        }
+      }
+    },
+    "Value is" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значение равно"
           }
         }
       }
@@ -29192,6 +29592,22 @@
         }
       }
     },
+    "bug.block.checkElement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check: %1$@ — %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить: %1$@ — %2$@"
+          }
+        }
+      }
+    },
     "bug.block.click" : {
       "localizations" : {
         "en" : {
@@ -29572,6 +29988,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отправить %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "bug.block.ifElement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If: %1$@ — %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если: %1$@ — %2$@"
           }
         }
       }
@@ -30112,6 +30544,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "После нажатия экран меняется."
+          }
+        }
+      }
+    },
+    "bug.expected.element" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ — %2$@."
           }
         }
       }
@@ -31012,6 +31460,22 @@
         }
       }
     },
+    "bug.target.element" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (found by accessibility)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (найдено через универсальный доступ)"
+          }
+        }
+      }
+    },
     "bug.target.image" : {
       "localizations" : {
         "en" : {
@@ -31104,6 +31568,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» не исчезнет"
+          }
+        }
+      }
+    },
+    "bug.wait.element" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "this holds: %1$@ — %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не будет так: %1$@ — %2$@"
           }
         }
       }
@@ -32330,6 +32810,86 @@
         }
       }
     },
+    "cli.bridge.cannotOpen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "couldn’t open %@ to run the tests in it: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не удалось открыть %@, чтобы запустить в нём тесты: %@"
+          }
+        }
+      }
+    },
+    "cli.bridge.cannotStart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision couldn’t start %@: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не смог запустить %@: %@"
+          }
+        }
+      }
+    },
+    "cli.bridge.noFolder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "couldn’t prepare %@ to hand the run to JEVision: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не удалось подготовить %@, чтобы передать запуск JEVision: %@"
+          }
+        }
+      }
+    },
+    "cli.bridge.noRequest" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision couldn’t read what to run from %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не смог прочитать, что запускать, из %@"
+          }
+        }
+      }
+    },
+    "cli.bridge.noStatus" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ended without saying how the run went"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ завершился, не сообщив, чем кончился запуск"
+          }
+        }
+      }
+    },
     "cli.check.clean" : {
       "localizations" : {
         "en" : {
@@ -32430,6 +32990,86 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "cli.error.appCopyFormat" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy needs an app id and the path of its copy, such as --app-copy com.example.App=Copy.app, not “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy ждёт id приложения и путь к его копии, например --app-copy com.example.App=Copy.app, а не «%@»"
+          }
+        }
+      }
+    },
+    "cli.error.appCopyMissing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "there is no app at %@ for --app-copy"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "для --app-copy нет приложения по пути %@"
+          }
+        }
+      }
+    },
+    "cli.error.appCopyNotApp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy needs the path of an app, a folder ending in .app, not “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy ждёт путь к приложению — папке с окончанием .app, а не «%@»"
+          }
+        }
+      }
+    },
+    "cli.error.appCopyTwice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy names a copy of %@ twice"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app-copy дважды указывает копию %@"
+          }
+        }
+      }
+    },
+    "cli.error.appNeedsThroughApp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app works only with --through-app"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--app работает только вместе с --through-app"
           }
         }
       }
@@ -32654,6 +33294,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "укажите папку проекта через --project"
+          }
+        }
+      }
+    },
+    "cli.error.noApp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--through-app needs JEVision.app, and there is none next to this jevision, in /Applications or in ~/Applications; name it with --app <path> or JEVISION_APP"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "для --through-app нужно приложение JEVision.app, но его нет ни рядом с этим jevision, ни в /Applications, ни в ~/Applications; укажите его через --app <путь> или JEVISION_APP"
+          }
+        }
+      }
+    },
+    "cli.error.noAppAt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "there is no JEVision app at %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "по пути %@ нет приложения JEVision"
           }
         }
       }
@@ -33555,13 +34227,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs tests on this Mac, one after another or side by side (see --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible. A provider the\n                      project or a test names comes first, unless --force-ai\n  --model <name>      AI model for checks by meaning instead of the chosen one.\n                      A model the project or a test names comes first, unless\n                      --force-ai\n  --force-ai          Every check by meaning asks this run's provider and model\n                      (--provider and --model, otherwise the app's), whatever\n                      the project or a test chooses, and never the fallback\n                      provider. For CI. Before the tests start, one short\n                      question to the model checks the API key and the model.\n                      Elements a test describes in words are still found by\n                      JEV: no other provider can find them\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac); --parallel 1 runs them\n                      one after another. Without it, they run as\n                      jevision.project.json sets for their folder, the deepest\n                      one that holds all the tests and folders named, and one\n                      after another when it sets nothing there or can't be\n                      read. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, 3 — a file couldn't be read or written,\n4 — this Mac can't run tests now, 5 — a test, a block or a settings file needs a newer\nJEVision."
+            "value" : "Runs tests on this Mac, one after another or side by side (see --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible. A provider the\n                      project or a test names comes first, unless --force-ai\n  --model <name>      AI model for checks by meaning instead of the chosen one.\n                      A model the project or a test names comes first, unless\n                      --force-ai\n  --force-ai          Every check by meaning asks this run's provider and model\n                      (--provider and --model, otherwise the app's), whatever\n                      the project or a test chooses, and never the fallback\n                      provider. For CI. Before the tests start, one short\n                      question to the model checks the API key and the model.\n                      Elements a test describes in words are still found by\n                      JEV: no other provider can find them\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --app-copy <id>=<path>\n                      Use the copy of an app at <path> (a .app; the path is\n                      absolute or from the current folder) for the tests whose\n                      app is <id>. They open, look at, record and quit only that\n                      copy, started on its own even while the installed app is\n                      open. Give it once for each app\n  --through-app       Run inside JEVision.app instead of this terminal. macOS\n                      then asks the app, not the terminal or CI agent, for\n                      Screen & System Audio Recording and Accessibility, so\n                      allowing JEVision once is enough. What the run prints\n                      shows here, Ctrl-C stops it and the exit status is the\n                      run's own\n  --app <path>        JEVision.app for --through-app when this jevision isn't\n                      part of one. Default: JEVISION_APP, then\n                      /Applications/JEVision.app or ~/Applications/JEVision.app\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac); --parallel 1 runs them\n                      one after another. Without it, they run as\n                      jevision.project.json sets for their folder, the deepest\n                      one that holds all the tests and folders named, and one\n                      after another when it sets nothing there or can't be\n                      read. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, 3 — a file couldn't be read or written,\n4 — this Mac can't run tests now, 5 — a test, a block or a settings file needs a newer\nJEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускает тесты на этом Mac — по одному или параллельно (см. --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible. Провайдер, указанный в проекте или в тесте,\n                        важнее, если нет --force-ai\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной. Модель,\n                        указанная в проекте или в тесте, важнее, если нет --force-ai\n  --force-ai            Все проверки по смыслу спрашивают провайдера и модель этого\n                        прогона (--provider и --model, иначе — выбранные в приложении),\n                        что бы ни выбрали проект или тест; запасной провайдер не\n                        используется. Для CI. До начала тестов один короткий вопрос\n                        модели проверяет ключ API и модель. Элементы, которые тест\n                        описывает словами, по-прежнему ищет JEV: другие провайдеры\n                        искать их не умеют\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac); --parallel 1 запускает их по одному.\n                        Без параметра тесты идут так, как jevision.project.json задаёт\n                        для их папки — самой глубокой, в которой лежат все названные\n                        тесты и папки, — а по одному, если там ничего не задано или\n                        файл не удаётся прочитать.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, 3 — файл не удалось прочитать или записать,\n4 — этот Mac сейчас не может запускать тесты, 5 — тесту, блоку или файлу настроек нужна\nболее новая JEVision."
+            "value" : "Запускает тесты на этом Mac — по одному или параллельно (см. --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible. Провайдер, указанный в проекте или в тесте,\n                        важнее, если нет --force-ai\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной. Модель,\n                        указанная в проекте или в тесте, важнее, если нет --force-ai\n  --force-ai            Все проверки по смыслу спрашивают провайдера и модель этого\n                        прогона (--provider и --model, иначе — выбранные в приложении),\n                        что бы ни выбрали проект или тест; запасной провайдер не\n                        используется. Для CI. До начала тестов один короткий вопрос\n                        модели проверяет ключ API и модель. Элементы, которые тест\n                        описывает словами, по-прежнему ищет JEV: другие провайдеры\n                        искать их не умеют\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --app-copy <id>=<путь>\n                        Для тестов приложения <id> взять его копию по пути <путь>\n                        (.app; путь полный или от текущей папки). Тесты открывают,\n                        снимают, записывают и закрывают только эту копию: она\n                        запускается отдельно, даже если установленное приложение\n                        открыто. Указывается по одному разу для каждого приложения\n  --through-app         Запустить внутри JEVision.app, а не в этом терминале. Тогда\n                        macOS спрашивает «Запись экрана и системного аудио» и\n                        «Универсальный доступ» у приложения, а не у терминала или\n                        CI-агента, и достаточно один раз разрешить их JEVision.\n                        Вывод запуска появляется здесь, Ctrl-C его останавливает,\n                        код завершения — как у самого запуска\n  --app <путь>          JEVision.app для --through-app, если этот jevision не входит\n                        в приложение. По умолчанию — JEVISION_APP, затем\n                        /Applications/JEVision.app или ~/Applications/JEVision.app\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac); --parallel 1 запускает их по одному.\n                        Без параметра тесты идут так, как jevision.project.json задаёт\n                        для их папки — самой глубокой, в которой лежат все названные\n                        тесты и папки, — а по одному, если там ничего не задано или\n                        файл не удаётся прочитать.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, 3 — файл не удалось прочитать или записать,\n4 — этот Mac сейчас не может запускать тесты, 5 — тесту, блоку или файлу настроек нужна\nболее новая JEVision."
           }
         }
       }
@@ -36254,6 +36926,758 @@
         }
       }
     },
+    "element.any" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "element"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "элемент"
+          }
+        }
+      }
+    },
+    "element.role.busyIndicator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spinner"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "индикатор ожидания"
+          }
+        }
+      }
+    },
+    "element.role.button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "button"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "кнопка"
+          }
+        }
+      }
+    },
+    "element.role.cell" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cell"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ячейка"
+          }
+        }
+      }
+    },
+    "element.role.checkBox" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "checkbox"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "флажок"
+          }
+        }
+      }
+    },
+    "element.role.colorWell" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "color well"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выбор цвета"
+          }
+        }
+      }
+    },
+    "element.role.comboBox" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "combo box"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "поле со списком"
+          }
+        }
+      }
+    },
+    "element.role.disclosureTriangle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "disclosure triangle"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "треугольник раскрытия"
+          }
+        }
+      }
+    },
+    "element.role.group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "group"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "группа"
+          }
+        }
+      }
+    },
+    "element.role.image" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "image"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "изображение"
+          }
+        }
+      }
+    },
+    "element.role.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "link"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ссылка"
+          }
+        }
+      }
+    },
+    "element.role.list" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "list"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "список"
+          }
+        }
+      }
+    },
+    "element.role.menuButton" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "menu button"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "кнопка меню"
+          }
+        }
+      }
+    },
+    "element.role.menuItem" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "menu item"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пункт меню"
+          }
+        }
+      }
+    },
+    "element.role.outline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "outline list"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "иерархический список"
+          }
+        }
+      }
+    },
+    "element.role.popUpButton" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pop-up menu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "всплывающее меню"
+          }
+        }
+      }
+    },
+    "element.role.progressIndicator" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "progress bar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "индикатор выполнения"
+          }
+        }
+      }
+    },
+    "element.role.radioButton" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "radio button"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "радиокнопка"
+          }
+        }
+      }
+    },
+    "element.role.radioGroup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "radio group"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "группа радиокнопок"
+          }
+        }
+      }
+    },
+    "element.role.row" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "row"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "строка"
+          }
+        }
+      }
+    },
+    "element.role.scrollArea" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "scroll area"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прокручиваемая область"
+          }
+        }
+      }
+    },
+    "element.role.searchField" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "search field"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "поле поиска"
+          }
+        }
+      }
+    },
+    "element.role.secureTextField" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "password field"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "поле пароля"
+          }
+        }
+      }
+    },
+    "element.role.sheet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sheet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "окно-шторка"
+          }
+        }
+      }
+    },
+    "element.role.slider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "slider"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ползунок"
+          }
+        }
+      }
+    },
+    "element.role.staticText" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "text"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "текст"
+          }
+        }
+      }
+    },
+    "element.role.stepper" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stepper"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "кнопки «больше-меньше»"
+          }
+        }
+      }
+    },
+    "element.role.switch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switch"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "переключатель"
+          }
+        }
+      }
+    },
+    "element.role.tabGroup" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tabs"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вкладки"
+          }
+        }
+      }
+    },
+    "element.role.table" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "table"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "таблица"
+          }
+        }
+      }
+    },
+    "element.role.textArea" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "text area"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "многострочное поле"
+          }
+        }
+      }
+    },
+    "element.role.textField" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "text field"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "текстовое поле"
+          }
+        }
+      }
+    },
+    "element.role.toolbar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "toolbar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "панель инструментов"
+          }
+        }
+      }
+    },
+    "element.role.window" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "window"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "окно"
+          }
+        }
+      }
+    },
+    "element.state.absent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not in the window"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "нет в окне"
+          }
+        }
+      }
+    },
+    "element.state.disabled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "disabled"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "недоступен"
+          }
+        }
+      }
+    },
+    "element.state.enabled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "enabled"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доступен"
+          }
+        }
+      }
+    },
+    "element.state.notSelected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not selected"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не выбран"
+          }
+        }
+      }
+    },
+    "element.state.present" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "in the window"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "есть в окне"
+          }
+        }
+      }
+    },
+    "element.state.selected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "selected"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выбран"
+          }
+        }
+      }
+    },
+    "element.state.titleContains" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "title containing “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "подпись, в которой есть «%@»"
+          }
+        }
+      }
+    },
+    "element.state.titleEquals" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "title “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "подпись «%@»"
+          }
+        }
+      }
+    },
+    "element.state.valueContains" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "value containing “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "значение, в котором есть «%@»"
+          }
+        }
+      }
+    },
+    "element.state.valueEquals" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "value “%@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "значение «%@»"
+          }
+        }
+      }
+    },
+    "element.withId" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ with id “%2$@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ с id «%2$@»"
+          }
+        }
+      }
+    },
+    "element.withIndex" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (index %2$@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (индекс %2$@)"
+          }
+        }
+      }
+    },
+    "element.withTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ “%2$@”"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ «%2$@»"
+          }
+        }
+      }
+    },
     "env.default.unknown" : {
       "localizations" : {
         "en" : {
@@ -36692,6 +38116,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ведёт к «%@», но такого блока нет."
+          }
+        }
+      }
+    },
+    "flow.element.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Say which element: give its id, kind or title — at least one of them."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите, какой элемент: его id, тип или подпись — хотя бы одно из них."
+          }
+        }
+      }
+    },
+    "flow.element.toNeedsText" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“to” goes only with valueEquals, valueContains, titleEquals and titleContains. Remove it or choose one of those."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«to» бывает только у valueEquals, valueContains, titleEquals и titleContains. Уберите его или выберите одно из этих условий."
           }
         }
       }
@@ -45582,6 +47038,86 @@
         }
       }
     },
+    "run.element.ambiguous" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%1$@”: %2$@ elements match, but the block needs one. Looked for: %3$@. Found: %4$@. Be more specific: add an id, a title or an index (0 is the first)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: подходящих элементов несколько (%2$@), а нужен один. Искали: %3$@. Нашлись: %4$@. Уточните: добавьте id, подпись или индекс (0 — первый)."
+          }
+        }
+      }
+    },
+    "run.element.noElements" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\nAccessibility sees no elements in this window: the app may draw its interface without accessibility support. Find the element by a picture or a description instead."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\nУниверсальный доступ не видит в этом окне ни одного элемента: похоже, приложение рисует интерфейс без его поддержки. Найдите элемент по картинке или по описанию."
+          }
+        }
+      }
+    },
+    "run.element.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%1$@”: no element in the window matches. Looked for: %2$@.%3$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: в окне нет подходящего элемента. Искали: %2$@.%3$@"
+          }
+        }
+      }
+    },
+    "run.element.similar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\nSimilar ones in the window: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\nПохожие в окне: %@."
+          }
+        }
+      }
+    },
+    "run.element.state" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%1$@”: the element is not as expected. Element: %2$@. Expected: %3$@. Actual: %4$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: элемент не такой, как ожидалось. Элемент: %2$@. Ожидалось: %3$@. На деле: %4$@."
+          }
+        }
+      }
+    },
     "run.env.missing" : {
       "localizations" : {
         "en" : {
@@ -46906,6 +48442,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся связаться с %1$@ по адресу %2$@. Проверьте, что сервер запущен, а Mac подключён к сети."
+          }
+        }
+      }
+    },
+    "run.waitFor.elementTimeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%1$@”: waited %2$@ s, but the element didn’t become as expected. Element: %3$@. Expected: %4$@. Actual: %5$@.%6$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: %2$@ с ждали, но элемент так и не стал таким, как ожидалось. Элемент: %3$@. Ожидалось: %4$@. На деле: %5$@.%6$@"
           }
         }
       }

@@ -7,8 +7,8 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 use jevision_core::{
-    AttachmentKind, BlockKind, ClipboardAction, Condition, DataTable, NoteAnchor, ScrollDirection,
-    ScrollUnit, Target, WaitUntil,
+    AttachmentKind, BlockKind, CheckOf, ClipboardAction, Condition, DataTable, NoteAnchor,
+    ScrollDirection, ScrollUnit, Target, WaitUntil,
 };
 use jevision_runner::{Run, RunReport};
 
@@ -346,11 +346,16 @@ fn title(kind: &BlockKind) -> String {
         BlockKind::WaitFor { until, .. } => match until {
             WaitUntil::Appears(r) | WaitUntil::Disappears(r) => r.image.clone(),
             WaitUntil::ScreenStable => String::new(),
+            WaitUntil::Element(check) => jevision_core::element_check_name(check),
         },
-        BlockKind::Check { reference, .. } => reference.image.clone(),
+        BlockKind::Check { of, .. } => match of {
+            CheckOf::Screen(reference) => reference.image.clone(),
+            CheckOf::Element(check) => jevision_core::element_check_name(check),
+        },
         BlockKind::If { condition, .. } => match condition {
             Condition::Screen(reference) => reference.image.clone(),
             Condition::Value(check) => check.of.clone(),
+            Condition::Element(check) => jevision_core::element_check_name(check),
         },
         BlockKind::Pause { duration_ms, .. } => jevision_core::format_duration(*duration_ms),
         BlockKind::Repeat { times, .. } => times.to_string(),
@@ -381,6 +386,7 @@ fn target_title(target: &Target) -> String {
         Target::Point(p) => format!("{:.2}, {:.2}", p.x, p.y),
         Target::Description(text) => format!("“{text}”"),
         Target::Area(area) => area.clone(),
+        Target::Element(query) => jevision_core::element_name(query),
     }
 }
 

@@ -1244,7 +1244,9 @@ private final class WaitingHands: Hands, @unchecked Sendable {
 
   func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
 
-  func openApp(app: String, start: AppStart) throws(HandsError) {
+  func elements(app: String) throws(HandsError) -> [ElementNode] { [] }
+
+  func openApp(app: String, start: AppStart, arguments: [String], environment: [String: String]) throws(HandsError) {
     opening.signal()
     while !isCancelled() { usleep(10_000) }
   }
@@ -1313,7 +1315,9 @@ private final class CountingHands: Hands, @unchecked Sendable {
 
   func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
 
-  func openApp(app: String, start: AppStart) throws(HandsError) {
+  func elements(app: String) throws(HandsError) -> [ElementNode] { [] }
+
+  func openApp(app: String, start: AppStart, arguments: [String], environment: [String: String]) throws(HandsError) {
     counter.enter()
     usleep(250_000)
     counter.leave()

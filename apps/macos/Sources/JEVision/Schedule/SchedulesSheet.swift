@@ -169,7 +169,14 @@ struct SchedulesSheet: View {
   /// Whether the schedules run on this Mac, and what they need from it.
   @ViewBuilder private var status: some View {
     let tool = CommandLineTool.bundled
-    if let reason = tool.unavailableReason {
+    if !schedules.agents.isAvailable {
+      Label(
+        "Schedules don’t run in a separate profile: macOS would start them for everyone who uses JEVision on this Mac.",
+        systemImage: "pause.circle"
+      )
+      .foregroundStyle(.secondary)
+      .font(.callout)
+    } else if let reason = tool.unavailableReason {
       Label { Text(reason) } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
     } else if schedules.isOn {
       Label(

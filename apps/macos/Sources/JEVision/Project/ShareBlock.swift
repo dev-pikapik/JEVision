@@ -1,4 +1,5 @@
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// What the person fills in to share one of the project's own blocks.
@@ -84,7 +85,7 @@ struct ShareBlockSheet: View {
   init(entry: LibraryEntry, project: URL) {
     self.entry = entry
     self.project = project
-    let defaults = UserDefaults.standard
+    let defaults = Profile.current.defaults
     _draft = State(
       initialValue: ShareBlockDraft(
         entry: entry, author: defaults.string(forKey: "blockAuthor") ?? "",

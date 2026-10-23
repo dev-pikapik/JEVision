@@ -15,7 +15,7 @@ final class ScheduleNotifier {
   private let defaults: UserDefaults
   private var timer: Timer?
 
-  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = .standard) {
+  init(agents: ScheduleAgents = ScheduleAgents(), defaults: UserDefaults = Profile.current.defaults) {
     self.agents = agents
     self.defaults = defaults
   }
@@ -56,8 +56,9 @@ final class ScheduleNotifier {
     defaults.set(seen, forKey: seenKey)
   }
 
-  /// Notifications work only in the app itself, not in tests or `swift run`.
-  static var canNotify: Bool { Bundle.main.bundleIdentifier == AISettings.appDomain }
+  /// Notifications work only in the app itself, not in tests or `swift run`. A separate profile
+  /// runs no schedules, and the permission to notify is the person's, so it doesn't ask either.
+  static var canNotify: Bool { Bundle.main.bundleIdentifier == AISettings.appDomain && !Profile.current.isolated }
 
   static func askPermission() {
     guard canNotify else { return }

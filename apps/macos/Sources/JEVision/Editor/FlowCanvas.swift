@@ -951,6 +951,7 @@ private struct BlockNode: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("Step \(step) of \(steps), \(title)"))
+    .accessibilityIdentifier(AccessibilityID.Canvas.block)
     .accessibilityValue(Text(
       ([runValue, summary, environmentHelp?.replacingOccurrences(of: "\n", with: ". "), hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
         + issues.map(IssueText.line)).joined(separator: ". ")))

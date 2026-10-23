@@ -12,8 +12,8 @@ struct BlockSummaryTests {
   }
 
   @Test func describesWhatABlockDoes() {
-    #expect(summary(.openApp(app: "com.apple.Mail", resetState: false, windowSize: nil, windowPosition: nil, next: nil)) == "Mail")
-    #expect(summary(.openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, next: nil)) == "The app under test")
+    #expect(summary(.openApp(app: "com.apple.Mail", resetState: false, windowSize: nil, windowPosition: nil, arguments: [], environment: [:], next: nil)) == "Mail")
+    #expect(summary(.openApp(app: nil, resetState: false, windowSize: nil, windowPosition: nil, arguments: [], environment: [:], next: nil)) == "The app under test")
     #expect(
       summary(.type(text: "${secret.ACME_PASSWORD}", into: .image("refs/password-field.png"), next: nil))
         == "Type secret ACME_PASSWORD into “password field”")
@@ -47,7 +47,7 @@ struct BlockSummaryTests {
     #expect(["then", "elseIf1", "elseIf2", "else"].map { three.branchName($0) } == ["Condition 1", "Condition 2", "Condition 3", "Otherwise"])
     #expect(three.branchName("elseIf3") == nil)
     #expect(three.branchName("next") == nil)
-    #expect(BlockKind.check(reference: Reference(image: "", compare: .exact, area: nil, ignore: [], hide: []), next: nil).branchName("then") == nil)
+    #expect(BlockKind.check(of: .screen(Reference(image: "", compare: .exact, area: nil, ignore: [], hide: [])), next: nil).branchName("then") == nil)
   }
 
   @Test func describesBlocksThatDontLookAtTheScreen() {

@@ -1,9 +1,12 @@
 import Foundation
+import JEVisionHands
 import Observation
 import Sparkle
 
 /// Updates of the app itself, through Sparkle. Only release builds carry the public key that
-/// update archives are checked against; builds without it never look for updates.
+/// update archives are checked against; builds without it never look for updates. Neither does a
+/// separate profile: Sparkle keeps its choices in the app's own settings, which are the person's,
+/// and would ask them whether to look for updates.
 @MainActor
 @Observable
 final class Updates {
@@ -15,7 +18,7 @@ final class Updates {
   @ObservationIgnored private var observation: NSKeyValueObservation?
 
   init(bundle: Bundle = .main) {
-    isAvailable = Self.hasPublicKey(bundle)
+    isAvailable = Self.hasPublicKey(bundle) && !Profile.current.isolated
     guard isAvailable else {
       controller = nil
       return

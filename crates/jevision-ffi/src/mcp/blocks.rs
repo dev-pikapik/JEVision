@@ -1,7 +1,10 @@
 //! The test file format in words, for `list_block_types`: every block type with its fields and
 //! an example, and the shapes blocks share. Tests check that the list matches the core.
 
-use jevision_core::{AI_PROVIDERS, FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, catalog};
+use jevision_core::{
+    AI_PROVIDERS, ELEMENT_ROLES, ELEMENT_STATES, FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES,
+    MAX_SCROLL, catalog,
+};
 use serde_json::{Value, json};
 
 /// Fields and an example for every block type, in palette order.
@@ -14,8 +17,10 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
                 "resetState": "optional, true to quit a copy that is already running and start a fresh one that does not bring back its last windows",
                 "windowSize": "optional {\"width\": 900, \"height\": 600} in points, 100 to 20000; the run fails with a clear reason if the window can't take it",
                 "windowPosition": "optional {\"x\": 40, \"y\": 60} in points, from the top-left corner of the main display (negative on a display to its left or above); the run fails if the window can't take it",
+                "arguments": "optional list of command-line arguments for the app; they reach only a copy this block starts, so use resetState to be sure. Text may hold ${env.NAME}, ${var.NAME}, ${data.COLUMN} and ${secret.NAME}",
+                "environment": "optional object of environment variables for the app, {\"NAME\": \"value\"}; like arguments, only for a copy this block starts, and values may hold the same placeholders",
             }),
-            json!({ "type": "openApp", "resetState": true, "windowSize": { "width": 900, "height": 600 } }),
+            json!({ "type": "openApp", "resetState": true, "windowSize": { "width": 900, "height": 600 }, "arguments": ["-ApplePersistenceIgnoreState", "YES"], "environment": { "API_URL": "${env.API_URL}" } }),
         ),
         "openFile" => (
             "Opens files (each from a fresh copy, so the original stays intact) or web addresses.",
@@ -84,9 +89,9 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "pressKeys", "keys": "cmd+s" }),
         ),
         "waitFor" => (
-            "Waits until a picture appears or disappears, or the screen stops changing; fails after the timeout.",
+            "Waits until a picture appears or disappears, an element of the window is in a state, or the screen stops changing; fails after the timeout.",
             json!({
-                "until": "\"screenStable\", or { \"appears\": reference } or { \"disappears\": reference } (see shapes)",
+                "until": "\"screenStable\", or { \"appears\": reference } or { \"disappears\": reference } or { \"element\": elementCheck } (see shapes)",
                 "timeout": "optional duration (see shapes), 10s by default",
             }),
             json!({ "type": "waitFor", "until": { "appears": { "image": "refs/inbox.png" } }, "timeout": "10s" }),
@@ -97,16 +102,20 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "pause", "duration": "2s" }),
         ),
         "check" => (
-            "Fails the test unless the screen matches the reference.",
-            json!({ "reference": "what the screen should show: a reference (see shapes)" }),
+            "Fails the test unless the screen matches the reference, or an element of the window is in the expected state.",
+            json!({
+                "reference": "what the screen should show: a reference (see shapes); or instead element",
+                "element": "an elementCheck (see shapes): the element and the state it must be in",
+            }),
             json!({ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }),
         ),
         "if" => (
-            "Goes to then if its condition holds; otherwise to the then of the first elseIf whose condition holds; otherwise to else. A condition is either reference (the screen matches it) or value (a comparison of text or numbers). All screen conditions are checked on the same screenshot.",
+            "Goes to then if its condition holds; otherwise to the then of the first elseIf whose condition holds; otherwise to else. A condition is reference (the screen matches it), value (a comparison of text or numbers) or element (an element of the window is in a state). All screen conditions are checked on the same screenshot.",
             json!({
-                "reference": "what to look for: a reference (see shapes); or instead value",
+                "reference": "what to look for: a reference (see shapes); or instead value or element",
                 "value": "{ \"of\": text, usually ${var.NAME}, \"is\": \"equals\" | \"notEquals\" | \"contains\" | \"greaterThan\" | \"lessThan\", \"to\": text }. Equal numbers are equal however written (3 and 3.0); greaterThan and lessThan need numbers",
-                "elseIf": "optional list of more conditions, checked in order when the ones before don't hold: [{ \"reference\": reference or \"value\": value, \"then\": block id }]. Their ways out are called elseIf1, elseIf2…",
+                "element": "an elementCheck (see shapes); several elements that match without an index stop the run",
+                "elseIf": "optional list of more conditions, checked in order when the ones before don't hold: [{ \"reference\": reference, \"value\": value or \"element\": elementCheck, \"then\": block id }]. Their ways out are called elseIf1, elseIf2…",
             }),
             json!({ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "elseIf": [{ "reference": { "image": "refs/update-dialog.png" } }] }),
         ),
@@ -257,8 +266,10 @@ pub(crate) fn guide() -> Value {
         "edges": "Blocks lead to each other by id: next for the block after; then, elseIf1, elseIf2… and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
         "blocks": blocks,
         "shapes": {
-            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"description\": \"the blue Save button\" } has JEV (TypeSafe AI) find the element described in words; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner; { \"area\": \"0.1,0.2,0.3,0.1\" } is the middle of an area, x,y,width,height in fractions of the window. image may also be ${var.NAME} of a picture an earlier block kept, and area ${var.NAME} of an area (see variables)",
+            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"description\": \"the blue Save button\" } has JEV (TypeSafe AI) find the element described in words; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner; { \"area\": \"0.1,0.2,0.3,0.1\" } is the middle of an area, x,y,width,height in fractions of the window. image may also be ${var.NAME} of a picture an earlier block kept, and area ${var.NAME} of an area (see variables); { \"element\": element } finds it through accessibility, by what the app says about its controls, without AI",
             "reference": format!("{{ \"image\": path, \"compare\": \"similar\" (default) | \"exact\" | \"meaning\", \"threshold\": 0–1 for similar (default 0.95), \"expect\": sentence for meaning, \"provider\" and \"model\" for meaning, \"area\": rect, \"ignore\": [rect], \"hide\": [rect] }}. With compare meaning, an AI model checks that the screen shows what expect says, or means the same as the image when expect is left out; the image is then optional. provider asks another AI provider than the one chosen in JEVision's settings, one of {providers}; model names a model of that provider instead of its chosen one; leave both out for the settings' choice. image may also be ${{var.NAME}} of a picture an earlier block kept; such a picture must exist, as it is never made from the screen."),
+            "element": format!("{{ \"id\": accessibility identifier, \"role\": kind, \"title\": the exact label, \"index\": which of several that match, from 0 in the order they come in the window }}; at least one of id, role and title. role is one of {}. id and title may hold placeholders. A block that needs one element stops with the list of matches when several match without an index, or with similar elements when none does.", ELEMENT_ROLES.iter().map(|r| r.name).collect::<Vec<_>>().join(", ")),
+            "elementCheck": format!("an element (see shapes) and \"is\": {}; valueEquals, valueContains, titleEquals and titleContains also need \"to\": text, which may hold placeholders. Example: {{ \"role\": \"button\", \"title\": \"Save\", \"is\": \"enabled\" }}", ELEMENT_STATES.join(" | ")),
             "rect": "{ \"x\", \"y\", \"width\", \"height\" } in fractions (0–1) of the window or image, from the top-left corner. area limits the comparison, ignore leaves parts out (clocks, counters), hide paints parts over with grey before screenshots are stored or sent anywhere, as do the hide areas of jevision.project.json and password fields",
             "duration": "text like 500ms, 10s or 2m",
             "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder; a picture from ${var.NAME} may be anywhere on this Mac. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",

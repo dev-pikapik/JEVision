@@ -335,17 +335,17 @@ readable diff.
 
 | Block | Group | What it does |
 | --- | --- | --- |
-| `openApp` | actions | Opens the application under test, or another one by bundle identifier |
+| `openApp` | actions | Opens the application under test, or another one by bundle identifier, optionally with command-line `arguments` and `environment` variables (placeholders allowed) for a copy it starts |
 | `openFile` | actions | Opens files or web addresses, optionally in a new instance of the application |
-| `click` | actions | Clicks an image on screen, an element described in words (found by JEV), a point or the middle of an `area`, with the left, right or middle button, single or double, optionally holding ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]`); with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
+| `click` | actions | Clicks an image on screen, an element described in words (found by JEV), an interface element found by accessibility (`{ "element": { "role": "button", "title": "Save" } }`), a point or the middle of an `area`, with the left, right or middle button, single or double, optionally holding ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]`); with `"waitForChange": true` it then waits up to 10 seconds for the screen to change and fails if it doesn't |
 | `hover` | actions | Moves the pointer onto an image on screen, an element described in words, a point or an area and leaves it there, to show a tooltip or a menu that opens on hover, optionally holding ⌃ ⌥ ⇧ ⌘ (`modifiers`) |
 | `drag` | actions | Presses the left, right or middle `button` `from` one image, described element, point or area, moves holding it and lets go `to` another, optionally holding ⌃ ⌥ ⇧ ⌘ (`modifiers`) |
 | `scroll` | actions | Turns the scroll wheel `up`, `down`, `left` or `right` by an `amount` of `lines` or `pixels`, over the middle of the window or `at` an image, described element, point or area, optionally holding ⌃ ⌥ ⇧ ⌘ (`"modifiers": ["cmd"]` zooms in most apps) |
 | `type` | actions | Types text, optionally into a field found by its image or description |
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
-| `waitFor` | wait and check | Waits until an image appears, disappears or the screen stops changing |
-| `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning |
-| `if` | logic | Goes to `then`, to the first matching `elseIf` condition, or to `else`, depending on what is on screen |
+| `waitFor` | wait and check | Waits until an image appears, disappears, the screen stops changing or an interface element is in a state (`{ "element": { "id": "send", "is": "enabled" } }`) |
+| `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning; or checks an interface element: there or not, enabled, selected, its value or title |
+| `if` | logic | Goes to `then`, to the first matching `elseIf` condition, or to `else`, depending on what is on screen, a value or an interface element |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file or a [custom block](#custom-blocks) as a step; its `inputs` give values to `${input.NAME}` in that test |
 | `useData` | data | Runs its `body` with the rows of a CSV file (see [Data-driven tests](#data-driven-tests)) |
@@ -860,6 +860,9 @@ One-time setup:
 5. **Homebrew.** Create the tap repository `dev-pikapik/homebrew-jevision` with a `Casks` folder.
 
 Each release:
+
+A release, version 1.0 first of all, ships only with a green self-test: run `scripts/selftest.sh`
+on the release commit and publish nothing if it fails (see [`selftest/README.md`](selftest/README.md)).
 
 ```sh
 # 1. Build, sign, notarize and staple; makes apps/macos/build/JEVision-<version>.dmg

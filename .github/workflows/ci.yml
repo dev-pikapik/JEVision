@@ -93,6 +93,10 @@ jobs:
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision fmt --check examples
       - name: Example tests are valid
         run: apps/macos/build/JEVision.app/Contents/Helpers/jevision validate examples
+      - name: Self-test project is canonical
+        run: apps/macos/build/JEVision.app/Contents/Helpers/jevision fmt --check selftest
+      - name: Self-test project is valid
+        run: apps/macos/build/JEVision.app/Contents/Helpers/jevision validate selftest
       - name: Test app
         run: swift test --package-path apps/macos
 
@@ -124,3 +128,46 @@ jobs:
           ADHOC: "1"
       - name: Fill the Homebrew cask from the disk image
         run: packaging/homebrew/update-cask.sh apps/macos/build/JEVision-*.dmg
+
+  selftest:
+    name: Self-test
+    # JEVision's own tests drive the app on a real screen: slow on the shared macOS queue, so it
+    # runs on main and on demand (Actions > CI > Run workflow).
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the app
+        run: apps/macos/scripts/build.sh
+        env:
+          PROFILE: debug
+      # Nobody can click "Allow" on a hosted runner: the same permissions a person gives the app
+      # are written into the privacy database before it first starts. The two copies are the
+      # app that runs the tests (Driver) and the one the tests operate (Subject).
+      - name: Allow the app to see and control the screen
+        run: |
+          scripts/ci-allow-ui-control.sh io.github.dev-pikapik.jevision \
+            "$JEVISION_SELFTEST_WORK/Driver/JEVision.app" \
+            "$JEVISION_SELFTEST_WORK/Subject/JEVision.app" \
+            "$PWD/apps/macos/build/JEVision.app"
+        env:
+          JEVISION_SELFTEST_WORK: ${{ runner.temp }}/selftest
+      - name: Run the self-test
+        run: scripts/selftest.sh --no-build
+        env:
+          JEVISION_SELFTEST_WORK: ${{ runner.temp }}/selftest
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-report
+          path: ${{ runner.temp }}/selftest/report
+          if-no-files-found: ignore

@@ -1,5 +1,6 @@
 import Foundation
 import MachO
+import JEVisionHands
 import MetricKit
 
 /// Crash reports of JEVision itself, kept on this Mac in the app's folder. They are saved only
@@ -12,11 +13,11 @@ struct CrashReports: Sendable {
 
   let folder: URL
 
-  init(folder: URL = URL.applicationSupportDirectory.appending(path: "JEVision/Crash Reports", directoryHint: .isDirectory)) {
+  init(folder: URL = Profile.current.supportFolder.appending(path: "Crash Reports", directoryHint: .isDirectory)) {
     self.folder = folder
   }
 
-  static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
+  static var isEnabled: Bool { Profile.current.defaults.bool(forKey: enabledKey) }
 
   /// One saved crash report.
   struct Saved: Identifiable, Equatable {

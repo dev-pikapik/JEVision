@@ -1,3 +1,4 @@
+import AppKit
 import JEVisionHands
 import SwiftUI
 
@@ -17,6 +18,20 @@ struct GeneralSettingsView: View {
   var body: some View {
     Form {
       SettingsHeader(tab: .general, text: Text("How JEVision looks, which language it speaks and what it does while a test runs."))
+      if let folder = Profile.current.folder {
+        Section {
+          LabeledContent {
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+          } label: {
+            RowLabel(Text("Separate profile"), Text(verbatim: folder.path(percentEncoded: false)))
+          }
+        } footer: {
+          Text("This copy of JEVision keeps its settings, logs and keys in this folder, apart from yours. Schedules, installing the command line tool, updates and notifications are off in it.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
       Section {
         ActionRow {
           Picker("Appearance", selection: $appearance) {
@@ -33,6 +48,7 @@ struct GeneralSettingsView: View {
           Divider()
           ForEach(AppLanguage.choices.dropFirst(), id: \.self) { Text(verbatim: AppLanguage.name($0)).tag($0) }
         }
+        .accessibilityIdentifier(AccessibilityID.Settings.language)
         .settingAnchor("language")
       } footer: {
         VStack(alignment: .leading, spacing: 6) {
@@ -136,6 +152,8 @@ private struct UpdatesSection: View {
       Group {
         if updates.isAvailable {
           Text("JEVision asks before installing an update and installs only updates signed by the JEVision project.")
+        } else if Profile.current.isolated {
+          Text("Not available in a separate profile: updates are for the copy of JEVision you use every day.")
         } else {
           Text("This build of JEVision doesn’t update itself. Download new versions from the JEVision page on GitHub.")
         }

@@ -701,7 +701,8 @@ fn mail_failure(e: &lettre::transport::smtp::Error, server: &str) -> NotifyError
     })
 }
 
-/// The Keychain service of the secrets; the app saves them, the core only reads them.
+/// The Keychain service of the secrets; the app saves them, the core only reads them. A separate
+/// profile keeps them under [`jevision_core::keychain_service`].
 pub const KEYCHAIN_SERVICE: &str = "JEVision Notifications";
 
 /// The Keychain account of the secret of `channel` for the project folder `project`, in
@@ -722,8 +723,8 @@ pub fn secret(project: &Path, channel: NotifyChannel) -> Option<String> {
 
 #[cfg(target_os = "macos")]
 fn keychain(account: &str) -> Option<String> {
-    let value =
-        security_framework::passwords::get_generic_password(KEYCHAIN_SERVICE, account).ok()?;
+    let service = jevision_core::keychain_service(KEYCHAIN_SERVICE);
+    let value = security_framework::passwords::get_generic_password(&service, account).ok()?;
     String::from_utf8(value)
         .ok()
         .map(|v| v.trim().to_owned())

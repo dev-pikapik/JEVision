@@ -1,4 +1,5 @@
 import AppKit
+import JEVisionHands
 import SwiftUI
 
 /// Settings → Advanced → Logs: how much the app log says, and where it is.
@@ -17,7 +18,9 @@ struct LogsSection: View {
           NSWorkspace.shared.open(AppLog.folder)
         }
       } label: {
-        RowLabel(Text("Logs"), Text("In the Logs folder of your Library"))
+        RowLabel(
+          Text("Logs"),
+          Profile.current.isolated ? Text("In the Logs folder of the separate profile") : Text("In the Logs folder of your Library"))
       }
       .settingAnchor("showLogs")
     } header: {
@@ -54,7 +57,10 @@ struct CrashReportsSection: View {
           NSWorkspace.shared.open(folder)
         }
       } label: {
-        RowLabel(Text("Saved crash reports"), Text("In JEVision’s folder in Application Support"))
+        RowLabel(
+          Text("Saved crash reports"),
+          Profile.current.isolated
+            ? Text("In the Support folder of the separate profile") : Text("In JEVision’s folder in Application Support"))
       }
     } header: {
       Text("Crash Reports")

@@ -184,11 +184,11 @@ struct VisionTextTests {
     let reference = Reference(
       image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: ""), area: nil, ignore: [],
       hide: [])
-    #expect(BlockSummary.text(.check(reference: reference, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
+    #expect(BlockSummary.text(.check(of: .screen(reference), next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
     let named = Reference(
       image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "ollama"), area: nil,
       ignore: [], hide: [])
-    #expect(BlockSummary.text(.check(reference: named, next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items” · Ollama")
+    #expect(BlockSummary.text(.check(of: .screen(named), next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items” · Ollama")
   }
 }
 

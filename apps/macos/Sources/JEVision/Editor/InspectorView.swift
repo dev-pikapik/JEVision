@@ -87,7 +87,7 @@ struct InspectorView: View {
   /// Settings the inspector shows next to their own control; problems with anything else go to the top.
   static func fields(of kind: BlockKind) -> Set<String> {
     switch kind {
-    case .openApp: ["app", "resetState", "windowSize", "windowPosition"]
+    case .openApp: ["app", "resetState", "windowSize", "windowPosition", "arguments", "environment"]
     case .openFile: ["files", "app"]
     case .click: ["target"]
     case .hover: ["target"]
@@ -97,8 +97,8 @@ struct InspectorView: View {
     case .pressKeys: ["keys"]
     case .waitFor: ["until", "timeout"]
     case .pause: ["duration"]
-    case .check: ["reference"]
-    case .if: ["reference", "value", "elseIf"]
+    case .check: ["reference", "element"]
+    case .if: ["reference", "value", "element", "elseIf"]
     case .repeat: ["times"]
     case .useData: ["file"]
     case .runTest: ["test", "inputs"]
@@ -131,9 +131,16 @@ struct InspectorView: View {
       secrets: requiredSecrets(flow: flow), columns: DataColumns.all(in: flow, folder: context.folder),
       environment: project.environments.valueNames, variables: savedVariables(flow: flow))
     switch kind {
-    case .openApp(let app, let resetState, let windowSize, let windowPosition, let next):
+    case .openApp(let app, let resetState, let windowSize, let windowPosition, let arguments, let environment, let next):
       let make = { (app: String?, resetState: Bool, size: WindowSize?, position: WindowPosition?) in
-        BlockKind.openApp(app: app, resetState: resetState, windowSize: size, windowPosition: position, next: next)
+        BlockKind.openApp(
+          app: app, resetState: resetState, windowSize: size, windowPosition: position, arguments: arguments,
+          environment: environment, next: next)
+      }
+      let launch = { (arguments: [String], environment: [String: String]) in
+        BlockKind.openApp(
+          app: app, resetState: resetState, windowSize: windowSize, windowPosition: windowPosition,
+          arguments: arguments, environment: environment, next: next)
       }
       Section {
         LabeledContent("App") {
@@ -187,6 +194,19 @@ struct InspectorView: View {
         IssueList(issues: context.issues("windowPosition"))
         Text("A fixed size and position keep pictures of the window the same on every run.")
           .font(.callout)
+          .foregroundStyle(.secondary)
+      }
+      Section {
+        ArgumentsEditor(arguments: bind("arguments", arguments) { launch($0, environment) }, context: context)
+      } header: {
+        Text("Arguments")
+      }
+      Section {
+        EnvironmentEditor(environment: bind("environment", environment) { launch(arguments, $0) }, context: context)
+      } header: {
+        Text("Environment Variables")
+      } footer: {
+        Text("The app gets them only when this block starts it: one already running keeps its own. Values can hold ${env.NAME}, ${var.NAME} and ${data.COLUMN}.")
           .foregroundStyle(.secondary)
       }
 
@@ -489,11 +509,28 @@ struct InspectorView: View {
           .foregroundStyle(.secondary)
       }
 
-    case .check(let reference, let next):
+    case .check(let of, let next):
       Section {
-        ReferenceEditor(
-          reference: bind("reference", reference) { .check(reference: $0, next: next) },
-          field: "reference", context: context)
+        Picker(
+          selection: bind(of.isScreen ? "reference" : "element", of.isScreen) {
+            .check(of: $0 ? .screen(Reference.new) : .element(ElementCheck.new), next: next)
+          }
+        ) {
+          Text("The Screen").tag(true)
+          Text("An Element").tag(false)
+        } label: {
+          Text("Check")
+        }
+        .pickerStyle(.segmented)
+        switch of {
+        case .screen(let reference):
+          ReferenceEditor(
+            reference: bind("reference", reference) { .check(of: .screen($0), next: next) },
+            field: "reference", context: context)
+        case .element(let check):
+          ElementCheckEditor(
+            check: bind("element", check) { .check(of: .element($0), next: next) }, field: "element", context: context)
+        }
       }
 
     case .if(let condition, let then, let elseIf, let otherwise):
@@ -502,7 +539,7 @@ struct InspectorView: View {
         let at = index == 0 ? "" : "elseIf.\(index - 1)."
         Section {
           ConditionEditor(
-            condition: bind(at + (conditions[index].isScreen ? "reference" : "value"), conditions[index]) { new in
+            condition: bind(at + conditions[index].field, conditions[index]) { new in
               guard index > 0 else { return .if(condition: new, then: then, elseIf: elseIf, otherwise: otherwise) }
               var cases = elseIf
               cases[index - 1].condition = new
@@ -701,7 +738,7 @@ private struct WaitForFields: View {
   @Binding var until: WaitUntil
   let context: FieldContext
 
-  private enum Mode: Hashable { case appears, disappears, stable }
+  private enum Mode: Hashable { case appears, disappears, stable, element }
 
   private var mode: Binding<Mode> {
     Binding(
@@ -710,6 +747,7 @@ private struct WaitForFields: View {
         case .appears: .appears
         case .disappears: .disappears
         case .screenStable: .stable
+        case .element: .element
         }
       },
       set: {
@@ -718,6 +756,7 @@ private struct WaitForFields: View {
         case .appears: until = .appears(reference)
         case .disappears: until = .disappears(reference)
         case .stable: until = .screenStable
+        case .element: until = .element(ElementCheck.new)
         }
       })
   }
@@ -727,14 +766,14 @@ private struct WaitForFields: View {
       get: {
         switch until {
         case .appears(let r), .disappears(let r): r
-        case .screenStable: Reference(image: "", compare: .similar(threshold: 0.95), area: nil, ignore: [], hide: [])
+        case .screenStable, .element: Reference.new
         }
       },
       set: { new in
         switch until {
         case .appears: until = .appears(new)
         case .disappears: until = .disappears(new)
-        case .screenStable: break
+        case .screenStable, .element: break
         }
       })
   }
@@ -745,11 +784,17 @@ private struct WaitForFields: View {
         Text("An image appears").tag(Mode.appears)
         Text("An image disappears").tag(Mode.disappears)
         Text("The screen stops changing").tag(Mode.stable)
+        Text("An interface element is in a state").tag(Mode.element)
       } label: {
         Text("Wait Until")
       }
     }
-    if mode.wrappedValue != .stable {
+    if case .element(let check) = until {
+      Section {
+        ElementCheckEditor(
+          check: Binding(get: { check }, set: { until = .element($0) }), field: "until.element", context: context)
+      }
+    } else if mode.wrappedValue != .stable {
       Section {
         ReferenceEditor(
           reference: reference, field: mode.wrappedValue == .appears ? "until.appears" : "until.disappears",

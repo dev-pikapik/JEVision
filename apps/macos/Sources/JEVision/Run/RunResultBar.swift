@@ -1,5 +1,6 @@
 import AppKit
 import JEVisionCore
+import JEVisionHands
 import SwiftUI
 
 /// How the last run ended, at the bottom of the editor, with the report a click away.
@@ -27,14 +28,14 @@ struct RunResultBar: View {
         Spacer(minLength: 12)
         if result.permission != nil {
           Button("Open Permissions") {
-            UserDefaults.standard.set(SettingsTab.permissions.rawValue, forKey: SettingsTab.key)
+            Profile.current.defaults.set(SettingsTab.permissions.rawValue, forKey: SettingsTab.key)
             openSettings()
           }
           .buttonStyle(.glassProminent)
         }
         if result.needsAISetup {
           Button("Open AI Settings") {
-            UserDefaults.standard.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
+            Profile.current.defaults.set(SettingsTab.ai.rawValue, forKey: SettingsTab.key)
             openSettings()
           }
           .buttonStyle(.glassProminent)
@@ -69,7 +70,7 @@ struct RunResultBar: View {
           .fixedSize(horizontal: false, vertical: true)
           Spacer(minLength: 12)
           Button("Notification Settings") {
-            UserDefaults.standard.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
+            Profile.current.defaults.set(SettingsTab.notifications.rawValue, forKey: SettingsTab.key)
             openSettings()
           }
           .buttonStyle(.glass)

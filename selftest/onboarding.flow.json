@@ -1,0 +1,183 @@
+{
+  "format": 1,
+  "name": "Onboarding",
+  "description": "The first launch with an empty profile: the welcome window goes through its steps, back once, shows both permissions as allowed, and closes onto the main window without a project.",
+  "app": "io.github.dev-pikapik.jevision",
+  "testType": "acceptance",
+  "priority": "high",
+  "status": "ready",
+  "tags": [
+    "selftest"
+  ],
+  "start": "start",
+  "blocks": {
+    "start": {
+      "type": "runTest",
+      "test": "blocks/start-jevision.block.json",
+      "inputs": {
+        "onboardingDone": "NO",
+        "profile": "onboarding"
+      },
+      "next": "welcome"
+    },
+    "welcome": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.welcome",
+          "is": "present"
+        }
+      },
+      "timeout": "30s",
+      "next": "setUp"
+    },
+    "setUp": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.next"
+        }
+      },
+      "button": "left",
+      "next": "permissions"
+    },
+    "permissions": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.permissions",
+          "is": "present"
+        }
+      },
+      "timeout": "10s",
+      "next": "screenRecording"
+    },
+    "screenRecording": {
+      "type": "check",
+      "element": {
+        "id": "permissions.screenRecording",
+        "is": "titleEquals",
+        "to": "Allowed"
+      },
+      "next": "accessibility"
+    },
+    "accessibility": {
+      "type": "check",
+      "element": {
+        "id": "permissions.accessibility",
+        "is": "titleEquals",
+        "to": "Allowed"
+      },
+      "next": "toAI"
+    },
+    "toAI": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.next"
+        }
+      },
+      "button": "left",
+      "next": "ai"
+    },
+    "ai": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.ai",
+          "is": "present"
+        }
+      },
+      "timeout": "10s",
+      "next": "back"
+    },
+    "back": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.back"
+        }
+      },
+      "button": "left",
+      "next": "permissionsAgain"
+    },
+    "permissionsAgain": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.permissions",
+          "is": "present"
+        }
+      },
+      "timeout": "10s",
+      "next": "toAIAgain"
+    },
+    "toAIAgain": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.next"
+        }
+      },
+      "button": "left",
+      "next": "aiAgain"
+    },
+    "aiAgain": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.ai",
+          "is": "present"
+        }
+      },
+      "timeout": "10s",
+      "next": "skipAI"
+    },
+    "skipAI": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.next"
+        }
+      },
+      "button": "left",
+      "next": "firstTest"
+    },
+    "firstTest": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "onboarding.firstTest",
+          "is": "present"
+        }
+      },
+      "timeout": "10s",
+      "next": "finish"
+    },
+    "finish": {
+      "type": "click",
+      "target": {
+        "element": {
+          "id": "onboarding.skip"
+        }
+      },
+      "button": "left",
+      "next": "main"
+    },
+    "main": {
+      "type": "waitFor",
+      "until": {
+        "element": {
+          "id": "main.openProject",
+          "is": "enabled"
+        }
+      },
+      "timeout": "10s",
+      "next": "quit"
+    },
+    "quit": {
+      "type": "pressKeys",
+      "keys": "cmd+q"
+    }
+  }
+}

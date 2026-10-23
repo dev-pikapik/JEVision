@@ -12,10 +12,7 @@ public struct VideoSettings {
   public static let keepChoices = [7, 30, 90, 0]
 
   /// The app's settings, from the app or from the `jevision` tool.
-  public static var app: VideoSettings {
-    let own = Bundle.main.bundleIdentifier == AISettings.appDomain
-    return VideoSettings(own ? .standard : UserDefaults(suiteName: AISettings.appDomain) ?? .standard)
-  }
+  public static var app: VideoSettings { VideoSettings(Profile.current.appDefaults) }
 
   let defaults: UserDefaults
 

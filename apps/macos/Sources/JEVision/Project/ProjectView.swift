@@ -132,7 +132,8 @@ struct ProjectView: View {
         title: Text("No tests yet"),
         message: Text("Record what you do in an app — JEVision turns every step into a block. Or start with an empty test and add the steps yourself."),
         action: Text("Record First Test…"), perform: recordFirstTest,
-        secondAction: Text("New Test…"), performSecond: { project.isCreatingTest = true })
+        secondAction: Text("New Test…"), performSecond: { project.isCreatingTest = true },
+        actionID: AccessibilityID.Project.recordFirstTest, secondActionID: AccessibilityID.Project.newTest)
     } else if project.showsBoard {
       BoardView()
     } else if let document = project.document {
@@ -488,6 +489,7 @@ private struct SidebarRow: View {
       }
       .modifier(RunOnHover(title: Text("Run"), run: run))
       .accessibilityValue(Text(verbatim: accessibilityValue))
+      .accessibilityIdentifier(AccessibilityID.Project.test)
     }
   }
 

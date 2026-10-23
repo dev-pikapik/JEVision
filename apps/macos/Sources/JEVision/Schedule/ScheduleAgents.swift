@@ -15,6 +15,9 @@ struct ScheduleAgents {
   var launchctl: @Sendable ([String]) throws -> Void = Self.runLaunchctl
   /// How long replacing a job waits for launchd to finish taking the old one out.
   var patience: Duration = .seconds(3)
+  /// The jobs are the person's own, in their session and under the app's name, so a separate
+  /// profile neither installs nor reads them.
+  var isAvailable = !Profile.current.isolated
 
   struct Failure: LocalizedError {
     let errorDescription: String?
@@ -39,6 +42,7 @@ struct ScheduleAgents {
 
   /// Whether the job of `project` is installed, and whether it is the one `schedules` need.
   func state(of project: URL, schedules: [ProjectSchedule]) -> (installed: Bool, current: Bool) {
+    guard isAvailable else { return (false, false) }
     let installed = try? String(contentsOf: file(for: project), encoding: .utf8)
     let wanted = try? agent(for: project, schedules: schedules)
     return (installed != nil, installed == wanted?.plist)
@@ -47,6 +51,9 @@ struct ScheduleAgents {
   /// Installs or replaces the job of `project` so it starts at the times of `schedules`; with
   /// none, removes it. A job launchd already has as it should be is left running.
   func install(_ project: URL, schedules: [ProjectSchedule]) throws {
+    guard isAvailable else {
+      throw Failure(errorDescription: String(localized: "Schedules don’t run in a separate profile."))
+    }
     guard let agent = try agent(for: project, schedules: schedules) else { return try remove(project) }
     guard tool.unavailableReason == nil else {
       throw Failure(errorDescription: String(localized: "This copy of JEVision can’t run tests on a schedule."))
@@ -97,6 +104,7 @@ struct ScheduleAgents {
 
   /// Stops the job of `project` and deletes it.
   func remove(_ project: URL) throws {
+    guard isAvailable else { return }
     let file = file(for: project)
     guard FileManager.default.fileExists(atPath: file.path(percentEncoded: false)) else { return }
     try? launchctl(["bootout", "gui/\(getuid())/\(label(for: project))"])
@@ -105,6 +113,7 @@ struct ScheduleAgents {
 
   /// Project folders that have a job of this app.
   func projects() -> [String] {
+    guard isAvailable else { return [] }
     let prefix = bundleID + ".schedule."
     let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
     return files.filter { $0.lastPathComponent.hasPrefix(prefix) && $0.pathExtension == "plist" }.compactMap { file in

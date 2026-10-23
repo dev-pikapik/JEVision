@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import OSLog
 import Synchronization
 
@@ -79,14 +80,14 @@ struct RotatingLog: Sendable {
 /// As a second line of defence every message goes through `LogRedaction` first.
 enum AppLog {
   static let levelKey = "logLevel"
-  static let folder = URL.libraryDirectory.appending(path: "Logs/JEVision", directoryHint: .isDirectory)
+  static let folder = Profile.current.logsFolder
 
   private static let file = Mutex(RotatingLog(folder: folder))
   private static let maxLine = 2000
 
   static var level: LogLevel {
-    get { UserDefaults.standard.string(forKey: levelKey).flatMap(LogLevel.init) ?? .default }
-    set { UserDefaults.standard.set(newValue.rawValue, forKey: levelKey) }
+    get { Profile.current.defaults.string(forKey: levelKey).flatMap(LogLevel.init) ?? .default }
+    set { Profile.current.defaults.set(newValue.rawValue, forKey: levelKey) }
   }
 
   static func error(_ message: @autoclosure () -> String, _ category: String = "app") {

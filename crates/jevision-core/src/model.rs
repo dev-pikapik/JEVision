@@ -10,6 +10,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::FORMAT_VERSION;
+use crate::element::{ElementCheck, ElementQuery};
 
 /// A UI test: metadata plus a flowchart that starts at `start`.
 #[derive(Debug, Clone, PartialEq)]
@@ -198,6 +199,12 @@ pub enum BlockKind {
         /// Move the main window once the app is up.
         #[serde(skip_serializing_if = "Option::is_none")]
         window_position: Option<WindowPosition>,
+        /// Command-line arguments for an app that isn't running yet; a running one keeps its own.
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        arguments: Vec<String>,
+        /// Environment variables, name to value, for an app that isn't running yet.
+        #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "sorted")]
+        environment: HashMap<String, String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
@@ -305,9 +312,11 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Fails the run unless the screen matches the reference.
+    /// Fails the run unless the screen matches the reference, or an element of the window is
+    /// as expected.
     Check {
-        reference: Reference,
+        #[serde(flatten)]
+        of: CheckOf,
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
@@ -609,6 +618,8 @@ pub enum Condition {
     Screen(Reference),
     /// A value, usually a run variable, compares with another.
     Value(ValueCheck),
+    /// An element of the window is as expected.
+    Element(ElementCheck),
 }
 
 impl Condition {
@@ -616,7 +627,28 @@ impl Condition {
     pub fn reference(&self) -> Option<&Reference> {
         match self {
             Self::Screen(r) => Some(r),
-            Self::Value(_) => None,
+            Self::Value(_) | Self::Element(_) => None,
+        }
+    }
+}
+
+/// What a `check` looks at.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CheckOf {
+    /// The screen matches the reference.
+    #[serde(rename = "reference")]
+    Screen(Reference),
+    /// An element of the window is as expected.
+    Element(ElementCheck),
+}
+
+impl CheckOf {
+    /// The reference a screen check compares with.
+    pub fn reference(&self) -> Option<&Reference> {
+        match self {
+            Self::Screen(r) => Some(r),
+            Self::Element(_) => None,
         }
     }
 }
@@ -862,6 +894,8 @@ pub enum Target {
     Area(String),
     /// Found by AI: the element described in words, like "the blue Save button".
     Description(String),
+    /// Found by accessibility: the middle of an element of the window.
+    Element(ElementQuery),
 }
 
 /// The size of a window in points.
@@ -936,6 +970,8 @@ pub enum WaitUntil {
     Disappears(Reference),
     /// The screen stops changing.
     ScreenStable,
+    /// An element of the window is as expected.
+    Element(ElementCheck),
 }
 
 /// A reference image ("how it should look") and how to compare the screen with it.
@@ -1053,13 +1089,13 @@ impl BlockKind {
     }
 
     /// The block fails the run when the app isn't as expected: a check, a wait for something to
-    /// appear or disappear, an HTTP answer status, a file state, or a database answer.
+    /// appear or disappear or for an element to be as expected, an HTTP answer status, a file state, or a database answer.
     pub fn checks(&self) -> bool {
         matches!(
             self,
             Self::Check { .. }
                 | Self::WaitFor {
-                    until: WaitUntil::Appears(_) | WaitUntil::Disappears(_),
+                    until: WaitUntil::Appears(_) | WaitUntil::Disappears(_) | WaitUntil::Element(_),
                     ..
                 }
                 | Self::Http { .. }

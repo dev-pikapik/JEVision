@@ -120,17 +120,17 @@
 <table>
   <thead><tr><th scope="col">Block</th><th scope="col">Group</th><th scope="col">What it does</th><th scope="col">Arrows</th></tr></thead>
   <tbody>
-    <tr><td><a href="#openApp"><code>openApp</code></a></td><td>Actions</td><td>Opens the application under test, or another one</td><td><code>next</code></td></tr>
+    <tr><td><a href="#openApp"><code>openApp</code></a></td><td>Actions</td><td>Opens the application under test, or another one, optionally with command-line arguments and environment variables</td><td><code>next</code></td></tr>
     <tr><td><a href="#openFile"><code>openFile</code></a></td><td>Actions</td><td>Opens files or web addresses</td><td><code>next</code></td></tr>
-    <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture or description, a point or the middle of an area, with any button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
+    <tr><td><a href="#click"><code>click</code></a></td><td>Actions</td><td>Clicks an element found by its picture, its description or accessibility, a point or the middle of an area, with any button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
     <tr><td><a href="#hover"><code>hover</code></a></td><td>Actions</td><td>Points at an element without clicking, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
     <tr><td><a href="#drag"><code>drag</code></a></td><td>Actions</td><td>Drags from one place to another with any button, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
     <tr><td><a href="#scroll"><code>scroll</code></a></td><td>Actions</td><td>Turns the scroll wheel by lines or pixels, optionally holding ⌃ ⌥ ⇧ ⌘</td><td><code>next</code></td></tr>
     <tr><td><a href="#type"><code>type</code></a></td><td>Actions</td><td>Types text, optionally into a field</td><td><code>next</code></td></tr>
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
-    <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, or for the screen to settle</td><td><code>next</code></td></tr>
-    <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference</td><td><code>next</code></td></tr>
-    <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of several ways depending on the screen</td><td><code>then</code>, <code>elseIf1</code>…, <code>else</code></td></tr>
+    <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, for the screen to settle, or for an interface element to be in a state</td><td><code>next</code></td></tr>
+    <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference, or an interface element is in a state</td><td><code>next</code></td></tr>
+    <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of several ways depending on the screen, a value or an interface element</td><td><code>then</code>, <code>elseIf1</code>…, <code>else</code></td></tr>
     <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Conditions and loops</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
     <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Sub-tests</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
     <tr><td><a href="#useData"><code>useData</code></a></td><td>Data</td><td>Runs its body once for every row of a CSV table</td><td><code>body</code>, <code>next</code></td></tr>
@@ -152,10 +152,14 @@
     <tr><td><code>resetState</code></td><td>No</td><td><code>true</code> to quit a copy that is already running and start a new one that does not bring back its windows from last time. Default <code>false</code>.</td></tr>
     <tr><td><code>windowSize</code></td><td>No</td><td>The size of the main window in points, <code>{ "width": 900, "height": 640 }</code>. Each side is 100 to 20000.</td></tr>
     <tr><td><code>windowPosition</code></td><td>No</td><td>Where the top-left corner of the main window sits, <code>{ "x": 80, "y": 60 }</code>, in points from the top-left corner of the main display. A display to the left of or above it has negative numbers.</td></tr>
+    <tr><td><code>arguments</code></td><td>No</td><td>Command-line arguments for the app, a list of texts: <code>["--demo-mode", "-AppleLanguages", "(en)"]</code>. Each may hold <a href="#placeholders">placeholders</a>.</td></tr>
+    <tr><td><code>environment</code></td><td>No</td><td>Environment variables for the app, names to values: <code>{ "API_URL": "${env.API_URL}" }</code>. Names are letters, digits and <code>_</code>, not starting with a digit; values may hold <a href="#placeholders">placeholders</a>.</td></tr>
   </tbody>
 </table>
 </div>
-<pre><code>{ "type": "openApp", "next": "email" }</code></pre>
+<pre><code>{ "type": "openApp", "next": "email" }
+{ "type": "openApp", "resetState": true, "arguments": ["--demo-mode"], "environment": { "API_URL": "${env.API_URL}" }, "next": "email" }</code></pre>
+<p><code>arguments</code> and <code>environment</code> reach the app only when this block starts it: a copy that is already running keeps what it was started with. Add <code>"resetState": true</code> to be sure they apply; the arguments then come after the ones that keep the app from bringing back its last windows. A secret in them, <code>${secret.NAME}</code>, is passed to the app but never written to the report or the log.</p>
 <p id="stable-window">Screenshots are only the same from run to run when the window is. With <code>windowSize</code> and <code>windowPosition</code>, JEVision sets them once the app is up and reads them back; if the window did not take them, the run stops at this block and says what size or position it has instead. Some windows can't be resized or moved, such as the windows of some utilities: the run then says so, and the fields have to go. Leave either field out to keep what the app chose.</p>
 <p><code>resetState</code> quits the running copy politely, so an app that asks to save or confirm first still gets to ask: the run stops and says so if the app does not quit. It does not delete anything: the app's settings, documents and caches stay as they are. To start the app as on its first launch, turn on Start apps as on their first launch in Settings → Advanced (<code>cleanHome</code> in the <a href="file-formats.html#project">project settings file</a>): for each such block the app gets an empty home folder of its own, which the run deletes when it ends, and starts without its settings, which come back once the run ends and the app has quit. Passwords in the Keychain, the list of recent documents and what the app keeps online are not reset. Apps in the macOS sandbox keep their data where macOS puts it, so for them the step says the reset was not applied. Checks look at the window of the application under test, never at the whole screen, so what lies around the window never changes the result.</p>
 
@@ -266,32 +270,37 @@
 <pre><code>{ "type": "pressKeys", "keys": "cmd+q" }</code></pre>
 
 <h3 id="waitFor">waitFor: wait for the screen</h3>
-<p>Waits until something appears, disappears or the screen stops changing. If that doesn't happen in time, the test fails at this block. Time while a run is paused doesn't count.</p>
+<p>Waits until something appears, disappears or the screen stops changing, or until an <a href="#element">interface element</a> is in a state. If that doesn't happen in time, the test fails at this block. Time while a run is paused doesn't count.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
-    <tr><td><code>until</code></td><td>Yes</td><td>One of: <code>{ "appears": <var>reference</var> }</code>, <code>{ "disappears": <var>reference</var> }</code> or <code>"screenStable"</code>. A <var>reference</var> is described in <a href="checks.html#reference">Checks and references</a>.</td></tr>
+    <tr><td><code>until</code></td><td>Yes</td><td>One of: <code>{ "appears": <var>reference</var> }</code>, <code>{ "disappears": <var>reference</var> }</code>, <code>"screenStable"</code> or <code>{ "element": <var>element check</var> }</code>. A <var>reference</var> is described in <a href="checks.html#reference">Checks and references</a>, an <var>element check</var> in <a href="#element">Interface element</a>.</td></tr>
     <tr><td><code>timeout</code></td><td>No</td><td>How long to wait, a <a href="#duration">duration</a> from <code>1ms</code> to <code>60m</code>. Default: <code>10s</code>.</td></tr>
   </tbody>
 </table>
 </div>
 <pre><code>{ "type": "waitFor", "until": { "appears": { "image": "refs/inbox.png" } }, "timeout": "10s", "next": "messages" }
-{ "type": "waitFor", "until": "screenStable", "timeout": "5s", "next": "check" }</code></pre>
+{ "type": "waitFor", "until": "screenStable", "timeout": "5s", "next": "check" }
+{ "type": "waitFor", "until": { "element": { "role": "button", "title": "Send", "is": "enabled" } }, "timeout": "10s", "next": "send" }</code></pre>
+<p>Waiting for an element asks the app again and again, without a fixed pause, and goes on as soon as the element is as asked. When time runs out, the failure says what was looked for, what was expected and what the element was at the end; when it wasn't there at all, it lists similar elements of the window.</p>
 
 <h3 id="check">check: check the screen</h3>
-<p>Compares the screen with a reference and fails the test if they don't match. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
+<p>Compares the screen with a reference and fails the test if they don't match, or checks an <a href="#element">interface element</a> instead. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
 <p>The reference picture can also be one the test made itself, such as a picture a <a href="#script"><code>script</code></a> or <a href="#clipboard"><code>clipboard</code></a> block kept: <code>"image": "${var.expected}"</code> names a variable of type <a href="#value-types"><code>image</code></a>. Such a picture is used as it is, with no <code>.dark</code> version, and it is never saved from the screen: if the file isn't there, the block fails.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
-    <tr><td><code>reference</code></td><td>Yes</td><td>What the screen should show: a <a href="checks.html#reference">reference</a>.</td></tr>
+    <tr><td><code>reference</code></td><td>Yes, unless <code>element</code> is given</td><td>What the screen should show: a <a href="checks.html#reference">reference</a>.</td></tr>
+    <tr><td><code>element</code></td><td>Instead of <code>reference</code></td><td>An interface element and the state it should be in: an <a href="#element">element check</a>.</td></tr>
   </tbody>
 </table>
 </div>
 <pre><code>{ "type": "check", "reference": { "image": "refs/message-list.png", "compare": "similar", "threshold": 0.9 } }
-{ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }</code></pre>
+{ "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }
+{ "type": "check", "element": { "role": "textField", "id": "email", "is": "valueEquals", "to": "${data.email}" } }</code></pre>
+<p>A check of an element looks once. When it fails, the report says which element it looked for, what it expected and what the element is instead, such as <i>Expected: value “Ann”. Actual: value “Bo”.</i> An element that isn't there comes with a list of similar ones in the window, so a changed title or id is easy to put right.</p>
 
 <h3 id="if">if: choose a way</h3>
 <p>Looks at the screen once. If it matches the reference, the test goes on at <code>then</code>; otherwise at <code>else</code>. A missing <code>then</code> or <code>else</code> ends the test on that way. Use it for screens that show up only sometimes, such as a “What's new” window.</p>
@@ -303,7 +312,8 @@
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>reference</code></td><td>Yes, unless <code>value</code> is given</td><td>What to look for: a <a href="checks.html#reference">reference</a>.</td></tr>
-    <tr><td><code>value</code></td><td>Instead of <code>reference</code></td><td>A condition on a value instead of the screen: <code>{ "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }</code>. <code>of</code> and <code>to</code> may hold <a href="#placeholders">placeholders</a>; <code>is</code> is <code>"equals"</code>, <code>"notEquals"</code>, <code>"contains"</code>, <code>"greaterThan"</code> or <code>"lessThan"</code>, the last two reading both sides as numbers. Each condition, including each <code>elseIf</code>, uses one or the other.</td></tr>
+    <tr><td><code>value</code></td><td>Instead of <code>reference</code></td><td>A condition on a value instead of the screen: <code>{ "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }</code>. <code>of</code> and <code>to</code> may hold <a href="#placeholders">placeholders</a>; <code>is</code> is <code>"equals"</code>, <code>"notEquals"</code>, <code>"contains"</code>, <code>"greaterThan"</code> or <code>"lessThan"</code>, the last two reading both sides as numbers. Each condition, including each <code>elseIf</code>, uses one of <code>reference</code>, <code>value</code> and <code>element</code>.</td></tr>
+    <tr><td><code>element</code></td><td>Instead of <code>reference</code></td><td>A condition on an interface element: an <a href="#element">element check</a>, such as <code>{ "role": "checkBox", "title": "Remember me", "is": "selected" }</code>. An element that isn't there makes the condition false, unless it asks for <code>"absent"</code>.</td></tr>
     <tr><td><code>then</code></td><td>No</td><td>Id of the block to go to when the condition holds.</td></tr>
     <tr><td><code>elseIf</code></td><td>No</td><td>More conditions, checked in order when the screen doesn't match <code>reference</code>: a list of <code>{ "reference": …, "then": "…" }</code>, where <code>then</code> is optional. A condition that repeats an earlier one is reported, because it can never be chosen.</td></tr>
     <tr><td><code>else</code></td><td>No</td><td>Id of the block to go to when no condition matches.</td></tr>
@@ -311,6 +321,7 @@
 </table>
 </div>
 <pre><code>{ "type": "if", "reference": { "image": "refs/welcome-dialog.png" }, "then": "close-welcome", "else": "compose" }
+{ "type": "if", "element": { "role": "button", "title": "Sign In", "is": "present" }, "then": "sign-in", "else": "compose" }
 {
   "type": "if",
   "reference": { "image": "refs/sign-in.png" },
@@ -440,10 +451,42 @@
 <ul>
   <li><code>{ "image": "refs/button.png" }</code>: the element that looks like this picture, found on the current screen. This keeps working when the window moves or changes size.</li>
   <li><code>{ "description": "the blue Save button" }</code>: the element described in words, found on the current screen by JEV (TypeSafe AI) and clicked in its middle. JEV must be set up in Settings → AI, even when another provider checks by meaning; the screenshot is masked before it is sent, as for <a href="checks.html">checks by meaning</a>, and finding needs model jev-1.14.0 or newer, or jev-latest.</li>
+  <li><code>{ "element": { "role": "button", "title": "Save" } }</code>: an <a href="#element">interface element</a> the app tells macOS accessibility about, clicked in its middle. It needs no picture and no AI, and keeps working when the look of the app changes.</li>
   <li><code>{ "point": { "x": 0.5, "y": 0.2 } }</code>: a fixed point, in fractions of the window from its top-left corner. <code>x</code> and <code>y</code> go from 0 to 1.</li>
   <li><code>{ "area": "0.1,0.2,0.3,0.1" }</code>: the middle of an area, written <code>x,y,width,height</code> in fractions of the window as for the <a href="#value-types"><code>area</code></a> type, or <code>${var.NAME}</code> of a variable of that type, such as one a <a href="#script"><code>script</code></a> reports. A <code>drag</code> between two areas goes from the middle of one to the middle of the other. An area that isn't four numbers inside the window is an error, or fails the block when it comes from a variable.</li>
 </ul>
 <p>The picture can also be one the test made itself: <code>{ "image": "${var.shot}" }</code> names a variable of type <a href="#value-types"><code>image</code></a>, a PNG file given by an absolute path, a path from the home folder (<code>~/shot.png</code>) or a path relative to the test file. Such a picture is used as it is, with no <code>.dark</code> version.</p>
+
+<h3 id="element">Interface element</h3>
+<p>An element found by what the app tells macOS accessibility about it, in the front window of the app or in a menu open in it. JEVision needs the Accessibility permission for it, the same one it needs to click and type. An app that draws its interface without accessibility support, such as some games, shows no elements: find those by a picture or a description instead.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>id</code></td><td>One of <code>id</code>, <code>role</code> and <code>title</code></td><td>The accessibility identifier the developers gave the element, matched exactly. The steadiest way to find it.</td></tr>
+    <tr><td><code>role</code></td><td>One of <code>id</code>, <code>role</code> and <code>title</code></td><td>The kind of element: <code>button</code>, <code>link</code>, <code>checkBox</code>, <code>switch</code>, <code>radioButton</code>, <code>radioGroup</code>, <code>textField</code>, <code>secureTextField</code>, <code>searchField</code>, <code>textArea</code>, <code>comboBox</code>, <code>popUpButton</code>, <code>menuButton</code>, <code>menuItem</code>, <code>slider</code>, <code>stepper</code>, <code>staticText</code>, <code>image</code>, <code>tabGroup</code>, <code>list</code>, <code>table</code>, <code>outline</code>, <code>row</code>, <code>cell</code>, <code>disclosureTriangle</code>, <code>progressIndicator</code>, <code>busyIndicator</code>, <code>colorWell</code>, <code>scrollArea</code>, <code>group</code>, <code>toolbar</code>, <code>sheet</code>, <code>window</code>. A <code>switch</code> is a <code>checkBox</code> too. Any other kind is an error.</td></tr>
+    <tr><td><code>title</code></td><td>One of <code>id</code>, <code>role</code> and <code>title</code></td><td>What the element is called on screen, matched exactly, capitals included: its title, else its accessibility description, else the text of a text element, else the grey hint of an empty field.</td></tr>
+    <tr><td><code>index</code></td><td>No</td><td>Which of the matching elements, when several match: <code>0</code> is the first, in the order the window lists them, usually from the top. Without it, several matches stop the block with a list of what was found.</td></tr>
+  </tbody>
+</table>
+</div>
+<p><code>id</code> and <code>title</code> may hold <a href="#placeholders">placeholders</a>. A target is the element alone; <code>check</code>, <code>if</code> and <code>waitFor</code> take an <b>element check</b>: the same fields and <code>is</code>, the state it should be in, with <code>to</code> for the states that compare text.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col"><code>is</code></th><th scope="col">Holds when the element</th></tr></thead>
+  <tbody>
+    <tr><td><code>present</code>, <code>absent</code></td><td>is in the window, or isn't. Several matches count as present.</td></tr>
+    <tr><td><code>enabled</code>, <code>disabled</code></td><td>can be used, or is dimmed.</td></tr>
+    <tr><td><code>selected</code>, <code>notSelected</code></td><td>is selected, such as a row of a list, or checked, such as a checkbox, a switch or a radio button; or isn't.</td></tr>
+    <tr><td><code>valueEquals</code>, <code>valueContains</code></td><td>has a value, such as the text of a field, that is exactly <code>to</code>, or contains it.</td></tr>
+    <tr><td><code>titleEquals</code>, <code>titleContains</code></td><td>is called exactly <code>to</code> on screen, or something containing it.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "click", "target": { "element": { "id": "save-button" } }, "next": "saved" }
+{ "type": "type", "text": "Ann", "into": { "element": { "role": "textField", "title": "Name" } }, "next": "save" }
+{ "type": "check", "element": { "role": "row", "index": 0, "is": "titleContains", "to": "Invoice" } }</code></pre>
+<p><code>to</code> may hold placeholders, and a secret in it never shows in a report. The value of a password field is never read.</p>
 
 <h3 id="rect">Area</h3>
 <p><code>{ "x": 0.8, "y": 0, "width": 0.2, "height": 0.1 }</code>: a rectangle in fractions (0 to 1) of the window or picture, from its top-left corner. Width and height are above 0, and the rectangle fits inside: <code>x + width</code> and <code>y + height</code> are at most 1. Areas are used by <a href="checks.html#areas">references</a>.</p>
@@ -461,7 +504,7 @@
   <li><code>${env.NAME}</code>: a value of the chosen <a href="environments.html">environment</a>, such as a server address. <code>${env.ENVIRONMENT}</code> is the name of the environment itself.</li>
   <li><code>${data.COLUMN}</code>: a value from the current row of a <a href="data-driven.html">data table</a>.</li>
 </ul>
-<p>They work in the <code>text</code> of a <code>type</code> block and in the paths and addresses of files a block opens or reads: <code>files</code> of <code>openFile</code>, <code>file</code> of <code>useData</code> and <code>test</code> of <code>runTest</code>. Names start with a letter or <code>_</code> and go on with letters, digits and <code>_</code>. Anything else written as <code>${…}</code> is reported as an error.</p>
+<p>They work in the <code>text</code> of a <code>type</code> block, in the <code>arguments</code> and <code>environment</code> of an <code>openApp</code> block, in the <code>id</code>, <code>title</code> and <code>to</code> of an <a href="#element">interface element</a>, and in the paths and addresses of files a block opens or reads: <code>files</code> of <code>openFile</code>, <code>file</code> of <code>useData</code> and <code>test</code> of <code>runTest</code>. Names start with a letter or <code>_</code> and go on with letters, digits and <code>_</code>. Anything else written as <code>${…}</code> is reported as an error.</p>
 
 <h2 id="keys">Key combinations</h2>
 <p>A key combination is written in lowercase with <code>+</code> between its parts: zero or more modifiers, then one key.</p>
