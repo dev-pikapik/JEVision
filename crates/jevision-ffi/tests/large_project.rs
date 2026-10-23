@@ -1,7 +1,14 @@
 //! A generated project as large as real ones get, and an empty one: the paths the app and the
 //! command line take through the core must stay fast on both. Bounds are generous so a slow CI
 //! machine running a debug build passes; a quadratic slip blows far past them.
+//!
+//! How long a step takes is for a quiet machine to say: with other programs on the cores the same
+//! step takes twice as long. So the bounds are held only by `a_large_project_stays_fast`, which
+//! `cargo test` leaves out and CI runs alone (`cargo test -p jevision-ffi --test large_project --
+//! --ignored a_large_project_stays_fast`); the test every run does goes through the same steps and
+//! checks what they answer, with no limit on the time.
 
+use std::cell::Cell;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -198,13 +205,22 @@ fn write_run(root: &Path, file: &str, n: usize, run: usize) {
     fs::write(dir.join("report.json"), report.to_string()).unwrap();
 }
 
-/// Runs `work`, prints how long it took and fails when that is over `limit`.
+thread_local! {
+    /// Whether the test running on this thread holds its steps to their limits.
+    static BOUNDED: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Runs `work`, prints how long it took and, in the test that holds the limits, fails when that
+/// is over `limit`.
 fn timed<T>(what: &str, limit: Duration, work: impl FnOnce() -> T) -> T {
     let clock = Instant::now();
     let out = work();
     let took = clock.elapsed();
     println!("{what}: {took:?}");
-    assert!(took < limit, "{what} took {took:?}, more than {limit:?}");
+    assert!(
+        !BOUNDED.get() || took < limit,
+        "{what} took {took:?}, more than {limit:?}"
+    );
     out
 }
 
@@ -220,9 +236,23 @@ fn folder_of(root: &Path, file: &str) -> String {
         .into_owned()
 }
 
+/// What every step of a large project answers, with no limit on the time.
 #[test]
+fn a_large_project_gives_the_right_answers() {
+    a_large_project(false);
+}
+
+/// The same steps held to their limits. Time is for a quiet machine to say, so this one is left
+/// out of `cargo test` and run alone.
+#[test]
+#[ignore = "measures time, which a busy machine decides: run it alone, as CI does"]
 fn a_large_project_stays_fast() {
-    let root = scratch("project");
+    a_large_project(true);
+}
+
+fn a_large_project(bounded: bool) {
+    BOUNDED.set(bounded);
+    let root = scratch(if bounded { "bounded" } else { "project" });
     let files = timed("generate", Duration::from_secs(20), || write_project(&root));
     let path = root.to_string_lossy().into_owned();
 

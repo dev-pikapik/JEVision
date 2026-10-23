@@ -1,6 +1,8 @@
 //! Laying out a very long test must stay fast and must not run out of stack.
 
-use std::time::{Duration, Instant};
+mod common;
+
+use std::time::Duration;
 
 use jevision_core::{Flow, layout, parse};
 
@@ -31,13 +33,11 @@ fn long_test(n: usize) -> String {
     )
 }
 
-/// The fastest of a few layouts of `flow`, so a busy machine skews the time as little as possible.
+/// The least CPU time of a few layouts of `flow`.
 fn time_layout(flow: &Flow) -> Duration {
     (0..3)
         .map(|_| {
-            let clock = Instant::now();
-            let laid = layout(flow);
-            let took = clock.elapsed();
+            let (laid, took) = common::cpu_time(|| layout(flow));
             assert_eq!(laid.blocks.len(), flow.blocks.len());
             took
         })
@@ -45,8 +45,8 @@ fn time_layout(flow: &Flow) -> Duration {
         .unwrap()
 }
 
-/// Sixteen times the blocks must take well under sixteen squared times as long: the time is
-/// compared with a smaller test on the same machine and build, never with a fixed budget.
+/// Sixteen times the blocks must take well under sixteen squared times as long: the CPU time is
+/// compared with that of a smaller test on the same machine and build, never with a fixed budget.
 #[test]
 fn a_very_long_test_lays_out_in_about_linear_time() {
     let small = parse(&long_test(1_000)).unwrap();

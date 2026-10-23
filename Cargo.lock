@@ -1687,6 +1687,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "jevision-l10n",
+ "libc",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

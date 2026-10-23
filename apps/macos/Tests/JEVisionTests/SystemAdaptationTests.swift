@@ -119,7 +119,7 @@ struct AppLanguageTests {
     #expect(language.language == "en")
     languages.list.withLock { $0 = ["ru-RU"] }
     NotificationCenter.default.post(name: NSLocale.currentLocaleDidChangeNotification, object: nil)
-    RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+    try eventually("the language is read again") { language.language == "ru" }
     #expect(language.language == "ru")
   }
 

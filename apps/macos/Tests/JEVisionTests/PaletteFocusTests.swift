@@ -10,6 +10,7 @@ import Testing
     let project: ProjectStore
     let runs: RunCenter
     let records: RecordCenter
+    let shown: () -> Void
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @FocusState private var canvasFocused: Bool
@@ -18,7 +19,10 @@ import Testing
       Color.clear
         .focusable()
         .focused($canvasFocused)
-        .onAppear { canvasFocused = true }
+        .onAppear {
+          canvasFocused = true
+          shown()
+        }
         .background {
           CommandPalettePresenter(isPresented: project.showsCommandPalette) {
             project.showsCommandPalette = false
@@ -32,10 +36,13 @@ import Testing
     }
   }
 
-  private func settle() { RunLoop.main.run(until: Date().addingTimeInterval(0.3)) }
+  private final class Flag {
+    var isSet = false
+  }
 
   @Test func typingGoesStraightIntoTheSearchAndEscapeCloses() throws {
     let project = ProjectStore()
+    let shown = Flag()
     let window = NSWindow(
       contentRect: NSRect(x: -10000, y: -10000, width: 800, height: 600), styleMask: [.titled], backing: .buffered,
       defer: false)
@@ -43,27 +50,26 @@ import Testing
     window.contentView = NSHostingView(
       rootView: Host(
         project: project, runs: RunCenter(defaults: UserDefaults(suiteName: "PaletteFocusTests")!),
-        records: RecordCenter()))
+        records: RecordCenter(), shown: { shown.isSet = true }))
     window.orderFront(nil)
     defer { window.close() }
-    settle()
+    try eventually("the window shows the view") { shown.isSet }
+    let palette = { window.childWindows?.first as? CommandPalettePanel }
 
     project.showsCommandPalette = true
-    settle()
-    let panel = try #require(window.childWindows?.first as? CommandPalettePanel)
-    #expect(panel.firstResponder is NSTextView, "The search field has the keyboard")
+    try eventually("the palette opens") { palette() != nil }
+    let panel = try #require(palette())
+    try eventually("the search field has the keyboard") { panel.firstResponder is NSTextView }
 
     panel.cancelOperation(nil)
-    settle()
+    try eventually("escape closes the palette") { window.childWindows?.isEmpty ?? true }
     #expect(!project.showsCommandPalette)
-    #expect(window.childWindows?.isEmpty ?? true)
 
     project.showsCommandPalette = true
-    settle()
-    let again = try #require(window.childWindows?.first as? CommandPalettePanel)
+    try eventually("the palette opens again") { palette() != nil }
+    let again = try #require(palette())
     again.resignKey()
-    settle()
+    try eventually("a click outside closes it") { window.childWindows?.isEmpty ?? true }
     #expect(!project.showsCommandPalette, "A click outside closes it")
-    #expect(window.childWindows?.isEmpty ?? true)
   }
 }

@@ -6,7 +6,8 @@ import Testing
 
 /// What the window works out on every redraw stays quick in a test of hundreds of blocks and a
 /// project with a long run history, and nothing breaks in an empty project. Bounds are generous
-/// for a debug build on a slow machine.
+/// for a debug build on a slow machine, and they count the time this thread spends computing: the
+/// time on the wall also holds whatever else the machine runs meanwhile.
 @MainActor
 struct LargeProjectTests {
   private func folder() throws -> URL {
@@ -29,10 +30,17 @@ struct LargeProjectTests {
       .replacingOccurrences(of: "\"then\": null, \"else\": null", with: "\"then\": null")
   }
 
+  private func threadSeconds() -> Double {
+    var time = timespec()
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time)
+    return Double(time.tv_sec) + Double(time.tv_nsec) / 1e9
+  }
+
+  /// How long `work` kept this thread busy.
   private func seconds(_ work: () -> Void) -> Double {
-    let clock = ContinuousClock()
-    let took = clock.measure(work)
-    return Double(took.components.seconds) + Double(took.components.attoseconds) / 1e18
+    let start = threadSeconds()
+    work()
+    return threadSeconds() - start
   }
 
   @Test func theCanvasLooksUpBlocksWithoutSearchingTheTest() throws {

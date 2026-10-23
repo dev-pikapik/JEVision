@@ -14,3 +14,6 @@ chrono-tz = { version = "0.10", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

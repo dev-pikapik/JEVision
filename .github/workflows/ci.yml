@@ -40,6 +40,20 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+  timing:
+    name: Core speed
+    # Time is for a quiet machine to say, so the tests that hold the core to its time limits run
+    # alone on a runner of their own, and not beside the other tests. On a pull request too, so a
+    # slowdown shows before the merge; keep this check out of the required ones, since a runner
+    # that is slow that day says nothing about the change.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Large project stays fast
+        run: cargo test -p jevision-ffi --test large_project --locked -- --ignored a_large_project_stays_fast
+
   core-swift:
     name: Core for Swift
     runs-on: macos-latest

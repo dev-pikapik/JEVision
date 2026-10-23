@@ -31,9 +31,7 @@ struct RemoteAccessTests {
     remote.confirmsRuns = true
     remote.isEnabled = true
     remote.showCode()
-    for _ in 0..<100 where remote.phase == .starting {
-      try await Task.sleep(for: .milliseconds(100))
-    }
+    try await eventuallyAsync("the host starts") { remote.phase != .starting }
     #expect(remote.phase == .on)
     #expect(remote.keepsMacAwakeNow)
 
@@ -41,8 +39,13 @@ struct RemoteAccessTests {
     remote.refresh()
     let offer = try #require(remote.offer)
     #expect(offer.url.hasPrefix("jevision://"))
-    #expect((295...300).contains(RemoteAccess.secondsLeft(of: offer, at: .now)))
-    #expect(RemoteAccess.secondsLeft(of: offer, at: .now.addingTimeInterval(400)) == 0)
+    // Counted from the code's own expiry: how long the test took to get here does not matter.
+    let expires = Date(timeIntervalSince1970: TimeInterval(offer.expiresAt))
+    #expect((1...300).contains(RemoteAccess.secondsLeft(of: offer, at: .now)))
+    #expect(RemoteAccess.secondsLeft(of: offer, at: expires.addingTimeInterval(-300)) == 300)
+    #expect(RemoteAccess.secondsLeft(of: offer, at: expires.addingTimeInterval(-1)) == 1)
+    #expect(RemoteAccess.secondsLeft(of: offer, at: expires) == 0)
+    #expect(RemoteAccess.secondsLeft(of: offer, at: expires.addingTimeInterval(100)) == 0)
     let qr = try #require(remote.qrCode)
     #expect(qr.width == qr.height && qr.width > 21)
     #expect(remote.devices.isEmpty)
@@ -92,9 +95,7 @@ struct RemoteAccessTests {
       secretKey: { key })
     remote.setRelay(.none, customURL: "")
     remote.isEnabled = true
-    for _ in 0..<100 where remote.phase == .starting {
-      try await Task.sleep(for: .milliseconds(100))
-    }
+    try await eventuallyAsync("the host starts") { remote.phase != .starting }
     #expect(remote.phase == .on)
 
     remote.showCode()
