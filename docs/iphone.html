@@ -7,6 +7,7 @@
 <meta name="description" content="Run tests and read reports on your Mac from an iPhone.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -59,7 +60,7 @@
 <main id="main" tabindex="-1">
 <h1>iPhone remote</h1>
 <p class="lead">JEVision Remote turns an iPhone into a remote for JEVision on your Mac: look through tests, start a run, follow it block by block and read why a test failed, from anywhere.</p>
-<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/iphone-dark.png"><img src="media/iphone-light.png" alt="JEVision Remote on an iPhone: a test drawn as its flow, a run followed block by block, and its report." width="1360" height="850" loading="lazy"></picture></figure>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/iphone-dark.png"><img src="media/iphone-light.png" alt="JEVision Remote on an iPhone: a test card with its type, priority, status and author above its flowchart and notes, a note with its replies, and a run followed block by block." width="1360" height="850" loading="lazy"></picture></figure>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -103,8 +104,8 @@
 <h2 id="pair">Pair an iPhone</h2>
 <ol>
   <li>On the Mac, open <strong>JEVision → Settings → iPhone &amp; Remote</strong> and turn on <strong>Allow remote access</strong>.</li>
-  <li>Choose what the next device can do: <strong>Can run tests</strong> or <strong>View only</strong>.</li>
-  <li>On the iPhone, open JEVision Remote and tap <strong>Pair a Mac</strong>.</li>
+  <li>Under <strong>Add</strong>, choose <strong>iPhone</strong>, and under <strong>The next device can</strong>, choose <strong>Can run tests</strong> or <strong>View only</strong>.</li>
+  <li>On the iPhone, open JEVision Remote (its icon is called <strong>JEVision</strong>) and tap <strong>Pair a Mac</strong>.</li>
   <li>Point the camera at the pairing code on the Mac and confirm with Face ID or the passcode.</li>
 </ol>
 <p>A pairing code works once and expires in five minutes. To pair another device, click <strong>Show a Code for Another Device</strong>.</p>
@@ -118,8 +119,8 @@
   <dt>Keep this Mac awake while remote access is on</dt>
   <dd>The Mac won't fall asleep on its own, so it can be reached at any time.</dd>
   <dt>Activity log</dt>
-  <dd>Who ran what, and when: pairings, connections and remote runs.</dd>
-  <dt>Devices</dt>
+  <dd>Who ran what, and when: pairings, connections and remote runs. Click <strong>Show…</strong> to read it.</dd>
+  <dt>Paired devices</dt>
   <dd>Each paired iPhone, and each <a href="mcp.html#remote">assistant on another computer</a>, what it can do and when it last connected. <strong>Disconnect</strong> cuts it off at once; to use it again, pair it with a new code.</dd>
   <dt>Relay</dt>
   <dd><strong>Standard</strong>, <strong>My own</strong> (the address of a relay you run) or <strong>None</strong>. See <a href="#reach">below</a>.</dd>

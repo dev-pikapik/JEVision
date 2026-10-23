@@ -7,6 +7,7 @@
 <meta name="description" content="Answers to common questions and fixes for common problems, such as permissions.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -70,7 +71,7 @@
     <li><a href="#check-fails">A check fails though the screen looks right</a></li>
     <li><a href="#dark">Tests fail in dark mode</a></li>
     <li><a href="#keychain">macOS asks about the Keychain</a></li>
-    <li><a href="#newer">“format 2 is from a newer JEVision”</a></li>
+    <li><a href="#newer">“The file uses format 2 from a newer JEVision”</a></li>
     <li><a href="#updates">Updating JEVision</a></li>
     <li><a href="#gitignore">What to commit</a></li>
     <li><a href="#logs">Logs and crash reports</a></li>
@@ -114,8 +115,8 @@
 
 <h2 id="paused">The run paused or stopped</h2>
 <ul>
-  <li><strong>The run paused when I moved the mouse.</strong> That's on purpose: when you touch the mouse or keyboard, JEVision steps aside so you and the test don't fight over the pointer. The run panel says “Paused — you moved the mouse.” Click <strong>Resume</strong> when your hands are off.</li>
-  <li><strong>How do I stop a run?</strong> Press <kbd>Esc</kbd> twice, from any app. On the command line, <kbd>Ctrl</kbd>-<kbd>C</kbd> works too. The test is reported as cancelled.</li>
+  <li><strong>The run paused when I moved the mouse.</strong> That's on purpose: when you touch the mouse or keyboard, JEVision steps aside so you and the test don't fight over the pointer. The run panel says “Paused — you moved the mouse”. Click <strong>Resume</strong> when your hands are off. A run started with <code>jevision run</code> goes on by itself once the mouse and keyboard rest for 3 seconds. To turn this off, clear <strong>Pause when you move the mouse</strong> in <strong>Settings → General → While a test runs</strong>.</li>
+  <li><strong>How do I stop a run?</strong> Press <kbd>Esc</kbd> twice, from any app, unless <strong>Stop with Esc Esc</strong> is turned off in the same place. On the command line, <kbd>Ctrl</kbd>-<kbd>C</kbd> works too. The test is reported as stopped.</li>
   <li><strong>Can I use the Mac during a run?</strong> Not really: the test needs the mouse, the keyboard and the app's window in front. Run tests on a separate Mac or a separate user account, or at times you don't need it, such as with <a href="schedules.html">schedules</a>.</li>
 </ul>
 
@@ -138,12 +139,12 @@
 <p>When a test sometimes passes and sometimes fails, see <a href="retries.html">Retries, flaky tests and quarantine</a>.</p>
 
 <h2 id="dark">Tests fail in dark mode</h2>
-<p>A screen in dark appearance doesn't look like a reference taken in light appearance. JEVision keeps a second reference for dark appearance, such as <code>refs/inbox.dark.png</code>, and makes it the first time a check runs in dark mode; the report marks that step <strong>Reference saved</strong>, so look at it once. See <a href="checks.html#dark">Dark appearance</a>.</p>
+<p>A screen in dark appearance doesn't look like a reference taken in light appearance. JEVision keeps a second reference for dark appearance, such as <code>refs/inbox.dark.png</code>, and makes it the first time a check runs in dark mode; the report marks that step <strong>New reference saved</strong>, so look at it once. See <a href="checks.html#dark">Dark appearance</a>.</p>
 
 <h2 id="keychain">macOS asks about the Keychain</h2>
 <p>The first time <code>jevision</code> reads a <a href="environments.html#secrets">secret</a> from the Keychain, macOS asks whether to allow it. Choose <strong>Always Allow</strong>, especially for <a href="schedules.html">schedules</a> and CI, where nobody is there to answer. In CI, you can pass secrets as environment variables instead. See <a href="environments.html#secret-order">Where a secret's value comes from</a>.</p>
 
-<h2 id="newer">“format 2 is from a newer JEVision”</h2>
+<h2 id="newer">“The file uses format 2 from a newer JEVision”</h2>
 <p>The file was saved by a newer version of JEVision. Update JEVision on this Mac. JEVision won't open such a file, so it can't damage it. See <a href="file-formats.html#versions">Format versions</a>.</p>
 
 <h2 id="updates">Updating JEVision</h2>
@@ -162,7 +163,7 @@
 <p>Commit the tests, their images and CSV files, and the <code>jevision.*.json</code> files. Leave out the <code>.jevision</code> folder: it holds run results and history for one Mac. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>. See <a href="file-formats.html#overview">Files in a project</a>.</p>
 
 <h2 id="logs">Logs and crash reports</h2>
-<p>JEVision writes a log on your Mac, in <code>~/Library/Logs/JEVision</code>: the project opened, a run started and how it ended, and what went wrong. Open the folder with <strong>Settings → Advanced → Logs → Show in Finder</strong>, and attach <code>JEVision.log</code> to a bug report if it helps. <strong>Log detail</strong> chooses <em>Errors only</em>, <em>Normal</em> (the default) or <em>Detailed</em>, which adds every step of a run. The log keeps about 2 MB and deletes the oldest lines. It never holds typed text or secrets, and anything that looks like a key, a token or a password is hidden.</p>
+<p>JEVision writes a log on your Mac, in <code>~/Library/Logs/JEVision</code>: the project opened, a run started and how it ended, and what went wrong. Open the folder with <strong>Settings → Advanced → Logs → Show in Finder</strong>, and attach <code>JEVision.log</code> to a bug report if it helps. <strong>Log detail</strong> chooses <em>Errors only</em>, <em>Normal</em> (the default) or <em>Detailed</em>, which adds every step of a run. The log keeps about 2 MB: when <code>JEVision.log</code> is full, it becomes <code>JEVision.1.log</code>, and only the newest four files are kept. It never holds typed text or secrets, and anything that looks like a key, a token or a password is hidden.</p>
 <p>If JEVision crashes, it can keep the report on your Mac. Turn on <strong>Settings → Advanced → Save crash reports</strong>. The next time JEVision starts, macOS hands it the report (up to a day later), and JEVision keeps the last 20 in <code>~/Library/Application Support/JEVision/Crash Reports</code>. Nothing is sent anywhere. To include one in a bug report, choose <strong>Add a Crash Report</strong> in the bug report window: its summary goes into the description, where you can read and change it before sending.</p>
 
 <h2 id="other-apps">Questions about testing</h2>
@@ -172,7 +173,7 @@
   <dt>Do I need to know how to code?</dt>
   <dd>No. Record a test by using the app, and edit it on the canvas. The JSON file is there for those who want it.</dd>
   <dt>Do tests send my screen anywhere?</dt>
-  <dd>Only checks by <a href="checks.html#meaning">meaning</a> send a screenshot to the AI model you choose, and you can choose a model that runs on your Mac. Every other check compares pictures on your Mac.</dd>
+  <dd>Only checks by <a href="checks.html#meaning">meaning</a> send a screenshot to the AI model you choose, and you can choose a model that runs on your Mac. Every other check compares pictures on your Mac. Two things you turn on yourself also send a picture: <a href="notifications.html#email">email notifications</a> show the screenshot of the failed step, and a <a href="reports.html#report">bug report</a> you file on GitHub includes the screenshots you choose. Private areas are painted over in both.</dd>
   <dt>Does it test iPhone apps or websites?</dt>
   <dd>JEVision tests Mac apps. A website can be tested in a Mac browser like any other app. The <a href="iphone.html">iPhone app</a> is a remote for running tests on your Mac, not a way to test iPhone apps.</dd>
 </dl>

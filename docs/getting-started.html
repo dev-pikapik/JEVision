@@ -7,6 +7,7 @@
 <meta name="description" content="Build JEVision, allow its permissions and record and run your first test.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -68,6 +69,7 @@
     <li><a href="#first-test">Your first test</a></li>
     <li><a href="#example">Try the example test</a></li>
     <li><a href="#project">What a project folder holds</a></li>
+    <li><a href="#boards">Boards</a></li>
     <li><a href="#cli">Install the command-line tool</a></li>
     <li><a href="#shortcuts">Keyboard shortcuts</a></li>
   </ul>
@@ -87,7 +89,7 @@ apps/macos/scripts/build.sh
 open apps/macos/build/JEVision.app</code></pre>
 <p><code>build.sh</code> builds the Rust core for both Mac architectures, then the app and the <code>jevision</code> command-line tool, into <code>apps/macos/build/JEVision.app</code>. Two settings change how it builds:</p>
 <ul>
-  <li><code>ARCHS=arm64</code> builds for one architecture only, which is faster: <code>ARCHS=arm64 apps/macos/scripts/build.sh</code>.</li>
+  <li><code>ARCHS=arm64</code> builds the app and the tool for one architecture only, which is faster: <code>ARCHS=arm64 apps/macos/scripts/build.sh</code>. The core is still built for both.</li>
   <li><code>SIGN_IDENTITY</code> signs the app with your own certificate instead of an ad-hoc signature.</li>
 </ul>
 <p>Move <code>JEVision.app</code> to your Applications folder if you like; the app works from anywhere.</p>
@@ -111,7 +113,7 @@ open apps/macos/build/JEVision.app</code></pre>
   <li><strong>Read the report.</strong> When the run ends, open its report to see every step with screenshots. If a step failed, the report starts with the reason. See <a href="reports.html">Run video and reports</a>.</li>
 </ol>
 <div class="note">
-  <p><strong>The first run of a check saves the picture.</strong> When a <code>check</code> block has no reference image yet, its first run saves the screen as that image and the report marks the step “Reference saved”. Later runs compare with it. See <a href="checks.html#first-run">Checks and references</a>.</p>
+  <p><strong>The first run of a check saves the picture.</strong> When a <code>check</code> block has no reference image yet, its first run saves the screen as that image and the report marks the step “New reference saved”. Later runs compare with it. See <a href="checks.html#first-run">Checks and references</a>.</p>
   <p><strong>A test has to look to pass.</strong> A test with no <code>check</code> block and no wait for a picture can't notice a wrong result, so a run that ends without errors shows <strong>Nothing Checked</strong> instead of Passed, and the editor offers <strong>Add Check</strong>.</p>
 </div>
 
@@ -133,14 +135,36 @@ open apps/macos/build/JEVision.app</code></pre>
     <tr><td><code>*.flow.json</code></td><td>Tests, one per file, in any sub-folder.</td><td>Yes</td></tr>
     <tr><td>Pictures, CSV files and other files the tests use</td><td>Usually next to the tests, for example in <code>refs/</code>. Paths in a test are relative to the test file.</td><td>Yes</td></tr>
     <tr><td><code>jevision.environments.json</code></td><td>Optional. <a href="environments.html">Environments</a>, such as staging and production.</td><td>Yes</td></tr>
-    <tr><td><code>jevision.project.json</code></td><td>Optional. Project-wide <a href="retries.html">retries and quarantine</a>.</td><td>Yes</td></tr>
+    <tr><td><code>blocks/</code></td><td>Optional. <a href="custom-blocks.html">Custom blocks</a>: your own, and the ones installed from other people.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.blocks.json</code></td><td>Optional. Where the installed blocks came from, and their versions.</td><td>Yes</td></tr>
+    <tr><td><code>boards/</code></td><td><a href="#boards">Boards</a>: the board of all tests and the ones you make, with their notes, frames and links. Pictures put on boards are kept in <code>boards/images/</code>.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.project.json</code></td><td>Optional. <a href="file-formats.html#project">Project-wide settings</a>, such as <a href="retries.html">retries and quarantine</a>, areas to hide and the AI model to use.</td><td>Yes</td></tr>
     <tr><td><code>jevision.schedule.json</code></td><td>Optional. <a href="schedules.html">Schedules</a>.</td><td>Yes</td></tr>
+    <tr><td><code>jevision.notifications.json</code></td><td>Optional. <a href="notifications.html">Notifications</a> to Slack, Telegram or email.</td><td>Yes</td></tr>
     <tr><td><code>.jevision/</code></td><td>Runs with their screenshots, videos and reports, and the history of scheduled runs.</td><td>No</td></tr>
   </tbody>
 </table>
 </div>
 <p>After the first run in a project that uses git, JEVision offers to add <code>.jevision/</code> to the project's <code>.gitignore</code>: screenshots and videos are results, not something to commit.</p>
 <p>The full description of every file is in <a href="file-formats.html">File formats</a>.</p>
+
+<h2 id="boards">Boards</h2>
+<p>A board is a large canvas where you see your tests at a glance and lay them out your way. Boards are listed under <strong>Boards</strong> in the sidebar; click one to open it.</p>
+<p><strong>All Tests</strong> appears by itself once the project has a test. It holds a card for every test, in a frame for each folder. New tests join it and deleted tests leave it on their own. Each card shows how the test last ran and when, and marks tests that are flaky or in quarantine (see <a href="retries.html">Retries, flaky tests and quarantine</a>). A frame sums up its tests, for example “3 of 5 passed, 1 failed”. Dashed arrows lead to the tests a test runs; solid ones to the tests it needs to pass first. The app draws these arrows itself.</p>
+<p>To make a board of your own, click <strong>+</strong> next to <strong>Boards</strong> and type a name. Right-click an empty spot on a board to add:</p>
+<ul>
+  <li><strong>Add Test…</strong>: a card for a test that isn't on the board yet;</li>
+  <li><strong>Add Note</strong>: a note, written in Markdown; double-clicking an empty spot adds one too;</li>
+  <li><strong>Add Frame</strong>: a frame with a title; whatever lies inside it moves with it, and <strong>Fold</strong> shrinks it to its title;</li>
+  <li><strong>Add Link…</strong>: a web address;</li>
+  <li><strong>Add Image…</strong>: pictures from your Mac; you can also drag pictures onto the board or paste them;</li>
+  <li><strong>Add Link to Board</strong>: a card that opens another board, or a new one.</li>
+</ul>
+<p>The Command Palette (<kbd>⌘</kbd><kbd>K</kbd>) has the same commands, such as <strong>Add Note to Board</strong> and <strong>New Board</strong>.</p>
+<p>Drag an item to move it. Select an item and drag its corner to resize it, or drag the dot beside it onto another item to draw an arrow. Double-click an item to open it: a test opens in the editor, a link in your browser. Right-click an item for more, such as <strong>Run</strong>, <strong>Show Blocks</strong> (the test's steps inside its card), <strong>Color</strong> and <strong>Remove from Board</strong>. <strong>Run All</strong> at the top runs every test on the board. Scroll to move around; pinch, or scroll while holding <kbd>⌘</kbd>, to zoom. Moved items snap to a grid; <strong>Snap to Grid</strong> at the top turns that off. <kbd>⌘</kbd><kbd>Z</kbd> undoes a change.</p>
+<p>With an item selected, the keyboard works too: arrow keys pick the next item, <kbd>Return</kbd> opens it, <kbd>R</kbd> runs it, <kbd>B</kbd> shows or hides its blocks, <kbd>C</kbd> starts an arrow (then click where it goes), <kbd>Delete</kbd> removes it from the board.</p>
+<p>Right-click a board in the sidebar to <strong>Rename…</strong> it or <strong>Move to Trash</strong>. Links to a renamed board follow it. <strong>All Tests</strong> can be renamed but not deleted, and its tests can't be removed from it.</p>
+<p>Each board is a file in the project's <code>boards</code> folder, such as <code>boards/All Tests.canvas</code>, and pictures are copied into <code>boards/images</code>. Commit them along with your tests. The files use the open <a href="https://jsoncanvas.org">JSON Canvas</a> format, so Obsidian can open them too.</p>
 
 <h2 id="cli">Install the command-line tool</h2>
 <p>The <code>jevision</code> command comes inside the app. Choose <strong>JEVision → Install Command Line Tool…</strong> and click <strong>Install…</strong>. macOS asks for an administrator's password and links the tool into <code>/usr/local/bin</code>. Without a password, click <strong>Install Just for Me</strong> to link it into <code>~/.local/bin</code> instead. The window shows whether the tool is installed and which version. See <a href="cli.html">Command line</a>.</p>

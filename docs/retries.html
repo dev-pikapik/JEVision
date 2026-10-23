@@ -7,6 +7,7 @@
 <meta name="description" content="Retry failed tests, find flaky ones and keep known failures from blocking anyone.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -59,7 +60,7 @@
 <main id="main" tabindex="-1">
 <h1>Retries, flaky tests and quarantine</h1>
 <p class="lead">UI tests sometimes fail for reasons that have nothing to do with the app: a slow network, a notification over the window. JEVision helps you tell such failures from real ones.</p>
-<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/history-dark.png"><img src="media/history-light.png" alt="The run history of a project." width="1360" height="850" loading="lazy"></picture></figure>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/history-dark.png"><img src="media/history-light.png" alt="The run history with its source menu open: All Runs, This Mac, Schedule, iPhone and CI, with Schedule chosen. The selected nightly run of “Open a letter from any screen” passed on retry 1 after failing, so the report marks the test as flaky and shows Try 1 and Try 2 with their steps." width="1360" height="850" loading="lazy"></picture></figure>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -75,7 +76,7 @@
 </nav>
 
 <h2 id="project-file">Project settings file</h2>
-<p>Settings shared by every test of a project go into <code>jevision.project.json</code> in the project folder and are committed with the tests. The file is optional. The app writes it from <strong>Settings › Advanced</strong> and from the sidebar, so you rarely edit it by hand.</p>
+<p>Settings shared by every test of a project go into <code>jevision.project.json</code> in the project folder and are committed with the tests. The file is optional. The app writes it from <strong>Settings → Advanced</strong>, <strong>Settings → AI</strong> and the sidebar, so you rarely edit it by hand.</p>
 <pre><code>{
   "format": 1,
   "retries": 2,
@@ -89,7 +90,10 @@
   ],
   "ai": {
     "text": { "provider": "anthropic" }
-  }
+  },
+  "runModes": [
+    { "folder": "checkout", "run": "parallel", "limit": 4 }
+  ]
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
@@ -99,12 +103,13 @@
   <li><code>localOnly</code> (optional) is <code>true</code> to keep the project's screenshots on this Mac: see <a href="#privacy">Screenshots and privacy</a>.</li>
   <li><code>hide</code> (optional) lists areas of the window painted over in every screenshot of the project: see <a href="#privacy">Screenshots and privacy</a>.</li>
   <li><code>ai</code> (optional) names the AI provider and model the project asks for checks by meaning (<code>screen</code>) and for drafting tests and explaining failures (<code>text</code>): see <a href="checks.html#which-ai">Which AI answers</a>. Never an API key.</li>
+  <li><code>runModes</code> (optional) says how the app runs the tests of a folder when you run the whole folder or <strong>Run All</strong>: <code>"run": "sequential"</code>, one after another, or <code>"run": "parallel"</code>, side by side, with <code>limit</code> from 2 to 16 at a time (default 4). <code>folder</code> is a path relative to the project folder, or <code>.</code> for the project folder itself. A folder without an entry runs like the nearest folder above it that has one; with none, tests run one after another. Tests that use the screen still take turns. The app writes it from <strong>Run Tests</strong> in a folder's menu in the sidebar: <strong>One after another</strong> or <strong>Side by side, up to 2, 4 or 8 at a time</strong>. <code>jevision run</code> doesn't read it: it runs side by side only with <a href="cli.html#parallel"><code>--parallel</code></a>.</li>
 </ul>
 
 <h2 id="retries">Retries</h2>
 <p>A failed test can run again a few times before it counts as failed. The number of retries comes from the first of these that is set:</p>
 <ol>
-  <li><code>--retries</code> of <code>jevision run</code>, the <code>retries</code> of an assistant's <code>run_test</code>, or the number chosen in the app's Run menu;</li>
+  <li><code>--retries</code> of <code>jevision run</code>, the <code>retries</code> of an assistant's <code>run_test</code>, or the number chosen in the menu of the app's <strong>Run</strong> button;</li>
   <li>the test's own <code>retries</code>;</li>
   <li>the project's <code>retries</code> in <code>jevision.project.json</code>.</li>
 </ol>
@@ -114,14 +119,14 @@
 <p>A run that needed more than one attempt ends with one sentence about how they went. The report, the app and <code>jevision run</code> all show it:</p>
 <ul>
   <li><strong>“Passed on retry 1 after failing — the test is flaky.”</strong> The app works, but the test doesn't always see it.</li>
-  <li><strong>“Failed 3 times, each time differently — the test may be flaky.”</strong> Compare what each attempt saw in the report.</li>
+  <li><strong>“Failed 3 of 3 times, each time differently — the test may be flaky.”</strong> Compare what each attempt saw in the report.</li>
   <li><strong>“Failed 3 times in a row — a real failure, not flakiness.”</strong> Every attempt failed the same way: look for a bug.</li>
 </ul>
 
 <h2 id="flaky">Flaky tests</h2>
-<p>JEVision also looks back over past runs. When the same test file, unchanged since (the same content), both passed and failed in the same environment over the last 30 days, the app marks it flaky in the sidebar, the project map and the run history, with the dates and counts as evidence. Changing the test starts its record afresh, because a changed test may behave differently.</p>
+<p>JEVision also looks back over past runs. When the same test file, unchanged since (the same content), both passed and failed in the same environment over the last 30 days, the app marks it flaky in the sidebar, on the boards and in the run history, with the dates and counts as evidence. Changing the test starts its record afresh, because a changed test may behave differently.</p>
 <p>A <a href="data-driven.html">data-driven test</a> is judged one row at a time: each report keeps which row ran (its number, its label and a fingerprint of its values, never the values themselves), so a row that fails now and then is flaky while the rows that never fail are not. Editing a row's values starts that row's record afresh. Reports written before this was kept count as one record for the whole test.</p>
-<p>You can also mark a test flaky yourself: turn on <strong>Flaky</strong> in the test's details (click its name above the flowchart), or add <code>"flaky": true</code> to the test file. The mark is saved in the test, so everyone sees it in the sidebar and on the project map. It changes nothing in how the test runs; to keep its failures from failing Run All, put it in quarantine.</p>
+<p>You can also mark a test flaky yourself: turn on <strong>Flaky</strong> in the test's details (click its name above the flowchart), or add <code>"flaky": true</code> to the test file. The mark is saved in the test, so everyone sees it in the sidebar and on the boards. It changes nothing in how the test runs; to keep its failures from failing Run All, put it in quarantine.</p>
 
 <h2 id="suggestion">When to quarantine a test</h2>
 <p>A test that passes and fails by itself teaches people to ignore red results. JEVision counts the unreliable runs of each test, and each data row, over the last 7 days, and once there are 3 it suggests quarantine. A run is unreliable when:</p>
@@ -129,8 +134,8 @@
   <li>it passed only on a retry, or</li>
   <li>it failed after the same unchanged test had passed. A string of failures right after a pass counts once, so a real regression, which keeps failing, doesn't look like flakiness.</li>
 </ul>
-<p>The suggestion is a small bandage mark next to the test in the sidebar. Open the test's details and its <strong>Quarantine</strong> section lists the unreliable runs, each a link to its report, and one button, <strong>Put in Quarantine until …</strong>, which puts the test in quarantine for 14 days with the number of unreliable runs as its reason. The test's menu in the sidebar has the same button. Nothing is changed until you click it.</p>
-<p>To suggest sooner or later, change <strong>Suggest quarantine after</strong> in <strong>Settings › Advanced</strong> (1 to 10 runs, default 3). It is saved as <code>suggestQuarantineAfter</code> in the project file, so everyone who opens the project gets the same suggestions.</p>
+<p>The suggestion is a small bandage mark next to the test in the sidebar. Open the test's details and its <strong>Quarantine</strong> section lists the unreliable runs, each a link to its report, and one button, <strong>Put in Quarantine until …</strong>, which puts the test in quarantine for 14 days with the number of unreliable runs as its reason. The test's menu in the sidebar does the same with <strong>Put in Quarantine for Two Weeks (Suggested)</strong>. Nothing is changed until you click it.</p>
+<p>To suggest sooner or later, change <strong>Suggest quarantine after</strong> in <strong>Settings → Advanced</strong> (1 to 10 runs, default 3). It is saved as <code>suggestQuarantineAfter</code> in the project file, so everyone who opens the project gets the same suggestions.</p>
 
 <h2 id="quarantine">Quarantine</h2>
 <p>Quarantine is for tests whose failures shouldn't block anyone while they are being fixed, for example while a test server is down.</p>
@@ -138,10 +143,10 @@
   <li>Tests in quarantine <strong>still run</strong>, and their reports show the failure.</li>
   <li>Their failure <strong>doesn't fail</strong> Run All or the exit status of <code>jevision run</code>.</li>
   <li>The JUnit report lists such a failure as <strong>skipped</strong>, with the reason and the failure.</li>
-  <li>The sidebar, the project map and the reports mark these tests, and the test's details say “In quarantine until Nov 3”.</li>
+  <li>The sidebar, the boards and the reports mark these tests, and the test's details say “In quarantine until Nov 3”.</li>
 </ul>
-<p>To put a test in quarantine or release it, use its menu in the sidebar, the test's details, or <strong>Settings › Advanced</strong>. You choose the last day: 14 days from today unless you pick another, or no end at all, in which case the test stays in quarantine until you release it. <strong>Change…</strong> in the test's details moves the day or the reason.</p>
-<p>When the last day is past, the test <strong>comes back by itself</strong>: from the next day its failures fail Run All and <code>jevision run</code> like any other, and its details say it is not in quarantine. Nothing has to be edited. The entry stays in <code>jevision.project.json</code> and <strong>Settings › Advanced</strong> lists it as “Quarantine ended Nov 3” until someone releases it, so you can see what was quarantined; putting the test in quarantine again replaces it.</p>
+<p>To put a test in quarantine, choose <strong>Quarantine…</strong> in its menu in the sidebar or in the test's details. To release it, choose <strong>Release from Quarantine</strong> there, or <strong>Release</strong> under <strong>Retries and quarantine</strong> in <strong>Settings → Advanced</strong>. You choose the last day: 14 days from today unless you pick another, or no end at all, in which case the test stays in quarantine until you release it. <strong>Change…</strong> in the test's details moves the day or the reason.</p>
+<p>When the last day is past, the test <strong>comes back by itself</strong>: from the next day its failures fail Run All and <code>jevision run</code> like any other, and its details say it is not in quarantine. Nothing has to be edited. The entry stays in <code>jevision.project.json</code> and <strong>Settings → Advanced</strong> lists it as “Quarantine ended Nov 3” until someone releases it, so you can see what was quarantined; putting the test in quarantine again replaces it.</p>
 <p>To count their failures like any other, for example in a nightly build, add <code>--include-quarantined-failures</code>:</p>
 <pre><code>jevision run tests/ --include-quarantined-failures</code></pre>
 <p>Failures of a test whose quarantine has ended count either way.</p>
@@ -150,10 +155,10 @@
 </div>
 
 <h2 id="privacy">Screenshots and privacy</h2>
-<p>Screens of the app under test can show names, email addresses or account numbers. Two settings in <code>jevision.project.json</code> protect them for everyone who runs the project's tests, whatever each person's own settings say. Both are in <strong>Settings › AI › This project</strong>.</p>
+<p>Screens of the app under test can show names, email addresses or account numbers. Two settings in <code>jevision.project.json</code> protect them for everyone who runs the project's tests, whatever each person's own settings say. Both are in <strong>Settings → AI → This project</strong>.</p>
 <ul>
   <li><strong>Areas always hidden</strong> (<code>hide</code>). Parts of the window painted over in solid grey in every screenshot of the project: before it is saved in a report or as a new reference image, sent to an AI model for a <a href="checks.html">check by meaning</a>, or given to an <a href="mcp.html">AI assistant</a>. Each area is <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 of the window, from its top-left corner, like the areas of a check, so it fits the window at any size. Click <strong>Edit…</strong> next to “Areas always hidden” to draw them over a picture of the app's window; the picture only helps you place them and isn't saved.</li>
-  <li><strong>Only models on this Mac</strong> (<code>localOnly</code>). Screenshots never go to a cloud service: checks by meaning work only with models that run on this Mac, a check that would need a cloud model stops with a message, and assistants get no screenshots.</li>
+  <li><strong>Only models on this Mac for this project</strong> (<code>localOnly</code>). Screenshots never go to a cloud service: checks by meaning work only with models that run on this Mac, a check that would need a cloud model stops with a message, and assistants get no screenshots.</li>
 </ul>
 <p>Before any picture leaves the Mac, JEVision also paints over the areas the check itself hides or ignores and every password field it finds through the Accessibility permission. The report shows the picture exactly as it was sent, marked “masked before sending”.</p>
 <p>Run videos are painted over the same way, frame by frame: the areas always hidden, in every window of the app, and the password fields in them. A window that moves keeps its areas covered. A password field that has just appeared is found within about half a second.</p>

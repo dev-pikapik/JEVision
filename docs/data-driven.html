@@ -7,6 +7,7 @@
 <meta name="description" content="Run one test with many sets of values from a CSV table.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -110,7 +111,7 @@ Bo,bo@example.com,"quotes ""inside"", and a comma"</code></pre>
 <p>All rows run by default. To run some of them:</p>
 <ul>
   <li><strong>Command line:</strong> <code>jevision run tests/sign-in.flow.json --row 3</code> or <code>--rows 2-4</code>.</li>
-  <li><strong>App:</strong> the Run menu, which picks one row or all of them for the next runs.</li>
+  <li><strong>App:</strong> <strong>Data Rows</strong> in the Run menu, which picks one row or <strong>All Rows</strong> for the next runs.</li>
   <li><strong>AI assistant:</strong> <code>rows</code> of <a href="mcp.html#run_test"><code>run_test</code></a>, such as <code>"2"</code> or <code>"2-4"</code>.</li>
 </ul>
 <p>Rows count from 1; the header line isn't a row. Asking for a row the table doesn't have stops the run before it starts.</p>

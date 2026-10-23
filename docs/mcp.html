@@ -7,6 +7,7 @@
 <meta name="description" content="Let Claude, Cursor, Copilot and other MCP clients find, write, run and debug tests.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -90,10 +91,10 @@
 }</code></pre></li>
   <li>Add it to the MCP servers of your assistant, as its documentation describes. The assistant starts <code>jevision mcp</code> itself when it needs it.</li>
 </ol>
-<p>Without <code>--project</code>, the assistant sees the nearest folder at or above the one it starts <code>jevision</code> in that has a <code>.jevision</code> folder, otherwise that folder itself. See <a href="cli.html#mcp"><code>jevision mcp</code></a>.</p>
+<p>Without <code>--project</code>, the assistant sees the nearest folder at or above the one it starts <code>jevision</code> in that has a <code>.jevision</code> folder or a <code>jevision.environments.json</code> file, otherwise that folder itself. See <a href="cli.html#mcp"><code>jevision mcp</code></a>.</p>
 
 <h2 id="allowed">What assistants may do</h2>
-<p>An assistant can always find, read, write and check the tests of the project and read its reports. Two things work only after the person at the Mac turns them on in <strong>Settings → AI → Assistants</strong>, because they act on the Mac or may show private things:</p>
+<p>An assistant can always find, read, write and check the tests of the project, read its reports and <a href="#draft_bug_report">draft a bug report</a> about a failed run. Two things work only after the person at the Mac turns them on in <strong>Settings → AI → Assistants</strong>, because they act on the Mac or may show private things:</p>
 <ul>
   <li><strong>Allow assistants to run tests.</strong> Tests open apps, click and type on this Mac. Press <kbd>Esc</kbd> twice to stop one.</li>
   <li><strong>Allow assistants to take screenshots.</strong> An assistant sees the front window of an app, which may show private information.</li>
@@ -104,6 +105,7 @@
   <li>Assistants can't open files outside the project folder.</li>
   <li>A test with errors is never saved, so an assistant can't break a working test file.</li>
 </ul>
+<p><a href="#send_bug_report">Sending a bug report</a> to GitHub has no switch of its own. It works only when the project is on GitHub and this Mac is signed in to GitHub, and the tool tells the assistant to show you the draft and send it only when you agree. JEVision itself doesn't ask.</p>
 
 <h2 id="asking-first">Asking first, and who connected</h2>
 <p><strong>Ask before an assistant runs a test</strong>, in <strong>Settings → AI → Assistants</strong>, is on until you turn it off. While it is on, every time an assistant starts a run, JEVision shows an alert on the Mac with the assistant's name, the tests, the project, the apps they will use and the environment, and the assistant waits:</p>
@@ -155,7 +157,7 @@
 </ul>
 
 <h3 id="add_blocks"><code>add_blocks</code></h3>
-<p>Adds blocks to a test as one chain: each leads to the next, and the last one to whatever came after the place they go. Give each block as in a test file, without an id or arrows; ids are made from the block types and returned.</p>
+<p>Adds blocks to a test as one chain: each leads to the next, and the last one to whatever came after the place they go. Give each block as in a test file, without an id or arrows; ids are made from the block types and returned. Without <code>after</code> or <code>atStart</code>, the blocks go at the end of the main chain. The test is saved, and the answer lists the problems left in it.</p>
 <ul>
   <li><code>path</code> (required): the test file.</li>
   <li><code>blocks</code> (required): the blocks in order, such as <code>{ "type": "pressKeys", "keys": "cmd+s" }</code>. Only the last one may be an <code>if</code> block.</li>
@@ -164,7 +166,7 @@
 </ul>
 
 <h3 id="remove_block"><code>remove_block</code></h3>
-<p>Removes a block and joins its neighbours: whatever led to it then leads to what came after it. Removing a <code>repeat</code> or <code>useData</code> block keeps the blocks inside it; removing an <code>if</code> block keeps its <code>then</code> branch.</p>
+<p>Removes a block and joins its neighbours: whatever led to it then leads to what came after it. Removing a <code>repeat</code> or <code>useData</code> block keeps the blocks inside it; removing an <code>if</code> block keeps its first branch that leads anywhere (<code>then</code>, else the first <code>elseIf</code>, else <code>else</code>), and the blocks that only its other branches reached are removed too. The test is saved.</p>
 <ul>
   <li><code>path</code> (required): the test file.</li>
   <li><code>block</code> (required): the id of the block to remove.</li>
@@ -190,7 +192,7 @@
 </ul>
 
 <h3 id="get_run"><code>get_run</code></h3>
-<p>Tells how a run is going: running or finished, and for each test its verdict (<code>passed</code>, <code>failed</code>, <code>cancelled</code>, <code>notRun</code>, <code>error</code>, <code>running</code> or <code>waiting</code>), the step it is on, why it failed, and the name of its report.</p>
+<p>Tells how a run is going: running or finished, and for each test its verdict (<code>passed</code>, <code>failed</code>, <code>cancelled</code>, <code>blocked</code>, <code>notRun</code>, <code>error</code>, <code>running</code> or <code>waiting</code>), the step it is on, why it failed, and the name of its report.</p>
 <ul>
   <li><code>run</code>: the run id from <code>run_test</code>. Default: the newest run.</li>
   <li><code>wait</code>: seconds to wait for the run to end before answering, 0 to 600. Default: 0, answer at once.</li>
@@ -212,6 +214,20 @@
 <ul>
   <li><code>app</code>: the bundle id of the app, such as <code>com.apple.TextEdit</code>; or</li>
   <li><code>path</code>: a test file, whose app is pictured.</li>
+</ul>
+
+<h3 id="draft_bug_report"><code>draft_bug_report</code></h3>
+<p>Returns the bug report JEVision would file about a failed run: a title, a Markdown text with the cause, the steps up to the failure, what was expected and what was seen, and where it ran, and the names of the screenshots that would go with it. Secret values are masked. Nothing is sent.</p>
+<ul><li><code>report</code>: the report name from <code>get_run</code>. Default: the newest failed run.</li></ul>
+
+<h3 id="send_bug_report"><code>send_bug_report</code></h3>
+<p>Files the bug report about a failed run as an issue in the project's GitHub repository, with the screenshots of the failed step. Private areas are painted over and secret values masked. It needs the project on GitHub and this Mac signed in to GitHub in <strong>Settings → Git and GitHub</strong>, or a <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> environment variable. If an issue about the same failure is already open, nothing is sent and the answer names that issue.</p>
+<ul>
+  <li><code>report</code>: the report name from <code>get_run</code>. Default: the newest failed run.</li>
+  <li><code>title</code> and <code>body</code>: a title and Markdown text to use instead of the drafted ones.</li>
+  <li><code>screenshots</code>: the names of the screenshots to include, from <code>draft_bug_report</code>. Default: all of them.</li>
+  <li><code>commentOn</code>: the number of an open issue to add this run to as a comment, instead of opening a new issue.</li>
+  <li><code>newIssue</code>: <code>true</code> to open a new issue even when one about the same failure is open.</li>
 </ul>
 
 <h2 id="example">An example</h2>

@@ -2,8 +2,9 @@
 """Checks the documentation site for broken internal links.
 
 Every href and src that points inside the site must name a file that exists and, with a
-#fragment, an id on that page. Ids must be unique on a page, and every page must have the
-same navigation. External links (http, https, mailto) are not checked.
+#fragment, an id on that page. Ids must be unique on a page, every page must have the
+same navigation, and search-index.js must match the pages. External links (http, https, mailto)
+are not checked.
 
 Usage: python3 docs/check-links.py
 Exit status: 0 when everything is fine, 1 when a problem was found.
@@ -12,6 +13,7 @@ Exit status: 0 when everything is fine, 1 when a problem was found.
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
+import runpy
 import sys
 
 SITE = Path(__file__).resolve().parent
@@ -92,6 +94,11 @@ def main():
     for name in pages:
         if name not in linked:
             problems.append(f"{name}: isn't in the site navigation")
+
+    search = runpy.run_path(str(SITE / "build-search-index.py"))
+    index = search["INDEX"]
+    if not index.is_file() or index.read_text(encoding="utf-8") != search["render"]():
+        problems.append(f"{index.name} doesn't match the pages: run python3 docs/build-search-index.py")
 
     for problem in problems:
         print(problem)

@@ -98,10 +98,17 @@ an error, not a blank.
   plural forms are not `one`/`other` also needs its rule in `plural_category`
   (`crates/jevision-l10n`) and in `PLURALS` of `check-localization.py`.
 
+The iPhone app is in [`apps/ios`](apps/ios); [`apps/ios/README.md`](apps/ios/README.md) explains how
+to build it. If you change the documentation in [`docs/`](docs), run
+`python3 docs/check-links.py`: it finds broken links and pages whose navigation differs.
+After editing a page, run `python3 docs/build-search-index.py` to update the search index;
+`check-links.py` fails while the index is out of date.
+
 ## Test files
 
 Example tests live in [`examples/`](examples). Each test is one `*.flow.json` file.
-Keep examples small, readable and pointed at public demo sites only.
+Keep examples small and readable. An example that really runs uses an app every Mac has, such
+as TextEdit; one that only shows the format uses a made-up app such as `com.example.AcmeMail`.
 
 ## Changing a file format
 

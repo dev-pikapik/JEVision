@@ -145,7 +145,7 @@ plutil -lint -s "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 # The guides open from disk, so they work offline and match this version; the example project is
 # copied out of here, never run in place.
 ditto "$ROOT/docs" "$APP/Contents/Resources/docs"
-rm "$APP/Contents/Resources/docs/check-links.py"
+rm "$APP/Contents/Resources/docs/check-links.py" "$APP/Contents/Resources/docs/build-search-index.py"
 rm -r "$APP/Contents/Resources/docs/maintainers"
 ditto "$ROOT/examples" "$APP/Contents/Resources/examples"
 xcrun xcstringstool compile Resources/Localizable.xcstrings --output-directory "$APP/Contents/Resources" >/dev/null

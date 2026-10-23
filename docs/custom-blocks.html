@@ -7,6 +7,7 @@
 <meta name="description" content="Reuse steps as your own blocks, share them with other people, and install blocks that others made, after reading what they do.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -90,7 +91,7 @@
 </ul>
 
 <h2 id="use">Using a block in a test</h2>
-<p>Add a block from the library (<kbd>Space</kbd> on the canvas, or <kbd>⌘K</kbd>), or add a <code>runTest</code> block and choose the custom block as its test. Fill in the values it asks for. A value may hold <code>${env.NAME}</code>, <code>${secret.NAME}</code> and <code>${data.COLUMN}</code> of the test that uses the block.</p>
+<p>Add a block from the library (<kbd>Space</kbd> on the canvas, or <kbd>⌘K</kbd>), or add a <code>runTest</code> block and choose the custom block as its test. Fill in the values it asks for. A value may hold <code>${env.NAME}</code>, <code>${secret.NAME}</code>, <code>${data.COLUMN}</code> and <code>${var.NAME}</code> of the test that uses the block.</p>
 <pre><code>{
   "type": "runTest",
   "test": "blocks/com.acme.sign-in.jevblock/flow.json",
@@ -191,7 +192,7 @@
   "next": "compose"
 }</code></pre>
 <ul>
-  <li>A step may leave the block's folder only this way, and only for a block listed in <code>dependencies</code>. Running a block that isn't listed is an error that names it: “runs ../com.acme.other.jevblock/flow.json, the block com.acme.other, which block.json doesn't list under dependencies; add it there.” Any other path with <code>..</code> is an error too.</li>
+  <li>A step may leave the block's folder only this way, and only for a block listed in <code>dependencies</code>. Running a block that isn't listed is an error that names it: “A step runs ../com.acme.other.jevblock/flow.json, the block com.acme.other, which block.json doesn't list under dependencies. Add it there.” Any other path with <code>..</code> is an error too.</li>
   <li>A listed block that no step runs is fine.</li>
 </ul>
 
@@ -217,8 +218,8 @@
 <h3 id="dependency-checks">When JEVision checks them</h3>
 <ul>
   <li><strong>Reading a package</strong>, before anything is installed, checks that every block the steps run is listed. Whether the listed blocks are there is a question for the project the block goes into.</li>
-  <li><strong>Installing</strong> needs every listed block to be installed, or in the same <a href="#several">list</a>, in a version that fits. Otherwise the block isn't installed, and the message says what to do, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, which isn't installed; install it with `jevision blocks install https://github.com/acme/blocks/tree/main/blocks`.” or “…, but com.acme.sign-in 1.0.0 is installed; install a version that fits.”</li>
-  <li>Blocks that need each other in a circle can't be installed: “the blocks need each other in a circle: com.acme.a → com.acme.b → com.acme.a. Remove one of these dependencies.”</li>
+  <li><strong>Installing</strong> needs every listed block to be installed, or in the same <a href="#several">list</a>, in a version that fits. Otherwise the block isn't installed, and the message says what to do, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, which isn't installed. Install it from https://github.com/acme/blocks/tree/main/blocks.” or “…, but com.acme.sign-in 1.0.0 is installed. Install a version that fits.”</li>
+  <li>Blocks that need each other in a circle can't be installed: “The blocks need each other in a circle: com.acme.a → com.acme.b → com.acme.a. Remove one of these dependencies.”</li>
   <li><strong>A test</strong> that runs a block whose dependencies, or theirs in turn, aren't installed in a version that fits gets an error on its <code>runTest</code> block, while you edit and in <code>jevision validate</code>, with the command that installs what is missing.</li>
   <li><strong>Updating and removing</strong> a block that others need asks first: see <a href="#manage">Updating and removing blocks</a>.</li>
 </ul>
@@ -227,7 +228,7 @@
 <p><strong>File → Custom Blocks…</strong> lists the blocks from the community with their version, where they came from and the author they name.</p>
 <ul>
   <li><strong>Update</strong> appears for a block installed from an address. It fetches the address again and shows what changed before it replaces anything, as an installation does. Blocks installed from a file have no address to update from.</li>
-  <li>When another installed block needs the one you update in a version that the new one isn't, the window says so before anything changes, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, and this brings com.acme.sign-in 2.0.0; update com.acme.messages as well, or go ahead knowing it may stop working.” Updating both from one address together is fine.</li>
+  <li>When another installed block needs the one you update in a version that the new one isn't, the window says so before anything changes, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, and this brings com.acme.sign-in 2.0.0. Update com.acme.messages as well, or go ahead knowing it may stop working.” Updating both from one address together is fine.</li>
   <li><strong>Remove</strong> deletes the block. If tests or other installed blocks use it, the window names them and asks first, because they would stop with a message that the block is missing. A block is never removed behind your back.</li>
 </ul>
 
@@ -236,7 +237,7 @@
 <ul>
   <li>You choose the name of the copy, which starts as the block's name. The copy is <code>blocks/NAME.block.json</code>. Its pictures and files go to <code>blocks/images</code> and <code>blocks/files</code>, under another name when a different file of that name is there already.</li>
   <li>Steps that run another installed block keep running it.</li>
-  <li>A tick box, on by default, says <strong>Use the copy in the tests that use it</strong> and names them. If it is on, each of their <code>runTest</code> blocks runs the copy, and a value a test left out gets the default the block gave it, so the tests do what they did before. If it is off, the tests keep using the installed block. A test that is open with changes you haven't saved is left alone, and the window names it.</li>
+  <li>A tick box, on by default, says how many tests use the block, such as <strong>Use the copy in the 2 tests that use it</strong>, and names them. If it is on, each of their <code>runTest</code> blocks runs the copy, and a value a test left out gets the default the block gave it, so the tests do what they did before. If it is off, the tests keep using the installed block. A test that is open with changes you haven't saved is left alone, and the window names it.</li>
   <li>The installed block stays. Remove it in <strong>Custom Blocks…</strong> once nothing uses it.</li>
 </ul>
 <p>A block whose steps run another file from inside its own package can't be copied, and says so. The pictures a package's checks compare with can't be replaced with <strong>Accept as New Reference</strong> either: make the block your own first.</p>

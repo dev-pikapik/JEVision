@@ -7,6 +7,7 @@
 <meta name="description" content="What a run leaves behind: screenshots, video, HTML and JUnit reports.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -68,7 +69,9 @@
     <li><a href="#video">Run video</a></li>
     <li><a href="#html">HTML reports</a></li>
     <li><a href="#junit">JUnit XML</a></li>
+    <li><a href="#bug">Report a bug</a></li>
     <li><a href="#where">Where runs are saved</a></li>
+    <li><a href="#ci-runs">Runs from CI</a></li>
     <li><a href="#privacy">What reports never contain</a></li>
   </ul>
 </nav>
@@ -78,7 +81,7 @@
 <ul>
   <li>the <strong>verdict</strong> and, when the test failed, the <strong>reason</strong> in one sentence, such as which picture didn't appear within how many seconds;</li>
   <li>every <strong>step</strong>, with screenshots of the window before and after it;</li>
-  <li>for a check, the <strong>screen</strong>, the <strong>reference</strong>, their <strong>differences</strong> (differing pixels in red, left-out parts tinted) or one <strong>over</strong> the other, and how similar they were;</li>
+  <li>for a check, the <strong>screen</strong>, the <strong>reference</strong>, their <strong>differences</strong> (differing pixels in red, left-out parts tinted) or an <strong>overlay</strong> of one on the other, and how similar they were;</li>
   <li>for a check by meaning, the AI provider, the model and its explanation;</li>
   <li>for a block that finds an element by its <a href="writing-tests.html#target">description in words</a>, the screenshot as it was sent to JEV, with a red outline where JEV found the element;</li>
   <li>for an <a href="writing-tests.html#if">if</a> block, the way it took, named as on the canvas: <strong>Took “Condition 2: Inbox is empty”</strong> or <strong>Took “Otherwise”</strong>;</li>
@@ -86,16 +89,17 @@
   <li>the environment, the data row and, after retries, a sentence on <a href="retries.html#verdict">what the retries tell you</a>;</li>
   <li>the video, if one was recorded, with a mark for each step.</li>
 </ul>
-<p>When the app changed on purpose, accept the run's screenshot as the new reference right from the report; if other tests use the same picture, you review each of their blocks first. See <a href="checks.html#accept">Checks and references</a>.</p>
+<p>The report window's buttons do the next thing for you: <strong>Open Failed Block</strong> shows the block on the canvas, <strong>Run Again</strong> runs the test once more, <strong>Report Bug…</strong> files a failed run as a GitHub issue with the screenshots of the failed step (see <a href="#bug">Report a bug</a>), <strong>Export</strong> saves the report as an <a href="#html">HTML report</a> or <a href="#junit">JUnit XML</a>, and <strong>Show in Finder</strong> opens the run's folder.</p>
+<p>When the app changed on purpose, accept the run's screenshot as the new reference right from the report with <strong>Accept as New Reference…</strong>; if other tests use the same picture, you review each of their blocks first. See <a href="checks.html#accept">Checks and references</a>.</p>
 <p>On the canvas, every block shows how it did in the last run, and a failed block shows the reason in the inspector. Each way an <code>if</code> took is drawn green and the ways it didn't take are dashed; during a run the canvas and the run panel show the same as the test goes. The command line prints the way taken after each <code>if</code> step.</p>
 
 <h2 id="statuses">Verdicts and step statuses</h2>
-<p>A run is <strong>passed</strong>, <strong>failed</strong> or <strong>cancelled</strong> (stopped with <kbd>Esc</kbd> twice, Ctrl-C or Stop). Each step is:</p>
+<p>A run is <strong>Passed</strong>, <strong>Failed</strong>, <strong>Stopped</strong> (with <kbd>Esc</kbd> twice, Ctrl-C or Stop) or <strong>Blocked</strong>, when it didn't run because a test it <a href="writing-tests.html#test-fields">depends on</a> failed or couldn't run. In <code>report.json</code> these are <code>passed</code>, <code>failed</code>, <code>cancelled</code> and <code>blocked</code>. Each step is:</p>
 <ul>
-  <li><strong>passed</strong>;</li>
-  <li><strong>failed</strong>, the step where the test stopped;</li>
-  <li><strong>Reference saved</strong>, when a <code>check</code> had no picture yet and saved the screen as its reference;</li>
-  <li><strong>cancelled</strong>, when the run was stopped during the step.</li>
+  <li><strong>Passed</strong>;</li>
+  <li><strong>Failed</strong>, the step where the test stopped;</li>
+  <li><strong>New reference saved</strong>, when a <code>check</code> had no picture yet and saved the screen as its reference;</li>
+  <li><strong>Stopped</strong>, when the run was stopped during the step.</li>
 </ul>
 
 <h2 id="video">Run video</h2>
@@ -116,17 +120,28 @@
 <h2 id="html">HTML reports</h2>
 <p>An HTML report is one file with every screenshot inside it, easy to attach to an issue or send to someone without JEVision. The run's video, too large to put inside, is copied next to the file under the same name ending in <code>.mp4</code>.</p>
 <ul>
-  <li><strong>In the app:</strong> export the report from the report window.</li>
+  <li><strong>In the app:</strong> in the report window, choose <strong>Export → HTML Report…</strong>.</li>
   <li><strong>On the command line:</strong> <code>jevision run tests/ --html reports</code> saves the HTML report of every run in the <code>reports</code> folder.</li>
 </ul>
 
 <h2 id="junit">JUnit XML</h2>
-<p>JUnit XML is the format CI systems such as GitHub Actions, GitLab and Jenkins read to show test results. <code>jevision run tests/ --junit junit.xml</code> saves one file for all the tests of the run.</p>
+<p>JUnit XML is the format CI systems such as GitHub Actions, GitLab and Jenkins read to show test results. <code>jevision run tests/ --junit junit.xml</code> saves one file for all the tests of the run. In the app, <strong>Export → JUnit XML…</strong> in the report window saves the file for one run.</p>
 <ul>
   <li>Each test is a test case. In a <a href="data-driven.html">data-driven test</a>, each row is a test case of its own, such as <code>Sign in [Row 2: Bo]</code>.</li>
   <li>A failure of a test in <a href="retries.html#quarantine">quarantine</a> is listed as skipped, with the reason and the failure. Once its quarantine has ended, the failure counts like any other.</li>
+  <li>A stopped run, a blocked run and a passed run that checked nothing are listed as skipped too, each with the reason.</li>
   <li>A test with <code>if</code> blocks lists the way each one took in its last attempt in <code>system-out</code>, one line per step, such as <code>first-screen: Took “Condition 2: update dialog”</code>.</li>
 </ul>
+
+<h2 id="bug">Report a bug</h2>
+<p><strong>Report Bug…</strong> in the report of a failed run writes a GitHub issue for you: a title, the cause, the steps up to the failed one, what was expected and what happened, and where the test ran. Change anything you like before sending; secret values are replaced with •••• anyway.</p>
+<ul>
+  <li><strong>Screenshots of the Failed Step</strong>: choose which ones go with the issue. Areas the project always hides are painted over. The screenshots are saved in the repository's <code>jevision-attachments</code> branch, so people who can open the repository can see them.</li>
+  <li><strong>Add a Crash Report</strong> appears when JEVision has saved crash reports of its own (<strong>Save crash reports</strong> in <strong>Settings → Advanced</strong>). Nothing is added unless you choose one, and it goes into the description, where you can read it first.</li>
+  <li>If an open issue already reports the same failure, <strong>Send to</strong> lets you add this run to it as a comment or open a new issue.</li>
+  <li>The issue goes to the project's GitHub repository, so the project has to be on GitHub and the Mac signed in to GitHub (<strong>Open Git Settings…</strong>). <strong>Copy Text</strong> copies the title and description to file the bug somewhere else.</li>
+</ul>
+<p>Click <strong>Open Issue</strong> or <strong>Add Comment</strong> to send it, then <strong>Open on GitHub</strong> to see it. AI assistants can do the same with <a href="mcp.html#draft_bug_report"><code>draft_bug_report</code> and <code>send_bug_report</code></a>.</p>
 
 <h2 id="where">Where runs are saved</h2>
 <p>Every run is saved in the project's <code>.jevision/runs</code> folder, in a folder named after the time and the test, such as <code>.jevision/runs/20261018-031500-sign-in</code>. It holds:</p>

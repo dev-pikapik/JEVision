@@ -45,9 +45,10 @@ open apps/macos/build/JEVision.app
 ```
 
 `build.sh` builds the Rust core for both architectures, then the app and the `jevision` tool
-into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one architecture only, and
-`SIGN_IDENTITY` to sign with your own certificate instead of an ad-hoc signature. A build from
-source has no update key, so it never looks for updates.
+into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build the app and the tool for one
+architecture only (the core is still built for both), and `SIGN_IDENTITY` to sign with your own
+certificate instead of an ad-hoc signature. To remove JEVision later, see [Uninstall](#uninstall).
+A build from source has no update key, so it never looks for updates.
 
 ## What it does
 
@@ -92,7 +93,7 @@ source has no update key, so it never looks for updates.
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/git-dark.png"><img src="docs/media/git-light.png" width="400" alt=""></picture>
 <br><b>Git without a terminal</b>
-<br>Commit with ⌥⌘C and open a pull request with ⌥⌘P. A changed test shows as one flowchart with its added, removed and changed blocks.
+<br>Commit with ⌥⌘C and open a pull request with ⌥⌘P. A changed test shows as its flowchart before or after the change, with added, removed and changed blocks in color and in a list.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/schedule-dark.png"><img src="docs/media/schedule-light.png" width="400" alt=""></picture>
@@ -103,13 +104,13 @@ source has no update key, so it never looks for updates.
 <tbody><tr>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/project-map-dark.png"><img src="docs/media/project-map-light.png" width="400" alt=""></picture>
-<br><b>Project map</b>
-<br>Every test of the project on one page, with its last result, flaky tests and tests in quarantine.
+<br><b>Boards</b>
+<br>The All Tests board shows every test of the project with its last result, flaky tests and tests in quarantine. Make boards of your own with notes, frames and links.
 </td>
 <td width="50%" valign="top">
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/media/iphone-dark.png"><img src="docs/media/iphone-light.png" width="400" alt=""></picture>
 <br><b>iPhone remote</b>
-<br>Pair an iPhone, start a test or one row of its data, and follow the run block by block. Tests and pictures stay on the Mac.
+<br>Pair an iPhone, read a test's card and notes, start the test or one row of its data, and follow the run block by block. Tests and pictures stay on the Mac.
 </td>
 </tr></tbody>
 </table>
@@ -238,7 +239,7 @@ folder, next to the tests, and are committed with them:
   the Keychain for the environment chosen when you set it. At run time a secret comes from the
   environment variable `NAME`, then from the Keychain item of the chosen environment, then from
   the one shared by all environments.
-- In the app, pick the environment at the foot of the sidebar or in the Run menu, which also
+- In the app, pick the environment at the foot of the sidebar or in the menu of the Run button, which also
   picks one data row (or all of them) and the number of retries for the next runs. The choice of
   environment is kept per project on this Mac. Before a run the app lists the names of missing
   values and secrets, never the values. The report says which environment the run used.
@@ -267,7 +268,7 @@ Bo,bo@example.com,"quotes ""inside"", and a comma"
   each row is a test case of its own, like `Sign in [Row 2: Bo]`. A table whose path holds a
   placeholder, and any further `useData` block, loops through its rows inside the run instead.
 - **Choosing rows.** All rows run by default. Run one row or a range with
-  `jevision run --row 3` or `--rows 2-4`, the Run menu in the app, or `rows` of an assistant's
+  `jevision run --row 3` or `--rows 2-4`, the menu of the Run button in the app, or `rows` of an assistant's
   `run_test`. Rows count from 1; the header line isn't a row. A row the table doesn't have stops
   the run before it starts.
 - **CSV rules** ([RFC 4180](https://www.rfc-editor.org/rfc/rfc4180)). The first line names the
@@ -313,7 +314,7 @@ is optional:
   failure, not flakiness). The report, the app and `jevision run` show this line.
 - **Flaky from history.** When the same test file, unchanged since (same content hash), both
   passed and failed in the same environment over the last 30 days, the app marks it flaky in the
-  sidebar, the project map and the run history, with the dates and counts as evidence. A
+  sidebar, the boards and the run history, with the dates and counts as evidence. A
   data-driven test is judged row by row: reports keep which row ran (number, label and a
   fingerprint of its values, never the values), so a row that fails now and then is flaky and the
   others aren't.
@@ -327,9 +328,9 @@ is optional:
   but a failure doesn't fail Run All or the `jevision run` exit status, and the JUnit report lists
   it as skipped with the reason and the failure. `reason` is optional. `until` is the last day,
   `YYYY-MM-DD`: the app offers 14 days, you can pick another or none. The next day the test counts
-  again by itself, with nothing to edit. The sidebar, the project map and the reports mark these
-  tests ("in quarantine until Nov 3"). To put a test in quarantine or release it, use its menu
-  in the sidebar, the test's details, or Settings › Advanced. `jevision run
+  again by itself, with nothing to edit. The sidebar, the boards and the reports mark these
+  tests ("in quarantine until Nov 3"). To put a test in quarantine, use its menu
+  in the sidebar or the test's details; to release it, use either of those or Settings › Advanced. `jevision run
   --include-quarantined-failures` counts their failures like any other, for example in a nightly
   build.
 - **Only models on this Mac.** `localOnly: true` keeps the project's screenshots on the Mac for
@@ -406,8 +407,8 @@ what you let into your project. Installed blocks appear in the library under **C
 their author and version, and reports name the package and its version. **Update** fetches the
 newest version of a block installed from an address, and **Remove** names the tests that still use a
 block instead of removing it behind their back. A block can run other blocks it lists under
-`dependencies`, and those are installed first. Installed blocks are read-only; **Make this a block of
-the project** copies one into your own blocks to change it. Opening a project offers to install the
+`dependencies`, and those are installed first. Installed blocks are read-only; **Make This a Block of
+the Project…** copies one into your own blocks to change it. Opening a project offers to install the
 blocks its `jevision.blocks.json` lists and the Mac lacks. A test that uses a block you haven't installed names
 it with its version and offers **Install…** right in the error; `jevision validate` and `jevision run`
 print the same message with the `jevision blocks install` command.
@@ -481,7 +482,7 @@ is installed and which version.
 ```sh
 jevision run tests/                       # run every *.flow.json in tests/ and save reports
 jevision run tests/sign-in.flow.json --start-at submit
-jevision run tests/ --project ~/ui-tests  # project folder (default: nearest folder with .jevision)
+jevision run tests/ --project ~/ui-tests  # project folder (default: nearest folder with .jevision or jevision.environments.json)
 jevision run tests/ --retries 2           # run a failed test up to 2 more times
 jevision run tests/ --env staging         # read ${env.NAME} from the staging environment
 jevision run tests/sign-in.flow.json --rows 2-4   # only rows 2 to 4 of its data table (--row 3 for one)
@@ -496,6 +497,7 @@ jevision run tests/ --json                # print results as JSON; progress goes
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
 jevision check                            # the project carries every file its tests read (--json too)
+jevision issue tests/sign-in.flow.json    # write a bug report about its newest failed run (--send files it on GitHub)
 jevision blocks list                      # the custom blocks installed in the project (install, update, remove too)
 jevision schedule run ~/Projects/AcmeMail # run the schedules of a project that are due now
 jevision --version                        # print the version (-V for short)
@@ -527,6 +529,10 @@ right now, **5** a file that needs a newer JEVision. Every `--json` result start
   the Keychain.
 
 Press Esc twice or Ctrl-C to stop a run. The stopped test is reported as cancelled.
+
+Messages and the reports `jevision` writes are in the Mac's language, or in English when the `CI`
+variable is set. `--lang en` or `--lang ru` with any command chooses another one. `--json` output
+and issue codes are the same in every language, except the `message` of a failure.
 
 </details>
 
@@ -651,7 +657,7 @@ The command runs every schedule that is due, catches up once on a run missed by 
 them "Schedule". What came of each scheduled run is kept in `.jevision/schedule-history.json`.
 
 Runs need a logged-in user and an unlocked screen. A run due while the screen is locked is
-skipped and recorded as "skipped: screen locked" — JEVision never types into a locked screen; for
+skipped and recorded as "Skipped: the screen was locked" — JEVision never types into a locked screen; for
 unattended runs turn off the automatic screen lock. The app posts a notification when a
 scheduled run fails, is skipped or can't start. Deleting every schedule removes the launch agent.
 
@@ -765,8 +771,8 @@ Assistants in the app shows this configuration ready to copy, with your paths:
 }
 ```
 
-Without `--project`, the project is the nearest folder above the current one that has a
-`.jevision` folder, otherwise the current folder.
+Without `--project`, the project is the nearest folder at or above the current one that has a
+`.jevision` folder or a `jevision.environments.json` file, otherwise the current folder.
 
 | Tool | What it does |
 | --- | --- |
@@ -779,11 +785,16 @@ Without `--project`, the project is the nearest folder above the current one tha
 | `run_test`, `get_run`, `stop_run` | Run a test or a folder (optionally in an environment, `env`, and with some rows of its data table, `rows`), wait for the result, stop it |
 | `get_report` | A run's verdict, steps, failures, AI model answers and, on request, screenshots |
 | `screenshot` | The front window of an app as it is now |
+| `draft_bug_report`, `send_bug_report` | Write a bug report about a failed run, then file it as an issue on the project's GitHub, or add it to an open issue about the same failure |
 
 Safety:
 
 - Running tests and taking screenshots are off until you turn them on in Settings → AI →
-  Assistants. Everything else only reads and writes test files.
+  Assistants. Then, by default, the Mac asks you before each run an assistant starts ("Ask
+  before an assistant runs a test"); with no answer within a minute, the test isn't run.
+- `send_bug_report` files an issue on the project's GitHub with the failed step's screenshots
+  (secret values masked, hidden areas painted over). Everything else only reads and writes test
+  files.
 - Assistants see the same JSON you do. Secrets stay `${secret.NAME}` in tests and are masked in
   reports; API keys of AI providers are never available.
 - Screenshots from `screenshot` and `get_report` are masked like those sent to AI models. In a
@@ -826,8 +837,9 @@ changes; the foot of the sidebar shows them too and opens that page.
 
 - **Commit.** Check the changes to include and describe them. A commit contains only your message:
   JEVision adds no trailers or signatures. Git asks for your name and email once.
-- **What changed.** A test is shown as one flowchart: added blocks are green, removed ones red,
-  changed ones yellow, with what each changed block was and is now. A picture can be compared side
+- **What changed.** A test is shown as its flowchart before or after the change: added blocks are
+  green on the after side, removed ones red on the before side, changed ones yellow on both. A list
+  under it names every change, with what each changed block was and is now. A picture can be compared side
   by side, under a sliding divider, one over the other, or with the differing pixels in red.
 - **History.** Show History… on a test or a folder lists the commits that changed it, following
   renames. Restore This Version writes the file back as it was; Edit → Undo takes that back.
@@ -839,6 +851,12 @@ changes; the foot of the sidebar shows them too and opens that page.
   branch with your title and description (pushing it first if needed); the default branch is
   the target unless you pick another. Show… lists the open pull requests: each shows the tests
   and pictures it changes, before and after, and opens on GitHub.
+- **Bug reports.** Report Bug… in the report of a failed run writes an issue: the steps, what
+  was expected and what happened, the cause, screenshots of the failed step and the versions
+  of macOS, JEVision and the app under test. Change anything, then file it on GitHub or add it as a
+  comment to an open issue about the same failure, or choose Copy Text to file it elsewhere.
+  Secret values become `••••`, areas the project always hides are painted over, and the
+  screenshots are saved in the repository's `jevision-attachments` branch. `jevision issue` does the same from Terminal.
 
 JEVision runs the git installed on the Mac (the Command Line Developer Tools include it), so
 signing in to the server works the way it does in Terminal: GitHub CLI (`gh auth login`), the
@@ -849,6 +867,48 @@ or shared; when GitHub CLI is signed in, the app offers its account instead. Sig
 token on this Mac, and GitHub keeps the app's access until you revoke it there: the app links to
 the page. To sign in through an OAuth app of your own, enter its Client ID in the same settings,
 with device flow turned on in the app.
+
+</details>
+
+<a id="uninstall"></a>
+<details>
+<summary><b>Uninstall</b></summary>
+
+Your tests stay where they are. Project folders, including the `.jevision` folders with run
+reports and schedule history, are your files, and removing JEVision doesn't touch them.
+
+1. **Delete your schedules.** If you made any, open each project, choose **Test → Schedules…**
+   and delete every schedule. This stops the runs macOS starts at set times.
+2. **Quit JEVision and move it to the Bin.** A copy you built is in `apps/macos/build`, unless
+   you moved it.
+3. **Remove the `jevision` command**, if you installed it. In Finder, choose **Go → Go to
+   Folder…**, enter `/usr/local/bin` (or `~/.local/bin` if you clicked **Install Just for Me**)
+   and move `jevision` to the Bin. For `/usr/local/bin`, Finder asks for your password. If you
+   added `~/.local/bin` to `~/.zprofile`, you can delete that line too.
+4. **Remove settings, logs and other data.** In Finder, choose **Go → Go to Folder…**, enter
+   `~/Library` and move to the Bin whichever of these you find:
+   - `Application Support/JEVision`: the AI spending journal, assistant connections, crash
+     reports and the iPhone remote pairing;
+   - `Logs/JEVision`: the app's log;
+   - `Preferences/io.github.dev-pikapik.jevision.plist`: the app's settings;
+   - `Caches/io.github.dev-pikapik.jevision`, `HTTPStorages/io.github.dev-pikapik.jevision`,
+     `WebKit/io.github.dev-pikapik.jevision` and
+     `Saved Application State/io.github.dev-pikapik.jevision.savedState`: kept by macOS for the
+     app;
+   - in `LaunchAgents`, files whose names start with `io.github.dev-pikapik.jevision.schedule.`:
+     schedules of projects you no longer have. Restart the Mac afterwards so they stop.
+5. **Remove saved passwords and keys.** Open **Keychain Access** (find it with Spotlight), type
+   `JEVision` in the search field and delete the items whose names start with JEVision: test
+   secrets, AI keys, the GitHub sign-in, notification webhooks, tokens and passwords, MCP server
+   tokens, and the keys of the iPhone remote and of Macs your assistants use.
+6. **Take back the permissions.** In System Settings → Privacy & Security, open **Screen & System
+   Audio Recording** and **Accessibility** (**Device Control and Data Access** from macOS 27),
+   select JEVision and click −.
+
+If you installed JEVision with Homebrew, quit it and run `brew uninstall --zap --cask jevision`.
+It removes the app and the `jevision` command Homebrew added, stops the scheduled runs and
+deletes the folders in step 4 except `Logs/JEVision`. The log folder, a `jevision` link you added
+from the app (step 3), the Keychain items and the permissions stay: remove them as above.
 
 </details>
 

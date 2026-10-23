@@ -7,6 +7,7 @@
 <meta name="description" content="JEVision tests the interface of any Mac app with flowcharts you can read. Learn what it does and where to start.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -58,7 +59,7 @@
 </nav>
 <main id="main" tabindex="-1">
 <div class="hero">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="media/hero-dark.png"><img src="media/hero-light.png" alt="The JEVision window: the tests of a project on the left, a test drawn as a flowchart in the middle, the selected block on the right." width="2560" height="1600"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="media/hero-dark.png"><img src="media/hero-light.png" alt="The JEVision window: the boards and tests of a project on the left, and a test drawn as a flowchart on the canvas." width="2560" height="1600"></picture>
 </div>
 
 <h1>JEVision documentation</h1>
@@ -78,8 +79,8 @@
   <li><a href="checks.html#meaning"><picture><source media="(prefers-color-scheme: dark)" srcset="media/ai-check-dark.png"><img src="media/ai-check-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Checks by meaning</h3></a><p>Describe the screen in words, and an AI model of your choice decides.</p></li>
   <li><a href="https://github.com/dev-pikapik/JEVision#git"><picture><source media="(prefers-color-scheme: dark)" srcset="media/git-dark.png"><img src="media/git-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Git without a terminal</h3></a><p>Commit with ⌥⌘C and open a pull request with ⌥⌘P, with a visual diff of each test.</p></li>
   <li><a href="schedules.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/schedule-dark.png"><img src="media/schedule-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Runs on a schedule</h3></a><p>Every night, on weekdays or every few hours.</p></li>
-  <li><a href="retries.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/project-map-dark.png"><img src="media/project-map-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Project map</h3></a><p>Every test of the project on one page, with its last result.</p></li>
-  <li><a href="iphone.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/iphone-dark.png"><img src="media/iphone-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>iPhone remote</h3></a><p>Start a test or one row of its data from your phone and follow it block by block.</p></li>
+  <li><a href="getting-started.html#project"><picture><source media="(prefers-color-scheme: dark)" srcset="media/project-map-dark.png"><img src="media/project-map-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>Boards</h3></a><p>Every test of the project on one board, with its last result. Add notes, frames and links.</p></li>
+  <li><a href="iphone.html"><picture><source media="(prefers-color-scheme: dark)" srcset="media/iphone-dark.png"><img src="media/iphone-light.png" alt="" width="1360" height="850" loading="lazy"></picture><h3>iPhone remote</h3></a><p>Read a test's card and notes, start it or one row of its data from your phone, and follow it block by block.</p></li>
 </ul>
 
 <h2 id="why">Why use it</h2>
@@ -88,7 +89,7 @@
   <li><strong>Anyone can read a test.</strong> A flowchart shows the path a user takes. A tester, a designer or a manager can follow it without knowing a programming language.</li>
   <li><strong>Failures are easy to understand.</strong> Every run keeps a screenshot of each step, and for checks it shows the expected picture next to what the app actually showed.</li>
   <li><strong>Small, clear changes.</strong> Test files are written in one fixed form, so every change shows up as a short diff that is easy to review.</li>
-  <li><strong>Free and open.</strong> JEVision is open source under the MIT license. Tests, screenshots and reports stay on your Mac; a screenshot leaves it only if you choose an AI model in the cloud for <a href="checks.html#meaning">checks by meaning</a>. The <a href="https://github.com/dev-pikapik/JEVision/blob/main/docs/privacy.md">privacy policy</a> lists everything that can leave your Mac and your iPhone.</li>
+  <li><strong>Free and open.</strong> JEVision is open source under the MIT license. Tests, screenshots and reports stay on your Mac. A screenshot leaves it only when a test uses an AI model in the cloud, for <a href="checks.html#meaning">checks by meaning</a> or to find an element described in words, or when you file a bug report on GitHub. The <a href="https://github.com/dev-pikapik/JEVision/blob/main/docs/privacy.md">privacy policy</a> describes what can leave your devices.</li>
 </ul>
 
 <h2 id="example">A test at a glance</h2>

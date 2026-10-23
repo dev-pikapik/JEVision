@@ -7,6 +7,7 @@
 <meta name="description" content="Run tests inside a macOS virtual machine with Tart or UTM: setup, permissions, Retina, SSH and CI.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -159,7 +160,7 @@
   <li><strong>Never sleep.</strong> In Terminal inside, run <code>sudo pmset -a sleep 0 displaysleep 0</code>.</li>
   <li><strong>Secrets.</strong> If tests read <a href="environments.html#secrets">secrets</a> from the Keychain, run each test once inside and choose <strong>Always Allow</strong> when macOS asks. Over SSH and in CI it's easier to pass them as environment variables, as in <a href="cli.html#ci">Running in CI</a>.</li>
 </ol>
-<p>JEVision keeps the display awake while a test runs, and never types into a locked screen: a run that finds the screen locked stops, and a scheduled run is skipped and marked “skipped: screen locked”.</p>
+<p>JEVision keeps the display awake while a test runs, and never types into a locked screen: a run that finds the screen locked stops, and a scheduled run is skipped and marked “Skipped: the screen was locked”.</p>
 
 <h2 id="display">Display size and Retina</h2>
 <p>A virtual machine's screen is often a <strong>standard display</strong>, with one pixel per point, while a MacBook or an iMac has a <strong>Retina display</strong> with two. The same window is then twice as large in pixels on a Retina display, and text is drawn a little differently.</p>

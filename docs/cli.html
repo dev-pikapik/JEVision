@@ -7,6 +7,7 @@
 <meta name="description" content="Every command and option of the jevision command-line tool.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -58,7 +59,7 @@
 </nav>
 <main id="main" tabindex="-1">
 <h1>Command line</h1>
-<p class="lead">The <code>jevision</code> command runs, checks and formats tests from Terminal or a CI system. It also serves tests to AI assistants and starts scheduled runs.</p>
+<p class="lead">The <code>jevision</code> command runs, checks and formats tests from Terminal or a CI system. It also writes bug reports about failed runs, serves tests to AI assistants and starts scheduled runs.</p>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -76,6 +77,7 @@
     <li><a href="#validate"><code>jevision validate</code></a></li>
     <li><a href="#check"><code>jevision check</code></a></li>
     <li><a href="#fmt"><code>jevision fmt</code></a></li>
+    <li><a href="#issue"><code>jevision issue</code></a></li>
     <li><a href="#mcp"><code>jevision mcp</code></a></li>
     <li><a href="#blocks"><code>jevision blocks</code></a></li>
     <li><a href="#schedule"><code>jevision schedule run</code></a></li>
@@ -99,6 +101,7 @@ jevision --help</code></pre>
     <tr><td><a href="#validate"><code>jevision validate</code></a></td><td>Check tests for errors and warnings</td></tr>
     <tr><td><a href="#check"><code>jevision check</code></a></td><td>Check the project carries every file its tests read</td></tr>
     <tr><td><a href="#fmt"><code>jevision fmt</code></a></td><td>Rewrite tests in canonical form</td></tr>
+    <tr><td><a href="#issue"><code>jevision issue</code></a></td><td>Write a bug report about a failed run, or file it on GitHub</td></tr>
     <tr><td><a href="#mcp"><code>jevision mcp</code></a></td><td>Let AI assistants read, edit and run tests</td></tr>
     <tr><td><a href="#blocks"><code>jevision blocks</code></a></td><td>List, install, update, remove and restore <a href="custom-blocks.html">blocks that other people shared</a></td></tr>
     <tr><td><a href="#schedule"><code>jevision schedule run</code></a></td><td>Run the schedules of a project that are due now</td></tr>
@@ -109,7 +112,7 @@ jevision --help</code></pre>
 </div>
 <p>Wherever a command takes <code><var>tests</var>…</code>, give test files (<code>.flow.json</code>) or folders. Folders are searched for <code>.flow.json</code> files, including folders inside them, in order of their paths. Files and folders whose names start with a dot are skipped.</p>
 <p>Every command ends with an <a href="#exit-codes">exit status</a>: <code>0</code> means all good, <code>1</code> means a test failed or a problem was found, and higher numbers say what kept the command from its work.</p>
-<p id="lang"><strong>Language.</strong> Messages, errors, hints and the reports a command writes (<code>--html</code>, <code>--junit</code>, bug drafts) use the language of your Mac, or English when the <code>CI</code> environment variable is set, so logs on a CI machine read the same for everyone. Every command takes <code>--lang <var>code</var></code> to choose another language of the app, for example <code>jevision run tests/ --lang ru</code>; an unknown code is an error that lists the languages there are. Test files, <code>--json</code> results, issue codes and the names of options never change with the language. New languages are added in the string catalog without changing code (see <a href="https://github.com/dev-pikapik/JEVision/blob/main/CONTRIBUTING.md#languages-and-localization">Contributing</a>).</p>
+<p id="lang"><strong>Language.</strong> Messages, errors, hints and the reports a command writes (<code>--html</code>, <code>--junit</code>, bug drafts) use the language of your Mac, or English when the <code>CI</code> environment variable is set, so logs on a CI machine read the same for everyone. Every command takes <code>--lang <var>code</var></code> to choose another language of the app, for example <code>jevision run tests/ --lang ru</code>; an unknown code is an error that lists the languages there are. Test files, issue codes and the names of options never change with the language, and neither does <code>--json</code> output, except the <code>message</code> of a failure, which is written in the chosen language next to its <code>code</code>. New languages are added in the string catalog without changing code (see <a href="https://github.com/dev-pikapik/JEVision/blob/main/CONTRIBUTING.md#languages-and-localization">Contributing</a>).</p>
 
 <h2 id="exit-codes">Exit codes</h2>
 <p>Every command ends with an <strong>exit status</strong>, a number a script or CI system reads to know how it went. Each number means the same for every command:</p>
@@ -137,9 +140,9 @@ jevision --help</code></pre>
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>--project <var>folder</var></code></td><td>Project folder. Files the tests use must be inside it, and reports are saved in <code><var>folder</var>/.jevision/runs</code>. Default: the nearest folder above the tests that has a <code>.jevision</code> folder, otherwise the current folder if it holds the tests.</td></tr>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder. Files the tests use must be inside it, and reports are saved in <code><var>folder</var>/.jevision/runs</code>. Default: the nearest folder above the tests that has a <code>.jevision</code> folder or a <code>jevision.environments.json</code> file, otherwise the current folder if it holds the tests.</td></tr>
     <tr><td><code>--env <var>name</var></code></td><td>The <a href="environments.html">environment</a> whose values the tests read as <code>${env.NAME}</code>, such as <code>staging</code>. Secrets come from the Keychain items of that environment first. Default: the <code>default</code> environment of <code>jevision.environments.json</code>, if any.</td></tr>
-    <tr><td><code>--retries <var>n</var></code></td><td>Run a failed test up to <var>n</var> more times, 0 to 10, instead of the number in the test or the project. See <a href="retries.html#retries">Retries</a>.</td></tr>
+    <tr><td><code>--retries <var>n</var></code></td><td>Run a failed test up to <var>n</var> more times instead of the number in the test or the project. See <a href="retries.html#retries">Retries</a>.</td></tr>
     <tr><td><code>--row <var>n</var></code></td><td>Run a <a href="data-driven.html">data-driven test</a> with row <var>n</var> of its table only, counting from 1. The header line isn't a row.</td></tr>
     <tr><td><code>--rows <var>which</var></code></td><td>Rows of a data-driven test to run: <code>all</code> (the default), one row such as <code>3</code>, or a range such as <code>2-4</code>. Each row runs the whole test and has its own retries.</td></tr>
     <tr><td><code>--type <var>type</var></code>, <code>--priority <var>level</var></code>, <code>--status <var>status</var></code>, <code>--author <var>name</var></code>, <code>--flaky</code></td><td>Run only the named tests whose card says so, such as <code>--priority high --type smoke</code>: see <a href="#filter">Choosing tests by their cards</a>.</td></tr>
@@ -160,7 +163,7 @@ jevision --help</code></pre>
   </tbody>
 </table>
 </div>
-<p>While tests run, JEVision uses the mouse and keyboard. Press <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> to stop; the stopped test is reported as cancelled. Secrets come from environment variables or the Keychain (see <a href="environments.html#secret-order">Secrets</a>), and so do API keys of AI providers, such as <code>ANTHROPIC_API_KEY</code>. JEV through Cloudflare needs <code>CLOUDFLARE_API_TOKEN</code>, and its Account ID can be in <code>CLOUDFLARE_ACCOUNT_ID</code>.</p>
+<p>While tests run, JEVision uses the mouse and keyboard. Press <kbd>Esc</kbd> twice or <kbd>Ctrl</kbd>-<kbd>C</kbd> to stop; the stopped test is reported as cancelled. If you use the mouse or keyboard during a run, the test pauses and goes on once you have left them alone for 3 seconds. Secrets come from environment variables or the Keychain (see <a href="environments.html#secret-order">Secrets</a>), and so do API keys of AI providers, such as <code>ANTHROPIC_API_KEY</code>. JEV through Cloudflare needs <code>CLOUDFLARE_API_TOKEN</code>, and its Account ID can be in <code>CLOUDFLARE_ACCOUNT_ID</code>.</p>
 <pre><code>jevision run tests/
 jevision run tests/sign-in.flow.json --env staging --retries 2
 jevision run tests/ --junit junit.xml --html reports --video always
@@ -371,9 +374,32 @@ login/sign-in.flow.json: 1 error, 0 warnings
 </div>
 <p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments, a file or folder that isn't there, or a folder with no tests; <code>3</code>, a file couldn't be read or written; <code>5</code>, a test needs a newer JEVision.</p>
 
+<h2 id="issue"><code>jevision issue</code></h2>
+<p>Writes a bug report about a failed run, the same one as <strong>Report Bug…</strong> in the app's <a href="reports.html#report">report of a run</a>: the steps, what was expected and what happened, the cause, screenshots of the failed step and the versions of macOS, JEVision and the app under test. Without <code>--send</code> it only prints the report for you to read. With <code>--send</code> it files the report as an issue in the project's GitHub repository and prints the address of the issue.</p>
+<pre><code>jevision issue [<var>test or run</var>] [--send] [<var>options</var>]</code></pre>
+<p>Name a test file (<code>.flow.json</code>) to report its newest failed run, or the folder of one run in <code>.jevision/runs</code>. Without either, it reports the newest failed run of the project.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder. Default: the nearest folder at or above the test (or the current folder) that has a <code>.jevision</code> folder or a <code>jevision.environments.json</code> file.</td></tr>
+    <tr><td><code>--send</code></td><td>File the report on GitHub and print the address of the issue.</td></tr>
+    <tr><td><code>--title <var>text</var></code></td><td>Use this title instead of the one JEVision writes.</td></tr>
+    <tr><td><code>--comment-on <var>n</var></code></td><td>With <code>--send</code>: add the report to issue <var>n</var> as a comment instead of opening a new issue.</td></tr>
+    <tr><td><code>--new</code></td><td>With <code>--send</code>: open a new issue even when one about the same failure is open.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Secret values are replaced with <code>••••</code>, and areas the project always hides are painted over in the screenshots. The screenshots are saved in the repository's <code>jevision-attachments</code> branch, so anyone who can open the repository can see them. Sending uses the GitHub account JEVision is signed in to (<strong>Settings → Git and GitHub</strong>), or the token in <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> when one is set.</p>
+<p>When an issue about the same failure is already open, nothing is sent: the command names that issue and asks you to choose <code>--comment-on</code> or <code>--new</code>.</p>
+<pre><code>jevision issue sign-in.flow.json
+jevision issue sign-in.flow.json --send
+jevision issue sign-in.flow.json --send --comment-on 12</code></pre>
+<p>Exit status: <code>0</code>, the report was printed or sent; <code>1</code>, nothing was sent because an issue about this failure is open; <code>2</code>, wrong arguments, no failed run, or GitHub didn't take the report.</p>
+
 <h2 id="mcp"><code>jevision mcp</code></h2>
 <p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
-<p>An assistant that runs tests through it is asked about first on the Mac, and the app lists the assistants that connected: see <a href="mcp.html#asking-first">Asking first</a>.</p>
+<p>An assistant can run tests and take screenshots only after you allow it in <strong>Settings → AI → Assistants</strong>, and by default the Mac asks you before each run. The app lists the assistants that connected: see <a href="mcp.html#asking-first">Asking first</a>.</p>
 <p>With <code>--remote</code> it serves the assistant from another Mac instead: see <a href="mcp.html#remote">From another Mac</a>.</p>
 <pre><code>jevision mcp [--project <var>folder</var>]
 jevision mcp --pair <var>link</var>
@@ -383,7 +409,7 @@ jevision mcp --forget <var>Mac</var></code></pre>
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>--project <var>folder</var></code></td><td>Project folder whose tests the assistant may see. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder. With <code>--remote</code>, the name of the project open in JEVision on that Mac; default: that project, whatever its name.</td></tr>
+    <tr><td><code>--project <var>folder</var></code></td><td>Project folder whose tests the assistant may see. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder or a <code>jevision.environments.json</code> file, otherwise the current folder. With <code>--remote</code>, the name of the project open in JEVision on that Mac; default: that project, whatever its name.</td></tr>
     <tr><td><code>--pair <var>link</var></code></td><td>Pairs this computer with a Mac, using the one-time command that <strong>Settings → iPhone &amp; Remote → Add → Assistant on another computer</strong> shows on that Mac. The code works once, for five minutes.</td></tr>
     <tr><td><code>--remote <var>Mac</var></code></td><td>Serves the assistant with the tests of a paired Mac, by its name or the start of its id. The assistant starts this command itself.</td></tr>
     <tr><td><code>--forget <var>Mac</var></code></td><td>Removes a paired Mac from this computer. To also cut this computer off on the Mac, choose <strong>Disconnect</strong> there.</td></tr>
@@ -415,7 +441,7 @@ jevision blocks restore [--only <var>id</var>,…] [--yes] [--force] [--project 
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>--project <var>folder</var></code></td><td>The project to work in. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder, otherwise the current folder.</td></tr>
+    <tr><td><code>--project <var>folder</var></code></td><td>The project to work in. Default: the nearest folder at or above the current one that has a <code>.jevision</code> folder or a <code>jevision.environments.json</code> file, otherwise the current folder.</td></tr>
     <tr><td><code>--only <var>id</var>,…</code></td><td>With <code>install</code> and <code>restore</code>: work on these blocks only, with the blocks they need. Ids are separated by commas; an id the source or the list doesn't have is an error.</td></tr>
     <tr><td><code>--yes</code></td><td>Install after printing what the blocks do. For people who have read it, and for scripts.</td></tr>
     <tr><td><code>--force</code></td><td>Install the same version again, or an older one over a newer one; install a new version of a block that another installed block needs in another version; with <code>restore</code>, install a block whose version at its address isn't the one in <code>jevision.blocks.json</code>; or remove a block that tests or other blocks use.</td></tr>
@@ -439,7 +465,7 @@ jevision blocks restore --yes</code></pre>
 <h2 id="schedule"><code>jevision schedule run</code></h2>
 <p>Runs the <a href="schedules.html">schedules</a> of a project that are due now. The app sets up macOS to start this command at the right times, so you don't need to run it yourself.</p>
 <pre><code>jevision schedule run <var>project</var></code></pre>
-<p>A schedule is due once for its latest time since the last check, even when the Mac slept through it, unless that time is more than 12 hours ago. When the screen is locked, nobody is logged in, or macOS hasn't allowed <code>jevision</code> to record the screen and control the computer, the run is skipped and nothing is clicked or typed.</p>
+<p>A schedule is due once for its latest time since the last check, even when the Mac slept through it, unless that time is more than 12 hours ago. What came of every scheduled run is kept in <code>.jevision/schedule-history.json</code>. When the screen is locked, nobody is logged in, or macOS hasn't allowed <code>jevision</code> to record the screen and control the computer, the run is skipped and nothing is clicked or typed.</p>
 <p>Exit status: <code>0</code>, nothing was due or all tests passed; <code>1</code>, a test failed; <code>2</code>, the project folder isn't there, or a run asked for something the project doesn't have; <code>3</code>, the schedule file or the history of runs couldn't be read or written; <code>4</code>, a run was skipped because this Mac wasn't ready; <code>5</code>, the schedule file, the history of runs or a test needs a newer JEVision.</p>
 
 <h2 id="version"><code>jevision version</code></h2>
@@ -472,11 +498,11 @@ jevision blocks restore --yes</code></pre>
 <ul>
   <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal, from a CI agent started in that session, or over SSH as that same user while they stay logged in at the screen, as in a <a href="vm.html#ssh">virtual machine</a>; not as a system service;</li>
   <li><strong>the screen is unlocked</strong>;</li>
-  <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong>. The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>. With <a href="#through-app"><code>--through-app</code></a> that app is JEVision itself.</li>
+  <li><strong>the app <code>jevision</code> runs in</strong> (Terminal, your editor or your CI agent) is allowed under <strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong> (<strong>Device Control and Data Access</strong> from macOS 27). The message names that app and the lists to turn it on in. See <a href="faq.html#permissions">Permissions</a>. With <a href="#through-app"><code>--through-app</code></a> that app is JEVision itself.</li>
 </ul>
 
 <h2 id="ci">Running in CI</h2>
-<p>Tests need a real screen with a logged-in user, so cloud-hosted CI runners can't run them. Use a Mac of your own as a runner. For GitHub Actions, set up a <a href="https://docs.github.com/actions/hosting-your-own-runners">self-hosted runner</a> and install it as a service with <code>./svc.sh install</code> while logged in as the user who runs the tests. On macOS this makes a launch agent that runs in that user's session. Then allow Screen Recording and Accessibility for the program the first run names.</p>
+<p>Tests need a real screen with a logged-in user, so cloud-hosted CI runners can't run them. Use a Mac of your own as a runner. For GitHub Actions, set up a <a href="https://docs.github.com/actions/hosting-your-own-runners">self-hosted runner</a> and install it as a service with <code>./svc.sh install</code> while logged in as the user who runs the tests. On macOS this makes a launch agent that runs in that user's session. Then allow Screen &amp; System Audio Recording and Accessibility for the program the first run names.</p>
 <pre><code>jobs:
   ui-tests:
     runs-on: [self-hosted, macOS]

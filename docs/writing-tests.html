@@ -7,6 +7,7 @@
 <meta name="description" content="Every block type of a JEVision test, with its fields, defaults and examples.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -59,14 +60,14 @@
 <main id="main" tabindex="-1">
 <h1>Writing tests</h1>
 <p class="lead">How a test is built from blocks, and every block type with its fields. Most people record tests and edit them on the canvas; this page also shows the JSON behind each block, for when you read a diff or write a test by hand.</p>
-<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/editor-dark.png"><img src="media/editor-light.png" alt="A test on the canvas, with blocks joined by arrows." width="1360" height="850" loading="lazy"></picture></figure>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/editor-dark.png"><img src="media/editor-light.png" alt="The block library over the canvas: a search field, then Open App, Open File, Click, Hover, Drag, Scroll, Type Text and Press Keys, each with one line on what it does." width="1360" height="850" loading="lazy"></picture></figure>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
   <ul>
     <li><a href="#how-a-test-runs">How a test runs</a></li>
     <li><a href="#test-fields">Fields of a test</a></li>
-    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a>, <a href="#script">script</a>, <a href="#clipboard">clipboard</a>, <a href="#dateTime">dateTime</a></li>
+    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#pause">pause</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a>, <a href="#script">script</a>, <a href="#clipboard">clipboard</a>, <a href="#dateTime">dateTime</a>, <a href="#http">http</a>, <a href="#database">database</a>, <a href="#checkFile">checkFile</a>, <a href="#command">command</a></li>
     <li><a href="#shapes">Targets, areas, durations and paths</a></li>
     <li><a href="#placeholders">Placeholders</a></li>
     <li><a href="#keys">Key combinations</a></li>
@@ -94,6 +95,7 @@
     <tr><td><code>format</code></td><td>Yes</td><td>File format version, <code>1</code>. Files from an older JEVision are upgraded when read; files from a newer one are refused instead of being misread.</td></tr>
     <tr><td><code>name</code></td><td>Yes</td><td>Name of the test, shown everywhere. Can't be empty.</td></tr>
     <tr><td><code>description</code></td><td>No</td><td>What the test checks, in your words.</td></tr>
+    <tr><td><code>icon</code></td><td>No</td><td>For a <a href="custom-blocks.html">custom block</a>: the name of an <a href="https://developer.apple.com/sf-symbols/">SF Symbol</a> the block library shows for it, such as <code>person.badge.key</code>.</td></tr>
     <tr><td><code>app</code></td><td>Yes</td><td>Bundle identifier of the application under test, such as <code>com.apple.TextEdit</code>. At least two parts separated by dots, each made of letters, digits and <code>-</code>.</td></tr>
     <tr><td><code>testType</code></td><td>No</td><td><code>smoke</code>, <code>regression</code> or <code>acceptance</code>.</td></tr>
     <tr><td><code>priority</code></td><td>No</td><td><code>critical</code>, <code>high</code>, <code>medium</code> or <code>low</code>.</td></tr>
@@ -105,6 +107,7 @@
     <tr><td><code>link</code></td><td>No</td><td>Web address of the issue or requirement the test covers. Starts with <code>https://</code> or <code>http://</code>.</td></tr>
     <tr><td><code>flaky</code></td><td>No</td><td><code>true</code> marks a test that sometimes fails for reasons outside the app. The test still runs and counts; see <a href="retries.html#flaky">Flaky tests</a>. A test that keeps failing and passing by itself is also offered <a href="retries.html#suggestion">quarantine</a>.</td></tr>
     <tr><td><code>retries</code></td><td>No</td><td>How many more times to run the test when it fails, 0 to 10. Without it, the project's default applies. See <a href="retries.html">Retries</a>.</td></tr>
+    <tr><td><code>dependsOn</code></td><td>No</td><td>Tests that must pass before this one runs (<strong>Runs After</strong> in the editor), as paths of <code>.flow.json</code> files relative to this test file, each once. A run adds them when you didn't choose them and runs them first. When one of them doesn't pass, this test doesn't run and is marked blocked.</td></tr>
     <tr><td><code>start</code></td><td>Yes</td><td>Id of the first block.</td></tr>
     <tr><td><code>blocks</code></td><td>Yes</td><td>The blocks, as an object from id to block.</td></tr>
     <tr><td><code>canvas</code></td><td>No</td><td>How the test is drawn in the editor. It never changes how the test runs. See <a href="file-formats.html#canvas">File formats</a>.</td></tr>
@@ -129,6 +132,7 @@
     <tr><td><a href="#type"><code>type</code></a></td><td>Actions</td><td>Types text, optionally into a field</td><td><code>next</code></td></tr>
     <tr><td><a href="#pressKeys"><code>pressKeys</code></a></td><td>Actions</td><td>Presses a key combination</td><td><code>next</code></td></tr>
     <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, for the screen to settle, or for an interface element to be in a state</td><td><code>next</code></td></tr>
+    <tr><td><a href="#pause"><code>pause</code></a></td><td>Waiting</td><td>Waits a set time</td><td><code>next</code></td></tr>
     <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference, or an interface element is in a state</td><td><code>next</code></td></tr>
     <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of several ways depending on the screen, a value or an interface element</td><td><code>then</code>, <code>elseIf1</code>…, <code>else</code></td></tr>
     <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Conditions and loops</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
@@ -137,6 +141,10 @@
     <tr><td><a href="#script"><code>script</code></a></td><td>Data and System</td><td>Runs a script with typed inputs and outputs</td><td><code>next</code></td></tr>
     <tr><td><a href="#clipboard"><code>clipboard</code></a></td><td>Data and System</td><td>Puts text or a picture on the clipboard, reads its text, picture or files into a variable, or checks its text</td><td><code>next</code></td></tr>
     <tr><td><a href="#dateTime"><code>dateTime</code></a></td><td>Data and System</td><td>Keeps the current date and time, moved if you like, in a language and time zone of your choice, as a variable</td><td><code>next</code></td></tr>
+    <tr><td><a href="#http"><code>http</code></a></td><td>Data and System</td><td>Sends a request to a web address, checks the answer and keeps parts of it as variables</td><td><code>next</code></td></tr>
+    <tr><td><a href="#database"><code>database</code></a></td><td>Data and System</td><td>Asks an SQLite database file, checks the answer and keeps it as a variable</td><td><code>next</code></td></tr>
+    <tr><td><a href="#checkFile"><code>checkFile</code></a></td><td>Data and System</td><td>Waits until a file appears, disappears, changes or contains a text</td><td><code>next</code></td></tr>
+    <tr><td><a href="#command"><code>command</code></a></td><td>Data and System</td><td>Runs a Terminal command, checks how it ended and keeps what it printed as a variable</td><td><code>next</code></td></tr>
   </tbody>
 </table>
 </div>
@@ -172,6 +180,7 @@
     <tr><td><code>files</code></td><td>Yes</td><td>List of file paths relative to the test file, or web addresses. At least one. May hold <a href="#placeholders">placeholders</a>.</td></tr>
     <tr><td><code>app</code></td><td>No</td><td>Bundle identifier of the application to open them in. Default: the one macOS chooses. When given, later blocks act on this application.</td></tr>
     <tr><td><code>newInstance</code></td><td>No</td><td><code>true</code> to open them in a new instance of the application. Default: <code>false</code>.</td></tr>
+    <tr><td><code>closeAfter</code></td><td>No</td><td><code>true</code> to quit the applications this block started and close the copies of the files it opened when each try of the test ends, whether it passed or not. Default: <code>false</code>.</td></tr>
   </tbody>
 </table>
 </div>
@@ -285,6 +294,18 @@
 { "type": "waitFor", "until": { "element": { "role": "button", "title": "Send", "is": "enabled" } }, "timeout": "10s", "next": "send" }</code></pre>
 <p>Waiting for an element asks the app again and again, without a fixed pause, and goes on as soon as the element is as asked. When time runs out, the failure says what was looked for, what was expected and what the element was at the end; when it wasn't there at all, it lists similar elements of the window.</p>
 
+<h3 id="pause">pause: wait a set time</h3>
+<p>Waits a set time, then goes on. Use it for an animation or a slow screen that gives no sign when it is ready; when something on the screen does show it, a <a href="#waitFor"><code>waitFor</code></a> is faster and surer. Time while a run is paused doesn't count.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>duration</code></td><td>Yes</td><td>How long to wait, a <a href="#duration">duration</a> from <code>1ms</code> to <code>60m</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "pause", "duration": "2s", "next": "check" }</code></pre>
+
 <h3 id="check">check: check the screen</h3>
 <p>Compares the screen with a reference and fails the test if they don't match, or checks an <a href="#element">interface element</a> instead. The reference can be a picture compared exactly or by similarity, or a sentence that an AI model checks. If the reference picture doesn't exist yet, the first run saves the screen as that picture. When the app changed on purpose, <a href="checks.html#accept">accept the new reference</a> from the report: a picture shared by several tests is replaced together with a review of every block that uses it.</p>
 <p>The reference picture can also be one the test made itself, such as a picture a <a href="#script"><code>script</code></a> or <a href="#clipboard"><code>clipboard</code></a> block kept: <code>"image": "${var.expected}"</code> names a variable of type <a href="#value-types"><code>image</code></a>. Such a picture is used as it is, with no <code>.dark</code> version, and it is never saved from the screen: if the file isn't there, the block fails.</p>
@@ -315,7 +336,7 @@
     <tr><td><code>value</code></td><td>Instead of <code>reference</code></td><td>A condition on a value instead of the screen: <code>{ "of": "${env.ENVIRONMENT}", "is": "equals", "to": "prod" }</code>. <code>of</code> and <code>to</code> may hold <a href="#placeholders">placeholders</a>; <code>is</code> is <code>"equals"</code>, <code>"notEquals"</code>, <code>"contains"</code>, <code>"greaterThan"</code> or <code>"lessThan"</code>, the last two reading both sides as numbers. Each condition, including each <code>elseIf</code>, uses one of <code>reference</code>, <code>value</code> and <code>element</code>.</td></tr>
     <tr><td><code>element</code></td><td>Instead of <code>reference</code></td><td>A condition on an interface element: an <a href="#element">element check</a>, such as <code>{ "role": "checkBox", "title": "Remember me", "is": "selected" }</code>. An element that isn't there makes the condition false, unless it asks for <code>"absent"</code>.</td></tr>
     <tr><td><code>then</code></td><td>No</td><td>Id of the block to go to when the condition holds.</td></tr>
-    <tr><td><code>elseIf</code></td><td>No</td><td>More conditions, checked in order when the screen doesn't match <code>reference</code>: a list of <code>{ "reference": …, "then": "…" }</code>, where <code>then</code> is optional. A condition that repeats an earlier one is reported, because it can never be chosen.</td></tr>
+    <tr><td><code>elseIf</code></td><td>No</td><td>More conditions, checked in order when the first one doesn't hold: a list of <code>{ "reference": …, "then": "…" }</code> or <code>{ "value": …, "then": "…" }</code>, where <code>then</code> is optional. A condition that repeats an earlier one is reported, because it can never be chosen.</td></tr>
     <tr><td><code>else</code></td><td>No</td><td>Id of the block to go to when no condition matches.</td></tr>
   </tbody>
 </table>
@@ -367,7 +388,7 @@
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
   <tbody>
     <tr><td><code>test</code></td><td>Yes</td><td>Path of a <code>.flow.json</code> file or of a custom block (<code>.block.json</code>, or <code>flow.json</code> in a <code>.jevblock</code> folder), relative to this test file. May hold <a href="#placeholders">placeholders</a>.</td></tr>
-    <tr><td><code>package</code></td><td>No</td><td>For a block from the community: the <code>version</code> the test was made with, such as <code>"1.2.0"</code>, and the <code>source</code> it can be installed from, an <code>https://</code> address. JEVision writes it when you add the block from the library. When the block isn't installed, the error names it, such as “needs the block com.acme.sign-in 1.2.0”, and offers <strong>Install…</strong>. Tests without it still work.</td></tr>
+    <tr><td><code>package</code></td><td>No</td><td>For a block from the community: the <code>version</code> the test was made with, such as <code>"1.2.0"</code>, and the <code>source</code> it can be installed from, an <code>https://</code> address. JEVision writes it when you add the block from the library. When the block isn't installed, the error names it, such as <code>This step needs the block “com.acme.sign-in 1.2.0”</code>, and offers <strong>Install…</strong>. Tests without it still work.</td></tr>
     <tr><td><code>inputs</code></td><td>No</td><td>Values for a custom block, by the name it asks for: <code>{ "email": "${env.USER_EMAIL}" }</code>. May hold <a href="#placeholders">placeholders</a> of this test. A value the block needs and doesn't get is a warning, and stops the run, unless the block has a default for it.</td></tr>
   </tbody>
 </table>
@@ -444,6 +465,75 @@
 { "type": "dateTime", "saveAs": "today", "format": "%A, %-d %B %Y", "language": "ru", "timeZone": "Europe/Moscow", "next": "type-date" }</code></pre>
 <p>On 31 March 2026, <code>%A, %-d %B %Y</code> is <code>Tuesday, 31 March 2026</code> in English and <code>вторник, 31 марта 2026</code> in Russian; <code>%OB %Y</code> is <code>March 2026</code> and <code>март 2026</code>. A <code>language</code> or <code>timeZone</code> JEVision doesn't know makes the test unreadable.</p>
 
+<h3 id="http">http: send a web request</h3>
+<p>Sends a request to a web address, such as the server behind the application, and fails the block unless the answer has the status you expect. Use it to set up data before the test or to check what the application sent. It doesn't use the screen. Parts of the answer can be kept as variables for later blocks.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>method</code></td><td>No</td><td><code>"GET"</code> (default), <code>"POST"</code>, <code>"PUT"</code>, <code>"PATCH"</code>, <code>"DELETE"</code> or <code>"HEAD"</code>.</td></tr>
+    <tr><td><code>url</code></td><td>Yes</td><td>The address, starting with <code>https://</code> or <code>http://</code>. May hold <a href="#placeholders">placeholders</a>.</td></tr>
+    <tr><td><code>headers</code></td><td>No</td><td>A list of <code>{ "name", "value" }</code>. The value may hold placeholders, such as a token from a <a href="environments.html#secrets">secret</a>.</td></tr>
+    <tr><td><code>body</code></td><td>No</td><td>The text to send. May hold placeholders. A body that is valid JSON is sent with the header <code>Content-Type: application/json</code>, unless <code>headers</code> has a <code>Content-Type</code> of its own.</td></tr>
+    <tr><td><code>expectStatus</code></td><td>No</td><td><code>"success"</code> (default), any status from 200 to 299; <code>"any"</code>, any answer at all; or one status code from 100 to 599, such as <code>201</code>.</td></tr>
+    <tr><td><code>save</code></td><td>No</td><td>A list of <code>{ "name", "from" }</code>: the variable to keep, used as <code>${var.NAME}</code>, and the part of the answer it gets. <code>from</code> is <code>"status"</code>, <code>"body"</code>, <code>"body.PATH"</code> for a value inside a JSON answer, such as <code>body.items[0].id</code>, or <code>"header.NAME"</code> for a header, in any case. A part the answer doesn't have fails the block.</td></tr>
+    <tr><td><code>timeout</code></td><td>No</td><td>How long to wait for the answer. Default: <code>"30s"</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "http", "url": "https://api.example.com/health", "next": "open" }
+{ "type": "http", "method": "POST", "url": "https://api.example.com/users", "headers": [{ "name": "Authorization", "value": "Bearer ${secret.API_TOKEN}" }], "body": "{ \"name\": \"Anna\" }", "expectStatus": 201, "save": [{ "name": "userId", "from": "body.id" }], "next": "open" }</code></pre>
+
+<h3 id="database">database: ask an SQLite database</h3>
+<p>Runs an SQL query on an SQLite database file, such as the one an application keeps its data in, and keeps the first value of the first row as a variable. With <code>expect</code>, it asks again until the answer is as expected, and fails the block when the time is up. It doesn't use the screen.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>file</code></td><td>Yes</td><td>The database file: a path relative to the test file, an absolute path or a path from the home folder (<code>~/Library/…</code>). May hold <a href="#placeholders">placeholders</a>. A file that isn't there fails the block.</td></tr>
+    <tr><td><code>query</code></td><td>Yes</td><td>The SQL query. May hold placeholders.</td></tr>
+    <tr><td><code>saveAs</code></td><td>No</td><td>Name of the variable that gets the first value of the first row, used as <code>${var.NAME}</code>. Empty when there is no row or the value is <code>NULL</code>.</td></tr>
+    <tr><td><code>expect</code></td><td>No</td><td><code>{ "value": "paid" }</code>: the first value of the first row, compared as numbers when both sides are numbers; it may hold placeholders. Or <code>{ "rows": 2 }</code>: the number of rows.</td></tr>
+    <tr><td><code>timeout</code></td><td>No</td><td>How long to keep asking until the answer matches <code>expect</code>. Default: <code>"10s"</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "database", "file": "~/Library/Application Support/AcmeMail/mail.sqlite", "query": "SELECT count(*) FROM messages WHERE unread = 1", "saveAs": "unread", "next": "badge" }
+{ "type": "database", "file": "data/shop.sqlite", "query": "SELECT status FROM orders WHERE id = '${var.orderId}'", "expect": { "value": "paid" }, "timeout": "20s", "next": "done" }</code></pre>
+<p>A query that SQLite can't run fails the block at once, with SQLite's reason.</p>
+
+<h3 id="checkFile">checkFile: wait for a file</h3>
+<p>Waits until a file appears, disappears, changes or contains a text, such as a file the application exports or a line in its log. If that doesn't happen in time, the test fails at this block. It doesn't use the screen.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>path</code></td><td>Yes</td><td>The file: a path relative to the test file, an absolute path or a path from the home folder (<code>~/Downloads/report.pdf</code>). May hold <a href="#placeholders">placeholders</a>.</td></tr>
+    <tr><td><code>until</code></td><td>Yes</td><td><code>"exists"</code>, <code>"missing"</code>, <code>"changed"</code> (changed since this try of the test started) or <code>{ "contains": "Saved" }</code>. The text may hold placeholders.</td></tr>
+    <tr><td><code>timeout</code></td><td>No</td><td>How long to wait. Default: <code>"10s"</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "checkFile", "path": "~/Downloads/report.pdf", "until": "exists", "timeout": "30s", "next": "open-report" }
+{ "type": "checkFile", "path": "logs/app.log", "until": { "contains": "Saved" }, "next": "done" }</code></pre>
+
+<h3 id="command">command: run a Terminal command</h3>
+<p>Runs a command in <code>zsh</code>, as you would in Terminal, with your permissions, and fails the block unless it ends with the exit code you expect. Use it to prepare the Mac before a test or tidy up after it. It doesn't use the screen. For a script with typed inputs and outputs, use a <a href="#script"><code>script</code></a> block.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>command</code></td><td>Yes</td><td>The command. JEVision fills in its <a href="#placeholders">placeholders</a>; any other <code>${…}</code>, such as <code>${HOME}</code>, is left for the shell.</td></tr>
+    <tr><td><code>folder</code></td><td>No</td><td>The folder it runs in, relative to the test file. Default: the folder of the test file. The variable <code>JEV_PROJECT</code> holds the project folder.</td></tr>
+    <tr><td><code>exitCode</code></td><td>No</td><td>The exit code that counts as success, 0 to 255. Default: <code>0</code>.</td></tr>
+    <tr><td><code>saveOutput</code></td><td>No</td><td>Name of the variable that gets what the command printed, without the last line break, used as <code>${var.NAME}</code>.</td></tr>
+    <tr><td><code>timeout</code></td><td>No</td><td>How long the command may run. Default: <code>"30s"</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "command", "command": "sw_vers -productVersion", "saveOutput": "macos", "next": "open" }
+{ "type": "command", "command": "./reset-server.sh", "folder": "tools", "timeout": "2m", "next": "open" }</code></pre>
+
 <h2 id="shapes">Targets, areas, durations and paths</h2>
 
 <h3 id="target">Target</h3>
@@ -495,7 +585,7 @@
 <p>Text with a whole number and a unit: <code>500ms</code>, <code>10s</code> or <code>2m</code>.</p>
 
 <h3 id="paths">Paths</h3>
-<p>Pictures, files, data tables and other tests are named by paths relative to the folder of the test file, written with <code>/</code>, such as <code>refs/inbox.png</code>. A path can't start with <code>/</code> or <code>~</code>, and the files must stay inside the project folder. Only a picture named by a variable, <code>${var.NAME}</code>, may be anywhere on the Mac. Keeping paths relative means the tests work on any Mac that has the project.</p>
+<p>Pictures, files, data tables and other tests are named by paths relative to the folder of the test file, written with <code>/</code>, such as <code>refs/inbox.png</code>. A path can't start with <code>/</code> or <code>~</code>, and the files must stay inside the project folder. Two kinds may be anywhere on the Mac: a picture named by a variable, <code>${var.NAME}</code>, and the file of a <a href="#checkFile"><code>checkFile</code></a> or <a href="#database"><code>database</code></a> block, which may also be an absolute path or start with <code>~/</code>. Keeping paths relative means the tests work on any Mac that has the project.</p>
 
 <h2 id="placeholders">Placeholders</h2>
 <p>Some fields can hold values that are filled in when the test runs:</p>
@@ -503,8 +593,17 @@
   <li><code>${secret.NAME}</code>: a secret, such as a password, from the Keychain or an environment variable. It is never stored in the file. See <a href="environments.html#secrets">Secrets</a>.</li>
   <li><code>${env.NAME}</code>: a value of the chosen <a href="environments.html">environment</a>, such as a server address. <code>${env.ENVIRONMENT}</code> is the name of the environment itself.</li>
   <li><code>${data.COLUMN}</code>: a value from the current row of a <a href="data-driven.html">data table</a>.</li>
+  <li><code>${var.NAME}</code>: a value an earlier block of the run kept: an output of a <a href="#script"><code>script</code></a>, or what a <code>clipboard</code>, <code>dateTime</code>, <code>http</code>, <code>database</code> or <code>command</code> block saved.</li>
+  <li><code>${input.NAME}</code>: in a <a href="custom-blocks.html">custom block</a>, a value the test that runs it gives in <code>inputs</code>.</li>
 </ul>
-<p>They work in the <code>text</code> of a <code>type</code> block, in the <code>arguments</code> and <code>environment</code> of an <code>openApp</code> block, in the <code>id</code>, <code>title</code> and <code>to</code> of an <a href="#element">interface element</a>, and in the paths and addresses of files a block opens or reads: <code>files</code> of <code>openFile</code>, <code>file</code> of <code>useData</code> and <code>test</code> of <code>runTest</code>. Names start with a letter or <code>_</code> and go on with letters, digits and <code>_</code>. Anything else written as <code>${…}</code> is reported as an error.</p>
+<p>They work in these fields:</p>
+<ul>
+  <li><code>arguments</code> and <code>environment</code> of <code>openApp</code>; <code>id</code>, <code>title</code> and <code>to</code> of an <a href="#element">interface element</a>;</li>
+  <li><code>text</code> of <code>type</code>; <code>files</code> of <code>openFile</code>; <code>file</code> of <code>useData</code>; <code>test</code> and <code>inputs</code> of <code>runTest</code>; <code>of</code> and <code>to</code> of a condition of <code>if</code>;</li>
+  <li><code>value</code> of the inputs of <code>script</code>; <code>text</code>, <code>image</code> and <code>to</code> of <code>clipboard</code>;</li>
+  <li><code>url</code>, header values and <code>body</code> of <code>http</code>; <code>file</code>, <code>query</code> and the expected <code>value</code> of <code>database</code>; <code>path</code> and the <code>contains</code> text of <code>checkFile</code>; <code>command</code> and <code>folder</code> of <code>command</code>.</li>
+</ul>
+<p>The picture or area of a <a href="#target">target</a> and the picture of a reference may also be <code>${var.NAME}</code>. Names start with a letter or <code>_</code> and go on with letters, digits and <code>_</code>. Anything else written as <code>${…}</code> is reported as an error, except in a <code>command</code>, where it is left for the shell.</p>
 
 <h2 id="keys">Key combinations</h2>
 <p>A key combination is written in lowercase with <code>+</code> between its parts: zero or more modifiers, then one key.</p>
@@ -522,16 +621,20 @@
 <h3 id="errors">Errors</h3>
 <ul>
   <li>The file isn't valid JSON, has an unknown field or block type, or a field of the wrong kind.</li>
-  <li>An empty name, text, key combination or file list; an invalid bundle identifier, block id or key combination.</li>
+  <li>An empty name, text, key combination, file list, command, web address, query or file path; an invalid bundle identifier, block id or key combination; an empty or repeated tag, or a <code>link</code> that doesn't start with <code>https://</code> or <code>http://</code>.</li>
+  <li>A <code>dependsOn</code> entry that isn't the path of a <code>.flow.json</code> test, names a test that doesn't exist or the test itself, or is listed twice; or tests that wait for each other in a circle.</li>
   <li>Two blocks with the same id; <code>start</code> or an arrow that names a block that doesn't exist.</li>
   <li>A circle of arrows outside a loop body, or a loop whose body is the loop block itself.</li>
-  <li>A number out of range: <code>retries</code> 0–10, <code>times</code> 1–10000, <code>timeout</code> 1ms–60m, <code>threshold</code> above 0 and at most 1.</li>
-  <li>A point or area outside the window, or an <code>area</code> target that isn't written <code>x,y,width,height</code>; an absolute path; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't a <code>.flow.json</code> test, a <code>.block.json</code> block or the <code>flow.json</code> of a package.</li>
+  <li>A number out of range: <code>retries</code> 0–10, <code>times</code> 1–10000, <code>timeout</code> and <code>duration</code> 1ms–60m, <code>threshold</code> above 0 and at most 1, a scroll <code>amount</code> 1–10000, a window side 100–20000, a window position −20000 to 20000, <code>exitCode</code> 0–255, <code>expectStatus</code> 100–599, a <code>dateTime</code> <code>shift</code> −100000 to 100000.</li>
+  <li>A point or area outside the window, or an <code>area</code> target that isn't written <code>x,y,width,height</code>; an absolute path outside a <code>checkFile</code> or <code>database</code> block; a <code>drag</code> that starts and ends at the same place; a <code>useData</code> file that isn't <code>.csv</code> or a <code>runTest</code> file that isn't a <code>.flow.json</code> test, a <code>.block.json</code> block or the <code>flow.json</code> of a package.</li>
   <li>A <code>runTest</code> of a <a href="custom-blocks.html">block from the community</a> that isn't installed in the project, a <code>package</code> whose <code>version</code> doesn't look like <code>1.2.0</code> or whose <code>source</code> doesn't start with <code>https://</code>, or an <code>inputs</code> name that isn't letters, digits and <code>_</code>.</li>
   <li>A malformed placeholder, an <code>${env.NAME}</code> that no environment has, or a <code>${data.COLUMN}</code> the table doesn't have.</li>
+  <li>A variable name that isn't letters, digits and <code>_</code>, or one block that keeps two variables of the same name.</li>
+  <li>An <code>http</code> address that isn't a web address, a header name with spaces or other characters a header can't have, or a <code>save</code> whose <code>from</code> isn't <code>status</code>, <code>body</code>, <code>body.PATH</code> or <code>header.NAME</code>.</li>
+  <li>A <code>dateTime</code> <code>format</code> that isn't valid, or a <code>greaterThan</code> or <code>lessThan</code> compared with something that isn't a number.</li>
   <li>A picture, area or script input that is just <code>${var.NAME}</code> when every block that keeps NAME keeps a value of a type that doesn't fit (text always fits).</li>
   <li>A <code>dateTime</code> <code>language</code> other than <code>en</code> or <code>ru</code>, or a <code>timeZone</code> that isn't an IANA name.</li>
-  <li><code>threshold</code> without <code>"compare": "similar"</code>, or <code>expect</code> without <code>"compare": "meaning"</code>.</li>
+  <li><code>threshold</code> without <code>"compare": "similar"</code>; <code>expect</code>, <code>provider</code> or <code>model</code> without <code>"compare": "meaning"</code>; a <code>provider</code> JEVision doesn't know.</li>
   <li>A note file or link that is neither a plain file name nor a web address, or two replies of a note with the same id.</li>
 </ul>
 <h3 id="warnings">Warnings</h3>
@@ -542,10 +645,13 @@
   <li>A file the test reads that doesn't exist yet. For a <code>check</code> block this is expected before the first run, which saves the picture.</li>
   <li>An <code>${env.NAME}</code> that only some environments have.</li>
   <li>A <code>runTest</code> of a custom block that gives no value for an input the block reads and has no default for.</li>
+  <li>A <code>${var.NAME}</code> that no block of the test keeps. A test it runs may keep it, so this is only a warning.</li>
+  <li>An <code>if</code> condition that repeats an earlier one of the same block, so it can never be chosen.</li>
+  <li>A test that checks nothing: no <code>check</code>, no <code>waitFor</code> for something to appear or disappear, no <code>http</code>, <code>checkFile</code>, <code>database</code> with <code>expect</code>, <code>clipboard</code> check or <code>runTest</code>. Such a test can't catch a wrong result.</li>
 </ul>
 
 <h2 id="canonical">Canonical form</h2>
-<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation, settings that are off or empty left out, and the click button, the scroll unit, the comparison and the <code>waitFor</code> timeout always written out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
+<p>JEVision always writes a test the same way: keys in a fixed order, blocks in reading order (from <code>start</code>, following the arrows), two-space indentation, settings that are off or empty left out, and the click button, the scroll unit, the HTTP method, the comparison and every timeout always written out. The same test always gives the same bytes, so a change in git shows up as a small, readable diff. <code>jevision fmt</code> rewrites files you edited by hand in this form, and <code>jevision fmt --check</code> only reports the ones that aren't. See <a href="cli.html#fmt">Command line</a>.</p>
 
 <h2 id="editor">Editing on the canvas</h2>
 <ul>

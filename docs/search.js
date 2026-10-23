@@ -1,47 +1,22 @@
-// Search across the pages listed in the navigation. Pages are fetched on first use, so search
-// works when the site is served over http(s); opened from disk, the search box stays hidden.
+// Search across the pages listed in the navigation. Their text comes from search-index.js, a
+// script loaded before this one, so search works offline and on pages opened from disk.
 (() => {
   const form = document.querySelector(".search");
-  if (!form || !/^https?:$/.test(location.protocol)) return;
+  if (!form || !window.searchIndex) return;
 
   const input = form.querySelector("input");
   const list = form.querySelector(".search-results");
   const status = form.querySelector(".search-status-live");
-  let index = null;
+  const index = window.searchIndex.flatMap((page) => page.sections.map((s) => ({
+    href: s.id ? `${page.url}#${s.id}` : page.url,
+    title: s.title,
+    page: page.title,
+    titleLower: s.title.toLowerCase(),
+    textLower: s.text.toLowerCase(),
+  })));
 
   form.hidden = false;
   form.addEventListener("submit", (event) => event.preventDefault());
-
-  async function buildIndex() {
-    const pages = [...document.querySelectorAll(".site-nav a")].map((a) => a.getAttribute("href"));
-    const sections = [];
-    await Promise.all(pages.map(async (page) => {
-      try {
-        const response = await fetch(page);
-        if (!response.ok) return;
-        const doc = new DOMParser().parseFromString(await response.text(), "text/html");
-        const main = doc.querySelector("main");
-        const pageTitle = main.querySelector("h1")?.textContent.trim() ?? page;
-        let current = { href: page, title: pageTitle, page: pageTitle, text: "" };
-        sections.push(current);
-        for (const node of main.children) {
-          if (/^H[23]$/.test(node.tagName) && node.id) {
-            current = { href: `${page}#${node.id}`, title: node.textContent.trim(), page: pageTitle, text: "" };
-            sections.push(current);
-          } else {
-            current.text += " " + node.textContent;
-          }
-        }
-      } catch {
-        // A page that can't be fetched is left out of the results.
-      }
-    }));
-    for (const s of sections) {
-      s.titleLower = s.title.toLowerCase();
-      s.textLower = s.text.replace(/\s+/g, " ").toLowerCase();
-    }
-    return sections;
-  }
 
   function search(query) {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -89,8 +64,7 @@
     }
   }
 
-  async function update() {
-    index ??= await buildIndex();
+  function update() {
     const query = input.value.trim();
     show(search(query), query);
   }

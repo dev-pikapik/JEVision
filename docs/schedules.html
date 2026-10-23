@@ -7,6 +7,7 @@
 <meta name="description" content="Run tests on their own every day, on chosen days or every few hours.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -59,7 +60,7 @@
 <main id="main" tabindex="-1">
 <h1>Schedules</h1>
 <p class="lead">Run tests on their own: every night, on weekdays, or every few hours, with the results waiting for you in the morning.</p>
-<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/schedule-dark.png"><img src="media/schedule-light.png" alt="The Schedules sheet with a nightly schedule." width="1360" height="850" loading="lazy"></picture></figure>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/schedule-dark.png"><img src="media/schedule-light.png" alt="Editing a schedule: three chosen tests run every weekday at 9:00 AM on the staging environment." width="1360" height="850" loading="lazy"></picture></figure>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -124,7 +125,7 @@
 <p>Tests use the real screen, mouse and keyboard, so a scheduled run needs:</p>
 <ul>
   <li><strong>A logged-in user.</strong> Nobody logged in means no screen to test on.</li>
-  <li><strong>An unlocked screen.</strong> A run due while the screen is locked is skipped and recorded as “skipped: screen locked”. JEVision never types into a locked screen. Turn off the automatic lock in <strong>System Settings → Lock Screen</strong>.</li>
+  <li><strong>An unlocked screen.</strong> A run due while the screen is locked is skipped and recorded as “Skipped: the screen was locked”. JEVision never types into a locked screen. Turn off the automatic lock in <strong>System Settings → Lock Screen</strong>.</li>
   <li><strong>Screen &amp; System Audio Recording</strong> and <strong>Accessibility</strong> (<strong>Device Control and Data Access</strong> from macOS 27) allowed for <code>jevision</code>. Without them the run is skipped and nothing is clicked or typed. See <a href="faq.html#permissions">Permissions</a>.</li>
   <li><strong>Secrets</strong> the tests need, saved in the Keychain, with <strong>Always Allow</strong> chosen the first time macOS asks. See <a href="environments.html#secret-order">Secrets</a>.</li>
 </ul>

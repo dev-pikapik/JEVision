@@ -7,6 +7,7 @@
 <meta name="description" content="How JEVision compares the screen with reference images or checks it by meaning with an AI model.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -59,7 +60,7 @@
 <main id="main" tabindex="-1">
 <h1>Checks and references</h1>
 <p class="lead">A reference says how the screen should look. JEVision compares the screen with it to pass or fail a <code>check</code>, to finish a <code>waitFor</code> and to choose the way of an <code>if</code>.</p>
-<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/report-dark.png"><img src="media/report-light.png" alt="A report of a check: the screen compared with its reference image." width="1360" height="850" loading="lazy"></picture></figure>
+<figure class="shot"><picture><source media="(prefers-color-scheme: dark)" srcset="media/report-dark.png"><img src="media/report-light.png" alt="A failed check in a run report: the pixels that differ from the reference are red, the screen matches by 99.7% where 99.9% is needed, and a button accepts the screen as the new reference." width="1360" height="850" loading="lazy"></picture></figure>
 
 <nav class="on-this-page" aria-labelledby="otp">
   <h2 id="otp">On this page</h2>
@@ -88,6 +89,8 @@
     <tr><td><code>compare</code></td><td>No</td><td><code>"similar"</code> (default), <code>"exact"</code> or <code>"meaning"</code>. See <a href="#compare">Ways to compare</a>.</td></tr>
     <tr><td><code>threshold</code></td><td>No</td><td>Only with <code>"similar"</code>: how much of the picture must match, above 0 and at most 1. Default: <code>0.95</code>.</td></tr>
     <tr><td><code>expect</code></td><td>No</td><td>Only with <code>"meaning"</code>: what the screen should show, in plain words.</td></tr>
+    <tr><td><code>provider</code></td><td>No</td><td>Only with <code>"meaning"</code>: the AI provider that checks this block, by one of the ids in <a href="#models">AI models</a>, such as <code>"anthropic"</code>. Default: see <a href="#which-ai">Which AI answers</a>.</td></tr>
+    <tr><td><code>model</code></td><td>No</td><td>Only with <code>"meaning"</code>: the model that checks this block.</td></tr>
     <tr><td><code>area</code></td><td>No</td><td>The part of the window to compare, an <a href="writing-tests.html#rect">area</a>. Default: the whole window.</td></tr>
     <tr><td><code>ignore</code></td><td>No</td><td>List of areas left out of the comparison, such as a clock or a counter.</td></tr>
     <tr><td><code>hide</code></td><td>No</td><td>List of areas that must not appear anywhere: left out of the comparison, covered in every saved screenshot and covered before a screenshot is sent to an AI model.</td></tr>
@@ -125,7 +128,7 @@
 }</code></pre>
 
 <h2 id="first-run">The first run saves the picture</h2>
-<p>You don't need to take reference pictures by hand. When the picture of a <code>check</code> block doesn't exist yet, the run saves the screen as that picture, with the hidden parts covered, and the report marks the step “Reference saved”. Before that first run, the editor and <code>jevision validate</code> show a warning that the picture isn't saved yet.</p>
+<p>You don't need to take reference pictures by hand. When the picture of a <code>check</code> block doesn't exist yet, the run saves the screen as that picture, with the hidden parts covered, and the report marks the step <strong>New reference saved</strong>. Before that first run, the editor and <code>jevision validate</code> show a warning that the picture isn't saved yet.</p>
 <p>A <code>waitFor</code> or <code>if</code> block can't do this, because it has to know what it waits or looks for: a missing picture stops the run at that block.</p>
 
 <h2 id="dark">Dark appearance</h2>
@@ -135,7 +138,7 @@
   <li><code>waitFor</code> and <code>if</code> use the dark version when it exists and the light picture otherwise. When a <code>waitFor</code> runs out of time in dark appearance and only the light picture exists, the failure names the dark picture that is missing.</li>
 </ul>
 <p>The test file names only the light picture; the dark one sits next to it.</p>
-<p>A dark window is never compared with the light picture, so a missing dark picture can't fail a check by itself or pass it unseen. The run saves it and the report marks that step <strong>Reference saved</strong>: look at it once and keep it, or delete it to take it again.</p>
+<p>A dark window is never compared with the light picture, so a missing dark picture can't fail a check by itself or pass it unseen. The run saves it and the report marks that step <strong>New reference saved</strong>: look at it once and keep it, or delete it to take it again.</p>
 
 <h2 id="accept">When the app changed on purpose</h2>
 <p>If a check fails because the app was redesigned, not because of a bug, open the run's report and accept the screenshot as the new reference. The old picture goes to the Trash, and <strong>Edit → Undo</strong> brings it back. In git, the change shows up as a changed picture you can compare side by side, under a sliding divider, one over the other or with the differing pixels in red.</p>

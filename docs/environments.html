@@ -7,6 +7,7 @@
 <meta name="description" content="Run one test against staging, production or a local server, and keep passwords out of test files.">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="search-index.js" defer></script>
 <script src="search.js" defer></script>
 </head>
 <body>
@@ -87,7 +88,7 @@
 }</code></pre>
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
-  <li><code>environments</code> maps each environment's name to its values. Environment names use letters, digits, <code>-</code> and <code>_</code>. Value names start with a letter or <code>_</code> and use letters, digits and <code>_</code>. Values are text.</li>
+  <li><code>environments</code> maps each environment's name to its values. Environment names use letters, digits, <code>-</code> and <code>_</code>, up to 64 characters. Value names start with a letter or <code>_</code> and use letters, digits and <code>_</code>. Values are text.</li>
   <li><code>default</code> is optional and must name one of the environments. It is used when you don't choose one.</li>
 </ul>
 <p>JEVision finds the file in the nearest folder at or above the tests that has the file or a <code>.jevision</code> folder.</p>
@@ -99,7 +100,7 @@
 <p>Write <code>${env.NAME}</code> where the value should go:</p>
 <pre><code>{ "type": "openFile", "files": ["${env.BASE_URL}/sign-in"], "next": "email" }
 { "type": "type", "text": "${env.USER}", "into": { "image": "refs/user-field.png" }, "next": "password" }</code></pre>
-<p>Placeholders work in the text of a <code>type</code> block and in the paths and addresses of files a block opens or reads. See <a href="writing-tests.html#placeholders">Placeholders</a>.</p>
+<p>Placeholders work in the text fields of most blocks: what a <code>type</code> block types, the files a block opens or reads, the inputs of <code>runTest</code> and <code>script</code> blocks, the values an <code>if</code> block compares, clipboard text, commands and their folder, the address, headers and body of an <code>http</code> block, the path and text a <code>checkFile</code> block waits for and the file, query and expected value of a <code>database</code> block. See <a href="writing-tests.html#placeholders">Placeholders</a>.</p>
 <p>The editor and <code>jevision validate</code> report a name that no environment has as an error, and a name that only some environments have as a warning, listing the environments that lack it.</p>
 
 <h3 id="environment-name">The name of the environment</h3>
@@ -108,7 +109,7 @@
 
 <h2 id="choose">Choosing an environment</h2>
 <ul>
-  <li><strong>In the app:</strong> pick the environment at the foot of the sidebar, at the top right of a test's canvas or in the Run menu. The choice is kept per project on this Mac. The app starts with the file's <code>default</code> until you choose another one.</li>
+  <li><strong>In the app:</strong> pick the environment at the foot of the sidebar, at the top right of a test's canvas or in the menu of the toolbar's <strong>Run</strong> button. The choice is kept per project on this Mac. The app starts with the file's <code>default</code> until you choose another one.</li>
   <li><strong>On the canvas:</strong> the environment at the top right shows the values the test reads. Click it to switch the environment, change a value (it is saved to the environments file at once) and see which secrets are set; secrets show only <em>Set</em> or <em>Not set</em>. Hover a block that reads a value to see what it gets.</li>
   <li><strong>On the command line:</strong> <code>jevision run tests/ --env staging</code>. Without <code>--env</code>, the file's <code>default</code> is used.</li>
   <li><strong>For an AI assistant:</strong> the <code>env</code> argument of <a href="mcp.html#run_test"><code>run_test</code></a>.</li>
