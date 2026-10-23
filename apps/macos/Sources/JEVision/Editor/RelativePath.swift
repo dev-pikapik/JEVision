@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import JEVisionHands
 import Synchronization
 
 /// Paths in a test are written relative to the test file's folder, with `/`. A file can be named
@@ -97,11 +98,11 @@ enum FileLabels {
   }
 
   static func keepsPlainPaths(in project: URL) -> Bool {
-    UserDefaults.standard.bool(forKey: key(project))
+    Profile.current.defaults.bool(forKey: key(project))
   }
 
   static func setKeepsPlainPaths(_ keeps: Bool, in project: URL) {
-    if keeps { UserDefaults.standard.set(true, forKey: key(project)) } else { UserDefaults.standard.removeObject(forKey: key(project)) }
+    if keeps { Profile.current.defaults.set(true, forKey: key(project)) } else { Profile.current.defaults.removeObject(forKey: key(project)) }
   }
 
   /// What a test in `folder` writes for `file`, chosen in Finder: its label, made when it has

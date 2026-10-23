@@ -8,7 +8,8 @@ import Testing
 @MainActor
 struct DataTableUndoTests {
   private func folder() throws -> URL {
-    let made = FileManager.default.temporaryDirectory.appending(path: "jevision-data-\(UUID().uuidString)")
+    let made = FileManager.default.temporaryDirectory.appending(
+      path: "jevision-data-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: made, withIntermediateDirectories: true)
     return made
   }
@@ -60,7 +61,8 @@ struct DataTableUndoTests {
     // Typing into one cell, or one column name, undoes as one step.
     for name in ["a", "ag", "age"] { step(undo) { document.rename(column: 0, to: name) } }
     for text in ["B", "Bo", "Bob"] { step(undo) { document.set(text, row: 1, column: 1) } }
-    #expect(document.table == DataRows(columns: ["age", "name"], rows: [["", "Ann"], ["", "Bob"]]))
+    #expect(
+      document.table == DataRows(columns: ["age", "name"], rows: [["", "Ann"], ["", "Bob"]]))
     #expect(document.hasUnsavedChanges)
 
     undoStep(undo, document)
@@ -111,6 +113,54 @@ struct DataTableUndoTests {
     window.redo()
     #expect(try readDataRows(path: url.path).rows == [["Bob"]])
     #expect(shown == 2)
+  }
+
+  @Test func savingALabeledTableUndoesAndRedoesItsContentsAndMetadataTogether() throws {
+    let root = try folder()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let url = root.appending(path: "people.csv")
+    let meta = url.appendingPathExtension("jevmeta")
+    try writeDataRows(path: url.path, table: DataRows(columns: ["name"], rows: [["Ann"]]))
+    let reference = try labelResource(project: root.path, file: "people.csv")
+    let before = try Data(contentsOf: url)
+    let beforeMeta = try Data(contentsOf: meta)
+    let document = DataTableDocument(url: url)
+    document.set("Bob", row: 0, column: 0)
+    let window = undoManager()
+
+    try step(window) { try document.save(undoManager: window, ask: never) {} }
+    let after = try Data(contentsOf: url)
+    let afterMeta = try Data(contentsOf: meta)
+    #expect(afterMeta != beforeMeta)
+    #expect(try labelResource(project: root.path, file: "people.csv") == reference)
+    window.undo()
+    #expect(try Data(contentsOf: url) == before)
+    #expect(try Data(contentsOf: meta) == beforeMeta)
+    window.redo()
+    #expect(try Data(contentsOf: url) == after)
+    #expect(try Data(contentsOf: meta) == afterMeta)
+  }
+
+  @Test func savingRefusesANewerResourceFormatWithoutChangingEitherFile() throws {
+    let root = try folder()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let url = root.appending(path: "people.csv")
+    let meta = url.appendingPathExtension("jevmeta")
+    try writeDataRows(path: url.path, table: DataRows(columns: ["name"], rows: [["Ann"]]))
+    let metadata = Data(#"{"format":999,"id":"future","extra":{"kept":true}}"#.utf8)
+    try metadata.write(to: meta)
+    let before = try Data(contentsOf: url)
+    let document = DataTableDocument(url: url)
+    document.set("Bob", row: 0, column: 0)
+    let window = undoManager()
+
+    #expect(throws: (any Error).self) {
+      try document.save(undoManager: window, ask: never) {}
+    }
+    #expect(try Data(contentsOf: url) == before)
+    #expect(try Data(contentsOf: meta) == metadata)
+    #expect(document.hasUnsavedChanges)
+    #expect(!window.canUndo)
   }
 
   @Test func undoOfANewTableTakesTheFileAway() throws {
@@ -175,12 +225,15 @@ struct DataTableUndoTests {
     let folder = try folder()
     try writeDataRows(path: folder.appending(path: "people.csv").path, table: table)
     let context = FieldContext(
-      issues: [], folder: folder, projectRoot: nil, document: FlowDocument(url: folder.appending(path: "t.flow.json")),
+      issues: [], folder: folder, projectRoot: nil,
+      document: FlowDocument(url: folder.appending(path: "t.flow.json")),
       block: "data")
     let document = DataTableDocument(url: folder.appending(path: "people.csv"))
-    let editor = DataTableEditor(document: document, file: "people.csv", context: context, undoManager: nil)
+    let editor = DataTableEditor(
+      document: document, file: "people.csv", context: context, undoManager: nil)
     let window = NSWindow(
-      contentRect: NSRect(x: -10000, y: -10000, width: 900, height: 600), styleMask: [.titled], backing: .buffered,
+      contentRect: NSRect(x: -10000, y: -10000, width: 900, height: 600), styleMask: [.titled],
+      backing: .buffered,
       defer: false)
     window.isReleasedWhenClosed = false
     window.contentView = NSHostingView(rootView: editor)

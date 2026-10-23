@@ -179,8 +179,15 @@ final class DataTableDocument {
   {
     endTyping()
     let action = saved == nil ? String(localized: "Create Data Table") : String(localized: "Edit Data Table")
-    try FileUndo.record(url, action: action, in: undoManager, ask: ask, then: then) {
+    let file = url.resolvingSymlinksInPath()
+    let path = file.path(percentEncoded: false)
+    try checkResourceWrite(file: path)
+    try FileUndo.record(
+      [file, file.appendingPathExtension("jevmeta")], action: action, in: undoManager, ask: ask,
+      beforeRestore: { try checkResourceWrite(file: path) }, then: then
+    ) {
       try writeDataRows(path: url.path(percentEncoded: false), table: table)
+      _ = try updateResourceLabel(file: path)
     }
     saved = table
     read = FileUndo.contents(of: url)
@@ -300,7 +307,7 @@ struct DataTableEditor: View {
         Text("Data Table")
           .font(.headline)
           .accessibilityAddTraits(.isHeader)
-        Text(file)
+        Text(RelativePath.path(of: file, in: context.folder))
           .font(.callout)
           .foregroundStyle(.secondary)
           .lineLimit(1)
