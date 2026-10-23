@@ -35,8 +35,19 @@ extension Accessibility {
       AXUIElementSetMessagingTimeout(app, timeout)
       var windows: CFTypeRef?
       guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
-        let window = (windows as? [AXUIElement])?.first(where: {
-          frame(of: $0).map { abs($0.minX - bounds.minX) < 2 && abs($0.minY - bounds.minY) < 2 } == true
+        let windows = windows as? [AXUIElement],
+        let window = windowRoot(windows, bounds: bounds, limit: elementLimit, depth: depthLimit, read: {
+          guard Date.now < deadline, let (raw, contents) = read($0) else { return nil }
+          var children = contents
+          if [kAXWindowRole, kAXSheetRole].contains(raw.role) {
+            var sheets: CFTypeRef?
+            if AXUIElementCopyAttributeValue($0, "AXSheets" as CFString, &sheets) == .success {
+              for sheet in sheets as? [AXUIElement] ?? [] where !children.contains(where: { CFEqual($0, sheet) }) {
+                children.append(sheet)
+              }
+            }
+          }
+          return (raw, children)
         })
       else { continue }
       return flatten([window] + openMenus(of: app), window: bounds, limit: elementLimit, depth: depthLimit) {
@@ -46,17 +57,41 @@ extension Accessibility {
     return []
   }
 
+  /// A captured sheet is a window of its own in screen capture, but accessibility can keep it
+  /// inside its parent window. Find that sheet before mapping its controls to capture coordinates.
+  static func windowRoot<Node: Hashable>(
+    _ roots: [Node], bounds: CGRect, limit: Int, depth: Int,
+    read: (Node) -> (RawElement, [Node])?
+  ) -> Node? {
+    var queue = roots.map { ($0, 0) }
+    var index = 0
+    var visited = Set<Node>()
+    while index < queue.count, visited.count < limit {
+      let (node, level) = queue[index]
+      index += 1
+      guard visited.insert(node).inserted, let (raw, children) = read(node) else { continue }
+      if [kAXWindowRole, kAXSheetRole].contains(raw.role), let frame = raw.frame,
+        abs(frame.minX - bounds.minX) < 2, abs(frame.minY - bounds.minY) < 2
+      {
+        return node
+      }
+      if level < depth { queue += children.map { ($0, level + 1) } }
+    }
+    return nil
+  }
+
   /// The elements under `roots`, each before what is inside it, with frames in fractions of
   /// `window`. `read` gives an element and what is inside it, or nil to leave it out with
   /// everything inside; one without a frame is left out, though not what is inside it. Stops
   /// after `limit` elements and goes no deeper than `depth` levels.
-  static func flatten<Node>(
+  static func flatten<Node: Hashable>(
     _ roots: [Node], window: CGRect, limit: Int, depth: Int, read: (Node) -> (RawElement, [Node])?
   ) -> [ElementNode] {
     var found: [ElementNode] = []
     var stack = roots.reversed().map { ($0, 0) }
+    var visited = Set<Node>()
     while let (node, level) = stack.popLast(), found.count < limit {
-      guard let (raw, children) = read(node) else { continue }
+      guard visited.insert(node).inserted, let (raw, children) = read(node) else { continue }
       if let f = raw.frame, window.width > 0, window.height > 0 {
         found.append(
           ElementNode(
@@ -116,8 +151,9 @@ extension Accessibility {
     if let origin = axValue(values[9], .cgPoint, CGPoint.zero), let size = axValue(values[10], .cgSize, CGSize.zero) {
       raw.frame = CGRect(origin: origin, size: size)
     }
-    // A field labelled by text next to it, rather than by a title of its own.
-    if raw.title.isEmpty, CFGetTypeID(values[12]) == AXUIElementGetTypeID() {
+    // A field labelled by text next to it. An element's own description, such as a permission
+    // status image saying “Allowed”, takes precedence over the label of the surrounding row.
+    if raw.title.isEmpty, raw.description.isEmpty, CFGetTypeID(values[12]) == AXUIElementGetTypeID() {
       raw.title = string(kAXValueAttribute, of: values[12] as! AXUIElement) ?? ""
     }
     return (raw, values[11] as? [AXUIElement] ?? [])

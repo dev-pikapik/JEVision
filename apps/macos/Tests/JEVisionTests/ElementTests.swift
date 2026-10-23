@@ -72,9 +72,13 @@ struct ElementEditorTests {
 }
 
 struct WindowElementsTests {
-  private struct Fake {
+  private struct Fake: Hashable {
     var raw: RawElement
     var children: [Fake] = []
+    private let identity = UUID()
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.identity == rhs.identity }
+    func hash(into hasher: inout Hasher) { hasher.combine(identity) }
   }
 
   private let window = CGRect(x: 100, y: 200, width: 400, height: 200)
@@ -98,6 +102,29 @@ struct WindowElementsTests {
             role: "AXTextField", subrole: kAXSecureTextFieldSubrole, value: "hunter2", frame: CGRect(x: 100, y: 300, width: 200, height: 20))),
         Fake(raw: RawElement(role: "AXCheckBox", value: "1", frame: CGRect(x: 100, y: 380, width: 20, height: 20))),
       ])
+  }
+
+  @Test func aCapturedSheetIsFoundInsideItsParentWindow() throws {
+    let sheet = Fake(raw: RawElement(role: kAXSheetRole, id: "new-test", frame: CGRect(x: 160, y: 220, width: 240, height: 120)))
+    let parent = Fake(raw: RawElement(role: kAXWindowRole, id: "project", frame: window), children: [sheet])
+    let found = try #require(Accessibility.windowRoot([parent], bounds: sheet.raw.frame!, limit: 100, depth: 64) {
+      ($0.raw, $0.children)
+    })
+    #expect(found.raw.id == "new-test")
+    #expect(Accessibility.windowRoot([parent], bounds: sheet.raw.frame!, limit: 1, depth: 64) {
+      ($0.raw, $0.children)
+    } == nil)
+    #expect(Accessibility.windowRoot([parent], bounds: sheet.raw.frame!, limit: 100, depth: 0) {
+      ($0.raw, $0.children)
+    } == nil)
+  }
+
+  @Test func aMenuReachableThroughTheWindowAndTheAppIsOnlyIncludedOnce() {
+    let menu = Fake(raw: RawElement(role: kAXMenuRole, frame: window), children: [
+      Fake(raw: RawElement(role: kAXMenuItemRole, title: "English", frame: window))
+    ])
+    let parent = Fake(raw: RawElement(role: kAXWindowRole, frame: window), children: [menu])
+    #expect(flatten([parent, menu]).map(\.role) == [kAXWindowRole, kAXMenuRole, kAXMenuItemRole])
   }
 
   @Test func elementsComeEachBeforeWhatIsInsideIt() {

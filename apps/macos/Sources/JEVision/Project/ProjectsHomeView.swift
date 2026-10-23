@@ -373,6 +373,7 @@ private struct FirstProjectView: View {
         ChoiceCard(
           symbol: "folder", title: Text("Open Project"), message: Text("Choose a folder that already has tests.")
         ) { project.choose() }
+        .accessibilityIdentifier(AccessibilityID.Main.openProject)
       }
       HStack(spacing: 24) {
         Button("Clone Repository…") { project.newProject = .clone }

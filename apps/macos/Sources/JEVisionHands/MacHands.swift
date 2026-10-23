@@ -166,9 +166,28 @@ public final class MacHands: Hands, @unchecked Sendable {
   public func activate(app: String) throws(HandsError) {
     let running = Self.runningApps(app)
     guard let first = running.first else { return try openApp(app: app, start: .asUsual) }
-    if running.contains(where: \.isActive) { return }
+    // Copies can share a bundle identifier. Ask the exact process whether it is frontmost
+    // and raise its focused window, rather than activating another copy through Launch Services.
+    let targets = running.map { AXUIElementCreateApplication($0.processIdentifier) }
+    for target in targets { AXUIElementSetMessagingTimeout(target, Accessibility.timeout) }
+    let target = targets[0]
+    let isFrontmost = {
+      targets.contains { target in
+        var value: CFTypeRef?
+        return AXUIElementCopyAttributeValue(target, kAXFrontmostAttribute as CFString, &value) == .success
+          && value as? Bool == true
+      }
+    }
+    if isFrontmost() { return }
     _ = first.activate()
-    if poll(timeout: 1, { first.isActive }) { return }
+    _ = AXUIElementSetAttributeValue(target, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+    var window: CFTypeRef?
+    if AXUIElementCopyAttributeValue(target, kAXFocusedWindowAttribute as CFString, &window) == .success,
+      let window, CFGetTypeID(window) == AXUIElementGetTypeID()
+    {
+      _ = AXUIElementPerformAction(window as! AXUIElement, kAXRaiseAction as CFString)
+    }
+    if poll(timeout: 1, isFrontmost) { return }
     // Without the user's click macOS may refuse; Launch Services can still bring it forward.
     _ = try launch(try appURL(app))
   }
@@ -564,9 +583,10 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   /// Waits until one of the apps shows a window. Some apps open none; the run then goes on
   /// and the next look at the screen says so.
-  private func waitForWindow(_ apps: [NSRunningApplication]) {
-    guard !apps.isEmpty else { return }
-    _ = poll(timeout: Self.launchTimeout) { Self.frontWindow(of: apps) != nil }
+  private func waitForWindow(_ apps: @autoclosure () -> [NSRunningApplication]) {
+    // Launch Services can answer before the new process appears in the running-app list.
+    // Read it again while waiting instead of treating that first empty list as a finished launch.
+    _ = poll(timeout: Self.launchTimeout) { Self.frontWindow(of: apps()) != nil }
   }
 
   /// Checks `condition` every 50 ms until it holds, the time is up or the run is cancelled.
