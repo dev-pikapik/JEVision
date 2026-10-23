@@ -123,7 +123,12 @@ struct HistoryView: View {
   private func restore(_ change: FileChange, from commit: GitCommit) {
     let target = isTest ? path : change.path
     do {
-      try project.restore(target, from: change.path, in: commit.id, undoManager: undoManager)
+      guard let root = project.rootURL, let file = Baseline.file(target, in: root) else {
+        throw CocoaError(.fileWriteNoPermission, userInfo: [NSFilePathErrorKey: target])
+      }
+      try TestRecovery.restore(file, open: { [weak project] in project?.openDocuments ?? [] }, in: undoManager) {
+        try project.restore(target, from: change.path, in: commit.id, undoManager: nil)
+      }
     } catch {
       failure = GitText.failure(error)
       return

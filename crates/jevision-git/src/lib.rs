@@ -11,6 +11,7 @@ use std::process::{Command, Output, Stdio};
 
 use jevision_l10n::{tr, tr_in};
 
+mod atomic;
 mod github;
 mod notes;
 mod signin;
@@ -463,7 +464,8 @@ impl Repo {
     }
 
     /// Writes `path` with the contents `source` had in `commit`: the same file under the name
-    /// it had then, when it was renamed since.
+    /// it had then, when it was renamed since. The file is replaced in one step and keeps its
+    /// permissions, so a failed write never leaves half a test.
     pub fn restore(&self, commit: &str, source: &str, path: &str) -> Result<(), GitError> {
         let bytes = self
             .file(commit, source)?
@@ -477,7 +479,7 @@ impl Repo {
         if let Some(folder) = file.parent() {
             std::fs::create_dir_all(folder).map_err(failed)?;
         }
-        std::fs::write(file, bytes).map_err(failed)
+        atomic::write(&file, bytes).map_err(failed)
     }
 
     /// Commits the changes to `paths` alone, with exactly the user's `message`. Other changes,
@@ -601,7 +603,7 @@ impl Repo {
                         if let Some(folder) = file.parent() {
                             std::fs::create_dir_all(folder).map_err(failed)?;
                         }
-                        std::fs::write(&file, bytes).map_err(failed)?;
+                        atomic::write(&file, bytes).map_err(failed)?;
                     }
                     None => match std::fs::remove_file(&file) {
                         Err(e) if e.kind() != std::io::ErrorKind::NotFound => {

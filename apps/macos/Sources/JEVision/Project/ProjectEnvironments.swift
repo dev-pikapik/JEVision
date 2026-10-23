@@ -38,12 +38,20 @@ final class ProjectEnvironments {
     current = Self.read(project, defaults: defaults)
   }
 
-  func select(_ name: String) {
-    guard let project else { return }
+  /// Makes `name` the environment runs use; `nil` goes back to the file's default. Undo brings
+  /// back the choice made before.
+  func select(_ name: String?, undoManager: UndoManager? = nil) {
+    guard let project, name == nil || name != current.selected?.name else { return }
     var saved = defaults.dictionary(forKey: Self.selectionKey) as? [String: String] ?? [:]
+    let before = saved[project.path]
+    guard before != name else { return }
     saved[project.path] = name
     defaults.set(saved, forKey: Self.selectionKey)
     reload()
+    undoManager?.registerUndo(withTarget: self) { [weak undoManager] environments in
+      MainActor.assumeIsolated { environments.select(before, undoManager: undoManager) }
+    }
+    undoManager?.setActionName(String(localized: "Choose Environment"))
   }
 
   /// Opens the environments file in the app that edits JSON.
@@ -58,18 +66,44 @@ final class ProjectEnvironments {
     return newEnvironmentProblem(project: project.path(percentEncoded: false), name: name, valueNames: valueNames)
   }
 
-  /// Adds the environment `name` with `values` to the project's environments file.
-  func add(_ name: String, values: [String: String]) throws {
+  /// Adds the environment `name` with `values` to the project's environments file, as one step
+  /// for Undo in `undoManager`.
+  func add(
+    _ name: String, values: [String: String], undoManager: UndoManager? = nil,
+    ask: @escaping FileUndo.Ask = FileUndo.askToReplace
+  ) throws {
     guard let project else { return }
-    try addEnvironment(project: project.path(percentEncoded: false), name: name, values: values)
-    reload()
+    try change(String(localized: "Add Environment"), in: undoManager, ask: ask) {
+      try addEnvironment(project: project.path(percentEncoded: false), name: name, values: values)
+    }
   }
 
   /// Sets the value `name` of `environment` in the project's environments file, adding it when
-  /// the environment lacks it.
-  func setValue(_ value: String, named name: String, in environment: String) throws {
+  /// the environment lacks it, as one step for Undo in `undoManager`.
+  func setValue(
+    _ value: String, named name: String, in environment: String, undoManager: UndoManager? = nil,
+    ask: @escaping FileUndo.Ask = FileUndo.askToReplace
+  ) throws {
     guard let project else { return }
-    try setEnvironmentValue(project: project.path(percentEncoded: false), environment: environment, name: name, value: value)
+    try change(String(localized: "Change Value"), in: undoManager, ask: ask) {
+      try setEnvironmentValue(project: project.path(percentEncoded: false), environment: environment, name: name, value: value)
+    }
+  }
+
+  /// The value `name` of `environment` as the file holds it now, read again rather than as last
+  /// shown; `nil` when it isn't set.
+  func value(_ name: String, in environment: String) -> String? {
+    reload()
+    return current.all.first { $0.name == environment }?.values[name]
+  }
+
+  /// Runs `write`, which changes the environments file, and shows the file after it and after
+  /// Undo or Redo of it.
+  private func change(
+    _ action: String, in undoManager: UndoManager?, ask: @escaping FileUndo.Ask, _ write: () throws -> Void
+  ) throws {
+    guard let file else { return }
+    try FileUndo.record(file, action: action, in: undoManager, ask: ask, then: { [weak self] in self?.reload() }, write)
     reload()
   }
 

@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@\n\nRemove their lines from .gitattributes yourself, or choose Edit › Undo to put the files back and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n\nУдалите их строки из .gitattributes вручную или выберите «Правка › Отменить», чтобы вернуть файлы, и попробуйте снова."
+          }
+        }
+      }
+    },
     "%@ %@" : {
       "localizations" : {
         "ru" : {
@@ -481,6 +491,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ обычно · %@ максимум для 95%%"
+          }
+        }
+      }
+    },
+    "%@ was changed in the file while you typed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ изменили в файле, пока вы печатали"
           }
         }
       }
@@ -3345,6 +3365,16 @@
         }
       }
     },
+    "Add Schedule" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить расписание"
+          }
+        }
+      }
+    },
     "Add Schedule…" : {
       "localizations" : {
         "ru" : {
@@ -4199,6 +4229,16 @@
         }
       }
     },
+    "Another schedule is now called “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другое расписание теперь называется «%@»"
+          }
+        }
+      }
+    },
     "Another server has this name." : {
       "localizations" : {
         "ru" : {
@@ -5029,6 +5069,16 @@
         }
       }
     },
+    "Browse All Versions…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все версии…"
+          }
+        }
+      }
+    },
     "Browser" : {
       "localizations" : {
         "ru" : {
@@ -5493,6 +5543,16 @@
         }
       }
     },
+    "Can’t turn on the schedules" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся включить расписания"
+          }
+        }
+      }
+    },
     "Can’t write the bug report" : {
       "localizations" : {
         "ru" : {
@@ -5615,6 +5675,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменить карантин…"
+          }
+        }
+      }
+    },
+    "Change Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить значение"
           }
         }
       }
@@ -5945,6 +6015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выбрать приложение"
+          }
+        }
+      }
+    },
+    "Choose Environment" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать окружение"
           }
         }
       }
@@ -7397,6 +7477,26 @@
         }
       }
     },
+    "Create Data Table" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать таблицу данных"
+          }
+        }
+      }
+    },
+    "Create It Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать заново"
+          }
+        }
+      }
+    },
     "Create Pull Request" : {
       "localizations" : {
         "ru" : {
@@ -8581,6 +8681,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Изменение блока"
+          }
+        }
+      }
+    },
+    "Edit Cell" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить ячейку"
+          }
+        }
+      }
+    },
+    "Edit Data Table" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить таблицу данных"
           }
         }
       }
@@ -10879,6 +10999,16 @@
         }
       }
     },
+    "Insert Column" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить столбец"
+          }
+        }
+      }
+    },
     "Insert Column After" : {
       "localizations" : {
         "ru" : {
@@ -10895,6 +11025,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вставить столбец слева"
+          }
+        }
+      }
+    },
+    "Insert Row" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить строку"
           }
         }
       }
@@ -11171,6 +11311,76 @@
         }
       }
     },
+    "It was added after you started editing. Give this schedule another name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его добавили, пока вы правили своё. Дайте этому расписанию другое название."
+          }
+        }
+      }
+    },
+    "It was changed after you opened this table. Saving would replace those changes with this table." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его изменили после того, как вы открыли эту таблицу. Сохранение заменит те изменения этой таблицей."
+          }
+        }
+      }
+    },
+    "It was changed after you started editing it. Saving would replace those changes with yours." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его изменили, пока вы его правили. Сохранение заменит те изменения вашими."
+          }
+        }
+      }
+    },
+    "It was changed somewhere else afterwards. Going back now would replace those changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его изменили в другом месте уже после этого. Если вернуть его сейчас, эти изменения пропадут."
+          }
+        }
+      }
+    },
+    "It was created after you opened this table. Saving would replace what it holds with this table." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его создали после того, как вы открыли эту таблицу. Сохранение заменит его содержимое этой таблицей."
+          }
+        }
+      }
+    },
+    "It was deleted after you opened this table. Saving creates it again with this table." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его удалили после того, как вы открыли эту таблицу. Сохранение создаст его заново с этой таблицей."
+          }
+        }
+      }
+    },
+    "It was deleted after you started editing it. Saving brings it back with your changes." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Его удалили, пока вы его правили. Сохранение вернёт его с вашими изменениями."
+          }
+        }
+      }
+    },
     "It will use the mouse and keyboard of this Mac until it ends. Press Esc twice to stop it. Without an answer in a minute, it isn’t run." : {
       "localizations" : {
         "ru" : {
@@ -11227,6 +11437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Хранится в Связке ключей этого Mac для этого проекта и отправляется только в %@. JEVision никогда его не показывает."
+          }
+        }
+      }
+    },
+    "It’s no longer set in the file. You typed “%@”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле этого значения больше нет. Вы ввели «%@»."
           }
         }
       }
@@ -11450,6 +11670,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Хранить видео прогонов"
+          }
+        }
+      }
+    },
+    "Keep the File as It Is" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить файл как есть"
+          }
+        }
+      }
+    },
+    "Keep the File’s Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить значение из файла"
           }
         }
       }
@@ -12660,6 +12900,16 @@
         }
       }
     },
+    "Move the files of deleted notes, and files taken off notes, to the Trash. Edit › Undo puts them back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить в Корзину файлы удалённых заметок и файлы, убранные из заметок. Правка › Отменить вернёт их."
+          }
+        }
+      }
+    },
     "Move to Trash" : {
       "localizations" : {
         "ru" : {
@@ -13596,6 +13846,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет"
+          }
+        }
+      }
+    },
+    "None of the versions committed to Git open either, but you can still look through them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закоммиченные в Git версии тоже не открываются, но их можно просмотреть."
           }
         }
       }
@@ -15624,6 +15884,16 @@
         }
       }
     },
+    "Pick any committed version of the test to put back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать любую закоммиченную версию теста, чтобы вернуть её."
+          }
+        }
+      }
+    },
     "Pick what to connect “%@” to, then press Return" : {
       "localizations" : {
         "en" : {
@@ -16250,6 +16520,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вернуть файл к виду после этого коммита. Правка › Отменить вернёт как было."
+          }
+        }
+      }
+    },
+    "Put the test back as it was in that commit. Edit › Undo brings back the file as it is now." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть тест к виду из этого коммита. Правка › Отменить вернёт файл, какой он сейчас."
           }
         }
       }
@@ -17042,6 +17322,36 @@
         }
       }
     },
+    "Remove Unused Note Files" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удаление ненужных файлов заметок"
+          }
+        }
+      }
+    },
+    "Remove Unused Note Files (%@)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить ненужные файлы заметок (%@)"
+          }
+        }
+      }
+    },
+    "Remove Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать значение"
+          }
+        }
+      }
+    },
     "Remove from Board" : {
       "localizations" : {
         "en" : {
@@ -17150,6 +17460,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переименовать доску"
+          }
+        }
+      }
+    },
+    "Rename Column" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать столбец"
           }
         }
       }
@@ -17290,12 +17610,42 @@
         }
       }
     },
+    "Replace the Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить изменения"
+          }
+        }
+      }
+    },
     "Replace the reference image with this screenshot" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменить эталон этим снимком"
+          }
+        }
+      }
+    },
+    "Replace with This Table" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить этой таблицей"
+          }
+        }
+      }
+    },
+    "Replace with Your Changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменить вашими изменениями"
           }
         }
       }
@@ -17588,6 +17938,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Восстановить настройки по умолчанию…"
+          }
+        }
+      }
+    },
+    "Restore Last Committed Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть последнюю закоммиченную версию"
           }
         }
       }
@@ -18600,6 +18960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохранить из ответа"
+          }
+        }
+      }
+    },
+    "Save It Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить заново"
           }
         }
       }
@@ -21996,6 +22366,46 @@
         }
       }
     },
+    "The file now has “%@”. You typed “%@”." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас в файле «%1$@». Вы ввели «%2$@»."
+          }
+        }
+      }
+    },
+    "The files are in the Trash, but .gitattributes still lists them" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы в Корзине, но в .gitattributes остались их строки"
+          }
+        }
+      }
+    },
+    "The files that went to the Trash are still listed in .gitattributes: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы, перемещённые в Корзину, всё ещё указаны в .gitattributes: %@"
+          }
+        }
+      }
+    },
+    "The file’s version can’t be shown: %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось показать версию из файла: %@."
+          }
+        }
+      }
+    },
     "The first value is the first column of the first row, empty when there are no rows. With an expected result, the query runs again until it holds or the time limit passes." : {
       "localizations" : {
         "ru" : {
@@ -22082,6 +22492,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Язык названий месяцев и дней недели"
+          }
+        }
+      }
+    },
+    "The last committed version that opens is from “%@”, %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последняя закоммиченная версия, которая открывается, — из коммита «%1$@», %2$@."
           }
         }
       }
@@ -22362,6 +22782,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Одна и та же часть %@ изменилась и здесь, и на сервере, поэтому изменения не объединить автоматически. Ничего не изменено: файлы остались как были."
+          }
+        }
+      }
+    },
+    "The schedules are saved, but they don’t run on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания сохранены, но на этом Mac они не работают"
           }
         }
       }
@@ -23334,6 +23764,16 @@
         }
       }
     },
+    "This project isn’t in Git, so there’s no earlier version of the test to bring back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот проект не в Git, поэтому прежней версии теста, которую можно вернуть, нет."
+          }
+        }
+      }
+    },
     "This project isn’t on GitHub" : {
       "localizations" : {
         "ru" : {
@@ -23440,6 +23880,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Этот тест ни разу не смотрит на экран, поэтому не заметит неверный результат."
+          }
+        }
+      }
+    },
+    "This test was never committed to Git, so there’s no earlier version of it to bring back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот тест ни разу не закоммичен в Git, поэтому прежней версии, которую можно вернуть, нет."
           }
         }
       }
@@ -23590,6 +24040,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы сообщать, когда тест по расписанию не прошёл или был пропущен"
+          }
+        }
+      }
+    },
+    "To try again, click Turn On." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы попробовать ещё раз, нажмите «Включить»."
           }
         }
       }
@@ -24316,6 +24776,16 @@
         }
       }
     },
+    "Use What I Typed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить введённое"
+          }
+        }
+      }
+    },
     "Use a Saved Area" : {
       "localizations" : {
         "ru" : {
@@ -24352,6 +24822,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Применить ко всем"
+          }
+        }
+      }
+    },
+    "Use the File’s Version" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Взять версию из файла"
           }
         }
       }
@@ -37496,6 +37976,16 @@
         }
       }
     },
+    "macOS didn’t accept the schedules. In System Settings, open General › Login Items & Extensions and check that JEVision is allowed in the background." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не приняла расписания. В Системных настройках откройте «Основные» › «Объекты входа и расширения» и проверьте, что JEVision разрешено работать в фоне."
+          }
+        }
+      }
+    },
     "macOS installs it with the Command Line Developer Tools, in a few minutes." : {
       "localizations" : {
         "ru" : {
@@ -37506,12 +37996,32 @@
         }
       }
     },
+    "macOS said: “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответ macOS: «%@»"
+          }
+        }
+      }
+    },
     "macOS still remembers an older copy of JEVision, so its switch doesn’t work: press Reset and Allow, then turn JEVision on." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS помнит старую копию JEVision, поэтому её переключатель не работает: нажмите «Сбросить и разрешить», затем включите JEVision."
+          }
+        }
+      }
+    },
+    "macOS was still stopping the previous version of these schedules." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS ещё не остановила прежнюю версию этих расписаний."
           }
         }
       }
@@ -45682,6 +46192,16 @@
         }
       }
     },
+    "“%@” couldn’t be changed back" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось вернуть файл «%@»"
+          }
+        }
+      }
+    },
     "“%@” couldn’t start" : {
       "localizations" : {
         "ru" : {
@@ -45708,6 +46228,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расписание «%@»: тесты не прошли"
+          }
+        }
+      }
+    },
+    "“%@” has changed since “%@”" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл «%1$@» изменился после действия «%2$@»"
           }
         }
       }
@@ -45804,6 +46334,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» — не адрес получателя."
+          }
+        }
+      }
+    },
+    "“%@” was changed somewhere else" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» изменили в другом месте"
+          }
+        }
+      }
+    },
+    "“%@” was created somewhere else" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» создали в другом месте"
+          }
+        }
+      }
+    },
+    "“%@” was deleted somewhere else" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» удалили в другом месте"
           }
         }
       }

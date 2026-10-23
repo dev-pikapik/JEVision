@@ -1,7 +1,9 @@
 //! Notes: what they are about, the discussion under them, the files that come with them, the
 //! people they mention and how a note changed over the history of its test.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::Path;
 
 use crate::decode::parse;
 use crate::model::{
@@ -242,6 +244,108 @@ pub fn attachment_file_name(wanted: &str, taken: &[String]) -> String {
         .chain((2..).map(|n| format!("{stem} {n}{ext}")))
         .find(|name| !taken.contains(&name.to_lowercase()))
         .expect("an unused name always exists")
+}
+
+/// Files in the notes folder of a test that no note holds any more: what is left of deleted notes
+/// and files taken off a note. They are kept so that Undo can bring a note back with its files.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UnusedNoteFiles {
+    /// Each file or folder, starting the way the test's path does, in order.
+    pub paths: Vec<String>,
+    /// How many bytes they take together.
+    pub size: u64,
+}
+
+/// The files and folders in the notes folder of `test` that no file attachment of a note in
+/// `flow` points at; the folder of a note that is gone counts as a whole. Hidden files, like the
+/// ones Finder leaves, and anything reached through a link are left alone.
+pub fn unused_note_files(test: &str, flow: &Flow) -> UnusedNoteFiles {
+    let assets = assets_folder(test);
+    let folder = format!("{assets}/{NOTES_FOLDER}");
+    let mut unused = UnusedNoteFiles::default();
+    let is_folder = |path: &str| fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());
+    if !is_folder(&assets) || !is_folder(&folder) {
+        return unused;
+    }
+    // Files are told apart by what they are on the disk, not by name: a disk that ignores case
+    // or how an accent is written opens the same file by more than one name.
+    let mut held: HashMap<(u64, u64), HashSet<(u64, u64)>> = HashMap::new();
+    for note in &flow.canvas.notes {
+        let Some(own) = note_files_folder(test, &note.id).and_then(|f| identity(&f)) else {
+            continue;
+        };
+        let files = note
+            .attachments
+            .iter()
+            .filter(|a| a.kind == AttachmentKind::File);
+        held.entry(own).or_default().extend(
+            files.filter_map(|a| {
+                note_file_path(test, &note.id, &a.value).and_then(|f| identity(&f))
+            }),
+        );
+    }
+    for (path, meta) in entries(&folder) {
+        match held.get(&id_of(&meta)) {
+            None => unused.add(path, &meta),
+            Some(files) if meta.is_dir() => {
+                for (path, meta) in entries(&path) {
+                    if !files.contains(&id_of(&meta)) {
+                        unused.add(path, &meta);
+                    }
+                }
+            }
+            Some(_) => {}
+        }
+    }
+    unused.paths.sort();
+    unused
+}
+
+impl UnusedNoteFiles {
+    fn add(&mut self, path: String, meta: &fs::Metadata) {
+        self.size += size(Path::new(&path), meta);
+        self.paths.push(path);
+    }
+}
+
+/// The entries of `folder` that aren't hidden, each with what it is itself: a link isn't followed.
+/// Names that aren't text are left out, so nothing is done to them.
+fn entries(folder: &str) -> Vec<(String, fs::Metadata)> {
+    let Ok(found) = fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    found
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().into_string().ok()?;
+            let meta = entry.metadata().ok()?;
+            (!name.starts_with('.')).then(|| (format!("{folder}/{name}"), meta))
+        })
+        .collect()
+}
+
+/// How many bytes the files in `path` take, itself included, without following links.
+fn size(path: &Path, meta: &fs::Metadata) -> u64 {
+    if !meta.is_dir() {
+        return meta.len();
+    }
+    let Ok(found) = fs::read_dir(path) else {
+        return 0;
+    };
+    found
+        .flatten()
+        .filter_map(|entry| Some((entry.path(), entry.metadata().ok()?)))
+        .map(|(path, meta)| size(&path, &meta))
+        .sum()
+}
+
+fn identity(path: &str) -> Option<(u64, u64)> {
+    fs::symlink_metadata(path).ok().map(|meta| id_of(&meta))
+}
+
+fn id_of(meta: &fs::Metadata) -> (u64, u64) {
+    use std::os::unix::fs::MetadataExt;
+    (meta.dev(), meta.ino())
 }
 
 /// A GitHub issue or pull request a web address points to.
@@ -683,6 +787,143 @@ mod tests {
         let long = format!("{}.pdf", "я".repeat(300));
         let name = attachment_file_name(&long, &[]);
         assert!(name.len() <= MAX_NAME && name.ends_with(".pdf") && is_safe_name(&name));
+    }
+
+    /// A scratch folder for the files of `a.flow.json`, and the test's path in it.
+    fn scratch(name: &str) -> (std::path::PathBuf, String) {
+        let dir = std::env::temp_dir().join(format!(
+            "jevision-unused-notes-{name}-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let test = dir.join("a.flow.json").to_str().unwrap().to_owned();
+        (dir, test)
+    }
+
+    fn put(dir: &Path, path: &str, bytes: usize) {
+        let file = dir.join(path);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, vec![0; bytes]).unwrap();
+    }
+
+    fn file(value: &str) -> Attachment {
+        Attachment {
+            kind: AttachmentKind::File,
+            value: value.into(),
+        }
+    }
+
+    #[test]
+    fn unused_note_files_are_those_no_note_holds() {
+        let (dir, test) = scratch("held");
+        let (mut f, note) = with_note();
+        assert_eq!(
+            unused_note_files(&test, &f),
+            UnusedNoteFiles::default(),
+            "no notes folder yet"
+        );
+        put(&dir, "a.assets/notes/note/shot.png", 10);
+        put(&dir, "a.assets/notes/note/old.mov", 100);
+        put(&dir, "a.assets/notes/note/.DS_Store", 1);
+        put(&dir, "a.assets/notes/deleted/clip.mp4", 1000);
+        put(&dir, "a.assets/notes/deleted/more/notes.txt", 5);
+        put(&dir, "a.assets/notes/stray.txt", 7);
+        put(&dir, "a.assets/notes/.DS_Store", 1);
+        put(&dir, "a.assets/cover.png", 3);
+        // Written the way a Mac names files, while the test spells the accent as one letter.
+        put(&dir, "a.assets/notes/note/cafe\u{301}.png", 20);
+        assert!(f.attach(&note, file("shot.png")));
+        assert!(f.attach(&note, file("caf\u{e9}.png")));
+        assert!(f.attach(&note, file("Missing.png")));
+        assert!(f.attach(
+            &note,
+            Attachment {
+                kind: AttachmentKind::Link,
+                value: "https://example.com/old.mov".into(),
+            }
+        ));
+
+        let unused = unused_note_files(&test, &f);
+        let folder = format!("{}/a.assets/notes", dir.to_str().unwrap());
+        let mut expected = vec![
+            format!("{folder}/deleted"),
+            format!("{folder}/note/old.mov"),
+            format!("{folder}/stray.txt"),
+        ];
+        let mut size = 1000 + 5 + 100 + 7;
+        // A disk that keeps accents as written has two names; a Mac's has one file.
+        if !dir.join("a.assets/notes/note/caf\u{e9}.png").exists() {
+            expected.insert(1, format!("{folder}/note/cafe\u{301}.png"));
+            size += 20;
+        }
+        expected.sort();
+        assert_eq!(
+            unused,
+            UnusedNoteFiles {
+                paths: expected,
+                size
+            }
+        );
+
+        // Taken off the note, a file is unused; the folder of a note that is gone, all of it.
+        assert!(f.detach(&note, &file("shot.png")));
+        assert!(
+            unused_note_files(&test, &f)
+                .paths
+                .contains(&format!("{folder}/note/shot.png"))
+        );
+        f.canvas.notes.clear();
+        assert_eq!(
+            unused_note_files(&test, &f).paths,
+            [
+                format!("{folder}/deleted"),
+                format!("{folder}/note"),
+                format!("{folder}/stray.txt")
+            ]
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unused_note_files_never_reach_outside_the_notes_folder() {
+        use std::os::unix::fs::symlink;
+        let (dir, test) = scratch("outside");
+        let (mut f, note) = with_note();
+        put(&dir, "a.assets/notes/note/shot.png", 10);
+        put(&dir, "a.assets/notes/deleted/clip.mp4", 1000);
+        put(&dir, "elsewhere/big.mov", 5000);
+        // Names no attachment or note can have don't hold anything elsewhere, or reach out.
+        f.canvas.notes[0].attachments = vec![file("../deleted/clip.mp4"), file("shot.png")];
+        let mut odd = f.canvas.notes[0].clone();
+        odd.id = "..".into();
+        odd.attachments = vec![file("a.assets/notes/deleted")];
+        f.canvas.notes.push(odd);
+        assert_eq!(f.canvas.notes[0].id, note);
+        // A link is removed as itself, never what it points at.
+        symlink(dir.join("elsewhere"), dir.join("a.assets/notes/away")).unwrap();
+        let link = fs::symlink_metadata(dir.join("a.assets/notes/away"))
+            .unwrap()
+            .len();
+
+        let folder = format!("{}/a.assets/notes", dir.to_str().unwrap());
+        assert_eq!(
+            unused_note_files(&test, &f),
+            UnusedNoteFiles {
+                paths: vec![format!("{folder}/away"), format!("{folder}/deleted")],
+                size: link + 1000
+            }
+        );
+
+        // Notes folders reached through a link belong to something else.
+        fs::rename(dir.join("a.assets"), dir.join("real.assets")).unwrap();
+        symlink(dir.join("real.assets"), dir.join("a.assets")).unwrap();
+        assert_eq!(unused_note_files(&test, &f), UnusedNoteFiles::default());
+        fs::create_dir(dir.join("b.assets")).unwrap();
+        symlink(dir.join("real.assets/notes"), dir.join("b.assets/notes")).unwrap();
+        let b = dir.join("b.flow.json").to_str().unwrap().to_owned();
+        assert_eq!(unused_note_files(&b, &f), UnusedNoteFiles::default());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

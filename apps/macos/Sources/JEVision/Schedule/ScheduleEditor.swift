@@ -8,8 +8,20 @@ struct ScheduleDraft: Equatable {
   enum Tests: Hashable { case all, folder, files }
   enum Repeat: Hashable { case daily, weekdays, days, hours }
 
-  /// Name of the schedule being changed; `nil` for a new one.
-  var originalName: String?
+  /// What could keep the draft from being saved as it is: something changed in the schedule
+  /// file since the draft was made.
+  enum Conflict: Equatable {
+    /// The schedule being changed is different in the file now.
+    case changed
+    /// The schedule being changed is gone from the file.
+    case removed
+    /// Another schedule has the draft's name now.
+    case nameTaken
+  }
+
+  /// The schedule being changed, as it was when the draft was made; `nil` for a new one.
+  var original: ProjectSchedule?
+  var originalName: String? { original?.name }
   var name: String
   var tests = Tests.all
   var folder = ""
@@ -29,7 +41,7 @@ struct ScheduleDraft: Equatable {
   }
 
   init(_ schedule: ProjectSchedule) {
-    originalName = schedule.name
+    original = schedule
     name = schedule.name
     switch schedule.tests {
     case .all: tests = .all
@@ -64,6 +76,16 @@ struct ScheduleDraft: Equatable {
     return ProjectSchedule(
       name: name.trimmingCharacters(in: .whitespaces), tests: tests, repeats: repeats, hour: hour, minute: minute,
       environment: environment, video: video)
+  }
+
+  /// What changed in `all`, the schedules the file holds now, that saving `schedule` in place of
+  /// the one the draft was made from would overwrite or clash with.
+  func conflict(saving schedule: ProjectSchedule, in all: [ProjectSchedule]) -> Conflict? {
+    let name = schedule.name.lowercased()
+    if all.contains(where: { $0.name.lowercased() == name && $0.name != originalName }) { return .nameTaken }
+    guard let original else { return nil }
+    guard let now = all.first(where: { $0.name == original.name }) else { return .removed }
+    return now == original ? nil : .changed
   }
 
   /// The time of day as a date today, for the time picker.

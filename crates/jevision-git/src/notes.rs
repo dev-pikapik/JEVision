@@ -59,4 +59,57 @@ impl Repo {
         self.run(&["lfs", "track", "--", spec])?;
         Ok(())
     }
+
+    /// Drops the lines of `.gitattributes` that made Git LFS take only the files at `paths`, or
+    /// files inside the folders at `paths`, once they are gone: the lines [`Self::lfs_track`]
+    /// wrote for them. Lines that take other files too, like `*.mp4`, stay. Works without LFS.
+    pub fn lfs_untrack(&self, paths: &[String]) -> Result<(), GitError> {
+        let gone = paths
+            .iter()
+            .map(|p| pathspec(p))
+            .collect::<Result<Vec<_>, _>>()?;
+        let failed = |e: std::io::Error| GitError::Failed {
+            message: e.to_string(),
+        };
+        let file = self.dir.join(".gitattributes");
+        let text = match std::fs::read_to_string(&file) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => return Err(failed(e)),
+        };
+        let kept: String = text
+            .split_inclusive('\n')
+            .filter(|line| {
+                !lfs_file(line).is_some_and(|path| {
+                    gone.iter().any(|g| {
+                        path.strip_prefix(g)
+                            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+                    })
+                })
+            })
+            .collect();
+        if kept.len() == text.len() {
+            return Ok(());
+        }
+        crate::atomic::write(&file, kept).map_err(failed)
+    }
+}
+
+/// The one file a `.gitattributes` line hands to Git LFS, written the way `git lfs track` writes
+/// it; `None` for any other line, like a comment or a pattern that matches more than one file.
+fn lfs_file(line: &str) -> Option<String> {
+    let mut fields = line.split_whitespace();
+    let pattern = fields.next()?;
+    if pattern.starts_with('#') || !fields.any(|f| f == "filter=lfs") {
+        return None;
+    }
+    let path = pattern
+        .strip_prefix('/')
+        .unwrap_or(pattern)
+        .replace("[[:space:]]", " ")
+        .replace("\\#", "#");
+    // Without a slash a pattern matches the name in every folder.
+    let one = (pattern.starts_with('/') || path.contains('/'))
+        && !path.contains(['*', '?', '[', '\\', '"']);
+    one.then_some(path)
 }

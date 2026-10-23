@@ -5,7 +5,7 @@ use std::path::{Component, Path};
 
 use jevision_core::{
     Attachment, Flow, IssueRef, Note, NoteAnchor, NoteEvent, NoteEventKind, NoteVersion,
-    TEST_SUFFIX,
+    TEST_SUFFIX, UnusedNoteFiles,
 };
 use jevision_git::{GitError, GitHubRepo, IssueState, IssueStatus};
 
@@ -106,6 +106,12 @@ pub fn note_file_path(test: String, note: String, name: String) -> Option<String
     jevision_core::note_file_path(&test, &note, &name)
 }
 
+/// The files in the notes folder of `test` that no note of `flow` holds any more, and their size.
+#[uniffi::export]
+pub fn note_unused_files(test: String, flow: Flow) -> UnusedNoteFiles {
+    jevision_core::unused_note_files(&test, &flow)
+}
+
 /// The name to save a file given as `wanted` under in a note's folder where `taken` names are
 /// already.
 #[uniffi::export]
@@ -185,6 +191,12 @@ pub fn git_lfs_tracks(project: String, path: String) -> Result<bool, GitError> {
 #[uniffi::export]
 pub fn git_lfs_track(project: String, path: String) -> Result<(), GitError> {
     repo(&project)?.lfs_track(&path)
+}
+
+/// Drops the lines of `.gitattributes` that made Git LFS take only the files at `paths`, now gone.
+#[uniffi::export]
+pub fn git_lfs_untrack(project: String, paths: Vec<String>) -> Result<(), GitError> {
+    repo(&project)?.lfs_untrack(&paths)
 }
 
 /// What happened to note `note` of `test` over the history of the test file in git, the newest
@@ -284,6 +296,12 @@ pub fn folder_notes(project: String, folder: String) -> Vec<FolderNote> {
         }
     }
     found
+}
+
+#[uniffi::remote(Record)]
+pub struct UnusedNoteFiles {
+    pub paths: Vec<String>,
+    pub size: u64,
 }
 
 #[uniffi::remote(Record)]

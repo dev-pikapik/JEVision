@@ -124,11 +124,11 @@ extension ProjectStore {
 
   private func registerUndo(of accepted: AcceptedReference, in root: URL, undoManager: UndoManager?) {
     let action = String(localized: "Accept as New Reference")
-    undoManager?.registerUndo(withTarget: self) { store in
+    undoManager?.registerUndo(withTarget: self) { [weak undoManager] store in
       MainActor.assumeIsolated {
         guard (try? ReferenceAcceptance.undo(accepted, in: root)) != nil else { return }
         store.referencesChanged()
-        undoManager?.registerUndo(withTarget: store) { store in
+        undoManager?.registerUndo(withTarget: store) { [weak undoManager] store in
           MainActor.assumeIsolated {
             guard let again = try? ReferenceAcceptance.redo(accepted, in: root) else { return }
             store.referencesChanged()

@@ -167,7 +167,7 @@ final class ProjectBoards {
   private func put(_ new: Board, in name: String, replacing old: Board, action: String, undoManager: UndoManager?) throws {
     try write(new, to: name)
     if name == current { show(new) }
-    undoManager?.registerUndo(withTarget: self) { boards in
+    undoManager?.registerUndo(withTarget: self) { [weak undoManager] boards in
       MainActor.assumeIsolated {
         try? boards.put(old, in: name, replacing: new, action: action, undoManager: undoManager)
       }

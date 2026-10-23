@@ -5,9 +5,35 @@ import SwiftUI
 struct SchedulesSheet: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.dismiss) private var dismiss
+  /// The sheet's own Undo: changes are saved at once, while the sheet stays open.
+  @Environment(\.undoManager) private var undoManager
   /// The schedule being added or changed.
   @State private var editing: ScheduleDraft?
   @State private var failure: String?
+  /// Why macOS didn't take up the schedules, after saving them or on Turn On.
+  @State private var turnOnFailure: TurnOnFailure?
+  /// What changed in the file while a schedule was being edited, when that stopped saving it.
+  @State private var conflict: Conflict?
+
+  private struct TurnOnFailure {
+    /// The schedules were saved just before.
+    let saved: Bool
+    let reason: String
+    /// What macOS said, in its own words.
+    let detail: String?
+
+    init(saved: Bool, _ error: any Error) {
+      self.saved = saved
+      reason = error.localizedDescription
+      detail = (error as? ScheduleAgents.Failure)?.detail
+    }
+  }
+
+  private struct Conflict {
+    let kind: ScheduleDraft.Conflict
+    let draft: ScheduleDraft
+    let saved: ProjectSchedule
+  }
 
   private var schedules: ProjectSchedules { project.schedules }
 
@@ -15,7 +41,7 @@ struct SchedulesSheet: View {
     Group {
       if let draft = editing {
         ScheduleEditor(draft: draft, others: schedules.all.filter { $0.name != draft.originalName }) { saved in
-          save(replacing: draft.originalName, with: saved)
+          commit(draft, as: saved)
         } cancel: {
           editing = nil
         }
@@ -32,6 +58,66 @@ struct SchedulesSheet: View {
       Button("OK") {}
     } message: {
       Text(failure ?? "")
+    }
+    .alert(
+      turnOnFailureTitle,
+      isPresented: Binding(get: { turnOnFailure != nil }, set: { if !$0 { turnOnFailure = nil } }),
+      presenting: turnOnFailure
+    ) { _ in
+      Button("OK") {}
+    } message: { failure in
+      Text(verbatim: turnOnFailureMessage(failure))
+    }
+    .alert(
+      conflictTitle, isPresented: Binding(get: { conflict != nil }, set: { if !$0 { conflict = nil } }),
+      presenting: conflict
+    ) { conflict in
+      switch conflict.kind {
+      case .changed:
+        Button("Replace with Your Changes", role: .destructive) {
+          commit(conflict.draft, as: conflict.saved, anyway: true)
+        }
+      case .removed:
+        Button("Save It Again") { commit(conflict.draft, as: conflict.saved, anyway: true) }
+      case .nameTaken: EmptyView()
+      }
+      Button("Discard Changes", role: .destructive) { editing = nil }
+      Button("Keep Editing", role: .cancel) {}
+    } message: { conflict in
+      switch conflict.kind {
+      case .changed:
+        Text("It was changed after you started editing it. Saving would replace those changes with yours.")
+      case .removed: Text("It was deleted after you started editing it. Saving brings it back with your changes.")
+      case .nameTaken: Text("It was added after you started editing. Give this schedule another name.")
+      }
+    }
+  }
+
+  private var turnOnFailureTitle: Text {
+    turnOnFailure?.saved == false
+      ? Text("Can’t turn on the schedules") : Text("The schedules are saved, but they don’t run on this Mac")
+  }
+
+  private func turnOnFailureMessage(_ failure: TurnOnFailure) -> String {
+    var lines = [failure.reason]
+    if offersTurnOn { lines.append(String(localized: "To try again, click Turn On.")) }
+    if let detail = failure.detail { lines.append(String(localized: "macOS said: “\(detail)”")) }
+    return lines.joined(separator: "\n\n")
+  }
+
+  /// The list shows Turn On: there are schedules this copy can run, and they don't run yet.
+  private var offersTurnOn: Bool {
+    !schedules.all.isEmpty && !schedules.isOn && schedules.problem == nil
+      && CommandLineTool.bundled.unavailableReason == nil
+  }
+
+  private var conflictTitle: Text {
+    guard let conflict else { return Text(verbatim: "") }
+    let name = conflict.draft.originalName ?? conflict.saved.name
+    return switch conflict.kind {
+    case .changed: Text("“\(name)” was changed somewhere else")
+    case .removed: Text("“\(name)” was deleted somewhere else")
+    case .nameTaken: Text("Another schedule is now called “\(conflict.saved.name)”")
     }
   }
 
@@ -61,7 +147,7 @@ struct SchedulesSheet: View {
               ScheduleRow(schedule: schedule, lastRun: schedules.lastRun(of: schedule.name)) {
                 editing = ScheduleDraft(schedule)
               } delete: {
-                save(replacing: schedule.name, with: nil)
+                save(replacing: schedule.name, with: nil, action: String(localized: "Delete Schedule"))
               }
             }
           }
@@ -97,9 +183,15 @@ struct SchedulesSheet: View {
         Label("These schedules don’t run on this Mac yet.", systemImage: "pause.circle")
         Spacer()
         Button("Turn On") {
-          do { try schedules.turnOn() } catch { failure = error.localizedDescription }
+          Task {
+            do {
+              try await schedules.turnOn()
+            } catch {
+              turnOnFailure = TurnOnFailure(saved: false, error)
+            }
+          }
         }
-        .disabled(schedules.problem != nil)
+        .disabled(schedules.problem != nil || schedules.isChanging)
       }
     }
   }
@@ -117,9 +209,27 @@ struct SchedulesSheet: View {
     return (2...).lazy.map { "\(base) \($0)" }.first { !taken.contains($0.lowercased()) }!
   }
 
+  /// Saves the schedule edited from `draft` as `saved`. When the file changed since in a way that
+  /// saving would overwrite or clash with, the person chooses first, unless `anyway`.
+  private func commit(_ draft: ScheduleDraft, as saved: ProjectSchedule, anyway: Bool = false) {
+    schedules.reload()
+    if !anyway, schedules.problem == nil, let kind = draft.conflict(saving: saved, in: schedules.all) {
+      conflict = Conflict(kind: kind, draft: draft, saved: saved)
+      return
+    }
+    let action = draft.original == nil ? String(localized: "Add Schedule") : String(localized: "Edit Schedule")
+    save(replacing: draft.originalName, with: saved, action: action)
+  }
+
   /// Puts `saved` in place of the schedule named `name`, or at the end; without `saved`,
-  /// deletes that schedule.
-  private func save(replacing name: String?, with saved: ProjectSchedule?) {
+  /// deletes that schedule. The change is made to what the file holds now, as one step for Undo
+  /// named `action`, so changes made to the file somewhere else are kept.
+  private func save(replacing name: String?, with saved: ProjectSchedule?, action: String) {
+    schedules.reload()
+    if let problem = schedules.problem {
+      failure = problem
+      return
+    }
     var all = schedules.all
     if let index = all.firstIndex(where: { $0.name == name }) {
       if let saved { all[index] = saved } else { all.remove(at: index) }
@@ -127,8 +237,15 @@ struct SchedulesSheet: View {
       all.append(saved)
     }
     do {
-      try schedules.save(all)
+      let turningOn = try schedules.save(all, action: action, undoManager: undoManager)
       editing = nil
+      Task {
+        do {
+          try await turningOn.value
+        } catch {
+          turnOnFailure = TurnOnFailure(saved: true, error)
+        }
+      }
     } catch {
       failure = error.localizedDescription
     }

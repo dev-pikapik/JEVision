@@ -318,6 +318,37 @@ fn history_follows_a_test_and_a_folder_and_restores_old_versions() {
 }
 
 #[test]
+fn restoring_replaces_the_file_in_one_step() {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let scratch = Scratch::new("restore-whole");
+    let (_, repo) = repository(&scratch);
+    let qa = &repo.dir;
+    write(qa, "login.flow.json", "good");
+    let commit = repo.commit(&["login.flow.json".into()], "Good").unwrap();
+    write(qa, "login.flow.json", "broken");
+    let file = qa.join("login.flow.json");
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+    let before = fs::metadata(&file).unwrap().ino();
+    // Whoever is reading the broken file keeps reading all of it, not a mix of the two.
+    let reader = fs::File::open(&file).unwrap();
+
+    repo.restore(&commit, "login.flow.json", "login.flow.json")
+        .unwrap();
+    assert_eq!(read(qa, "login.flow.json"), "good");
+    assert_ne!(fs::metadata(&file).unwrap().ino(), before);
+    assert_eq!(std::io::read_to_string(reader).unwrap(), "broken");
+    assert_eq!(
+        fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    let names: Vec<_> = fs::read_dir(qa)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(names, ["login.flow.json"], "no temporary file is left");
+}
+
+#[test]
 fn branches_are_listed_created_and_switched() {
     let scratch = Scratch::new("branches");
     let (_, repo) = repository(&scratch);
@@ -1596,6 +1627,55 @@ fn large_files_can_go_to_lfs_only_when_asked_and_only_as_themselves() {
         ));
         assert_eq!(read(qa, ".gitattributes"), before, "nothing was written");
     }
+}
+
+#[test]
+fn lfs_lines_go_with_the_files_they_alone_took() {
+    let scratch = Scratch::new("lfs-untrack");
+    let (_, repo) = repository(&scratch);
+    let qa = &repo.dir;
+    repo.lfs_untrack(&["a.assets/notes/n".into()]).unwrap();
+    assert!(!qa.join(".gitattributes").exists(), "nothing is made");
+    let lfs = "filter=lfs diff=lfs merge=lfs -text";
+    write(
+        qa,
+        ".gitattributes",
+        &format!(
+            "# a.assets/notes/n/x.mp4 {lfs}\r\n\
+             *.psd {lfs}\r\n\
+             a.assets/notes/n/two[[:space:]]words.mp4 {lfs}\r\n\
+             /a.assets/notes/n/sub/clip.mov {lfs}\r\n\
+             a.assets/notes/n/notes.txt text\r\n\
+             a.assets/notes/n2/clip.mp4 {lfs}\r\n\
+             a.assets/notes/m/clip.mp4 {lfs}\r\n\
+             a.assets/notes/m/\\#1.mp4 {lfs}\r\n\
+             a.assets/notes/m/kept.mp4 {lfs}\r\n\
+             a.assets/notes/m/*.mp4 {lfs}\r\n\
+             clip.mp4 {lfs}"
+        ),
+    );
+    let gone = [
+        "a.assets/notes/n".to_owned(),
+        "a.assets/notes/m/clip.mp4".to_owned(),
+        "a.assets/notes/m/#1.mp4".to_owned(),
+        "clip.mp4".to_owned(),
+    ];
+    repo.lfs_untrack(&gone).unwrap();
+    let kept = format!(
+        "# a.assets/notes/n/x.mp4 {lfs}\r\n\
+         *.psd {lfs}\r\n\
+         a.assets/notes/n/notes.txt text\r\n\
+         a.assets/notes/n2/clip.mp4 {lfs}\r\n\
+         a.assets/notes/m/kept.mp4 {lfs}\r\n\
+         a.assets/notes/m/*.mp4 {lfs}\r\n\
+         clip.mp4 {lfs}"
+    );
+    assert_eq!(read(qa, ".gitattributes"), kept);
+    assert!(matches!(
+        repo.lfs_untrack(&["../.gitattributes".into()]),
+        Err(GitError::Failed { .. })
+    ));
+    assert_eq!(read(qa, ".gitattributes"), kept);
 }
 
 #[test]

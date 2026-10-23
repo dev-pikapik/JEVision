@@ -218,7 +218,7 @@ impl DataTable {
                 expected: self.columns.len(),
             });
         }
-        fs::write(path, self.to_csv()).map_err(|e| DataError::Unwritable {
+        crate::atomic::write(path, self.to_csv()).map_err(|e| DataError::Unwritable {
             reason: e.to_string(),
         })
     }

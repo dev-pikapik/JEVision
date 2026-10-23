@@ -180,10 +180,12 @@ struct TestDetailsView: View {
       }
       .sheet(item: $settingValue) { value in
         if let environment = project.environments.current.selected?.name {
-          SetEnvironmentValueSheet(name: value.id, environment: environment)
+          SetEnvironmentValueSheet(name: value.id, environment: environment, undoManager: document.undoManager)
         }
       }
-      .sheet(isPresented: $addingEnvironment) { AddEnvironmentSheet(valueNames: requiredEnvValues(flow: flow)) }
+      .sheet(isPresented: $addingEnvironment) {
+        AddEnvironmentSheet(valueNames: requiredEnvValues(flow: flow), undoManager: document.undoManager)
+      }
     }
   }
 

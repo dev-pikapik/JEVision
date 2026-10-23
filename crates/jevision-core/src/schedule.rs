@@ -497,13 +497,8 @@ pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), Sche
             _ => Ok(()),
         };
     }
-    write_atomically(&file, &schedules_to_json(schedules)?)
+    crate::atomic::write(&file, &schedules_to_json(schedules)?)
         .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_FILE, &e))
-}
-
-fn write_atomically(file: &Path, text: &str) -> io::Result<()> {
-    let temporary = file.with_extension("json.tmp");
-    fs::write(&temporary, text).and_then(|()| fs::rename(&temporary, file))
 }
 
 /// The schedules with a run in `(since, now]`, not counting runs later than
@@ -686,7 +681,7 @@ impl ScheduleHistory {
         let text = serde_json::to_string_pretty(self).expect("a history always serializes to JSON");
         file.parent()
             .map_or(Ok(()), fs::create_dir_all)
-            .and_then(|()| write_atomically(&file, &text))
+            .and_then(|()| crate::atomic::write(&file, &text))
             .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_HISTORY_FILE, &e))
     }
 }

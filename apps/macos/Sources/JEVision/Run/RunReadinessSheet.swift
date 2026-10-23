@@ -6,6 +6,7 @@ struct RunReadinessSheet: View {
   @Environment(RunCenter.self) private var runs
   @Environment(PermissionsMonitor.self) private var monitor
   @Environment(ProjectStore.self) private var project
+  @Environment(\.undoManager) private var undoManager
   let request: RunCenter.Request
   @State private var settingSecret: SecretName?
   @State private var addingEnvironment = false
@@ -131,7 +132,7 @@ struct RunReadinessSheet: View {
       SetSecretSheet(name: secret.id, environment: missing.values.environment) { secretsVersion += 1 }
     }
     .sheet(isPresented: $addingEnvironment, onDismiss: { secretsVersion += 1 }) {
-      AddEnvironmentSheet(valueNames: values.values)
+      AddEnvironmentSheet(valueNames: values.values, undoManager: undoManager)
     }
   }
 }

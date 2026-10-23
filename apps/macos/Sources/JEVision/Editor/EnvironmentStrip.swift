@@ -7,6 +7,7 @@ import SwiftUI
 /// which secrets are set.
 struct EnvironmentStrip: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(\.undoManager) private var undoManager
   let flow: Flow
   @State private var open = false
 
@@ -42,7 +43,7 @@ struct EnvironmentStrip: View {
       .accessibilityLabel(Text("Environment"))
       .accessibilityValue(Text(verbatim: spoken(readout, snapshot: snapshot, unset: unset)))
       .accessibilityHint(Text("Opens the environment’s values and the secrets this test needs."))
-      .popover(isPresented: $open, arrowEdge: .bottom) { EnvironmentPanel(flow: flow) }
+      .popover(isPresented: $open, arrowEdge: .bottom) { EnvironmentPanel(flow: flow, undoManager: undoManager) }
     }
   }
 
@@ -62,6 +63,8 @@ struct EnvironmentStrip: View {
 private struct EnvironmentPanel: View {
   @Environment(ProjectStore.self) private var project
   let flow: Flow
+  /// The editor window's: the panel's changes are undone there, after the panel closes too.
+  let undoManager: UndoManager?
   @State private var settingSecret: SecretName?
   @State private var adding = false
   @State private var failure: String?
@@ -75,7 +78,7 @@ private struct EnvironmentPanel: View {
     Form {
       Section {
         if !snapshot.all.isEmpty {
-          Picker(selection: Binding(get: { snapshot.selected?.name ?? "" }, set: { project.environments.select($0) })) {
+          Picker(selection: Binding(get: { snapshot.selected?.name ?? "" }, set: { project.environments.select($0, undoManager: undoManager) })) {
             ForEach(snapshot.all, id: \.name) { Text(verbatim: $0.name).tag($0.name) }
           } label: {
             Text("Environment")
@@ -94,7 +97,11 @@ private struct EnvironmentPanel: View {
           ForEach(readout.values, id: \.name) { value in
             if let environment = readout.environment {
               LabeledContent {
-                ValueField(text: value.value ?? "") { save($0, named: value.name, in: environment) }
+                ValueField(name: value.name, text: value.value ?? "") {
+                  project.environments.value(value.name, in: environment)
+                } save: {
+                  save($0, named: value.name, in: environment)
+                }
                   .labelsHidden()
                   .accessibilityLabel(Text(verbatim: value.name))
               } label: {
@@ -154,12 +161,14 @@ private struct EnvironmentPanel: View {
     .sheet(item: $settingSecret) { secret in
       SetSecretSheet(name: secret.id, environment: readout.environment) { secretsVersion += 1 }
     }
-    .sheet(isPresented: $adding) { AddEnvironmentSheet(valueNames: readout.values.map(\.name)) }
+    .sheet(isPresented: $adding) {
+      AddEnvironmentSheet(valueNames: readout.values.map(\.name), undoManager: undoManager)
+    }
   }
 
   private func save(_ value: String, named name: String, in environment: String) {
     do {
-      try project.environments.setValue(value, named: name, in: environment)
+      try project.environments.setValue(value, named: name, in: environment, undoManager: undoManager)
       failure = nil
     } catch {
       failure = ProjectEnvironments.describe(error)
@@ -167,11 +176,20 @@ private struct EnvironmentPanel: View {
   }
 }
 
-/// One line of text saved when the field is left or Return is pressed, not on every key.
+/// One line of text saved when the field is left or Return is pressed, not on every key. When the
+/// file got another value while the person typed, they choose which one stays.
 private struct ValueField: View {
+  /// The value's name, for the question.
+  let name: String
   let text: String
+  /// The value as the file holds it now; `nil` when it isn't set.
+  let read: () -> String?
   let save: (String) -> Void
   @State private var draft = ""
+  /// The value the draft began from.
+  @State private var base = ""
+  /// The person is being asked which value stays.
+  @State private var asking = false
   @FocusState private var focused: Bool
 
   var body: some View {
@@ -181,11 +199,68 @@ private struct ValueField: View {
       .onSubmit(commit)
       .onChange(of: focused) { if !focused { commit() } }
       .onDisappear(perform: commit)
-      .onChange(of: text, initial: true) { if !focused { draft = text } }
+      .onChange(of: text, initial: true) {
+        if !focused || draft == base || draft == text {
+          draft = text
+          base = text
+        }
+      }
   }
 
   private func commit() {
-    if draft != text { save(draft) }
+    guard !asking, draft != base else { return }
+    let file = read()
+    switch ValueDraft(typed: draft, base: base, file: file ?? "") {
+    case .unchanged:
+      return
+    case .save:
+      save(draft)
+    case .conflict:
+      asking = true
+      if ValueDraft.keepsTyped(draft, over: file, name: name) {
+        save(draft)
+      } else {
+        draft = file ?? ""
+      }
+      base = file ?? ""
+      asking = false
+    }
+  }
+}
+
+/// What saving a value the person typed does, when the file may have changed since they began.
+enum ValueDraft: Equatable {
+  /// Nothing to save: nothing new was typed, or the file holds it already.
+  case unchanged
+  case save
+  /// The file got another value while the person typed: they choose which one stays.
+  case conflict
+
+  /// `typed` was typed over `base`, the value the person began from; `file` is what the file
+  /// holds now. `nil` is a value that isn't set.
+  init(typed: String, base: String?, file: String?) {
+    if typed == file || typed == base {
+      self = .unchanged
+    } else if file == base {
+      self = .save
+    } else {
+      self = .conflict
+    }
+  }
+
+  /// Asks whether what the person typed for `name` replaces the value the file got meanwhile;
+  /// true replaces it.
+  @MainActor
+  static func keepsTyped(_ typed: String, over file: String?, name: String) -> Bool {
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = String(localized: "\(name) was changed in the file while you typed")
+    alert.informativeText =
+      file.map { String(localized: "The file now has “\($0)”. You typed “\(typed)”.") }
+      ?? String(localized: "It’s no longer set in the file. You typed “\(typed)”.")
+    alert.addButton(withTitle: String(localized: "Keep the File’s Value"))
+    alert.addButton(withTitle: String(localized: "Use What I Typed"))
+    return alert.runModal() == .alertSecondButtonReturn
   }
 }
 
@@ -224,7 +299,11 @@ struct SetEnvironmentValueSheet: View {
   @Environment(\.dismiss) private var dismiss
   let name: String
   let environment: String
+  /// The presenting window's: saving is undone there once the sheet has closed.
+  let undoManager: UndoManager?
   @State private var value = ""
+  /// The value the file had when the sheet opened.
+  @State private var base: String?
   @State private var failure: String?
 
   var body: some View {
@@ -249,11 +328,25 @@ struct SetEnvironmentValueSheet: View {
     }
     .padding(20)
     .frame(width: 360)
+    .onAppear { base = project.environments.current.all.first { $0.name == environment }?.values[name] }
   }
 
   private func save() {
+    let file = project.environments.value(name, in: environment)
+    switch ValueDraft(typed: value, base: base, file: file) {
+    case .unchanged:
+      dismiss()
+      return
+    case .save:
+      break
+    case .conflict:
+      guard ValueDraft.keepsTyped(value, over: file, name: name) else {
+        dismiss()
+        return
+      }
+    }
     do {
-      try project.environments.setValue(value, named: name, in: environment)
+      try project.environments.setValue(value, named: name, in: environment, undoManager: undoManager)
       dismiss()
     } catch {
       failure = ProjectEnvironments.describe(error)

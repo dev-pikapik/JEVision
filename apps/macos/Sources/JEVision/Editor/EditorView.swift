@@ -24,6 +24,9 @@ struct EditorView: View {
   @State private var viewport = CGSize.zero
   /// The pointer over the canvas, in the visible part of it; zooming keeps the spot under it in place.
   @State private var pointer: CGPoint?
+  /// Files in the test's notes folder that no note holds any more; looked at again as notes come and
+  /// go and as files are attached to them or taken off.
+  @State private var unusedNoteFiles: UnusedNoteFiles?
   @Environment(\.layoutDirection) private var layoutDirection
   @FocusState private var canvasFocused: Bool
   private let apps = AppCatalog.shared
@@ -31,15 +34,7 @@ struct EditorView: View {
   var body: some View {
     Group {
       if let failure = document.failure {
-        ContentUnavailableView {
-          Label("Can’t open this test", systemImage: "exclamationmark.triangle")
-        } description: {
-          Text(failure)
-            .textSelection(.enabled)
-            .frame(maxWidth: 480)
-        } actions: {
-          Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([document.url]) }
-        }
+        BrokenTestView(document: document, failure: failure)
       } else if let flow = document.flow {
         editor(flow)
       }
@@ -52,6 +47,9 @@ struct EditorView: View {
       document.author = await project.git.authorName()
       document.people = await project.git.authors()
     }
+    // Only what decides which files are held: typing into a note doesn't look through the folder.
+    .onChange(of: noteAttachments, initial: true) { checkNoteFiles() }
+    .onChange(of: document.hasUnsavedChanges) { checkNoteFiles() }
     .confirmationDialog(
       removalTitle, isPresented: Binding(get: { document.pendingRemoval != nil }, set: { if !$0 { document.finishRemoval(notes: nil) } }),
       presenting: document.pendingRemoval
@@ -228,7 +226,7 @@ struct EditorView: View {
             .labelStyle(.titleAndIcon)
             .help(Text("Record steps by using the app; they go after the selected block (⇧⌘R)"))
         }
-        if !flow.canvas.notes.isEmpty {
+        if !flow.canvas.notes.isEmpty || unusedNoteFiles != nil {
           ToolbarItem(placement: .primaryAction) {
             Menu {
               if let selection = document.selection, !document.isReadOnly {
@@ -239,6 +237,14 @@ struct EditorView: View {
                 isOn: Binding(get: { document.hidesResolvedNotes }, set: { document.hidesResolvedNotes = $0 })
               )
               .disabled(!document.hasResolvedNotes && !document.hidesResolvedNotes)
+              if let unused = unusedNoteFiles {
+                Divider()
+                Button(
+                  "Remove Unused Note Files (\(Int64(clamping: unused.size), format: .byteCount(style: .file)))",
+                  systemImage: "trash"
+                ) { removeUnusedNoteFiles(unused) }
+                .help(Text("Move the files of deleted notes, and files taken off notes, to the Trash. Edit › Undo puts them back."))
+              }
             } label: {
               Label("Notes", systemImage: "text.bubble")
             }
@@ -334,7 +340,7 @@ struct EditorView: View {
       Picker(
         selection: Binding(
           get: { environments.selected?.name ?? "" },
-          set: { project.environments.select($0) })
+          set: { project.environments.select($0, undoManager: undoManager) })
       ) {
         ForEach(environments.all, id: \.name) { Text(verbatim: $0.name).tag($0.name) }
       } label: {
@@ -540,6 +546,24 @@ struct EditorView: View {
 
   private func removalMessage(_ removal: PendingRemoval) -> String {
     String(localized: "\(removal.notes.count) notes are about what you are deleting.")
+  }
+
+  /// What each note holds, by note: which files of the notes folder are unused depends on nothing else.
+  private var noteAttachments: [String: [Attachment]]? {
+    document.flow.map { Dictionary($0.canvas.notes.map { ($0.id, $0.attachments) }, uniquingKeysWith: +) }
+  }
+
+  private func checkNoteFiles() {
+    unusedNoteFiles = document.unusedNoteFiles
+  }
+
+  private func removeUnusedNoteFiles(_ unused: UnusedNoteFiles) {
+    do {
+      try document.removeUnusedNoteFiles(unused, project: project.rootURL, then: checkNoteFiles)
+    } catch {
+      NSAlert(error: error).runModal()
+    }
+    checkNoteFiles()
   }
 
   private func addNote(at point: Point?) {

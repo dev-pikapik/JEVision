@@ -4,6 +4,7 @@
 //! [`validate`] lists problems as localizable [`Issue`]s, and [`to_canonical_json`] writes it
 //! back in the one canonical form, so the same test always produces the same bytes in git.
 
+mod atomic;
 mod batch;
 mod board;
 mod canvas;
@@ -67,9 +68,9 @@ pub use merge::{
 pub use model::*;
 pub use notes::{
     IssueRef, MENTION_SCHEME, NOTE_ASSETS_SUFFIX, NoteEvent, NoteEventKind, NoteVersion,
-    assets_folder, attachment_file_name, complete_mention, github_issue_ref, is_safe_name,
-    is_web_address, mention_suggestions, mentions_as_links, note_file_path, note_files_folder,
-    note_timeline,
+    UnusedNoteFiles, assets_folder, attachment_file_name, complete_mention, github_issue_ref,
+    is_safe_name, is_web_address, mention_suggestions, mentions_as_links, note_file_path,
+    note_files_folder, note_timeline, unused_note_files,
 };
 pub use package::{
     BlockManifest, Dependency, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,

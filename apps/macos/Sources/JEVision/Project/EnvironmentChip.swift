@@ -3,6 +3,7 @@ import SwiftUI
 /// The environment runs use, at the foot of the sidebar, with a menu to pick another one.
 struct EnvironmentChip: View {
   @Environment(ProjectStore.self) private var project
+  @Environment(\.undoManager) private var undoManager
   @State private var adding = false
 
   var body: some View {
@@ -10,7 +11,7 @@ struct EnvironmentChip: View {
     let name = environments.selected?.name
     Menu {
       if !environments.all.isEmpty {
-        Picker(selection: Binding(get: { name ?? "" }, set: { project.environments.select($0) })) {
+        Picker(selection: Binding(get: { name ?? "" }, set: { project.environments.select($0, undoManager: undoManager) })) {
           ForEach(environments.all, id: \.name) { Text(verbatim: $0.name).tag($0.name) }
         } label: {
           Text("Environment")
@@ -48,6 +49,6 @@ struct EnvironmentChip: View {
     .help(Text("The environment runs use: where the test finds values such as the server address"))
     .accessibilityLabel(Text("Environment"))
     .accessibilityValue(Text(verbatim: name ?? String(localized: "No Environment")))
-    .sheet(isPresented: $adding) { AddEnvironmentSheet() }
+    .sheet(isPresented: $adding) { AddEnvironmentSheet(undoManager: undoManager) }
   }
 }

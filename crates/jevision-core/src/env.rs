@@ -170,7 +170,7 @@ impl Environments {
         };
         let mut text = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
         text.push('\n');
-        fs::write(project.join(ENVIRONMENTS_FILE), text).map_err(|e| e.to_string())
+        crate::atomic::write(&project.join(ENVIRONMENTS_FILE), text).map_err(|e| e.to_string())
     }
 }
 
