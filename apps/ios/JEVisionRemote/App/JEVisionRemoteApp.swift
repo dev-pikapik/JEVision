@@ -26,6 +26,7 @@ struct JEVisionRemoteApp: App {
       switch phase {
       case .background: model.lock.didEnterBackground()
       case .active:
+        model.reopenList()
         model.lock.checkExpiry()
         // Back from the background: try again the Macs that were out of reach.
         if model.lock.isUnlocked { Task { await model.connectAll() } }

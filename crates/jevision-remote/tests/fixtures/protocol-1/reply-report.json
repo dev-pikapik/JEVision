@@ -1,0 +1,40 @@
+{
+  "ok": {
+    "report": {
+      "app": "com.example.AcmeMail",
+      "attempts": [
+        {
+          "durationMs": 900,
+          "number": 1,
+          "steps": [
+            {
+              "after": "shots/1-after.png",
+              "block": "open",
+              "durationMs": 900,
+              "failure": {
+                "code": "run.target.notFound",
+                "params": {
+                  "block": "open",
+                  "image": "x.png"
+                }
+              },
+              "seq": 1,
+              "status": "failed",
+              "test": "login/sign-in.flow.json",
+              "type": "openApp"
+            }
+          ],
+          "verdict": "failed"
+        }
+      ],
+      "durationMs": 900,
+      "file": "login/sign-in.flow.json",
+      "flaky": false,
+      "format": 1,
+      "startedAt": "2026-10-18T12:00:00.000Z",
+      "test": "Sign in with valid credentials",
+      "verdict": "failed"
+    },
+    "type": "report"
+  }
+}

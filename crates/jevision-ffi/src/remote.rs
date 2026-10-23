@@ -680,6 +680,7 @@ pub enum ActivityKind {
     PermissionChanged,
     Revoked,
     AssistantCalled,
+    DevicesUnreadable,
 }
 
 /// A Mac an assistant on this computer is paired with.
@@ -734,6 +735,11 @@ pub enum RemoteError {
     Storage,
     HostFailed,
     DataRowNotFound,
+    DeviceTooOld,
+    MacTooOld,
+    Unsupported,
+    DevicesFromNewer,
+    Unknown,
 }
 
 #[cfg(test)]

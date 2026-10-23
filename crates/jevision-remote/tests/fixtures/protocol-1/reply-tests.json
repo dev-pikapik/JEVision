@@ -1,0 +1,29 @@
+{
+  "ok": {
+    "tests": [
+      {
+        "isFolder": true,
+        "lastRun": null,
+        "name": "login",
+        "path": "login"
+      },
+      {
+        "isFolder": false,
+        "lastRun": {
+          "run": "20261018-120000-sign-in",
+          "startedAt": "2026-10-18T12:00:00.000Z",
+          "verdict": "failed"
+        },
+        "name": "Sign in with valid credentials",
+        "path": "login/sign-in.flow.json"
+      },
+      {
+        "isFolder": false,
+        "lastRun": null,
+        "name": "Smoke",
+        "path": "smoke.flow.json"
+      }
+    ],
+    "type": "tests"
+  }
+}

@@ -177,9 +177,10 @@ pub fn pair_remote_assistant(
     computer_name: String,
     key: Arc<dyn AssistantKey>,
 ) -> Result<HostRecord, AssistantServerError> {
+    let mac = PairingOffer::parse_assistant(&link).ok().map(|o| o.host_id);
     pair(link, computer_name, key, remote::Network::default()).map_err(|e| {
         AssistantServerError::Io {
-            reason: describe_pairing(e),
+            reason: describe_pairing(e, mac.as_deref()),
         }
     })
 }
@@ -232,9 +233,10 @@ pub(crate) fn serve(
         reason: reason.to_owned(),
     };
     let runtime = runtime().map_err(|_| io_error(&tr!("mcp.remote.networkSetup")))?;
+    let host_id = mac.host_id.clone();
     let client = runtime
         .block_on(AssistantClient::open(mac, Arc::new(Key(key)), network))
-        .map_err(|e| io_error(&describe(e)))?;
+        .map_err(|e| io_error(&describe(e, Some(&host_id))))?;
     let bridge = Bridge {
         client,
         runtime,
@@ -265,11 +267,13 @@ impl Backend for Bridge {
     fn initialize(&self, params: &Value) -> Result<Value, (i64, String)> {
         self.runtime
             .block_on(self.client.hello(params.clone()))
-            .map_err(failure)
+            .map_err(|f| self.failure(f))
     }
 
     fn tools(&self) -> Result<Value, (i64, String)> {
-        self.runtime.block_on(self.client.tools()).map_err(failure)
+        self.runtime
+            .block_on(self.client.tools())
+            .map_err(|f| self.failure(f))
     }
 
     fn call(&self, params: &Value) -> Result<Value, (i64, String)> {
@@ -296,7 +300,7 @@ impl Backend for Bridge {
             Err(AssistantFailure::Rejected { code, message }) => Err((code, message)),
             // A tool that couldn't run is an error of the tool, which the assistant reads.
             Err(AssistantFailure::Remote(error)) => Ok(json!({
-                "content": [text(describe(error))],
+                "content": [text(self.describe(error))],
                 "isError": true,
             })),
         }
@@ -312,15 +316,22 @@ impl Backend for Bridge {
     fn finish(&self) {}
 }
 
-fn failure(failure: AssistantFailure) -> (i64, String) {
-    match failure {
-        AssistantFailure::Rejected { code, message } => (code, message),
-        AssistantFailure::Remote(error) => (SERVER_ERROR, describe(error)),
+impl Bridge {
+    fn failure(&self, failure: AssistantFailure) -> (i64, String) {
+        match failure {
+            AssistantFailure::Rejected { code, message } => (code, message),
+            AssistantFailure::Remote(error) => (SERVER_ERROR, self.describe(error)),
+        }
+    }
+
+    fn describe(&self, error: RemoteError) -> String {
+        describe(error, Some(&self.client.record().host_id))
     }
 }
 
-/// Why pairing didn't work, in words for the person at the terminal.
-fn describe_pairing(error: RemoteError) -> String {
+/// Why pairing didn't work, in words for the person at the terminal. `mac` is the id of the
+/// Mac, when the link was readable.
+fn describe_pairing(error: RemoteError, mac: Option<&str>) -> String {
     use RemoteError::*;
     match error {
         OfferWrongScheme | OfferMalformed | PairingCodeInvalid => tr!("mcp.pairing.invalidCode"),
@@ -328,12 +339,13 @@ fn describe_pairing(error: RemoteError) -> String {
         PairingCodeUsed => tr!("mcp.pairing.codeUsed"),
         PairingLocked => tr!("mcp.pairing.locked"),
         HostOffline => tr!("mcp.pairing.hostOffline"),
-        other => describe(other),
+        other => describe(other, mac),
     }
 }
 
-/// What went wrong between this computer and the Mac, in words for the assistant to pass on.
-fn describe(error: RemoteError) -> String {
+/// What went wrong between this computer and the Mac `mac`, in words for the assistant to pass
+/// on.
+fn describe(error: RemoteError, mac: Option<&str>) -> String {
     use RemoteError::*;
     match error {
         NotPaired | Revoked | BadSignature => tr!("mcp.remote.notPaired"),
@@ -343,6 +355,15 @@ fn describe(error: RemoteError) -> String {
         SignerFailed => tr!("mcp.remote.signerFailed"),
         ProjectNotFound => tr!("mcp.remote.projectNotFound"),
         TooLarge => tr!("mcp.remote.tooLarge"),
+        // The Mac tells its version when it finds this computer too old; a link of a newer
+        // format comes before any contact, so then the newest version is the one to get.
+        DeviceTooOld => match mac.and_then(remote::mac_version) {
+            Some(version) => tr!("mcp.remote.deviceTooOld", version),
+            None => tr!("mcp.remote.deviceTooOldLatest"),
+        },
+        MacTooOld => tr!("mcp.remote.macTooOld", remote::APP_VERSION),
+        Unsupported => tr!("mcp.remote.unsupported"),
+        Unknown => tr!("mcp.remote.unknown"),
         other => other.to_string(),
     }
 }

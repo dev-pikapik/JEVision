@@ -1,0 +1,9 @@
+{
+  "appVersion": "1.0.0",
+  "deviceKey": "046ff03b949241ce1dadd43519e6960e0a85b41a69a05c328103aa2bce1594ca163c4f753a55bf01dc53f6c0b0c7eee78b40c6ff7d25a96e2282b989cef71c144a",
+  "protocols": {
+    "max": 1,
+    "min": 1
+  },
+  "type": "signIn"
+}

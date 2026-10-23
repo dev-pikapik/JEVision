@@ -53,5 +53,10 @@ enum RemoteError: Error, Hashable, Sendable {
   case revoked
   /// The test's data table no longer has the chosen row.
   case dataRowNotFound
+  /// This app is too old for the Mac or its pairing code. `version` is the Mac's JEVision, when
+  /// the Mac told it.
+  case updateApp(version: String?)
+  /// JEVision on the Mac is too old for this app. `version` is the least it needs, when known.
+  case updateMac(version: String?)
   case other
 }

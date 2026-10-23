@@ -28,6 +28,7 @@ pub enum BlockReason {
     NotRun,
     Missing,
     Cycle { tests: Vec<String> },
+    Unknown,
 }
 
 #[uniffi::remote(Enum)]

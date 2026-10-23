@@ -4,6 +4,7 @@ struct RootView: View {
   @Environment(AppModel.self) private var model
   @Environment(\.scenePhase) private var scenePhase
   @State private var unknownLink = false
+  @State private var newerLink = false
   @State private var scanAfterPairing = false
 
   var body: some View {
@@ -32,6 +33,8 @@ struct RootView: View {
       if let link = PairingLink(url) {
         model.isScanning = false
         model.pairingLink = link
+      } else if PairingLink.isFromNewerVersion(url.absoluteString) {
+        newerLink = true
       } else {
         unknownLink = true
       }
@@ -40,6 +43,21 @@ struct RootView: View {
       Button("OK", role: .cancel) {}
     } message: {
       Text("To pair, scan the code JEVision shows on the Mac in Settings → iPhone & Remote.")
+    }
+    .alert("Pair Your Macs Again", isPresented: $model.listWasUnreadable) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text("The list of paired Macs couldn’t be read. A copy was kept.")
+    }
+    .alert("Can’t Open Paired Macs", isPresented: $model.listDidNotOpen) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(AppModel.notOpenedMessage)
+    }
+    .alert("Update JEVision Remote", isPresented: $newerLink) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(RemoteError.newerCodeMessage)
     }
     .overlay {
       // Keeps the Mac's tests out of the app switcher's snapshot.

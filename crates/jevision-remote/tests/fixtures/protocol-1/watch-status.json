@@ -1,0 +1,11 @@
+{
+  "status": {
+    "attempt": 1,
+    "block": "open",
+    "run": "20261018-120000-sign-in",
+    "state": "running",
+    "test": "login/sign-in.flow.json",
+    "verdict": null
+  },
+  "type": "status"
+}

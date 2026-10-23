@@ -1,0 +1,16 @@
+{
+  "event": {
+    "attempt": 1,
+    "block": "check",
+    "branch": "then",
+    "branchCondition": "Inbox",
+    "branches": 2,
+    "durationMs": 80,
+    "event": "blockFinished",
+    "failure": null,
+    "seq": 2,
+    "status": "passed",
+    "test": "login/sign-in.flow.json"
+  },
+  "type": "event"
+}

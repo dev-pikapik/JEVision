@@ -321,17 +321,22 @@ private struct RemoteActivityView: View {
         List(Array(remote.activity.enumerated()), id: \.offset) { _, entry in
           VStack(alignment: .leading, spacing: 2) {
             HStack {
-              Text(entry.deviceName ?? String(localized: "Unknown device")).bold()
-              Text(RemoteText.kind(entry.kind))
+              // The list of devices is not about one device: its kind is the title.
+              if entry.kind == .devicesUnreadable {
+                Text(RemoteText.kind(entry.kind)).bold()
+              } else {
+                Text(entry.deviceName ?? String(localized: "Unknown device")).bold()
+                Text(RemoteText.kind(entry.kind))
+              }
               Spacer()
               Text(Date(timeIntervalSince1970: TimeInterval(entry.time)), format: .dateTime.day().month().hour().minute())
                 .foregroundStyle(.secondary)
             }
-            if let subject = entry.subject {
+            if let subject = RemoteText.subject(entry) {
               Text(verbatim: subject).foregroundStyle(.secondary)
             }
-            if let error = entry.error {
-              Text(RemoteText.text(error)).foregroundStyle(.red)
+            if let problem = RemoteText.problem(entry) {
+              Text(verbatim: problem).foregroundStyle(.red)
             }
           }
           .accessibilityElement(children: .combine)

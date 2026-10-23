@@ -31,9 +31,18 @@ struct MacsView: View {
   var body: some View {
     NavigationStack(path: $path) {
       List {
-        if model.storageFailed {
+        switch model.storageProblem {
+        case .failed:
           Label("This iPhone couldn’t save the list of paired Macs. They’ll be forgotten when JEVision quits.", systemImage: "exclamationmark.triangle")
             .foregroundStyle(.orange)
+        case .newerList:
+          Label("This list was saved by a newer JEVision Remote. Update the app to change it.", systemImage: "arrow.down.app")
+            .foregroundStyle(.orange)
+        case .notOpened:
+          Label(AppModel.notOpenedMessage, systemImage: "lock")
+            .foregroundStyle(.orange)
+        case nil:
+          EmptyView()
         }
         Section {
           ForEach(model.hosts) { host in

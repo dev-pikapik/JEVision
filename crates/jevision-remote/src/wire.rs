@@ -28,14 +28,64 @@ pub(crate) const CLOSE_REFUSED: u32 = 2;
 /// The owner turned the assistant off while it was connected.
 pub(crate) const CLOSE_DISABLED: u32 = 3;
 
-/// First message of a connection, phone to Mac. Keys and signatures are hex.
+/// The protocol versions this app speaks. A version changes only when a message changes in a
+/// way the other side would misread; added fields need none.
+pub(crate) const PROTOCOLS: Protocols = Protocols { min: 1, max: 1 };
+
+/// A range of protocol versions, both ends included.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Protocols {
+    pub min: u32,
+    pub max: u32,
+}
+
+/// A device that doesn't say speaks protocol 1.
+impl Default for Protocols {
+    fn default() -> Self {
+        Self { min: 1, max: 1 }
+    }
+}
+
+impl Protocols {
+    /// The newest version both the Mac (`self`) and the phone speak.
+    #[cfg(feature = "host")]
+    pub(crate) fn agree(self, phone: Protocols) -> Result<u32, RemoteError> {
+        if phone.min > phone.max {
+            return Err(RemoteError::Protocol);
+        }
+        if self.min.max(phone.min) <= self.max.min(phone.max) {
+            Ok(self.max.min(phone.max))
+        } else if phone.max < self.min {
+            Err(RemoteError::DeviceTooOld)
+        } else {
+            Err(RemoteError::MacTooOld)
+        }
+    }
+}
+
+/// First message of a connection, phone to Mac: the versions the phone speaks, then what it
+/// wants. The Mac reads the versions first and on their own, so a newer phone may change the
+/// rest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Hello {
+    #[serde(default)]
+    pub protocols: Protocols,
+    /// The phone app's version, so the Mac can say which to update.
+    #[serde(default)]
+    pub app_version: String,
+    #[serde(flatten)]
+    pub kind: HelloKind,
+}
+
+/// What the phone wants. Keys and signatures are hex.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
     rename_all_fields = "camelCase"
 )]
-pub(crate) enum Hello {
+pub(crate) enum HelloKind {
     /// Pairs a new phone with the code of a [`crate::PairingOffer`].
     Pair {
         code: String,
@@ -45,6 +95,9 @@ pub(crate) enum Hello {
     },
     /// Signs in a paired phone; the Mac answers with a challenge.
     SignIn { device_key: String },
+    /// Something a newer phone wants.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Mac to phone during the handshake.
@@ -55,9 +108,20 @@ pub(crate) enum Hello {
     rename_all_fields = "camelCase"
 )]
 pub(crate) enum HostHello {
-    Challenge { nonce: String },
+    Challenge {
+        nonce: String,
+    },
     Welcome(Welcome),
-    Refused { error: RemoteError },
+    /// `app_version` is the Mac's, sent only with [`RemoteError::DeviceTooOld`]: a stranger
+    /// learns it only when it needs it to update.
+    Refused {
+        error: RemoteError,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        app_version: Option<String>,
+    },
+    /// An answer of a newer Mac.
+    #[serde(other)]
+    Unknown,
 }
 
 /// The phone's answer to a challenge.
@@ -70,12 +134,22 @@ pub(crate) struct Proof {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Welcome {
+    /// The protocol version the Mac chose.
+    #[serde(default = "first_protocol")]
+    pub protocol: u32,
+    /// The Mac app's version.
+    #[serde(default)]
+    pub app_version: String,
     pub host_name: String,
     pub device_id: String,
     pub permission: Permission,
     /// The Mac's current addresses, so the phone's saved record stays fresh.
     pub relay_url: Option<String>,
     pub addrs: Vec<String>,
+}
+
+fn first_protocol() -> u32 {
+    1
 }
 
 /// Phone to Mac after the handshake. `project` is a project name, `path` a test file relative
@@ -129,6 +203,9 @@ pub(crate) enum Request {
         run: String,
         picture: String,
     },
+    /// A request of a newer phone; the Mac answers [`RemoteError::Unsupported`].
+    #[serde(other)]
+    Unknown,
 }
 
 impl Request {
@@ -180,8 +257,14 @@ pub(crate) enum Response {
     Picture {
         size: u64,
     },
+    /// An answer of a newer Mac.
+    #[serde(other)]
+    Unknown,
 }
 
+/// The answer to a [`Request`]. It keeps these two shapes for good: a new answer is a new
+/// [`Response`] type and a new failure a new [`RemoteError`] code, both of which an older
+/// side reads as unknown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum Reply {
@@ -189,7 +272,7 @@ pub(crate) enum Reply {
     Error(RemoteError),
 }
 
-/// Assistant to Mac on [`crate::ALPN_V2`], after the same handshake phones use. What goes in
+/// Assistant to Mac on [`crate::ALPN_ASSISTANT`], after the same handshake phones use. What goes in
 /// and out is what the local MCP server takes and returns, so an assistant sees the same
 /// tools on both.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -211,6 +294,9 @@ pub(crate) enum AssistantRequest {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         project: Option<String>,
     },
+    /// A request of a newer assistant; the Mac answers [`RemoteError::Unsupported`].
+    #[serde(other)]
+    Unknown,
 }
 
 impl AssistantRequest {
@@ -239,6 +325,9 @@ pub(crate) enum AssistantReply {
     Error {
         error: RemoteError,
     },
+    /// An answer of a newer Mac.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A project the Mac shares with phones. Its folder stays on the Mac.
@@ -585,6 +674,9 @@ pub enum RunState {
     Running,
     Paused,
     Finished,
+    /// A state from a newer Mac.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A run saved in the project.
@@ -678,10 +770,13 @@ pub enum PauseReason {
     Breakpoint,
     /// A person used the mouse or keyboard while the test was driving the Mac.
     UserInput,
+    /// A reason from a newer Mac.
+    #[serde(other)]
+    Unknown,
 }
 
 /// What a watched run sends: its full status first and again whenever the phone fell behind,
-/// events in between.
+/// events in between. An update of a kind a newer Mac added is skipped by the phone.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "type",
@@ -691,6 +786,58 @@ pub enum PauseReason {
 pub enum RunUpdate {
     Status { status: RunStatus },
     Event { event: RunEvent },
+}
+
+/// A frame of a watch as the phone reads it: an update, or one of a kind a newer Mac added,
+/// which it skips. A frame of a known kind that doesn't read is an error.
+#[cfg(feature = "client")]
+pub(crate) enum WatchFrame {
+    Update(RunUpdate),
+    Newer,
+}
+
+#[cfg(feature = "client")]
+impl<'de> Deserialize<'de> for WatchFrame {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        /// Only the kinds of a frame, to tell a newer one from a broken one.
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "camelCase")]
+        enum FrameKind {
+            Status,
+            Event {
+                event: EventKind,
+            },
+            #[serde(other)]
+            Newer,
+        }
+        #[derive(Deserialize)]
+        #[serde(tag = "event", rename_all = "camelCase")]
+        enum EventKind {
+            AttemptStarted,
+            BlockStarted,
+            BlockFinished,
+            Paused,
+            Resumed,
+            AttemptFinished,
+            Finished,
+            #[serde(other)]
+            Newer,
+        }
+
+        let frame = Value::deserialize(deserializer)?;
+        match RunUpdate::deserialize(&frame) {
+            Ok(update) => Ok(Self::Update(update)),
+            Err(error) => match FrameKind::deserialize(&frame) {
+                Ok(
+                    FrameKind::Newer
+                    | FrameKind::Event {
+                        event: EventKind::Newer,
+                    },
+                ) => Ok(Self::Newer),
+                _ => Err(serde::de::Error::custom(error)),
+            },
+        }
+    }
 }
 
 pub(crate) async fn send<T: Serialize>(

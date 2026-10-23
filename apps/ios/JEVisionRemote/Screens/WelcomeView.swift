@@ -83,11 +83,14 @@ private struct Point: View {
 struct PasteLinkButton: View {
   let paste: (PairingLink) -> Void
   @State private var notACode = false
+  @State private var newerCode = false
 
   var body: some View {
     PasteButton(payloadType: String.self) { strings in
       if let link = strings.lazy.compactMap(PairingLink.init).first {
         paste(link)
+      } else if strings.contains(where: PairingLink.isFromNewerVersion) {
+        newerCode = true
       } else {
         notACode = true
       }
@@ -98,6 +101,11 @@ struct PasteLinkButton: View {
       Button("OK", role: .cancel) {}
     } message: {
       Text("Copy the pairing link from JEVision on the Mac, then paste it here.")
+    }
+    .alert("Update JEVision Remote", isPresented: $newerCode) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(RemoteError.newerCodeMessage)
     }
   }
 }

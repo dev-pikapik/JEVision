@@ -1,5 +1,6 @@
 //! The phone side: pairs with a Mac, signs in and makes requests.
 
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -12,15 +13,27 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::pairing::{auth_transcript, code_bytes, pair_transcript};
 use crate::wire::{
     self, AssistantReply, AssistantRequest, CLOSE_DISABLED, CLOSE_DONE, CLOSE_REVOKED, Hello,
-    HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, Proof, Reply, Request, Response, Welcome,
+    HelloKind, HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, PROTOCOLS, Proof, Protocols, Reply,
+    Request, Response, WatchFrame, Welcome,
 };
 use crate::{
-    ALPN, ALPN_V2, DeviceSigner, Network, PairingOffer, Permission, ProjectInfo, RemoteError,
-    RunList, RunReport, RunStatus, RunUpdate, TestEntry, TestSummary, bind, hex, random, unhex,
+    ALPN_ASSISTANT, ALPN_PHONE, APP_VERSION, DeviceSigner, Network, PairingOffer, Permission,
+    ProjectInfo, RemoteError, RunList, RunReport, RunStatus, RunUpdate, TestEntry, TestSummary,
+    bind, hex, plain_version, random, unhex,
 };
 
 /// Time to reach the Mac and finish signing in.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// The app version each Mac last told, by its endpoint id.
+static MAC_VERSIONS: Mutex<BTreeMap<EndpointId, String>> = Mutex::new(BTreeMap::new());
+
+/// The version of JEVision on the Mac `host_id` (hex), as it last told this phone: on every
+/// sign-in, and when it refused the phone as too old. `None` until then.
+pub fn mac_version(host_id: &str) -> Option<String> {
+    let host: EndpointId = host_id.parse().ok()?;
+    lock(&MAC_VERSIONS).get(&host).cloned()
+}
 
 /// A paired Mac as the phone saves it. Addresses are refreshed on every sign-in; read them
 /// back with [`Client::record`] and save the record again.
@@ -41,6 +54,8 @@ pub struct HostRecord {
 pub struct Client {
     endpoint: Endpoint,
     alpn: &'static [u8],
+    /// The protocol versions this phone speaks.
+    protocols: Protocols,
     signer: Arc<dyn DeviceSigner>,
     host: EndpointId,
     record: Mutex<HostRecord>,
@@ -57,11 +72,12 @@ impl Client {
         signer: Arc<dyn DeviceSigner>,
         network: Network,
     ) -> Result<Self, RemoteError> {
-        Self::pair_on(ALPN, offer, device_name, signer, network).await
+        Self::pair_on(ALPN_PHONE, PROTOCOLS, offer, device_name, signer, network).await
     }
 
-    async fn pair_on(
+    pub(crate) async fn pair_on(
         alpn: &'static [u8],
+        protocols: Protocols,
         offer: PairingOffer,
         device_name: String,
         signer: Arc<dyn DeviceSigner>,
@@ -79,13 +95,13 @@ impl Client {
             relay_url: offer.relay_url,
             addrs: offer.addrs,
         };
-        let client = Self::new(alpn, host, record, signer, &network).await?;
+        let client = Self::new(alpn, protocols, host, record, signer, &network).await?;
         let device_key = client.signer.public_key();
         let phone = client.endpoint.id();
         let signature = client
             .sign(pair_transcript(&code, &host, &phone, &device_key))
             .await?;
-        let hello = Hello::Pair {
+        let hello = HelloKind::Pair {
             code: offer.code,
             device_name,
             device_key: hex(&device_key),
@@ -103,13 +119,14 @@ impl Client {
         network: Network,
     ) -> Result<Self, RemoteError> {
         let host: EndpointId = record.host_id.parse().map_err(|_| RemoteError::Protocol)?;
-        let client = Self::new(ALPN, host, record, signer, &network).await?;
+        let client = Self::new(ALPN_PHONE, PROTOCOLS, host, record, signer, &network).await?;
         client.connection().await?;
         Ok(client)
     }
 
-    async fn new(
+    pub(crate) async fn new(
         alpn: &'static [u8],
+        protocols: Protocols,
         host: EndpointId,
         record: HostRecord,
         signer: Arc<dyn DeviceSigner>,
@@ -120,6 +137,7 @@ impl Client {
         Ok(Self {
             endpoint,
             alpn,
+            protocols,
             signer,
             host,
             record: Mutex::new(record),
@@ -255,6 +273,7 @@ impl Client {
                 recv: AsyncMutex::new(recv),
                 conn,
             }),
+            Reply::Ok(Response::Unknown) => Err(RemoteError::Unknown),
             Reply::Ok(_) => Err(RemoteError::Protocol),
             Reply::Error(error) => Err(error),
         }
@@ -300,12 +319,12 @@ impl Client {
             }
         }
         let device_key = hex(&self.signer.public_key());
-        let conn = self.handshake(Hello::SignIn { device_key }).await?;
+        let conn = self.handshake(HelloKind::SignIn { device_key }).await?;
         *slot = Some(conn.clone());
         Ok(conn)
     }
 
-    async fn handshake(&self, hello: Hello) -> Result<Connection, RemoteError> {
+    async fn handshake(&self, hello: HelloKind) -> Result<Connection, RemoteError> {
         let addr = self.addr()?;
         let attempt = async {
             let conn = self
@@ -333,8 +352,13 @@ impl Client {
         Ok(conn)
     }
 
-    async fn greet(&self, conn: &Connection, hello: Hello) -> Result<Welcome, RemoteError> {
+    async fn greet(&self, conn: &Connection, kind: HelloKind) -> Result<Welcome, RemoteError> {
         let (mut send, mut recv) = conn.open_bi().await.map_err(|_| RemoteError::HostOffline)?;
+        let hello = Hello {
+            protocols: self.protocols,
+            app_version: APP_VERSION.to_owned(),
+            kind,
+        };
         wire::send(&mut send, &hello).await?;
         let mut reply: HostHello = wire::expect(&mut recv).await?;
         if let HostHello::Challenge { nonce } = reply {
@@ -354,9 +378,26 @@ impl Client {
         }
         let _ = send.finish();
         match reply {
-            HostHello::Welcome(welcome) => Ok(welcome),
-            HostHello::Refused { error } => Err(error),
+            HostHello::Welcome(welcome) => {
+                self.remember_version(&welcome.app_version);
+                if (self.protocols.min..=self.protocols.max).contains(&welcome.protocol) {
+                    Ok(welcome)
+                } else {
+                    Err(RemoteError::Protocol)
+                }
+            }
+            HostHello::Refused { error, app_version } => {
+                self.remember_version(app_version.as_deref().unwrap_or_default());
+                Err(error)
+            }
             HostHello::Challenge { .. } => Err(RemoteError::Protocol),
+            HostHello::Unknown => Err(RemoteError::Unknown),
+        }
+    }
+
+    fn remember_version(&self, version: &str) {
+        if plain_version(version) {
+            lock(&MAC_VERSIONS).insert(self.host, version.to_owned());
         }
     }
 
@@ -401,7 +442,7 @@ impl From<RemoteError> for AssistantFailure {
     }
 }
 
-/// An assistant's connection to one Mac, over [`ALPN_V2`]. Like [`Client`] it signs in again on
+/// An assistant's connection to one Mac, over [`ALPN_ASSISTANT`]. Like [`Client`] it signs in again on
 /// its own after the connection drops. Results are what the Mac's MCP server returns.
 pub struct AssistantClient {
     pub(crate) client: Client,
@@ -420,7 +461,15 @@ impl AssistantClient {
         signer: Arc<dyn DeviceSigner>,
         network: Network,
     ) -> Result<Self, RemoteError> {
-        let client = Client::pair_on(ALPN_V2, offer, device_name, signer, network).await?;
+        let client = Client::pair_on(
+            ALPN_ASSISTANT,
+            PROTOCOLS,
+            offer,
+            device_name,
+            signer,
+            network,
+        )
+        .await?;
         Ok(Self::wrap(client))
     }
 
@@ -432,7 +481,7 @@ impl AssistantClient {
         network: Network,
     ) -> Result<Self, RemoteError> {
         let host: EndpointId = record.host_id.parse().map_err(|_| RemoteError::Protocol)?;
-        let client = Client::new(ALPN_V2, host, record, signer, &network).await?;
+        let client = Client::new(ALPN_ASSISTANT, PROTOCOLS, host, record, signer, &network).await?;
         Ok(Self::wrap(client))
     }
 
@@ -542,10 +591,17 @@ impl RunWatch {
             return Ok(Some(first));
         }
         let mut recv = self.recv.lock().await;
-        wire::recv(&mut recv).await.map_err(|e| match e {
-            RemoteError::HostOffline => lost(&self.conn),
-            e => e,
-        })
+        loop {
+            let frame = wire::recv(&mut recv).await.map_err(|e| match e {
+                RemoteError::HostOffline => lost(&self.conn),
+                e => e,
+            })?;
+            match frame {
+                Some(WatchFrame::Update(update)) => return Ok(Some(update)),
+                Some(WatchFrame::Newer) => continue,
+                None => return Ok(None),
+            }
+        }
     }
 }
 
@@ -566,6 +622,7 @@ async fn exchange(
             }
             Ok((Response::Picture { size }, Some(bytes)))
         }
+        Reply::Ok(Response::Unknown) => Err(RemoteError::Unknown),
         Reply::Ok(response) => Ok((response, None)),
         Reply::Error(error) => Err(error),
     }
@@ -584,6 +641,7 @@ async fn exchange_assistant(
             Err(AssistantFailure::Rejected { code, message })
         }
         AssistantReply::Error { error } => Err(error.into()),
+        AssistantReply::Unknown => Err(RemoteError::Unknown.into()),
     }
 }
 

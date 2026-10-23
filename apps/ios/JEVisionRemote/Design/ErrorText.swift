@@ -12,6 +12,8 @@ extension RemoteError {
     case .codeExpired: String(localized: "This Code Has Expired")
     case .revoked: String(localized: "This iPhone Was Removed")
     case .dataRowNotFound: String(localized: "This Row Is Gone")
+    case .updateApp: String(localized: "Update JEVision Remote")
+    case .updateMac: String(localized: "Update JEVision on the Mac")
     case .other: String(localized: "Something Went Wrong")
     }
   }
@@ -36,6 +38,14 @@ extension RemoteError {
       String(localized: "The Mac no longer knows this iPhone. Forget the Mac here and pair again.")
     case .dataRowNotFound:
       String(localized: "The test’s data table changed on the Mac. Pull down to refresh the test and choose a row again.")
+    case .updateApp(let version?):
+      String(localized: "This Mac needs JEVision Remote \(version) or later. Update the app and try again.")
+    case .updateApp(nil):
+      String(localized: "This Mac uses a newer JEVision. Update JEVision Remote and try again.")
+    case .updateMac(let version?):
+      String(localized: "This iPhone needs JEVision \(version) or later on the Mac. Update JEVision on the Mac and try again.")
+    case .updateMac(nil):
+      String(localized: "This iPhone needs a newer JEVision on the Mac. Update JEVision on the Mac to the latest version and try again.")
     case .other:
       String(localized: "Try again. If it keeps happening, restart JEVision on the Mac.")
     }
@@ -50,8 +60,15 @@ extension RemoteError {
     case .declinedOnMac: "xmark.circle"
     case .dataRowNotFound: "tablecells"
     case .invalidCode, .codeExpired: "qrcode"
+    case .updateApp: "arrow.down.app"
+    case .updateMac: "desktopcomputer.and.arrow.down"
     case .other: "exclamationmark.triangle"
     }
+  }
+
+  /// For a pairing code from a newer JEVision, which this version can't read.
+  static var newerCodeMessage: String {
+    String(localized: "This code is from a newer JEVision. Update JEVision Remote to pair with this Mac.")
   }
 }
 

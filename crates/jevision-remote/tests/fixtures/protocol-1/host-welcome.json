@@ -1,0 +1,12 @@
+{
+  "addrs": [
+    "192.168.1.20:52114"
+  ],
+  "appVersion": "1.0.0",
+  "deviceId": "3f6c2a9e1b7d4c58a0e9f2b6d1c47a83",
+  "hostName": "Studio Mac",
+  "permission": "run",
+  "protocol": 1,
+  "relayUrl": "https://relay.example.com/",
+  "type": "welcome"
+}

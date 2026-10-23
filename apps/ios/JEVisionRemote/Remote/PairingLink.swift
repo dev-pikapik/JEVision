@@ -12,11 +12,7 @@ struct PairingLink: Hashable, Identifiable, Sendable {
 
   init?(_ text: String) {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let url = URLComponents(string: text),
-      url.scheme?.lowercased() == "jevision",
-      url.host?.lowercased() == "pair",
-      let items = url.queryItems
-    else { return nil }
+    guard let items = Self.query(text) else { return nil }
     func value(_ name: String) -> String? { items.first { $0.name == name }?.value }
     guard value("v") == "1",
       let id = value("id"), id.count == 64, id.allSatisfy(\.isHexDigit),
@@ -31,6 +27,22 @@ struct PairingLink: Hashable, Identifiable, Sendable {
 
   init?(_ url: URL) {
     self.init(url.absoluteString)
+  }
+
+  /// Whether `text` is a pairing code from a newer JEVision: its format `v` is a number above
+  /// the one this version reads. Pairing with it needs JEVision Remote updated first.
+  static func isFromNewerVersion(_ text: String) -> Bool {
+    let version = query(text.trimmingCharacters(in: .whitespacesAndNewlines))?.first { $0.name == "v" }?.value
+    return version.flatMap { UInt($0) }.map { $0 > 1 } ?? false
+  }
+
+  /// The query of a `jevision://pair?…` text; `nil` for any other text.
+  private static func query(_ text: String) -> [URLQueryItem]? {
+    guard let url = URLComponents(string: text),
+      url.scheme?.lowercased() == "jevision",
+      url.host?.lowercased() == "pair"
+    else { return nil }
+    return url.queryItems
   }
 
   /// Whether the code has run out by this iPhone's clock. The Mac's clock decides in the end,

@@ -1,0 +1,12 @@
+{
+  "appVersion": "1.0.0",
+  "code": "0123456789abcdef0123456789abcdef",
+  "deviceKey": "046ff03b949241ce1dadd43519e6960e0a85b41a69a05c328103aa2bce1594ca163c4f753a55bf01dc53f6c0b0c7eee78b40c6ff7d25a96e2282b989cef71c144a",
+  "deviceName": "Anna's iPhone",
+  "protocols": {
+    "max": 1,
+    "min": 1
+  },
+  "signature": "3044022002b8e26b8314db8b00386e9c8d1eb58c8a8a58da843c07ce2cd8b11fc0de2a8c022009c41bba45e18b0d326651d3a2432126dd7d3c4cb4f874677ccd40fd87c9e417",
+  "type": "pair"
+}

@@ -4,12 +4,15 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use iroh::{Endpoint, EndpointAddr, EndpointId, SecretKey};
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::{Signature, SigningKey};
 use serde_json::{Value, json};
 
 use super::*;
+use crate::pairing::{code_bytes, pair_transcript};
 use crate::store::Store;
+use crate::wire::{PROTOCOLS, Protocols};
 
 const EXAMPLE: &str = include_str!("../../../examples/sign-in.flow.json");
 const RUN: &str = "20261018-120000-sign-in";
@@ -201,10 +204,16 @@ struct Setup {
     host: Host,
     fake: Arc<Fake>,
     scratch: Scratch,
+    key: u8,
 }
 
 impl Setup {
     async fn new(name: &str) -> Self {
+        Self::keyed(name, 42).await
+    }
+
+    /// A Mac of its own endpoint id, for what the phone keeps per Mac for the whole process.
+    async fn keyed(name: &str, key: u8) -> Self {
         let scratch = Scratch::new(name);
         let project = scratch.0.join("project");
         write(&project, "login/sign-in.flow.json", EXAMPLE);
@@ -230,7 +239,7 @@ impl Setup {
         write(&scratch.0, "stolen.png", "outside");
 
         let fake = Arc::new(Fake::default());
-        let host = Host::new(config(&scratch), fake.clone()).unwrap();
+        let host = Host::new(keyed(&scratch, key), fake.clone()).unwrap();
         host.set_projects(vec![Project {
             name: "Demo".into(),
             root: project.to_string_lossy().into_owned(),
@@ -240,7 +249,19 @@ impl Setup {
             host,
             fake,
             scratch,
+            key,
         }
+    }
+
+    /// Quits the Mac and starts it again on what it saved.
+    async fn restart(&mut self) {
+        self.host.stop().await;
+        self.host = Host::new(keyed(&self.scratch, self.key), self.fake.clone()).unwrap();
+        self.host.set_projects(vec![Project {
+            name: "Demo".into(),
+            root: self.root(),
+        }]);
+        self.host.start().await.unwrap();
     }
 
     fn root(&self) -> String {
@@ -274,6 +295,18 @@ impl Setup {
         let mut offer = self.host.create_assistant_offer().unwrap();
         offer.addrs = loopback(&offer.addrs);
         PairingOffer::parse_assistant(&offer.to_assistant_url()).unwrap()
+    }
+
+    /// The Mac as a phone paired with it saves it, pointed at loopback like [`Setup::offer`].
+    fn record(&self) -> HostRecord {
+        let status = self.host.status();
+        HostRecord {
+            host_id: status.endpoint_id,
+            name: "Studio Mac".into(),
+            device_id: String::new(),
+            relay_url: None,
+            addrs: loopback(&status.addrs),
+        }
     }
 
     async fn pair_assistant(&self, signer: Arc<TestSigner>) -> AssistantClient {
@@ -319,6 +352,13 @@ fn config(scratch: &Scratch) -> HostConfig {
         name: "Studio Mac".into(),
         state_dir: scratch.0.join("state").to_string_lossy().into_owned(),
         network: offline(),
+    }
+}
+
+fn keyed(scratch: &Scratch, key: u8) -> HostConfig {
+    HostConfig {
+        secret_key: [key; 32].to_vec(),
+        ..config(scratch)
     }
 }
 
@@ -1133,7 +1173,8 @@ fn pairing_offers_round_trip_through_qr_text() {
     );
     let damaged = [
         url.replace("code=0123", "code=zz23"),
-        url.replace("v=1", "v=2"),
+        url.replace("v=1", "v=0"),
+        url.replace("v=1", "v=x"),
         url.replace(&offer.host_id, "nothex"),
         url.replace("192.168.1.20%3A52114", "not-an-address"),
         url.replace("&name=", "&nom="),
@@ -1159,6 +1200,48 @@ fn error_codes_have_stable_keys() {
     assert_eq!(
         RemoteError::OfferWrongScheme.key(),
         RemoteError::OfferMalformed.key()
+    );
+    let added = [
+        (RemoteError::DeviceTooOld, "deviceTooOld"),
+        (RemoteError::MacTooOld, "macTooOld"),
+        (RemoteError::Unsupported, "unsupported"),
+        (RemoteError::DevicesFromNewer, "devicesFromNewer"),
+    ];
+    for (error, code) in added {
+        assert_eq!(serde_json::to_value(error).unwrap(), json!(code));
+        assert_eq!(error.key(), format!("remote.error.{code}"));
+    }
+    // A code a newer JEVision added reads as unknown.
+    assert_eq!(
+        serde_json::from_value::<RemoteError>(json!("tooEarly")).unwrap(),
+        RemoteError::Unknown
+    );
+}
+
+#[test]
+fn a_link_of_a_newer_format_asks_for_a_newer_app() {
+    let offer = PairingOffer {
+        host_id: iroh::SecretKey::from_bytes(&[3; 32]).public().to_string(),
+        host_name: "Studio Mac".into(),
+        code: "0123456789abcdef0123456789abcdef".into(),
+        expires_at: 1_792_000_000,
+        relay_url: None,
+        addrs: vec!["192.168.1.20:52114".into()],
+    };
+    let phone = offer.to_url();
+    let assistant = offer.to_assistant_url();
+    assert!(assistant.starts_with("jevision://assistant?v=1&"));
+    assert_eq!(
+        PairingOffer::parse(&phone.replace("v=1", "v=2")),
+        Err(RemoteError::DeviceTooOld)
+    );
+    assert_eq!(
+        PairingOffer::parse_assistant(&assistant.replace("v=1", "v=2")),
+        Err(RemoteError::DeviceTooOld)
+    );
+    assert_eq!(
+        PairingOffer::parse(&phone.replace("v=1", "v=0")),
+        Err(RemoteError::OfferMalformed)
     );
 }
 
@@ -1472,7 +1555,7 @@ async fn a_phone_does_not_see_assistant_requests_and_an_assistant_does_not_see_p
     };
     wire::send(&mut send, &call).await.unwrap();
     let reply: wire::Reply = wire::expect(&mut recv).await.unwrap();
-    assert_eq!(reply, wire::Reply::Error(RemoteError::Protocol));
+    assert_eq!(reply, wire::Reply::Error(RemoteError::Unsupported));
     assert!(setup.fake.called.lock().unwrap().is_empty());
 
     let conn = assistant.client.connection().await.unwrap();
@@ -1484,7 +1567,7 @@ async fn a_phone_does_not_see_assistant_requests_and_an_assistant_does_not_see_p
     assert_eq!(
         reply,
         wire::AssistantReply::Error {
-            error: RemoteError::Protocol
+            error: RemoteError::Unsupported
         }
     );
     // Both connections go on working.
@@ -1527,7 +1610,7 @@ async fn a_code_pairs_only_the_kind_of_device_it_was_shown_for() {
         Err(RemoteError::OfferWrongScheme)
     );
     let url = assistant_offer.to_assistant_url();
-    assert!(url.starts_with("jevision://assistant?v=2&id="));
+    assert!(url.starts_with("jevision://assistant?v=1&id="));
     assert_eq!(PairingOffer::parse_assistant(&url), Ok(assistant_offer));
 }
 
@@ -2023,4 +2106,616 @@ fn notes_are_an_addition_older_peers_ignore() {
     assert_eq!(read.anchor, "test");
     assert!(read.attachments.is_empty());
     assert_eq!(read.replies[0].text, "Seen");
+}
+
+/// The frames of protocol 1 as it is defined now. A file there is never edited: phones and
+/// Macs that speak protocol 1 write and read exactly these.
+#[test]
+fn protocol_1_frames_read_and_write_back_unchanged() {
+    fn again<T: serde::Serialize + serde::de::DeserializeOwned>(frame: &Value) -> Value {
+        serde_json::to_value(serde_json::from_value::<T>(frame.clone()).unwrap()).unwrap()
+    }
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/protocol-1");
+    let mut read = 0;
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let frame: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let back = match name.split('-').next().unwrap() {
+            "hello" => again::<wire::Hello>(&frame),
+            "host" => again::<wire::HostHello>(&frame),
+            "proof" => again::<wire::Proof>(&frame),
+            "request" => again::<wire::Request>(&frame),
+            "reply" => again::<wire::Reply>(&frame),
+            "assistant" if name.starts_with("assistant-request") => {
+                again::<wire::AssistantRequest>(&frame)
+            }
+            "assistant" => again::<wire::AssistantReply>(&frame),
+            "watch" => again::<RunUpdate>(&frame),
+            _ => panic!("{name} is not a frame"),
+        };
+        assert_eq!(back, frame, "{name}");
+        read += 1;
+    }
+    assert_eq!(read, 42);
+}
+
+/// Sends `hello` as the first frame of a phone, written by hand the way another version of
+/// JEVision writes it, and returns the Mac's answer as it came. `hello` gets the phone's
+/// endpoint id, which a pairing signs.
+async fn first_answer(offer: &PairingOffer, hello: impl FnOnce(EndpointId) -> Value) -> Value {
+    let phone = bind(SecretKey::from_bytes(&random()), &offline(), Vec::new())
+        .await
+        .unwrap();
+    let mut addr = EndpointAddr::new(offer.host_id.parse().unwrap());
+    for ip in &offer.addrs {
+        addr = addr.with_ip_addr(ip.parse().unwrap());
+    }
+    let conn = phone.connect(addr, ALPN_PHONE).await.unwrap();
+    let (mut send, mut recv) = conn.open_bi().await.unwrap();
+    wire::send(&mut send, &hello(phone.id())).await.unwrap();
+    let answer = wire::expect(&mut recv).await.unwrap();
+    phone.close().await;
+    answer
+}
+
+/// A pairing hello of a phone of version 9.0.0 that speaks `protocols`.
+fn pair_hello(
+    offer: &PairingOffer,
+    phone: EndpointId,
+    protocols: Value,
+    signer: &TestSigner,
+) -> Value {
+    let host: EndpointId = offer.host_id.parse().unwrap();
+    let key = signer.public_key();
+    let code = code_bytes(&offer.code).unwrap();
+    let signature = signer
+        .sign(pair_transcript(&code, &host, &phone, &key))
+        .unwrap();
+    json!({
+        "type": "pair",
+        "protocols": protocols,
+        "appVersion": "9.0.0",
+        "code": offer.code,
+        "deviceName": "Anna's iPhone",
+        "deviceKey": hex(&key),
+        "signature": hex(&signature),
+    })
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_newer_mac_speaks_the_protocol_of_an_older_phone() {
+    let setup = Setup::new("newer-mac").await;
+    setup.host.set_protocols(Protocols { min: 1, max: 2 });
+    let offer = setup.offer(Permission::Run);
+    let signer = TestSigner::new(1);
+    let welcome = first_answer(&offer, |phone| {
+        pair_hello(&offer, phone, json!({ "min": 1, "max": 1 }), &signer)
+    })
+    .await;
+    assert_eq!(welcome["type"], "welcome");
+    assert_eq!(welcome["protocol"], 1);
+    assert_eq!(welcome["appVersion"], APP_VERSION);
+
+    let phone = Client::connect(setup.record(), signer, offline())
+        .await
+        .unwrap();
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_older_mac_speaks_the_protocol_of_a_newer_phone() {
+    let setup = Setup::new("older-mac").await;
+    let offer = setup.offer(Permission::Run);
+    let signer = TestSigner::new(1);
+    let welcome = first_answer(&offer, |phone| {
+        pair_hello(&offer, phone, json!({ "min": 1, "max": 2 }), &signer)
+    })
+    .await;
+    assert_eq!(welcome["type"], "welcome");
+    assert_eq!(welcome["protocol"], 1);
+
+    let newer = Protocols { min: 1, max: 2 };
+    let record = setup.record();
+    let host = record.host_id.parse().unwrap();
+    let phone = Client::new(ALPN_PHONE, newer, host, record, signer, &offline())
+        .await
+        .unwrap();
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_mac_that_needs_a_newer_phone_says_which_version() {
+    let setup = Setup::keyed("device-too-old", 7).await;
+    let host_id = setup.host.status().endpoint_id;
+    let refused_with = |kind| {
+        let row = &setup.host.activity(1)[0];
+        assert_eq!(row.kind, kind);
+        assert_eq!(row.error, Some(RemoteError::DeviceTooOld));
+        assert_eq!(row.subject.as_deref(), Some(APP_VERSION));
+        assert_eq!(row.device_name.as_deref(), Some("Anna's iPhone"));
+    };
+
+    setup.host.set_protocols(Protocols { min: 2, max: 2 });
+    let phone = Client::pair(
+        setup.offer(Permission::Run),
+        "Anna's iPhone".into(),
+        TestSigner::new(1),
+        offline(),
+    )
+    .await;
+    assert_eq!(phone.err(), Some(RemoteError::DeviceTooOld));
+    assert_eq!(mac_version(&host_id).as_deref(), Some(APP_VERSION));
+    refused_with(ActivityKind::PairingFailed);
+
+    // A phone paired before the Mac moved on hears the same when it signs in.
+    setup.host.set_protocols(PROTOCOLS);
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let record = saved(&phone);
+    phone.close().await;
+    setup.host.set_protocols(Protocols { min: 2, max: 2 });
+    let again = Client::connect(record, TestSigner::new(1), offline()).await;
+    assert_eq!(again.err(), Some(RemoteError::DeviceTooOld));
+    refused_with(ActivityKind::SignInFailed);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_that_needs_a_newer_mac_says_which_version() {
+    let setup = Setup::new("mac-too-old").await;
+    let offer = setup.offer(Permission::Run);
+    let answer = first_answer(&offer, |phone| {
+        pair_hello(
+            &offer,
+            phone,
+            json!({ "min": 2, "max": 2 }),
+            &TestSigner::new(1),
+        )
+    })
+    .await;
+    // The Mac tells its version only to a phone it is too new for.
+    assert_eq!(answer, json!({ "type": "refused", "error": "macTooOld" }));
+    let row = &setup.host.activity(1)[0];
+    assert_eq!(row.kind, ActivityKind::PairingFailed);
+    assert_eq!(row.error, Some(RemoteError::MacTooOld));
+    assert_eq!(row.subject.as_deref(), Some("9.0.0"));
+    assert_eq!(row.device_name.as_deref(), Some("Anna's iPhone"));
+    assert!(setup.host.devices().is_empty());
+
+    let newer = Protocols { min: 2, max: 2 };
+    let offer = setup.offer(Permission::Run);
+    let name = "Anna's iPhone".to_owned();
+    let phone = Client::pair_on(
+        ALPN_PHONE,
+        newer,
+        offer,
+        name,
+        TestSigner::new(1),
+        offline(),
+    )
+    .await;
+    assert_eq!(phone.err(), Some(RemoteError::MacTooOld));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_mac_reads_the_protocols_of_any_first_frame() {
+    let setup = Setup::new("first-frame").await;
+    let offer = setup.offer(Permission::Run);
+    let newer = first_answer(&offer, |_| {
+        json!({ "type": "pairWithPasskey", "protocols": { "min": 1, "max": 1 }, "passkey": "x" })
+    })
+    .await;
+    assert_eq!(newer, json!({ "type": "refused", "error": "unsupported" }));
+    let backwards = first_answer(
+        &offer,
+        |_| json!({ "type": "signIn", "protocols": { "min": 2, "max": 1 }, "deviceKey": "04" }),
+    )
+    .await;
+    assert_eq!(backwards, json!({ "type": "refused", "error": "protocol" }));
+    // A phone that doesn't say speaks protocol 1.
+    let plain = first_answer(&offer, |_| json!({ "type": "signIn", "deviceKey": "04" })).await;
+    assert_eq!(plain["type"], "challenge");
+    let unreadable = first_answer(
+        &offer,
+        |_| json!({ "type": "signIn", "protocols": "2", "deviceKey": "04" }),
+    )
+    .await;
+    assert_eq!(unreadable["type"], "challenge");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_of_a_newer_protocol_hears_so_whatever_else_it_sends() {
+    let setup = Setup::new("newer-shape").await;
+    let offer = setup.offer(Permission::Run);
+    let newer = json!({ "min": 2, "max": 2 });
+    let unknown = first_answer(
+        &offer,
+        |_| json!({ "type": "pairWithPasskey", "protocols": newer, "appVersion": "9.0.0" }),
+    )
+    .await;
+    assert_eq!(unknown, json!({ "type": "refused", "error": "macTooOld" }));
+
+    // A phone of protocol 2 that renamed a field of `pair`.
+    let signer = TestSigner::new(1);
+    let renamed = first_answer(&offer, |phone| {
+        let mut hello = pair_hello(&offer, phone, newer.clone(), &signer);
+        let key = hello.as_object_mut().unwrap().remove("deviceKey").unwrap();
+        hello["deviceKeys"] = json!([key]);
+        hello
+    })
+    .await;
+    assert_eq!(renamed, json!({ "type": "refused", "error": "macTooOld" }));
+    let row = &setup.host.activity(1)[0];
+    assert_eq!(row.kind, ActivityKind::PairingFailed);
+    assert_eq!(row.error, Some(RemoteError::MacTooOld));
+    assert_eq!(row.subject.as_deref(), Some("9.0.0"));
+    assert_eq!(row.device_name.as_deref(), Some("Anna's iPhone"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn both_sides_speak_the_newest_protocol_they_share() {
+    let setup = Setup::new("newest-shared").await;
+    setup.host.set_protocols(Protocols { min: 1, max: 2 });
+    let offer = setup.offer(Permission::Run);
+    let welcome = first_answer(&offer, |phone| {
+        pair_hello(
+            &offer,
+            phone,
+            json!({ "min": 1, "max": 2 }),
+            &TestSigner::new(1),
+        )
+    })
+    .await;
+    assert_eq!(welcome["type"], "welcome");
+    assert_eq!(welcome["protocol"], 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_version_another_device_names_is_kept_only_when_plain() {
+    for plain in ["1.4.0", "10.0", "2.0.0-beta.1", "3.1.0-rc-2"] {
+        assert!(plain_version(plain), "{plain}");
+    }
+    let long = format!("1.{}", "0".repeat(31));
+    for not in [
+        "",
+        "9.0 — download it from evil.example",
+        "v1.0",
+        "1..0",
+        "1.0-",
+        "1.0+b",
+        &long,
+    ] {
+        assert!(!plain_version(not), "{not}");
+    }
+
+    let setup = Setup::new("untrusted-version").await;
+    let offer = setup.offer(Permission::Run);
+    let answer = first_answer(&offer, |phone| {
+        let mut hello = pair_hello(
+            &offer,
+            phone,
+            json!({ "min": 2, "max": 2 }),
+            &TestSigner::new(1),
+        );
+        hello["appVersion"] = json!("9.0 — download it from evil.example");
+        hello
+    })
+    .await;
+    assert_eq!(answer["error"], "macTooOld");
+    let row = &setup.host.activity(1)[0];
+    assert_eq!(row.error, Some(RemoteError::MacTooOld));
+    assert_eq!(row.subject, None);
+
+    let mut welcome = newer_welcome("run");
+    welcome["appVersion"] = json!("7.0 — download it from evil.example");
+    let (_mac, record) = scripted_mac(welcome, vec![]).await;
+    let host = record.host_id.clone();
+    let phone = Client::connect(record, TestSigner::new(1), offline()).await;
+    assert!(phone.is_ok());
+    assert_eq!(mac_version(&host), None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_welcome_of_an_earlier_build_reads_as_protocol_1() {
+    let welcome = json!({
+        "type": "welcome", "hostName": "Earlier Mac", "deviceId": "d1", "permission": "run",
+        "relayUrl": null, "addrs": []
+    });
+    let (_mac, record) = scripted_mac(welcome, vec![]).await;
+    let host = record.host_id.clone();
+    let phone = Client::connect(record, TestSigner::new(1), offline()).await;
+    assert!(phone.is_ok());
+    assert_eq!(mac_version(&host), None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_mac_answers_requests_it_does_not_know_and_keeps_the_connection() {
+    let setup = Setup::new("unknown-request").await;
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let conn = phone.connection().await.unwrap();
+    let (mut send, mut recv) = conn.open_bi().await.unwrap();
+    wire::send(&mut send, &json!({ "type": "teleport", "project": "Demo" }))
+        .await
+        .unwrap();
+    let _ = send.finish();
+    let answer: Value = wire::expect(&mut recv).await.unwrap();
+    assert_eq!(answer, json!({ "error": "unsupported" }));
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+    assert_eq!(
+        phone.connection().await.unwrap().stable_id(),
+        conn.stable_id()
+    );
+
+    let assistant = setup.pair_assistant(TestSigner::new(2)).await;
+    let conn = assistant.client.connection().await.unwrap();
+    let (mut send, mut recv) = conn.open_bi().await.unwrap();
+    wire::send(&mut send, &json!({ "type": "listResources" }))
+        .await
+        .unwrap();
+    let _ = send.finish();
+    let answer: Value = wire::expect(&mut recv).await.unwrap();
+    assert_eq!(answer, json!({ "type": "error", "error": "unsupported" }));
+    assert!(assistant.tools().await.is_ok());
+    assert_eq!(
+        assistant.client.connection().await.unwrap().stable_id(),
+        conn.stable_id()
+    );
+}
+
+/// A Mac that answers with frames written by hand, the way a newer JEVision writes them:
+/// `hello` to the phone's first frame, then the frames of `replies`, one list per request.
+async fn scripted_mac(hello: Value, replies: Vec<Vec<Value>>) -> (Endpoint, HostRecord) {
+    let mac = bind(
+        SecretKey::from_bytes(&random()),
+        &offline(),
+        vec![ALPN_PHONE.to_vec()],
+    )
+    .await
+    .unwrap();
+    let addrs: Vec<String> = mac
+        .bound_sockets()
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    let record = HostRecord {
+        host_id: mac.id().to_string(),
+        name: "Newer Mac".into(),
+        device_id: String::new(),
+        relay_url: None,
+        addrs: loopback(&addrs),
+    };
+    let listener = mac.clone();
+    tokio::spawn(async move {
+        let Some(incoming) = listener.accept().await else {
+            return;
+        };
+        let Ok(conn) = incoming.await else {
+            return;
+        };
+        for frames in std::iter::once(vec![hello]).chain(replies) {
+            let Ok((mut send, mut recv)) = conn.accept_bi().await else {
+                return;
+            };
+            let _ = wire::expect::<Value>(&mut recv).await;
+            for frame in frames {
+                let _ = wire::send(&mut send, &frame).await;
+            }
+            let _ = send.finish();
+        }
+        conn.closed().await;
+    });
+    (mac, record)
+}
+
+fn newer_welcome(permission: &str) -> Value {
+    json!({
+        "type": "welcome", "protocol": 1, "appVersion": "7.0.0", "hostName": "Newer Mac",
+        "deviceId": "d1", "permission": permission, "relayUrl": null, "addrs": []
+    })
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_reads_what_a_newer_mac_says_as_unknown() {
+    let signer = TestSigner::new(1);
+    let mut on_protocol_2 = newer_welcome("run");
+    on_protocol_2["protocol"] = json!(2);
+    let first_answers = [
+        (
+            json!({ "type": "queued", "position": 3 }),
+            RemoteError::Unknown,
+        ),
+        (
+            json!({ "type": "refused", "error": "tooEarly" }),
+            RemoteError::Unknown,
+        ),
+        (on_protocol_2, RemoteError::Protocol),
+    ];
+    for (hello, error) in first_answers {
+        let (_mac, record) = scripted_mac(hello, Vec::new()).await;
+        let phone = Client::connect(record, signer.clone(), offline()).await;
+        assert_eq!(phone.err(), Some(error));
+    }
+
+    let replies = vec![
+        vec![json!({ "ok": { "type": "hologram" } })],
+        vec![json!({ "error": "tooEarly" })],
+    ];
+    let (_mac, record) = scripted_mac(newer_welcome("admin"), replies).await;
+    let phone = Client::connect(record.clone(), signer, offline())
+        .await
+        .unwrap();
+    assert_eq!(mac_version(&record.host_id).as_deref(), Some("7.0.0"));
+    // A level a newer Mac added reads as the least one.
+    assert_eq!(phone.permission(), Permission::View);
+    assert_eq!(phone.list_projects().await, Err(RemoteError::Unknown));
+    assert_eq!(phone.list_projects().await, Err(RemoteError::Unknown));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_watch_skips_what_a_newer_mac_added() {
+    let status = json!({
+        "run": RUN, "test": "login/sign-in.flow.json", "state": "queued", "verdict": null,
+        "attempt": 0, "block": null
+    });
+    let frames = vec![
+        json!({ "ok": { "type": "status", "status": status } }),
+        json!({ "type": "progress", "percent": 40 }),
+        json!({ "type": "event", "event": { "event": "zoomed", "factor": 2 } }),
+        json!({ "type": "event", "event": { "event": "paused", "block": "open", "reason": "phoneCall" } }),
+        json!({ "type": "event", "event": { "event": "finished", "verdict": "passed", "flaky": false } }),
+    ];
+    let (_mac, record) = scripted_mac(newer_welcome("view"), vec![frames]).await;
+    let phone = Client::connect(record, TestSigner::new(1), offline())
+        .await
+        .unwrap();
+    let watch = phone.watch("Demo".into(), RUN.into()).await.unwrap();
+    let Ok(Some(RunUpdate::Status { status })) = watch.next().await else {
+        panic!("a watch starts with the status");
+    };
+    assert_eq!(status.state, RunState::Unknown);
+    let paused = RunEvent::Paused {
+        block: "open".into(),
+        reason: PauseReason::Unknown,
+    };
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Event { event: paused }))
+    );
+    let finished = RunEvent::Finished {
+        verdict: Verdict::Passed,
+        flaky: false,
+    };
+    assert_eq!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Event { event: finished }))
+    );
+    assert_eq!(watch.next().await, Ok(None));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_watch_stops_at_a_broken_frame_of_a_known_kind() {
+    let status = json!({
+        "run": RUN, "test": "login/sign-in.flow.json", "state": "queued", "verdict": null,
+        "attempt": 0, "block": null
+    });
+    let frames = vec![
+        json!({ "ok": { "type": "status", "status": status } }),
+        json!({ "type": "status", "status": { "run": 5 } }),
+        json!({ "type": "event", "event": { "event": "paused" } }),
+    ];
+    let (_mac, record) = scripted_mac(newer_welcome("view"), vec![frames]).await;
+    let phone = Client::connect(record, TestSigner::new(1), offline())
+        .await
+        .unwrap();
+    let watch = phone.watch("Demo".into(), RUN.into()).await.unwrap();
+    assert!(matches!(
+        watch.next().await,
+        Ok(Some(RunUpdate::Status { .. }))
+    ));
+    assert_eq!(watch.next().await, Err(RemoteError::Protocol));
+    assert_eq!(watch.next().await, Err(RemoteError::Protocol));
+}
+
+#[test]
+fn devices_keep_what_a_newer_mac_wrote_in_them() {
+    let scratch = Scratch::new("devices-newer-fields");
+    let device = |id: &str, permission: &str| {
+        json!({
+            "id": id, "name": "Anna's iPhone", "publicKey": "04ab", "kind": "phone",
+            "permission": permission, "assistant": false, "pairedAt": 1, "lastSeen": null,
+            "color": "teal"
+        })
+    };
+    let watch = json!({ "id": "c", "kind": "watch", "name": "Anna's Watch" });
+    let file = json!({
+        "sync": { "cloud": true },
+        "devices": [device("a", "admin"), device("b", "view"), watch]
+    });
+    write(&scratch.0, "devices.json", &file.to_string());
+
+    let mut store = Store::open(&scratch.0).unwrap();
+    let ids: Vec<&str> = store.devices().iter().map(|d| d.id.as_str()).collect();
+    assert_eq!(ids, ["a", "b"]);
+    assert_eq!(store.devices()[0].permission, Permission::View);
+    store
+        .change(|devices| {
+            devices[0].last_seen = Some(5);
+            devices[1].permission = Permission::Run;
+        })
+        .unwrap();
+    let saved: Value =
+        serde_json::from_slice(&fs::read(scratch.0.join("devices.json")).unwrap()).unwrap();
+    let mut seen = device("a", "admin");
+    seen["lastSeen"] = json!(5);
+    let expected = json!({
+        "format": 1,
+        "sync": { "cloud": true },
+        "devices": [seen, device("b", "run"), watch]
+    });
+    assert_eq!(saved, expected);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_devices_file_from_a_newer_mac_is_read_but_never_written() {
+    let mut setup = Setup::new("devices-future").await;
+    let phone = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    phone.close().await;
+    let path = setup.scratch.0.join("state/devices.json");
+    let mut file: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    file["format"] = json!(2);
+    let future = serde_json::to_vec_pretty(&file).unwrap();
+    fs::write(&path, &future).unwrap();
+    setup.restart().await;
+
+    let stranger = Client::pair(
+        setup.offer(Permission::Run),
+        "Boris's iPhone".into(),
+        TestSigner::new(2),
+        offline(),
+    )
+    .await;
+    assert_eq!(stranger.err(), Some(RemoteError::DevicesFromNewer));
+    let phone = Client::connect(setup.record(), TestSigner::new(1), offline())
+        .await
+        .unwrap();
+    assert_eq!(phone.list_projects().await.unwrap().len(), 1);
+    let id = setup.host.devices()[0].id.clone();
+    assert_eq!(setup.host.revoke(&id), Err(RemoteError::DevicesFromNewer));
+    assert_eq!(fs::read(&path).unwrap(), future);
+
+    // A file that asks for a newer JEVision is left alone the same way.
+    let scratch = Scratch::new("devices-min-version");
+    let text = r#"{"minVersion":"99.0.0","devices":{"a":{}}}"#;
+    write(&scratch.0, "devices.json", text);
+    let mut store = Store::open(&scratch.0).unwrap();
+    assert!(store.devices().is_empty());
+    assert_eq!(store.change(|_| {}), Err(RemoteError::DevicesFromNewer));
+    assert_eq!(
+        fs::read_to_string(scratch.0.join("devices.json")).unwrap(),
+        text
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_devices_file_that_cannot_be_read_is_set_aside() {
+    let mut setup = Setup::new("devices-broken").await;
+    let state = setup.scratch.0.join("state");
+    write(&state, "devices.unreadable.json", "an older copy");
+    write(&state, "devices.json", r#"{"devices": ["#);
+    setup.restart().await;
+
+    assert!(setup.host.devices().is_empty());
+    assert_eq!(
+        fs::read_to_string(state.join("devices.unreadable.json")).unwrap(),
+        r#"{"devices": ["#
+    );
+    let row = &setup.host.activity(1)[0];
+    assert_eq!(row.kind, ActivityKind::DevicesUnreadable);
+    assert_eq!(row.subject.as_deref(), Some("devices.unreadable.json"));
+    assert_eq!(
+        (&row.device_id, &row.device_name, row.error),
+        (&None, &None, None)
+    );
+    // Phones pair again.
+    setup.pair(Permission::Run, TestSigner::new(1)).await;
+    assert_eq!(setup.host.devices().len(), 1);
 }

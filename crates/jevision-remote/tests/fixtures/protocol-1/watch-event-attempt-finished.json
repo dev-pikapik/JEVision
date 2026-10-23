@@ -1,0 +1,15 @@
+{
+  "event": {
+    "attempt": 1,
+    "event": "attemptFinished",
+    "failure": {
+      "code": "run.target.notFound",
+      "params": {
+        "block": "open",
+        "image": "x.png"
+      }
+    },
+    "verdict": "failed"
+  },
+  "type": "event"
+}

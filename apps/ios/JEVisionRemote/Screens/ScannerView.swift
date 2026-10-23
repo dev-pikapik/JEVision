@@ -8,6 +8,8 @@ struct ScannerView: View {
   @Environment(\.openURL) private var openURL
   @State private var camera = AVCaptureDevice.authorizationStatus(for: .video)
   @State private var otherCode = false
+  /// The camera saw a pairing code from a newer JEVision.
+  @State private var newerCode = false
 
   var body: some View {
     NavigationStack {
@@ -22,13 +24,13 @@ struct ScannerView: View {
         }
         .safeAreaInset(edge: .bottom) {
           VStack(spacing: 12) {
-            Text(otherCode ? "That’s a different code. Point at the one JEVision shows on the Mac." : "On the Mac, open JEVision Settings → iPhone & Remote.")
+            hint
               .font(.callout)
               .multilineTextAlignment(.center)
               .padding(.horizontal, 20)
               .padding(.vertical, 12)
               .glassEffect(.regular, in: .rect(cornerRadius: 20))
-              .animation(.smooth, value: otherCode)
+              .animation(.smooth, value: [otherCode, newerCode])
             PasteLinkButton(paste: found)
           }
           .padding(.horizontal, 24)
@@ -43,6 +45,11 @@ struct ScannerView: View {
     }
   }
 
+  private var hint: Text {
+    if newerCode { return Text(RemoteError.newerCodeMessage) }
+    return Text(otherCode ? "That’s a different code. Point at the one JEVision shows on the Mac." : "On the Mac, open JEVision Settings → iPhone & Remote.")
+  }
+
   private var canScan: Bool {
     camera == .authorized && DataScannerViewController.isSupported
   }
@@ -55,7 +62,7 @@ struct ScannerView: View {
     } else {
       switch camera {
       case .authorized:
-        CodeScanner(found: found, other: { otherCode = true })
+        CodeScanner(found: found, other: { newer in (otherCode, newerCode) = (!newer, newer) })
       case .notDetermined:
         ProgressView()
       default:
@@ -82,7 +89,8 @@ struct ScannerView: View {
 /// VisionKit's live scanner, reading QR codes only.
 private struct CodeScanner: UIViewControllerRepresentable {
   let found: (PairingLink) -> Void
-  let other: () -> Void
+  /// Saw a code that isn't one to pair with; `true` for a pairing code from a newer JEVision.
+  let other: (Bool) -> Void
 
   func makeUIViewController(context: Context) -> DataScannerViewController {
     let scanner = DataScannerViewController(
@@ -122,7 +130,7 @@ private struct CodeScanner: UIViewControllerRepresentable {
           parent.found(link)
           return
         }
-        parent.other()
+        parent.other(PairingLink.isFromNewerVersion(text))
       }
     }
   }

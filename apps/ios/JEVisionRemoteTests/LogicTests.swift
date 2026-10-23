@@ -117,7 +117,7 @@ struct AppModelTests {
 
     #expect(host == macA)
     #expect(model.hosts == [macA])
-    #expect(store.load() == [macA])
+    #expect(store.load().hosts == [macA])
     #expect(model.lock.isUnlocked)
     #expect(model.permission(on: macA) == .run)
   }
@@ -166,7 +166,7 @@ struct AppModelTests {
     #expect(sessions[0] === sessions[1])
     #expect(client.connects.withLock { $0 } == 1)
     #expect(model.hosts.first?.addrs == ["192.168.1.20:52114"])
-    #expect(store.load().first?.addrs == ["192.168.1.20:52114"])
+    #expect(store.load().hosts.first?.addrs == ["192.168.1.20:52114"])
   }
 
   @Test func anOfflineMacIsShownAndTriedAgainLater() async throws {
@@ -196,7 +196,7 @@ struct AppModelTests {
     await model.forget(macA)
 
     #expect(model.hosts.isEmpty)
-    #expect(store.load().isEmpty)
+    #expect(store.load().hosts.isEmpty)
     #expect(model.connections.isEmpty)
     #expect(session.closed.withLock { $0 })
     #expect(!model.lock.isUnlocked)

@@ -73,6 +73,64 @@ enum RemoteText {
     case .DataRowNotFound:
       return String(
         localized: "remote.error.dataRowNotFound", defaultValue: "The test’s data table doesn’t have that row anymore.", bundle: .app, locale: .app)
+    case .DeviceTooOld:
+      return String(
+        localized: "remote.error.deviceTooOld", defaultValue: "The app on the device is out of date. Update it to the latest version.", bundle: .app,
+        locale: .app)
+    case .MacTooOld:
+      return String(
+        localized: "remote.error.macTooOld", defaultValue: "JEVision on this Mac is out of date for that device. Update JEVision.", bundle: .app,
+        locale: .app)
+    case .Unsupported:
+      return String(
+        localized: "remote.error.unsupported",
+        defaultValue: "The device asked for something this version of JEVision can’t do. Update JEVision on this Mac.", bundle: .app, locale: .app)
+    case .DevicesFromNewer:
+      return String(
+        localized: "remote.error.devicesFromNewer",
+        defaultValue:
+          "The list of paired devices on the Mac was saved by a newer version of JEVision, so it can’t be changed. Update JEVision on the Mac.",
+        bundle: .app, locale: .app)
+    case .Unknown:
+      return String(
+        localized: "remote.error.unknown", defaultValue: "A newer version of JEVision reported a problem this one doesn’t know. Update JEVision.",
+        bundle: .app, locale: .app)
+    }
+  }
+
+  /// The line under an activity entry: what it was about. A refusal for the app version says
+  /// the version in its red line instead, and a list of devices that couldn't be read says
+  /// where the copy of it is.
+  static func subject(_ entry: Activity) -> String? {
+    guard let subject = entry.subject else { return nil }
+    switch (entry.kind, entry.error) {
+    case (.devicesUnreadable, _):
+      return String(
+        localized: "remote.activity.unreadableCopy", defaultValue: "A copy was saved as \(subject). Pair your devices again.", bundle: .app,
+        locale: .app)
+    case (_, .DeviceTooOld?), (_, .MacTooOld?):
+      return nil
+    default:
+      return subject
+    }
+  }
+
+  /// The red line of an activity entry: why it failed, with the version to update to when
+  /// the app version was the reason.
+  static func problem(_ entry: Activity) -> String? {
+    guard let error = entry.error else { return nil }
+    switch (error, entry.subject) {
+    case (.DeviceTooOld, let version?):
+      return String(
+        localized: "remote.activity.deviceTooOld", defaultValue: "The app on the device is out of date. Update it to version \(version) or later.",
+        bundle: .app, locale: .app)
+    case (.MacTooOld, let version?):
+      return String(
+        localized: "remote.activity.macTooOld",
+        defaultValue: "JEVision on this Mac is out of date for that device. Update JEVision to version \(version) or later.", bundle: .app,
+        locale: .app)
+    default:
+      return text(error)
     }
   }
 
@@ -91,6 +149,8 @@ enum RemoteText {
     case .revoked: String(localized: "remote.activity.revoked", defaultValue: "Access revoked", bundle: .app, locale: .app)
     case .assistantCalled:
       String(localized: "remote.activity.assistantCalled", defaultValue: "Used a tool", bundle: .app, locale: .app)
+    case .devicesUnreadable:
+      String(localized: "remote.activity.devicesUnreadable", defaultValue: "Paired devices couldn’t be read", bundle: .app, locale: .app)
     }
   }
 

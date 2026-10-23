@@ -10,10 +10,28 @@ final class AppModel {
     case unreachable(RemoteError)
   }
 
+  enum StorageProblem {
+    /// The paired Macs couldn't be saved; the pairing works until the app quits.
+    case failed
+    /// The list was saved by a newer JEVision Remote, which this version never writes over.
+    case newerList
+    /// The saved list couldn't be opened, so nothing is saved until it opens: its Macs would be lost.
+    case notOpened
+  }
+
+  /// What to do when the saved list couldn't be opened.
+  static var notOpenedMessage: String {
+    String(localized: "The list of paired Macs couldn’t be opened. Unlock the iPhone and open the app again.")
+  }
+
   private(set) var hosts: [HostRecord]
   private(set) var connections: [String: Connection] = [:]
-  /// Set when the paired Macs couldn't be saved; the pairing works until the app quits.
-  private(set) var storageFailed = false
+  /// Why the paired Macs couldn't be saved, the last time it was tried.
+  private(set) var storageProblem: StorageProblem?
+  /// The saved list couldn't be read and the app started without it; set until the notice is seen.
+  var listWasUnreadable: Bool
+  /// The saved list couldn't be opened; set until the notice is seen or the list opens.
+  var listDidNotOpen: Bool
   let lock: AppLock
   /// The camera is open to scan a Mac's pairing code.
   var isScanning = false
@@ -28,7 +46,25 @@ final class AppModel {
     self.client = client
     self.store = store
     self.lock = lock
-    hosts = store.load()
+    let saved = store.load()
+    hosts = saved.hosts
+    listWasUnreadable = saved.problem == .unreadable
+    listDidNotOpen = saved.problem == .notOpened
+    if listDidNotOpen { storageProblem = .notOpened }
+  }
+
+  /// Loads the saved list again if it couldn't be opened, as before the iPhone's first unlock.
+  /// Macs paired in the meantime stay and are saved with it.
+  func reopenList() {
+    guard storageProblem == .notOpened else { return }
+    let saved = store.load()
+    guard saved.problem != .notOpened else { return }
+    let paired = hosts.filter { host in !saved.hosts.contains { $0.id == host.id } }
+    hosts = saved.hosts + paired
+    listWasUnreadable = saved.problem == .unreadable
+    listDidNotOpen = false
+    storageProblem = nil
+    if !paired.isEmpty { save() }
   }
 
   /// Nothing to protect until a Mac is paired, so a fresh install opens straight to pairing.
@@ -143,11 +179,17 @@ final class AppModel {
   }
 
   private func save() {
+    // Until the list opens, writing would drop the Macs in it.
+    guard storageProblem != .notOpened else { return }
     do {
       try store.save(hosts)
-      storageFailed = false
+      storageProblem = nil
+    } catch is HostStore.NewerList {
+      storageProblem = .newerList
+    } catch is HostStore.NotOpened {
+      storageProblem = .notOpened
     } catch {
-      storageFailed = true
+      storageProblem = .failed
     }
   }
 }

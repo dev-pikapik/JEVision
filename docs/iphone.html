@@ -69,6 +69,7 @@
     <li><a href="#pair">Pair an iPhone</a></li>
     <li><a href="#settings">Settings on the Mac</a></li>
     <li><a href="#reach">Reaching the Mac from anywhere</a></li>
+    <li><a href="#versions">Versions and updates</a></li>
     <li><a href="#privacy">Privacy and security</a></li>
   </ul>
 </nav>
@@ -126,6 +127,18 @@
 <h2 id="reach">Reaching the Mac from anywhere</h2>
 <p>The iPhone connects to the Mac directly when it can, for example on the same Wi-Fi; the first time, iOS asks to allow access to the local network. When a direct connection isn't possible, a <strong>relay</strong> forwards the traffic. The relay carries only encrypted data it can't read. With the relay set to <strong>None</strong>, the iPhone reaches the Mac only on the same Wi-Fi or over a VPN.</p>
 <p>No ports are opened on the Mac, and you don't need to set up your router.</p>
+
+<h2 id="versions">Versions and updates</h2>
+<p>The iPhone app and JEVision on the Mac don't have to be the same version. When they connect, each says which versions of the remote protocol it speaks, and the Mac picks the newest one both know. An iPhone app a little older or newer than the Mac keeps working.</p>
+<p>When there is no version both know, the connection doesn't just fail: the iPhone says which side to update and to which version, either the iPhone app or JEVision on the Mac, and the Mac's activity log says the same under the device's name. A pairing code from a newer JEVision asks you to update the iPhone app instead of calling the code invalid.</p>
+<p>How long older versions keep working:</p>
+<ul>
+  <li>JEVision on the Mac works with iPhone apps released in the last 12 months.</li>
+  <li>Anything removed from the protocol is first marked as going away for at least six months and at least one release.</li>
+  <li>A request the Mac doesn't know yet is answered “not supported by this Mac”, and the connection stays open, so a newer iPhone app can still do everything the Mac does support.</li>
+</ul>
+<p>The list of paired Macs on the iPhone and the list of devices on the Mac keep whatever a newer version added to them. A list saved by a newer version in a way this one can't change is read but never overwritten, and you are asked to update instead. A list that can't be read at all is set aside as a copy next to it, so nothing is lost, and you are asked to pair again.</p>
+<p>For developers: the connection's ALPN names its purpose, <code>jevision/phone/1</code> for the iPhone and <code>jevision/assistant/1</code> for <a href="mcp.html#remote">assistants on another computer</a>, and doesn't change with versions. The version is agreed in the first message instead: the device sends the range of protocol versions it speaks and its app version, and the Mac answers with the version chosen and its own app version. Protocol 1 is the first. New fields are added so that older versions can skip them, and a request, answer or error code an older version doesn't know reads as unknown there instead of breaking the connection.</p>
 
 <h2 id="privacy">Privacy and security</h2>
 <ul>

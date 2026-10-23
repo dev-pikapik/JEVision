@@ -1,0 +1,19 @@
+{
+  "ok": {
+    "runs": {
+      "active": [],
+      "saved": [
+        {
+          "durationMs": 900,
+          "file": "login/sign-in.flow.json",
+          "flaky": false,
+          "run": "20261018-120000-sign-in",
+          "startedAt": "2026-10-18T12:00:00.000Z",
+          "test": "Sign in with valid credentials",
+          "verdict": "failed"
+        }
+      ]
+    },
+    "type": "runs"
+  }
+}

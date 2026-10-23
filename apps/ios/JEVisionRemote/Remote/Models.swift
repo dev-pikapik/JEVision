@@ -149,6 +149,8 @@ enum RunState: Hashable, Sendable {
   case running
   case paused
   case finished
+  /// Sent by a newer Mac; this version doesn't know what it means.
+  case unknown
 }
 
 struct RunStatus: Hashable, Sendable {

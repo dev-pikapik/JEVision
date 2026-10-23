@@ -1,0 +1,12 @@
+{
+  "event": {
+    "attempt": 1,
+    "block": "open",
+    "blockType": "openApp",
+    "event": "blockStarted",
+    "seq": 1,
+    "test": "login/sign-in.flow.json",
+    "title": "Acme Mail"
+  },
+  "type": "event"
+}

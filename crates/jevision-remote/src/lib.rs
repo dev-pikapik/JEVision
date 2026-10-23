@@ -15,9 +15,16 @@
 //!
 //! The Mac side is [`Host`] (feature `host`), the phone side [`Client`] (feature `client`).
 //!
-//! Assistants on another computer use a second protocol, [`ALPN_V2`], on the same endpoint:
-//! the same pairing and sign-in, then requests that carry MCP tool calls to the Mac
+//! Assistants on another computer use a second protocol, [`ALPN_ASSISTANT`], on the same
+//! endpoint: the same pairing and sign-in, then requests that carry MCP tool calls to the Mac
 //! ([`AssistantClient`]). Phones and assistants cannot use each other's protocol.
+//!
+//! The protocol names say what a connection is for and never change. Which version of the
+//! messages the two sides speak is agreed in the first message: each side says the range it
+//! knows and the Mac picks the newest version both know, or refuses with
+//! [`RemoteError::DeviceTooOld`] or [`RemoteError::MacTooOld`]. There is no list of features:
+//! a field one side doesn't know is ignored and a missing one reads as empty, so new fields
+//! need no new version.
 
 mod pairing;
 mod wire;
@@ -38,7 +45,7 @@ use iroh_mdns_address_lookup::MdnsAddressLookup;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "client")]
-pub use client::{AssistantClient, AssistantFailure, Client, HostRecord, RunWatch};
+pub use client::{AssistantClient, AssistantFailure, Client, HostRecord, RunWatch, mac_version};
 #[cfg(feature = "host")]
 pub use host::{AssistantRejection, Host, HostConfig, HostDelegate, HostStatus, Project};
 pub use jevision_runner::{Failure, RunReport, StepStatus, Verdict};
@@ -55,20 +62,26 @@ pub use wire::{
 };
 
 /// The protocol spoken between the Mac and the phone.
-pub const ALPN: &[u8] = b"jevision/remote/1";
+pub const ALPN_PHONE: &[u8] = b"jevision/phone/1";
 
 /// The protocol spoken between the Mac and an assistant on another computer.
-pub const ALPN_V2: &[u8] = b"jevision/remote/2";
+pub const ALPN_ASSISTANT: &[u8] = b"jevision/assistant/1";
+
+/// This app's version. The Mac app, the phone app and the terminal tool ship together, so one
+/// version tells which to update.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// What a paired phone may do. Every request is checked against the device's current level,
 /// so a change on the Mac applies to the next request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Permission {
-    /// List projects and tests, look at tests, runs, reports and pictures.
-    View,
     /// Everything `View` allows, plus starting and stopping runs.
     Run,
+    /// List projects and tests, look at tests, runs, reports and pictures. A level from a newer
+    /// Mac reads as this one, the least.
+    #[serde(other)]
+    View,
 }
 
 /// Why something didn't happen, as a stable code shared by the Mac and the phone.
@@ -130,6 +143,17 @@ pub enum RemoteError {
     HostFailed,
     /// The test's data table has no such row, or the test has no data table.
     DataRowNotFound,
+    /// The app on the device is too old for this Mac or for the code it scanned.
+    DeviceTooOld,
+    /// JEVision on the Mac is too old for the device.
+    MacTooOld,
+    /// The other side doesn't know this request.
+    Unsupported,
+    /// The list of paired devices was saved by a newer JEVision, so this one cannot change it.
+    DevicesFromNewer,
+    /// A code from a newer JEVision.
+    #[serde(other)]
+    Unknown,
 }
 
 impl RemoteError {
@@ -170,6 +194,11 @@ impl RemoteError {
             Self::Storage => "remote.error.storage",
             Self::HostFailed => "remote.error.hostFailed",
             Self::DataRowNotFound => "remote.error.dataRowNotFound",
+            Self::DeviceTooOld => "remote.error.deviceTooOld",
+            Self::MacTooOld => "remote.error.macTooOld",
+            Self::Unsupported => "remote.error.unsupported",
+            Self::DevicesFromNewer => "remote.error.devicesFromNewer",
+            Self::Unknown => "remote.error.unknown",
         }
     }
 
@@ -271,6 +300,25 @@ fn now() -> i64 {
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// Whether `text` is a plain app version such as `1.4.0` or `2.0.0-beta.1`. A version another
+/// device names is shown only when it is one, never as free text.
+fn plain_version(text: &str) -> bool {
+    let (numbers, pre) = match text.split_once('-') {
+        Some((numbers, pre)) => (numbers, Some(pre)),
+        None => (text, None),
+    };
+    text.len() <= 32
+        && numbers
+            .split('.')
+            .all(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        && pre.is_none_or(|pre| {
+            !pre.is_empty()
+                && pre
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
+        })
 }
 
 fn unhex(text: &str) -> Option<Vec<u8>> {

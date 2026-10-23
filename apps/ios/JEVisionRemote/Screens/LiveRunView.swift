@@ -98,6 +98,8 @@ struct LiveRunView: View {
       VerdictStyle(verdict, flaky: progress.flaky).image
     } else if progress.state == .paused {
       Image(systemName: "pause.circle.fill").foregroundStyle(.orange)
+    } else if progress.state == .unknown {
+      VerdictStyle(Verdict.unknown).image
     } else if progress.waiting != nil {
       Image(systemName: "clock.fill").foregroundStyle(.orange).accessibilityHidden(true)
     } else {
@@ -109,6 +111,7 @@ struct LiveRunView: View {
     if let lost { return lost.title }
     if let verdict = progress.verdict, progress.isFinished { return VerdictStyle(verdict, flaky: progress.flaky).title }
     if progress.state == .paused { return String(localized: "Paused on the Mac") }
+    if progress.state == .unknown { return VerdictStyle(Verdict.unknown).title }
     if progress.waiting != nil { return String(localized: "Waiting for the screen") }
     if progress.attempt > 1 { return String(localized: "Running, try \(progress.attempt)") }
     return String(localized: "Running on \(host.name)")
@@ -123,6 +126,9 @@ struct LiveRunView: View {
         return String(localized: "The Mac reported a result this version of the app doesn’t know. Update the app to see it.")
       }
       return nil
+    }
+    if progress.state == .unknown {
+      return String(localized: "The test is in a state this app doesn’t know yet. Update JEVision Remote to see it.")
     }
     if let waiting = progress.waiting, progress.state != .paused { return RunText.screenBusy(waiting.holder) }
     if let current = progress.current, let block = flow?.blocks.first(where: { $0.id == current }) {

@@ -1,0 +1,8 @@
+{
+  "event": {
+    "block": "type",
+    "event": "paused",
+    "reason": "breakpoint"
+  },
+  "type": "event"
+}

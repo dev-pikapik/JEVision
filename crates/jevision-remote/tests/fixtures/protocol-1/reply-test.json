@@ -1,0 +1,163 @@
+{
+  "ok": {
+    "test": {
+      "app": "com.example.AcmeMail",
+      "blocks": [
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 48.0
+          },
+          "id": "open",
+          "kind": "openApp",
+          "title": ""
+        },
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 160.0
+          },
+          "id": "email",
+          "kind": "type",
+          "title": "demo@example.com"
+        },
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 272.0
+          },
+          "id": "password",
+          "kind": "type",
+          "title": "$⁠{⁠s⁠e⁠c⁠r⁠e⁠t⁠.⁠A⁠C⁠M⁠E⁠_⁠P⁠A⁠S⁠S⁠W⁠O⁠R⁠D⁠}"
+        },
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 384.0
+          },
+          "id": "submit",
+          "kind": "click",
+          "title": "refs/sign-in-button.png"
+        },
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 496.0
+          },
+          "id": "inbox",
+          "kind": "waitFor",
+          "title": "refs/inbox.png"
+        },
+        {
+          "area": {
+            "height": 64.0,
+            "width": 208.0,
+            "x": 16.0,
+            "y": 608.0
+          },
+          "id": "messages",
+          "kind": "check",
+          "title": "refs/message-list.png"
+        }
+      ],
+      "description": "Signs in with a known account and checks that the inbox appears.",
+      "edges": [
+        {
+          "edge": "next",
+          "from": "open",
+          "points": [
+            {
+              "x": 120.0,
+              "y": 112.0
+            },
+            {
+              "x": 120.0,
+              "y": 160.0
+            }
+          ],
+          "to": "email"
+        },
+        {
+          "edge": "next",
+          "from": "email",
+          "points": [
+            {
+              "x": 120.0,
+              "y": 224.0
+            },
+            {
+              "x": 120.0,
+              "y": 272.0
+            }
+          ],
+          "to": "password"
+        },
+        {
+          "edge": "next",
+          "from": "password",
+          "points": [
+            {
+              "x": 120.0,
+              "y": 336.0
+            },
+            {
+              "x": 120.0,
+              "y": 384.0
+            }
+          ],
+          "to": "submit"
+        },
+        {
+          "edge": "next",
+          "from": "submit",
+          "points": [
+            {
+              "x": 120.0,
+              "y": 448.0
+            },
+            {
+              "x": 120.0,
+              "y": 496.0
+            }
+          ],
+          "to": "inbox"
+        },
+        {
+          "edge": "next",
+          "from": "inbox",
+          "points": [
+            {
+              "x": 120.0,
+              "y": 560.0
+            },
+            {
+              "x": 120.0,
+              "y": 608.0
+            }
+          ],
+          "to": "messages"
+        }
+      ],
+      "frames": [],
+      "height": 720.0,
+      "name": "Sign in with valid credentials",
+      "priority": "critical",
+      "rows": [],
+      "start": "open",
+      "status": "ready",
+      "testType": "smoke",
+      "width": 240.0
+    },
+    "type": "test"
+  }
+}

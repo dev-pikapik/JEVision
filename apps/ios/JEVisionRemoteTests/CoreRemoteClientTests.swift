@@ -23,9 +23,14 @@ struct CoreMappingTests {
     (.DataRowNotFound, .dataRowNotFound),
     (.SignerFailed, .other),
     (.TestNotFound, .other),
+    (.DeviceTooOld, .updateApp(version: nil)),
+    (.Unknown, .updateApp(version: nil)),
+    (.MacTooOld, .updateMac(version: appVersion())),
+    (.Unsupported, .updateMac(version: appVersion())),
+    (.DevicesFromNewer, .updateMac(version: nil)),
   ])
   func errorsReadAsTheApps(core: JEVisionMobile.RemoteError, app: JEVisionRemote.RemoteError) {
-    #expect(JEVisionRemote.RemoteError(core) == app)
+    #expect(JEVisionRemote.RemoteError(core, hostId: nil) == app)
   }
 
   @Test func readsTheMacsTimes() throws {

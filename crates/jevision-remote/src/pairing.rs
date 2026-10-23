@@ -12,21 +12,14 @@ pub(crate) const DEVICE_KEY_LEN: usize = 65;
 pub(crate) const CODE_LEN: usize = 16;
 pub(crate) const NONCE_LEN: usize = 32;
 
-/// How a pairing offer is written: the phone's QR code and the assistant's link differ in both,
-/// so one is never taken for the other.
-struct Link {
-    scheme: &'static str,
-    version: &'static str,
-}
+/// How a pairing offer starts: the phone's QR code and the assistant's link differ, so one is
+/// never taken for the other.
+const PHONE: &str = "jevision://pair?";
+const ASSISTANT: &str = "jevision://assistant?";
 
-const PHONE: Link = Link {
-    scheme: "jevision://pair?",
-    version: "1",
-};
-const ASSISTANT: Link = Link {
-    scheme: "jevision://assistant?",
-    version: "2",
-};
+/// The format of both links, their `v`. A link of a newer format is one this app is too old
+/// for.
+const LINK_VERSION: u32 = 1;
 
 /// The phone's own key. On iOS it lives in the Secure Enclave and cannot be copied out.
 pub trait DeviceSigner: Send + Sync {
@@ -58,20 +51,18 @@ pub struct PairingOffer {
 impl PairingOffer {
     /// The text of the QR code: `jevision://pair?v=1&id=…&name=…&code=…&exp=…&relay=…&addr=…`.
     pub fn to_url(&self) -> String {
-        self.link(&PHONE)
+        self.link(PHONE)
     }
 
-    /// The text an assistant is paired with: `jevision://assistant?v=2&id=…`, otherwise the
+    /// The text an assistant is paired with: `jevision://assistant?v=1&id=…`, otherwise the
     /// same as [`PairingOffer::to_url`].
     pub fn to_assistant_url(&self) -> String {
-        self.link(&ASSISTANT)
+        self.link(ASSISTANT)
     }
 
-    fn link(&self, link: &Link) -> String {
+    fn link(&self, scheme: &str) -> String {
         let mut url = format!(
-            "{}v={}&id={}&name={}&code={}&exp={}",
-            link.scheme,
-            link.version,
+            "{scheme}v={LINK_VERSION}&id={}&name={}&code={}&exp={}",
             self.host_id,
             encode(&self.host_name),
             self.code,
@@ -88,18 +79,18 @@ impl PairingOffer {
 
     /// Reads a scanned QR code. Expiry is left to the Mac, whose clock decides.
     pub fn parse(text: &str) -> Result<Self, RemoteError> {
-        Self::read(text, &PHONE)
+        Self::read(text, PHONE)
     }
 
     /// Reads the link an assistant is paired with.
     pub fn parse_assistant(text: &str) -> Result<Self, RemoteError> {
-        Self::read(text, &ASSISTANT)
+        Self::read(text, ASSISTANT)
     }
 
-    fn read(text: &str, link: &Link) -> Result<Self, RemoteError> {
+    fn read(text: &str, scheme: &str) -> Result<Self, RemoteError> {
         let text = text.trim();
-        let query = match text.get(..link.scheme.len()) {
-            Some(head) if head.eq_ignore_ascii_case(link.scheme) => &text[link.scheme.len()..],
+        let query = match text.get(..scheme.len()) {
+            Some(head) if head.eq_ignore_ascii_case(scheme) => &text[scheme.len()..],
             _ => return Err(RemoteError::OfferWrongScheme),
         };
         let mut version = None;
@@ -123,6 +114,11 @@ impl PairingOffer {
                 _ => {}
             }
         }
+        match version.and_then(|v| v.parse::<u32>().ok()) {
+            Some(LINK_VERSION) => {}
+            Some(newer) if newer > LINK_VERSION => return Err(RemoteError::DeviceTooOld),
+            _ => return Err(RemoteError::OfferMalformed),
+        }
         let offer = Self {
             host_id: host_id.ok_or(RemoteError::OfferMalformed)?,
             host_name: host_name
@@ -133,8 +129,7 @@ impl PairingOffer {
             relay_url,
             addrs,
         };
-        let valid = version.as_deref() == Some(link.version)
-            && offer.host_id.parse::<EndpointId>().is_ok()
+        let valid = offer.host_id.parse::<EndpointId>().is_ok()
             && code_bytes(&offer.code).is_some()
             && offer
                 .relay_url

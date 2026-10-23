@@ -163,12 +163,16 @@ impl Finished {
         self.report().verdict == Verdict::Failed && !self.report().quarantined
     }
 
-    /// Blocked by a dependency that is missing or in a circle. No test failed to say so, unlike
-    /// one blocked by a failed dependency, which has its own message.
+    /// Blocked by a dependency that is missing or in a circle, or for a reason of a newer
+    /// JEVision. No test failed to say so, unlike one blocked by a failed dependency, which has its
+    /// own message.
     fn stuck(&self) -> bool {
         self.report().verdict == Verdict::Blocked
             && self.report().blocked.as_ref().is_some_and(|b| {
-                matches!(b.reason, BlockReason::Missing | BlockReason::Cycle { .. })
+                matches!(
+                    b.reason,
+                    BlockReason::Missing | BlockReason::Cycle { .. } | BlockReason::Unknown
+                )
             })
     }
 

@@ -56,6 +56,9 @@ pub enum BlockReason {
     Missing,
     /// The tests depend on each other in a circle; `tests` goes round it and back to the first.
     Cycle { tests: Vec<String> },
+    /// A reason from a newer JEVision.
+    #[serde(other)]
+    Unknown,
 }
 
 impl Blocker {
@@ -73,6 +76,7 @@ impl Blocker {
             BlockReason::Cycle { tests } => {
                 tr_in!(lang, "batch.blocked.cycle", tests.join(" → "))
             }
+            BlockReason::Unknown => tr_in!(lang, "batch.blocked.unknown", &self.cause_name),
         }
     }
 }
@@ -668,6 +672,23 @@ mod tests {
         assert_eq!(batch.start_next(), Some(3), "independent tests still run");
         batch.finish(3, TestOutcome::Passed);
         assert!(batch.is_over());
+    }
+
+    #[test]
+    fn a_blocker_of_a_newer_jevision_reads_and_describes() {
+        let blocker: Blocker = serde_json::from_value(serde_json::json!({
+            "dependency": "login.flow.json",
+            "cause": "login.flow.json",
+            "causeName": "Login",
+            "reason": {"kind": "quarantined", "until": "2027-01-01"},
+        }))
+        .unwrap();
+        assert_eq!(blocker.reason, BlockReason::Unknown);
+        assert_eq!(blocker.describe_in("en"), "Blocked by Login");
+        assert_eq!(
+            blocker.describe_in("ru"),
+            "Заблокирован из-за теста «Login»"
+        );
     }
 
     #[test]

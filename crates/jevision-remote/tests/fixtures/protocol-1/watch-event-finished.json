@@ -1,0 +1,8 @@
+{
+  "event": {
+    "event": "finished",
+    "flaky": false,
+    "verdict": "failed"
+  },
+  "type": "event"
+}

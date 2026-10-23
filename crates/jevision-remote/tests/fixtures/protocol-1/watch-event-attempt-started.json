@@ -1,0 +1,7 @@
+{
+  "event": {
+    "attempt": 1,
+    "event": "attemptStarted"
+  },
+  "type": "event"
+}

@@ -143,6 +143,22 @@
         }
       }
     },
+    "Can’t Open Paired Macs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can’t Open Paired Macs"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся открыть список Mac"
+          }
+        }
+      }
+    },
     "Can’t Reach the Mac" : {
       "localizations" : {
         "ru" : {
@@ -703,6 +719,22 @@
         }
       }
     },
+    "Pair Your Macs Again" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pair Your Macs Again"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свяжите Mac заново"
+          }
+        }
+      }
+    },
     "Paired Macs" : {
       "localizations" : {
         "ru" : {
@@ -933,12 +965,188 @@
         }
       }
     },
+    "The list of paired Macs couldn’t be opened. Unlock the iPhone and open the app again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The list of paired Macs couldn’t be opened. Unlock the iPhone and open the app again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть список связанных Mac. Разблокируйте iPhone и откройте приложение снова."
+          }
+        }
+      }
+    },
+    "The list of paired Macs couldn’t be read. A copy was kept." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The list of paired Macs couldn’t be read. A copy was kept."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать список связанных Mac. Его копия сохранена."
+          }
+        }
+      }
+    },
+    "The test is in a state this app doesn’t know yet. Update JEVision Remote to see it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test is in a state this app doesn’t know yet. Update JEVision Remote to see it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест в состоянии, которое это приложение пока не знает. Обновите JEVision Remote, чтобы его увидеть."
+          }
+        }
+      }
+    },
+    "This code is from a newer JEVision. Update JEVision Remote to pair with this Mac." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This code is from a newer JEVision. Update JEVision Remote to pair with this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот код из более новой версии JEVision. Обновите JEVision Remote, чтобы связать iPhone с этим Mac."
+          }
+        }
+      }
+    },
+    "This iPhone needs a newer JEVision on the Mac. Update JEVision on the Mac to the latest version and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This iPhone needs a newer JEVision on the Mac. Update JEVision on the Mac to the latest version and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому iPhone нужен более новый JEVision на Mac. Обновите JEVision на Mac до последней версии и попробуйте снова."
+          }
+        }
+      }
+    },
+    "This iPhone needs JEVision %@ or later on the Mac. Update JEVision on the Mac and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This iPhone needs JEVision %@ or later on the Mac. Update JEVision on the Mac and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому iPhone нужен JEVision версии %@ или новее на Mac. Обновите JEVision на Mac и попробуйте снова."
+          }
+        }
+      }
+    },
+    "This list was saved by a newer JEVision Remote. Update the app to change it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This list was saved by a newer JEVision Remote. Update the app to change it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот список сохранён более новой версией JEVision Remote. Обновите приложение, чтобы его изменить."
+          }
+        }
+      }
+    },
+    "This Mac needs JEVision Remote %@ or later. Update the app and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Mac needs JEVision Remote %@ or later. Update the app and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этому Mac нужен JEVision Remote версии %@ или новее. Обновите приложение и попробуйте снова."
+          }
+        }
+      }
+    },
+    "This Mac uses a newer JEVision. Update JEVision Remote and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Mac uses a newer JEVision. Update JEVision Remote and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac более новый JEVision. Обновите JEVision Remote и попробуйте снова."
+          }
+        }
+      }
+    },
     "Type" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тип"
+          }
+        }
+      }
+    },
+    "Update JEVision on the Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update JEVision on the Mac"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновите JEVision на Mac"
+          }
+        }
+      }
+    },
+    "Update JEVision Remote" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update JEVision Remote"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновите JEVision Remote"
           }
         }
       }

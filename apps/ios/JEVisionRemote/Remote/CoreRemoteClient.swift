@@ -13,7 +13,8 @@ struct CoreRemoteClient: RemoteClient {
   static let network = Network(relay: .default, localDiscovery: false, globalDiscovery: true)
 
   func pair(offer: String, deviceName: String) async throws(RemoteError) -> any MacSession {
-    try await open {
+    let hostId = URLComponents(string: offer)?.queryItems?.first { $0.name == "id" }?.value
+    return try await open(hostId) {
       let offer = try parsePairingOffer(text: offer)
       return try await RemoteConnection.pair(
         offer: offer, deviceName: deviceName, signer: signer, network: Self.network)
@@ -21,24 +22,29 @@ struct CoreRemoteClient: RemoteClient {
   }
 
   func connect(_ host: HostRecord) async throws(RemoteError) -> any MacSession {
-    try await open {
+    try await open(host.hostId) {
       try await RemoteConnection.connect(record: host.wire, signer: signer, network: Self.network)
     }
   }
 
-  private func open(_ body: () async throws -> RemoteConnection) async throws(RemoteError) -> any MacSession {
+  /// `hostId` is the Mac's, when known, to name the version a refusal asks for.
+  private func open(
+    _ hostId: String?, _ body: () async throws -> RemoteConnection
+  ) async throws(RemoteError) -> any MacSession {
     // The core asks for the public key on its network threads and expects it at hand.
     do { _ = try signer.loadPublicKey() } catch { throw .other }
-    return CoreMacSession(try await core(body))
+    return CoreMacSession(try await core(hostId, body))
   }
 }
 
 /// One signed-in `RemoteConnection`. The core reconnects it on its own after network changes.
 final class CoreMacSession: MacSession {
   private let connection: RemoteConnection
+  private let hostId: String
 
   init(_ connection: RemoteConnection) {
     self.connection = connection
+    hostId = connection.record().hostId
   }
 
   var record: HostRecord { HostRecord(connection.record()) }
@@ -51,37 +57,37 @@ final class CoreMacSession: MacSession {
   }
 
   func listProjects() async throws(RemoteError) -> [Project] {
-    try await core { try await connection.listProjects().map { Project(name: $0.name) } }
+    try await core(hostId) { try await connection.listProjects().map { Project(name: $0.name) } }
   }
 
   func listTests(project: String) async throws(RemoteError) -> [TestEntry] {
-    try await core { try await connection.listTests(project: project).map(TestEntry.init) }
+    try await core(hostId) { try await connection.listTests(project: project).map(TestEntry.init) }
   }
 
   func getTest(project: String, path: String) async throws(RemoteError) -> TestFlow {
-    try await core { TestFlow(try await connection.getTest(project: project, path: path)) }
+    try await core(hostId) { TestFlow(try await connection.getTest(project: project, path: path)) }
   }
 
   func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String {
-    try await core { try await connection.runTest(project: project, path: path, row: row.map(UInt32.init)) }
+    try await core(hostId) { try await connection.runTest(project: project, path: path, row: row.map(UInt32.init)) }
   }
 
   func stopRun(project: String, run: String) async throws(RemoteError) {
-    try await core { try await connection.stopRun(project: project, run: run) }
+    try await core(hostId) { try await connection.stopRun(project: project, run: run) }
   }
 
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus {
-    try await core { RunStatus(try await connection.runStatus(project: project, run: run)) }
+    try await core(hostId) { RunStatus(try await connection.runStatus(project: project, run: run)) }
   }
 
   func runEvents(project: String, run: String) -> AsyncThrowingStream<RunUpdate, any Error> {
     AsyncThrowingStream { continuation in
-      let task = Task { [connection] in
+      let task = Task { [connection, hostId] in
         do {
-          let watcher = try await core { try await connection.watch(project: project, run: run) }
+          let watcher = try await core(hostId) { try await connection.watch(project: project, run: run) }
           // A pending `next()` finishes in the core regardless; once cancelled, the loop stops
           // asking and the watcher is released with the task.
-          while !Task.isCancelled, let update = try await core({ try await watcher.next() }) {
+          while !Task.isCancelled, let update = try await core(hostId, { try await watcher.next() }) {
             if let update = RunUpdate(update) { continuation.yield(update) }
           }
           continuation.finish()
@@ -94,15 +100,15 @@ final class CoreMacSession: MacSession {
   }
 
   func listRuns(project: String) async throws(RemoteError) -> RunList {
-    try await core { try RunList(try await connection.listRuns(project: project)) }
+    try await core(hostId) { try RunList(try await connection.listRuns(project: project)) }
   }
 
   func report(project: String, run: String) async throws(RemoteError) -> RunReport {
-    try await core { try RunReport(try await connection.report(project: project, run: run)) }
+    try await core(hostId) { try RunReport(try await connection.report(project: project, run: run)) }
   }
 
   func picture(project: String, run: String, name: String) async throws(RemoteError) -> Data {
-    try await core { try await connection.picture(project: project, run: run, picture: name) }
+    try await core(hostId) { try await connection.picture(project: project, run: run, picture: name) }
   }
 
   func close() async {
@@ -122,12 +128,12 @@ extension DeviceKey: DeviceSigner {
   }
 }
 
-/// Runs a call into the core, turning its errors into the app's.
-private func core<T>(_ body: () async throws -> T) async throws(RemoteError) -> T {
+/// Runs a call into the core, turning its errors into the app's. `hostId` is the Mac's.
+private func core<T>(_ hostId: String?, _ body: () async throws -> T) async throws(RemoteError) -> T {
   do {
     return try await body()
   } catch let error as JEVisionMobile.RemoteError {
-    throw RemoteError(error)
+    throw RemoteError(error, hostId: hostId)
   } catch let error as RemoteError {
     throw error
   } catch {
@@ -136,7 +142,8 @@ private func core<T>(_ body: () async throws -> T) async throws(RemoteError) -> 
 }
 
 extension RemoteError {
-  init(_ error: JEVisionMobile.RemoteError) {
+  /// `hostId` is the Mac's, to name the version it runs when it refuses this app as too old.
+  init(_ error: JEVisionMobile.RemoteError, hostId: String?) {
     switch error {
     case .PairingCodeInvalid, .PairingCodeUsed, .PairingLocked, .OfferWrongScheme, .OfferMalformed:
       self = .invalidCode
@@ -147,6 +154,9 @@ extension RemoteError {
     case .RunInProgress: self = .runInProgress
     case .DeclinedOnMac: self = .declinedOnMac
     case .DataRowNotFound: self = .dataRowNotFound
+    case .DeviceTooOld, .Unknown: self = .updateApp(version: hostId.flatMap { macAppVersion(hostId: $0) })
+    case .MacTooOld, .Unsupported: self = .updateMac(version: appVersion())
+    case .DevicesFromNewer: self = .updateMac(version: nil)
     case .HostOffline, .HostNotRunning, .Network: self = .macOffline
     case .BadSignature, .ProjectNotFound, .TestNotFound, .TestUnreadable, .RunNotFound, .PictureNotFound,
       .PathOutsideProject, .TooLarge, .UnexpectedMessage, .InvalidSecretKey, .InvalidRelayUrl, .SignerFailed,
@@ -272,6 +282,7 @@ extension RunStatus {
       case .running: .running
       case .paused: .paused
       case .finished: .finished
+      case .unknown: .unknown
       }
     self.init(
       run: status.run, test: status.test, state: state, verdict: status.verdict.map(Verdict.init),

@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use iroh::endpoint::{Connection, Incoming, RecvStream, SendStream, VarInt};
 use iroh::{Endpoint, EndpointId, SecretKey, Watcher};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 use tokio::sync::broadcast;
@@ -18,12 +19,13 @@ use crate::pairing::{
 use crate::store::{Activity, ActivityKind, Device, DeviceKind, Store};
 use crate::wire::{
     self, AssistantReply, AssistantRequest, CLOSE_DISABLED, CLOSE_DONE, CLOSE_REFUSED,
-    CLOSE_REVOKED, Hello, HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, Proof, Reply, Request,
-    Response, RunEvent, RunList, RunState, RunStatus, RunUpdate, Welcome,
+    CLOSE_REVOKED, HelloKind, HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, PROTOCOLS, Proof,
+    Protocols, Reply, Request, Response, RunEvent, RunList, RunState, RunStatus, RunUpdate,
+    Welcome,
 };
 use crate::{
-    ALPN, ALPN_V2, Network, PairingOffer, Permission, ProjectInfo, RemoteError, bind, hex, now,
-    project, random, unhex,
+    ALPN_ASSISTANT, ALPN_PHONE, APP_VERSION, Network, PairingOffer, Permission, ProjectInfo,
+    RemoteError, bind, hex, now, plain_version, project, random, unhex,
 };
 
 /// How long a pairing code works.
@@ -162,6 +164,7 @@ struct State {
     projects: Vec<Project>,
     confirm_runs: bool,
     live: Vec<(String, Connection)>,
+    protocols: Protocols,
 }
 
 pub(crate) struct Offer {
@@ -198,6 +201,7 @@ impl Host {
                     projects: Vec::new(),
                     confirm_runs: false,
                     live: Vec::new(),
+                    protocols: PROTOCOLS,
                 }),
                 watchers: Mutex::new(HashMap::new()),
             }),
@@ -212,7 +216,7 @@ impl Host {
         let endpoint = bind(
             self.shared.secret.clone(),
             &self.shared.network,
-            vec![ALPN.to_vec(), ALPN_V2.to_vec()],
+            vec![ALPN_PHONE.to_vec(), ALPN_ASSISTANT.to_vec()],
         )
         .await?;
         let spare = {
@@ -472,6 +476,12 @@ impl Host {
             .as_mut()
             .expect("an offer is shown"));
     }
+
+    /// Makes this Mac speak other protocol versions, as an older or newer one would.
+    #[cfg(test)]
+    pub(crate) fn set_protocols(&self, protocols: Protocols) {
+        self.shared.state().protocols = protocols;
+    }
 }
 
 impl Drop for Host {
@@ -508,7 +518,7 @@ impl Shared {
         let Ok(conn) = incoming.await else {
             return;
         };
-        let kind = if conn.alpn() == ALPN_V2 {
+        let kind = if conn.alpn() == ALPN_ASSISTANT {
             DeviceKind::Assistant
         } else {
             DeviceKind::Phone
@@ -579,21 +589,44 @@ impl Shared {
             .await
             .map_err(|_| RemoteError::HostOffline)?;
         let phone = conn.remote_id();
-        let result = match wire::expect::<Hello>(&mut recv).await {
-            Ok(Hello::Pair {
-                code,
-                device_name,
-                device_key,
-                signature,
-            }) => self.pair(phone, kind, &code, &device_name, &device_key, &signature),
-            Ok(Hello::SignIn { device_key }) => {
-                self.sign_in(phone, kind, &device_key, &mut send, &mut recv)
-                    .await
+        let protocols = self.state().protocols;
+        let result = match wire::expect::<Value>(&mut recv).await {
+            Ok(frame) => {
+                // Versions that are missing or unreadable count as protocol 1 and no version.
+                let theirs = frame
+                    .get("protocols")
+                    .and_then(|p| Protocols::deserialize(p).ok())
+                    .unwrap_or_default();
+                let app_version = frame
+                    .get("appVersion")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                match protocols.agree(theirs) {
+                    Ok(protocol) => match HelloKind::deserialize(&frame) {
+                        Ok(HelloKind::Pair {
+                            code,
+                            device_name,
+                            device_key,
+                            signature,
+                        }) => self.pair(phone, kind, &code, &device_name, &device_key, &signature),
+                        Ok(HelloKind::SignIn { device_key }) => {
+                            self.sign_in(phone, kind, &device_key, &mut send, &mut recv)
+                                .await
+                        }
+                        Ok(HelloKind::Unknown) => Err(RemoteError::Unsupported),
+                        Err(_) => Err(RemoteError::Protocol),
+                    }
+                    .map(|device| (device, protocol)),
+                    Err(error) => {
+                        self.log_version_refusal(&frame, app_version, error);
+                        Err(error)
+                    }
+                }
             }
             Err(e) => Err(e),
         };
         let reply = match &result {
-            Ok(device) => {
+            Ok((device, protocol)) => {
                 let (relay_url, addrs) = self
                     .state()
                     .endpoint
@@ -601,6 +634,8 @@ impl Shared {
                     .map(addresses)
                     .unwrap_or_default();
                 HostHello::Welcome(Welcome {
+                    protocol: *protocol,
+                    app_version: APP_VERSION.to_owned(),
                     host_name: self.name.clone(),
                     device_id: device.id.clone(),
                     permission: device.permission,
@@ -608,11 +643,51 @@ impl Shared {
                     addrs,
                 })
             }
-            Err(error) => HostHello::Refused { error: *error },
+            Err(error) => HostHello::Refused {
+                error: *error,
+                app_version: (*error == RemoteError::DeviceTooOld).then(|| APP_VERSION.to_owned()),
+            },
         };
         wire::send(&mut send, &reply).await?;
         let _ = send.finish();
-        result.map(|device| device.id)
+        result.map(|(device, _)| device.id)
+    }
+
+    /// Notes a phone turned away for its protocol version, with the app version that would do:
+    /// this Mac's when the phone is too old, the phone's own when the Mac is and it is a plain
+    /// version. The rest of `frame` is read as far as it can be: its shape may be a newer one.
+    fn log_version_refusal(&self, frame: &Value, app_version: &str, error: RemoteError) {
+        let subject = match error {
+            RemoteError::DeviceTooOld => Some(APP_VERSION.to_owned()),
+            RemoteError::MacTooOld => plain_version(app_version).then(|| app_version.to_owned()),
+            _ => return,
+        };
+        let text = |key: &str| frame.get(key).and_then(Value::as_str);
+        let id = text("deviceKey")
+            .and_then(unhex)
+            .filter(|k| !k.is_empty())
+            .map(|k| device_id(&k));
+        let state = self.state();
+        let (kind, device_name) = if text("type") == Some("signIn") {
+            let name = id
+                .as_deref()
+                .and_then(|id| state.store.device(id))
+                .map(|d| d.name.clone());
+            (ActivityKind::SignInFailed, name)
+        } else {
+            (
+                ActivityKind::PairingFailed,
+                text("deviceName").map(str::to_owned),
+            )
+        };
+        state.store.log(&Activity {
+            time: now(),
+            device_id: id,
+            device_name,
+            kind,
+            subject,
+            error: Some(error),
+        });
     }
 
     fn pair(
@@ -895,6 +970,7 @@ impl Shared {
                 ));
             }
             Request::Watch { .. } => return Err(RemoteError::Protocol),
+            Request::Unknown => return Err(RemoteError::Unsupported),
         };
         Ok((response, None))
     }
@@ -999,6 +1075,11 @@ impl Shared {
                 };
                 blocking(move || delegate.assistant_call(session, device, root, tool, arguments))
                     .await
+            }
+            AssistantRequest::Unknown => {
+                return AssistantReply::Error {
+                    error: RemoteError::Unsupported,
+                };
             }
         };
         match outcome {

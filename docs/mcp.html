@@ -129,6 +129,7 @@
   <li>The screen of that Mac must be unlocked for a run, and JEVision must be open and awake. Otherwise the assistant is told why and nothing is clicked.</li>
 </ul>
 <p>Nothing is opened on the router. The two computers find each other directly or through a relay that can't read the traffic, the same way an <a href="iphone.html">iPhone</a> does. The other computer keeps its key in its Keychain, and the Mac keeps only the public part. To remove a Mac from the other computer, run <code>jevision mcp --forget "Office Mac"</code>.</p>
+<p>The two computers don't need the same version of JEVision; they agree on one the way an <a href="iphone.html#versions">iPhone does</a>. When they can't, the command says which computer to update and to which version.</p>
 
 <h2 id="tools">Tools</h2>
 <p>Every path is relative to the project folder, such as <code>login/sign-in.flow.json</code>. Fields marked “required” must be given; the rest are optional.</p>

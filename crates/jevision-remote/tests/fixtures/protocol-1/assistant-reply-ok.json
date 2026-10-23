@@ -1,0 +1,12 @@
+{
+  "result": {
+    "content": [
+      {
+        "text": "done",
+        "type": "text"
+      }
+    ],
+    "isError": false
+  },
+  "type": "ok"
+}

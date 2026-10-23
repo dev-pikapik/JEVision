@@ -27206,6 +27206,22 @@
         }
       }
     },
+    "batch.blocked.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blocked by %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заблокирован из-за теста «%@»"
+          }
+        }
+      }
+    },
     "block.archive.empty" : {
       "localizations" : {
         "en" : {
@@ -40064,6 +40080,38 @@
         }
       }
     },
+    "mcp.remote.deviceTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on this computer is too old for the Mac. Update it to version %@ or later, then try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на этом компьютере устарел для этого Mac. Обновите его до версии %@ или новее и попробуйте снова."
+          }
+        }
+      }
+    },
+    "mcp.remote.deviceTooOldLatest" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on this computer is too old for the Mac. Update it to the latest version, then try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на этом компьютере устарел для этого Mac. Обновите его до последней версии и попробуйте снова."
+          }
+        }
+      }
+    },
     "mcp.remote.hostOffline" : {
       "localizations" : {
         "en" : {
@@ -40076,6 +40124,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mac недоступен. Возможно, он спит или не в сети, или на нём закрыт JEVision. Попросите человека за Mac открыть JEVision и попробуйте снова."
+          }
+        }
+      }
+    },
+    "mcp.remote.macTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on the Mac is too old for this computer. Ask the person at the Mac to update JEVision to version %@ or later, then try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на Mac устарел для этого компьютера. Попросите человека за Mac обновить JEVision до версии %@ или новее и попробуйте снова."
           }
         }
       }
@@ -40204,6 +40268,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ответ слишком большой, чтобы его отправить."
+          }
+        }
+      }
+    },
+    "mcp.remote.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Mac answered in a way this version of JEVision doesn’t understand. Update JEVision on this computer, then try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эта версия JEVision не понимает ответ Mac. Обновите JEVision на этом компьютере и попробуйте снова."
+          }
+        }
+      }
+    },
+    "mcp.remote.unsupported" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on the Mac can’t do what was asked. Ask the person at the Mac to update JEVision, then try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на Mac не умеет делать то, о чём его попросили. Попросите человека за Mac обновить JEVision и попробуйте снова."
           }
         }
       }
@@ -43002,6 +43098,54 @@
         }
       }
     },
+    "remote.activity.deviceTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app on the device is out of date. Update it to version %@ or later."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение на устройстве устарело. Обновите его до версии %@ или новее."
+          }
+        }
+      }
+    },
+    "remote.activity.devicesUnreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paired devices couldn’t be read"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать список устройств"
+          }
+        }
+      }
+    },
+    "remote.activity.macTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on this Mac is out of date for that device. Update JEVision to version %@ or later."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на этом Mac устарел для этого устройства. Обновите JEVision до версии %@ или новее."
+          }
+        }
+      }
+    },
     "remote.activity.paired" : {
       "localizations" : {
         "en" : {
@@ -43146,6 +43290,22 @@
         }
       }
     },
+    "remote.activity.unreadableCopy" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A copy was saved as %@. Pair your devices again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копия сохранена как %@. Подключите устройства заново."
+          }
+        }
+      }
+    },
     "remote.error.badSignature" : {
       "localizations" : {
         "en" : {
@@ -43190,6 +43350,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запуск не разрешили на Mac."
+          }
+        }
+      }
+    },
+    "remote.error.deviceTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app on the device is out of date. Update it to the latest version."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение на устройстве устарело. Обновите его до последней версии."
+          }
+        }
+      }
+    },
+    "remote.error.devicesFromNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The list of paired devices on the Mac was saved by a newer version of JEVision, so it can’t be changed. Update JEVision on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список подключённых устройств на Mac сохранила более новая версия JEVision, поэтому изменить его нельзя. Обновите JEVision на Mac."
           }
         }
       }
@@ -43286,6 +43478,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Экран Mac заблокирован."
+          }
+        }
+      }
+    },
+    "remote.error.macTooOld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision on this Mac is out of date for that device. Update JEVision."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision на этом Mac устарел для этого устройства. Обновите JEVision."
           }
         }
       }
@@ -43606,6 +43814,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Файл слишком большой для отправки."
+          }
+        }
+      }
+    },
+    "remote.error.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A newer version of JEVision reported a problem this one doesn’t know. Update JEVision."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Более новая версия JEVision сообщила о проблеме, которую эта версия не знает. Обновите JEVision."
+          }
+        }
+      }
+    },
+    "remote.error.unsupported" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The device asked for something this version of JEVision can’t do. Update JEVision on this Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Устройство попросило о том, чего эта версия JEVision не умеет. Обновите JEVision на этом Mac."
           }
         }
       }

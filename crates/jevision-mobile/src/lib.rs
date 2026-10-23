@@ -104,6 +104,11 @@ remote_error!(
     Storage,
     HostFailed,
     DataRowNotFound,
+    DeviceTooOld,
+    MacTooOld,
+    Unsupported,
+    DevicesFromNewer,
+    Unknown,
 );
 
 #[uniffi::export]
@@ -157,6 +162,21 @@ impl jevision_remote::DeviceSigner for Signer {
 #[uniffi::export]
 pub fn parse_pairing_offer(text: String) -> Result<PairingOffer, RemoteError> {
     jevision_remote::PairingOffer::parse(&text).map_err(Into::into)
+}
+
+/// This app's version, such as `1.0.0`. A Mac too old for the phone ([`RemoteError::MacTooOld`])
+/// needs at least this one.
+#[uniffi::export]
+pub fn app_version() -> String {
+    jevision_remote::APP_VERSION.to_owned()
+}
+
+/// The version of JEVision on the Mac `host_id`, as it last told this phone: on every sign-in,
+/// and when it refused the phone as too old ([`RemoteError::DeviceTooOld`]), so the phone can
+/// say which version to update to. `None` until then.
+#[uniffi::export]
+pub fn mac_app_version(host_id: String) -> Option<String> {
+    jevision_remote::mac_version(&host_id)
 }
 
 /// A paired Mac as JSON, to keep in the app's storage.

@@ -22,15 +22,23 @@ struct RunsView: View {
                   Label {
                     VStack(alignment: .leading, spacing: 2) {
                       Text(status.test)
-                      if status.waiting != nil {
+                      if status.state == .unknown {
+                        Text(VerdictStyle(Verdict.unknown).title)
+                          .font(.subheadline)
+                          .foregroundStyle(.secondary)
+                      } else if status.waiting != nil {
                         Text("Waiting for the screen")
                           .font(.subheadline)
                           .foregroundStyle(.secondary)
                       }
                     }
                   } icon: {
-                    Image(systemName: status.waiting != nil ? "clock.fill" : status.state == .paused ? "pause.circle.fill" : "play.circle.fill")
-                      .foregroundStyle(.orange)
+                    if status.state == .unknown {
+                      VerdictStyle(Verdict.unknown).image
+                    } else {
+                      Image(systemName: status.waiting != nil ? "clock.fill" : status.state == .paused ? "pause.circle.fill" : "play.circle.fill")
+                        .foregroundStyle(.orange)
+                    }
                   }
                 }
               }

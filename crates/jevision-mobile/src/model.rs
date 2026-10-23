@@ -260,6 +260,8 @@ pub enum RunState {
     Running,
     Paused,
     Finished,
+    /// A state from a newer Mac.
+    Unknown,
 }
 
 /// A run saved in the project.
@@ -311,6 +313,8 @@ pub enum PauseReason {
     Breakpoint,
     /// A person used the mouse or keyboard while the test was driving the Mac.
     UserInput,
+    /// A reason from a newer Mac.
+    Unknown,
 }
 
 /// A vision model's verdict on a screen.
