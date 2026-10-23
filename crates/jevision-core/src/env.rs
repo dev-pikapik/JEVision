@@ -182,6 +182,8 @@ impl Environments {
     }
 
     fn save(self, project: &Path) -> Result<(), String> {
+        // Do not replace a file that changed to an unsupported format while editing.
+        Self::load(project)?;
         let file = File {
             format: ENVIRONMENTS_FORMAT,
             default: self.default,
@@ -378,6 +380,30 @@ mod tests {
             let error = Environments::parse(bad).unwrap_err();
             assert!(error.contains(says), "{bad}: {error}");
         }
+    }
+
+    #[test]
+    fn saving_stale_environments_preserves_an_unreadable_or_newer_file() {
+        let dir = project(Some(
+            r#"{"format":1,"environments":{"dev":{"HOST":"old"}}}"#,
+        ));
+        let mut edited = Environments::load(&dir).unwrap();
+        edited
+            .all
+            .get_mut("dev")
+            .unwrap()
+            .insert("HOST".into(), "new".into());
+        let file = dir.join(ENVIRONMENTS_FILE);
+        for changed in [
+            r#"{"format":99,"future":true}"#,
+            r#"{"format":1,"future":true}"#,
+            "{",
+        ] {
+            fs::write(&file, changed).unwrap();
+            assert!(edited.clone().save(&dir).is_err());
+            assert_eq!(fs::read_to_string(&file).unwrap(), changed);
+        }
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

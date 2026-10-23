@@ -514,6 +514,9 @@ pub fn schedules_to_json(schedules: &[Schedule]) -> Result<String, ScheduleProbl
 /// Writes the schedule file of `project`; without schedules the file goes away.
 pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), ScheduleProblem> {
     let file = project.join(SCHEDULE_FILE);
+    let text = schedules_to_json(schedules)?;
+    // Deleting the last schedule must respect newer and unreadable files too.
+    load_schedules(project)?;
     if schedules.is_empty() {
         return match fs::remove_file(&file) {
             Err(e) if e.kind() != io::ErrorKind::NotFound => Err(ScheduleProblem::io(
@@ -524,7 +527,7 @@ pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), Sche
             _ => Ok(()),
         };
     }
-    crate::atomic::write(&file, &schedules_to_json(schedules)?)
+    crate::atomic::write(&file, &text)
         .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_FILE, &e))
 }
 
@@ -1027,6 +1030,33 @@ mod tests {
         assert!(plist.contains(&format!("<key>Label</key>\n\t<string>{label}</string>")));
         assert!(plist.contains("<key>Weekday</key>\n\t\t\t<integer>0</integer>"));
         assert_eq!(plist.matches("<key>Hour</key>").count(), 3);
+    }
+
+    #[test]
+    fn saving_or_clearing_schedules_preserves_an_unreadable_or_newer_file() {
+        let project = std::env::temp_dir().join(format!(
+            "jevision-schedule-write-guard-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&project).unwrap();
+        let file = project.join(SCHEDULE_FILE);
+        let schedules = [schedule(Repeat::Daily, 9, 0)];
+        save_schedules(&project, &schedules).unwrap();
+        for changed in [
+            r#"{"format":99,"future":true}"#,
+            r#"{"format":1,"schedules":[],"future":true}"#,
+            "{",
+        ] {
+            fs::write(&file, changed).unwrap();
+            for replacement in [&schedules[..], &[][..]] {
+                assert!(save_schedules(&project, replacement).is_err());
+                assert_eq!(fs::read_to_string(&file).unwrap(), changed);
+            }
+        }
+        fs::write(&file, schedules_to_json(&schedules).unwrap()).unwrap();
+        save_schedules(&project, &[]).unwrap();
+        assert!(!file.exists());
+        fs::remove_dir_all(project).unwrap();
     }
 
     #[test]

@@ -481,9 +481,23 @@ impl ProjectSettings {
         text
     }
 
-    /// Writes the settings to the project folder `project`.
+    /// Writes valid settings in one step. Rechecks the current file so a stale editor cannot
+    /// replace settings that became unreadable or require a newer format after it opened.
     pub fn save(&self, project: &Path) -> io::Result<()> {
-        fs::write(project.join(PROJECT_FILE), self.to_json())
+        let file = project.join(PROJECT_FILE);
+        let text = self.to_json();
+        let valid = |text: &str| {
+            Self::parse(text)
+                .map(|_| ())
+                .map_err(|reason| io::Error::new(io::ErrorKind::InvalidData, reason))
+        };
+        valid(&text)?;
+        match fs::read_to_string(&file) {
+            Ok(current) => valid(&current)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+        crate::atomic::write(&file, text)
     }
 
     /// The quarantine of the test file `test`, relative to the project folder, if it is in force
@@ -1172,6 +1186,72 @@ mod tests {
         settings.save(&dir).unwrap();
         assert_eq!(ProjectSettings::load(&dir).unwrap(), settings);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn saving_stale_settings_keeps_an_unreadable_or_newer_file() {
+        let dir =
+            std::env::temp_dir().join(format!("jevision-project-stale-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(PROJECT_FILE);
+        let original = ProjectSettings {
+            retries: Some(1),
+            ..Default::default()
+        };
+        original.save(&dir).unwrap();
+        let mut edited = ProjectSettings::load(&dir).unwrap();
+        edited.retries = Some(2);
+        for changed in [
+            r#"{"format":99,"future":{"enabled":true}}"#,
+            r#"{"format":1,"future":{"enabled":true}}"#,
+            "{",
+        ] {
+            fs::write(&file, changed).unwrap();
+            assert_eq!(
+                edited.save(&dir).unwrap_err().kind(),
+                io::ErrorKind::InvalidData
+            );
+            assert_eq!(fs::read_to_string(&file).unwrap(), changed);
+        }
+        fs::write(&file, original.to_json()).unwrap();
+        edited.retries = Some(MAX_RETRIES + 1);
+        assert_eq!(
+            edited.save(&dir).unwrap_err().kind(),
+            io::ErrorKind::InvalidData
+        );
+        assert_eq!(ProjectSettings::load(&dir).unwrap(), original);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn project_settings_are_replaced_without_truncating_open_readers() {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        let dir =
+            std::env::temp_dir().join(format!("jevision-project-atomic-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(PROJECT_FILE);
+        ProjectSettings::default().save(&dir).unwrap();
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+        let before = fs::metadata(&file).unwrap().ino();
+        let reader = fs::File::open(&file).unwrap();
+        let changed = ProjectSettings {
+            retries: Some(2),
+            ..Default::default()
+        };
+        changed.save(&dir).unwrap();
+        assert_eq!(ProjectSettings::load(&dir).unwrap(), changed);
+        assert_eq!(
+            io::read_to_string(reader).unwrap(),
+            ProjectSettings::default().to_json()
+        );
+        assert_ne!(fs::metadata(&file).unwrap().ino(), before);
+        assert_eq!(
+            fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
