@@ -17,7 +17,7 @@ final class AppLanguage: Observable, Sendable {
 
   /// The languages `bundle` has texts for, the source language first.
   static func languages(in bundle: Bundle) -> [String] {
-    let found = bundle.localizations.filter { $0 != "Base" }
+    let found = Array(Set(bundle.localizations.filter { $0 != "Base" }))
     return (found.isEmpty ? ["en"] : found).sorted { $0 == "en" ? $1 != "en" : $1 != "en" && $0 < $1 }
   }
 

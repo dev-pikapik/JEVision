@@ -7,12 +7,16 @@ import Testing
 @testable import JEVision
 
 /// A folder shaped like an app with texts in Russian and English.
-private func appWithTexts() throws -> Bundle {
+private func appWithTexts(declaredLanguages: [String]? = nil) throws -> Bundle {
   let root = FileManager.default.temporaryDirectory.appending(path: "texts-\(UUID().uuidString)")
   for (language, text) in [("en", "Hello"), ("ru", "Привет")] {
     let folder = root.appending(path: "\(language).lproj")
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     try "\"Hello\" = \"\(text)\";\n".write(to: folder.appending(path: "Localizable.strings"), atomically: true, encoding: .utf8)
+  }
+  if let declaredLanguages {
+    try PropertyListSerialization.data(fromPropertyList: ["CFBundleLocalizations": declaredLanguages], format: .xml, options: 0)
+      .write(to: root.appending(path: "Info.plist"))
   }
   return try #require(Bundle(url: root))
 }
@@ -117,6 +121,11 @@ struct AppLanguageTests {
     let empty = try #require(Bundle(url: FileManager.default.temporaryDirectory))
     #expect(AppLanguage.languages(in: empty) == ["en"])
     #expect(AppLanguage.choices.first == "")
+  }
+
+  @Test func languagesDeclaredInMetadataAndResourceFoldersAreOfferedOnce() throws {
+    let bundle = try appWithTexts(declaredLanguages: ["en", "ru"])
+    #expect(AppLanguage.languages(in: bundle) == ["en", "ru"])
   }
 
   @Test func theSystemLanguageIsReadAgainWhenTheMacChangesIt() throws {
