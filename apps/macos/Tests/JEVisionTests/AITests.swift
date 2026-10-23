@@ -391,7 +391,7 @@ struct AssistantRequestsTests {
     #expect(connectedAssistants(folder: path).isEmpty)
     #expect(pendingAssistantRequests(folder: path).isEmpty)
     #expect(!answerAssistantRequest(folder: path, id: "1-2-3", allow: true), "nobody asked")
-    #expect(AISettings.assistantsFolder.path.hasSuffix("JEVision/Assistants"))
+    #expect(AISettings.assistantsFolder == Profile.current.supportFolder.appending(path: "Assistants", directoryHint: .isDirectory))
   }
 
   @Test func theAppListensAndAsksAsSoonAsAQuestionComesIn() async throws {

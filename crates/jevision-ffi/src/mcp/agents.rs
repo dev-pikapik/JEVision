@@ -392,7 +392,15 @@ pub fn forget_assistants(folder: String) {
 /// still counts as open, and the system lets go of the lock when the app quits or crashes.
 #[derive(uniffi::Object)]
 pub struct AssistantListener {
-    _lock: File,
+    lock: Mutex<Option<File>>,
+}
+
+#[uniffi::export]
+impl AssistantListener {
+    /// Stops listening immediately, even while another caller still holds the listener.
+    pub fn stop(&self) {
+        self.lock.lock().unwrap_or_else(|e| e.into_inner()).take();
+    }
 }
 
 /// Tells the servers using the shared `folder` that the app can ask; keep the listener while it
@@ -410,7 +418,9 @@ pub fn listen_for_assistants(folder: String) -> Option<Arc<AssistantListener>> {
     // A server that looks holds the lock for a moment.
     for _ in 0..50 {
         if try_lock(&file, true).ok()? {
-            return Some(Arc::new(AssistantListener { _lock: file }));
+            return Some(Arc::new(AssistantListener {
+                lock: Mutex::new(Some(file)),
+            }));
         }
         thread::sleep(Duration::from_millis(10));
     }
@@ -556,4 +566,27 @@ fn unix_ms(time: SystemTime) -> i64 {
     time.duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as i64
+}
+
+#[cfg(test)]
+mod listener_tests {
+    use super::*;
+
+    #[test]
+    fn stopping_releases_the_lock_while_a_reference_is_still_held() {
+        let folder =
+            std::env::temp_dir().join(format!("jevision-listener-stop-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&folder);
+        let listener = listen_for_assistants(folder.to_string_lossy().into_owned()).unwrap();
+        let kept = Arc::clone(&listener);
+        assert!(app_listening(&folder));
+        listener.stop();
+        assert!(!app_listening(&folder));
+        kept.stop();
+        let next = listen_for_assistants(folder.to_string_lossy().into_owned()).unwrap();
+        assert!(app_listening(&folder));
+        next.stop();
+        assert!(!app_listening(&folder));
+        let _ = fs::remove_dir_all(&folder);
+    }
 }

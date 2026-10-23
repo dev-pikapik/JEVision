@@ -25,7 +25,8 @@ final class AssistantRequests {
   /// timer: macOS slows the timers of an app it lets nap in the background, and the lock and
   /// the folder's changes reach a napping app all the same.
   func start() {
-    listener = listenForAssistants(folder: folder)
+    guard listener == nil, let listener = listenForAssistants(folder: folder) else { return }
+    self.listener = listener
     let asks = open(URL(filePath: folder).appending(path: "asks").path, O_EVTONLY)
     if asks >= 0 {
       let watch = DispatchSource.makeFileSystemObjectSource(
@@ -47,6 +48,7 @@ final class AssistantRequests {
   func stop() {
     watch?.cancel()
     watch = nil
+    listener?.stop()
     listener = nil
   }
 
