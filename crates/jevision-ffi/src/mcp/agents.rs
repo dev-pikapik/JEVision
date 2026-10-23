@@ -399,7 +399,17 @@ pub struct AssistantListener {
 impl AssistantListener {
     /// Stops listening immediately, even while another caller still holds the listener.
     pub fn stop(&self) {
-        self.lock.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(file) = self.lock.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            // Forked child processes can briefly share the open file description. Unlock it
+            // explicitly before closing, so stopping does not wait for their copies to close.
+            #[cfg(unix)]
+            {
+                use std::os::fd::AsRawFd;
+                // SAFETY: `file` owns this descriptor until after the call.
+                unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_UN) };
+            }
+            drop(file);
+        }
     }
 }
 
@@ -579,10 +589,19 @@ mod listener_tests {
         let _ = fs::remove_dir_all(&folder);
         let listener = listen_for_assistants(folder.to_string_lossy().into_owned()).unwrap();
         let kept = Arc::clone(&listener);
+        let duplicate = listener
+            .lock
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .try_clone()
+            .unwrap();
         assert!(app_listening(&folder));
         listener.stop();
         assert!(!app_listening(&folder));
         kept.stop();
+        drop(duplicate);
         let next = listen_for_assistants(folder.to_string_lossy().into_owned()).unwrap();
         assert!(app_listening(&folder));
         next.stop();
