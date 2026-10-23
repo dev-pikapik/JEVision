@@ -9,12 +9,13 @@ use jevision_core::{
 use serde_json::{Value, json};
 
 use super::{
-    AssistantHost, AssistantPermissions, AssistantRequest, ConnectedAssistant, Server,
-    answer_assistant_request, connected_assistants, forget_assistants, pending_assistant_requests,
+    AssistantHost, AssistantListener, AssistantPermissions, AssistantRequest, ConnectedAssistant,
+    Server, answer_assistant_request, connected_assistants, forget_assistants,
+    listen_for_assistants, pending_assistant_requests,
 };
 use crate::{Hands, HandsError, Openable, RunOptions, SecretSource, TestRun};
 use jevision_core::{WindowPosition, WindowSize};
-use jevision_runner::Screenshot;
+use jevision_runner::{AppStart, Screenshot};
 
 const SECRET: &str = "hunter2-secret";
 
@@ -64,8 +65,11 @@ struct FakeHands {
 }
 
 impl Hands for FakeHands {
-    fn open_app(&self, _: String, _: bool) -> Result<(), HandsError> {
+    fn open_app(&self, _: String, _: AppStart) -> Result<(), HandsError> {
         Ok(())
+    }
+    fn sandboxed(&self, _: String) -> Result<bool, HandsError> {
+        Ok(false)
     }
     fn arrange_window(
         &self,
@@ -169,6 +173,18 @@ impl SecretSource for Secrets {
     }
 }
 
+/// What opening the app does.
+#[derive(Default)]
+pub(crate) enum Launch {
+    /// macOS can't open it.
+    #[default]
+    Fails,
+    /// It starts, but never gets ready to ask.
+    Hangs,
+    /// It starts, and the person allows what it asks.
+    Allows,
+}
+
 #[derive(Default)]
 pub(crate) struct Host {
     /// Where the server and the app meet.
@@ -183,6 +199,11 @@ pub(crate) struct Host {
     pub(crate) ended: AtomicU32,
     /// Runs wait for the person to step through them, so they stay going.
     pub(crate) stepping: AtomicBool,
+    pub(crate) launch: Mutex<Launch>,
+    /// How many times the app was opened.
+    pub(crate) opened: AtomicU32,
+    /// The app, once opened, listens until the test ends.
+    app: Mutex<Option<Arc<AssistantListener>>>,
 }
 
 impl AssistantHost for Host {
@@ -214,6 +235,21 @@ impl AssistantHost for Host {
     }
     fn shared_folder(&self) -> String {
         self.shared.0.display().to_string()
+    }
+    fn open_app(&self) -> Result<(), HandsError> {
+        self.opened.fetch_add(1, Ordering::Relaxed);
+        match *self.launch.lock().unwrap() {
+            Launch::Fails => Err(HandsError::AppNotFound {
+                app: "JEVision".to_owned(),
+            }),
+            Launch::Hangs => Ok(()),
+            Launch::Allows => {
+                let folder = self.shared_folder();
+                *self.app.lock().unwrap() = listen_for_assistants(folder.clone());
+                std::thread::spawn(move || app_answers(&folder, true));
+                Ok(())
+            }
+        }
     }
 }
 
@@ -746,8 +782,39 @@ fn runs_on_fake_hands_without_giving_away_secrets() {
     assert!(!saved.contains(SECRET));
 }
 
+/// The values the core allows for `field` (`button`, or `reference.compare` inside an object)
+/// of `block`, from what it says about a wrong one.
+fn allowed_values(block: &Value, field: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    for wrong in [json!("\u{1}"), json!(["\u{1}"])] {
+        let mut probe = block.clone();
+        match field.split_once('.') {
+            Some((object, key)) => probe[object][key] = wrong,
+            None => probe[field] = wrong,
+        }
+        let Err(e) = jevision_core::parse_block(&probe) else {
+            continue;
+        };
+        for issue in &e.issues {
+            if issue.code == "flow.field.value" && issue.param("field") == Some(field) {
+                let allowed = issue.param("allowed").unwrap_or_default();
+                values.extend(
+                    allowed
+                        .split(", ")
+                        .map(|v| v.trim_end_matches(" …"))
+                        .filter(|v| *v != "…")
+                        // A shape like {"contains": …} is named by its key.
+                        .map(|v| v.split('"').nth(1).unwrap_or(v))
+                        .map(str::to_owned),
+                );
+            }
+        }
+    }
+    values
+}
+
 #[test]
-fn the_format_guide_covers_every_block_type() {
+fn the_format_guide_describes_every_field_and_value_the_core_reads() {
     let guide = super::blocks::guide();
     let types: Vec<&str> = guide["blocks"]
         .as_array()
@@ -763,17 +830,99 @@ fn the_format_guide_covers_every_block_type() {
             .map(|s| s.type_name.as_str())
             .collect::<Vec<_>>()
     );
+    let base = jevision_core::parse(
+        &json!({
+            "format": FORMAT_VERSION,
+            "name": "Guide",
+            "app": "com.example.mail",
+            "start": "wait",
+            "blocks": { "wait": { "type": "pause", "duration": "1s" } },
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let mut gaps = Vec::new();
     for block in guide["blocks"].as_array().unwrap() {
-        let example = block["example"].to_string();
-        let kind = jevision_core::parse_block(&super::tools::without_edges(
-            &serde_json::from_str(&example).unwrap(),
-        ));
-        assert!(
-            kind.is_ok(),
-            "the example of {} doesn't parse",
-            block["type"]
+        let type_name = block["type"].as_str().unwrap();
+        let fields = block["fields"].as_object().unwrap();
+        let mut described: Vec<&str> = fields.keys().map(String::as_str).collect();
+        described.extend(
+            block["edges"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e.as_str().unwrap()),
         );
+        described.push("type");
+        described.sort_unstable();
+        let mut read = jevision_core::block_fields(type_name);
+        read.sort_unstable();
+        if described != read {
+            gaps.push(format!(
+                "{type_name}: the guide has {described:?}, the core reads {read:?}"
+            ));
+        }
+        let bare = json!({ "type": type_name });
+        let choices: Vec<(&str, Vec<String>)> = read
+            .iter()
+            .map(|f| (*f, allowed_values(&bare, f)))
+            .collect();
+        for field in &read {
+            let mut values = allowed_values(&bare, field);
+            for (choice, options) in &choices {
+                for option in options {
+                    let mut chosen = bare.clone();
+                    chosen[*choice] = json!(option);
+                    values.extend(allowed_values(&chosen, field));
+                }
+            }
+            let text = fields
+                .get(*field)
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            values.sort_unstable();
+            values.dedup();
+            for value in values
+                .iter()
+                .filter(|v| !text.contains(&format!("\"{v}\"")))
+            {
+                gaps.push(format!("{type_name}.{field}: \"{value}\" isn't named"));
+            }
+        }
+        let example = jevision_core::parse_block(&super::tools::without_edges(&block["example"]))
+            .unwrap_or_else(|e| panic!("the example of {type_name} doesn't parse: {:?}", e.issues));
+        let mut flow = base.clone();
+        flow.insert_blocks(vec![example], None).unwrap();
+        // A loop added on its own starts with an empty body, which the assistant fills next.
+        for issue in jevision_core::validate(&flow).iter().filter(|i| {
+            i.severity == jevision_core::Severity::Error && i.code != "flow.loop.emptyBody"
+        }) {
+            gaps.push(format!("the example of {type_name}: {}", issue.code));
+        }
     }
+    let shapes = &guide["shapes"];
+    let target = shapes["target"].as_str().unwrap();
+    for field in jevision_core::target_fields() {
+        if !target.contains(&format!("\"{field}\"")) {
+            gaps.push(format!("target: \"{field}\" isn't named"));
+        }
+    }
+    let reference = shapes["reference"].as_str().unwrap();
+    let check = json!({ "type": "check", "reference": { "image": "refs/inbox.png" } });
+    for field in jevision_core::reference_fields() {
+        let mut named = vec![field.to_owned()];
+        named.extend(allowed_values(&check, &format!("reference.{field}")));
+        if field == "provider" {
+            named.extend(jevision_core::AI_PROVIDERS.iter().map(|p| (*p).to_owned()));
+        }
+        for word in named
+            .iter()
+            .filter(|w| !reference.contains(&format!("\"{w}\"")))
+        {
+            gaps.push(format!("reference.{field}: \"{word}\" isn't named"));
+        }
+    }
+    assert!(gaps.is_empty(), "the guide misses:\n{}", gaps.join("\n"));
 }
 
 #[test]
@@ -991,6 +1140,9 @@ fn connected_assistants_are_listed_with_their_last_call() {
     let folder = host.shared_folder();
     assert!(connected_assistants(folder.clone()).is_empty());
 
+    // Listed newest first, then by name: Claude Code leads whether or not a second passed.
+    let other = Server::new(&_project.0, host.clone()).unwrap();
+    hello(&other, "cursor", None);
     hello(&server, "claude-code", Some("Claude Code"));
     call(&server, "list_tests", json!({}));
     call(
@@ -998,8 +1150,6 @@ fn connected_assistants_are_listed_with_their_last_call() {
         "validate_test",
         json!({ "path": "login/sign-in.flow.json" }),
     );
-    let other = Server::new(&_project.0, host.clone()).unwrap();
-    hello(&other, "cursor", None);
 
     // Two connections that fall in different seconds list in the other order: the order has its
     // own test, with the seconds written down.
@@ -1108,6 +1258,103 @@ pub(crate) fn app_answers(folder: &str, allow: bool) -> AssistantRequest {
     panic!("the assistant never asked");
 }
 
+/// An assistant on this Mac whose runs the person must allow first.
+fn asking() -> (Project, Arc<Host>, Server) {
+    let (project, host, server) = setup();
+    *host.permissions.lock().unwrap() = AssistantPermissions {
+        run_tests: true,
+        screenshots: false,
+        ask_first: true,
+    };
+    hello(&server, "claude-code", Some("Claude Code"));
+    (project, host, server)
+}
+
+#[test]
+fn a_closed_app_is_opened_in_the_background_to_ask() {
+    let (_project, host, server) = asking();
+    *host.launch.lock().unwrap() = Launch::Allows;
+    let folder = host.shared_folder();
+    let opened = || host.opened.load(Ordering::Relaxed);
+
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(!failed, "{text}");
+    call(&server, "get_run", json!({ "run": "1", "wait": 60 }));
+    assert_eq!((opened(), host.runs.load(Ordering::Relaxed)), (1, 1));
+
+    // Now that it is open, it is asked without opening it again.
+    let (allowed, _) = std::thread::scope(|scope| {
+        let app = scope.spawn(|| app_answers(&folder, true));
+        let outcome = call(&server, "run_test", json!({ "path": "login" }));
+        (outcome, app.join().unwrap())
+    });
+    assert!(!allowed.0, "{}", allowed.1);
+    assert_eq!(opened(), 1);
+}
+
+#[test]
+fn an_open_app_counts_as_open_however_long_it_was_quiet_and_not_once_it_quits() {
+    let (_project, host, server) = asking();
+    let folder = host.shared_folder();
+    let app = listen_for_assistants(folder.clone()).unwrap();
+    // macOS lets a hidden app nap, so it may touch nothing for minutes.
+    std::fs::File::options()
+        .write(true)
+        .open(host.shared.0.join("listening"))
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() - Duration::from_secs(3600))
+        .unwrap();
+    let (allowed, _) = std::thread::scope(|scope| {
+        let answers = scope.spawn(|| app_answers(&folder, true));
+        let outcome = call(&server, "run_test", json!({ "path": "login" }));
+        (outcome, answers.join().unwrap())
+    });
+    assert!(!allowed.0, "{}", allowed.1);
+    assert_eq!(host.opened.load(Ordering::Relaxed), 0);
+    call(&server, "get_run", json!({ "run": "1", "wait": 60 }));
+
+    // Once it quits, it is opened again to ask.
+    drop(app);
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(
+        failed && text.contains("JEVision couldn’t open to ask"),
+        "{text}"
+    );
+    assert_eq!(host.opened.load(Ordering::Relaxed), 1);
+}
+
+#[test]
+fn an_app_that_cant_open_to_ask_says_why_and_nothing_runs() {
+    let (_project, host, mut server) = asking();
+    let tried = || {
+        (
+            host.opened.load(Ordering::Relaxed),
+            host.runs.load(Ordering::Relaxed),
+        )
+    };
+
+    // macOS can't open it: the assistant learns why and what the person can do.
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(
+        failed
+            && text.contains("JEVision couldn’t open to ask")
+            && text.contains("The app JEVision isn’t installed on this Mac.")
+            && text.contains("“Ask before an assistant runs a test”"),
+        "{text}"
+    );
+    assert_eq!(tried(), (1, 0));
+
+    // It opens but never gets ready to ask.
+    *host.launch.lock().unwrap() = Launch::Hangs;
+    Arc::get_mut(&mut server.agents).unwrap().open_timeout = Duration::from_secs(1);
+    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
+    assert!(
+        failed && text.contains("didn’t finish starting within 1 second."),
+        "{text}"
+    );
+    assert_eq!(tried(), (2, 0));
+}
+
 #[test]
 fn a_run_an_assistant_starts_waits_for_the_person() {
     let (project, host, mut server) = setup();
@@ -1119,13 +1366,8 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
     let folder = host.shared_folder();
     hello(&server, "claude-code", Some("Claude Code"));
 
-    // With the app closed nobody can answer: no waiting, no run.
-    let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
-    assert!(failed && text.contains("JEVision isn’t open"), "{text}");
-    assert_eq!(host.runs.load(Ordering::Relaxed), 0);
-
     // The person allows it and sees what the assistant wants to do.
-    pending_assistant_requests(folder.clone());
+    let _app = listen_for_assistants(folder.clone()).unwrap();
     let (allowed, seen) = std::thread::scope(|scope| {
         let app = scope.spawn(|| app_answers(&folder, true));
         let outcome = call(&server, "run_test", json!({ "path": "login" }));
@@ -1183,6 +1425,8 @@ fn a_run_an_assistant_starts_waits_for_the_person() {
     host.permissions.lock().unwrap().ask_first = false;
     let (failed, text) = call(&server, "run_test", json!({ "path": "login" }));
     assert!(!failed, "{text}");
+    // The app was open whenever it was asked, so it was never opened.
+    assert_eq!(host.opened.load(Ordering::Relaxed), 0);
 }
 
 #[test]
@@ -1211,6 +1455,21 @@ fn pairing_and_tool_errors_read_in_russian_and_english() {
     ] {
         assert!(tr_in!("en", "mcp.ask.timeout", n).contains(en));
         assert!(tr_in!("ru", "mcp.ask.timeout", n).contains(ru));
+    }
+    assert_eq!(
+        tr_in!("en", "mcp.ask.notOpen", "It broke."),
+        "JEVision couldn’t open to ask the person at this Mac about the run. It broke. Ask them to open JEVision and try again, or to turn off “Ask before an assistant runs a test” in JEVision → Settings → AI → Assistants."
+    );
+    assert!(
+        tr_in!("ru", "mcp.ask.notOpen", "Сломалось.").contains("о запуске. Сломалось. Попросите")
+    );
+    for (n, en, ru) in [
+        (1, "within 1 second.", "за 1 секунду."),
+        (2, "within 2 seconds.", "за 2 секунды."),
+        (5, "within 5 seconds.", "за 5 секунд."),
+    ] {
+        assert!(tr_in!("en", "mcp.ask.notReady", n).contains(en));
+        assert!(tr_in!("ru", "mcp.ask.notReady", n).contains(ru));
     }
     for (n, en, ru) in [
         (1, "the first 1 screenshot is", "только первый 1 снимок"),

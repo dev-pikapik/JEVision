@@ -109,7 +109,8 @@
 <p><strong>Ask before an assistant runs a test</strong>, in <strong>Settings → AI → Assistants</strong>, is on until you turn it off. While it is on, every time an assistant starts a run, JEVision shows an alert on the Mac with the assistant's name, the tests, the project, the apps they will use and the environment, and the assistant waits:</p>
 <ul>
   <li><strong>Allow</strong> starts the run. <strong>Don't Allow</strong> tells the assistant you said no, and nothing runs.</li>
-  <li>No answer within a minute counts as no. So does JEVision not being open: the assistant is told to ask you to open it, or to turn the setting off.</li>
+  <li>No answer within a minute counts as no.</li>
+  <li>If JEVision is closed, it opens in the background to ask, and its Dock icon bounces until you look. If it can't open (it isn't installed, or doesn't start within 30 seconds), nothing runs, and the assistant is told why and to ask you to open JEVision or to turn the setting off.</li>
   <li>The question is asked by JEVision, not by the assistant, so an assistant can't answer it for you.</li>
 </ul>
 <p>Under <strong>Connected Assistants</strong> in the same place, the app lists each assistant that connected: its name and version, whether it is connected now, when it first connected and the last thing it did, such as “ran a test, 2 minutes ago”. <strong>Forget the Ones Not Connected</strong> clears the rest of the list. Assistants appear there after their first call; an assistant that was never started shows nothing.</p>
@@ -180,7 +181,7 @@
 <p>Describes the test format: the fields of a test, every block type with its fields and an example, how blocks lead to each other, and the shapes of targets, references, areas and durations. Takes no arguments. Assistants call it before writing a test.</p>
 
 <h3 id="run_test"><code>run_test</code></h3>
-<p>Runs a test, or every test in a folder one after another, on this Mac for real. Needs <strong>Allow assistants to run tests</strong>, your answer to the question in <a href="#asking-first">Asking first</a> and an unlocked screen. Answers at once with a run id; one run at a time. If the app or <code>jevision run</code> has the screen, the run waits for it. See <a href="cli.html#screen">One run at a time on the screen</a>.</p>
+<p>Runs a test, or every test in a folder one after another, on this Mac for real. Needs <strong>Allow assistants to run tests</strong>, your answer to the question in <a href="#asking-first">Asking first</a> (JEVision opens to ask if it is closed) and an unlocked screen. Answers with a run id as soon as the run starts; one run at a time. If the app or <code>jevision run</code> has the screen, the run waits for it. See <a href="cli.html#screen">One run at a time on the screen</a>.</p>
 <ul>
   <li><code>path</code> (required): a test file or folder.</li>
   <li><code>retries</code>: run a failed test this many more times, 0 to 10, instead of the number in the test.</li>

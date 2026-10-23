@@ -426,6 +426,7 @@ private struct StepRow: View {
     let status = StepStatusText(step.status)
     var parts = [status.title, RunHistory.duration(step.durationMs)]
     if !step.outputs.isEmpty { parts.append(String(localized: "saved \(outputs)")) }
+    parts += step.note.map { [RunText.failure($0)] } ?? []
     parts += step.failure.map { [RunText.failure($0, blockType: step.blockType)] } ?? []
     return parts.joined(separator: ", ")
   }
@@ -462,6 +463,12 @@ private struct StepRow: View {
           }
           .foregroundStyle(.secondary)
           .help(Text("Values saved for later blocks"))
+        }
+        if let note = step.note {
+          Label(RunText.failure(note), systemImage: "info.circle")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .lineLimit(isExpanded ? nil : 2)
         }
         if let failure = step.failure {
           Text(RunText.failure(failure, blockType: step.blockType))

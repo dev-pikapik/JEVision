@@ -1,5 +1,6 @@
 import Foundation
 import JEVisionCore
+import Synchronization
 
 /// Finds test files in a project folder. What is inside a test is read by the core: here, only
 /// the words a search finds it by and its flaky mark.
@@ -17,10 +18,15 @@ enum ProjectScanner {
     return String(fileName.dropLast(suffix.count))
   }
 
+  /// The names of the blocks from the community installed in the open project, by id, as its
+  /// library reads them.
+  static let blockNames = Mutex<[String: String]>([:])
+
   /// The name of the test or custom block the file at `path` holds; a block installed from the
-  /// community is named by its id.
+  /// community is named by its name, or by its id when the open project doesn't have it.
   static func testName(path: String) -> String {
-    blockPackageId(path: path) ?? testName((path as NSString).lastPathComponent)
+    guard let id = blockPackageId(path: path) else { return testName((path as NSString).lastPathComponent) }
+    return blockNames.withLock { $0[id] } ?? id
   }
 
   /// Returns folders that contain tests (directly or deeper) and the tests themselves.

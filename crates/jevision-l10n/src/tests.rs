@@ -197,3 +197,22 @@ fn lists_the_languages_of_the_catalog_with_english_first() {
         found.iter().collect::<std::collections::HashSet<_>>().len()
     );
 }
+
+#[test]
+fn a_russian_percent_sign_stands_apart_from_its_number() {
+    // Russian sets the sign off with a no-break space, `95 %`, as `report.percent` does.
+    let crowded: Vec<_> = catalog()
+        .iter()
+        .filter_map(|(key, languages)| Some((key, languages.get("ru")?)))
+        .flat_map(|(key, text)| match text {
+            Text::Plain(value) => vec![(key, value)],
+            Text::Plural(forms) => forms.values().map(|value| (key, value)).collect(),
+        })
+        .filter(|(_, value)| {
+            value
+                .match_indices("%%")
+                .any(|(at, _)| !value[..at].ends_with('\u{a0}'))
+        })
+        .collect();
+    assert!(crowded.is_empty(), "{crowded:?}");
+}

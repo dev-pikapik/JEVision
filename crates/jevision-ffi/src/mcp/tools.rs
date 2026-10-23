@@ -137,7 +137,7 @@ pub(super) fn definitions() -> Vec<Value> {
         tool(
             "run_test",
             "Run tests",
-            "Runs a test, or every test in a folder one after another, on this Mac for real: JEVision opens the app, clicks and types in it. Works only if the person at this Mac allowed assistants to run tests in JEVision's settings and the screen is unlocked. Returns at once with a run id; call get_run to wait for the result. One run at a time.",
+            "Runs a test, or every test in a folder one after another, on this Mac for real: JEVision opens the app, clicks and types in it. Works only if the person at this Mac allowed assistants to run tests in JEVision's settings and the screen is unlocked. When JEVision is set to ask first, the person is asked to allow the run and has a minute to answer; if JEVision is closed, it is opened in the background to ask. Returns with a run id as soon as the run starts; call get_run to wait for the result. One run at a time.",
             json!({
                 "path": path("Test file or folder, relative to the project folder."),
                 "retries": { "type": "integer", "minimum": 0, "maximum": jevision_core::MAX_RETRIES, "description": "Try a failed test this many more times, instead of the number in the test." },
@@ -541,12 +541,15 @@ impl Server {
                     apps.push(flow.app);
                 }
             }
-            self.agents.ask(&agents::Ask {
-                project: &self.project.display().to_string(),
-                tests: &tests,
-                apps,
-                environment: environment.as_deref(),
-            })?;
+            self.agents.ask(
+                &agents::Ask {
+                    project: &self.project.display().to_string(),
+                    tests: &tests,
+                    apps,
+                    environment: environment.as_deref(),
+                },
+                || self.host.open_app(),
+            )?;
         }
         let job = self.jobs.start(
             &self.project,

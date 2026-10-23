@@ -67,10 +67,51 @@ pub fn parse_block(value: &Value) -> Result<BlockKind, ParseError> {
         });
     };
     let mut issues = Vec::new();
-    match block_kind(Obj::root(map), &mut issues) {
+    match block_kind(&mut Obj::root(map), &mut issues) {
         Some(kind) if issues.is_empty() => Ok(kind),
         _ => Err(ParseError { issues }),
     }
+}
+
+/// Every field a block of `type_name` may have, `type` and its edges included; just `type` for
+/// an unknown type. For descriptions of the format that must not miss a field.
+pub fn block_fields(type_name: &str) -> Vec<&'static str> {
+    read_fields(
+        Map::from_iter([("type".into(), type_name.into())]),
+        |o, out| {
+            block_kind(o, out);
+        },
+    )
+}
+
+/// Every field a target (`target`, `from`, `to`, `at`, `into`) may have.
+pub fn target_fields() -> Vec<&'static str> {
+    read_fields(Map::new(), |o, out| {
+        target(o, out);
+    })
+}
+
+/// Every field a reference (`check`, `waitFor`, `if`, `repeat`) may have.
+pub fn reference_fields() -> Vec<&'static str> {
+    read_fields(Map::new(), |o, out| {
+        reference(o, out);
+    })
+}
+
+/// The keys `read` asks for when decoding `map`, in order and without repeats.
+fn read_fields(
+    map: Map<String, Value>,
+    read: impl FnOnce(&mut Obj<'_>, &mut Out),
+) -> Vec<&'static str> {
+    let mut o = Obj::root(&map);
+    read(&mut o, &mut Vec::new());
+    let mut fields = Vec::new();
+    for key in o.known {
+        if !fields.contains(&key) {
+            fields.push(key);
+        }
+    }
+    fields
 }
 
 /// Brings `map` from its `format` to `oldest + steps.len()` by running the missing steps.
@@ -343,7 +384,7 @@ impl<'v> Obj<'v> {
         None
     }
 
-    fn finish(self, out: &mut Out) {
+    fn finish(&self, out: &mut Out) {
         for key in self.map.keys() {
             if !self.known.contains(&key.as_str()) {
                 out.push(self.issue("flow.field.unknown", &self.path_of(key)));
@@ -641,13 +682,13 @@ fn blocks(o: Obj<'_>, out: &mut Out) -> Vec<Block> {
             );
             continue;
         };
-        let block_obj = Obj {
+        let mut block_obj = Obj {
             map,
             block: Some(id),
             path: String::new(),
             known: Vec::new(),
         };
-        if let Some(kind) = block_kind(block_obj, out) {
+        if let Some(kind) = block_kind(&mut block_obj, out) {
             blocks.push(Block {
                 id: id.clone(),
                 kind,
@@ -657,7 +698,7 @@ fn blocks(o: Obj<'_>, out: &mut Out) -> Vec<Block> {
     blocks
 }
 
-fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
+fn block_kind(o: &mut Obj<'_>, out: &mut Out) -> Option<BlockKind> {
     let type_name = o.string("type", out)?;
     let next = |o: &mut Obj<'_>, out: &mut Out| o.opt_string("next", out);
     let kind = match type_name.as_str() {
@@ -670,7 +711,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let window_position = o
                 .opt_object("windowPosition", out)
                 .and_then(|p| window_position(p, out));
-            let next = next(&mut o, out);
+            let next = next(o, out);
             Some(BlockKind::OpenApp {
                 app,
                 reset_state,
@@ -685,7 +726,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let app = o.opt_string("app", out);
             let new_instance = o.flag("newInstance", out);
             let close_after = o.flag("closeAfter", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::OpenFile {
                     files: files?,
@@ -697,12 +738,14 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "click" => {
-            let target = o.object("target", out).and_then(|t| target(t, out));
+            let target = o
+                .object("target", out)
+                .and_then(|mut t| target(&mut t, out));
             let button = o.opt_choice("button", BUTTONS, out);
             let double = o.flag("double", out);
-            let modifiers = modifiers(&mut o, out);
+            let modifiers = modifiers(o, out);
             let wait_for_change = o.flag("waitForChange", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Click {
                     target: target?,
@@ -715,10 +758,12 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "hover" => {
-            let target = o.object("target", out).and_then(|t| target(t, out));
-            let modifiers = modifiers(&mut o, out);
+            let target = o
+                .object("target", out)
+                .and_then(|mut t| target(&mut t, out));
+            let modifiers = modifiers(o, out);
             let wait_for_change = o.flag("waitForChange", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Hover {
                     target: target?,
@@ -729,12 +774,12 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "drag" => {
-            let from = o.object("from", out).and_then(|t| target(t, out));
-            let to = o.object("to", out).and_then(|t| target(t, out));
+            let from = o.object("from", out).and_then(|mut t| target(&mut t, out));
+            let to = o.object("to", out).and_then(|mut t| target(&mut t, out));
             let button = o.opt_choice("button", BUTTONS, out);
-            let modifiers = modifiers(&mut o, out);
+            let modifiers = modifiers(o, out);
             let wait_for_change = o.flag("waitForChange", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Drag {
                     from: from?,
@@ -752,10 +797,12 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let amount = o.opt_uint("amount", out);
             let amount = o.require("amount", amount, out);
             let unit = o.opt_choice("unit", SCROLL_UNITS, out);
-            let at = o.opt_object("at", out).and_then(|t| target(t, out));
-            let modifiers = modifiers(&mut o, out);
+            let at = o
+                .opt_object("at", out)
+                .and_then(|mut t| target(&mut t, out));
+            let modifiers = modifiers(o, out);
             let wait_for_change = o.flag("waitForChange", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Scroll {
                     direction: direction?,
@@ -770,8 +817,10 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         }
         "type" => {
             let text = o.string("text", out);
-            let into = o.opt_object("into", out).and_then(|t| target(t, out));
-            let next = next(&mut o, out);
+            let into = o
+                .opt_object("into", out)
+                .and_then(|mut t| target(&mut t, out));
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Type {
                     text: text?,
@@ -782,15 +831,15 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         }
         "pressKeys" => {
             let keys = o.string("keys", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| Some(BlockKind::PressKeys { keys: keys?, next }))
         }
         "waitFor" => {
             let until = o.get("until");
             let until = o.require("until", until, out);
-            let until = until.and_then(|v| wait_until(&o, v, out));
+            let until = until.and_then(|v| wait_until(o, v, out));
             let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::WaitFor {
                     until: until?,
@@ -803,7 +852,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let given = o.map.contains_key("duration");
             let duration_ms = o.duration("duration", 0, out).filter(|_| given);
             let duration_ms = o.require("duration", duration_ms, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Pause {
                     duration_ms: duration_ms?,
@@ -812,8 +861,10 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "check" => {
-            let reference = o.object("reference", out).and_then(|r| reference(r, out));
-            let next = next(&mut o, out);
+            let reference = o
+                .object("reference", out)
+                .and_then(|mut r| reference(&mut r, out));
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Check {
                     reference: reference?,
@@ -822,9 +873,9 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             })
         }
         "if" => {
-            let condition = condition(&mut o, out);
+            let condition = condition(o, out);
             let then = o.opt_string("then", out);
-            let else_if = else_ifs(&mut o, out);
+            let else_if = else_ifs(o, out);
             let otherwise = o.opt_string("else", out);
             all_present(|| {
                 Some(BlockKind::If {
@@ -839,7 +890,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let times = o.opt_uint("times", out);
             let times = o.require("times", times, out);
             let body = o.string("body", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Repeat {
                     times: times?,
@@ -851,7 +902,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "useData" => {
             let file = o.string("file", out);
             let body = o.string("body", out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::UseData {
                     file: file?,
@@ -881,7 +932,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     values
                 })
                 .unwrap_or_default();
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::RunTest {
                     test: test?,
@@ -895,7 +946,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let language = o.opt_choice("language", LANGUAGES, out);
             let language = o.require("language", language, out);
             let code = o.string("code", out);
-            let inputs = entries(&mut o, "inputs", out, |mut item, out| {
+            let inputs = entries(o, "inputs", out, |mut item, out| {
                 let name = item.string("name", out);
                 let kind = item.opt_choice("type", VALUE_KINDS, out);
                 let value = item.string("value", out);
@@ -906,7 +957,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     value: value?,
                 })
             });
-            let outputs = entries(&mut o, "outputs", out, |mut item, out| {
+            let outputs = entries(o, "outputs", out, |mut item, out| {
                 let name = item.string("name", out);
                 let kind = item.opt_choice("type", VALUE_KINDS, out);
                 let kind = item.require("type", kind, out);
@@ -917,7 +968,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 })
             });
             let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Script {
                     language: language?,
@@ -935,7 +986,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let exit_code = o.opt_int("exitCode", out);
             let save_output = o.opt_string("saveOutput", out);
             let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Command {
                     command: command?,
@@ -950,10 +1001,10 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
         "http" => {
             let method = o.opt_choice("method", METHODS, out);
             let url = o.string("url", out);
-            let headers = named_values(&mut o, "headers", "value", out);
+            let headers = named_values(o, "headers", "value", out);
             let body = o.opt_string("body", out).unwrap_or_default();
-            let expect_status = expect_status(&mut o, out);
-            let save = named_values(&mut o, "save", "from", out).map(|all| {
+            let expect_status = expect_status(o, out);
+            let save = named_values(o, "save", "from", out).map(|all| {
                 all.into_iter()
                     .map(|v| SavedValue {
                         name: v.name,
@@ -962,7 +1013,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     .collect()
             });
             let timeout_ms = o.duration("timeout", DEFAULT_TASK_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Http {
                     method: method.unwrap_or(HttpMethod::Get),
@@ -980,9 +1031,9 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
             let path = o.string("path", out);
             let until = o.get("until");
             let until = o.require("until", until, out);
-            let until = until.and_then(|v| file_state(&o, v, out));
+            let until = until.and_then(|v| file_state(o, v, out));
             let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::CheckFile {
                     path: path?,
@@ -1001,7 +1052,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 Some(e) => database_expect(e, out).map(Some),
             };
             let timeout_ms = o.duration("timeout", DEFAULT_WAIT_TIMEOUT_MS, out);
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Database {
                     file: file?,
@@ -1062,7 +1113,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     None
                 }
             };
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::Clipboard {
                     action: action?,
@@ -1092,7 +1143,7 @@ fn block_kind(mut o: Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                 None => Some(None),
                 Some(s) => time_shift(s, out).map(Some),
             };
-            let next = next(&mut o, out);
+            let next = next(o, out);
             all_present(|| {
                 Some(BlockKind::DateTime {
                     save_as: save_as?,
@@ -1122,7 +1173,7 @@ fn all_present<T>(build: impl FnOnce() -> Option<T>) -> Option<T> {
     build()
 }
 
-fn target(mut o: Obj<'_>, out: &mut Out) -> Option<Target> {
+fn target(o: &mut Obj<'_>, out: &mut Out) -> Option<Target> {
     let which = o.one_of(&["image", "point", "description", "area"], out);
     let t = match which {
         Some("image") => o.string("image", out).map(Target::Image),
@@ -1220,7 +1271,7 @@ fn condition(o: &mut Obj<'_>, out: &mut Out) -> Option<Condition> {
     match o.one_of(&["reference", "value"], out) {
         Some("reference") => o
             .object("reference", out)
-            .and_then(|r| reference(r, out))
+            .and_then(|mut r| reference(&mut r, out))
             .map(Condition::Screen),
         Some(_) => o
             .object("value", out)
@@ -1379,7 +1430,7 @@ fn database_expect(mut o: Obj<'_>, out: &mut Out) -> Option<DatabaseExpect> {
     result
 }
 
-fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
+fn reference(o: &mut Obj<'_>, out: &mut Out) -> Option<Reference> {
     let mode = o.opt_choice("compare", COMPARE, out);
     let expect = o.opt_string("expect", out);
     let model = o.opt_string("model", out);
@@ -1392,12 +1443,12 @@ fn reference(mut o: Obj<'_>, out: &mut Out) -> Option<Reference> {
         _ => o.string("image", out),
     };
     let threshold = o
-        .map
-        .contains_key("threshold")
+        .get("threshold")
+        .is_some()
         .then(|| o.number("threshold", out));
     let area = o.opt_object("area", out).and_then(|a| rect(a, out));
-    let ignore = rects(&mut o, "ignore", out);
-    let hide = rects(&mut o, "hide", out);
+    let ignore = rects(o, "ignore", out);
+    let hide = rects(o, "hide", out);
 
     let compare = match (mode.unwrap_or(CompareMode::Similar), threshold) {
         (CompareMode::Similar, None) => Some(Compare::default()),
@@ -1448,7 +1499,9 @@ fn wait_until(o: &Obj<'_>, value: &Value, out: &mut Out) -> Option<WaitUntil> {
     let mut until = o.child("until", value, out)?;
     let which = until.one_of(&["appears", "disappears"], out);
     let result = which.and_then(|key| {
-        let r = until.object(key, out).and_then(|r| reference(r, out))?;
+        let r = until
+            .object(key, out)
+            .and_then(|mut r| reference(&mut r, out))?;
         Some(if key == "appears" {
             WaitUntil::Appears(r)
         } else {

@@ -75,6 +75,7 @@ struct LiveRunView: View {
       bannerIcon
         .font(.title2)
         .frame(minWidth: 30)
+        .animation(reduceMotion ? nil : .smooth, value: progress)
       VStack(alignment: .leading, spacing: 4) {
         Text(bannerTitle).font(.headline)
         if let detail = bannerDetail {
@@ -88,7 +89,6 @@ struct LiveRunView: View {
     .padding(16)
     .glassEffect(.regular, in: .rect(cornerRadius: 22))
     .accessibilityElement(children: .combine)
-    .animation(.smooth, value: progress)
   }
 
   @ViewBuilder private var bannerIcon: some View {

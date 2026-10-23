@@ -49,11 +49,24 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   // MARK: Apps
 
-  public func openApp(app: String, fresh: Bool) throws(HandsError) {
+  public func openApp(app: String, start: AppStart) throws(HandsError) {
     let url = try appURL(app)
-    if fresh, !terminate(Self.runningApps(app)), !isCancelled() { throw .StillRunning(app: app) }
-    let running = try launch(url, arguments: fresh ? Self.forgetLastSession : [])
+    if start != .asUsual, !terminate(Self.runningApps(app)), !isCancelled() { throw .StillRunning(app: app) }
+    let running: NSRunningApplication?
+    switch start {
+    case .asUsual: running = try launch(url)
+    case .fresh: running = try launch(url, arguments: Self.forgetLastSession)
+    case .cleanHome(let home):
+      // A new copy, so one that is still quitting can't take the launch with the real home.
+      running = try launch(
+        url, arguments: Self.forgetLastSession, environment: ["HOME": home, "CFFIXED_USER_HOME": home],
+        newInstance: true)
+    }
     waitForWindow(running.map { [$0] } ?? Self.runningApps(app))
+  }
+
+  public func sandboxed(app: String) throws(HandsError) -> Bool {
+    AppSandbox.contains(try appURL(app))
   }
 
   public func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {
@@ -146,7 +159,7 @@ public final class MacHands: Hands, @unchecked Sendable {
 
   public func activate(app: String) throws(HandsError) {
     let running = Self.runningApps(app)
-    guard let first = running.first else { return try openApp(app: app, fresh: false) }
+    guard let first = running.first else { return try openApp(app: app, start: .asUsual) }
     if running.contains(where: \.isActive) { return }
     _ = first.activate()
     if poll(timeout: 1, { first.isActive }) { return }
@@ -501,12 +514,16 @@ public final class MacHands: Hands, @unchecked Sendable {
   /// Makes an app start with empty windows instead of the ones it had when it last quit.
   static let forgetLastSession = ["-ApplePersistenceIgnoreState", "YES"]
 
-  /// Opens or brings forward the app; returns it once it's running. `arguments` only reach an
-  /// app that isn't running yet.
-  private func launch(_ url: URL, arguments: [String] = []) throws(HandsError) -> NSRunningApplication? {
+  /// Opens or brings forward the app; returns it once it's running. `arguments` and
+  /// `environment` only reach an app that isn't running yet, or a `newInstance`.
+  private func launch(
+    _ url: URL, arguments: [String] = [], environment: [String: String] = [:], newInstance: Bool = false
+  ) throws(HandsError) -> NSRunningApplication? {
     let config = NSWorkspace.OpenConfiguration()
     config.activates = true
     config.arguments = arguments
+    config.environment = environment
+    config.createsNewApplicationInstance = newInstance
     let result = Self.wait { done in
       NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
         done((app?.processIdentifier, error?.localizedDescription))

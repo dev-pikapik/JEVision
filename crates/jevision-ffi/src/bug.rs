@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-use jevision_core::{Flow, ProjectSettings, parse, required_secrets};
+use jevision_core::{Flow, ProjectSettings, required_secrets};
 use jevision_git::{GitError, GitHub, GitHubIssue, GitHubRepo};
-use jevision_runner::{BugContext, MaskedImage, Run, mask_secrets, picture_caption_in};
+use jevision_runner::{BugContext, MaskedImage, Run, mask_secrets, picture_caption_in, run_flows};
 
 use crate::git::{on_github, repo};
 use crate::{ReportError, SecretSource};
@@ -44,7 +44,7 @@ pub fn draft_bug_report(
     let run = Run::load(Path::new(&dir))?;
     let project = Path::new(&project);
     let report = &run.report;
-    let flows = flows(project, report);
+    let flows = run_flows(project, report);
     let context = BugContext {
         macos: macos(),
         jevision: crate::jevision_version(),
@@ -128,7 +128,7 @@ pub(crate) fn send(
     let run = Run::load(dir).map_err(|e| failed(e.to_string()))?;
     let settings = ProjectSettings::load(project).map_err(failed)?;
     let values = secret_values(
-        &flows(project, &run.report),
+        &run_flows(project, &run.report),
         run.report.environment.as_deref(),
         secrets,
     );
@@ -158,20 +158,6 @@ pub(crate) fn send(
         &pictures,
         comment_on,
     )
-}
-
-/// The tests a run went through, as they are now, by file.
-fn flows(project: &Path, report: &jevision_runner::RunReport) -> HashMap<String, Flow> {
-    report
-        .attempts
-        .iter()
-        .flat_map(|a| a.steps.iter().map(|s| &s.test))
-        .chain([&report.file])
-        .filter_map(|file| {
-            let text = std::fs::read_to_string(project.join(file)).ok()?;
-            Some((file.clone(), parse(&text).ok()?))
-        })
-        .collect()
 }
 
 /// Values of every secret the tests of a run use, in the run's environment.

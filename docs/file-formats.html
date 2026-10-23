@@ -212,6 +212,7 @@
   "quarantine": [ { "test": "checkout/pay.flow.json", "reason": "Issue #42", "until": "2026-11-03" } ],
   "suggestQuarantineAfter": 3,
   "localOnly": true,
+  "cleanHome": true,
   "hide": [ { "x": 0.7, "y": 0, "width": 0.3, "height": 0.08 } ],
   "ai": {
     "screen": { "provider": "ollama", "model": "qwen2.5vl:7b" },
@@ -222,6 +223,7 @@
   <li><code>format</code> is <code>1</code>. A file from a newer JEVision is refused instead of being misread.</li>
   <li><code>retries</code> (optional), 0 to 10, <code>quarantine</code> (optional; each entry has a <code>test</code>, and optionally a <code>reason</code> and the last day <code>until</code> as <code>YYYY-MM-DD</code>) and <code>suggestQuarantineAfter</code> (optional, 1 to 10, default 3): see <a href="retries.html#project-file">Project settings file</a>.</li>
   <li><code>localOnly</code> (optional, <code>false</code> when left out): <code>true</code> sends the project's screenshots only to AI models on this Mac, and never to assistants.</li>
+  <li><code>cleanHome</code> (optional, <code>false</code> when left out): <code>true</code> starts the app of an <code>openApp</code> block with <code>"resetState": true</code> as on its first launch: with an empty home folder of its own, which the run deletes when it ends, and none of the app's settings. The run saves the app's settings in <code>~/Library/Application Support/JEVision/Saved app settings</code> before clearing them and puts them back once the app has quit; if the run crashes, or the app is still open when it ends, they go back at the next run or the next launch of JEVision. The person's own files are never touched. Not reset: passwords in the Keychain, the list of recent documents and what the app keeps on its servers or in iCloud. Apps in the macOS sandbox keep their data where macOS puts it, so for them only the windows from last time are left out, and the step says so. See <a href="writing-tests.html#openApp">openApp</a>.</li>
   <li><code>ai</code> (optional): the AI the project asks, instead of the one chosen in each person's Settings → AI. <code>screen</code> is for checks by meaning, <code>text</code> for drafting tests and explaining failures. Each has a <code>provider</code>, one of <code>anthropic</code>, <code>openai</code>, <code>gemini</code>, <code>jev</code>, <code>ollama</code>, <code>lmstudio</code> or <code>openai-compatible</code> (not <code>jev</code> for <code>text</code>), and an optional <code>model</code> that, when left out, is the model chosen for that provider in Settings. A check that names its own <code>provider</code> or <code>model</code> comes first. The file never holds an API key or an address. See <a href="checks.html#which-ai">Which AI answers</a>.</li>
   <li><code>hide</code> (optional): areas of the window, as <code>x</code>, <code>y</code>, <code>width</code> and <code>height</code> in fractions from 0 to 1 from its top-left corner, painted over in grey in every screenshot before it is saved in a report or sent to an AI model or an assistant. Each area must have a size and end inside the window.</li>
 </ul>

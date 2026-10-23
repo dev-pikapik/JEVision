@@ -86,7 +86,7 @@
 <p>There are two kinds, and both show up in the block library and in the <strong>Test</strong> menu of a <code>runTest</code> block:</p>
 <ul>
   <li><strong>Your blocks</strong> are files in the <code>blocks</code> folder of your project, such as <code>blocks/Sign in.block.json</code>. You made them.</li>
-  <li><strong>Blocks from the community</strong> are packages other people made, installed into the <code>blocks</code> folder of your project. The library lists them in the group <strong>Community</strong>, with their author and version.</li>
+  <li><strong>Blocks from the community</strong> are packages other people made, installed into the <code>blocks</code> folder of your project. The library lists them in the group <strong>Community</strong>, with their version and where they come from.</li>
 </ul>
 
 <h2 id="use">Using a block in a test</h2>
@@ -139,7 +139,7 @@
 
 <h2 id="several">Several blocks from one place</h2>
 <p>A folder, a .zip file or an address can hold more than one block, such as a repository with a <code>blocks</code> folder of <code>.jevblock</code> folders, or a release with a <code>.jevblock.zip</code> file for each block. See <a href="#publish">Publishing on GitHub</a> for the addresses that work.</p>
-<p>The window then lists every block it found, each with a check box, its name, version and author, and <a href="#safety">what it does</a>. Untick the blocks you don't want and choose <strong>Install</strong>.</p>
+<p>The window then lists every block it found, each with a check box, its name, version and where it comes from, and <a href="#safety">what it does</a>. Untick the blocks you don't want and choose <strong>Install</strong>.</p>
 <ul>
   <li>When a ticked block <a href="#dependencies">needs another block</a> from the same list, that block is installed with it. Blocks are installed in an order that puts the blocks they need first.</li>
   <li>When a ticked block needs one that is neither installed nor in the list, the window names it. If the block says where to get it, the window offers to fetch it from there; otherwise the block can't be installed until you install the one it needs.</li>
@@ -162,7 +162,7 @@
 </table>
 </div>
 <p>The most worrying kinds come first, and the clipboard is listed more quietly than the rest. <strong>Install a block only from people you trust.</strong> A script in a block can do anything you can do on your Mac.</p>
-<p>Packages aren't signed: the id and the author are what a package says about itself, not proof of who made it, so judge a block by the place you install it from.</p>
+<p>Packages aren't signed: the id and the author are what a package says about itself, not proof of who made it. So JEVision shows first where a block comes from, which a package can't make up: the GitHub account of the repository or release, or the site of any other <code>https</code> address. Only the owner of an account or a site decides what is there. The author the block names comes second, marked when it isn't that account or site: on GitHub it has to be the account name, with or without <code>@</code>; elsewhere, the site's address, such as <code>acme.com</code>, with or without <code>www.</code>. Capital letters don't matter. A block from a file or folder on your Mac says just that: anyone could have made the file. A block installed without an address, or before JEVision kept one, says <strong>Source unknown</strong>.</p>
 <p>Installing only copies files. JEVision doesn't run anything from a package until a test that uses the block runs, and then only the steps you were shown.</p>
 
 <h2 id="dependencies">Blocks that use other blocks</h2>
@@ -224,7 +224,7 @@
 </ul>
 
 <h2 id="manage">Updating and removing blocks</h2>
-<p><strong>File → Custom Blocks…</strong> lists the blocks from the community with their version, author and where they came from.</p>
+<p><strong>File → Custom Blocks…</strong> lists the blocks from the community with their version, where they came from and the author they name.</p>
 <ul>
   <li><strong>Update</strong> appears for a block installed from an address. It fetches the address again and shows what changed before it replaces anything, as an installation does. Blocks installed from a file have no address to update from.</li>
   <li>When another installed block needs the one you update in a version that the new one isn't, the window says so before anything changes, such as “com.acme.messages needs the block com.acme.sign-in ^1.2.0, and this brings com.acme.sign-in 2.0.0; update com.acme.messages as well, or go ahead knowing it may stop working.” Updating both from one address together is fine.</li>
@@ -263,7 +263,7 @@
 
 <h2 id="reports">Runs and reports</h2>
 <ul>
-  <li>The steps of a package are reported under the name and version of the package, such as “in Sign in 1.2.0”, and the report lists the packages a run used with their authors. Statistics and the run list name a package by its id.</li>
+  <li>The steps of a package are reported under the name and version of the package, such as “in Sign in 1.2.0”, and the report lists the packages a run used, each with where it came from on the day of the run and the author it names, marked when the two don’t match. Statistics and the run list name a package by its id.</li>
   <li>A test that uses a block that isn't installed is marked while you edit and when you validate, and a run of it stops with “the block is not installed” before anything happens on screen. The error names the block and its version, such as “needs the block com.acme.sign-in 1.2.0”. <strong>Install…</strong> in the editor and in the report opens the Install Block sheet: it reads the block from the address the test knows, or asks for a file or an address when it doesn't know one. <code>jevision validate</code> and <code>jevision run</code> print the same message with the command to run, such as <code>jevision blocks install https://github.com/acme/sign-in</code>.</li>
   <li>A block that needs a newer JEVision stops a run with a message that says which version it needs.</li>
 </ul>
@@ -305,7 +305,7 @@
     <tr><td><code>description</code></td><td>No</td><td>What the block does, in a sentence or two; up to 500 characters.</td></tr>
     <tr><td><code>icon</code></td><td>No</td><td>Name of an <a href="https://developer.apple.com/sf-symbols/">SF Symbol</a>, such as <code>person.badge.key</code>.</td></tr>
     <tr><td><code>version</code></td><td>Yes</td><td>A <a href="https://semver.org">semantic version</a>: <code>MAJOR.MINOR.PATCH</code>, optionally followed by <code>-beta.2</code> and the like. <code>1.2.0</code> is newer than <code>1.2.0-beta.2</code> and older than <code>1.10.0</code>.</td></tr>
-    <tr><td><code>author</code></td><td>Yes</td><td>Who made the block; up to 100 characters.</td></tr>
+    <tr><td><code>author</code></td><td>Yes</td><td>Who made the block; up to 100 characters. Write the GitHub account you share the block from, or the address of your site, so that it matches <a href="#safety">where the block comes from</a>.</td></tr>
     <tr><td><code>license</code></td><td>Yes</td><td>The name of its license, such as <code>MIT</code>.</td></tr>
     <tr><td><code>minVersion</code></td><td>No</td><td>The oldest JEVision that can run the block. An older JEVision refuses to install or run it.</td></tr>
     <tr><td><code>inputs</code></td><td>No</td><td>What a test gives the block, up to 50 entries. Each has a <code>name</code> (letters, digits and underscores, not starting with a digit), an optional <code>label</code> to show in the editor instead of the name, and an optional <code>default</code>, the value for a test that leaves it out.</td></tr>
@@ -360,6 +360,7 @@
 <ul>
   <li>Nothing in a package runs while it is read or installed. Files are copied one by one, without permission to run, and every path is checked first.</li>
   <li>A zip file can't write outside its own folder: one with a name that has <code>..</code> in it or starts with <code>/</code> is refused as a whole, and links in it are left out.</li>
+  <li>A link to another file (a symbolic link) is never installed, from a zip or from a folder: it could point anywhere on your Mac. The install window and <code>jevision blocks install</code> name each link left out; the rest of the block is installed as usual.</li>
   <li>A download is at most 64 MB, a zip unpacks to at most 256 MB and 20,000 entries, and a package holds at most 1,000 files and 64 MB. A download that takes longer than two minutes stops.</li>
   <li>For several blocks from one place, the limits on unpacking count all of them together, the files of a release are at most 128 MB together, and a zip file that one of them would refuse refuses the whole list.</li>
   <li>Addresses must be <code>https</code>, and so must every redirect they lead to.</li>

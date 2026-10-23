@@ -12,7 +12,11 @@ use crate::github::{agent, text};
 pub const SITE: &str = "https://github.com";
 /// Enough to open pull requests and issues in private repositories, and to push.
 const SCOPES: &str = "repo";
+#[cfg(not(test))]
 const KEYCHAIN_SERVICE: &str = "JEVision GitHub";
+/// Tests keep their token apart from the developer's own sign-in.
+#[cfg(test)]
+const KEYCHAIN_SERVICE: &str = "JEVision GitHub Tests";
 const KEYCHAIN_ACCOUNT: &str = "github.com";
 
 /// The code the user enters on GitHub to let JEVision in.
@@ -176,8 +180,17 @@ pub fn forget_token() -> Result<(), GitError> {
     keychain::delete()
 }
 
+/// The page on GitHub that takes away the access of the OAuth app `client_id`. Forgetting the
+/// token can't do that: GitHub revokes it only for a request signed with the app's secret.
+pub fn access_page(client_id: &str) -> String {
+    format!(
+        "{SITE}/settings/connections/applications/{}",
+        client_id.trim()
+    )
+}
+
 #[cfg(target_os = "macos")]
-mod keychain {
+pub(crate) mod keychain {
     use security_framework::passwords;
 
     use super::{KEYCHAIN_ACCOUNT, KEYCHAIN_SERVICE};
@@ -212,7 +225,7 @@ mod keychain {
 
 /// Elsewhere the token comes only from the environment.
 #[cfg(not(target_os = "macos"))]
-mod keychain {
+pub(crate) mod keychain {
     use crate::GitError;
 
     pub fn get() -> Option<String> {

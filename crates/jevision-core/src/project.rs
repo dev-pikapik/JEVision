@@ -7,7 +7,8 @@
 //! or sent anywhere, and whether screenshots may go to AI models outside this computer, which
 //! AI the project asks for looking at screens and for writing and explaining tests (provider
 //! and model by name; API keys never go in the file), and which folders run their tests side
-//! by side rather than one after another.
+//! by side rather than one after another, and whether apps a test resets start with an empty
+//! home folder of their own.
 
 use std::path::{Component, Path};
 use std::{fs, io};
@@ -61,6 +62,10 @@ pub struct ProjectSettings {
     /// entry runs like the nearest folder above it that has one; the project folder, without
     /// one, runs one test after another.
     pub run_modes: Vec<FolderRunMode>,
+    /// An `openApp` block that resets the app's state starts it with an empty home folder of
+    /// its own, as on its first launch, instead of only without its last windows. The person's
+    /// own settings and files of the app stay as they are. Off unless the project turns it on.
+    pub clean_home: bool,
 }
 
 /// What a project can choose an AI for.
@@ -206,6 +211,12 @@ struct File {
     ai: FileAi,
     #[serde(default, rename = "runModes", skip_serializing_if = "Vec::is_empty")]
     run_modes: Vec<RunModeEntry>,
+    #[serde(
+        default,
+        rename = "cleanHome",
+        skip_serializing_if = "std::ops::Not::not"
+    )]
+    clean_home: bool,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -288,6 +299,7 @@ impl ProjectSettings {
             ai_screen: file.ai.screen,
             ai_text: file.ai.text,
             run_modes,
+            clean_home: file.clean_home,
         })
     }
 
@@ -331,6 +343,7 @@ impl ProjectSettings {
                     },
                 })
                 .collect(),
+            clean_home: self.clean_home,
         };
         let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
         text.push('\n');
@@ -679,6 +692,19 @@ mod tests {
         let written = settings.to_json();
         assert!(written.contains("\"localOnly\": true"), "{written}");
         assert_eq!(ProjectSettings::parse(&written).unwrap(), settings);
+    }
+
+    #[test]
+    fn a_clean_home_is_off_unless_the_project_turns_it_on() {
+        let old = ProjectSettings::parse(r#"{"format":1,"retries":1}"#).unwrap();
+        assert!(!old.clean_home);
+        assert!(!ProjectSettings::default().clean_home);
+        assert!(!old.to_json().contains("cleanHome"));
+        let on = ProjectSettings::parse(r#"{"format":1,"cleanHome":true}"#).unwrap();
+        assert!(on.clean_home);
+        let written = on.to_json();
+        assert_eq!(written, "{\n  \"format\": 1,\n  \"cleanHome\": true\n}\n");
+        assert_eq!(ProjectSettings::parse(&written).unwrap(), on);
     }
 
     #[test]

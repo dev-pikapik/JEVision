@@ -14,8 +14,13 @@ final class FakeSession: MacSession {
   let record: HostRecord
   let permission: Permission = .run
   let closed = Mutex(false)
+  /// What following a run sends.
+  private let events: AsyncThrowingStream<RunUpdate, any Error>
 
-  init(record: HostRecord) { self.record = record }
+  init(record: HostRecord, events: AsyncThrowingStream<RunUpdate, any Error> = AsyncThrowingStream { $0.finish() }) {
+    self.record = record
+    self.events = events
+  }
 
   func listProjects() async throws(RemoteError) -> [Project] { [Project(name: "Notes")] }
   func listTests(project: String) async throws(RemoteError) -> [TestEntry] { [] }
@@ -23,9 +28,7 @@ final class FakeSession: MacSession {
   func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String { "run-1" }
   func stopRun(project: String, run: String) async throws(RemoteError) {}
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus { throw .other }
-  func runEvents(project: String, run: String) -> AsyncThrowingStream<RunUpdate, any Error> {
-    AsyncThrowingStream { $0.finish() }
-  }
+  func runEvents(project: String, run: String) -> AsyncThrowingStream<RunUpdate, any Error> { events }
   func listRuns(project: String) async throws(RemoteError) -> RunList { RunList(active: [], saved: []) }
   func report(project: String, run: String) async throws(RemoteError) -> RunReport { throw .other }
   func picture(project: String, run: String, name: String) async throws(RemoteError) -> Data { Data() }

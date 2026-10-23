@@ -854,6 +854,7 @@ mod tests {
             step.failure = Some(crate::Failure {
                 code: "run.check.mismatch".into(),
                 params: Default::default(),
+                message: String::new(),
             });
             run
         };

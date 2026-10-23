@@ -1707,6 +1707,7 @@ dependencies = [
  "jevision-remote",
  "jevision-runner",
  "jevision-vision",
+ "libc",
  "p256",
  "png",
  "serde_json",

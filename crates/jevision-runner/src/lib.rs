@@ -8,10 +8,12 @@
 //! progress goes to an [`EventSink`]; a [`RunControl`] cancels, pauses and steps a run from
 //! another thread.
 
+mod app_settings;
 mod bug;
 mod ci;
 mod control;
 mod env;
+mod home;
 mod import;
 mod last_results;
 mod machine;
@@ -26,9 +28,10 @@ mod words;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
+pub use app_settings::{default_saved_settings, put_back_left_settings};
 pub use bug::{
     BugContext, BugDraft, BugPicture, bug_report, bug_report_in, describe_block, describe_block_in,
-    mask_secrets, picture_caption_in,
+    mask_secrets, picture_caption_in, run_flows,
 };
 pub use ci::CiOrigin;
 pub use control::{PauseReason, RunControl};
@@ -75,11 +78,13 @@ pub const SECRET_MASK: &str = "••••";
 /// until the action is done; long-running ones (typing a long text) should stop early once the
 /// [`RunControl`] the application created for the run reports [`RunControl::is_cancelled`].
 pub trait Hands: Send + Sync {
-    /// Launches the application (or finds it running) and brings it to the front; returns once
-    /// it can take input. With `fresh`, a copy that is already running is first asked to quit
-    /// ([`HandsError::StillRunning`] if it will not), and the new one starts without bringing
-    /// back the windows of the last session.
-    fn open_app(&self, app: &str, fresh: bool) -> Result<(), HandsError>;
+    /// Launches the application (or finds it running) and brings it to the front, as `start`
+    /// says; returns once it can take input.
+    fn open_app(&self, app: &str, start: AppStart) -> Result<(), HandsError>;
+    /// Whether the application runs in the App Sandbox, as its code signature says. macOS then
+    /// keeps the app's data in a container of its own and gives it a home folder there, whatever
+    /// it is started with.
+    fn sandboxed(&self, app: &str) -> Result<bool, HandsError>;
     /// Gives the application's front window this size and position, and checks that the window
     /// took them: [`HandsError::WindowFixed`] if the window cannot be changed,
     /// [`HandsError::WindowDiffers`] if it ended up somewhere else or at another size.
@@ -194,6 +199,20 @@ pub struct Screenshot {
     /// Password fields in the window, in fractions of it from its top-left corner. They are
     /// covered before the screenshot is saved or sent anywhere.
     pub secure: Vec<jevision_core::Rect>,
+}
+
+/// How [`Hands::open_app`] starts an application.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AppStart {
+    /// Finds it running, or launches it as usual.
+    AsUsual,
+    /// A copy that is already running is first asked to quit ([`HandsError::StillRunning`] if it
+    /// will not); the new one starts without bringing back the windows of its last session.
+    Fresh,
+    /// As [`AppStart::Fresh`], and the new copy, never one that was running, gets the empty
+    /// folder `home` (an absolute path) as its home folder: `HOME` and `CFFIXED_USER_HOME` point
+    /// at it, so the app finds none of its settings and files and keeps what it writes there.
+    CleanHome { home: String },
 }
 
 /// Something [`Hands::open`] opens.

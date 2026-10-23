@@ -125,6 +125,11 @@ private struct StepRow: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
+        if let note = step.note {
+          Label(RunText.failure(note), systemImage: "info.circle")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        }
       }
       Spacer(minLength: 0)
       Text(Duration.milliseconds(step.durationMs), format: .units(allowed: [.minutes, .seconds, .milliseconds], width: .narrow, maximumUnitCount: 1))

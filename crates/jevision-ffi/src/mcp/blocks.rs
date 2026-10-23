@@ -1,7 +1,7 @@
 //! The test file format in words, for `list_block_types`: every block type with its fields and
 //! an example, and the shapes blocks share. Tests check that the list matches the core.
 
-use jevision_core::{FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, catalog};
+use jevision_core::{AI_PROVIDERS, FORMAT_VERSION, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, catalog};
 use serde_json::{Value, json};
 
 /// Fields and an example for every block type, in palette order.
@@ -31,7 +31,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             "Clicks an element found by its picture or its description in words, or a fixed point of the window.",
             json!({
                 "target": "where to click: a target (see shapes)",
-                "button": "optional, \"left\" (default) or \"right\"",
+                "button": "optional, \"left\" (default), \"right\" or \"middle\"",
                 "double": "optional, true for a double click",
                 "modifiers": "optional list of keys held down during the click: \"cmd\", \"shift\", \"option\", \"ctrl\"",
                 "waitForChange": "optional, true to wait until the screen changes after the click and fail if it doesn't",
@@ -42,16 +42,17 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             "Moves the pointer onto an element and leaves it there, to bring up a tooltip or a menu that opens on hover. Follow it with a waitFor or a check of what appears.",
             json!({
                 "target": "where to move the pointer: a target (see shapes)",
+                "modifiers": "optional list of keys held down while the pointer moves and rests: \"cmd\", \"shift\", \"option\", \"ctrl\"",
                 "waitForChange": "optional, true to wait until the screen changes after the move and fail if it doesn't",
             }),
-            json!({ "type": "hover", "target": { "image": "refs/help-button.png" }, "waitForChange": true }),
+            json!({ "type": "hover", "target": { "image": "refs/help-button.png" }, "modifiers": ["option"], "waitForChange": true }),
         ),
         "drag" => (
             "Presses a mouse button on one element, moves to another holding it down, and lets go there: drag and drop, moving a slider, selecting by dragging. Both ends are found on the screen as it is before the drag.",
             json!({
                 "from": "where to press: a target (see shapes)",
                 "to": "where to let go: a target (see shapes), not the same as from",
-                "button": "optional, \"left\" (default) or \"right\"",
+                "button": "optional, \"left\" (default), \"right\" or \"middle\"",
                 "modifiers": "optional list of keys held down during the drag: \"cmd\", \"shift\", \"option\", \"ctrl\"; option while dragging a file copies it",
                 "waitForChange": "optional, true to wait until the screen changes after the drop and fail if it doesn't",
             }),
@@ -64,6 +65,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
                 "amount": format!("how far, 1 to {MAX_SCROLL}"),
                 "unit": "optional, \"lines\" (default; one notch of a mouse wheel each) or \"pixels\" (points on screen)",
                 "at": "optional target (see shapes) to scroll over; default: the middle of the window",
+                "modifiers": "optional list of keys held down while the wheel turns: \"cmd\", \"shift\", \"option\", \"ctrl\"; cmd zooms in most apps",
                 "waitForChange": "optional, true to wait until the screen changes after scrolling and fail if it doesn't",
             }),
             json!({ "type": "scroll", "direction": "down", "amount": 5, "unit": "lines", "at": { "image": "refs/message-list.png" } }),
@@ -118,6 +120,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({
                 "test": "path of the other test file (.flow.json) or custom block (.block.json), relative to this test file",
                 "inputs": "optional object: a value for every ${input.NAME} the custom block reads; values may use placeholders",
+                "package": "optional { \"version\": \"1.2.0\", \"source\": \"https://…\" } for a block from a community package (blocks/ID.jevblock/flow.json): the version the test was written with and, optionally, the https address of its repository, release or zip file, so that whoever lacks the package knows what to install",
             }),
             json!({ "type": "runTest", "test": "sign-in.flow.json" }),
         ),
@@ -129,7 +132,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
         "http" => (
             "Sends an HTTP request and fails unless the answer has the expected status; can save parts of the answer for ${var.NAME}.",
             json!({
-                "method": "optional: GET (default), POST, PUT, PATCH, DELETE or HEAD",
+                "method": "optional: \"GET\" (default), \"POST\", \"PUT\", \"PATCH\", \"DELETE\" or \"HEAD\"",
                 "url": "http:// or https:// address",
                 "headers": "optional list of { \"name\", \"value\" }",
                 "body": "optional text to send; JSON is sent as application/json unless a Content-Type header says otherwise",
@@ -173,7 +176,7 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
         "script" => (
             "Runs a script and fails if it ends with an exit code other than 0. Inputs reach it as environment variables; it saves outputs by writing name=value lines to the file in $JEV_OUTPUT.",
             json!({
-                "language": "sh, zsh (default), python3, node or appleScript",
+                "language": "optional: \"sh\", \"zsh\" (default), \"python3\", \"node\" or \"appleScript\"",
                 "code": "the script",
                 "inputs": "optional list of { \"name\", \"value\", \"type\" } passed as environment variables; type is \"text\" (default), \"number\", \"boolean\" (true or false), \"image\" (the path of a PNG picture in the project, handed over as an absolute path) or \"area\" (x,y,width,height in fractions of the window)",
                 "outputs": "optional list of { \"name\", \"type\" } the script must write, type being text (default), number, boolean, image (the path of a PNG picture) or area (x,y,width,height in fractions of the window); each becomes ${var.NAME}",
@@ -182,11 +185,13 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             json!({ "type": "script", "language": "python3", "code": "import os\nopen(os.environ['JEV_OUTPUT'], 'a').write('total=3\\n')", "outputs": [{ "name": "total", "type": "number" }] }),
         ),
         "clipboard" => (
-            "Puts text on the clipboard, keeps the text on the clipboard as a value, or waits until the clipboard holds a text. Put replaces what was on the clipboard and leaves the text there after the run; never put a secret on it unless that is the point of the test.",
+            "Puts text or a picture on the clipboard, keeps what is on the clipboard (its text, a picture or the copied files) as a value, or waits until the clipboard holds a text. Put replaces what was on the clipboard and leaves it there after the run; never put a secret on it unless that is the point of the test.",
             json!({
                 "action": "\"put\", \"read\" or \"check\"",
-                "text": "for put: the text, which may use placeholders",
-                "saveAs": "for read: the name to keep the text under, for ${var.NAME}",
+                "text": "for put: the text, which may use placeholders; give text or image",
+                "image": "for put, instead of text: a picture, the path of a PNG file or ${var.NAME} of a picture an earlier block kept",
+                "saveAs": "for read: the name to keep it under, for ${var.NAME}",
+                "content": "for read, optional: \"text\" (default), \"image\" (the picture, kept as the path of a PNG file, for the image of a target or a reference) or \"files\" (the paths of the copied files, one to a line)",
                 "is": "for check: \"equals\", \"notEquals\", \"contains\", \"greaterThan\" or \"lessThan\" (the last two compare numbers)",
                 "to": "for check: the text to compare with, which may use placeholders",
                 "timeout": "for check, optional duration, default 10s",
@@ -197,7 +202,9 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             "Keeps the current date and time as a value, written in a format and optionally moved forward or back, for ${var.NAME}: a name for a file or a record that no earlier run has used.",
             json!({
                 "saveAs": "the name to keep the text under, for ${var.NAME}",
-                "format": "optional strftime pattern, default \"%Y-%m-%d %H:%M:%S\"; for example %d.%m.%Y or %H:%M; month and day names are in English",
+                "format": "optional strftime pattern, default \"%Y-%m-%d %H:%M:%S\"; for example %d.%m.%Y, %H:%M or %d %B %Y",
+                "language": "optional language of month and day names: \"en\" or \"ru\"; default: the language JEVision runs in",
+                "timeZone": "optional time zone the time is told in, an IANA name such as \"UTC\", \"Europe/Berlin\" or \"America/New_York\"; default: the time zone of this Mac",
                 "shift": "optional { \"amount\": whole number, negative goes back, \"unit\": seconds, minutes, hours, days, weeks, months or years }",
             }),
             json!({ "type": "dateTime", "saveAs": "tomorrow", "format": "%d.%m.%Y", "shift": { "amount": 1, "unit": "days" } }),
@@ -208,6 +215,11 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
 
 /// The whole format guide.
 pub(crate) fn guide() -> Value {
+    let providers = AI_PROVIDERS
+        .iter()
+        .map(|p| format!("\"{p}\""))
+        .collect::<Vec<_>>()
+        .join(", ");
     let blocks: Vec<Value> = catalog()
         .into_iter()
         .map(|spec| {
@@ -245,13 +257,13 @@ pub(crate) fn guide() -> Value {
         "edges": "Blocks lead to each other by id: next for the block after; then, elseIf1, elseIf2… and else for an if; body for the blocks inside a repeat or useData. A block without next ends the test (inside a loop: the current pass). Only a loop body may lead back to an earlier block.",
         "blocks": blocks,
         "shapes": {
-            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"description\": \"the blue Save button\" } has JEV (TypeSafe AI) find the element described in words; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner",
-            "reference": "{ \"image\": path, \"compare\": \"similar\" (default) | \"exact\" | \"meaning\", \"threshold\": 0–1 for similar (default 0.95), \"expect\": sentence for meaning, \"area\": rect, \"ignore\": [rect], \"hide\": [rect] }. With compare meaning, an AI model checks that the screen shows what expect says; the image is then optional.",
+            "target": "{ \"image\": \"refs/button.png\" } finds the element by its picture; { \"description\": \"the blue Save button\" } has JEV (TypeSafe AI) find the element described in words; { \"point\": { \"x\": 0.5, \"y\": 0.2 } } is a fixed point in fractions of the window, from its top-left corner; { \"area\": \"0.1,0.2,0.3,0.1\" } is the middle of an area, x,y,width,height in fractions of the window. image may also be ${var.NAME} of a picture an earlier block kept, and area ${var.NAME} of an area (see variables)",
+            "reference": format!("{{ \"image\": path, \"compare\": \"similar\" (default) | \"exact\" | \"meaning\", \"threshold\": 0–1 for similar (default 0.95), \"expect\": sentence for meaning, \"provider\" and \"model\" for meaning, \"area\": rect, \"ignore\": [rect], \"hide\": [rect] }}. With compare meaning, an AI model checks that the screen shows what expect says, or means the same as the image when expect is left out; the image is then optional. provider asks another AI provider than the one chosen in JEVision's settings, one of {providers}; model names a model of that provider instead of its chosen one; leave both out for the settings' choice. image may also be ${{var.NAME}} of a picture an earlier block kept; such a picture must exist, as it is never made from the screen."),
             "rect": "{ \"x\", \"y\", \"width\", \"height\" } in fractions (0–1) of the window or image, from the top-left corner. area limits the comparison, ignore leaves parts out (clocks, counters), hide paints parts over with grey before screenshots are stored or sent anywhere, as do the hide areas of jevision.project.json and password fields",
             "duration": "text like 500ms, 10s or 2m",
-            "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",
+            "paths": "images, files and tests are relative to the folder of the test file and must stay inside the project folder; a picture from ${var.NAME} may be anywhere on this Mac. When the reference image of a check doesn't exist yet, the first run saves the screen as that image.",
             "secrets": "${secret.NAME} in a type block's text is typed as the secret's value, which the person keeps in JEVision or the environment. Secret values never appear in tests, reports or here.",
-            "variables": "${var.NAME} anywhere a block takes text is a value an earlier block of the run saved: the outputs of a script, saveOutput of a command, save of an http block, saveAs of a database block, saveAs of a clipboard read or a dateTime block.",
+            "variables": "${var.NAME} anywhere a block takes text is a value an earlier block of the run saved: the outputs of a script, saveOutput of a command, save of an http block, saveAs of a database block, saveAs of a clipboard read or a dateTime block. A picture (a clipboard read with content image, a script output of type image) is the path of a PNG file, for the image of a target, a reference or a clipboard put; an area (a script output of type area) is x,y,width,height in fractions of the window, for the area of a target.",
             "environments": "${env.NAME} in a type block's text is the value NAME of the environment chosen for the run, from jevision.environments.json in the project folder. ${env.ENVIRONMENT} is the name of that environment (empty when none is chosen), for text to type or an if block's value condition.",
             "library": "templates/NAME.template.json in the project folder are templates: blocks copied into a test as they are. blocks/NAME.block.json are custom blocks: tests run as one block through runTest, reading ${input.NAME} from its inputs.",
         },

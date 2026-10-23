@@ -74,8 +74,9 @@ struct BlocksCommand {
     for block in blocks {
       let manifest = block.manifest
       let id = manifest.id.padding(toLength: width, withPad: " ", startingAt: 0)
-      output.line(words("cli.blocks.listLine", id, manifest.version, manifest.name, manifest.author))
+      output.line(words("cli.blocks.listLine", id, manifest.version, manifest.name))
       let indent = String(repeating: " ", count: width + 2)
+      origin(block.origin, author: manifest.author, indent: indent)
       if let source = block.source { output.line(indent + words("cli.blocks.from", source)) }
       if !manifest.dependencies.isEmpty { output.line(indent + words("cli.blocks.needs", Self.needs(manifest))) }
     }
@@ -269,10 +270,19 @@ struct BlocksCommand {
 
   // MARK: What a block does
 
+  /// Where a block comes from, then the author it names, with a warning when they differ.
+  private func origin(_ origin: BlockOrigin, author: String, indent: String, explains: Bool = false) {
+    let text = describeBlockOrigin(origin: origin, author: author)
+    output.line(indent + (explains ? "\(text.source). \(text.about)" : text.source))
+    output.line(indent + text.author)
+    if let mismatch = text.mismatch { output.line(indent + output.paint(words("cli.blocks.warning", mismatch), .yellow)) }
+  }
+
   private func show(_ preview: BlockPreview) {
     let manifest = preview.manifest
-    output.line(words("cli.blocks.title", manifest.name, manifest.version, manifest.author, manifest.license))
+    output.line(words("cli.blocks.title", manifest.name, manifest.version, manifest.license))
     output.line("  \(manifest.id)")
+    origin(preview.origin, author: manifest.author, indent: "  ", explains: true)
     if let description = manifest.description, !description.isEmpty { output.line("  \(description)") }
     if !manifest.inputs.isEmpty {
       output.line("  " + words("cli.blocks.asksFor", manifest.inputs.map(\.name).joined(separator: ", ")))

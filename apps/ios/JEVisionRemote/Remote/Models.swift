@@ -238,6 +238,8 @@ enum StepStatus: Hashable, Sendable {
 struct Failure: Hashable, Sendable {
   var code: String
   var params: [String: String]
+  /// The failure in the words of the Mac's run: what is shown for a code this version doesn't know.
+  var message = ""
 }
 
 struct RunReport: Hashable, Sendable {
@@ -290,6 +292,8 @@ struct RunReport: Hashable, Sendable {
     var branches: Int? = nil
     /// What the condition of the way taken looks for. Absent for `else`.
     var branchCondition: String? = nil
+    /// What the step wants known though it didn't fail, e.g. how an app was started.
+    var note: Failure? = nil
     var id: Int { seq }
   }
 }

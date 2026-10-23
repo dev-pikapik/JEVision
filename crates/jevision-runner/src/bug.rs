@@ -3,19 +3,22 @@
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
+use std::path::Path;
 
 use jevision_core::{
-    BlockKind, ClipboardAction, ClipboardContent, Compare, Condition, FileState, Flow, Modifiers,
-    Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil, format_duration,
-    is_block_path,
+    BLOCK_SUFFIX, BlockKind, ClipboardAction, ClipboardContent, Compare, Condition, FileState,
+    Flow, Modifiers, Reference, ScriptLanguage, Target, TimeUnit, ValueTest, WaitUntil,
+    format_duration, is_block_path, package_of_path, parse,
 };
 use jevision_l10n::{text_in, tr_in};
 use sha2::{Digest, Sha256};
 
 use crate::report::{duration, percent};
 use crate::system::sign;
-use crate::words::{share, wait_target};
-use crate::{Attempt, Failure, RetryVerdict, RunReport, SECRET_MASK, Step, StepStatus, Verdict};
+use crate::words::{block_name, block_title, share, wait_target};
+use crate::{
+    Attempt, Failure, RetryVerdict, RunReport, SECRET_MASK, Step, StepStatus, UsedPackage, Verdict,
+};
 
 /// What the report says about the computer and the app, besides what the run saved.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -147,7 +150,7 @@ pub fn bug_report_in(
         let _ = writeln!(body, "{}\n", tr_in!(lang, "bug.steps.skipped", skipped));
     }
     for (n, step) in attempt.steps.iter().enumerate().skip(skipped) {
-        let mut text = step_text(lang, step, flows, &report.app);
+        let mut text = step_text(lang, step, flows, &report.app, &report.packages);
         if step.test != report.file {
             let _ = write!(text, " {}", tr_in!(lang, "bug.steps.inTest", &step.test));
         }
@@ -275,7 +278,21 @@ pub fn mask_secrets(text: &str, secrets: &[String]) -> String {
     })
 }
 
-fn block_of<'a>(step: &Step, flows: &'a HashMap<String, Flow>) -> Option<&'a BlockKind> {
+/// The tests a run went through, as they are now in `project`, by file.
+pub fn run_flows(project: &Path, report: &RunReport) -> HashMap<String, Flow> {
+    report
+        .attempts
+        .iter()
+        .flat_map(|a| a.steps.iter().map(|s| &s.test))
+        .chain([&report.file])
+        .filter_map(|file| {
+            let text = std::fs::read_to_string(project.join(file)).ok()?;
+            Some((file.clone(), parse(&text).ok()?))
+        })
+        .collect()
+}
+
+pub(crate) fn block_of<'a>(step: &Step, flows: &'a HashMap<String, Flow>) -> Option<&'a BlockKind> {
     flows
         .get(&step.test)?
         .blocks
@@ -284,40 +301,34 @@ fn block_of<'a>(step: &Step, flows: &'a HashMap<String, Flow>) -> Option<&'a Blo
         .map(|b| &b.kind)
 }
 
-/// The type of a block in words, such as `Wait For`.
-fn type_title(lang: &str, block_type: &str) -> String {
-    let key = match block_type {
-        "openApp" => "bug.type.openApp",
-        "openFile" => "bug.type.openFile",
-        "click" => "bug.type.click",
-        "hover" => "bug.type.hover",
-        "drag" => "bug.type.drag",
-        "scroll" => "bug.type.scroll",
-        "type" => "bug.type.type",
-        "pressKeys" => "bug.type.pressKeys",
-        "waitFor" => "bug.type.waitFor",
-        "pause" => "bug.type.pause",
-        "check" => "bug.type.check",
-        "if" => "bug.type.if",
-        "repeat" => "bug.type.repeat",
-        "useData" => "bug.type.useData",
-        "runTest" => "bug.type.runTest",
-        "script" => "bug.type.script",
-        "command" => "bug.type.command",
-        "http" => "bug.type.http",
-        "checkFile" => "bug.type.checkFile",
-        "database" => "bug.type.database",
-        "clipboard" => "bug.type.clipboard",
-        "dateTime" => "bug.type.dateTime",
-        other => return other.to_owned(),
-    };
-    text_in(lang, key, &[])
+/// The type of a block in words, as the canvas names it, such as `Wait For`.
+pub(crate) fn type_title(lang: &str, block_type: &str) -> String {
+    block_title(lang, block_type).unwrap_or_else(|| block_type.to_owned())
+}
+
+/// A custom block as the app names it: one from the community by its name, as the run recorded
+/// it, or by its id; one of the project's own by its file, without the folder and the ending.
+fn custom_block_name<'a>(path: &'a str, packages: &'a [UsedPackage]) -> &'a str {
+    if let Some(package) = packages.iter().find(|p| p.file == path) {
+        return &package.name;
+    }
+    if let Some(id) = package_of_path(path) {
+        return id;
+    }
+    let file = path.rsplit('/').next().unwrap_or(path);
+    file.strip_suffix(BLOCK_SUFFIX).unwrap_or(file)
 }
 
 /// What a step did, in one line.
-fn step_text(lang: &str, step: &Step, flows: &HashMap<String, Flow>, app: &str) -> String {
+fn step_text(
+    lang: &str,
+    step: &Step,
+    flows: &HashMap<String, Flow>,
+    app: &str,
+    packages: &[UsedPackage],
+) -> String {
     match block_of(step, flows) {
-        Some(kind) => describe_block_in(lang, kind, app),
+        Some(kind) => describe_block_in(lang, kind, app, packages),
         None => tr_in!(
             lang,
             "bug.step.unknown",
@@ -329,12 +340,18 @@ fn step_text(lang: &str, step: &Step, flows: &HashMap<String, Flow>, app: &str) 
 
 /// [`describe_block_in`] in the language set with `jevision_l10n::set_language`.
 pub fn describe_block(kind: &BlockKind, app: &str) -> String {
-    describe_block_in(&jevision_l10n::language(), kind, app)
+    describe_block_in(&jevision_l10n::language(), kind, app, &[])
 }
 
 /// What the block `kind` does, in one line in `lang`, for a person who hasn't seen the test:
-/// `app` is the application under test, which an open-app block without one opens.
-pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
+/// `app` is the application under test, which an open-app block without one opens; `packages`
+/// are the blocks from the community the run used, which name the ones it ran.
+pub fn describe_block_in(
+    lang: &str,
+    kind: &BlockKind,
+    app: &str,
+    packages: &[UsedPackage],
+) -> String {
     let target = |t: &Target| match t {
         Target::Image(image) => tr_in!(lang, "bug.target.image", image),
         Target::Point(p) => tr_in!(
@@ -453,7 +470,11 @@ pub fn describe_block_in(lang: &str, kind: &BlockKind, app: &str) -> String {
         BlockKind::Repeat { times, .. } => tr_in!(lang, "bug.block.repeat", *times),
         BlockKind::UseData { file, .. } => tr_in!(lang, "bug.block.useData", file),
         BlockKind::RunTest { test, .. } if is_block_path(test) => {
-            tr_in!(lang, "bug.block.runBlock", test)
+            tr_in!(
+                lang,
+                "bug.block.runBlock",
+                custom_block_name(test, packages)
+            )
         }
         BlockKind::RunTest { test, .. } => tr_in!(lang, "bug.block.runTest", test),
         BlockKind::Script { language, .. } => {
@@ -613,7 +634,7 @@ fn expected_and_actual(
             tr_in!(lang, "bug.actual.clickNoChange", p("seconds")),
         ),
         _ => (
-            tr_in!(lang, "bug.expected.stepPasses", p("block")),
+            tr_in!(lang, "bug.expected.stepPasses", block_name(lang, failure)),
             crate::describe_in(lang, failure),
         ),
     }
@@ -710,6 +731,34 @@ mod tests {
     }
 
     #[test]
+    fn a_bug_report_names_the_failed_block_as_the_canvas_does() {
+        let mut report = report();
+        let steps = &mut report.attempts[1].steps;
+        steps.truncate(2);
+        steps[1].status = StepStatus::Failed;
+        steps[1].failure = Some(
+            Failure::new("run.hands.screenLocked")
+                .with("block", "type")
+                .with("blockType", "type"),
+        );
+        let flows = HashMap::from([("mail/sign-in.flow.json".to_owned(), flow())]);
+        let en = bug_report_in("en", &report, &flows, &context()).unwrap();
+        assert_eq!(en.title, "Sign in fails at Type Text “type”");
+        for line in [
+            "**Cause:** Block “Type Text”: the screen is locked.",
+            "### Expected\n\nStep “Type Text” passes.",
+        ] {
+            assert!(en.body.contains(line), "{line}\n---\n{}", en.body);
+        }
+        let ru = bug_report_in("ru", &report, &flows, &context()).unwrap();
+        assert!(
+            ru.body.contains("Шаг «Ввод текста» проходит."),
+            "{}",
+            ru.body
+        );
+    }
+
+    #[test]
     fn keys_the_clipboard_and_dates_are_told_in_a_step() {
         let flow = jevision_core::parse(
             r#"{"format": 1, "name": "T", "app": "com.example.Mail", "start": "a",
@@ -728,7 +777,7 @@ mod tests {
                 r#"{{"seq":1,"test":"t.flow.json","block":"{block}","type":"x","status":"passed","durationMs":1}}"#
             ))
             .unwrap();
-            step_text("en", &step, &flows, "app")
+            step_text("en", &step, &flows, "app", &[])
         };
         assert_eq!(
             told("a"),
@@ -843,7 +892,7 @@ mod tests {
                 r#"{{"seq":1,"test":"t.flow.json","block":"{block}","type":"x","status":"passed","durationMs":1}}"#
             ))
             .unwrap();
-            step_text(lang, &step, &flows, "app")
+            step_text(lang, &step, &flows, "app", &[])
         };
         assert_eq!(told("en", "a"), "Scroll down 1 line over the window");
         assert_eq!(told("en", "b"), "Scroll up 2 lines over the window");

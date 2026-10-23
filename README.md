@@ -824,9 +824,13 @@ changes; the foot of the sidebar shows them too and opens that page.
 
 JEVision runs the git installed on the Mac (the Command Line Developer Tools include it), so
 signing in to the server works the way it does in Terminal: GitHub CLI (`gh auth login`), the
-Keychain or SSH keys. For GitHub itself (the account and pull requests) the app uses GitHub CLI's
-sign-in: it asks `gh auth token` when it needs it and never stores, shows or shares the token.
-The app has no sign-in of its own.
+Keychain or SSH keys. For GitHub itself (the account, pull requests and pushing) sign in once in
+Settings › Git and GitHub › Sign In with GitHub…: the app copies a code and opens GitHub in the
+browser, where you paste it and choose Authorize. The token is kept in the Keychain and never shown
+or shared; when GitHub CLI is signed in, the app offers its account instead. Sign Out forgets the
+token on this Mac, and GitHub keeps the app's access until you revoke it there: the app links to
+the page. To sign in through an OAuth app of your own, enter its Client ID in the same settings,
+with device flow turned on in the app.
 
 </details>
 
@@ -877,7 +881,7 @@ enough to check a build; `ADHOC=1` builds the same disk image without any certif
 ## Roadmap
 
 - Testing iPhone apps in the iOS Simulator
-- GitHub in the app: run results on pull requests, sign-in without GitHub CLI
+- GitHub in the app: run results on pull requests
 - Windows and Linux, each with an interface of its own
 
 ## Contributing

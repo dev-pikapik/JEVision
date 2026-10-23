@@ -100,7 +100,7 @@ struct InstallBlockSheet: View {
     if model.usesList {
       list
     } else if let preview = model.preview {
-      header(preview.manifest)
+      header(preview)
       if let description = preview.manifest.description, !description.isEmpty {
         Text(description)
           .fixedSize(horizontal: false, vertical: true)
@@ -111,8 +111,9 @@ struct InstallBlockSheet: View {
     }
   }
 
-  private func header(_ manifest: BlockManifestInfo) -> some View {
-    HStack(alignment: .top, spacing: 12) {
+  private func header(_ preview: BlockPreview) -> some View {
+    let manifest = preview.manifest
+    return HStack(alignment: .top, spacing: 12) {
       Image(systemName: manifest.icon ?? ProjectLibrary.defaultBlockSymbol)
         .font(.title)
         .foregroundStyle(.indigo)
@@ -122,12 +123,14 @@ struct InstallBlockSheet: View {
         Text(manifest.name)
           .font(.title2.bold())
           .accessibilityAddTraits(.isHeader)
-        Text("Version \(manifest.version) · by \(manifest.author) · \(manifest.license)")
+        Text("Version \(manifest.version) · \(manifest.license)")
           .foregroundStyle(.secondary)
         Text(manifest.id)
           .font(.caption.monospaced())
           .foregroundStyle(.secondary)
           .textSelection(.enabled)
+        BlockOriginView(origin: preview.origin, author: manifest.author)
+          .padding(.top, 6)
       }
     }
     .accessibilityElement(children: .combine)
@@ -191,7 +194,7 @@ struct InstallBlockSheet: View {
         Divider()
         ScrollView {
           VStack(alignment: .leading, spacing: 16) {
-            header(preview.manifest)
+            header(preview)
             if let description = preview.manifest.description, !description.isEmpty {
               Text(description)
                 .fixedSize(horizontal: false, vertical: true)
@@ -207,7 +210,7 @@ struct InstallBlockSheet: View {
 
   private func row(_ entry: BlockInstallEntry) -> some View {
     let selected = model.selection.contains(entry.id)
-    let manifest = entry.preview?.manifest
+    let preview = entry.preview
     let badge = BlockInstallModel.badge(entry)
     let notes = model.notes(for: entry)
     return HStack(alignment: .top, spacing: 10) {
@@ -215,14 +218,14 @@ struct InstallBlockSheet: View {
         .toggleStyle(.checkbox)
         .labelsHidden()
         .disabled(!model.canToggle(entry) || model.isBusy)
-      Image(systemName: manifest?.icon ?? ProjectLibrary.defaultBlockSymbol)
+      Image(systemName: preview?.manifest.icon ?? ProjectLibrary.defaultBlockSymbol)
         .foregroundStyle(.indigo)
         .frame(width: 22)
       VStack(alignment: .leading, spacing: 2) {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
           Text(entry.name).fontWeight(.semibold)
-          if let manifest {
-            Text(verbatim: "\(manifest.version) · \(manifest.author)").foregroundStyle(.secondary)
+          if let preview {
+            Text(verbatim: "\(preview.manifest.version) · \(Self.source(preview))").foregroundStyle(.secondary)
           }
           Spacer(minLength: 0)
           if let badge {
@@ -233,7 +236,7 @@ struct InstallBlockSheet: View {
               .background(.quaternary, in: .capsule)
           }
         }
-        if let description = manifest?.description, !description.isEmpty {
+        if let description = preview?.manifest.description, !description.isEmpty {
           Text(description)
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -264,9 +267,14 @@ struct InstallBlockSheet: View {
 
   private static func label(_ entry: BlockInstallEntry, badge: String?) -> String {
     let words = entry.preview.map {
-      String(localized: "\(entry.name), version \($0.manifest.version), by \($0.manifest.author)")
+      String(localized: "\(entry.name), version \($0.manifest.version), \(source($0))")
     } ?? entry.name
     return [words, badge].compactMap(\.self).joined(separator: ", ")
+  }
+
+  /// Where the block comes from, in a few words: who made it can only be told by that.
+  private static func source(_ preview: BlockPreview) -> String {
+    describeBlockOrigin(origin: preview.origin, author: preview.manifest.author).source
   }
 
   /// Why the checkbox can't be changed, then what the notes under the row say.

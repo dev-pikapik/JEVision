@@ -1,6 +1,6 @@
 //! Settings a project shares through its `jevision.project.json`: default retries, the tests
-//! in quarantine, whether screenshots may go to AI models outside this computer, and the areas
-//! covered in every screenshot.
+//! in quarantine, whether screenshots may go to AI models outside this computer, the areas
+//! covered in every screenshot, and whether apps a test resets start with an empty home folder.
 
 use std::path::Path;
 
@@ -38,6 +38,8 @@ pub struct ProjectSettings {
     pub ai_text: Option<AiChoice>,
     #[uniffi(default = [])]
     pub run_modes: Vec<FolderRunMode>,
+    #[uniffi(default = false)]
+    pub clean_home: bool,
 }
 
 /// What a project can choose an AI for.
@@ -148,6 +150,19 @@ pub fn set_project_local_only(
 ) -> Result<ProjectSettings, ProjectSettingsError> {
     change(&project, |s| {
         s.local_only = local_only;
+        Ok(())
+    })
+}
+
+/// Lets `openApp` blocks that reset the app's state start it with an empty home folder of its
+/// own, as on its first launch, or only without its last windows. Returns the saved settings.
+#[uniffi::export]
+pub fn set_project_clean_home(
+    project: String,
+    clean_home: bool,
+) -> Result<ProjectSettings, ProjectSettingsError> {
+    change(&project, |s| {
+        s.clean_home = clean_home;
         Ok(())
     })
 }
@@ -373,9 +388,16 @@ mod tests {
             set_project_hide(project.clone(), vec![corner, outside]),
             Err(ProjectSettingsError::Rejected { reason }) if reason.starts_with("area 2 ")
         ));
+        assert!(!project_settings(project.clone()).unwrap().clean_home);
+        assert!(
+            set_project_clean_home(project.clone(), true)
+                .unwrap()
+                .clean_home
+        );
         let read = project_settings(project.clone()).unwrap();
         assert_eq!((read.retries, read.quarantine.len()), (Some(2), 1));
         assert!(read.local_only);
+        assert!(read.clean_home);
         assert_eq!(read.hide, vec![corner]);
         assert!(
             release_from_quarantine(project.clone(), "login.flow.json".into())

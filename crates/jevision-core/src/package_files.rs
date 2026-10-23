@@ -50,6 +50,9 @@ pub struct Package {
     pub bytes: u64,
     /// Everything [`check_package`] found; the package can't be installed with an error here.
     pub issues: Vec<Issue>,
+    /// Links to other files found in the folder, by path, sorted. They are never installed:
+    /// one could point anywhere on the computer. [`skipped_links_warning`] tells about them.
+    pub skipped_links: Vec<String>,
 }
 
 impl Package {
@@ -163,7 +166,7 @@ pub fn read_package(dir: &Path) -> Result<Package, PackageError> {
             return Err(PackageError { issues });
         }
     };
-    let (files, bytes) = list_files(dir)?;
+    let (files, bytes, skipped_links) = list_files(dir)?;
     let issues = check_package(&manifest, &flow, dir);
     Ok(Package {
         manifest,
@@ -171,17 +174,40 @@ pub fn read_package(dir: &Path) -> Result<Package, PackageError> {
         files,
         bytes,
         issues,
+        skipped_links,
     })
 }
 
-/// The files of a package folder that belong in a package: not hidden, not links.
-fn list_files(dir: &Path) -> Result<(Vec<PackageFile>, u64), PackageError> {
+/// How many skipped links a warning names before it stops at "…".
+const NAMED_LINKS: usize = 5;
+
+/// The warning that a package leaves out `links` (paths inside the package), or `None` when
+/// there are none.
+pub fn skipped_links_warning(links: &[String]) -> Option<Issue> {
+    if links.is_empty() {
+        return None;
+    }
+    let mut named = links[..links.len().min(NAMED_LINKS)].join(", ");
+    if links.len() > NAMED_LINKS {
+        named.push_str(", …");
+    }
+    Some(
+        Issue::warning("block.links.skipped")
+            .with("count", links.len().to_string())
+            .with("links", named),
+    )
+}
+
+/// The files of a package folder that belong in a package: not hidden, not links. Also returns
+/// the links it left out.
+fn list_files(dir: &Path) -> Result<(Vec<PackageFile>, u64, Vec<String>), PackageError> {
     fn walk(
         dir: &Path,
         prefix: &str,
         depth: usize,
         files: &mut Vec<PackageFile>,
         bytes: &mut u64,
+        links: &mut Vec<String>,
     ) -> Result<(), PackageError> {
         let unreadable = |e: io::Error| {
             failure(
@@ -204,7 +230,16 @@ fn list_files(dir: &Path) -> Result<(Vec<PackageFile>, u64), PackageError> {
             let path = format!("{prefix}{name}");
             let kind = entry.file_type().map_err(unreadable)?;
             if kind.is_dir() && depth < MAX_DEPTH {
-                walk(&entry.path(), &format!("{path}/"), depth + 1, files, bytes)?;
+                walk(
+                    &entry.path(),
+                    &format!("{path}/"),
+                    depth + 1,
+                    files,
+                    bytes,
+                    links,
+                )?;
+            } else if kind.is_symlink() {
+                links.push(path);
             } else if kind.is_file() {
                 let size = entry.metadata().map_err(unreadable)?.len();
                 *bytes += size;
@@ -225,10 +260,11 @@ fn list_files(dir: &Path) -> Result<(Vec<PackageFile>, u64), PackageError> {
         }
         Ok(())
     }
-    let (mut files, mut bytes) = (Vec::new(), 0);
-    walk(dir, "", 0, &mut files, &mut bytes)?;
+    let (mut files, mut bytes, mut links) = (Vec::new(), 0, Vec::new());
+    walk(dir, "", 0, &mut files, &mut bytes, &mut links)?;
     files.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok((files, bytes))
+    links.sort();
+    Ok((files, bytes, links))
 }
 
 fn write_file(from: &Path, to: &Path) -> io::Result<()> {
@@ -1063,6 +1099,39 @@ mod tests {
         std::os::unix::fs::symlink("/etc/hosts", dir.join("hosts")).unwrap();
         let read = read_package(&dir).unwrap();
         assert_eq!(read.files.len(), 4);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn links_in_a_package_folder_are_left_out_and_named() {
+        use std::os::unix::fs::symlink;
+        let root = temp("links");
+        let dir = package(&root, "1.0.0");
+        let plain = read_package(&dir).unwrap();
+        assert!(plain.skipped_links.is_empty());
+        assert_eq!(skipped_links_warning(&plain.skipped_links), None);
+
+        symlink("/etc/hosts", dir.join("images/logo.png")).unwrap();
+        symlink(&root, dir.join("shared")).unwrap();
+        symlink("/etc/hosts", dir.join(".hidden")).unwrap();
+        let read = read_package(&dir).unwrap();
+        assert_eq!(read.files.len(), 4);
+        assert_eq!(read.skipped_links, ["images/logo.png", "shared"]);
+
+        let warning = skipped_links_warning(&read.skipped_links).unwrap();
+        assert_eq!(warning.severity, Severity::Warning);
+        assert_eq!(warning.param("links"), Some("images/logo.png, shared"));
+        let en = crate::issue::describe_in("en", &warning);
+        assert!(
+            en.contains("2 links to other files were left out: images/logo.png, shared."),
+            "{en}"
+        );
+        let ru = crate::issue::describe_in("ru", &warning);
+        assert!(ru.contains("Пропущены 2 символические ссылки"), "{ru}");
+        let many: Vec<String> = (1..=7).map(|n| format!("l{n}")).collect();
+        let warning = skipped_links_warning(&many).unwrap();
+        assert_eq!(warning.param("links"), Some("l1, l2, l3, l4, l5, …"));
+        assert!(crate::issue::describe_in("en", &warning).contains(": 7 links"));
     }
 
     #[test]

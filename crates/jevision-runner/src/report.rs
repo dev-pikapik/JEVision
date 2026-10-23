@@ -9,6 +9,8 @@ use jevision_l10n::{decimal, tr_in};
 use serde::{Deserialize, Serialize};
 
 use crate::CiOrigin;
+use crate::bug::{block_of, describe_block_in, run_flows, type_title};
+use crate::system::{DateLanguage, date_time_in};
 use crate::words::describe_in;
 
 /// Name of the report in the folder of a run.
@@ -99,6 +101,11 @@ pub struct UsedPackage {
     pub name: String,
     pub version: String,
     pub author: String,
+    /// The address the project had installed it from when the run ended: who stands behind the
+    /// package, which `author` can't tell. `None` for a package installed from a file and in
+    /// reports saved before runs kept it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
     /// Steps file of the package, relative to the project folder, as the steps name it.
     pub file: String,
 }
@@ -436,6 +443,11 @@ pub struct Step {
     /// Why the step failed. Absent on a loop or `runTest` step whose inner step failed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failure: Option<Failure>,
+    /// What the person should know about how the step ran, though it didn't fail:
+    /// `run.openApp.cleanHome` when the app started with an empty home folder of its own,
+    /// `run.openApp.sandboxed` when it couldn't, because macOS keeps the data of the app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<Failure>,
     /// When the block started, in milliseconds from the start of the run's video.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_at_ms: Option<u64>,
@@ -491,6 +503,11 @@ pub enum StepStatus {
 pub struct Failure {
     pub code: String,
     pub params: BTreeMap<String, String>,
+    /// The failure in words, in the language of the run, kept when it happened: what a version
+    /// that doesn't know the code shows. Empty in failures not yet recorded and in reports saved
+    /// before failures kept their words.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub message: String,
 }
 
 impl Step {
@@ -544,6 +561,7 @@ impl Failure {
         Self {
             code: code.to_owned(),
             params: BTreeMap::new(),
+            message: String::new(),
         }
     }
 
@@ -554,6 +572,14 @@ impl Failure {
 
     pub fn param(&self, name: &str) -> &str {
         self.params.get(name).map_or("", String::as_str)
+    }
+
+    /// The failure with its words in `lang` kept, unless it has them already.
+    pub(crate) fn worded(mut self, lang: &str) -> Self {
+        if self.message.is_empty() {
+            self.message = crate::describe_in(lang, &self);
+        }
+        self
     }
 }
 
@@ -774,21 +800,30 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
                 .packages
                 .iter()
                 .map(|p| {
-                    tr_in!(
+                    let origin = jevision_core::BlockOrigin::of_installed(p.source.as_deref());
+                    let (author, mismatch) = origin.author_in(lang, &p.author);
+                    let line = tr_in!(
                         lang,
                         "report.html.package",
                         &p.name,
                         &p.version,
-                        &p.author,
-                        &p.id
-                    )
+                        &p.id,
+                        &origin.describe_in(lang),
+                        &author
+                    );
+                    match mismatch {
+                        Some(m) => {
+                            format!("{} <span class=\"warn\">{}</span>", xml(&line), xml(&m))
+                        }
+                        None => xml(&line),
+                    }
                 })
                 .collect::<Vec<_>>()
-                .join(", ");
+                .join("<br>");
             format!(
                 "<dt>{}</dt><dd>{}</dd>",
                 xml(&tr_in!(lang, "report.fact.communityBlocks")),
-                xml(&list)
+                list
             )
         },
         machine = report
@@ -798,7 +833,7 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
                 xml(&tr_in!(lang, "report.fact.computer")),
                 xml(&m)
             )),
-        started = xml(&report.started_at.replace('T', " ")),
+        started = xml(&started_in(lang, &report.started_at)),
         duration = duration(lang, report.duration_ms),
         attempts = report.attempts.len(),
     );
@@ -895,6 +930,13 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
             xml(src)
         );
     }
+    // A run folder lives in its project, `<project>/.jevision/runs/…`.
+    let flows = run_dir
+        .ancestors()
+        .find(|dir| dir.ends_with(".jevision"))
+        .and_then(Path::parent)
+        .map(|project| run_flows(project, report))
+        .unwrap_or_default();
     for a in &report.attempts {
         let _ = writeln!(
             o,
@@ -910,6 +952,20 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
         }
         o.push_str("<ol class=\"steps\">\n");
         for s in &a.steps {
+            // What the step did, as the app's report window tells it; the block's id only
+            // when its test can't be read, to tell the step apart.
+            let what = match block_of(s, &flows) {
+                Some(kind) => format!(
+                    "<span class=\"type\">{}</span>",
+                    with_code(&describe_block_in(
+                        lang,
+                        kind,
+                        &report.app,
+                        &report.packages
+                    ))
+                ),
+                None => format!("<code>{}</code>", xml(&s.block)),
+            };
             let (class, status) = match s.status {
                 StepStatus::Passed => ("pass", tr_in!(lang, "report.status.passed")),
                 StepStatus::Failed => ("fail", tr_in!(lang, "report.status.failed")),
@@ -922,16 +978,21 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
             let _ = write!(
                 o,
                 "<li class=\"{class}\"><div class=\"row\"><span class=\"seq\">{}</span>\
-                 <code>{}</code><span class=\"type\">{}</span>",
+                 <strong>{}</strong>{what}",
                 s.seq,
-                xml(&s.block),
-                xml(&s.block_type)
+                xml(&type_title(lang, &s.block_type))
             );
             if s.test != report.file {
+                // A block from the community by its name and version, as the app's report says.
+                let test = report
+                    .packages
+                    .iter()
+                    .find(|p| p.file == s.test)
+                    .map_or_else(|| s.test.clone(), |p| format!("{} {}", p.name, p.version));
                 let _ = write!(
                     o,
                     "<span class=\"type\">{}</span>",
-                    xml(&tr_in!(lang, "report.html.inTest", &s.test))
+                    xml(&tr_in!(lang, "report.html.inTest", &test))
                 );
             }
             if let Some(b) = s.branch_text_in(lang) {
@@ -981,6 +1042,13 @@ pub fn html_in(lang: &str, report: &RunReport, run_dir: &Path, video: Option<&st
                     );
                 }
                 (None, None) => {}
+            }
+            if let Some(note) = &s.note {
+                let _ = write!(
+                    o,
+                    "<p class=\"aside\">{}</p>",
+                    xml(&describe_in(lang, note))
+                );
             }
             let sent = if s.sent_masked {
                 tr_in!(lang, "report.html.sentMasked")
@@ -1072,7 +1140,8 @@ h2{font-size:18px;margin:32px 0 12px}h2 small{color:var(--muted);font-weight:400
 .facts dt{color:var(--muted)}.facts dd{margin:0;overflow-wrap:anywhere}\
 .note{background:var(--card);border-left:4px solid var(--new);padding:10px 14px;border-radius:6px}\
 .reason{color:var(--fail);font-weight:600;margin:8px 0 0}\
-.judge{margin:8px 0 0}\
+.judge{margin:8px 0 0}.aside{color:var(--muted);margin:8px 0 0}\
+.warn{color:var(--flaky);font-weight:600}\
 .steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}\
 .steps li{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--skip);\
 border-radius:8px;padding:10px 14px}\
@@ -1120,6 +1189,31 @@ pub(crate) fn kept_percent(share: f64) -> String {
 /// A share as a percentage in `lang`: `87.5%`.
 pub(crate) fn percent(lang: &str, share: f64) -> String {
     tr_in!(lang, "report.percent", decimal(lang, share * 100.0, 1))
+}
+
+/// `text` for a page, its parts between backticks set as code.
+fn with_code(text: &str) -> String {
+    text.split('`')
+        .enumerate()
+        .map(|(i, part)| match i % 2 {
+            1 => format!("<code>{}</code>", xml(part)),
+            _ => xml(part),
+        })
+        .collect()
+}
+
+/// When a run started (`started_at`, RFC 3339), in this computer's time zone and in `lang`, as
+/// the app's report window tells it: `Oct 21, 2026, 14:11` or `21 октября 2026, 14:11`.
+fn started_in(lang: &str, started_at: &str) -> String {
+    let language = DateLanguage::from_code(lang);
+    let format = match language {
+        DateLanguage::English => "%b %-d, %Y, %H:%M",
+        DateLanguage::Russian => "%-d %B %Y, %H:%M",
+    };
+    chrono::DateTime::parse_from_rfc3339(started_at)
+        .ok()
+        .and_then(|at| date_time_in(at.to_utc(), None, format, None, language).ok())
+        .unwrap_or_else(|| started_at.replace('T', " "))
 }
 
 /// Escapes text for XML and HTML content and attribute values.

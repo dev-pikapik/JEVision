@@ -39,6 +39,8 @@ struct LibraryEntry: Hashable, Identifiable, Sendable {
     let license: String
     /// The address it was installed from, which updates come from; `nil` for one installed from a file.
     let source: String?
+    /// Who stands behind it, by `source`: show it before `author`, which anyone can write.
+    let origin: BlockOrigin
   }
 }
 
@@ -64,6 +66,8 @@ final class ProjectLibrary {
   func reload() {
     let found = Self.builtins + (project.map(Self.read) ?? [])
     if found != entries { entries = found }
+    let names = found.compactMap { entry in entry.package.map { ($0.id, entry.name) } }
+    ProjectScanner.blockNames.withLock { $0 = Dictionary(names) { first, _ in first } }
   }
 
   var templates: [LibraryEntry] { entries.filter { $0.kind == .template } }
@@ -111,7 +115,7 @@ final class ProjectLibrary {
         defaults: Dictionary(uniqueKeysWithValues: manifest.inputs.compactMap { i in i.defaultValue.map { (i.name, $0) } }),
         package: LibraryEntry.Package(
           id: manifest.id, author: manifest.author, version: manifest.version, license: manifest.license,
-          source: block.source))
+          source: block.source, origin: block.origin))
     }
   }
 

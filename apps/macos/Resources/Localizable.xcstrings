@@ -490,7 +490,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ обычно · %@ максимум для 95%%"
+            "value" : "%@ обычно · %@ максимум для 95 %%"
           }
         }
       }
@@ -631,12 +631,12 @@
         }
       }
     },
-    "%@, version %@, by %@" : {
+    "%@, version %@, %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@, версия %2$@, автор %3$@"
+            "value" : "%1$@, версия %2$@, %3$@"
           }
         }
       }
@@ -7141,26 +7141,6 @@
         }
       }
     },
-    "Connect GitHub to sign in once in your browser, then check again." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Подключите GitHub: один раз войдите в браузере, затем проверьте снова."
-          }
-        }
-      }
-    },
-    "Connect GitHub…" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Подключить GitHub…"
-          }
-        }
-      }
-    },
     "Connect Here" : {
       "localizations" : {
         "en" : {
@@ -8399,16 +8379,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово. Отменить можно через «Отменить»."
-          }
-        }
-      }
-    },
-    "Done. You can close this window and go back to JEVision." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Готово. Закройте это окно и вернитесь в JEVision."
           }
         }
       }
@@ -11371,16 +11341,6 @@
         }
       }
     },
-    "Installed from a file" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Установлен из файла"
-          }
-        }
-      }
-    },
     "Installed in %@, version %@" : {
       "localizations" : {
         "ru" : {
@@ -11397,16 +11357,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Установлена. Тот же движок, что в приложении, только без окна."
-          }
-        }
-      }
-    },
-    "Installing GitHub CLI…" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Установка GitHub CLI…"
           }
         }
       }
@@ -11714,6 +11664,16 @@
         }
       }
     },
+    "JEVision forgot your GitHub sign-in on this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision забыл вход в GitHub на этом Mac."
+          }
+        }
+      }
+    },
     "JEVision hides and leaves a small panel, so the app you test is in view." : {
       "localizations" : {
         "ru" : {
@@ -11770,6 +11730,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision запускает команду в вашей оболочке входа и общается с ней через её ввод и вывод."
+          }
+        }
+      }
+    },
+    "JEVision still has access on GitHub" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У JEVision остался доступ на GitHub"
           }
         }
       }
@@ -12180,6 +12150,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Узнать больше"
+          }
+        }
+      }
+    },
+    "Leave empty to sign in through JEVision. To sign in through your own GitHub OAuth app, enter its Client ID; device flow must be turned on in its settings." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставьте пустым, чтобы входить через JEVision. Чтобы входить через своё OAuth-приложение на GitHub, введите его Client ID; в настройках приложения должен быть включён Device flow."
           }
         }
       }
@@ -14256,6 +14236,16 @@
         }
       }
     },
+    "Not reset: passwords in the Keychain, the list of recent documents and what the app keeps on its servers or in iCloud. Apps from the App Store and others in the macOS sandbox keep their data where macOS puts it, so for them “Start Fresh” only leaves out the windows from last time. The setting is saved in %@ in the project folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сбрасываются: пароли в Связке ключей, список недавних документов и то, что приложение хранит на своих серверах или в iCloud. Приложения из App Store и другие приложения в песочнице macOS хранят данные там, где их держит сама система, поэтому для них «Запустить с нуля» только не открывает окна с прошлого раза. Настройка сохраняется в файле %@ в папке проекта."
+          }
+        }
+      }
+    },
     "Not reviewed yet" : {
       "localizations" : {
         "ru" : {
@@ -15256,6 +15246,16 @@
         }
       }
     },
+    "Open the folder with your tests to choose how they start apps." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте папку с тестами, чтобы выбрать, как они запускают приложения."
+          }
+        }
+      }
+    },
     "Open the folder with your tests to choose the AI it asks." : {
       "localizations" : {
         "ru" : {
@@ -15376,12 +15376,12 @@
         }
       }
     },
-    "Opens Terminal to sign in to GitHub in your browser" : {
+    "Opens GitHub’s page about JEVision’s access to your account" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открывает Терминал, чтобы войти в GitHub через браузер"
+            "value" : "Открывает страницу GitHub о доступе JEVision к вашему аккаунту"
           }
         }
       }
@@ -15518,6 +15518,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть…"
+          }
+        }
+      }
+    },
+    "Optional" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Необязательно"
           }
         }
       }
@@ -18492,6 +18502,16 @@
         }
       }
     },
+    "Revoke on GitHub…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отозвать на GitHub…"
+          }
+        }
+      }
+    },
     "Rework" : {
       "localizations" : {
         "ru" : {
@@ -20898,6 +20918,16 @@
         }
       }
     },
+    "Signing out only forgets the sign-in on this Mac. To take the access away too, choose Revoke access on the GitHub page that opens." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выход стирает вход только на этом Mac. Чтобы забрать и доступ, нажмите Revoke access на открывшейся странице GitHub."
+          }
+        }
+      }
+    },
     "Similar" : {
       "localizations" : {
         "ru" : {
@@ -21374,6 +21404,16 @@
         }
       }
     },
+    "Start apps as on their first launch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запускать приложения как в первый раз"
+          }
+        }
+      }
+    },
     "Started failing today at %@." : {
       "localizations" : {
         "en" : {
@@ -21396,6 +21436,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Источник запуска"
+          }
+        }
+      }
+    },
+    "Starting apps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск приложений"
           }
         }
       }
@@ -22300,16 +22350,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В ответе ИИ остались ошибки, даже после просьбы их исправить. Попробуйте описать иначе.\n%@"
-          }
-        }
-      }
-    },
-    "The GitHub OAuth app JEVision signs in through. Device flow must be turned on in its settings." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OAuth-приложение GitHub, через которое входит JEVision. В его настройках должен быть включён Device flow."
           }
         }
       }
@@ -25600,22 +25640,12 @@
         }
       }
     },
-    "Version %@ · by %@" : {
+    "Version %@ · %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Версия %1$@ · автор %2$@"
-          }
-        }
-      }
-    },
-    "Version %@ · by %@ · %@" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версия %1$@ · автор %2$@ · %3$@"
+            "value" : "Версия %1$@ · %2$@"
           }
         }
       }
@@ -26228,6 +26258,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Когда тест закончится, даже с ошибкой, закрывает то, что открыл этот блок."
+          }
+        }
+      }
+    },
+    "When “Start Fresh” is on in an “Open App” block, the app starts with an empty home folder and none of its settings. When the run ends, its settings come back as they were. Your own files aren’t touched." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если в блоке «Открыть приложение» включено «Запустить с нуля», приложение запускается с пустой домашней папкой и без своих настроек. Когда прогон закончится, настройки вернутся как были. Ваши файлы не трогаются."
           }
         }
       }
@@ -27948,6 +27988,58 @@
         }
       }
     },
+    "block.links.skipped" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld link to another file was left out: %@. A link can point anywhere on a computer, so JEVision never installs one; the rest of the block is installed as usual. If the block needs that file, it may not work."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld links to other files were left out: %@. A link can point anywhere on a computer, so JEVision never installs one; the rest of the block is installed as usual. If the block needs those files, it may not work."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущены %lld символические ссылки на другие файлы: %@. Такая ссылка может вести куда угодно на компьютере, поэтому JEVision их не устанавливает; остальное ставится как обычно. Если блоку нужны эти файлы, он может не работать."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущено %lld символических ссылок на другие файлы: %@. Такая ссылка может вести куда угодно на компьютере, поэтому JEVision их не устанавливает; остальное ставится как обычно. Если блоку нужны эти файлы, он может не работать."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущена %lld символическая ссылка на другой файл: %@. Такая ссылка может вести куда угодно на компьютере, поэтому JEVision их не устанавливает; остальное ставится как обычно. Если блоку нужен этот файл, он может не работать."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущены %lld символические ссылки на другие файлы: %@. Такая ссылка может вести куда угодно на компьютере, поэтому JEVision их не устанавливает; остальное ставится как обычно. Если блоку нужны эти файлы, он может не работать."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "block.lock.invalid" : {
       "localizations" : {
         "en" : {
@@ -27976,6 +28068,182 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Блок «%@» не установлен."
+          }
+        }
+      }
+    },
+    "block.origin.about.github" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only the owner of this GitHub account, and people they let in, can put files there."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Класть туда файлы может только владелец этого аккаунта GitHub и те, кого он допустил."
+          }
+        }
+      }
+    },
+    "block.origin.about.thisMac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anyone could have made this file, so JEVision can’t tell who stands behind the block. Install it only if you know where you got it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Такой файл мог сделать кто угодно, поэтому JEVision не может сказать, кто стоит за блоком. Устанавливайте его, только если знаете, откуда он у вас."
+          }
+        }
+      }
+    },
+    "block.origin.about.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The project keeps no web address for this block: it was installed from a file or folder, or copied in by hand. JEVision can’t tell who stands behind it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект не хранит веб-адрес этого блока: его установили из файла или папки либо скопировали вручную. JEVision не может сказать, кто за ним стоит."
+          }
+        }
+      }
+    },
+    "block.origin.about.web" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloaded from this site over a secure connection. What the site holds is up to whoever runs it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скачан с этого сайта по защищённому соединению. Что на сайте лежит, решает его владелец."
+          }
+        }
+      }
+    },
+    "block.origin.author" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Author named in the block: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автор, указанный в блоке: %@"
+          }
+        }
+      }
+    },
+    "block.origin.github" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the GitHub account %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из аккаунта GitHub %@"
+          }
+        }
+      }
+    },
+    "block.origin.mismatch.github" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That isn’t the GitHub account the block comes from. Anyone can write any name in a block, so go by the account."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не тот аккаунт GitHub, откуда получен блок. Имя в блоке может написать кто угодно — ориентируйтесь на аккаунт."
+          }
+        }
+      }
+    },
+    "block.origin.mismatch.web" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That isn’t the site the block comes from. Anyone can write any name in a block, so go by the site."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это не тот сайт, откуда получен блок. Имя в блоке может написать кто угодно — ориентируйтесь на сайт."
+          }
+        }
+      }
+    },
+    "block.origin.thisMac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From a file or folder on this Mac"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Из файла или папки на этом Mac"
+          }
+        }
+      }
+    },
+    "block.origin.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source unknown"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник неизвестен"
+          }
+        }
+      }
+    },
+    "block.origin.web" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From the site %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С сайта %@"
           }
         }
       }
@@ -29493,13 +29761,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Run the custom block `%@`"
+            "value" : "Run the custom block “%@”"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запустить свой блок `%@`"
+            "value" : "Запустить свой блок «%@»"
           }
         }
       }
@@ -30808,358 +31076,6 @@
         }
       }
     },
-    "bug.type.check" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Check"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Проверка"
-          }
-        }
-      }
-    },
-    "bug.type.checkFile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Check File"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Проверка файла"
-          }
-        }
-      }
-    },
-    "bug.type.click" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Click"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нажатие"
-          }
-        }
-      }
-    },
-    "bug.type.clipboard" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clipboard"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Буфер обмена"
-          }
-        }
-      }
-    },
-    "bug.type.command" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Command"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Команда"
-          }
-        }
-      }
-    },
-    "bug.type.database" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Database"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "База данных"
-          }
-        }
-      }
-    },
-    "bug.type.dateTime" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date And Time"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Дата и время"
-          }
-        }
-      }
-    },
-    "bug.type.drag" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Перетаскивание"
-          }
-        }
-      }
-    },
-    "bug.type.hover" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hover"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Наведение"
-          }
-        }
-      }
-    },
-    "bug.type.http" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HTTP Request"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HTTP-запрос"
-          }
-        }
-      }
-    },
-    "bug.type.if" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "If"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Условие"
-          }
-        }
-      }
-    },
-    "bug.type.openApp" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open App"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открытие приложения"
-          }
-        }
-      }
-    },
-    "bug.type.openFile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open File"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открытие файла"
-          }
-        }
-      }
-    },
-    "bug.type.pause" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pause"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пауза"
-          }
-        }
-      }
-    },
-    "bug.type.pressKeys" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Keys"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Нажатие клавиш"
-          }
-        }
-      }
-    },
-    "bug.type.repeat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Repeat"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Повтор"
-          }
-        }
-      }
-    },
-    "bug.type.runTest" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Run Test"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запуск теста"
-          }
-        }
-      }
-    },
-    "bug.type.script" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Script"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скрипт"
-          }
-        }
-      }
-    },
-    "bug.type.scroll" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scroll"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прокрутка"
-          }
-        }
-      }
-    },
-    "bug.type.type" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Type"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ввод текста"
-          }
-        }
-      }
-    },
-    "bug.type.useData" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use Data"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Данные"
-          }
-        }
-      }
-    },
-    "bug.type.waitFor" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wait For"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ожидание"
-          }
-        }
-      }
-    },
     "bug.wait.appears" : {
       "localizations" : {
         "en" : {
@@ -31851,13 +31767,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "from %@"
+            "value" : "Address: %@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "источник: %@"
+            "value" : "Адрес: %@"
           }
         }
       }
@@ -31983,13 +31899,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@  %2$@  %3$@, by %4$@"
+            "value" : "%1$@  %2$@  %3$@"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@  %2$@  %3$@, автор: %4$@"
+            "value" : "%1$@  %2$@  %3$@"
           }
         }
       }
@@ -32371,13 +32287,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ %2$@ by %3$@ (%4$@)"
+            "value" : "%1$@ %2$@ (%3$@)"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ %2$@, автор: %3$@ (%4$@)"
+            "value" : "%1$@ %2$@ (%3$@)"
           }
         }
       }
@@ -32610,6 +32526,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "--force работает только с install, update, remove и restore"
+          }
+        }
+      }
+    },
+    "cli.error.forceCloudBlocked" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: %@ is a cloud service, but this run may only use AI models on this Mac (Settings → AI or the project’s settings)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: %@ — облачный сервис, а в этом прогоне можно использовать только модели ИИ на этом Mac (Настройки → ИИ или настройки проекта)"
+          }
+        }
+      }
+    },
+    "cli.error.forceNeedsProvider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai needs an AI provider: choose one with --provider or in the app (Settings → AI)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "для --force-ai нужен ИИ-провайдер: выберите его через --provider или в приложении (Настройки → ИИ)"
+          }
+        }
+      }
+    },
+    "cli.error.forceNoKey" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: there is no API key for %1$@. Set the %2$@ environment variable, or add the key in the app (Settings → AI)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: нет ключа API для %1$@. Задайте переменную окружения %2$@ или добавьте ключ в приложении (Настройки → ИИ)"
+          }
+        }
+      }
+    },
+    "cli.error.forceUnavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: %1$@ can’t answer checks by meaning, so no test was started. %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "--force-ai: %1$@ не может отвечать на проверки по смыслу, поэтому тесты не запущены. %2$@"
           }
         }
       }
@@ -33575,13 +33555,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs tests on this Mac, one after another or side by side (see --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible\n  --model <name>      AI model for checks by meaning instead of the chosen one\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac); --parallel 1 runs them\n                      one after another. Without it, they run as\n                      jevision.project.json sets for their folder, the deepest\n                      one that holds all the tests and folders named, and one\n                      after another when it sets nothing there or can't be\n                      read. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, 3 — a file couldn't be read or written,\n4 — this Mac can't run tests now, 5 — a test, a block or a settings file needs a newer\nJEVision."
+            "value" : "Runs tests on this Mac, one after another or side by side (see --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible. A provider the\n                      project or a test names comes first, unless --force-ai\n  --model <name>      AI model for checks by meaning instead of the chosen one.\n                      A model the project or a test names comes first, unless\n                      --force-ai\n  --force-ai          Every check by meaning asks this run's provider and model\n                      (--provider and --model, otherwise the app's), whatever\n                      the project or a test chooses, and never the fallback\n                      provider. For CI. Before the tests start, one short\n                      question to the model checks the API key and the model.\n                      Elements a test describes in words are still found by\n                      JEV: no other provider can find them\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac); --parallel 1 runs them\n                      one after another. Without it, they run as\n                      jevision.project.json sets for their folder, the deepest\n                      one that holds all the tests and folders named, and one\n                      after another when it sets nothing there or can't be\n                      read. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, 3 — a file couldn't be read or written,\n4 — this Mac can't run tests now, 5 — a test, a block or a settings file needs a newer\nJEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускает тесты на этом Mac — по одному или параллельно (см. --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac); --parallel 1 запускает их по одному.\n                        Без параметра тесты идут так, как jevision.project.json задаёт\n                        для их папки — самой глубокой, в которой лежат все названные\n                        тесты и папки, — а по одному, если там ничего не задано или\n                        файл не удаётся прочитать.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, 3 — файл не удалось прочитать или записать,\n4 — этот Mac сейчас не может запускать тесты, 5 — тесту, блоку или файлу настроек нужна\nболее новая JEVision."
+            "value" : "Запускает тесты на этом Mac — по одному или параллельно (см. --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible. Провайдер, указанный в проекте или в тесте,\n                        важнее, если нет --force-ai\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной. Модель,\n                        указанная в проекте или в тесте, важнее, если нет --force-ai\n  --force-ai            Все проверки по смыслу спрашивают провайдера и модель этого\n                        прогона (--provider и --model, иначе — выбранные в приложении),\n                        что бы ни выбрали проект или тест; запасной провайдер не\n                        используется. Для CI. До начала тестов один короткий вопрос\n                        модели проверяет ключ API и модель. Элементы, которые тест\n                        описывает словами, по-прежнему ищет JEV: другие провайдеры\n                        искать их не умеют\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac); --parallel 1 запускает их по одному.\n                        Без параметра тесты идут так, как jevision.project.json задаёт\n                        для их папки — самой глубокой, в которой лежат все названные\n                        тесты и папки, — а по одному, если там ничего не задано или\n                        файл не удаётся прочитать.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, 3 — файл не удалось прочитать или записать,\n4 — этот Mac сейчас не может запускать тесты, 5 — тесту, блоку или файлу настроек нужна\nболее новая JEVision."
           }
         }
       }
@@ -34274,6 +34254,38 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "cli.run.forced" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every check by meaning asks %1$@, model %2$@ (--force-ai)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все проверки по смыслу спрашивают %1$@, модель %2$@ (--force-ai)."
+          }
+        }
+      }
+    },
+    "cli.run.forcedConfused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (model %2$@) described the test picture wrong: “%3$@” Checks by meaning may go wrong too."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (модель %2$@) неверно описывает проверочную картинку: «%3$@» Проверки по смыслу тоже могут ошибаться."
           }
         }
       }
@@ -39303,13 +39315,65 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEVision isn’t open, so nobody at this Mac could allow the run. Ask the person to open JEVision and try again, or to turn off “Ask before an assistant runs a test” in JEVision → Settings → AI → Assistants."
+            "value" : "JEVision couldn’t open to ask the person at this Mac about the run. %@ Ask them to open JEVision and try again, or to turn off “Ask before an assistant runs a test” in JEVision → Settings → AI → Assistants."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEVision не открыт, поэтому за этим Mac некому разрешить запуск. Попросите человека открыть JEVision и попробуйте снова или попросите выключить «Спрашивать, прежде чем ассистент запустит тест» в JEVision → «Настройки» → «ИИ» → «Ассистенты»."
+            "value" : "JEVision не удалось открыть, чтобы спросить человека за этим Mac о запуске. %@ Попросите человека открыть JEVision и попробуйте снова или попросите выключить «Спрашивать, прежде чем ассистент запустит тест» в JEVision → «Настройки» → «ИИ» → «Ассистенты»."
+          }
+        }
+      }
+    },
+    "mcp.ask.notReady" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It didn’t finish starting within %lld second."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It didn’t finish starting within %lld seconds."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Приложение не успело запуститься за %lld секунды."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Приложение не успело запуститься за %lld секунд."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Приложение не успело запуститься за %lld секунду."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Приложение не успело запуститься за %lld секунды."
+                }
+              }
+            }
           }
         }
       }
@@ -42121,7 +42185,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "в среднем · 95%% запусков не дольше %@"
+            "value" : "в среднем · 95 %% запусков не дольше %@"
           }
         }
       }
@@ -44351,13 +44415,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ %@ by %@ (%@)"
+            "value" : "%1$@ %2$@ (%3$@). %4$@. %5$@."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ %2$@, автор %3$@ (%4$@)"
+            "value" : "%1$@ %2$@ (%3$@). %4$@. %5$@."
           }
         }
       }
@@ -45930,6 +45994,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся сохранить %1$@: %2$@."
+          }
+        }
+      }
+    },
+    "run.openApp.cleanHome" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ started as on its first launch: with an empty home folder and none of its settings. Its settings come back when the run ends."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ запущено как в первый раз: с пустой домашней папкой и без своих настроек. Настройки вернутся, когда прогон закончится."
+          }
+        }
+      }
+    },
+    "run.openApp.sandboxed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset not applied: %@ runs in the macOS sandbox, and macOS keeps its data. It started without its last windows."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сброс не применён: %@ работает в песочнице macOS, и его данные хранит сама система. Приложение запущено без прошлых окон."
+          }
+        }
+      }
+    },
+    "run.openApp.settingsLater" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ started as on its first launch: with an empty home folder and none of its settings. Its settings aren’t back yet, usually because the app was still open when the run ended. Close the app: they come back the next time JEVision starts or runs a test."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ запущено как в первый раз: с пустой домашней папкой и без своих настроек. Настройки ещё не вернулись — обычно потому, что приложение было открыто, когда прогон закончился. Закройте приложение: настройки вернутся при следующем запуске JEVision или следующем прогоне."
+          }
+        }
+      }
+    },
+    "run.openApp.settingsNotSaved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save the settings of %@ before clearing them, so it wasn’t started: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить настройки %1$@ перед сбросом, поэтому приложение не запущено: %2$@."
           }
         }
       }
@@ -47537,7 +47665,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEV на %lld%% уверен, что снимок экрана не соответствует ожиданию."
+            "value" : "JEV на %lld %% уверен, что снимок экрана не соответствует ожиданию."
           }
         }
       }
@@ -47553,7 +47681,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEV на %lld%% уверен, что снимок экрана соответствует ожиданию."
+            "value" : "JEV на %lld %% уверен, что снимок экрана соответствует ожиданию."
           }
         }
       }

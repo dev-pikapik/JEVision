@@ -350,6 +350,12 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "block.export.failed" => tr_in!(lang, "block.export.failed", p("reason")),
         "block.export.notBlock" => tr_in!(lang, "block.export.notBlock", p("path")),
         "block.export.skipped" => tr_in!(lang, "block.export.skipped", p("path")),
+        "block.links.skipped" => tr_in!(
+            lang,
+            "block.links.skipped",
+            p("count").parse::<usize>().unwrap_or(0),
+            p("links")
+        ),
         "block.dependency.invalid" => {
             let reason = match p("problem") {
                 "id" => tr_in!(lang, "package.dependency.badId"),

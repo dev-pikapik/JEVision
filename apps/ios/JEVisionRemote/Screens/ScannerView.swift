@@ -24,13 +24,7 @@ struct ScannerView: View {
         }
         .safeAreaInset(edge: .bottom) {
           VStack(spacing: 12) {
-            hint
-              .font(.callout)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal, 20)
-              .padding(.vertical, 12)
-              .glassEffect(.regular, in: .rect(cornerRadius: 20))
-              .animation(.smooth, value: [otherCode, newerCode])
+            ScanHint(otherCode: otherCode, newerCode: newerCode)
             PasteLinkButton(paste: found)
           }
           .padding(.horizontal, 24)
@@ -43,11 +37,6 @@ struct ScannerView: View {
         camera = AVCaptureDevice.authorizationStatus(for: .video)
       }
     }
-  }
-
-  private var hint: Text {
-    if newerCode { return Text(RemoteError.newerCodeMessage) }
-    return Text(otherCode ? "That’s a different code. Point at the one JEVision shows on the Mac." : "On the Mac, open JEVision Settings → iPhone & Remote.")
   }
 
   private var canScan: Bool {
@@ -83,6 +72,27 @@ struct ScannerView: View {
   private func found(_ link: PairingLink) {
     model.isScanning = false
     model.pairingLink = link
+  }
+}
+
+/// Under the camera: where to find the pairing code, or that the code seen is another one.
+struct ScanHint: View {
+  let otherCode: Bool
+  var newerCode = false
+
+  private var hint: Text {
+    if newerCode { return Text(RemoteError.newerCodeMessage) }
+    return Text(otherCode ? "That’s a different code. Point at the one JEVision shows on the Mac." : "On the Mac, open JEVision Settings → iPhone & Remote.")
+  }
+
+  var body: some View {
+    hint
+      .fixedSize(horizontal: false, vertical: true)
+      .font(.callout)
+      .multilineTextAlignment(.center)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 12)
+      .glassEffect(.regular, in: .rect(cornerRadius: 20))
   }
 }
 

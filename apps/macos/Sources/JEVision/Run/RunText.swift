@@ -12,11 +12,12 @@ enum RunText {
     return describeFailure(failure: failure)
   }
 
-  /// [`failure(_:)`] for a message shown beside its block: the block is named the way the canvas
-  /// names it, not by its id.
+  /// [`failure(_:)`] for a message shown beside its block. The core names the block the way the
+  /// canvas does from the type the failure keeps; this gives it the type for failures saved before
+  /// they kept it.
   static func failure(_ failure: Failure, blockType: String) -> String {
     var failure = failure
-    if failure.params["block"] != nil { failure.params["block"] = BlockInfo.title(blockType) }
+    if failure.params["block"] != nil, failure.params["blockType"] == nil { failure.params["blockType"] = blockType }
     return RunText.failure(failure)
   }
 
@@ -34,6 +35,28 @@ enum RunText {
     }
     return String(
       localized: "screen.busy", defaultValue: "Screen busy: \(holder.process), test \(holder.test), since \(since)", bundle: .app, locale: .app)
+  }
+
+  /// A block where a test fails, named as the canvas names it: its type and what it does, and the
+  /// test it's in when that isn't `shownTest`, the test on screen. The test open in the editor is
+  /// read as it is there, unsaved changes included.
+  static func place(block: String, blockType: String, test: String, shownTest: String?, in project: ProjectStore) -> String {
+    let flow: Flow? =
+      if test == shownTest, project.selection == test {
+        project.document?.flow
+      } else {
+        project.rootURL.flatMap { root in
+          (try? String(contentsOf: root.appending(path: test), encoding: .utf8)).flatMap { try? loadFlow(json: $0) }
+        }
+      }
+    var text = BlockInfo.title(blockType)
+    if let kind = flow?.blocks.first(where: { $0.id == block })?.kind {
+      text += " · " + BlockSummary.text(kind, appName: AppCatalog.shared.name(of:))
+    }
+    if test != shownTest {
+      text += " · " + String(localized: "in \(ProjectScanner.testName(path: test))")
+    }
+    return text
   }
 
   /// Which way an `if` step went, named as the canvas names the ways out:

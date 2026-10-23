@@ -703,7 +703,7 @@ fn jev_says_how_sure_it_is_in_each_language() {
     );
     assert_eq!(
         tr_in!("ru", "vision.jev.failed", 96),
-        "JEV на 96% уверен, что снимок экрана не соответствует ожиданию."
+        "JEV на 96\u{a0}% уверен, что снимок экрана не соответствует ожиданию."
     );
     assert_eq!(
         tr_in!(

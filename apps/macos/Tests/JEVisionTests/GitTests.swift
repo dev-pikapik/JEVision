@@ -89,6 +89,26 @@ struct GitTextTests {
 }
 
 @MainActor
+struct GitHubSignInTests {
+  @Test func jevisionSignsInThroughItsOwnApp() {
+    #expect(ProjectGit.gitHubClientID.wholeMatch(of: /Ov23li[A-Za-z0-9]{14}/) != nil, "a GitHub OAuth app’s Client ID")
+  }
+
+  @Test func ownClientIDIsOptional() {
+    #expect(ProjectGit.signInClientID(typed: "") == ProjectGit.gitHubClientID)
+    #expect(ProjectGit.signInClientID(typed: "  ") == ProjectGit.gitHubClientID)
+    #expect(ProjectGit.signInClientID(typed: " Ov23liMine ") == "Ov23liMine")
+    #expect(!ProjectGit.signInClientID(typed: "").isEmpty, "signing in never needs a Client ID typed")
+  }
+
+  @Test func signingOutPointsToTheAccessOfTheAppSignedInThrough() {
+    let page = ProjectGit.SignedOut(clientID: "Ov23liMine").accessPage
+    #expect(page?.absoluteString == "https://github.com/settings/connections/applications/Ov23liMine")
+    #expect(ProjectGit.SignedOut(clientID: nil).accessPage == nil, "GitHub CLI’s access isn’t JEVision’s to take away")
+  }
+}
+
+@MainActor
 struct ConflictFileTests {
   private static func test(_ timeout: String, tags: String = "[]") -> Data {
     Data(#"""

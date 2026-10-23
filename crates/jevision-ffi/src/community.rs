@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use jevision_core::{
-    BlockManifest, Change, ExportMeta, Installed, Package, PackageError, PackageInput, Risk,
+    BlockManifest, BlockOrigin, Change, ExportMeta, Installed, Package, PackageError, PackageInput,
+    Risk,
 };
 use jevision_runner::{StagedSet, describe_block, discard_staged, stage_source_set, zip_package};
 
@@ -190,9 +191,66 @@ pub struct BlockPreview {
     pub folder: String,
     /// The address or path it came from, kept for updates when it is an address.
     pub source: String,
+    /// Who stands behind the package, by `source`; show it before the author it names.
+    pub origin: BlockOrigin,
+    /// Links to other files in the package, by path, which aren't installed; an issue tells
+    /// about them.
+    pub skipped_links: Vec<String>,
     /// `folder` was unpacked into the temporary files: pass it to `discard_block_staging` when
     /// done with it.
     pub temporary: bool,
+}
+
+/// Who stands behind a package, as far as the address it was got from can tell; see
+/// `describe_block_origin`.
+#[uniffi::remote(Enum)]
+pub enum BlockOrigin {
+    /// From a repository, a folder in a branch or a release of this GitHub account.
+    GitHub { owner: String },
+    /// From another `https` address on the site `host`.
+    Web { host: String },
+    /// From a file or folder on this Mac.
+    ThisMac,
+    /// The project keeps no `https` address for the installed package.
+    Unknown,
+}
+
+/// Where a block comes from and the author it names, worded for people.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BlockOriginText {
+    /// Such as “From the GitHub account acme”: show it first.
+    pub source: String,
+    /// What that means for trusting the block.
+    pub about: String,
+    /// Such as “Author named in the block: Acme”: show it under `source`.
+    pub author: String,
+    /// When the author isn't the account or site the block comes from: why to go by `source`.
+    pub mismatch: Option<String>,
+}
+
+/// Where a block comes from and the `author` its package names, in the current language. The
+/// author matches a GitHub account when it is the account name, in any case and with or without
+/// `@`; it matches a site when it is the site's host, with or without `www.`.
+#[uniffi::export]
+pub fn describe_block_origin(origin: BlockOrigin, author: String) -> BlockOriginText {
+    describe_block_origin_in(&jevision_l10n::language(), &origin, &author)
+}
+
+/// Where an installed block comes from, by the address the project keeps for it: `Unknown`
+/// without an `https` one.
+#[uniffi::export]
+pub fn installed_block_origin(source: Option<String>) -> BlockOrigin {
+    BlockOrigin::of_installed(source.as_deref())
+}
+
+fn describe_block_origin_in(lang: &str, origin: &BlockOrigin, author: &str) -> BlockOriginText {
+    let (author, mismatch) = origin.author_in(lang, author);
+    BlockOriginText {
+        source: origin.describe_in(lang),
+        about: origin.about_in(lang),
+        author,
+        mismatch,
+    }
 }
 
 /// A package a project has installed.
@@ -205,6 +263,8 @@ pub struct InstalledBlock {
     pub steps_file: String,
     /// The address it was installed from; `None` for one installed from a file or folder.
     pub source: Option<String>,
+    /// Who stands behind it, by `source`; `Unknown` without an address.
+    pub origin: BlockOrigin,
 }
 
 impl From<Installed> for InstalledBlock {
@@ -213,6 +273,7 @@ impl From<Installed> for InstalledBlock {
             steps_file: jevision_core::package_flow_path(&i.manifest.id),
             manifest: i.manifest.into(),
             folder: i.folder,
+            origin: BlockOrigin::of_installed(i.source.as_deref()),
             source: i.source,
         }
     }
@@ -248,13 +309,20 @@ pub struct ExportedBlock {
     pub warnings: Vec<Issue>,
 }
 
+/// `links`: the links the archive the package came from held, which `package` can't see.
 fn preview(
-    package: Package,
+    mut package: Package,
     change: Change,
     folder: &Path,
     source: &str,
+    links: &[String],
     temporary: bool,
 ) -> BlockPreview {
+    package.skipped_links.extend_from_slice(links);
+    package.skipped_links.sort();
+    package.skipped_links.dedup();
+    let links = jevision_core::skipped_links_warning(&package.skipped_links);
+    package.issues.extend(links);
     let app = package.flow.app.clone();
     let risks = jevision_core::risky_steps(&package.flow);
     let steps = package
@@ -282,6 +350,8 @@ fn preview(
         change: change.into(),
         folder: folder.to_string_lossy().into_owned(),
         source: source.to_owned(),
+        origin: BlockOrigin::of_source(source),
+        skipped_links: package.skipped_links,
         temporary,
     }
 }
@@ -306,7 +376,7 @@ pub fn inspect_block_source(
     project: String,
     source: String,
 ) -> Result<BlockSourcePreview, BlockPackageError> {
-    let source = source.trim().to_owned();
+    let source = jevision_core::source_address(&source);
     let staged = stage_source_set(&source)?;
     let temporary = staged.temporary;
     Ok(BlockSourcePreview {
@@ -326,7 +396,18 @@ fn read_set(
         .map(|folder| {
             let package = jevision_core::read_package(folder)?;
             let change = jevision_core::change_for(project, &package.manifest);
-            Ok(preview(package, change, folder, source, staged.temporary))
+            let links = staged
+                .skipped_links
+                .get(folder)
+                .map_or(&[][..], Vec::as_slice);
+            Ok(preview(
+                package,
+                change,
+                folder,
+                source,
+                links,
+                staged.temporary,
+            ))
         })
         .collect();
     if read.is_err() {
@@ -999,6 +1080,9 @@ mod tests {
             "blocks/com.anna.sign-in.jevblock/flow.json"
         );
         assert_eq!(installed[0].source, None);
+        assert_eq!(installed[0].origin, BlockOrigin::Unknown);
+        assert_eq!(seen.origin, BlockOrigin::ThisMac);
+        assert!(seen.skipped_links.is_empty());
         assert_eq!(list_community_blocks(text(&theirs)), installed);
 
         // The same package again is the same version: nothing to replace.
@@ -1315,6 +1399,114 @@ mod tests {
         );
     }
 
+    /// A zip of the package folder `dir`, with a link at `images/logo.png` when `link`.
+    fn zip_with_link(dir: &Path, zip: &Path, link: bool) {
+        use std::io::Write;
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(zip).unwrap());
+        let options = zip::write::SimpleFileOptions::default();
+        for file in [
+            jevision_core::MANIFEST_FILE,
+            jevision_core::PACKAGE_FLOW_FILE,
+        ] {
+            writer.start_file(file, options).unwrap();
+            writer
+                .write_all(&std::fs::read(dir.join(file)).unwrap())
+                .unwrap();
+        }
+        if link {
+            writer
+                .add_symlink("images/logo.png", "/etc/hosts", options)
+                .unwrap();
+        }
+        writer.finish().unwrap();
+    }
+
+    fn link_warnings(preview: &BlockPreview) -> Vec<(Option<&str>, Option<&str>)> {
+        (preview.issues.iter())
+            .filter(|i| i.code == "block.links.skipped")
+            .map(|i| (i.param("count"), i.param("links")))
+            .collect()
+    }
+
+    #[test]
+    fn a_zip_with_a_link_installs_without_it_and_says_which_link_was_left_out() {
+        let root = project("links-zip");
+        let dir = PathBuf::from(package(&root.join("shelf"), "com.acme.a", "1.0.0", &[]));
+        for (link, skipped) in [(true, vec!["images/logo.png"]), (false, vec![])] {
+            let zip = root.join(format!("a-{link}.zip"));
+            zip_with_link(&dir, &zip, link);
+            let set = inspect_block_source(text(&root), text(&zip)).unwrap();
+            let [seen] = <[BlockPreview; 1]>::try_from(set.packages).unwrap();
+            assert!(seen.can_install, "{:?}", seen.issues);
+            assert_eq!(seen.skipped_links, skipped);
+            let warnings = link_warnings(&seen);
+            if link {
+                assert_eq!(warnings, [(Some("1"), Some("images/logo.png"))]);
+                let installed =
+                    install_block_set(text(&root), vec![item(&seen.folder, "")], false).unwrap();
+                let folder = root.join(&installed[0].folder);
+                assert!(folder.join(jevision_core::PACKAGE_FLOW_FILE).is_file());
+                assert!(std::fs::symlink_metadata(folder.join("images/logo.png")).is_err());
+                remove_block_package(text(&root), "com.acme.a".into()).unwrap();
+            } else {
+                assert!(warnings.is_empty());
+            }
+            discard_block_staging(seen.folder);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_with_a_link_says_which_link_is_left_out() {
+        let root = project("links-folder");
+        let dir = PathBuf::from(package(&root.join("shelf"), "com.acme.a", "1.0.0", &[]));
+        std::os::unix::fs::symlink("/etc/hosts", dir.join("hosts")).unwrap();
+        let set = inspect_block_source(text(&root), text(&dir)).unwrap();
+        assert!(!set.temporary);
+        let seen = &set.packages[0];
+        assert_eq!(seen.skipped_links, ["hosts"]);
+        assert_eq!(link_warnings(seen), [(Some("1"), Some("hosts"))]);
+        assert!(!seen.files.contains(&"hosts".to_owned()));
+    }
+
+    #[test]
+    fn the_origin_comes_first_and_a_different_author_is_marked() {
+        let account = BlockOrigin::GitHub {
+            owner: "acme".into(),
+        };
+        let same = describe_block_origin_in("en", &account, "Acme");
+        assert_eq!(same.source, "From the GitHub account acme");
+        assert_eq!(same.author, "Author named in the block: Acme");
+        assert_eq!(same.mismatch, None);
+        let other = describe_block_origin_in("ru", &account, "Anna");
+        assert_eq!(other.source, "Из аккаунта GitHub acme");
+        assert!(
+            other
+                .mismatch
+                .unwrap()
+                .contains("ориентируйтесь на аккаунт")
+        );
+        let local = describe_block_origin_in("en", &BlockOrigin::ThisMac, "Acme");
+        assert_eq!(local.mismatch, None);
+        assert!(local.about.contains("Anyone could have made this file"));
+
+        let root = project("origin");
+        let first = package(&root.join("first"), "com.acme.a", "1.0.0", &[]);
+        let address = "https://github.com/acme/blocks";
+        install_block_set(text(&root), vec![item(&first, address)], false).unwrap();
+        assert_eq!(list_community_blocks(text(&root))[0].origin, account);
+        // A lock written before an address was kept, or by hand, names none.
+        write(
+            &root,
+            jevision_core::PACKAGE_LOCK_FILE,
+            r#"{"format":1,"sources":{}}"#,
+        );
+        assert_eq!(
+            list_community_blocks(text(&root))[0].origin,
+            BlockOrigin::Unknown
+        );
+    }
+
     #[test]
     fn an_address_is_kept_with_the_version_and_updates_come_from_its_set() {
         let root = project("lock");
@@ -1323,6 +1515,12 @@ mod tests {
         let address = "https://example.com/blocks.zip";
         let done = install_block_set(path.clone(), vec![item(&first, address)], false).unwrap();
         assert_eq!(done[0].source.as_deref(), Some(address));
+        assert_eq!(
+            done[0].origin,
+            BlockOrigin::Web {
+                host: "example.com".into()
+            }
+        );
         let lock: serde_json::Value = serde_json::from_str(
             &std::fs::read_to_string(root.join(jevision_core::PACKAGE_LOCK_FILE)).unwrap(),
         )

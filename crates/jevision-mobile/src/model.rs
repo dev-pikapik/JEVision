@@ -345,6 +345,10 @@ impl From<jevision_runner::VisionAnswer> for VisionAnswer {
 pub struct Failure {
     pub code: String,
     pub params: HashMap<String, String>,
+    /// The failure in the words of the Mac's run: what is shown for a code this version doesn't
+    /// know. Empty from a Mac that doesn't send them.
+    #[uniffi(default = "")]
+    pub message: String,
 }
 
 impl From<jevision_remote::Failure> for Failure {
@@ -352,6 +356,7 @@ impl From<jevision_remote::Failure> for Failure {
         Self {
             code: f.code,
             params: f.params.into_iter().collect(),
+            message: f.message,
         }
     }
 }
@@ -595,6 +600,9 @@ pub struct Step {
     /// of the reference image. Absent for `else`.
     pub branch_condition: Option<String>,
     pub failure: Option<Failure>,
+    /// What the step wants known though it didn't fail, e.g. how an app was started.
+    #[uniffi(default = None)]
+    pub note: Option<Failure>,
 }
 
 impl From<jevision_runner::Step> for Step {
@@ -617,6 +625,7 @@ impl From<jevision_runner::Step> for Step {
             branches: s.branches,
             branch_condition: s.branch_condition,
             failure: s.failure.map(Into::into),
+            note: s.note.map(Into::into),
         }
     }
 }

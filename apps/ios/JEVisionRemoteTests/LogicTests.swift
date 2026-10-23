@@ -443,6 +443,9 @@ struct CardAndQueueTextTests {
     #expect(currentLanguage() == "en")
     let failure = Failure(code: "run.target.notFound", params: ["block": "open", "image": "x.png"])
     #expect(RunText.failure(failure) == "Block “open”: x.png wasn’t found on the screen.")
+    // A failure a newer Mac reports is told in the words it sent.
+    let newer = Failure(code: "run.from.thefuture", params: ["block": "open"], message: "Block “Open App”: something new went wrong.")
+    #expect(RunText.failure(newer) == newer.message)
     #expect(RunText.branch("then", branches: 2, condition: nil) == "Took “Yes”")
     #expect(RunText.branch("then", branches: 3, condition: "An empty document") == "Took “Condition 1: An empty document”")
     #expect(VisionText.failure(Failure(code: "run.vision.noModel", params: ["provider": "Ollama"])).contains("Ollama"))

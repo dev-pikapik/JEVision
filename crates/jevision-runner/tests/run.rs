@@ -5,12 +5,12 @@ use std::sync::{Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 use jevision_runner::{
-    CiOrigin, DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage, Modifiers,
-    MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run, RunControl,
-    RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot, ScrollDirection,
-    ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage, VIDEO_FILE, Verdict, VideoMode,
-    VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize, describe_in, html_in,
-    junit_xml_in, prune_videos,
+    AppStart, CiOrigin, DataRow, Event, Hands, HandsError, Judgement, Limit, Located, MaskedImage,
+    Modifiers, MouseButton, Openable, PauseReason, Point, Price, Question, RetryVerdict, Run,
+    RunControl, RunOptions, RunReport, Runner, ScreenHolder, ScreenLock, Screenshot,
+    ScrollDirection, ScrollUnit, Search, StepStatus, Usage, UsageBook, UsedPackage, VIDEO_FILE,
+    Verdict, VideoMode, VisionAnswer, VisionError, VisionJudge, WindowPosition, WindowSize,
+    describe_in, html_in, junit_xml_in, prune_videos,
 };
 
 // The tests read reports in English whatever language the machine runs in.
@@ -47,6 +47,13 @@ struct State {
     /// Shown from the second look at the screen on.
     after_capture: Option<Vec<u8>>,
     not_findable: bool,
+    /// The app runs in the App Sandbox.
+    sandboxed: bool,
+    /// Home folders apps were started with.
+    homes: Vec<PathBuf>,
+    /// An app started in an empty home folder writes its `name` setting, as apps do on first
+    /// launch; the name it found before is logged.
+    writes_settings: bool,
     /// What placing a window answers instead of success.
     window_error: Option<HandsError>,
     reject_typing: bool,
@@ -115,9 +122,25 @@ impl Fake {
 }
 
 impl Hands for Fake {
-    fn open_app(&self, app: &str, fresh: bool) -> Result<(), HandsError> {
-        self.note(format!("open {app}{}", if fresh { " fresh" } else { "" }));
+    fn open_app(&self, app: &str, start: AppStart) -> Result<(), HandsError> {
+        match start {
+            AppStart::AsUsual => self.note(format!("open {app}")),
+            AppStart::Fresh => self.note(format!("open {app} fresh")),
+            AppStart::CleanHome { home } => {
+                let empty = std::fs::read_dir(&home).unwrap().next().is_none();
+                self.note(format!("open {app} in an empty home: {empty}"));
+                self.state.lock().unwrap().homes.push(PathBuf::from(home));
+                if self.state.lock().unwrap().writes_settings {
+                    let name = defaults(&["read", app, "name"]);
+                    self.note(format!("{app} found its name: {name:?}"));
+                    defaults(&["write", app, "name", "Test"]).unwrap();
+                }
+            }
+        }
         Ok(())
+    }
+    fn sandboxed(&self, _: &str) -> Result<bool, HandsError> {
+        Ok(self.state.lock().unwrap().sandboxed)
     }
     fn arrange_window(
         &self,
@@ -716,6 +739,235 @@ fn open_app_starts_fresh_and_places_the_window_only_when_asked() {
     );
 }
 
+/// The note of each step of the last attempt, by block.
+fn notes(report: &RunReport) -> Vec<(String, Option<String>)> {
+    let steps = &report.attempts.last().unwrap().steps;
+    steps
+        .iter()
+        .map(|s| (s.block.clone(), s.note.as_ref().map(|n| n.code.clone())))
+        .collect()
+}
+
+/// Runs `/usr/bin/defaults` with `args`; what it printed, or `None` if it failed.
+fn defaults(args: &[&str]) -> Option<String> {
+    let out = std::process::Command::new("/usr/bin/defaults")
+        .args(args)
+        .output()
+        .unwrap();
+    out.status
+        .success()
+        .then(|| String::from_utf8(out.stdout).unwrap().trim().to_owned())
+}
+
+/// A settings domain of its own for a test, removed when the test ends.
+#[cfg(target_os = "macos")]
+struct Domain(String);
+
+#[cfg(target_os = "macos")]
+impl Domain {
+    fn new() -> Self {
+        static NEXT: AtomicU32 = AtomicU32::new(0);
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let n = NEXT.fetch_add(1, Ordering::Relaxed);
+        Self(format!(
+            "com.jevision.tests.run-{}-{now}-{n}",
+            std::process::id()
+        ))
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for Domain {
+    fn drop(&mut self) {
+        let _ = defaults(&["delete", &self.0]);
+        // `defaults delete` leaves an empty file; a test's own domain leaves nothing.
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let _ = std::fs::remove_file(home.join(format!("Library/Preferences/{}.plist", self.0)));
+    }
+}
+
+const OPEN_PLAIN_THEN_RESET: &str = r#""plain":{"type":"openApp","next":"reset"},
+           "reset":{"type":"openApp","resetState":true}"#;
+
+#[test]
+fn a_reset_starts_the_app_in_an_empty_home_only_when_the_project_asks() {
+    let p = Project::new();
+    p.write("jevision.project.json", r#"{"format":1,"cleanHome":true}"#);
+    p.test(OPEN_PLAIN_THEN_RESET, "plain", 0);
+    let hands = Fake::new(solid([9, 9, 9]));
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        [
+            "open com.example.App",
+            "open com.example.App in an empty home: true",
+            "quit com.example.App",
+        ]
+    );
+    assert_eq!(
+        notes(&run.report),
+        [
+            ("plain".to_owned(), None),
+            ("reset".to_owned(), Some("run.openApp.cleanHome".to_owned())),
+        ]
+    );
+    let homes = hands.state.lock().unwrap().homes.clone();
+    let [home] = homes.as_slice() else {
+        panic!("{homes:?}")
+    };
+    assert!(
+        home.starts_with(std::env::temp_dir().join("jevision-homes")),
+        "{home:?}"
+    );
+    assert!(
+        !home.exists(),
+        "the home folder stays after the run: {home:?}"
+    );
+    let step = &run.report.attempts[0].steps[1];
+    assert_eq!(
+        describe_in("en", step.note.as_ref().unwrap()),
+        "com.example.App started as on its first launch: with an empty home folder and none of \
+         its settings. Its settings come back when the run ends."
+    );
+    let html = html_in("en", &run.report, &run.dir, None);
+    assert!(
+        html.contains("with an empty home folder and none of its settings"),
+        "{html}"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn a_reset_clears_the_apps_settings_and_they_come_back_when_the_run_ends() {
+    let app = Domain::new();
+    defaults(&["write", &app.0, "name", "Anna"]).unwrap();
+    let p = Project::new();
+    p.write("jevision.project.json", r#"{"format":1,"cleanHome":true}"#);
+    p.test(
+        &format!(
+            r#""reset":{{"type":"openApp","app":"{}","resetState":true}}"#,
+            app.0
+        ),
+        "reset",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    hands.state.lock().unwrap().writes_settings = true;
+    let journal = p.0.join("saved settings");
+    let options = RunOptions {
+        saved_settings: Some(journal.clone()),
+        ..options()
+    };
+    let (run, _) = run_with(&p, &hands, RunControl::new(), &options);
+
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        [
+            format!("quit {}", app.0),
+            format!("open {} in an empty home: true", app.0),
+            format!("{} found its name: None", app.0),
+            format!("quit {}", app.0),
+        ]
+    );
+    assert_eq!(defaults(&["read", &app.0, "name"]).as_deref(), Some("Anna"));
+    assert!(
+        !journal.join(format!("{}.json", app.0)).exists(),
+        "the journal entry stays after the run"
+    );
+    assert_eq!(
+        notes(&run.report),
+        [("reset".to_owned(), Some("run.openApp.cleanHome".to_owned()))]
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn settings_a_run_that_is_gone_left_come_back_when_the_next_run_starts() {
+    let app = Domain::new();
+    defaults(&["write", &app.0, "name", "Test"]).unwrap();
+    let mut gone = std::process::Command::new("true").spawn().unwrap();
+    gone.wait().unwrap();
+    let p = Project::new();
+    let journal = p.0.join("saved settings");
+    let saved = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict><key>name</key><string>Anna</string></dict></plist>"#;
+    p.write(
+        &format!("saved settings/{}.json", app.0),
+        serde_json::json!({
+            "app": app.0,
+            "pid": gone.id(),
+            "settings": saved,
+            "hostSettings": null,
+        })
+        .to_string(),
+    );
+    p.test(OPEN_PLAIN_THEN_RESET, "plain", 0);
+    let options = RunOptions {
+        saved_settings: Some(journal.clone()),
+        ..options()
+    };
+    run_with(
+        &p,
+        &Fake::new(solid([9, 9, 9])),
+        RunControl::new(),
+        &options,
+    );
+
+    assert_eq!(defaults(&["read", &app.0, "name"]).as_deref(), Some("Anna"));
+    assert!(!journal.join(format!("{}.json", app.0)).exists());
+}
+
+#[test]
+fn without_the_project_setting_a_reset_only_starts_the_app_fresh() {
+    let p = Project::new();
+    p.test(OPEN_PLAIN_THEN_RESET, "plain", 0);
+    let hands = Fake::new(solid([9, 9, 9]));
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        ["open com.example.App", "open com.example.App fresh"]
+    );
+    assert_eq!(
+        notes(&run.report),
+        [("plain".to_owned(), None), ("reset".to_owned(), None)]
+    );
+    assert!(hands.state.lock().unwrap().homes.is_empty());
+}
+
+#[test]
+fn an_app_in_the_sandbox_is_only_started_fresh_and_the_step_says_why() {
+    let p = Project::new();
+    p.write("jevision.project.json", r#"{"format":1,"cleanHome":true}"#);
+    p.test(OPEN_PLAIN_THEN_RESET, "plain", 0);
+    let hands = Fake::new(solid([9, 9, 9]));
+    hands.state.lock().unwrap().sandboxed = true;
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Passed);
+    assert_eq!(
+        hands.log(),
+        ["open com.example.App", "open com.example.App fresh"]
+    );
+    assert_eq!(
+        notes(&run.report),
+        [
+            ("plain".to_owned(), None),
+            ("reset".to_owned(), Some("run.openApp.sandboxed".to_owned())),
+        ]
+    );
+    let note = run.report.attempts[0].steps[1].note.clone().unwrap();
+    assert_eq!(
+        describe_in("ru", &note),
+        "Сброс не применён: com.example.App работает в песочнице macOS, и его данные хранит сама \
+         система. Приложение запущено без прошлых окон."
+    );
+}
+
 #[test]
 fn a_window_that_will_not_take_its_size_stops_the_run_with_a_clear_reason() {
     let p = Project::new();
@@ -746,7 +998,7 @@ fn a_window_that_will_not_take_its_size_stops_the_run_with_a_clear_reason() {
         assert_eq!(failure_code(&report), code);
         let failure = report.attempts[0].failure.as_ref().unwrap();
         let text = describe(failure);
-        assert!(text.contains(APP) && text.contains("open"), "{text}");
+        assert!(text.contains(APP) && text.contains("Open App"), "{text}");
         if code == "run.hands.windowDiffers" {
             assert!(
                 text.contains("900 × 600") && text.contains("1024 × 700"),
@@ -1804,7 +2056,7 @@ fn click_by_image_fails_when_target_is_not_on_screen() {
 }
 
 #[test]
-fn a_report_is_read_in_the_language_asked_for_and_stores_no_phrases() {
+fn a_report_is_read_in_the_language_asked_for_not_the_one_it_was_run_in() {
     let p = Project::new();
     p.write("refs/button.png", solid([9, 9, 9])).test(
         r#""click":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
@@ -1812,16 +2064,21 @@ fn a_report_is_read_in_the_language_asked_for_and_stores_no_phrases() {
         2,
     );
     let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
-    let run = run(&p, &hands);
+    let english = RunOptions {
+        language: Some("en".to_owned()),
+        ..options()
+    };
+    let run = run_with(&p, &hands, RunControl::new(), &english).0;
     let report = run.report;
-    // The saved file holds codes and parameters; the words are made when the report is shown.
+    // The saved file holds codes and parameters, the words are made when the report is shown;
+    // the run's own words are kept only for a version that doesn't know the code.
     let saved = std::fs::read_to_string(run.dir.join("report.json")).unwrap();
     assert!(saved.contains("run.target.notFound"));
-    assert!(!saved.contains("wasn’t found"));
     let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert!(failure.message.contains("wasn’t found"), "{failure:?}");
     assert_eq!(
         describe_in("ru", failure),
-        "Блок «click»: картинка refs/button.png не найдена на экране."
+        "Блок «Клик»: картинка refs/button.png не найдена на экране."
     );
     let page = html_in("ru", &report, &run.dir, None);
     assert!(page.contains("картинка refs/button.png не найдена на экране"));
@@ -1849,10 +2106,185 @@ fn a_failure_saved_before_the_languages_were_added_is_still_read() {
         describe_in("ru", &failure),
         "Блок «inbox»: экран совпадает с refs/inbox.png на 81,0\u{a0}%, а нужно не меньше 95,0\u{a0}%."
     );
+    assert_eq!(failure.message, "");
     // A code this version doesn't know is shown as it is, not lost.
     let unknown: jevision_runner::Failure =
-        serde_json::from_str(r#"{"code":"run.from.thefuture","params":{}}"#).unwrap();
-    assert!(describe_in("ru", &unknown).contains("run.from.thefuture"));
+        serde_json::from_str(r#"{"code":"run.from.thefuture","params":{"block":"b1"}}"#).unwrap();
+    assert_eq!(
+        describe_in("en", &unknown),
+        "Unknown failure: run.from.thefuture (block=b1)"
+    );
+}
+
+#[test]
+fn a_failure_keeps_its_words_for_a_version_that_doesnt_know_its_code() {
+    let p = Project::new();
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""sign-in":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
+        "sign-in",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let russian = RunOptions {
+        language: Some("ru".to_owned()),
+        ..options()
+    };
+    let run = run_with(&p, &hands, RunControl::new(), &russian).0;
+    let worded = "Блок «Клик»: картинка refs/button.png не найдена на экране.";
+    let saved: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(run.dir.join("report.json")).unwrap()).unwrap();
+    let attempt = &saved["attempts"][0];
+    assert_eq!(attempt["failure"]["message"], worded);
+    assert_eq!(attempt["steps"][0]["failure"]["message"], worded);
+
+    // A code this version knows is still put into the reader's language.
+    let failure = run.report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(
+        describe_in("en", failure),
+        "Block “Click”: refs/button.png wasn’t found on the screen."
+    );
+    // A code from a newer version is told in the words it was reported with.
+    for code in ["run.from.thefuture", "run.vision.fromTheFuture"] {
+        let newer = jevision_runner::Failure {
+            code: code.to_owned(),
+            ..failure.clone()
+        };
+        assert_eq!(describe_in("en", &newer), worded, "{code}");
+    }
+    // A failure without words saves no empty ones.
+    let json = serde_json::to_string(&jevision_runner::Failure::new("run.keys.failed")).unwrap();
+    assert!(!json.contains("message"), "{json}");
+}
+
+#[test]
+fn a_failure_names_its_block_as_the_canvas_does_and_keeps_the_id_for_tools() {
+    let p = Project::new();
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""sign-in":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
+        "sign-in",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let run = run(&p, &hands);
+    let report = &run.report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(report.attempts[0].steps[0].failure.as_ref(), Some(failure));
+    assert_eq!(
+        describe_in("en", failure),
+        "Block “Click”: refs/button.png wasn’t found on the screen."
+    );
+    assert_eq!(
+        describe_in("ru", failure),
+        "Блок «Клик»: картинка refs/button.png не найдена на экране."
+    );
+    assert!(html_in("ru", report, &run.dir, None).contains("Блок «Клик»: картинка"));
+    assert!(
+        junit_xml_in("en", std::slice::from_ref(report))
+            .contains("message=\"Block “Click”: refs/button.png")
+    );
+    // The saved report keeps the id, for tools and for finding the block.
+    assert_eq!(failure.param("block"), "sign-in");
+    let saved: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(run.dir.join("report.json")).unwrap()).unwrap();
+    let params = &saved["attempts"][0]["failure"]["params"];
+    assert_eq!(
+        (&params["block"], &params["blockType"]),
+        (&"sign-in".into(), &"click".into())
+    );
+
+    // A report saved before failures knew their block's type names the block by its id, and a
+    // type from a newer version doesn't hide it either.
+    for params in [
+        r#"{"block":"sign-in","image":"refs/button.png"}"#,
+        r#"{"block":"sign-in","blockType":"fromTheFuture","image":"refs/button.png"}"#,
+    ] {
+        let old: jevision_runner::Failure = serde_json::from_str(&format!(
+            r#"{{"code":"run.target.notFound","params":{params}}}"#
+        ))
+        .unwrap();
+        assert_eq!(
+            describe_in("ru", &old),
+            "Блок «sign-in»: картинка refs/button.png не найдена на экране."
+        );
+    }
+}
+
+#[test]
+fn the_html_report_names_each_step_as_the_app_does_and_tells_the_start_in_local_time() {
+    let p = Project::new();
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""sign-in":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
+        "sign-in",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let run = run(&p, &hands);
+    let mut report = run.report.clone();
+    report.started_at = "2026-10-21T12:11:48.178Z".to_owned();
+    let local = chrono::DateTime::parse_from_rfc3339(&report.started_at)
+        .unwrap()
+        .with_timezone(&chrono::Local);
+
+    let english = html_in("en", &report, &run.dir, None);
+    assert!(english.contains("<strong>Click</strong>"), "{english}");
+    assert!(english.contains("Click “refs/button.png”"), "{english}");
+    assert!(!english.contains("<code>sign-in</code>"), "{english}");
+    assert!(!english.contains(">click<"), "{english}");
+    let started = local.format("%b %-d, %Y, %H:%M").to_string();
+    assert!(
+        english.contains(&format!("<dd>{started}</dd>")),
+        "{english}"
+    );
+    assert!(!english.contains("2026-10-21 12:11:48"), "{english}");
+
+    let russian = html_in("ru", &report, &run.dir, None);
+    assert!(russian.contains("<strong>Клик</strong>"), "{russian}");
+    assert!(russian.contains("Нажать: «refs/button.png»"), "{russian}");
+    let time = local.format("%H:%M").to_string();
+    assert!(
+        russian.contains(&format!(" октября 2026, {time}</dd>")),
+        "{russian}"
+    );
+
+    // A page saved away from its project, where the test can't be read, still names the
+    // block's type and keeps the id to tell the step apart.
+    let away = std::env::temp_dir().join(format!("jevision-html-away-{}", std::process::id()));
+    std::fs::create_dir_all(&away).unwrap();
+    let page = html_in("en", &report, &away, None);
+    std::fs::remove_dir_all(&away).unwrap();
+    assert!(
+        page.contains("<strong>Click</strong><code>sign-in</code>"),
+        "{page}"
+    );
+}
+
+#[test]
+fn a_table_that_cant_be_read_names_its_use_data_block() {
+    let p = Project::new();
+    p.write("data/users.csv", "name,name\nAnn,Bo\n").test(
+        r#""rows":{"type":"useData","file":"data/users.csv","body":"type"},
+           "type":{"type":"type","text":"${data.name}","next":"rows"}"#,
+        "rows",
+        0,
+    );
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    let failure = report.attempts[0].failure.as_ref().unwrap();
+    assert_eq!(failure.code, "run.data.unreadable");
+    assert_eq!(failure.param("block"), "rows");
+    assert!(describe_in("en", failure).starts_with("Block “Use Data”:"));
+    assert!(describe_in("ru", failure).starts_with("Блок «Данные»:"));
+}
+
+#[test]
+fn every_block_type_has_a_name_in_every_language() {
+    for spec in jevision_core::catalog() {
+        let failure = jevision_runner::Failure::new("run.hands.screenLocked")
+            .with("block", "b1")
+            .with("blockType", &spec.type_name);
+        let (en, ru) = (describe_in("en", &failure), describe_in("ru", &failure));
+        assert!(!en.contains("b1") && !ru.contains("b1"), "{en} / {ru}");
+        assert_ne!(en, ru, "{} has no Russian name", spec.type_name);
+    }
 }
 
 #[test]
@@ -2054,9 +2486,94 @@ fn the_report_names_the_packages_a_run_used() {
             name: "Sign in".into(),
             version: "1.2.0".into(),
             author: "Anna".into(),
+            source: None,
             file: steps,
         }]
     );
+    let page = html(&report, Path::new("/nonexistent"), None);
+    assert!(
+        page.contains(
+            "Sign in 1.2.0 (com.acme.sign-in). Source unknown. Author named in the block: Anna."
+        ),
+        "{page}"
+    );
+}
+
+#[test]
+fn a_block_from_the_community_is_named_by_its_name_not_its_file() {
+    let p = Project::new();
+    let steps = install_package(&p, "com.acme.sign-in", None);
+    p.write("refs/button.png", solid([9, 9, 9])).test(
+        r#""sub":{"type":"runTest","test":"blocks/com.acme.sign-in.jevblock/flow.json",
+            "inputs":{"email":"me@example.com"},"next":"tap"},
+           "tap":{"type":"click","target":{"image":"refs/button.png"},"button":"left"}"#,
+        "sub",
+        0,
+    );
+    let hands = Fake::new(solid([0, 0, 0])).with(|s| s.not_findable = true);
+    let run = run(&p, &hands);
+    assert_eq!(run.report.verdict, Verdict::Failed, "{:?}", run.report);
+
+    let english = html_in("en", &run.report, &run.dir, None);
+    assert!(
+        english.contains("Run the custom block “Sign in”"),
+        "{english}"
+    );
+    assert!(english.contains("in Sign in 1.2.0"), "{english}");
+    assert!(!english.contains(&steps), "{english}");
+    let russian = html_in("ru", &run.report, &run.dir, None);
+    assert!(
+        russian.contains("Запустить свой блок «Sign in»"),
+        "{russian}"
+    );
+    assert!(russian.contains("в Sign in 1.2.0"), "{russian}");
+
+    let flows = jevision_runner::run_flows(&p.0, &run.report);
+    let bug = jevision_runner::bug_report_in(
+        "en",
+        &run.report,
+        &flows,
+        &jevision_runner::BugContext::default(),
+    )
+    .unwrap();
+    assert!(
+        bug.body.contains("Run the custom block “Sign in”"),
+        "{}",
+        bug.body
+    );
+}
+
+#[test]
+fn the_report_keeps_where_a_package_came_from_and_marks_an_author_it_does_not_match() {
+    let p = Project::new();
+    install_package(&p, "com.acme.sign-in", None);
+    p.write(
+        jevision_core::PACKAGE_LOCK_FILE,
+        r#"{"format":1,"sources":{"com.acme.sign-in":"https://github.com/acme/blocks"}}"#,
+    );
+    p.test(PACKAGE_STEP, "sub", 0);
+    let report = run(&p, &Fake::new(solid([0, 0, 0]))).report;
+    assert_eq!(
+        report.packages[0].source.as_deref(),
+        Some("https://github.com/acme/blocks")
+    );
+    let page = html(&report, Path::new("/nonexistent"), None);
+    assert!(
+        page.contains(
+            "Sign in 1.2.0 (com.acme.sign-in). From the GitHub account acme. \
+             Author named in the block: Anna. <span class=\"warn\">That isn’t the GitHub account"
+        ),
+        "{page}"
+    );
+
+    // A report saved before runs kept the address still reads, with the source unknown.
+    let old: UsedPackage = serde_json::from_str(
+        r#"{"id":"com.acme.sign-in","name":"Sign in","version":"1.2.0","author":"Anna",
+            "file":"blocks/com.acme.sign-in.jevblock/flow.json"}"#,
+    )
+    .unwrap();
+    assert_eq!(old.source, None);
+    assert!(!serde_json::to_string(&old).unwrap().contains("source"));
 }
 
 #[test]
@@ -2134,7 +2651,7 @@ fn a_missing_package_is_reported_with_the_version_and_address_the_test_recorded(
     assert_eq!(failure.param("source"), "https://github.com/acme/sign-in");
     assert_eq!(
         describe(&failure),
-        "Block “sub”: the community block com.acme.sign-in 1.2.0 isn’t installed; install it with \
+        "Block “Run Test”: the community block com.acme.sign-in 1.2.0 isn’t installed; install it with \
          `jevision blocks install https://github.com/acme/sign-in`, then run the test again."
     );
 
@@ -2555,12 +3072,12 @@ fn vision_problems_are_localizable_failures() {
     assert_eq!(failure.code, "run.vision.timeout");
     assert_eq!(
         failure.params.keys().collect::<Vec<_>>(),
-        ["block", "model", "provider", "seconds"]
+        ["block", "blockType", "model", "provider", "seconds"]
     );
     assert_eq!(failure.param("seconds"), "120");
     assert_eq!(
         describe(&failure),
-        "Block “wait”: Test Vision didn’t answer within 120 s."
+        "Block “Wait For”: Test Vision didn’t answer within 120 s."
     );
 
     // A model that keeps saying no: the wait times out on the expectation, the last answer kept.
@@ -3090,6 +3607,95 @@ fn the_project_chooses_the_ai_for_checks_between_the_block_and_the_app() {
     let failure = report.attempts[0].failure.clone().unwrap();
     assert_eq!(failure.code, "run.vision.noKey");
     assert_eq!(failure.param("provider"), "Google Gemini");
+}
+
+#[test]
+fn a_forced_ai_answers_every_check_whatever_the_project_and_the_block_choose() {
+    let p = Project::new();
+    p.write(
+        "jevision.project.json",
+        r#"{"format":1,"ai":{"screen":{"provider":"ollama","model":"llava-project"}}}"#,
+    );
+    let hands = Fake::new(solid([0, 200, 0]));
+    // The run's own AI, as the command line's --provider and --model give it.
+    let run_ai = named_judge("OpenAI", "openai", false, true);
+    let ollama = named_judge("Ollama", "ollama", true, true);
+    let fallback = named_judge("Google Gemini", "gemini", false, true);
+    let providers: [&dyn VisionJudge; 1] = [&ollama];
+    let run = |p: &Project, main: &Judge, force_vision: bool| {
+        let secrets = secrets();
+        let runner = Runner {
+            hands: &hands,
+            secrets: &secrets,
+            events: &|_: &Event| {},
+            control: RunControl::new(),
+            vision: Some(main),
+            fallback: Some(&fallback),
+            providers: &providers,
+            usage: None,
+            locator: None,
+        };
+        let options = RunOptions {
+            force_vision,
+            ..options()
+        };
+        let report = runner
+            .run(&p.0, Path::new("t.flow.json"), &options)
+            .unwrap()
+            .report;
+        let answer = report.attempts[0].steps[0].vision.clone();
+        (report, answer.map(|a| a.provider))
+    };
+    let asked = |j: &Judge| {
+        j.asked
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|a| a.model.clone())
+            .collect::<Vec<_>>()
+    };
+
+    // Not forced, the project's choice comes before the run's, as it always did.
+    meaning_check(&p, "");
+    assert_eq!(run(&p, &run_ai, false).1.as_deref(), Some("Ollama"));
+    assert_eq!(asked(&ollama), ["llava-project"]);
+    assert!(asked(&run_ai).is_empty());
+
+    // Forced, the run's provider answers with its own model.
+    assert_eq!(run(&p, &run_ai, true).1.as_deref(), Some("OpenAI"));
+    assert_eq!(asked(&run_ai), [""]);
+    assert_eq!(asked(&ollama).len(), 1);
+
+    // It beats a provider and a model the block names itself.
+    meaning_check(&p, r#","provider":"ollama","model":"llava-block""#);
+    assert_eq!(run(&p, &run_ai, true).1.as_deref(), Some("OpenAI"));
+    assert_eq!(asked(&run_ai), ["", ""]);
+    assert_eq!(asked(&ollama).len(), 1);
+
+    // Without a choice in the project, the run's own answers forced or not.
+    let plain = Project::new();
+    meaning_check(&plain, "");
+    assert_eq!(run(&plain, &run_ai, false).1.as_deref(), Some("OpenAI"));
+    assert_eq!(run(&plain, &run_ai, true).1.as_deref(), Some("OpenAI"));
+    assert_eq!(asked(&run_ai).len(), 4);
+
+    // Forced means that provider only: when it is down, the fallback isn't asked.
+    let down = Judge {
+        name: "OpenAI",
+        id: "openai",
+        ..Judge::new(
+            false,
+            Err(VisionError::Unreachable {
+                address: "https://api.openai.com".into(),
+            }),
+        )
+    };
+    let (report, _) = run(&plain, &down, true);
+    assert_eq!(failure_code(&report), "run.vision.unreachable");
+    assert!(asked(&fallback).is_empty());
+    let (report, answer) = run(&plain, &down, false);
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(answer.as_deref(), Some("Google Gemini"));
 }
 
 #[test]
@@ -4085,7 +4691,7 @@ fn a_described_element_that_is_not_on_screen_fails_with_its_description() {
     assert_eq!(failure.param("description"), "the blue Save button");
     assert_eq!(
         describe(&failure),
-        "Block “save”: “the blue Save button” wasn’t found on the screen."
+        "Block “Click”: “the blue Save button” wasn’t found on the screen."
     );
     assert!(report.attempts[0].steps[0].before.is_some());
     assert!(hands.log().is_empty());

@@ -55,7 +55,10 @@ pub use create::{
     gitignore_add, gitignore_needs_run_folder, project_locations, project_name_problem,
 };
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
-pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
+pub use decode::{
+    DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, block_fields, parse, parse_block,
+    reference_fields, target_fields,
+};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
 pub use edit::{DEFAULT_SCROLL_LINES, START, Slot};
 pub use env::{
@@ -83,18 +86,18 @@ pub use notes::{
     note_files_folder, note_timeline, unused_note_files,
 };
 pub use package::{
-    BlockManifest, Dependency, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT, PACKAGE_LOCK_FILE,
-    PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep, Version, VersionReq,
-    app_version, block_with_version, check_package, install_command, install_command_in,
-    install_order, is_block_path, is_package_id, package_issue, package_of_path, parse_manifest,
-    risky_steps, suggest_id,
+    BlockManifest, BlockOrigin, Dependency, MANIFEST_FILE, PACKAGE_FLOW_FILE, PACKAGE_FORMAT,
+    PACKAGE_LOCK_FILE, PACKAGE_SUFFIX, PackageError, PackageInput, PackageLock, Risk, RiskyStep,
+    Version, VersionReq, app_version, block_with_version, check_package, install_command,
+    install_command_in, install_order, is_block_path, is_package_id, package_issue,
+    package_of_path, parse_manifest, risky_steps, source_address, suggest_id,
 };
 pub use package_files::{
     BLOCKS_FOLDER, Change, ExportMeta, Exported, Installed, MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES,
     OwnBlock, Package, PackageFile, RestoreEntry, block_dependents, change_for, export_package,
     input_defaults, install_folder, installed, list_installed, make_own_block, package_flow_path,
-    package_folder, read_package, remove_package, restore_entries, switch_tests_to_copy,
-    unmet_dependencies, usage,
+    package_folder, read_package, remove_package, restore_entries, skipped_links_warning,
+    switch_tests_to_copy, unmet_dependencies, usage,
 };
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,

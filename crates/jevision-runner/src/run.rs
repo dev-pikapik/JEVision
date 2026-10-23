@@ -17,7 +17,9 @@ use jevision_core::{
     ValueKind, WaitUntil, dark_variant, else_if_edge, parse_area,
 };
 
+use crate::app_settings;
 use crate::control::{Cancelled, PauseReason};
+use crate::home::{self, CleanHome};
 use crate::report::{
     Attempt, DataRow, Failure, REPORT_FILE, REPORT_FORMAT, RunReport, Step, StepStatus,
     UsedPackage, Verdict, VisionAnswer, kept_percent, summarize,
@@ -26,8 +28,8 @@ use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
 use crate::usage::{LimitState, UsageBook, price_of};
 use crate::{
-    CiOrigin, Event, EventSink, Hands, HandsError, Openable, Question, RunControl, SECRET_MASK,
-    Screenshot, SecretSource, VisionError, VisionJudge,
+    AppStart, CiOrigin, Event, EventSink, Hands, HandsError, Openable, Question, RunControl,
+    SECRET_MASK, Screenshot, SecretSource, VisionError, VisionJudge,
 };
 use jevision_core::DataTable;
 use jevision_vision::image::{Comparison, Image};
@@ -102,10 +104,28 @@ pub struct RunOptions {
     /// lock; [`default_screen_lock`] is where the app, the command line and the assistant's
     /// server meet.
     pub screen_lock: Option<PathBuf>,
+    /// Journal folder for the settings of apps that a reset starts as on their first launch:
+    /// they are saved there and cleared before the app starts, and put back when the run ends.
+    /// `None` leaves every app's settings alone; [`crate::default_saved_settings`] is where the app,
+    /// the command line and the assistant's server keep them.
+    pub saved_settings: Option<PathBuf>,
     /// Language of the app that started the run (`en`, `ru`): what a `dateTime` block writes
-    /// month and day names in when it names no language of its own. `None` is the language set
-    /// with `jevision_l10n::set_language`.
+    /// month and day names in when it names no language of its own, and what a failure is worded
+    /// in when it is recorded. `None` is the language set with `jevision_l10n::set_language`.
     pub language: Option<String>,
+    /// Every check by meaning asks [`Runner::vision`] with its own model, whatever the block
+    /// or the project chooses, and never the fallback: `jevision run --force-ai`, for CI.
+    /// Finding an element by its description still asks [`Runner::locator`].
+    pub force_vision: bool,
+}
+
+impl RunOptions {
+    /// [`RunOptions::language`], or the language set for the process.
+    fn language(&self) -> String {
+        self.language
+            .clone()
+            .unwrap_or_else(jevision_l10n::language)
+    }
 }
 
 impl Default for RunOptions {
@@ -124,7 +144,9 @@ impl Default for RunOptions {
             keep_videos_for: None,
             added_as_dependency: false,
             screen_lock: None,
+            saved_settings: None,
             language: None,
+            force_vision: false,
         }
     }
 }
@@ -324,6 +346,11 @@ impl Runner<'_> {
         let file = relative(&project, &test);
         let started_at = rfc3339(started);
         let dir = create_run_dir(&project, &test, &started_at)?;
+        // What runs that crashed or were killed left of the apps they started afresh.
+        home::sweep();
+        if let Some(folder) = &options.saved_settings {
+            app_settings::put_back_left_settings(folder);
+        }
 
         let mut secrets = HashMap::new();
         let loaded = load_test(&project, &test);
@@ -372,9 +399,16 @@ impl Runner<'_> {
             attempts: Vec::new(),
         };
         let display_scale = Cell::new(None);
-        let (local_only, hide, ai_screen) = settings
+        let (local_only, hide, ai_screen, clean_home) = settings
             .as_ref()
-            .map(|s| (s.local_only, s.hide.clone(), s.ai_screen.clone()))
+            .map(|s| {
+                (
+                    s.local_only,
+                    s.hide.clone(),
+                    s.ai_screen.clone(),
+                    s.clean_home,
+                )
+            })
             .unwrap_or_default();
         let environment = crate::env::load(&project, options.environment.as_deref());
         let prepared = loaded.and_then(|t| {
@@ -438,6 +472,7 @@ impl Runner<'_> {
                         row: None,
                         steps: Vec::new(),
                     },
+                    options,
                 );
             }
             Ok(_) if screen.is_err() => {
@@ -452,6 +487,7 @@ impl Runner<'_> {
                         row: None,
                         steps: Vec::new(),
                     },
+                    options,
                 );
             }
             Ok((root, start, environment, data)) => {
@@ -473,6 +509,10 @@ impl Runner<'_> {
                     None => (None, vec![None]),
                 };
                 let mut launched: Vec<String> = Vec::new();
+                // Home folders that apps started with during the run; they go when it ends.
+                let mut homes: Vec<CleanHome> = Vec::new();
+                // Apps whose settings the run cleared; they come back when it ends.
+                let mut saved: Vec<String> = Vec::new();
                 for pass in passes {
                     let row = pass.zip(table.clone()).map(|(row, table)| (table, row));
                     let data_row = row.as_ref().map(|(table, row)| DataRow {
@@ -517,6 +557,10 @@ impl Runner<'_> {
                             checked: false,
                             video,
                             local_only,
+                            clean_home,
+                            homes: &mut homes,
+                            saved_settings: options.saved_settings.as_deref(),
+                            saved: &mut saved,
                             ai_screen: ai_screen.as_ref(),
                             hide: &hide,
                             display_scale: &display_scale,
@@ -529,7 +573,7 @@ impl Runner<'_> {
                         launched = opened;
                         report.baselines_created.extend(baselines);
                         let done = attempt.verdict != Verdict::Failed;
-                        self.finish_attempt(&mut report, attempt);
+                        self.finish_attempt(&mut report, attempt, options);
                         if done {
                             break;
                         }
@@ -544,6 +588,20 @@ impl Runner<'_> {
                 }
                 if video.is_some() {
                     self.finish_video(&mut report, &dir, options.video);
+                }
+                // An app quits before its home folder goes: none is left writing into a folder
+                // that is gone, and the next test finds the app as the person keeps it.
+                let mut quit: Vec<&str> = homes.iter().map(|h| h.app.as_str()).collect();
+                quit.dedup();
+                for app in quit {
+                    let _ = self.hands.quit(app);
+                }
+                if let Some(folder) = &options.saved_settings {
+                    for app in &saved {
+                        if !app_settings::put_back(folder, app).unwrap_or(false) {
+                            settings_come_back_later(&mut report, app);
+                        }
+                    }
                 }
             }
         }
@@ -619,7 +677,8 @@ impl Runner<'_> {
         }
     }
 
-    fn finish_attempt(&self, report: &mut RunReport, attempt: Attempt) {
+    fn finish_attempt(&self, report: &mut RunReport, mut attempt: Attempt, options: &RunOptions) {
+        attempt.failure = attempt.failure.map(|f| f.worded(&options.language()));
         self.events.send(&Event::AttemptFinished {
             attempt: attempt.number,
             verdict: attempt.verdict,
@@ -679,20 +738,26 @@ fn data_rows(
         .flow
         .blocks
         .iter()
-        .find(|b| matches!(&b.kind, BlockKind::UseData { file: f, .. } if f == file))
-        .map_or("", |b| b.id.as_str());
+        .find(|b| matches!(&b.kind, BlockKind::UseData { file: f, .. } if f == file));
+    let typed = |f: Failure| match block {
+        Some(b) => f.with("blockType", b.kind.type_name()),
+        None => f,
+    };
+    let block = block.map_or("", |b| b.id.as_str());
     let path = normalize(&t.dir.join(file));
     if !path.starts_with(project) {
-        return Err(Failure::new("run.path.outsideProject")
-            .with("block", block)
-            .with("path", file));
+        return Err(typed(
+            Failure::new("run.path.outsideProject")
+                .with("block", block)
+                .with("path", file),
+        ));
     }
-    let table = DataTable::load(&path).map_err(|e| data_unreadable(block, file, &e))?;
+    let table = DataTable::load(&path).map_err(|e| typed(data_unreadable(block, file, &e)))?;
     // A table without rows would leave nothing to run.
     let chosen = chosen_rows(&table, rows)
         .ok()
         .filter(|r| !r.is_empty())
-        .ok_or_else(|| no_row(block, file, rows.map_or(0, |r| *r.start()), &table))?;
+        .ok_or_else(|| typed(no_row(block, file, rows.map_or(0, |r| *r.start()), &table)))?;
     Ok(Some((Rc::new(table), chosen.collect())))
 }
 
@@ -857,6 +922,11 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
 /// The packages whose steps ran in `attempts`, each once.
 fn used_packages(project: &Path, attempts: &[Attempt]) -> Vec<UsedPackage> {
     let mut used: Vec<UsedPackage> = Vec::new();
+    let sources = fs::read_to_string(project.join(jevision_core::PACKAGE_LOCK_FILE))
+        .ok()
+        .and_then(|text| jevision_core::PackageLock::parse(&text).ok())
+        .unwrap_or_default()
+        .sources;
     for step in attempts.iter().flat_map(|a| &a.steps) {
         let Some(id) = jevision_core::package_of_path(&step.test) else {
             continue;
@@ -870,6 +940,7 @@ fn used_packages(project: &Path, attempts: &[Attempt]) -> Vec<UsedPackage> {
                 name: manifest.name,
                 version: manifest.version.to_string(),
                 author: manifest.author,
+                source: sources.get(id).cloned(),
                 file: step.test.clone(),
             });
         }
@@ -973,7 +1044,7 @@ struct Evaluation {
 
 enum Judged {
     Pixels(Comparison),
-    Model(VisionAnswer),
+    Model(Box<VisionAnswer>),
 }
 
 /// What a provider said, and what it cost.
@@ -1028,6 +1099,15 @@ struct Exec<'r> {
     video: Option<Instant>,
     /// The project allows only AI models on this computer.
     local_only: bool,
+    /// The project starts apps whose state a block resets with an empty home folder.
+    clean_home: bool,
+    /// Home folders made for apps so far in the run.
+    homes: &'r mut Vec<CleanHome>,
+    /// Journal folder for the settings of apps the run starts with an empty home folder;
+    /// `None` leaves their settings alone.
+    saved_settings: Option<&'r Path>,
+    /// Apps whose settings the run saved and cleared so far.
+    saved: &'r mut Vec<String>,
     /// The AI the project chose for checks by meaning.
     ai_screen: Option<&'r AiChoice>,
     /// Areas the project covers in every screenshot.
@@ -1122,6 +1202,7 @@ impl Exec<'_> {
             branches: None,
             branch_condition: None,
             failure: None,
+            note: None,
             video_at_ms: self.video.map(|start| millis(start.elapsed())),
             sent: None,
             sent_masked: false,
@@ -1144,6 +1225,11 @@ impl Exec<'_> {
                 step.status = StepStatus::Failed;
                 if !recorded {
                     self.redact(&mut failure);
+                    // The block is named by its type wherever the failure is shown.
+                    if failure.param("block") == id {
+                        failure = failure.with("blockType", &step.block_type);
+                    }
+                    failure = failure.worded(&self.options.language());
                     step.failure = Some(failure.clone());
                 }
                 Err(Stop::Failed {
@@ -1178,7 +1264,9 @@ impl Exec<'_> {
                 next,
             } => {
                 let app = app.clone().unwrap_or_else(|| t.flow.app.clone());
-                self.hands(id, |h| h.open_app(&app, *reset_state))?;
+                let (start, note) = self.app_start(id, &app, *reset_state)?;
+                self.hands(id, |h| h.open_app(&app, start))?;
+                step.note = note;
                 if window_size.is_some() || window_position.is_some() {
                     self.hands(id, |h| {
                         h.arrange_window(&app, *window_size, *window_position)
@@ -1944,7 +2032,7 @@ impl Exec<'_> {
                             let e = e.map_err(|name| missing_reference(id, &name))?;
                             cache = e.reference;
                             if let Judged::Model(answer) = e.judged {
-                                step.vision = Some(answer);
+                                step.vision = Some(*answer);
                                 sent = e.sent;
                                 asked = Some((e.actual, e.passed));
                             }
@@ -2140,14 +2228,19 @@ impl Exec<'_> {
             } => (expect.trim(), model.trim(), provider.as_str()),
             _ => ("", "", ""),
         };
-        // The block's own choice, then the project's, then the app's, which empty stands for.
-        let chosen = AiChoice::resolve(
-            &AiChoice {
-                provider: provider.to_owned(),
-                model: model.to_owned(),
-            },
-            self.ai_screen,
-        );
+        // The block's own choice, then the project's, then the app's, which empty stands for;
+        // a run that forces its own AI asks only that.
+        let chosen = if self.options.force_vision {
+            AiChoice::default()
+        } else {
+            AiChoice::resolve(
+                &AiChoice {
+                    provider: provider.to_owned(),
+                    model: model.to_owned(),
+                },
+                self.ai_screen,
+            )
+        };
         let (provider, model) = (chosen.provider.as_str(), chosen.model.trim());
         let judge = if provider.is_empty() {
             self.runner.vision.ok_or_else(|| {
@@ -2196,10 +2289,11 @@ impl Exec<'_> {
             reference: reference_picture.as_ref(),
             model,
         };
-        let fallback = self
-            .runner
-            .fallback
-            .filter(|f| (!local_only || f.is_local()) && f.provider_id() != judge.provider_id());
+        let fallback = self.runner.fallback.filter(|f| {
+            !self.options.force_vision
+                && (!local_only || f.is_local())
+                && f.provider_id() != judge.provider_id()
+        });
         let (answer, fallback_reason) = match (self.ask(t, id, judge, &question), fallback) {
             (Ok(answer), _) => (answer, None),
             (Err(Unanswered::Unavailable(reason)), Some(fallback)) => {
@@ -2220,7 +2314,7 @@ impl Exec<'_> {
             reference,
             actual,
             passed: judgement.passed,
-            judged: Judged::Model(VisionAnswer {
+            judged: Judged::Model(Box::new(VisionAnswer {
                 provider: answer.provider,
                 model: answer.model,
                 passed: judgement.passed,
@@ -2231,7 +2325,7 @@ impl Exec<'_> {
                 cost: answer.cost,
                 warning: answer.warning,
                 fallback_reason,
-            }),
+            })),
             private,
             sent: Some(screenshot),
         }))
@@ -2367,7 +2461,7 @@ impl Exec<'_> {
                 images.push(("diff", c.diff.clone()));
                 step.similarity = Some(c.similarity);
             }
-            Judged::Model(answer) => step.vision = Some(answer.clone()),
+            Judged::Model(answer) => step.vision = Some(answer.as_ref().clone()),
         }
         for (kind, image) in images {
             let path = Some(self.record_image(step, kind, &image, &e.private)?);
@@ -2741,6 +2835,54 @@ impl Exec<'_> {
         Ok(since.elapsed())
     }
 
+    /// How an `openApp` block starts `app`, and what its step says about it. Without a reset
+    /// the app starts as usual; with one it starts fresh, and with an empty home folder of its
+    /// own when the project asks for that and macOS doesn't keep the app's data in the sandbox.
+    fn app_start(
+        &mut self,
+        id: &str,
+        app: &str,
+        reset: bool,
+    ) -> Result<(AppStart, Option<Failure>), Stop> {
+        if !reset {
+            return Ok((AppStart::AsUsual, None));
+        }
+        if !self.clean_home {
+            return Ok((AppStart::Fresh, None));
+        }
+        if self.hands(id, |h| h.sandboxed(app))? {
+            let note = Failure::new("run.openApp.sandboxed").with("app", app);
+            return Ok((AppStart::Fresh, Some(note)));
+        }
+        if let Some(folder) = self.saved_settings {
+            // Closed first, so the app can't write its settings back once they are cleared.
+            self.hands(id, |h| {
+                h.quit(app)?;
+                if app_settings::still_open(app) {
+                    return Err(HandsError::StillRunning(app.to_owned()));
+                }
+                Ok(())
+            })?;
+            app_settings::save_and_clear(folder, app).map_err(|e| {
+                fail(
+                    Failure::new("run.openApp.settingsNotSaved")
+                        .with("app", app)
+                        .with("reason", e),
+                )
+            })?;
+            if !self.saved.iter().any(|a| a == app) {
+                self.saved.push(app.to_owned());
+            }
+        }
+        let home = home::make(app).map_err(|e| write_failed(&home::homes_folder(), e))?;
+        let start = AppStart::CleanHome {
+            home: home.path.to_string_lossy().into_owned(),
+        };
+        self.homes.push(home);
+        let note = Failure::new("run.openApp.cleanHome").with("app", app);
+        Ok((start, Some(note)))
+    }
+
     /// Calls the platform layer unless the run was cancelled.
     fn hands<T>(
         &self,
@@ -3006,6 +3148,17 @@ fn unreadable_reference(id: &str, name: &str, reason: String) -> Failure {
         .with("block", id)
         .with("image", name)
         .with("reason", reason)
+}
+
+/// The steps that said the settings of `app` come back when the run ends say instead that they
+/// come back at the next run or launch: the app was still open, or `defaults` failed.
+fn settings_come_back_later(report: &mut RunReport, app: &str) {
+    let steps = report.attempts.iter_mut().flat_map(|a| &mut a.steps);
+    for note in steps.filter_map(|s| s.note.as_mut()) {
+        if note.code == "run.openApp.cleanHome" && note.param("app") == app {
+            *note = Failure::new("run.openApp.settingsLater").with("app", app);
+        }
+    }
 }
 
 fn write_failed(path: &Path, e: impl ToString) -> Stop {

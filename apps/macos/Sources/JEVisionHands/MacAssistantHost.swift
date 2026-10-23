@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import JEVisionCore
 
 extension InputWatcher {
@@ -93,5 +93,28 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
   public func capture(app: String) throws -> Screenshot {
     if MacHands.screenIsLocked { throw HandsError.ScreenLocked }
     return try MacHands(input: InputWatcher(), isCancelled: { false }).capture(app: app)
+  }
+
+  public func openApp() throws {
+    guard let app = Self.app(containing: Bundle.main.executableURL) else {
+      throw HandsError.AppNotFound(app: "JEVision")
+    }
+    let config = NSWorkspace.OpenConfiguration()
+    config.activates = false
+    let error = MacHands.wait { done in
+      NSWorkspace.shared.openApplication(at: app, configuration: config) { _, error in
+        done(error?.localizedDescription)
+      }
+    }
+    if let error { throw HandsError.Failed(reason: error) }
+  }
+
+  /// JEVision: the app the command-line tool `tool` lives in (it is linked from elsewhere, so
+  /// links are followed), or else the copy macOS knows by its bundle id.
+  static func app(containing tool: URL?) -> URL? {
+    let bundle = tool?.resolvingSymlinksInPath()
+      .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    if let bundle, Bundle(url: bundle)?.bundleIdentifier == AISettings.appDomain { return bundle }
+    return NSWorkspace.shared.urlForApplication(withBundleIdentifier: AISettings.appDomain)
   }
 }

@@ -154,8 +154,10 @@ struct CustomBlocksSheet: View {
     return names.count > 5 ? shown + " " + String(localized: "and \(names.count - 5) more") : shown
   }
 
+  /// The buttons go under the words, so that the name, the whole address and any warning about the
+  /// author have the row's width.
   private func communityRow(_ entry: LibraryEntry) -> some View {
-    HStack(spacing: 10) {
+    HStack(alignment: .top, spacing: 10) {
       Image(systemName: entry.symbol)
         .foregroundStyle(.indigo)
         .frame(width: 24)
@@ -163,40 +165,47 @@ struct CustomBlocksSheet: View {
       VStack(alignment: .leading, spacing: 1) {
         Text(entry.name).fontWeight(.medium)
         if let package = entry.package {
-          Text("Version \(package.version) · by \(package.author)")
+          Text("Version \(package.version)")
             .font(.callout)
             .foregroundStyle(.secondary)
-          Text(package.source ?? String(localized: "Installed from a file"))
-            .font(.caption)
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .truncationMode(.middle)
+          BlockOriginView(origin: package.origin, author: package.author, explains: package.source == nil)
+          if let source = package.source {
+            Text(source)
+              .font(.caption)
+              .foregroundStyle(.tertiary)
+              .fixedSize(horizontal: false, vertical: true)
+              .textSelection(.enabled)
+          }
         }
-      }
-      Spacer()
-      if let url = entry.url, let root = project.rootURL {
-        Button("Open") {
-          project.selection = RelativePath.from(root, to: url)
-          dismiss()
+        HStack {
+          if let url = entry.url, let root = project.rootURL {
+            Button("Open") {
+              project.selection = RelativePath.from(root, to: url)
+              dismiss()
+            }
+            .help("Shows its steps. To change them, make a copy.")
+            .accessibilityLabel(Text("Open \(entry.name)"))
+          }
+          if let id = entry.package?.id {
+            Button("Make a Copy…") {
+              owning = project.makeOwnBlockModel(of: id)
+              showsOwning = owning != nil
+            }
+            .help("Makes a copy among the project’s own blocks, which you can change. The installed block stays.")
+            .accessibilityLabel(Text("Make a copy of \(entry.name)"))
+          }
+          if let id = entry.package?.id, entry.package?.source != nil {
+            Button("Update") { installing = project.makeBlockInstaller(updating: id) }
+              .accessibilityLabel(Text("Update \(entry.name)"))
+          }
+          Spacer()
+          Button("Remove", role: .destructive) { model?.remove(entry) }
+            .accessibilityLabel(Text("Remove \(entry.name)"))
         }
-        .help("Shows its steps. To change them, make a copy.")
-        .accessibilityLabel(Text("Open \(entry.name)"))
+        .padding(.top, 6)
       }
-      if let id = entry.package?.id {
-        Button("Make a Copy…") {
-          owning = project.makeOwnBlockModel(of: id)
-          showsOwning = owning != nil
-        }
-        .help("Makes a copy among the project’s own blocks, which you can change. The installed block stays.")
-        .accessibilityLabel(Text("Make a copy of \(entry.name)"))
-      }
-      if let id = entry.package?.id, entry.package?.source != nil {
-        Button("Update") { installing = project.makeBlockInstaller(updating: id) }
-          .accessibilityLabel(Text("Update \(entry.name)"))
-      }
-      Button("Remove", role: .destructive) { model?.remove(entry) }
-        .accessibilityLabel(Text("Remove \(entry.name)"))
     }
+    .padding(.vertical, 4)
     .accessibilityElement(children: .contain)
   }
 

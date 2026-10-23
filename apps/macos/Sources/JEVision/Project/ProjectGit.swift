@@ -21,8 +21,16 @@ final class ProjectGit {
   }
 
   /// The Client ID of JEVision's OAuth app on GitHub, used when Settings names none.
-  static let gitHubClientID = ""
+  static let gitHubClientID = "Ov23li44XD95yHY4A1Jg"
   static let gitHubClientIDKey = "gitHubClientID"
+  /// The OAuth app the sign-in in the Keychain went through; none for GitHub CLI's account.
+  static let signedInClientIDKey = "gitHubSignedInClientID"
+
+  /// The OAuth app to sign in with: the one typed in Settings, otherwise JEVision's own.
+  static func signInClientID(typed: String) -> String {
+    let typed = typed.trimmingCharacters(in: .whitespaces)
+    return typed.isEmpty ? gitHubClientID : typed
+  }
 
   /// Who the app works with GitHub as.
   enum GitHubSignIn: Equatable {
@@ -30,6 +38,18 @@ final class ProjectGit {
     case signedIn(GitHubAccount)
     /// Not signed in, or GitHub couldn't be asked, and why.
     case signedOut(GitError)
+  }
+
+  /// JEVision forgot its GitHub sign-in on this Mac.
+  struct SignedOut {
+    /// GitHub's page that takes away the OAuth app's access, which GitHub keeps until then.
+    let accessPage: URL?
+
+    /// After a sign-in through the OAuth app `clientID`; none for GitHub CLI's account, which
+    /// isn't JEVision's to take away.
+    init(clientID: String?) {
+      accessPage = clientID.flatMap { URL(string: githubAccessPage(clientId: $0)) }
+    }
   }
 
   /// An action that didn't work, and why, in words for the user.
@@ -47,6 +67,8 @@ final class ProjectGit {
   private(set) var gitHubCLIAccount: GitHubAccount?
   /// The code to enter on GitHub while signing in in the browser.
   private(set) var signInCode: DeviceCode?
+  /// Set by signing out, until the next sign-in.
+  private(set) var signedOut: SignedOut?
   /// What went wrong with the last action, for an alert.
   var failure: Failure?
   /// The New Pull Request sheet is shown over the main window.
@@ -146,6 +168,7 @@ final class ProjectGit {
   /// until the user has entered it there.
   func signInToGitHub(clientID: String) {
     cancelSignIn()
+    signedOut = nil
     signInTask = Task {
       do {
         let code = try await Task.detached { try githubSignInStart(clientId: clientID) }.value
@@ -154,6 +177,7 @@ final class ProjectGit {
         openSignInPage()
         let account = try await waitForSignIn(code, clientID: clientID)
         signInCode = nil
+        UserDefaults.standard.set(clientID, forKey: Self.signedInClientIDKey)
         await show(.success(account))
       } catch is CancellationError {
       } catch {
@@ -201,7 +225,13 @@ final class ProjectGit {
 
   /// Signs in with the account GitHub CLI is signed in to.
   func useGitHubCLIAccount() {
-    Task { await show(Task.detached(priority: .utility) { Result { try githubUseCliAccount() } }.value) }
+    Task {
+      let result = await Task.detached(priority: .utility) { Result { try githubUseCliAccount() } }.value
+      if case .success = result {
+        UserDefaults.standard.removeObject(forKey: Self.signedInClientIDKey)
+      }
+      await show(result)
+    }
   }
 
   func signOutOfGitHub() {
@@ -211,6 +241,8 @@ final class ProjectGit {
       if case .failure(let error) = result {
         await show(.failure(error))
       } else {
+        signedOut = SignedOut(clientID: UserDefaults.standard.string(forKey: Self.signedInClientIDKey))
+        UserDefaults.standard.removeObject(forKey: Self.signedInClientIDKey)
         await show(.failure(GitError.GitHubSignedOut))
       }
     }
@@ -222,6 +254,7 @@ final class ProjectGit {
     case .success(let account):
       gitHub = .signedIn(account)
       gitHubCLIAccount = nil
+      signedOut = nil
     case .failure(let error):
       gitHub = .signedOut(error as? GitError ?? .Failed(message: error.localizedDescription))
       gitHubCLIAccount = await Task.detached(priority: .utility) { try? githubCliAccount() }.value

@@ -155,6 +155,21 @@ struct WindowPlacementTests {
   }
 }
 
+/// Which apps a test can start with an empty home folder: the sandbox gives an app its own.
+struct AppSandboxTests {
+  @Test func readsTheSandboxFromTheAppsSignature() {
+    #expect(AppSandbox.contains(URL(filePath: "/System/Applications/TextEdit.app")))
+    #expect(!AppSandbox.contains(URL(filePath: "/System/Applications/Utilities/Terminal.app")))
+  }
+
+  @Test func anAppWithoutASignatureIsNotInTheSandbox() throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "AppSandboxTests-\(UUID().uuidString).app")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    #expect(!AppSandbox.contains(folder))
+  }
+}
+
 struct FrontWindowTests {
   @Test func skipsTinyHelperWindows() {
     let helper = (id: CGWindowID(2), bounds: CGRect(x: 447, y: 81, width: 66, height: 20), title: String?("Window"))
@@ -437,5 +452,31 @@ struct RunVideoTests {
     // Windows on other displays don't count; windows filling the display show all of it.
     #expect(RunVideo.framing([CGRect(x: 0, y: 0, width: 500, height: 500)], on: display) == CGRect(x: 0, y: 0, width: 2000, height: 1000))
     #expect(RunVideo.framing([CGRect(x: 1000, y: 0, width: 2000, height: 980)], on: display) == CGRect(x: 0, y: 0, width: 2000, height: 1000))
+  }
+}
+
+/// An assistant's question about a run needs JEVision open: the tool finds the app it lives in.
+struct AssistantHostAppTests {
+  @Test func findsTheAppTheToolIsLinkedFromAndElseAsksMacOS() throws {
+    let files = FileManager.default
+    let root = files.temporaryDirectory.appending(path: "jevision-app-\(UUID().uuidString)")
+    defer { try? files.removeItem(at: root) }
+    func app(_ name: String, id: String) throws -> URL {
+      let app = root.appending(path: name)
+      try files.createDirectory(at: app.appending(path: "Contents/Helpers"), withIntermediateDirectories: true)
+      try (["CFBundleIdentifier": id, "CFBundlePackageType": "APPL"] as NSDictionary)
+        .write(to: app.appending(path: "Contents/Info.plist"))
+      try Data().write(to: app.appending(path: "Contents/Helpers/jevision"))
+      return app
+    }
+    let jevision = try app("JEVision.app", id: AISettings.appDomain)
+    let link = root.appending(path: "jevision")
+    try files.createSymbolicLink(at: link, withDestinationURL: jevision.appending(path: "Contents/Helpers/jevision"))
+    #expect(MacAssistantHost.app(containing: link)?.path == jevision.resolvingSymlinksInPath().path)
+
+    let other = try app("Other.app", id: "com.example.other")
+    let known = NSWorkspace.shared.urlForApplication(withBundleIdentifier: AISettings.appDomain)
+    #expect(MacAssistantHost.app(containing: other.appending(path: "Contents/Helpers/jevision")) == known)
+    #expect(MacAssistantHost.app(containing: nil) == known)
   }
 }

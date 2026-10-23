@@ -1,3 +1,4 @@
+import AppKit
 import JEVisionCore
 import SwiftUI
 
@@ -155,12 +156,6 @@ struct GitSettingsView: View {
     }
   }
 
-  /// The OAuth app to sign in with: the one in Settings, otherwise JEVision's own.
-  private var signInClientID: String {
-    let typed = clientID.trimmingCharacters(in: .whitespaces)
-    return typed.isEmpty ? ProjectGit.gitHubClientID : typed
-  }
-
   @ViewBuilder
   private var gitHubSection: some View {
     Section {
@@ -176,14 +171,8 @@ struct GitSettingsView: View {
             .help(Text("Forget the sign-in kept in the Keychain"))
         case .signedOut:
           if git.signInCode == nil {
-            if signInClientID.isEmpty {
-              // Without an OAuth app, GitHub CLI signs in; its account is then offered below.
-              Button("Connect GitHub…") { GitHubConnect.start() }
-                .help(Text("Opens Terminal to sign in to GitHub in your browser"))
-            } else {
-              Button("Sign In with GitHub…") { git.signInToGitHub(clientID: signInClientID) }
-                .help(Text("Opens GitHub in your browser to let JEVision in"))
-            }
+            Button("Sign In with GitHub…") { git.signInToGitHub(clientID: ProjectGit.signInClientID(typed: clientID)) }
+              .help(Text("Opens GitHub in your browser to let JEVision in"))
           }
           Button("Check Again", action: git.checkGitHub)
         }
@@ -212,11 +201,23 @@ struct GitSettingsView: View {
           }
           .fixedSize(horizontal: false, vertical: true)
         }
-      } else if case .signedOut = git.gitHub, let account = git.gitHubCLIAccount {
-        ActionRow {
-          Button("Use This Account", action: git.useGitHubCLIAccount)
-        } label: {
-          RowLabel(Text("GitHub CLI is signed in as \(account.login)"), Text("Sign in with the same account, without the browser."))
+      } else if case .signedOut = git.gitHub {
+        if let page = git.signedOut?.accessPage {
+          ActionRow {
+            Button("Revoke on GitHub…") { NSWorkspace.shared.open(page) }
+              .help(Text("Opens GitHub’s page about JEVision’s access to your account"))
+          } label: {
+            RowLabel(
+              Text("JEVision still has access on GitHub"),
+              Text("Signing out only forgets the sign-in on this Mac. To take the access away too, choose Revoke access on the GitHub page that opens."))
+          }
+        }
+        if let account = git.gitHubCLIAccount {
+          ActionRow {
+            Button("Use This Account", action: git.useGitHubCLIAccount)
+          } label: {
+            RowLabel(Text("GitHub CLI is signed in as \(account.login)"), Text("Sign in with the same account, without the browser."))
+          }
         }
       }
       if case .tracked(let status) = git.state, status.github != nil {
@@ -231,14 +232,14 @@ struct GitSettingsView: View {
         .settingAnchor("pullRequests")
       }
       LabeledContent {
-        TextField("Client ID", text: $clientID, prompt: Text(verbatim: ProjectGit.gitHubClientID.isEmpty ? "Ov23li…" : ProjectGit.gitHubClientID))
+        TextField("Client ID", text: $clientID, prompt: Text("Optional"))
           .labelsHidden()
           .frame(maxWidth: 220)
           .accessibilityLabel(Text("OAuth app Client ID"))
       } label: {
         RowLabel(
           Text("OAuth App Client ID"),
-          Text("The GitHub OAuth app JEVision signs in through. Device flow must be turned on in its settings."))
+          Text("Leave empty to sign in through JEVision. To sign in through your own GitHub OAuth app, enter its Client ID; device flow must be turned on in its settings."))
       }
       .settingAnchor("gitHubClientID")
     } header: {
@@ -262,8 +263,8 @@ struct GitSettingsView: View {
   private func signInHelp(_ problem: GitError) -> String {
     switch problem {
     case .NoGitHubCli, .GitHubSignedOut:
-      signInClientID.isEmpty
-        ? String(localized: "Connect GitHub to sign in once in your browser, then check again.")
+      git.signedOut != nil
+        ? String(localized: "JEVision forgot your GitHub sign-in on this Mac.")
         : String(localized: "Sign in once in your browser to open pull requests and push to GitHub.")
     default: GitText.failure(problem)
     }

@@ -8,13 +8,14 @@
 //! unpack to more than the limits below, and an address must be `https` all the way, redirects
 //! included.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Cursor, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
-use jevision_core::{MANIFEST_FILE, PackageError, parse_manifest};
+use jevision_core::{MANIFEST_FILE, PackageError, parse_manifest, source_address};
 use jevision_l10n::tr;
 use serde_json::Value;
 use zip::ZipArchive;
@@ -51,6 +52,10 @@ pub struct StagedSet {
     /// Whether the folders were made by [`stage_source_set`] in the temporary files, each to be
     /// removed with [`discard_staged`]; folders the user pointed at are never removed.
     pub temporary: bool,
+    /// The links an archive held inside each package, by its folder in [`Self::packages`], as
+    /// paths in the package. They are never unpacked. A folder the user pointed at has none
+    /// here: reading the package finds its links.
+    pub skipped_links: BTreeMap<PathBuf, Vec<String>>,
 }
 
 /// Makes the packages of `source` ready to be read: a package folder, a folder with packages
@@ -170,20 +175,12 @@ impl Network {
 }
 
 fn stage(source: &str, network: &Network) -> Result<StagedSet, PackageError> {
-    let source = source.trim();
+    let source = &source_address(source);
     if source.is_empty() {
         return Err(PackageError::new("block.source.missing", &[("source", "")]));
     }
-    if source.starts_with("http://")
-        || source.starts_with("https://")
-        || source.starts_with("github.com/")
-    {
-        let url = if source.starts_with("github.com/") {
-            format!("https://{source}")
-        } else {
-            source.to_owned()
-        };
-        return stage_archives(|into| download(&url, network, into));
+    if source.starts_with("http://") || source.starts_with("https://") {
+        return stage_archives(|into| download(source, network, into));
     }
     let path = Path::new(source);
     if path.is_dir() {
@@ -197,6 +194,7 @@ fn stage(source: &str, network: &Network) -> Result<StagedSet, PackageError> {
         return Ok(StagedSet {
             packages: by_id(found)?,
             temporary: false,
+            skipped_links: BTreeMap::new(),
         });
     }
     if path.is_file() && source.to_ascii_lowercase().ends_with(".zip") {
@@ -208,8 +206,8 @@ fn stage(source: &str, network: &Network) -> Result<StagedSet, PackageError> {
         })?;
         return stage_archives(|into| {
             let folder = into.join("1");
-            unpack_archive(file, &folder, &mut Allowance::new())?;
-            Ok(vec![folder])
+            let links = unpack_archive(file, &folder, &mut Allowance::new())?;
+            Ok((vec![folder], links))
         });
     }
     if path.exists() {
@@ -231,16 +229,18 @@ fn stage(source: &str, network: &Network) -> Result<StagedSet, PackageError> {
 }
 
 /// Makes a new staging folder, has `unpack` unpack the archives of a source into the folder it
-/// is given and say the folders to look for packages in, and moves the packages found there to
-/// `package`, `package-2` and on, by id. The archives aren't kept; nothing is when one fails.
+/// is given and say the folders to look for packages in and the links left out, and moves the
+/// packages found there to `package`, `package-2` and on, by id. The archives aren't kept;
+/// nothing is when one fails.
 fn stage_archives(
-    unpack: impl FnOnce(&Path) -> Result<Vec<PathBuf>, PackageError>,
+    unpack: impl FnOnce(&Path) -> Result<(Vec<PathBuf>, Vec<PathBuf>), PackageError>,
 ) -> Result<StagedSet, PackageError> {
     let invalid =
         |e: io::Error| PackageError::new("block.archive.invalid", &[("reason", &e.to_string())]);
     let root = new_staging_root().map_err(invalid)?;
     let unpacked = root.join("unpacked");
-    let result = unpack(&unpacked).and_then(|folders| {
+    let mut skipped_links = BTreeMap::new();
+    let result = unpack(&unpacked).and_then(|(folders, links)| {
         let found: Vec<PathBuf> = folders.iter().flat_map(|f| find_packages(f)).collect();
         if found.is_empty() {
             return Err(PackageError::new("block.archive.empty", &[]));
@@ -248,7 +248,11 @@ fn stage_archives(
         (by_id(found)?.into_iter().enumerate())
             .map(|(i, dir)| {
                 let to = root.join(staged_name(i));
+                let inside = links_in(&dir, &links);
                 fs::rename(&dir, &to).map_err(invalid)?;
+                if !inside.is_empty() {
+                    skipped_links.insert(to.clone(), inside);
+                }
                 Ok(to)
             })
             .collect()
@@ -258,6 +262,7 @@ fn stage_archives(
         Ok(packages) => Ok(StagedSet {
             packages,
             temporary: true,
+            skipped_links,
         }),
         Err(e) => {
             let _ = fs::remove_dir_all(&root);
@@ -327,7 +332,7 @@ fn unpack_archive(
     zip: impl Read + Seek,
     to: &Path,
     left: &mut Allowance,
-) -> Result<(), PackageError> {
+) -> Result<Vec<PathBuf>, PackageError> {
     let invalid =
         |e: io::Error| PackageError::new("block.archive.invalid", &[("reason", &e.to_string())]);
     let mut archive = ZipArchive::new(zip).map_err(|e| invalid(zip_invalid(e)))?;
@@ -339,9 +344,12 @@ fn unpack_archive(
     }
     left.entries -= archive.len();
     fs::create_dir_all(to).map_err(invalid)?;
+    let mut links = Vec::new();
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).map_err(|e| invalid(zip_invalid(e)))?;
+        // A link is never made: it could lead anywhere, and a file written through it with it.
         if entry.is_symlink() {
+            links.extend(entry.enclosed_name().map(|name| to.join(name)));
             continue;
         }
         let absolute = entry.name().starts_with(['/', '\\']) || entry.name().get(1..2) == Some(":");
@@ -374,7 +382,24 @@ fn unpack_archive(
             ));
         }
     }
-    Ok(())
+    Ok(links)
+}
+
+/// The `links` that are inside the package `dir`, as paths in it, leaving out hidden ones the
+/// way reading a package folder does.
+fn links_in(dir: &Path, links: &[PathBuf]) -> Vec<String> {
+    let mut inside: Vec<String> = (links.iter())
+        .filter_map(|link| link.strip_prefix(dir).ok())
+        .filter(|path| {
+            (path.components()).all(|part| {
+                let part = part.as_os_str().to_string_lossy();
+                !part.starts_with('.') && part != "__MACOSX"
+            })
+        })
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    inside.sort();
+    inside
 }
 
 /// The packages in `root`: `root` itself if it is one, otherwise every folder below it that is,
@@ -449,13 +474,17 @@ fn package_id(dir: &Path) -> Option<String> {
 
 /// Downloads the zips the packages at `url` come in and unpacks each into a folder of `into` as
 /// soon as it is here, so that one at a time is held; the folders to look for packages in.
-fn download(url: &str, network: &Network, into: &Path) -> Result<Vec<PathBuf>, PackageError> {
+fn download(
+    url: &str,
+    network: &Network,
+    into: &Path,
+) -> Result<(Vec<PathBuf>, Vec<PathBuf>), PackageError> {
     let address = match network {
         #[cfg(test)]
         Network::Local(_) if url.starts_with("http://") => Address::Zip(url.to_owned()),
         _ => parse_address(url)?,
     };
-    let mut folders = Vec::new();
+    let (mut folders, mut links) = (Vec::new(), Vec::new());
     let mut fetched = 0;
     let mut left = Allowance::new();
     // `within`: the folder of a repository to look in, for a zip of its code.
@@ -468,7 +497,7 @@ fn download(url: &str, network: &Network, into: &Path) -> Result<Vec<PathBuf>, P
             ));
         }
         let folder = into.join((folders.len() + 1).to_string());
-        unpack_archive(Cursor::new(zip), &folder, &mut left)?;
+        links.extend(unpack_archive(Cursor::new(zip), &folder, &mut left)?);
         folders.push(inside(&folder, within));
         Ok(())
     };
@@ -493,7 +522,7 @@ fn download(url: &str, network: &Network, into: &Path) -> Result<Vec<PathBuf>, P
             }
         }
     }
-    Ok(folders)
+    Ok((folders, links))
 }
 
 /// The folder `within` of the code of a repository unpacked into `folder`, where GitHub puts it
@@ -806,8 +835,8 @@ mod tests {
     fn stage_zip(zip: Vec<u8>) -> Result<StagedSet, PackageError> {
         stage_archives(|into| {
             let folder = into.join("1");
-            unpack_archive(Cursor::new(zip), &folder, &mut Allowance::new())?;
-            Ok(vec![folder])
+            let links = unpack_archive(Cursor::new(zip), &folder, &mut Allowance::new())?;
+            Ok((vec![folder], links))
         })
     }
 
@@ -847,6 +876,43 @@ mod tests {
             discard_staged(folder);
             assert!(!root.exists());
         }
+    }
+
+    #[test]
+    fn links_in_a_zip_are_never_unpacked_but_named_by_package() {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        for (name, bytes) in [
+            ("repo/a.jevblock/block.json", manifest("com.acme.a")),
+            ("repo/a.jevblock/flow.json", STEPS.to_owned()),
+            ("repo/b.jevblock/block.json", manifest("com.acme.b")),
+            ("repo/b.jevblock/flow.json", STEPS.to_owned()),
+        ] {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(bytes.as_bytes()).unwrap();
+        }
+        for (name, target) in [
+            ("repo/a.jevblock/images/logo.png", "/etc/hosts"),
+            ("repo/a.jevblock/.cache", "/etc"),
+            ("repo/a.jevblock/../../escape", "/etc/hosts"),
+            ("repo/README.md", "/etc/hosts"),
+        ] {
+            writer.add_symlink(name, target, options).unwrap();
+        }
+        let staged = stage_zip(writer.finish().unwrap().into_inner()).unwrap();
+        assert_eq!(ids(&staged), ["com.acme.a", "com.acme.b"]);
+        let a = &staged.packages[0];
+        assert!(!a.join("images/logo.png").exists());
+        assert!(fs::symlink_metadata(a.join("images/logo.png")).is_err());
+        assert_eq!(
+            staged.skipped_links,
+            BTreeMap::from([(a.clone(), vec!["images/logo.png".to_owned()])])
+        );
+        discard(&staged);
+
+        let plain = stage_zip(set_zip("repo/", &["com.acme.a"])).unwrap();
+        assert!(plain.skipped_links.is_empty());
+        discard(&plain);
     }
 
     #[test]

@@ -10,8 +10,8 @@ use jevision_core::{
     WindowSize,
 };
 use jevision_runner::{
-    CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot, StepStatus,
-    UsedPackage, Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
+    AppStart, CiOrigin, PauseReason, PixelArea, RetryVerdict, RunControl, Runner, Screenshot,
+    StepStatus, UsedPackage, Verdict, VideoMask, VideoMode, VideoWindow, VisionJudge,
 };
 
 use crate::vision::{AiUsageSettings, NamedJudge, ProviderSettings, VisionSettings};
@@ -105,15 +105,30 @@ pub enum Openable {
     Url { url: String },
 }
 
+/// How `Hands::open_app` starts an application.
+#[uniffi::remote(Enum)]
+pub enum AppStart {
+    /// Finds it running, or launches it as usual.
+    AsUsual,
+    /// A copy that is running is first asked to quit (`StillRunning` if it will not); the new
+    /// one does not bring back the windows of its last session.
+    Fresh,
+    /// As `Fresh`, and the new copy, never one that was running, gets the empty folder `home`
+    /// as its home folder: `HOME` and `CFFIXED_USER_HOME` point at it.
+    CleanHome { home: String },
+}
+
 /// Operating-system side of a run, implemented by the app. Points and screenshots are relative
 /// to the front window of the given application. Calls come from the run's thread, never the
 /// main one; long ones should stop early once the run is cancelled.
 #[uniffi::export(with_foreign)]
 pub trait Hands: Send + Sync {
-    /// Opens the application and brings it to the front. With `fresh` a copy that is running
-    /// is first asked to quit (`StillRunning` if it will not) and the new one does not bring
-    /// back the windows of its last session.
-    fn open_app(&self, app: String, fresh: bool) -> Result<(), HandsError>;
+    /// Opens the application and brings it to the front, as `start` says.
+    fn open_app(&self, app: String, start: AppStart) -> Result<(), HandsError>;
+    /// Whether the application runs in the App Sandbox, as its code signature says: macOS then
+    /// keeps its data in a container and gives it a home folder there, whatever it is started
+    /// with.
+    fn sandboxed(&self, app: String) -> Result<bool, HandsError>;
     /// Gives the front window of the application this size and position, and checks that it
     /// took them: `WindowFixed` if the window cannot be changed, `WindowDiffers` if it ended
     /// up elsewhere or at another size.
@@ -223,6 +238,10 @@ pub struct UsedPackage {
     pub name: String,
     pub version: String,
     pub author: String,
+    /// The address the project had installed it from when the run ended; see
+    /// `installed_block_origin`. `None` for one installed from a file and in older reports.
+    #[uniffi(default = None)]
+    pub source: Option<String>,
     /// Steps file of the package, relative to the project folder.
     pub file: String,
 }
@@ -325,6 +344,11 @@ pub struct RunOptions {
     /// names no language of its own; `None` is the current language.
     #[uniffi(default = None)]
     pub language: Option<String>,
+    /// Every check by meaning asks `vision`, with its model, whatever the test or the project
+    /// chooses, and never `fallback`: `jevision run --force-ai`. Finding an element by its
+    /// description still asks JEV.
+    #[uniffi(default = false)]
+    pub force_vision: bool,
 }
 
 /// One test run on a background thread. Control methods work from any thread and take effect
@@ -483,8 +507,29 @@ fn runner_options(options: &RunOptions) -> jevision_runner::RunOptions {
             .map(|days| std::time::Duration::from_secs(u64::from(days) * 24 * 60 * 60)),
         added_as_dependency: options.added_as_dependency,
         language: options.language.clone(),
+        force_vision: options.force_vision,
         screen_lock: screen_lock(),
+        saved_settings: saved_settings(),
         ..Default::default()
+    }
+}
+
+/// Where runs save the settings of apps they start as on their first launch. This crate's own
+/// tests leave every app's settings alone.
+fn saved_settings() -> Option<std::path::PathBuf> {
+    if cfg!(test) {
+        None
+    } else {
+        jevision_runner::default_saved_settings()
+    }
+}
+
+/// Puts back the settings that runs which crashed or were stopped left saved, of the apps that
+/// are closed. The app calls it when it starts; every run does it too.
+#[uniffi::export]
+pub fn put_back_app_settings() {
+    if let Some(folder) = saved_settings() {
+        jevision_runner::put_back_left_settings(&folder);
     }
 }
 
@@ -545,8 +590,12 @@ pub fn save_blocked_run(
 struct HandsAdapter(Arc<dyn Hands>);
 
 impl jevision_runner::Hands for HandsAdapter {
-    fn open_app(&self, app: &str, fresh: bool) -> Result<(), jevision_runner::HandsError> {
-        Ok(self.0.open_app(app.to_owned(), fresh)?)
+    fn open_app(&self, app: &str, start: AppStart) -> Result<(), jevision_runner::HandsError> {
+        Ok(self.0.open_app(app.to_owned(), start)?)
+    }
+
+    fn sandboxed(&self, app: &str) -> Result<bool, jevision_runner::HandsError> {
+        Ok(self.0.sandboxed(app.to_owned())?)
     }
 
     fn arrange_window(
@@ -1135,6 +1184,10 @@ pub struct Step {
     pub vision: Option<VisionAnswer>,
     pub branch: Option<String>,
     pub failure: Option<Failure>,
+    /// What the person should know about how the step ran, though it didn't fail:
+    /// `run.openApp.cleanHome`, `run.openApp.sandboxed`.
+    #[uniffi(default = None)]
+    pub note: Option<Failure>,
     /// When the block started, in milliseconds from the start of the run's video.
     #[uniffi(default = None)]
     pub video_at_ms: Option<u64>,
@@ -1178,6 +1231,7 @@ impl From<jevision_runner::Step> for Step {
             vision: s.vision.map(Into::into),
             branch: s.branch,
             failure: s.failure.map(Into::into),
+            note: s.note.map(Into::into),
             video_at_ms: s.video_at_ms,
             sent: s.sent,
             sent_masked: s.sent_masked,
@@ -1209,6 +1263,10 @@ pub fn branch_text(step: &Step) -> Option<String> {
 pub struct Failure {
     pub code: String,
     pub params: HashMap<String, String>,
+    /// The failure in the words of the run that recorded it: what is shown for a code this
+    /// version doesn't know. Empty in reports saved before failures kept their words.
+    #[uniffi(default = "")]
+    pub message: String,
 }
 
 impl From<jevision_runner::Failure> for Failure {
@@ -1216,6 +1274,7 @@ impl From<jevision_runner::Failure> for Failure {
         Self {
             code: f.code,
             params: f.params.into_iter().collect(),
+            message: f.message,
         }
     }
 }
@@ -1225,6 +1284,7 @@ impl From<Failure> for jevision_runner::Failure {
         Self {
             code: f.code,
             params: f.params.into_iter().collect(),
+            message: f.message,
         }
     }
 }
@@ -1350,9 +1410,12 @@ pub(crate) mod tests {
     }
 
     impl Hands for Fake {
-        fn open_app(&self, app: String, _: bool) -> Result<(), HandsError> {
+        fn open_app(&self, app: String, _: AppStart) -> Result<(), HandsError> {
             self.note(format!("open {app}"));
             Ok(())
+        }
+        fn sandboxed(&self, _: String) -> Result<bool, HandsError> {
+            Ok(false)
         }
         fn arrange_window(
             &self,
@@ -1637,6 +1700,16 @@ pub(crate) mod tests {
                 format!("type copied {SECRET}"),
             ]
         );
+    }
+
+    #[test]
+    fn forcing_the_ai_reaches_the_runner() {
+        let forced = RunOptions {
+            force_vision: true,
+            ..RunOptions::default()
+        };
+        assert!(runner_options(&forced).force_vision);
+        assert!(!runner_options(&RunOptions::default()).force_vision);
     }
 
     #[test]

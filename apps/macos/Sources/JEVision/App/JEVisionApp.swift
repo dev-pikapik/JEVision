@@ -1,3 +1,4 @@
+import JEVisionCore
 import SwiftUI
 
 @main
@@ -23,6 +24,8 @@ struct JEVisionApp: App {
     AppLanguage.shared.start()
     ActiveKeyboard.shared.start()
     Appearance.saved.apply()
+    // Settings of apps that a run which crashed or was stopped cleared go back, for closed apps.
+    Task.detached(priority: .utility) { putBackAppSettings() }
     let project = ProjectStore()
     let runs = RunCenter()
     let records = RecordCenter()

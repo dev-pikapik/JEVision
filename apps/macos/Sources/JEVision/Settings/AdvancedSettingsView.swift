@@ -12,6 +12,7 @@ struct AdvancedSettingsView: View {
     Form {
       SettingsHeader(tab: .advanced, text: Text("Command line, CI, run videos, logs and other settings most people never change."))
       RetriesSection()
+      CleanHomeSection()
       CommandLineSection()
       ContinuousIntegrationSection()
       Section {

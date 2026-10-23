@@ -121,7 +121,7 @@ struct BlocksCommandTests {
     let plan = run(.restore, in: project)
     #expect(plan.status == Exit.problems)
     #expect(plan.out.contains("2 blocks of jevision.blocks.json aren't installed."))
-    #expect(plan.out.contains("com.acme.a 1.0.0 by Acme (MIT)"))
+    #expect(plan.out.contains("com.acme.a 1.0.0 (MIT)"))
     #expect(plan.out.contains("Not installed: add --yes to install it."))
     #expect(plan.err.contains("keeps com.acme.b 1.5.0"))
     #expect(plan.err.contains("now has 2.0.0"))
@@ -188,8 +188,10 @@ struct BlocksCommandTests {
     let project = try folder()
     let shown = run(.install(source: try zip()), in: project)
     #expect(shown.status == Exit.problems)
-    #expect(shown.out.contains("Sign in 1.0.0 by Anna (MIT)"))
-    #expect(shown.out.contains("com.anna.sign-in"))
+    #expect(shown.out.contains("Sign in 1.0.0 (MIT)\n  com.anna.sign-in\n"))
+    #expect(shown.out.contains("\n  From a file or folder on this Mac. Anyone could have made this file"))
+    #expect(shown.out.contains("\n  Author named in the block: Anna\n"))
+    #expect(!shown.out.contains("That isn’t"), "Nothing to compare an author with on this Mac")
     #expect(shown.out.contains("What it does:"))
     #expect(shown.out.contains("  1. "))
     #expect(shown.out.contains("  2. "))
@@ -211,7 +213,8 @@ struct BlocksCommandTests {
 
     let listed = run(.list, in: project)
     #expect(listed.status == Exit.ok)
-    #expect(listed.out.contains("com.anna.sign-in  1.0.0  Sign in, by Anna"))
+    #expect(listed.out.contains("com.anna.sign-in  1.0.0  Sign in\n                  Source unknown\n"))
+    #expect(listed.out.contains("\n                  Author named in the block: Anna\n"))
 
     let again = run(.install(source: archive), in: project, yes: true)
     #expect(again.status == Exit.ok)
@@ -258,6 +261,38 @@ struct BlocksCommandTests {
     #expect(listCommunityBlocks(project: project).count == 1)
     #expect(run(.remove(id: "com.anna.sign-in"), in: project, force: true).status == Exit.ok)
     #expect(listCommunityBlocks(project: project).isEmpty)
+  }
+
+  @Test func namesTheLinksAPackageLeavesOut() throws {
+    let project = try folder()
+    let shelf = try folder()
+    try package("com.acme.links", in: shelf)
+    let dir = shelf + "/com.acme.links.jevblock"
+    try FileManager.default.createSymbolicLink(atPath: dir + "/logo.png", withDestinationPath: "/etc/hosts")
+    let shown = run(.install(source: dir), in: project, yes: true)
+    #expect(shown.status == Exit.ok)
+    #expect(shown.err.contains("Warning: "))
+    #expect(shown.err.contains("1 link to another file was left out: logo.png."), "\(shown.err)")
+    #expect(shown.err.contains("the rest of the block is installed as usual"))
+    let installed = project + "/blocks/com.acme.links.jevblock"
+    #expect(FileManager.default.fileExists(atPath: installed + "/flow.json"))
+    #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: installed + "/logo.png")) == nil)
+    #expect(!FileManager.default.fileExists(atPath: installed + "/logo.png"))
+  }
+
+  @Test func listsWhereABlockComesFromBeforeTheAuthorItNames() throws {
+    let project = try folder()
+    let shelf = try folder()
+    try package("com.acme.a", in: shelf)
+    #expect(run(.install(source: shelf + "/com.acme.a.jevblock"), in: project, yes: true).status == Exit.ok)
+    let lock = #"{"format": 1, "sources": {"com.acme.a": "https://github.com/anna/blocks"}}"#
+    try lock.write(toFile: project + "/jevision.blocks.json", atomically: true, encoding: .utf8)
+    let listed = run(.list, in: project).out
+    let indent = String(repeating: " ", count: "com.acme.a".count + 2)
+    #expect(listed.contains("com.acme.a  1.0.0  com.acme.a\n\(indent)From the GitHub account anna\n"), "\(listed)")
+    #expect(listed.contains("\(indent)Author named in the block: Acme\n"))
+    #expect(listed.contains("Warning: That isn’t the GitHub account the block comes from."))
+    #expect(listed.contains("\(indent)Address: https://github.com/anna/blocks\n"))
   }
 
   @Test func saysWhyABlockCantBeInstalled() throws {

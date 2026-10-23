@@ -149,6 +149,7 @@ mod tests {
             vision: None,
             branch: branch.map(Into::into),
             failure: (status == StepStatus::Failed).then(|| failure("run.keys.failed")),
+            note: None,
             video_at_ms: None,
             sent: None,
             sent_masked: false,
@@ -163,6 +164,7 @@ mod tests {
         Failure {
             code: code.into(),
             params: HashMap::new(),
+            message: String::new(),
         }
     }
 

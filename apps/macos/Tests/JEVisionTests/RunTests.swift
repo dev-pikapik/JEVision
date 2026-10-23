@@ -241,6 +241,24 @@ struct RunTextTests {
     #expect(RunText.failure(settle) == "Block “w”: the screen didn’t settle within 10 s.")
     // Beside the block itself the message names it the way the canvas does, not by its id.
     #expect(RunText.failure(settle, blockType: "waitFor") == "Block “Wait For”: the screen didn’t settle within 10 s.")
+    // A failure that keeps its block's type is named by it everywhere: in the rows of a table and in statistics.
+    var typed = settle
+    typed.params["blockType"] = "waitFor"
+    #expect(RunText.failure(typed) == "Block “Wait For”: the screen didn’t settle within 10 s.")
+    // A code from a newer version is told in the words the run recorded, a known one still in the app's language.
+    let newer = Failure(code: "run.from.thefuture", params: ["block": "w"], message: "Блок «Ожидание»: что-то новое.")
+    #expect(RunText.failure(newer) == newer.message)
+    typed.message = newer.message
+    #expect(RunText.failure(typed) == "Block “Wait For”: the screen didn’t settle within 10 s.")
+    #expect(RunText.failure(Failure(code: "run.from.thefuture", params: [:])) == "Unknown failure: run.from.thefuture")
+  }
+
+  @Test func namesEveryBlockTypeAsTheCanvasDoes() {
+    for spec in BlockInfo.catalog {
+      let locked = Failure(code: "run.hands.screenLocked", params: ["block": "b1", "blockType": spec.typeName])
+      let byTitle = Failure(code: locked.code, params: ["block": BlockInfo.title(spec.typeName)])
+      #expect(RunText.failure(locked) == RunText.failure(byTitle), "\(spec.typeName)")
+    }
   }
 
   @Test func describesClipboardAndAreaFailures() {

@@ -44,6 +44,10 @@ struct RunCommand {
     if let problem = Readiness.problem() {
       throw UsageError(message: problem, code: "notReady", status: .notReady)
     }
+    if request.forceAI {
+      let projectLocalOnly = (try? projectSettings(project: plan.project))?.localOnly ?? false
+      try Self.checkForcedAI(vision, localOnly: ai.localOnly || projectLocalOnly, progress: progress)
+    }
     let input = InputWatcher()
     let videos = VideoSettings.app
     var request = request
@@ -67,6 +71,38 @@ struct RunCommand {
       progress.line(progress.paint(words("cli.run.pressAgain"), .dim))
     }
     return withExtendedLifetime(interrupts) { session.runAll() }
+  }
+
+  /// Asks the AI `--force-ai` holds every check by meaning to one short question before any
+  /// test starts: in the cloud when `localOnly` keeps screenshots on this Mac, without a key,
+  /// with a model the provider doesn't have or out of reach, every check would fail. A model
+  /// that describes the test picture wrong is only warned about.
+  static func checkForcedAI(
+    _ vision: VisionSettings?, localOnly: Bool, progress: Console,
+    ask: (VisionSettings) throws -> VisionVerdict = { try visionTest(settings: $0) }
+  ) throws(UsageError) {
+    guard let vision, let provider = AISettings.provider(vision.provider) else {
+      throw UsageError(message: "jevision: " + words("cli.error.forceNeedsProvider"))
+    }
+    if localOnly, !visionIsLocal(settings: vision) {
+      throw UsageError(message: "jevision: " + words("cli.error.forceCloudBlocked", provider.name))
+    }
+    if provider.needsKey, vision.key?.isEmpty ?? true {
+      throw UsageError(message: "jevision: " + words("cli.error.forceNoKey", provider.name, provider.keyVariable))
+    }
+    let verdict: VisionVerdict
+    do {
+      verdict = try ask(vision)
+    } catch VisionCallError.Failed(let failure, _) {
+      throw UsageError(
+        message: "jevision: " + words("cli.error.forceUnavailable", provider.name, describeVisionFailure(failure: failure)))
+    } catch {
+      throw UsageError(message: "jevision: " + words("cli.error.forceUnavailable", provider.name, error.localizedDescription))
+    }
+    if !verdict.passed {
+      progress.line(progress.paint(words("cli.run.forcedConfused", provider.name, vision.model, verdict.reason), .yellow))
+    }
+    progress.line(progress.paint(words("cli.run.forced", provider.name, vision.model), .dim))
   }
 
   // MARK: Planning
@@ -542,7 +578,7 @@ final class TestSession: @unchecked Sendable {
         vision: vision,
         localOnly: localOnly, schedule: request.schedule, fallback: fallback, providers: providers, usage: usage,
         video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added,
-        language: RunLanguage.app),
+        language: RunLanguage.app, forceVision: request.forceAI),
       hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
     listener.done.wait()
     switch listener.outcome {
@@ -713,6 +749,9 @@ private final class Progress: RunListener, @unchecked Sendable {
       console.line(text)
       for output in step.outputs {
         console.line("    " + console.paint("\(output.name) = \(output.value)", .dim))
+      }
+      if let note = step.note {
+        console.line("    " + console.paint(describeFailure(failure: note), .dim))
       }
       if let failure = step.failure {
         console.line("    " + console.paint(describeFailure(failure: failure), .red))

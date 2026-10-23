@@ -2,8 +2,8 @@
 //! straight to the Keychain; the app only ever sees the account.
 
 use jevision_git::{
-    API, DeviceCode, DeviceFlow, GitError, GitHub, GitHubAccount, SITE, SignInStep, forget_token,
-    save_token,
+    API, DeviceCode, DeviceFlow, GitError, GitHub, GitHubAccount, SITE, SignInStep, access_page,
+    forget_token, save_token,
 };
 
 use crate::git::git;
@@ -69,6 +69,13 @@ pub fn github_use_cli_account() -> Result<GitHubAccount, GitError> {
 #[uniffi::export]
 pub fn github_sign_out() -> Result<(), GitError> {
     forget_token()
+}
+
+/// The page on GitHub where the user takes away the access of the OAuth app `client_id` for
+/// good: signing out only forgets the token on this Mac.
+#[uniffi::export]
+pub fn github_access_page(client_id: String) -> String {
+    access_page(&client_id)
 }
 
 /// The account of a token GitHub accepts, once the token is in the Keychain.

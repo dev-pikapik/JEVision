@@ -268,7 +268,7 @@ struct HealthView: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       if let point = health.failsMostAt {
-        Text("Fails most often at \(place(point))")
+        Text("Fails most often at \(RunText.place(block: point.block, blockType: point.blockType, test: point.test, shownTest: test, in: project))")
           .font(.caption)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -290,25 +290,6 @@ struct HealthView: View {
     // A sidebar row keeps its text to one line unless told otherwise; these notes name blocks and dates.
     .lineLimit(nil)
     .padding(.vertical, 4)
-  }
-
-  /// The block's type and what it does, and the test it's in when another test runs it.
-  private func place(_ point: FailurePoint) -> String {
-    let flow: Flow? =
-      if point.test == test, project.selection == test {
-        project.document?.flow
-      } else {
-        project.rootURL.flatMap { root in
-          (try? String(contentsOf: root.appending(path: point.test), encoding: .utf8)).flatMap { try? loadFlow(json: $0) }
-        }
-      }
-    let block = flow?.blocks.first { $0.id == point.block }
-    var text = BlockInfo.title(point.blockType)
-    if let block { text += " · " + BlockSummary.text(block.kind, appName: AppCatalog.shared.name(of:)) }
-    if point.test != test {
-      text += " · " + String(localized: "in \(ProjectScanner.testName(path: point.test))")
-    }
-    return text
   }
 
   private func failing(_ since: Date) -> String {

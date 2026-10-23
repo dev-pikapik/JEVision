@@ -308,16 +308,20 @@ struct CommunityBlocksTests {
       return
     }
     #expect(package == PackageNeed(version: "1.0.0", source: nil), "A block from a file has no address to keep")
-    #expect(LibraryEntry.Package(id: "x", author: "", version: "1.0.0", license: "", source: "/tmp/x.zip").need.source == nil)
+    #expect(LibraryEntry.Package(id: "x", author: "", version: "1.0.0", license: "", source: "/tmp/x.zip", origin: .unknown).need.source == nil)
   }
 
-  @Test func namesBlocksOfCommunityByTheirIdInSummaries() {
+  @Test func namesBlocksOfCommunityByTheirNameInSummaries() throws {
+    let project = ProjectStore()
+    project.open(try installed())
     let path = "blocks/com.anna.sign-in.jevblock/flow.json"
-    #expect(ProjectScanner.testName(path: path) == "com.anna.sign-in")
+    #expect(ProjectScanner.testName(path: path) == "Sign in")
+    let summary = BlockSummary.text(.runTest(test: path, package: nil, inputs: [:], next: nil), appName: { $0 })
+    #expect(summary.contains("Sign in") && !summary.contains("com.anna.sign-in"), "\(summary)")
+    // A block the open project doesn't have is named by its id.
+    #expect(ProjectScanner.testName(path: "blocks/com.acme.gone.jevblock/flow.json") == "com.acme.gone")
     #expect(ProjectScanner.testName(path: "Login/Sign In.flow.json") == "Sign In")
     #expect(ProjectScanner.testName(path: "blocks/Sign in.block.json") == "Sign in")
-    let summary = BlockSummary.text(.runTest(test: path, package: nil, inputs: [:], next: nil), appName: { $0 })
-    #expect(summary.contains("com.anna.sign-in"))
   }
 
   @Test func sharingStartsFromTheBlockAndChecksTheId() {

@@ -349,9 +349,10 @@ impl Player {
                 let failure = (test == FAILING && index + 1 == blocks.len()).then(|| {
                     Failure::new("run.check.mismatch")
                         .with("block", block)
+                        .with("blockType", kind)
                         .with("image", "refs/message-list.png")
-                        .with("similarity", "0.82")
-                        .with("threshold", "0.9")
+                        .with("similarity", "82.0%")
+                        .with("threshold", "90.0%")
                 });
                 let status = if failure.is_some() {
                     StepStatus::Failed

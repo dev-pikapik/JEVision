@@ -10,6 +10,7 @@ fn texts_follow_the_language_set_until_it_changes() {
     let no_key = || Failure {
         code: "run.vision.noKey".into(),
         params: [("provider".to_owned(), "Anthropic".to_owned())].into(),
+        message: String::new(),
     };
     let unreadable = || load_flow("{".into()).unwrap_err().to_string();
 

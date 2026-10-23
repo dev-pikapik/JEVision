@@ -20,6 +20,7 @@ const REPORT: &str = r#"{"format":1,"test":"Sign in with valid credentials","fil
     "failure":{"code":"run.target.notFound","params":{"block":"open","image":"x.png"}},
     "row":{"number":2,"label":"Bo"},"steps":[{"seq":1,"test":"login/sign-in.flow.json","block":"open","type":"openApp",
     "status":"failed","durationMs":900,"after":"shots/1-after.png",
+    "note":{"code":"run.openApp.sandboxed","params":{"app":"com.example.AcmeMail"}},
     "failure":{"code":"run.target.notFound","params":{"block":"open","image":"x.png"}}}]}]}"#;
 
 /// A scratch folder, removed with everything in it at the end of the test.
@@ -364,6 +365,9 @@ async fn pairs_runs_and_reads_reports_over_loopback() {
             label: "Bo".into()
         })
     );
+    let note = attempt.steps[0].note.as_ref().unwrap();
+    assert_eq!(note.code, "run.openApp.sandboxed");
+    assert_eq!(note.params["app"], "com.example.AcmeMail");
     let after = attempt.steps[0].after.clone().unwrap();
     let picture = phone
         .picture("Demo".into(), SAVED_RUN.into(), after)
@@ -471,6 +475,7 @@ fn texts_follow_the_language_the_app_sets() {
             ("block".to_owned(), "open".to_owned()),
             ("image".to_owned(), "x.png".to_owned()),
         ]),
+        message: String::new(),
     };
     set_language("en-US".to_owned());
     assert_eq!(current_language(), "en");
@@ -485,9 +490,32 @@ fn texts_follow_the_language_the_app_sets() {
     set_language("ru_RU".to_owned());
     assert_eq!(current_language(), "ru");
     assert_eq!(
-        describe_failure(failure),
+        describe_failure(failure.clone()),
         "Блок «open»: картинка x.png не найдена на экране."
     );
+    // A Mac that keeps the block's type names the block as its canvas does, shares as the
+    // language writes them.
+    let mut typed = failure;
+    typed.code = "run.check.mismatch".to_owned();
+    typed.params.extend([
+        ("blockType".to_owned(), "openApp".to_owned()),
+        ("similarity".to_owned(), "87.5%".to_owned()),
+        ("threshold".to_owned(), "95.0%".to_owned()),
+    ]);
+    assert_eq!(
+        describe_failure(typed.clone()),
+        "Блок «Открыть приложение»: экран совпадает с x.png на 87,5\u{a0}%, а нужно не меньше 95,0\u{a0}%."
+    );
+    // A Mac of a newer version sends the words of a failure with it: a code the phone doesn't
+    // know is told in them, one it knows still in the phone's language.
+    let worded = "Block “Open App”: something new went wrong.";
+    let sent = jevision_remote::Failure {
+        message: worded.to_owned(),
+        ..jevision_remote::Failure::new("run.from.thefuture").with("block", "open")
+    };
+    assert_eq!(describe_failure(sent.into()), worded);
+    typed.message = worded.to_owned();
+    assert!(describe_failure(typed).starts_with("Блок «Открыть приложение»: экран"));
     assert_eq!(
         branch_text("then".to_owned(), Some(2), None).as_deref(),
         Some("Выбран путь «Да»")

@@ -27,9 +27,19 @@ impl Phrase {
     }
 }
 
-/// The sentence for a failure in `lang`.
+/// The sentence for a failure in `lang`. A code from a newer version is told in the words the
+/// failure was recorded with, when it has them.
 pub fn describe_in(lang: &str, failure: &Failure) -> String {
-    phrase(lang, failure).text(lang)
+    let phrase = phrase(lang, failure);
+    let unknown = |p: &Phrase| p.key == "run.unknown";
+    let newer = unknown(&phrase)
+        || phrase.key == "run.block.prefixed"
+            && failure.code.starts_with("run.vision.")
+            && unknown(&vision_phrase(failure));
+    if newer && !failure.message.is_empty() {
+        return failure.message.clone();
+    }
+    phrase.text(lang)
 }
 
 /// [`describe_in`] in the language set with `jevision_l10n::set_language`.
@@ -51,7 +61,7 @@ pub fn describe_vision(failure: &Failure) -> String {
 /// of what they name (a kind of value, a permission), so this needs `lang` for those.
 pub fn phrase(lang: &str, f: &Failure) -> Phrase {
     let p = |name: &str| f.param(name);
-    let block = p("block");
+    let block = &block_name(lang, f);
     let seconds = p("seconds");
     // A reason that is put before a full stop doesn't bring its own.
     let reason = || p("reason").trim_end_matches('.');
@@ -168,6 +178,10 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
             Phrase::new(key, &[block, p("app"), p("wanted"), p("actual")])
         }
         "run.hands.failed" => Phrase::new(key, &[block, p("reason")]),
+        "run.openApp.cleanHome" | "run.openApp.sandboxed" | "run.openApp.settingsLater" => {
+            Phrase::new(key, &[p("app")])
+        }
+        "run.openApp.settingsNotSaved" => Phrase::new(key, &[p("app"), reason()]),
         "run.var.missing" => Phrase::new(key, &[block, p("name")]),
         "run.value.notNumber" => Phrase::new(key, &[block, p("value")]),
         "run.process.notFound" => Phrase::new(key, &[block, p("program")]),
@@ -282,6 +296,44 @@ fn data_problem(lang: &str, f: &Failure) -> String {
         _ => return p("reason").to_owned(),
     };
     Phrase::new(code, args).text(lang)
+}
+
+/// The block a failure is about, named as the editor's canvas names it. A failure saved before
+/// failures kept the type of their block, or of a type this version doesn't know, names it by id.
+pub(crate) fn block_name(lang: &str, failure: &Failure) -> String {
+    block_title(lang, failure.param("blockType"))
+        .unwrap_or_else(|| failure.param("block").to_owned())
+}
+
+/// The name of a block type on the canvas, such as `Wait For`; `None` for a type this version
+/// doesn't know. The keys are the ones the app names its blocks with.
+pub(crate) fn block_title(lang: &str, block_type: &str) -> Option<String> {
+    let key = match block_type {
+        "openApp" => "Open App",
+        "openFile" => "Open File",
+        "click" => "Click",
+        "hover" => "Hover",
+        "drag" => "Drag",
+        "scroll" => "Scroll",
+        "type" => "Type Text",
+        "pressKeys" => "Press Keys",
+        "waitFor" => "Wait For",
+        "pause" => "Pause",
+        "check" => "Check",
+        "if" => "If",
+        "repeat" => "Repeat",
+        "useData" => "Use Data",
+        "runTest" => "Run Test",
+        "http" => "HTTP Request",
+        "database" => "Database",
+        "checkFile" => "Wait For File",
+        "command" => "Run Command",
+        "script" => "Script",
+        "clipboard" => "Clipboard",
+        "dateTime" => "Date and Time",
+        _ => return None,
+    };
+    Some(text_in(lang, key, &[]))
 }
 
 /// A share kept in a report as `81.0%`, written the way `lang` writes it. Anything that isn't

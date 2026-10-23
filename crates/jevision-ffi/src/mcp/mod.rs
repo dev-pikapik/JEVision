@@ -66,6 +66,9 @@ pub trait AssistantHost: Send + Sync {
     fn run_options(&self) -> RunOptions;
     /// The front window of the application with bundle id `app`.
     fn capture(&self, app: String) -> Result<Screenshot, HandsError>;
+    /// Opens the app without bringing it forward, so it can ask the person about a run; returns
+    /// once macOS has started it. Called only when the app isn't open.
+    fn open_app(&self) -> Result<(), HandsError>;
     /// A folder the app and every server share, for who connected and the questions the
     /// person is asked. The app reads it with `connected_assistants` and
     /// `pending_assistant_requests`.

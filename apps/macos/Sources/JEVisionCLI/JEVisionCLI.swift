@@ -118,6 +118,9 @@ struct RunRequest: Equatable {
   /// AI provider and model for checks by meaning, instead of the ones chosen in the app.
   var provider: String?
   var model: String?
+  /// Every check by meaning asks the run's provider and model, whatever the project or a test
+  /// chooses: for CI, which has the key of one provider.
+  var forceAI = false
   var junit: String?
   var html: String?
   /// Whether to record a video of the app; `nil` follows the app's setting.
@@ -182,7 +185,7 @@ enum Command: Equatable {
       return .fmt(paths: try options.requirePaths(name), check: options.flags.contains("--check"))
     case "run":
       let options = try Options.parse(
-        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify", "--flaky"],
+        rest, command: name, flags: ["--json", "--include-quarantined-failures", "--no-notify", "--flaky", "--force-ai"],
         values: [
           "--project", "--env", "--retries", "--row", "--rows", "--start-at", "--provider", "--model", "--junit", "--html", "--video",
           "--type", "--priority", "--status", "--author",
@@ -220,6 +223,7 @@ enum Command: Equatable {
         throw UsageError(message: words("cli.error.noProvider", provider, ids), command: name)
       }
       request.model = options.values["--model"]
+      request.forceAI = options.flags.contains("--force-ai")
       request.junit = options.values["--junit"]
       request.html = options.values["--html"]
       if let video = options.values["--video"] {

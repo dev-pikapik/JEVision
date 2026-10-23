@@ -617,6 +617,7 @@ fn failure(f: Failure) -> jevision_runner::Failure {
     jevision_runner::Failure {
         code: f.code,
         params: f.params.into_iter().collect(),
+        message: f.message,
     }
 }
 
@@ -763,7 +764,7 @@ mod tests {
     use crate::mcp::tests::{Host, Project, app_answers, sign_in};
     use crate::mcp::{
         AssistantKey, AssistantPermissions, AssistantServerError, Backend, Server,
-        connected_assistants, pending_assistant_requests,
+        connected_assistants, listen_for_assistants,
     };
     use crate::run::tests::{Fake, Secrets};
     use crate::{DataRowRange, RunOptions, TestRun};
@@ -1510,12 +1511,15 @@ mod tests {
         terminal.initialize();
         let folder = mac.folder();
 
-        // The app is not open: nobody can allow it, so nothing runs.
+        // The app can't be opened to ask: nobody can allow it, so nothing runs.
         let (failed, text) = terminal.call("run_test", json!({ "path": "login" }));
-        assert!(failed && text.contains("JEVision isn’t open"), "{text}");
+        assert!(
+            failed && text.contains("JEVision couldn’t open to ask"),
+            "{text}"
+        );
 
         // The owner sees which assistant on which computer asks, and allows it.
-        pending_assistant_requests(folder.clone());
+        let _app = listen_for_assistants(folder.clone()).unwrap();
         let (outcome, seen) = std::thread::scope(|scope| {
             let app = scope.spawn(|| app_answers(&folder, true));
             let outcome = terminal.call("run_test", json!({ "path": "login" }));

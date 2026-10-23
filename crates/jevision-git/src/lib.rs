@@ -24,7 +24,7 @@ pub use github::{
     API, ATTACHMENTS_BRANCH, Artifact, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, IssueState,
     IssueStatus, PullRequest, PullRequestChanges, PullRequestDraft,
 };
-pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, forget_token, save_token};
+pub use signin::{DeviceCode, DeviceFlow, SITE, SignInStep, access_page, forget_token, save_token};
 
 /// Why a git operation didn't happen. Nothing on disk changed unless the variant says so.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -306,6 +306,22 @@ struct AssistantRequestsTests {
     #expect(many.contains("3"))
   }
 
+  @Test func eachTestIsNamedByTheNameItGivesItself() throws {
+    let project = FileManager.default.temporaryDirectory.appending(path: "jevision-ask-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: project.appending(path: "math"), withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: project) }
+    let named = #"{"format":1,"name":"Calculator shows the total","app":"com.apple.calculator","start":"a","blocks":{"a":{"type":"openApp"}}}"#
+    try named.write(to: project.appending(path: "math/calculator-total.flow.json"), atomically: true, encoding: .utf8)
+    let ask = AssistantRequest(
+      id: "1", assistant: "Claude Code", remote: nil, project: project.path,
+      tests: ["math/calculator-total.flow.json", "gone.flow.json"], apps: [], environment: nil, expiresAt: 0)
+    let text = AssistantRequests.details(ask) { $0 }
+    #expect(text.contains("Calculator shows the total\n"), "\(text)")
+    #expect(!text.contains("calculator-total"), "\(text)")
+    // A test that can't be read is named by its file.
+    #expect(text.contains("gone\n"), "\(text)")
+  }
+
   @Test func anAssistantOnAnotherComputerSaysWhichOne() {
     let near = AssistantRequests.details(request(tests: ["a.flow.json"])) { $0 }
     #expect(!near.contains("Anna’s MacBook") && !near.contains("network"))
@@ -319,8 +335,39 @@ struct AssistantRequestsTests {
     let path = folder.path(percentEncoded: false)
     #expect(connectedAssistants(folder: path).isEmpty)
     #expect(pendingAssistantRequests(folder: path).isEmpty)
-    #expect(FileManager.default.fileExists(atPath: folder.appending(path: "listening").path), "polling tells the servers the app is open")
     #expect(!answerAssistantRequest(folder: path, id: "1-2-3", allow: true), "nobody asked")
     #expect(AISettings.assistantsFolder.path.hasSuffix("JEVision/Assistants"))
+  }
+
+  @Test func theAppListensAndAsksAsSoonAsAQuestionComesIn() async throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "jevision-assistants-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let listening = folder.appending(path: "listening").path
+    let locked = {
+      let file = open(listening, O_RDONLY)
+      defer { close(file) }
+      return file >= 0 && flock(file, LOCK_SH | LOCK_NB) != 0
+    }
+    var asked: [String] = []
+    let requests = AssistantRequests(folder: folder.path) {
+      asked.append($0.id)
+      return true
+    }
+    requests.start()
+    #expect(locked(), "the servers see the app open, with nothing to touch on time")
+
+    let question = folder.appending(path: "asks/7-1-0.json")
+    let now = Int(Date.now.timeIntervalSince1970)
+    let text = #"{"id":"7-1-0","assistant":"Claude Code","project":"/p","tests":["a.flow.json"],"#
+      + #""apps":[],"requestedAt":\#(now),"expiresAt":\#(now + 60)}"#
+    try Data(text.utf8).write(to: question, options: .atomic)
+    let deadline = Date.now + 5
+    while asked.isEmpty, Date.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+    #expect(asked == ["7-1-0"], "asked as soon as the question came in")
+    let answer = question.deletingPathExtension().appendingPathExtension("answer")
+    #expect(try String(contentsOf: answer, encoding: .utf8) == "allow")
+
+    requests.stop()
+    #expect(!locked(), "once it stops, the app counts as closed")
   }
 }

@@ -1507,6 +1507,25 @@ fn browser_sign_in_explains_why_it_stopped() {
 }
 
 #[test]
+fn signing_out_forgets_the_saved_token_and_can_be_repeated() {
+    if cfg!(target_os = "macos") {
+        save_token("gho_test").unwrap();
+        assert_eq!(signin::keychain::get().as_deref(), Some("gho_test"));
+    }
+    forget_token().unwrap();
+    assert_eq!(signin::keychain::get(), None);
+    forget_token().expect("signing out with nothing saved works too");
+}
+
+#[test]
+fn the_access_page_on_github_is_the_one_of_the_app_signed_in_through() {
+    assert_eq!(
+        access_page(" Ov23liAbcdefghijklmn "),
+        "https://github.com/settings/connections/applications/Ov23liAbcdefghijklmn"
+    );
+}
+
+#[test]
 fn git_gets_the_github_token_from_the_environment_only_when_asked() {
     let ask = |action: &str, request: &str| {
         let mut git = Command::new("git")

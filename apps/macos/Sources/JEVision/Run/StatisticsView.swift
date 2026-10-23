@@ -202,20 +202,8 @@ private struct TestStatisticsView: View {
   private var trend: some View {
     VStack(alignment: .leading, spacing: 8) {
       Text(Self.trendTitle(statistics.period)).font(.headline).accessibilityAddTraits(.isHeader)
-      Chart {
-        ForEach(statistics.trend, id: \.startMs) { point in
-          let date = Date(timeIntervalSince1970: Double(point.startMs) / 1000)
-          bar(date, Int(point.passed), String(localized: "Passed"))
-          bar(date, Int(point.passedOnRetry), String(localized: "Passed on a retry"))
-          bar(date, Int(point.failed), String(localized: "Failed"))
-        }
-      }
-      .chartForegroundStyleScale([
-        String(localized: "Passed"): Color.green,
-        String(localized: "Passed on a retry"): Color.orange,
-        String(localized: "Failed"): Color.red,
-      ])
-      .frame(height: 180)
+      TrendBars(trend: statistics.trend, unit: unit, withoutColor: differentiateWithoutColor)
+        .frame(height: 180)
       Chart {
         ForEach(statistics.trend, id: \.startMs) { point in
           let date = Date(timeIntervalSince1970: Double(point.startMs) / 1000)
@@ -228,17 +216,6 @@ private struct TestStatisticsView: View {
     }
   }
 
-  /// A bar of the runs with one `result`. Without color, each result keeps its own place beside
-  /// the others instead of being stacked on them and told apart by color alone.
-  @ChartContentBuilder private func bar(_ date: Date, _ runs: Int, _ result: String) -> some ChartContent {
-    let mark = BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", runs))
-      .foregroundStyle(by: .value("Result", result))
-    if differentiateWithoutColor {
-      mark.position(by: .value("Result", result))
-    } else {
-      mark
-    }
-  }
 
   private var unit: Calendar.Component {
     switch statistics.period {
@@ -262,9 +239,9 @@ private struct TestStatisticsView: View {
               .frame(width: 20)
               .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-              Text(verbatim: place(block)).font(.body.weight(.medium))
+              Text(verbatim: RunText.place(block: block.block, blockType: block.blockType, test: block.test, shownTest: project.statisticsTest, in: project)).font(.body.weight(.medium))
               ForEach(Array(block.reasons.enumerated()), id: \.offset) { _, reason in
-                Text("\(Int(reason.count))× \(RunText.failure(reason.failure))")
+                Text("\(Int(reason.count))× \(RunText.failure(reason.failure, blockType: block.blockType))")
                   .font(.callout)
                   .foregroundStyle(.secondary)
                   .fixedSize(horizontal: false, vertical: true)
@@ -289,15 +266,6 @@ private struct TestStatisticsView: View {
       .background(.background, in: .rect(cornerRadius: 12))
       .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
     }
-  }
-
-  /// The block's type and id, and the test it's in when another test runs it.
-  private func place(_ block: BlockFailures) -> String {
-    var text = "\(BlockInfo.title(block.blockType)) “\(block.block)”"
-    if block.test != project.statisticsTest {
-      text += " · " + String(localized: "in \(ProjectScanner.testName(path: block.test))")
-    }
-    return text
   }
 
   // MARK: Words
@@ -451,5 +419,40 @@ private struct Tile<Value: View, Detail: View>: View {
     .background(.background, in: .rect(cornerRadius: 12))
     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
     .accessibilityElement(children: .combine)
+  }
+}
+
+/// The runs of each period by result, one color for each. Without color, each result keeps its own
+/// place beside the others instead of being stacked on them and told apart by color alone.
+struct TrendBars: View {
+  let trend: [TrendPoint]
+  let unit: Calendar.Component
+  /// The Mac is set to tell things apart without color.
+  let withoutColor: Bool
+
+  var body: some View {
+    Chart {
+      ForEach(trend, id: \.startMs) { point in
+        let date = Date(timeIntervalSince1970: Double(point.startMs) / 1000)
+        bar(date, Int(point.passed), String(localized: "Passed"))
+        bar(date, Int(point.passedOnRetry), String(localized: "Passed on a retry"))
+        bar(date, Int(point.failed), String(localized: "Failed"))
+      }
+    }
+    .chartForegroundStyleScale([
+      String(localized: "Passed"): Color.green,
+      String(localized: "Passed on a retry"): Color.orange,
+      String(localized: "Failed"): Color.red,
+    ])
+  }
+
+  @ChartContentBuilder private func bar(_ date: Date, _ runs: Int, _ result: String) -> some ChartContent {
+    let mark = BarMark(x: .value("Period", date, unit: unit), y: .value("Runs", runs))
+      .foregroundStyle(by: .value("Result", result))
+    if withoutColor {
+      mark.position(by: .value("Result", result))
+    } else {
+      mark
+    }
   }
 }

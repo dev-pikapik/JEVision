@@ -350,6 +350,7 @@ impl State {
 
     /// `client`'s answer, unless its limit is used up; logs the call. `Err` says whether another
     /// provider may answer in its place.
+    #[allow(clippy::result_large_err, reason = "UniFFI errors can't hold a Box")]
     fn ask_of(
         &self,
         client: &VisionClient,

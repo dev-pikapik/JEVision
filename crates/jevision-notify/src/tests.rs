@@ -387,6 +387,25 @@ fn a_message_says_why_how_long_and_where_the_report_is() {
 }
 
 #[test]
+fn a_message_names_the_failed_block_and_writes_shares_in_its_language() {
+    let mut value = report("failed", None);
+    value["attempts"][0]["failure"] = json!({"code": "run.check.mismatch", "params": {
+        "block": "inbox", "blockType": "check", "image": "refs/inbox.png",
+        "similarity": "87.5%", "threshold": "95.0%"}});
+    let told = |lang| message_in(lang, "shop", &[finished(value.clone(), None)]).body;
+    let en = told("en");
+    assert!(
+        en.contains("Block “Check”: the screen matches refs/inbox.png by 87.5%, and at least 95.0% is needed."),
+        "{en}"
+    );
+    let ru = told("ru");
+    assert!(
+        ru.contains("Блок «Проверка»: экран совпадает с refs/inbox.png на 87,5\u{a0}%, а нужно не меньше 95,0\u{a0}%."),
+        "{ru}"
+    );
+}
+
+#[test]
 fn a_message_and_its_errors_are_told_in_the_language_asked_for() {
     let told = message_in("ru", "shop", &[finished(report("failed", None), None)]);
     assert_eq!(told.title, "Провален: Sign in");

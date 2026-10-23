@@ -7,7 +7,7 @@ import JEVisionMobile
 /// Run results in words.
 enum RunText {
   static func failure(_ failure: Failure) -> String {
-    describeFailure(failure: JEVisionMobile.Failure(code: failure.code, params: failure.params))
+    describeFailure(failure: JEVisionMobile.Failure(code: failure.code, params: failure.params, message: failure.message))
   }
 
   /// Who has the screen, for a run that waits for its turn: Screen busy: JEVision, test Sign in, since 12:03.

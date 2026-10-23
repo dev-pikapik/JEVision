@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import JEVisionCore
 import JEVisionHands
@@ -175,6 +176,88 @@ struct CommandLineArgumentTests {
     #expect(run == .run(RunRequest(paths: ["t.flow.json"], provider: "ollama", model: "qwen2.5vl:7b")))
     let help = Help.text("run")
     for provider in AISettings.providers { #expect(help.contains(provider.id)) }
+    var forced = RunRequest(paths: ["t.flow.json"], provider: "openai")
+    forced.forceAI = true
+    #expect(try Command.parse(["run", "t.flow.json", "--provider", "openai", "--force-ai"]) == .run(forced))
+    #expect(try Command.parse(["run", "--force-ai", "t.flow.json", "--provider", "openai"]) == .run(forced))
+    #expect(help.contains("--force-ai"))
+  }
+
+  @Test func theForcedAIIsTriedBeforeAnyTestStarts() throws {
+    let printed = Lines()
+    let progress = Console(write: { printed.append($0) })
+    let works: (VisionSettings) throws -> VisionVerdict = { _ in VisionVerdict(passed: true, reason: "A red circle.") }
+    func problem(
+      _ vision: VisionSettings?, localOnly: Bool = false, ask: (VisionSettings) throws -> VisionVerdict = works
+    ) -> String? {
+      do {
+        try RunCommand.checkForcedAI(vision, localOnly: localOnly, progress: progress, ask: ask)
+        return nil
+      } catch {
+        return error.message
+      }
+    }
+    #expect(
+      problem(nil)
+        == "jevision: --force-ai needs an AI provider: choose one with --provider or in the app (Settings → AI)")
+    var openai = VisionSettings(provider: "openai", model: "gpt-4.1", address: "", key: nil, pictures: true)
+    #expect(
+      problem(openai)
+        == "jevision: --force-ai: there is no API key for OpenAI. Set the OPENAI_API_KEY environment variable, or add the key in the app (Settings → AI)"
+    )
+    // Screenshots that must stay on this Mac don't go to a cloud provider, not even the test picture.
+    #expect(
+      problem(openai, localOnly: true)
+        == "jevision: --force-ai: OpenAI is a cloud service, but this run may only use AI models on this Mac (Settings → AI or the project’s settings)"
+    )
+    // A server that isn't there is really asked, and says so.
+    let gone = VisionSettings(provider: "ollama", model: "llava", address: "http://127.0.0.1:9", key: nil, pictures: true)
+    let unreachable = try #require(problem(gone, ask: { try visionTest(settings: $0) }))
+    #expect(
+      unreachable.hasPrefix(
+        "jevision: --force-ai: Ollama can’t answer checks by meaning, so no test was started. Can’t reach Ollama at http://127.0.0.1:9"
+      ), "\(unreachable)")
+    #expect(printed.text.isEmpty)
+
+    openai.key = "sk-test"
+    #expect(problem(openai) == nil)
+    #expect(printed.text == "Every check by meaning asks OpenAI, model gpt-4.1 (--force-ai).\n")
+    // A model that sees the test picture wrong is only warned about.
+    #expect(problem(openai, ask: { _ in VisionVerdict(passed: false, reason: "A dog.") }) == nil)
+    #expect(printed.text.contains("OpenAI (model gpt-4.1) described the test picture wrong: “A dog.” Checks by meaning may go wrong too.\n"))
+  }
+
+  @Test func aForcedRunAsksItsOwnAIWhateverTheProjectChooses() throws {
+    let dir = try Scratch()
+    _ = try dir.file("jevision.project.json", #"{"format": 1, "ai": {"screen": {"provider": "lmstudio"}}}"#)
+    let test = try dir.file(
+      "look.flow.json",
+      #"{"format": 1, "name": "Look", "app": "com.example.App", "start": "check", "blocks": {"check": {"type": "check", "reference": {"compare": "meaning", "expect": "A cart"}}}}"#
+    )
+    let image = try #require(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 8, pixelsHigh: 8, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    let screen = Screenshot(png: try #require(image.representation(using: .png, properties: [:])), scale: 1, dark: false, secure: [])
+    // The run's own AI: a server that isn't there, so the failure tells who was asked.
+    let own = VisionSettings(provider: "openai-compatible", model: "m", address: "http://127.0.0.1:9", key: nil, pictures: true)
+    func failure(forced: Bool) throws -> Failure {
+      var request = RunRequest(paths: [test], json: true)
+      request.forceAI = forced
+      let session = TestSession(
+        project: dir.url.path, tests: [test], request: request, progress: Console(write: { _ in }), input: nil, vision: own
+      ) { run in
+        WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { run.isCancelled() }, screen: screen)
+      }
+      guard case .finished(_, _, let report)? = session.runAll().first?.outcome else { throw UsageError(message: "no report") }
+      return try #require(report.attempts.last?.failure)
+    }
+    // Not forced, the project's provider comes first: LM Studio, which isn't set up here.
+    #expect(try failure(forced: false).code == "run.vision.noKey")
+    // Forced, the run's own is asked.
+    let forced = try failure(forced: true)
+    #expect(forced.code == "run.vision.unreachable")
+    #expect(forced.params.contains { $0.value.contains("127.0.0.1:9") })
   }
 
   @Test func parallelTakesAnOptionalNumber() throws {
@@ -231,6 +314,7 @@ struct CommandLineArgumentTests {
     (["run", "a", "--rows", "4-2"], "“4-2” ends before it starts; write the smaller row first, like 2-4."),
     (["run", "a", "--row", "0"], "“0” isn’t a choice of data rows; write all, a row like 2 or a range like 2-4."),
     (["run", "a", "b", "--start-at", "x"], "--start-at works with one test file only"),
+    (["run", "a", "--force-ai=yes"], "--force-ai takes no value"),
     (
       ["run", "a", "--provider", "skynet"],
       "there is no AI provider “skynet”; use one of: anthropic, openai, gemini, jev, ollama, lmstudio, openai-compatible"
@@ -1149,24 +1233,31 @@ struct CommandLineInstallTests {
 private final class WaitingHands: Hands, @unchecked Sendable {
   private let opening: DispatchSemaphore
   private let isCancelled: @Sendable () -> Bool
+  /// What a look at the app's window sees; nil when it has none.
+  private let screen: Screenshot?
 
-  init(opening: DispatchSemaphore, isCancelled: @escaping @Sendable () -> Bool) {
+  init(opening: DispatchSemaphore, isCancelled: @escaping @Sendable () -> Bool, screen: Screenshot? = nil) {
     self.opening = opening
     self.isCancelled = isCancelled
+    self.screen = screen
   }
 
   func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
 
-  func openApp(app: String, fresh: Bool) throws(HandsError) {
+  func openApp(app: String, start: AppStart) throws(HandsError) {
     opening.signal()
     while !isCancelled() { usleep(10_000) }
   }
 
+  func sandboxed(app: String) throws(HandsError) -> Bool { false }
   func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {}
   func activate(app: String) throws(HandsError) {}
   func quit(app: String) throws(HandsError) {}
   func closeItems(items: [Openable], app: String?) throws(HandsError) {}
-  func capture(app: String) throws(HandsError) -> Screenshot { throw .NoWindow(app: app) }
+  func capture(app: String) throws(HandsError) -> Screenshot {
+    guard let screen else { throw .NoWindow(app: app) }
+    return screen
+  }
   func locate(app: String, template: Data, minSimilarity: Double) throws(HandsError) -> Point? { nil }
   func click(app: String, at: Point, button: MouseButton, doubleClick: Bool, modifiers: Modifiers) throws(HandsError) {}
   func hover(app: String, at: Point, modifiers: Modifiers) throws(HandsError) {}
@@ -1222,12 +1313,13 @@ private final class CountingHands: Hands, @unchecked Sendable {
 
   func arrangeWindow(app: String, size: WindowSize?, position: WindowPosition?) throws(HandsError) {}
 
-  func openApp(app: String, fresh: Bool) throws(HandsError) {
+  func openApp(app: String, start: AppStart) throws(HandsError) {
     counter.enter()
     usleep(250_000)
     counter.leave()
   }
 
+  func sandboxed(app: String) throws(HandsError) -> Bool { false }
   func openItems(items: [Openable], app: String?, newInstance: Bool) throws(HandsError) {}
   func activate(app: String) throws(HandsError) {}
   func quit(app: String) throws(HandsError) {}

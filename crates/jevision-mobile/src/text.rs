@@ -50,6 +50,7 @@ impl From<&Failure> for jevision_runner::Failure {
         Self {
             code: f.code.clone(),
             params: f.params.clone().into_iter().collect(),
+            message: f.message.clone(),
         }
     }
 }

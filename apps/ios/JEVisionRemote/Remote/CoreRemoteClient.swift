@@ -213,7 +213,7 @@ extension StepStatus {
 
 extension Failure {
   init(_ failure: JEVisionMobile.Failure) {
-    self.init(code: failure.code, params: failure.params)
+    self.init(code: failure.code, params: failure.params, message: failure.message)
   }
 }
 
@@ -356,7 +356,8 @@ extension RunReport {
               seq: Int(step.seq), test: step.test, block: step.block, kind: step.blockType,
               status: StepStatus(step.status), durationMs: step.durationMs, before: step.before,
               after: step.after, expected: step.expected, diff: step.diff, failure: step.failure.map(Failure.init),
-              branch: step.branch, branches: step.branches.map(Int.init), branchCondition: step.branchCondition)
+              branch: step.branch, branches: step.branches.map(Int.init), branchCondition: step.branchCondition,
+              note: step.note.map(Failure.init))
           })
       },
       requestedBy: report.requestedBy, blockedBy: report.blockedBy)

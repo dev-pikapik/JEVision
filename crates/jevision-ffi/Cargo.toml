@@ -28,6 +28,7 @@ jevision-notify.workspace = true
 jevision-remote.workspace = true
 jevision-runner.workspace = true
 jevision-vision.workspace = true
+libc = "0.2"
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread"] }

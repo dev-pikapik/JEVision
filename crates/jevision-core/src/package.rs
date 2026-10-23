@@ -1261,6 +1261,126 @@ impl PackageLock {
     }
 }
 
+/// The source as JEVision downloads it: without spaces around it, and with `https://` in front
+/// of a `github.com/…` address written without it.
+pub fn source_address(source: &str) -> String {
+    let source = source.trim();
+    if source.starts_with("github.com/") {
+        format!("https://{source}")
+    } else {
+        source.to_owned()
+    }
+}
+
+/// Who stands behind a package, as far as the address it was got from can tell. The `author`
+/// a package names in `block.json` can be anything; this can't, because only the owner of a
+/// GitHub account or of a site decides what is there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockOrigin {
+    /// From `https://github.com/<owner>/…`: a repository, a folder in a branch or a release.
+    GitHub { owner: String },
+    /// From another `https` address: the site's host, in lower case, without the port.
+    Web { host: String },
+    /// From a file or folder on this Mac, which anyone could have made.
+    ThisMac,
+    /// The project keeps no `https` address for an installed package.
+    Unknown,
+}
+
+impl BlockOrigin {
+    /// Where a package being installed from `source` (an address or a path) comes from.
+    pub fn of_source(source: &str) -> Self {
+        let source = source_address(source);
+        if source.starts_with("http://") {
+            // Plain http can be changed on the way, so it vouches for nothing.
+            return Self::Unknown;
+        }
+        let Some(rest) = source.strip_prefix("https://") else {
+            return Self::ThisMac;
+        };
+        let rest = rest.split(['?', '#']).next().unwrap_or_default();
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+        // What comes before `@` is a user name for the site, and after `:` its port.
+        let host = authority.rsplit('@').next().unwrap_or_default();
+        let host = host.split(':').next().unwrap_or_default();
+        let host = host.trim_end_matches('.').to_ascii_lowercase();
+        let owner = path.split('/').find(|part| !part.is_empty());
+        match owner {
+            Some(owner) if host == "github.com" || host == "www.github.com" => Self::GitHub {
+                owner: owner.to_owned(),
+            },
+            _ => Self::Web { host },
+        }
+    }
+
+    /// Where an installed package comes from, by the address the project keeps for it in
+    /// [`PackageLock::sources`]; `None` for a package installed from a file or before addresses
+    /// were kept.
+    pub fn of_installed(source: Option<&str>) -> Self {
+        match source {
+            Some(source) if source.starts_with("https://") => Self::of_source(source),
+            _ => Self::Unknown,
+        }
+    }
+
+    /// Whether the `author` a package names is the account or the site it comes from; `None`
+    /// when the origin tells nothing to compare with. The rule is deliberately exact, so that a
+    /// look-alike name never passes:
+    /// - GitHub: the author is the account name, in any case, with or without `@` in front;
+    /// - a site: the author is its host, in any case, with or without `www.` in front.
+    pub fn author_matches(&self, author: &str) -> Option<bool> {
+        let author = author.trim();
+        match self {
+            Self::GitHub { owner } => {
+                let author = author.strip_prefix('@').unwrap_or(author);
+                Some(author.eq_ignore_ascii_case(owner))
+            }
+            Self::Web { host } => {
+                let bare = |name: &str| {
+                    let name = name.to_ascii_lowercase();
+                    name.strip_prefix("www.").map(str::to_owned).unwrap_or(name)
+                };
+                Some(bare(author) == bare(host))
+            }
+            Self::ThisMac | Self::Unknown => None,
+        }
+    }
+
+    /// The origin in a few words, such as “From the GitHub account acme”.
+    pub fn describe_in(&self, lang: &str) -> String {
+        match self {
+            Self::GitHub { owner } => tr_in!(lang, "block.origin.github", owner),
+            Self::Web { host } => tr_in!(lang, "block.origin.web", host),
+            Self::ThisMac => tr_in!(lang, "block.origin.thisMac"),
+            Self::Unknown => tr_in!(lang, "block.origin.unknown"),
+        }
+    }
+
+    /// What the origin means for trusting the block, in one or two sentences.
+    pub fn about_in(&self, lang: &str) -> String {
+        match self {
+            Self::GitHub { .. } => tr_in!(lang, "block.origin.about.github"),
+            Self::Web { .. } => tr_in!(lang, "block.origin.about.web"),
+            Self::ThisMac => tr_in!(lang, "block.origin.about.thisMac"),
+            Self::Unknown => tr_in!(lang, "block.origin.about.unknown"),
+        }
+    }
+
+    /// The line naming the `author` a package gives, and a warning when that isn't the account
+    /// or site it comes from.
+    pub fn author_in(&self, lang: &str, author: &str) -> (String, Option<String>) {
+        let named = tr_in!(lang, "block.origin.author", author.trim());
+        let mismatch = match (self, self.author_matches(author)) {
+            (Self::GitHub { .. }, Some(false)) => {
+                Some(tr_in!(lang, "block.origin.mismatch.github"))
+            }
+            (Self::Web { .. }, Some(false)) => Some(tr_in!(lang, "block.origin.mismatch.web")),
+            _ => None,
+        };
+        (named, mismatch)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1620,5 +1740,135 @@ mod tests {
         assert!(PackageLock::parse("{").is_err());
         assert!(PackageLock::parse(r#"{"sources":{"com.a.y":1}}"#).is_err());
         assert_eq!(PackageLock::parse("{}").unwrap(), PackageLock::default());
+    }
+
+    fn github(owner: &str) -> BlockOrigin {
+        BlockOrigin::GitHub {
+            owner: owner.into(),
+        }
+    }
+
+    fn web(host: &str) -> BlockOrigin {
+        BlockOrigin::Web { host: host.into() }
+    }
+
+    #[test]
+    fn where_a_package_comes_from_is_told_by_its_address() {
+        for (source, origin) in [
+            ("https://github.com/acme/blocks", github("acme")),
+            (
+                "https://github.com/Acme-QA/blocks/tree/feat/x/blocks/sign-in",
+                github("Acme-QA"),
+            ),
+            (
+                "https://github.com/acme/blocks/releases/tag/v1.0.0",
+                github("acme"),
+            ),
+            (
+                "https://github.com/acme/blocks/releases/download/v1/sign-in.zip",
+                github("acme"),
+            ),
+            (
+                "https://www.github.com/acme/blocks?tab=readme#top",
+                github("acme"),
+            ),
+            ("github.com/acme/blocks", github("acme")),
+            (
+                "https://blocks.acme.com/sign-in.zip",
+                web("blocks.acme.com"),
+            ),
+            (
+                "https://Blocks.Acme.COM.:8443/x/sign-in.zip",
+                web("blocks.acme.com"),
+            ),
+            // What comes before `@` is a user name for the site, not the site.
+            (
+                "https://github.com@evil.example/acme/blocks.zip",
+                web("evil.example"),
+            ),
+            (
+                "https://codeload.github.com/acme/blocks/zip/main",
+                web("codeload.github.com"),
+            ),
+            ("https://github.com/", web("github.com")),
+            ("http://acme.com/sign-in.zip", BlockOrigin::Unknown),
+            ("/Users/anna/Downloads/sign-in.zip", BlockOrigin::ThisMac),
+            ("/Users/anna/blocks", BlockOrigin::ThisMac),
+        ] {
+            assert_eq!(BlockOrigin::of_source(source), origin, "{source}");
+        }
+        assert_eq!(
+            BlockOrigin::of_installed(Some("https://github.com/acme/blocks")),
+            github("acme")
+        );
+        assert_eq!(BlockOrigin::of_installed(None), BlockOrigin::Unknown);
+        assert_eq!(
+            BlockOrigin::of_installed(Some("/Users/anna/sign-in.zip")),
+            BlockOrigin::Unknown
+        );
+        assert_eq!(
+            source_address("  github.com/acme/x "),
+            "https://github.com/acme/x"
+        );
+        assert_eq!(source_address("/Users/anna/x.zip"), "/Users/anna/x.zip");
+    }
+
+    #[test]
+    fn the_author_counts_only_when_it_names_the_account_or_the_site() {
+        let account = github("anna-lee");
+        assert_eq!(account.author_matches("anna-lee"), Some(true));
+        assert_eq!(account.author_matches(" @Anna-Lee "), Some(true));
+        assert_eq!(account.author_matches("Anna Lee"), Some(false));
+        assert_eq!(account.author_matches("acme"), Some(false));
+        let site = web("www.acme.com");
+        assert_eq!(site.author_matches("acme.com"), Some(true));
+        assert_eq!(site.author_matches("WWW.ACME.COM"), Some(true));
+        assert_eq!(site.author_matches("Acme"), Some(false));
+        assert_eq!(
+            web("blocks.acme.com").author_matches("acme.com"),
+            Some(false)
+        );
+        assert_eq!(BlockOrigin::ThisMac.author_matches("Anna"), None);
+        assert_eq!(BlockOrigin::Unknown.author_matches("Anna"), None);
+    }
+
+    #[test]
+    fn where_a_package_comes_from_reads_in_english_and_russian() {
+        assert_eq!(
+            github("acme").describe_in("en"),
+            "From the GitHub account acme"
+        );
+        assert_eq!(github("acme").describe_in("ru"), "Из аккаунта GitHub acme");
+        assert_eq!(web("acme.com").describe_in("en"), "From the site acme.com");
+        assert_eq!(
+            BlockOrigin::ThisMac.describe_in("en"),
+            "From a file or folder on this Mac"
+        );
+        assert_eq!(
+            BlockOrigin::Unknown.describe_in("ru"),
+            "Источник неизвестен"
+        );
+        assert_eq!(
+            github("acme").author_in("en", "acme"),
+            ("Author named in the block: acme".to_owned(), None)
+        );
+        let (named, mark) = github("acme").author_in("ru", "Anna");
+        assert_eq!(named, "Автор, указанный в блоке: Anna");
+        assert!(mark.unwrap().starts_with("Это не тот аккаунт GitHub"));
+        let (_, mark) = web("acme.com").author_in("en", "Anna");
+        assert!(mark.unwrap().starts_with("That isn’t the site"));
+        assert_eq!(BlockOrigin::ThisMac.author_in("en", "Anna").1, None);
+        for origin in [
+            github("acme"),
+            web("acme.com"),
+            BlockOrigin::ThisMac,
+            BlockOrigin::Unknown,
+        ] {
+            let (en, ru) = (origin.about_in("en"), origin.about_in("ru"));
+            assert!(
+                en.ends_with('.') && ru.ends_with('.') && en != ru,
+                "{en} / {ru}"
+            );
+        }
     }
 }

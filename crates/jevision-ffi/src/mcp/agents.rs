@@ -7,16 +7,22 @@
 //!   assistant that comes over the network (`remote`) is held by the app itself, which writes
 //!   the same files, so the app lists and asks about it like about any other.
 //! - `asks/ID.json`: a question for the person; `asks/ID.answer`: `allow` or `deny`.
-//! - `listening`: the app touches it while it is open and can ask.
+//! - `listening`: the app holds it locked while it is open and can ask, see
+//!   [`listen_for_assistants`]. A server that has a question while it isn't opens the app in the
+//!   background first.
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io, thread};
 
 use jevision_l10n::tr;
 use serde_json::{Value, json};
+
+use super::hands_message;
+use crate::HandsError;
 
 /// How often a connected server shows it is still there.
 pub(super) const HEARTBEAT: Duration = Duration::from_secs(15);
@@ -26,8 +32,8 @@ const STALE: Duration = Duration::from_secs(HEARTBEAT.as_secs() * 3);
 const KEEP: Duration = Duration::from_secs(90 * 24 * 3600);
 /// How long the person has to answer.
 pub(super) const ASK_TIMEOUT: Duration = Duration::from_secs(60);
-/// The app counts as open when it touched `listening` this recently.
-const LISTENING: Duration = Duration::from_secs(5);
+/// How long the app may take to start and lock `listening`.
+const OPEN_TIMEOUT: Duration = Duration::from_secs(30);
 const POLL: Duration = Duration::from_millis(200);
 
 /// What an assistant asks to do on the Mac.
@@ -54,6 +60,8 @@ pub(super) struct Agents {
     session: Mutex<Option<Session>>,
     /// How long the person has to answer.
     pub(super) timeout: Duration,
+    /// How long the app may take to start, see [`OPEN_TIMEOUT`].
+    pub(super) open_timeout: Duration,
 }
 
 impl Agents {
@@ -63,6 +71,7 @@ impl Agents {
             remote: None,
             session: Mutex::new(None),
             timeout: ASK_TIMEOUT,
+            open_timeout: OPEN_TIMEOUT,
         }
     }
 
@@ -153,11 +162,24 @@ impl Agents {
         }
     }
 
-    /// Asks the person to allow `ask`, and waits for the answer. `Err` says, for the
+    /// Asks the person to allow `ask`, and waits for the answer. When the app isn't open,
+    /// `open` opens it, and the question waits until it is ready to ask. `Err` says, for the
     /// assistant, why it may not go on.
-    pub(super) fn ask(&self, ask: &Ask<'_>) -> Result<(), String> {
-        if !fresh(&self.folder.join("listening"), LISTENING) {
-            return Err(tr!("mcp.ask.notOpen"));
+    pub(super) fn ask(
+        &self,
+        ask: &Ask<'_>,
+        open: impl FnOnce() -> Result<(), HandsError>,
+    ) -> Result<(), String> {
+        if !app_listening(&self.folder) {
+            open().map_err(|e| tr!("mcp.ask.notOpen", hands_message(&e)))?;
+            let deadline = Instant::now() + self.open_timeout;
+            while !app_listening(&self.folder) {
+                if Instant::now() >= deadline {
+                    let late = tr!("mcp.ask.notReady", self.open_timeout.as_secs());
+                    return Err(tr!("mcp.ask.notOpen", late));
+                }
+                thread::sleep(POLL);
+            }
         }
         static NEXT: AtomicU32 = AtomicU32::new(0);
         let id = format!(
@@ -365,17 +387,75 @@ pub fn forget_assistants(folder: String) {
     }
 }
 
-/// The questions waiting for the person, oldest first. Call it about once a second while the
-/// app is open: that also tells the servers that somebody can answer.
+/// The app is open and can ask the person while it keeps this: the servers find `listening`
+/// locked. Nothing has to touch a file on time, so an app that macOS lets nap in the background
+/// still counts as open, and the system lets go of the lock when the app quits or crashes.
+#[derive(uniffi::Object)]
+pub struct AssistantListener {
+    _lock: File,
+}
+
+/// Tells the servers using the shared `folder` that the app can ask; keep the listener while it
+/// can. `None` when the folder can't be written or another copy of JEVision already listens.
+#[uniffi::export]
+pub fn listen_for_assistants(folder: String) -> Option<Arc<AssistantListener>> {
+    let folder = Path::new(&folder);
+    fs::create_dir_all(folder.join("asks")).ok()?;
+    let file = File::options()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(folder.join("listening"))
+        .ok()?;
+    // A server that looks holds the lock for a moment.
+    for _ in 0..50 {
+        if try_lock(&file, true).ok()? {
+            return Some(Arc::new(AssistantListener { _lock: file }));
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    None
+}
+
+/// The app holds `listening` locked, see [`listen_for_assistants`].
+fn app_listening(folder: &Path) -> bool {
+    File::open(folder.join("listening"))
+        .is_ok_and(|file| try_lock(&file, false).is_ok_and(|got| !got))
+}
+
+/// Locks `file` for this open file without waiting, `exclusive` or shared; whether it got the
+/// lock. Dropping the file lets go of it.
+#[cfg(unix)]
+fn try_lock(file: &File, exclusive: bool) -> io::Result<bool> {
+    use std::os::fd::AsRawFd;
+    let kind = if exclusive {
+        libc::LOCK_EX
+    } else {
+        libc::LOCK_SH
+    };
+    // SAFETY: `flock` only reads the descriptor, which `file` keeps open.
+    if unsafe { libc::flock(file.as_raw_fd(), kind | libc::LOCK_NB) } == 0 {
+        return Ok(true);
+    }
+    let error = io::Error::last_os_error();
+    if error.kind() == io::ErrorKind::WouldBlock {
+        Ok(false)
+    } else {
+        Err(error)
+    }
+}
+
+/// Where this platform will lock `listening`; until then the app never counts as open, and a
+/// run that needs the person's answer doesn't start.
+#[cfg(not(unix))]
+fn try_lock(_: &File, _: bool) -> io::Result<bool> {
+    Ok(true)
+}
+
+/// The questions waiting for the person, oldest first.
 #[uniffi::export]
 pub fn pending_assistant_requests(folder: String) -> Vec<AssistantRequest> {
     let folder = Path::new(&folder);
-    let _ = fs::create_dir_all(folder).and_then(|()| {
-        write_atomic(
-            &folder.join("listening"),
-            &unix(SystemTime::now()).to_string(),
-        )
-    });
     let now = unix(SystemTime::now());
     let mut found: Vec<(i64, AssistantRequest)> = Vec::new();
     for entry in fs::read_dir(folder.join("asks"))
@@ -451,17 +531,6 @@ fn sessions(folder: &Path) -> Vec<(PathBuf, SystemTime, Value)> {
             Some((path, modified, record))
         })
         .collect()
-}
-
-/// `path` was touched within `within`.
-fn fresh(path: &Path, within: Duration) -> bool {
-    fs::metadata(path)
-        .and_then(|m| m.modified())
-        .is_ok_and(|t| {
-            SystemTime::now()
-                .duration_since(t)
-                .is_ok_and(|age| age <= within)
-        })
 }
 
 /// Writes `text` so that a reader sees all of it or nothing.
