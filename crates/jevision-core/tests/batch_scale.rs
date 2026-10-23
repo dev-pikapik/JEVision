@@ -21,7 +21,7 @@ fn batch(n: usize) -> Batch {
             .trim_end_matches(".flow.json")
             .parse()
             .unwrap();
-        let block = if k % 2 == 0 {
+        let block = if k.is_multiple_of(2) {
             r#"{"type": "pressKeys", "keys": "cmd+n"}"#
         } else {
             r#"{"type": "command", "command": "true"}"#
@@ -31,7 +31,7 @@ fn batch(n: usize) -> Batch {
                 "start": "a", "blocks": {{"a": {block}}}}}"#
         ))
         .unwrap();
-        if k % 10 != 0 {
+        if !k.is_multiple_of(10) {
             flow.depends_on = vec![format!("t{}.flow.json", k - 1)];
         }
         Loaded::Test(Box::new(flow))

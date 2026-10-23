@@ -544,13 +544,13 @@ pub const DEFAULT_TASK_TIMEOUT_MS: u64 = 30_000;
 fn header(o: &mut Obj<'_>, out: &mut Out) {
     o.opt_string("$schema", out);
     o.get("format");
-    if let Some(text) = o.opt_string("minVersion", out) {
-        if text.parse::<Version>().is_err() {
-            out.push(
-                o.issue("flow.minVersion.invalid", "minVersion")
-                    .with("value", text),
-            );
-        }
+    if let Some(text) = o.opt_string("minVersion", out)
+        && text.parse::<Version>().is_err()
+    {
+        out.push(
+            o.issue("flow.minVersion.invalid", "minVersion")
+                .with("value", text),
+        );
     }
 }
 

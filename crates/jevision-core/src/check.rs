@@ -38,14 +38,32 @@ pub fn check_project(project: &Path) -> Vec<CheckedTest> {
     let mut found = Vec::new();
     tests_in(&root, "", &mut found);
     found.sort();
+    let disk = Disk::new(&root);
     found
         .into_iter()
         .map(|(file, unreadable)| {
+            let safety = if unreadable.is_none() {
+                path_issues(
+                    &disk,
+                    "",
+                    &file,
+                    || Issue::error("").with("field", "test"),
+                    |path| Some(Issue::error("check.file.missing").with("path", path)),
+                )
+            } else {
+                Vec::new()
+            };
+            if safety.iter().any(|issue| issue.severity == Severity::Error) {
+                return CheckedTest {
+                    file,
+                    issues: safety,
+                };
+            }
             let text = match unreadable {
                 Some(reason) => Err(reason),
                 None => fs::read_to_string(root.join(&file)).map_err(|e| e.to_string()),
             };
-            let issues = match text.map(|t| crate::parse(&t)) {
+            let mut issues = match text.map(|t| crate::parse(&t)) {
                 Err(reason) => vec![
                     Issue::error("check.unreadable")
                         .with("path", &file)
@@ -54,6 +72,7 @@ pub fn check_project(project: &Path) -> Vec<CheckedTest> {
                 Ok(Err(e)) => e.issues,
                 Ok(Ok(flow)) => check_test(&flow, &root, &file),
             };
+            issues.extend(safety);
             CheckedTest { file, issues }
         })
         .collect()
@@ -84,7 +103,7 @@ fn tests_in(root: &Path, folder: &str, out: &mut Vec<(String, Option<String>)>) 
         match entry.file_type() {
             Ok(kind) if kind.is_dir() => tests_in(root, &path, out),
             Ok(kind)
-                if kind.is_file()
+                if (kind.is_file() || kind.is_symlink() && !entry.path().is_dir())
                     && (name.ends_with(TEST_SUFFIX) || name.ends_with(BLOCK_SUFFIX)) =>
             {
                 out.push((path, None));

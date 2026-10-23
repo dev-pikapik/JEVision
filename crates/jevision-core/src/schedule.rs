@@ -685,6 +685,7 @@ pub enum SkipReason {
 #[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleHistory {
+    #[serde(default = "oldest_history_format")]
     pub(crate) format: u32,
     /// Local minute schedules were last checked at; runs up to it are done or missed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -692,6 +693,10 @@ pub struct ScheduleHistory {
     /// Oldest first.
     #[serde(default)]
     pub runs: Vec<ScheduledRun>,
+}
+
+const fn oldest_history_format() -> u32 {
+    OLDEST_HISTORY_FORMAT
 }
 
 impl Default for ScheduleHistory {

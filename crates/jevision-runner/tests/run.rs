@@ -5169,7 +5169,7 @@ fn an_element_that_is_missing_or_too_vague_stops_with_what_the_window_has() {
     assert_eq!(failure_code(&report), "run.element.notFound");
     assert_eq!(
         failure_text(&report),
-        "Block “open”: no element in the window matches. Looked for: button “Open”.\n\
+        "Block “Click”: no element in the window matches. Looked for: button “Open”.\n\
          Similar ones in the window: button “Save” with id “save”."
     );
     assert!(hands.log().is_empty());
@@ -5183,7 +5183,7 @@ fn an_element_that_is_missing_or_too_vague_stops_with_what_the_window_has() {
     assert_eq!(failure_code(&report), "run.element.ambiguous");
     assert_eq!(
         failure_text(&report),
-        "Block “row”: 2 elements match, but the block needs one. Looked for: row. \
+        "Block “Click”: 2 elements match, but the block needs one. Looked for: row. \
          Found: row (index 0), row (index 1). Be more specific: add an id, a title or an index \
          (0 is the first)."
     );
@@ -5256,7 +5256,7 @@ fn wait_for_an_element_looks_until_it_is_as_expected() {
     assert_eq!(failure_code(&report), "run.waitFor.elementTimeout");
     assert_eq!(
         failure_text(&report),
-        "Block “wait”: waited 0.05 s, but the element didn’t become as expected. \
+        "Block “Wait For”: waited 0.05 s, but the element didn’t become as expected. \
          Element: element “Saved”. Expected: in the window. Actual: not in the window.\n\
          Similar ones in the window: button “Save” with id “save”."
     );
@@ -5276,7 +5276,7 @@ fn check_an_element_says_what_differs() {
     assert_eq!(failure_code(&report), "run.element.state");
     assert_eq!(
         failure_text(&report),
-        "Block “save”: the element is not as expected. Element: button. Expected: disabled. \
+        "Block “Check”: the element is not as expected. Element: button. Expected: disabled. \
          Actual: enabled."
     );
     let steps = last_steps(&report);

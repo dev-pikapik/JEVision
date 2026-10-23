@@ -42,6 +42,20 @@
               "description": "Bundle id; without it, the application under test opens.",
               "type": "string"
             },
+            "arguments": {
+              "description": "Command-line arguments for an app that isn't running yet; a running one keeps its own.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "environment": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Environment variables, name to value, for an app that isn't running yet.",
+              "type": "object"
+            },
             "next": {
               "type": "string"
             },
@@ -343,14 +357,36 @@
           "type": "object"
         },
         {
-          "additionalProperties": false,
-          "description": "Fails the run unless the screen matches the reference.",
+          "description": "Fails the run unless the screen matches the reference, or an element of the window is as expected.",
+          "oneOf": [
+            {
+              "description": "The screen matches the reference.",
+              "properties": {
+                "reference": {
+                  "$ref": "#/$defs/Reference"
+                }
+              },
+              "required": [
+                "reference"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "An element of the window is as expected.",
+              "properties": {
+                "element": {
+                  "$ref": "#/$defs/ElementCheck"
+                }
+              },
+              "required": [
+                "element"
+              ],
+              "type": "object"
+            }
+          ],
           "properties": {
             "next": {
               "type": "string"
-            },
-            "reference": {
-              "$ref": "#/$defs/Reference"
             },
             "type": {
               "const": "check",
@@ -358,10 +394,10 @@
             }
           },
           "required": [
-            "type",
-            "reference"
+            "type"
           ],
-          "type": "object"
+          "type": "object",
+          "unevaluatedProperties": false
         },
         {
           "description": "Goes to `then` if the condition holds, else to the first of `elseIf` whose condition holds, otherwise to `else`.",
@@ -387,6 +423,18 @@
               },
               "required": [
                 "value"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "An element of the window is as expected.",
+              "properties": {
+                "element": {
+                  "$ref": "#/$defs/ElementCheck"
+                }
+              },
+              "required": [
+                "element"
               ],
               "type": "object"
             }
@@ -975,6 +1023,200 @@
         }
       ]
     },
+    "ElementCheck": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "not": {
+              "required": [
+                "to"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "is": {
+                "enum": [
+                  "valueEquals",
+                  "valueContains",
+                  "titleEquals",
+                  "titleContains"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "to"
+            ]
+          }
+        }
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "required": [
+            "role"
+          ]
+        },
+        {
+          "required": [
+            "title"
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "index": {
+          "maximum": 4294967295,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "is": {
+          "enum": [
+            "present",
+            "absent",
+            "enabled",
+            "disabled",
+            "selected",
+            "notSelected",
+            "valueEquals",
+            "valueContains",
+            "titleEquals",
+            "titleContains"
+          ]
+        },
+        "role": {
+          "enum": [
+            "button",
+            "link",
+            "checkBox",
+            "switch",
+            "radioButton",
+            "radioGroup",
+            "textField",
+            "secureTextField",
+            "searchField",
+            "textArea",
+            "comboBox",
+            "popUpButton",
+            "menuButton",
+            "menuItem",
+            "slider",
+            "stepper",
+            "staticText",
+            "image",
+            "tabGroup",
+            "list",
+            "table",
+            "outline",
+            "row",
+            "cell",
+            "disclosureTriangle",
+            "progressIndicator",
+            "busyIndicator",
+            "colorWell",
+            "scrollArea",
+            "group",
+            "toolbar",
+            "sheet",
+            "window"
+          ]
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "is"
+      ],
+      "type": "object"
+    },
+    "ElementQuery": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "required": [
+            "role"
+          ]
+        },
+        {
+          "required": [
+            "title"
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "index": {
+          "maximum": 4294967295,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "role": {
+          "enum": [
+            "button",
+            "link",
+            "checkBox",
+            "switch",
+            "radioButton",
+            "radioGroup",
+            "textField",
+            "secureTextField",
+            "searchField",
+            "textArea",
+            "comboBox",
+            "popUpButton",
+            "menuButton",
+            "menuItem",
+            "slider",
+            "stepper",
+            "staticText",
+            "image",
+            "tabGroup",
+            "list",
+            "table",
+            "outline",
+            "row",
+            "cell",
+            "disclosureTriangle",
+            "progressIndicator",
+            "busyIndicator",
+            "colorWell",
+            "scrollArea",
+            "group",
+            "toolbar",
+            "sheet",
+            "window"
+          ]
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "ElseIf": {
       "description": "One more exit of an `if`: taken when the earlier conditions did not hold and this one does.",
       "oneOf": [
@@ -999,6 +1241,18 @@
           },
           "required": [
             "value"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An element of the window is as expected.",
+          "properties": {
+            "element": {
+              "$ref": "#/$defs/ElementCheck"
+            }
+          },
+          "required": [
+            "element"
           ],
           "type": "object"
         }
@@ -1416,6 +1670,7 @@
             "openai",
             "gemini",
             "jev",
+            "jev-cloudflare",
             "ollama",
             "lmstudio",
             "openai-compatible"
@@ -1614,6 +1869,19 @@
             "description"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Found by accessibility: the middle of an element of the window.",
+          "properties": {
+            "element": {
+              "$ref": "#/$defs/ElementQuery"
+            }
+          },
+          "required": [
+            "element"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -1765,6 +2033,19 @@
           "const": "screenStable",
           "description": "The screen stops changing.",
           "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An element of the window is as expected.",
+          "properties": {
+            "element": {
+              "$ref": "#/$defs/ElementCheck"
+            }
+          },
+          "required": [
+            "element"
+          ],
+          "type": "object"
         }
       ]
     },

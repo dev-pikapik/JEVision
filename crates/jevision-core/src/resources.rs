@@ -30,6 +30,8 @@ use crate::validate::placeholders;
 pub const RESOURCE_PREFIX: &str = "res:";
 /// The ending of the sidecar that holds the label of a file: `login.png.jevmeta`.
 pub const META_SUFFIX: &str = ".jevmeta";
+/// The newest resource-label format this version reads and writes.
+pub const RESOURCE_FORMAT: u32 = META_FORMAT;
 pub const META_SCHEMA: &str = "https://dev-pikapik.github.io/JEVision/schemas/jevmeta.schema.json";
 /// From this size on, a file is better kept in Git LFS than in the repository itself.
 pub const LARGE_RESOURCE_BYTES: u64 = 50 << 20;
@@ -189,6 +191,34 @@ fn read_meta(file: &Path) -> Option<ResourceMeta> {
     parse_meta(&fs::read_to_string(sidecar(file)).ok()?).ok()
 }
 
+fn writable_meta(file: &Path) -> Result<Option<ResourceMeta>, Issue> {
+    let path = sidecar(file);
+    let text = match fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(unreadable(&path.to_string_lossy(), &error)),
+    };
+    parse_meta(&text).map(Some).map_err(|error| {
+        error
+            .issues
+            .first()
+            .cloned()
+            .unwrap_or_else(|| {
+                unreadable(
+                    &path.to_string_lossy(),
+                    &io::Error::other(error.to_string()),
+                )
+            })
+            .with("path", path.to_string_lossy())
+    })
+}
+
+/// Refuses a write when a resource's existing label cannot be read by this version. Call before
+/// changing the resource itself, so a malformed or newer label never leads to lost metadata.
+pub fn check_resource_write(file: &Path) -> Result<(), Issue> {
+    writable_meta(file).map(|_| ())
+}
+
 /// The label of `file` as it is now, under the id and name given.
 fn describe_file(file: &Path, id: String, name: String) -> io::Result<ResourceMeta> {
     Ok(ResourceMeta {
@@ -208,7 +238,7 @@ fn modified(path: &Path) -> Option<SystemTime> {
 /// again; a file without a label is left alone. `true` when the label changed.
 pub fn update_resource_label(file: &Path) -> Result<bool, Issue> {
     let shown = file.to_string_lossy();
-    let Some(meta) = read_meta(file) else {
+    let Some(meta) = writable_meta(file)? else {
         return Ok(false);
     };
     let now = describe_file(file, meta.id.clone(), meta.name.clone())
@@ -427,10 +457,11 @@ impl ResourceIndex {
         let file = self.root.join(path);
         let size = fs::metadata(&file).ok()?.len();
         let changed = modified(&file);
-        if let Some((s, c, hash)) = self.hashes.get(path) {
-            if *s == size && *c == changed {
-                return Some(hash.clone());
-            }
+        if let Some((s, c, hash)) = self.hashes.get(path)
+            && *s == size
+            && *c == changed
+        {
+            return Some(hash.clone());
         }
         let hash = content_hash(&file).ok()?;
         self.hashes
@@ -465,7 +496,7 @@ impl ResourceIndex {
     pub(crate) fn label(&mut self, file: &Path) -> Result<String, Issue> {
         let path = self.inside(file)?;
         let full = self.root.join(&path);
-        if let Some(meta) = read_meta(&full) {
+        if let Some(meta) = writable_meta(&full)? {
             let id = meta.id.clone();
             self.set(id.clone(), path, meta);
             return Ok(id);
@@ -482,6 +513,7 @@ impl ResourceIndex {
     /// and the one the label had before is removed. The name in the label stays when `keep_name`.
     fn attach(&mut self, id: &str, path: String, keep_name: bool) -> Result<(), Issue> {
         let full = self.root.join(&path);
+        check_resource_write(&full)?;
         let before = self.labels.get(id).cloned();
         let name = match &before {
             Some(b) if keep_name => b.meta.name.clone(),
@@ -1060,6 +1092,50 @@ mod tests {
         );
         assert_eq!(update_resource_label(&root.join("a.png")), Ok(false));
         assert_eq!(update_resource_label(&root.join("none.png")), Ok(false));
+    }
+
+    #[test]
+    fn a_newer_or_broken_label_is_preserved_when_a_resource_is_edited_or_labeled() {
+        for (name, contents, code) in [
+            ("future", r#"{"format":9999}"#, "flow.format.tooNew"),
+            (
+                "version",
+                r#"{"format":1,"minVersion":"9999.0.0"}"#,
+                "flow.needsNewer",
+            ),
+            ("broken", "{", "flow.json.invalid"),
+        ] {
+            let root = temp(name);
+            put(&root, "data/users.csv", b"name\nAnn\n");
+            let file = root.join("data/users.csv");
+            let meta = sidecar(&file);
+            fs::write(&meta, contents).unwrap();
+            let check = check_resource_write(&file).unwrap_err();
+            if name != "broken" {
+                assert_eq!(check.code, code);
+            }
+            assert!(label_resource(&root, &file).is_err());
+            assert!(update_resource_label(&file).is_err());
+            assert_eq!(fs::read_to_string(&meta).unwrap(), contents);
+            assert_eq!(fs::read(&file).unwrap(), b"name\nAnn\n");
+        }
+    }
+
+    #[test]
+    fn relinking_does_not_replace_a_newer_label_on_the_destination() {
+        let root = temp("future-destination");
+        put(&root, "old.csv", b"name\nAnn\n");
+        let reference = label(&root, "old.csv");
+        let original = fs::read(sidecar(&root.join("old.csv"))).unwrap();
+        put(&root, "new.csv", b"name\nBo\n");
+        let future = r#"{"format":9999}"#;
+        fs::write(sidecar(&root.join("new.csv")), future).unwrap();
+        assert!(relink_resource(&root, &reference, Path::new("new.csv")).is_err());
+        assert_eq!(fs::read(sidecar(&root.join("old.csv"))).unwrap(), original);
+        assert_eq!(
+            fs::read_to_string(sidecar(&root.join("new.csv"))).unwrap(),
+            future
+        );
     }
 
     #[test]

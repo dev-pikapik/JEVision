@@ -6,8 +6,9 @@ use std::path::Path;
 
 use jevision_core::{
     BLOCK_SUFFIX, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, FORMAT_VERSION, LAST_RESULTS_FILE,
-    MANIFEST_FILE, PACKAGE_FORMAT, PROJECT_FILE, PROJECT_FORMAT, SCHEDULE_FILE, SCHEDULE_FORMAT,
-    SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_FORMAT, TEST_SUFFIX,
+    MANIFEST_FILE, META_SUFFIX, PACKAGE_FORMAT, PROJECT_FILE, PROJECT_FORMAT, RESOURCE_FORMAT,
+    SCHEDULE_FILE, SCHEDULE_FORMAT, SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_FORMAT,
+    TEMPLATE_SUFFIX, TEST_SUFFIX,
 };
 use jevision_runner::{LAST_RESULTS_FORMAT, REPORT_FILE, REPORT_FORMAT};
 
@@ -65,11 +66,20 @@ pub fn needs_newer_jevision(path: String) -> bool {
     else {
         return false;
     };
-    std::fs::read_to_string(path)
+    let Some(json) = std::fs::read_to_string(path)
         .ok()
         .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|json| json.get("format")?.as_u64())
+    else {
+        return false;
+    };
+    json.get("format")
+        .and_then(serde_json::Value::as_u64)
         .is_some_and(|found| found > u64::from(newest))
+        || json
+            .get("minVersion")
+            .and_then(serde_json::Value::as_str)
+            .and_then(|version| version.parse::<jevision_core::Version>().ok())
+            .is_some_and(|version| version > jevision_core::app_version())
 }
 
 /// Whether an issue or a run failure with `code` says its file was saved by a newer JEVision.
@@ -77,6 +87,7 @@ pub fn needs_newer_jevision(path: String) -> bool {
 pub fn asks_for_newer_jevision(code: String) -> bool {
     [
         "flow.format.tooNew",
+        "flow.needsNewer",
         "project.format.tooNew",
         "block.version.needsNewer",
         "run.test.needsNewer",
@@ -92,6 +103,8 @@ fn formats() -> Vec<FileFormat> {
     vec![
         format(format!("*{TEST_SUFFIX}"), FORMAT_VERSION),
         format(format!("*{BLOCK_SUFFIX}"), FORMAT_VERSION),
+        format(format!("*{TEMPLATE_SUFFIX}"), FORMAT_VERSION),
+        format(format!("*{META_SUFFIX}"), RESOURCE_FORMAT),
         format(PROJECT_FILE.to_owned(), PROJECT_FORMAT),
         format(ENVIRONMENTS_FILE.to_owned(), ENVIRONMENTS_FORMAT),
         format(SCHEDULE_FILE.to_owned(), SCHEDULE_FORMAT),
@@ -188,6 +201,13 @@ mod tests {
         )));
         assert!(!newer(file("jevision.environments.json", "{")));
         assert!(newer(file("sign-in.flow.json", r#"{"format": 99}"#)));
+        assert!(newer(file(
+            "sign-in.flow.json",
+            r#"{"format":1,"minVersion":"9999.0.0"}"#
+        )));
+        assert!(newer(file("sign-in.template.json", r#"{"format":99}"#)));
+        assert!(newer(file("image.png.jevmeta", r#"{"format":99}"#)));
+        assert!(asks_for_newer_jevision("flow.needsNewer".into()));
         assert!(!newer(file("notes.json", r#"{"format": 99}"#)));
         assert!(newer(file("last-results.json", r#"{"format": 99}"#)));
         assert!(newer(file("schedule-history.json", r#"{"format": 99}"#)));

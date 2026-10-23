@@ -680,7 +680,9 @@ mod tests {
   "dependsOn": ["sign-in.flow.json"],
   "start": "open",
   "blocks": {
-    "open": { "type": "openApp", "app": "com.apple.TextEdit", "resetState": true, "windowSize": { "width": 800, "height": 600 }, "windowPosition": { "x": -100, "y": 50 }, "next": "file" },
+    "open": { "type": "openApp", "app": "com.apple.TextEdit", "resetState": true, "windowSize": { "width": 800, "height": 600 }, "windowPosition": { "x": -100, "y": 50 }, "arguments": ["--demo"], "environment": { "MODE": "test" }, "next": "file" },
+    "elementCheck": { "type": "check", "element": { "id": "save", "role": "button", "title": "Save", "index": 0, "is": "enabled" } },
+    "elementBranch": { "type": "if", "element": { "id": "name", "is": "valueContains", "to": "Ann" }, "then": "check" },
     "file": { "type": "openFile", "files": ["fixtures/a.txt", "https://example.com"], "app": "com.apple.TextEdit", "newInstance": true, "closeAfter": true, "next": "click" },
     "click": { "type": "click", "target": { "image": "refs/menu.png" }, "button": "right", "double": true, "modifiers": ["cmd", "shift", "option", "ctrl"], "waitForChange": true, "next": "hover" },
     "hover": { "type": "hover", "target": { "description": "the blue Save button" }, "modifiers": ["option"], "waitForChange": true, "next": "drag" },

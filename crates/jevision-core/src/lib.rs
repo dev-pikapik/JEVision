@@ -132,10 +132,10 @@ pub use recent::{
 };
 pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_settings};
 pub use resources::{
-    LARGE_RESOURCE_BYTES, META_SCHEMA, META_SUFFIX, RESOURCE_PREFIX, Relinked, ResolvedLabels,
-    ResourceKind, ResourceMeta, ResourceStatus, label_files, label_resource, refresh_resources,
-    relink_resource, remove_resource_label, resolve_labels, resolve_resource, resource_id,
-    resource_name, restore_resource_label, update_resource_label,
+    LARGE_RESOURCE_BYTES, META_SCHEMA, META_SUFFIX, RESOURCE_FORMAT, RESOURCE_PREFIX, Relinked,
+    ResolvedLabels, ResourceKind, ResourceMeta, ResourceStatus, check_resource_write, label_files,
+    label_resource, refresh_resources, relink_resource, remove_resource_label, resolve_labels,
+    resolve_resource, resource_id, resource_name, restore_resource_label, update_resource_label,
 };
 pub use route::route_around;
 pub use schedule::{

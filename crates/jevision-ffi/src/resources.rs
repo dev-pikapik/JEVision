@@ -199,6 +199,12 @@ pub fn update_resource_label(file: String) -> Result<bool, ResourceError> {
     Ok(jevision_core::update_resource_label(Path::new(&file))?)
 }
 
+/// Checks the label before an editor changes the resource it describes.
+#[uniffi::export]
+pub fn check_resource_write(file: String) -> Result<(), ResourceError> {
+    Ok(jevision_core::check_resource_write(Path::new(&file))?)
+}
+
 /// Writes `flow` as the test `path`, relative to `project`, all at once and in the lowest
 /// format that holds it. When that format is newer than every test of the project has, nothing
 /// is written unless `allow_raise`: ask the person first.

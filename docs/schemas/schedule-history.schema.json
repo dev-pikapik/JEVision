@@ -131,6 +131,10 @@
         "null"
       ]
     },
+    "format": {
+      "const": 1,
+      "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
     "runs": {
       "default": [],
       "description": "Oldest first.",
@@ -140,6 +144,9 @@
       "type": "array"
     }
   },
+  "required": [
+    "format"
+  ],
   "title": "JEVision schedule history",
   "type": "object"
 }

@@ -310,12 +310,12 @@ impl Batch {
         if t.state != TestState::Waiting {
             return None;
         }
-        if self.unmet[i] > 0 {
-            if let Some(dependency) = t.depends_on.iter().find(|d| !self.passed(d)) {
-                return Some(WaitingFor::Dependency {
-                    test: dependency.clone(),
-                });
-            }
+        if self.unmet[i] > 0
+            && let Some(dependency) = t.depends_on.iter().find(|d| !self.passed(d))
+        {
+            return Some(WaitingFor::Dependency {
+                test: dependency.clone(),
+            });
         }
         if self.mode == RunMode::Sequential {
             return Some(WaitingFor::Turn);

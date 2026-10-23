@@ -378,15 +378,13 @@ pub fn validate_in_with(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Is
             of: CheckOf::Screen(r),
             ..
         } = &b.kind
+            && is_relative_path(&r.image)
+            && placeholders(&r.image).is_empty()
+            && resource_id(&r.image).is_none()
+            && !disk.exists(dir.join(&r.image))
         {
-            if is_relative_path(&r.image)
-                && placeholders(&r.image).is_empty()
-                && resource_id(&r.image).is_none()
-                && !disk.exists(dir.join(&r.image))
-            {
-                saved_by_check.insert(r.image.as_str());
-                out.push(reference_not_saved(&b.id, &r.image));
-            }
+            saved_by_check.insert(r.image.as_str());
+            out.push(reference_not_saved(&b.id, &r.image));
         }
         read.extend(
             files_read(&b.kind)

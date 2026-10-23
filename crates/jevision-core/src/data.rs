@@ -314,19 +314,19 @@ pub(crate) fn data_issues(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<
             inside[i] = false;
         }
         let path = dir.join(file);
-        if let Err(e) = disk.read_table(&path) {
-            if path.exists() {
-                let issue = Issue::error("flow.data.invalid")
-                    .with("block", &b.id)
-                    .with("field", "file")
-                    .with("path", file)
-                    .with("problem", e.code());
-                out.push(
-                    e.params()
-                        .into_iter()
-                        .fold(issue, |issue, (name, value)| issue.with(name, value)),
-                );
-            }
+        if let Err(e) = disk.read_table(&path)
+            && path.exists()
+        {
+            let issue = Issue::error("flow.data.invalid")
+                .with("block", &b.id)
+                .with("field", "file")
+                .with("path", file)
+                .with("problem", e.code());
+            out.push(
+                e.params()
+                    .into_iter()
+                    .fold(issue, |issue, (name, value)| issue.with(name, value)),
+            );
         }
         read.push((file, path, inside));
     }

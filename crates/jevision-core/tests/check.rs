@@ -213,3 +213,45 @@ fn validate_warns_about_what_check_fails() {
     fs::remove_dir_all(project).unwrap();
     fs::remove_dir_all(elsewhere).unwrap();
 }
+
+#[test]
+fn linked_tests_are_checked_without_reading_tests_outside_the_project() {
+    let root = temp("linked-tests");
+    let outside = temp("linked-tests-outside");
+    put(
+        &root.join("original.flow.json"),
+        &test_with(&click("a", "missing.png")),
+    );
+    put(&outside.join("outside.flow.json"), "not valid JSON");
+    std::os::unix::fs::symlink(
+        root.join("original.flow.json"),
+        root.join("linked.flow.json"),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(
+        outside.join("outside.flow.json"),
+        root.join("outside.flow.json"),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(root.join("gone.flow.json"), root.join("broken.flow.json")).unwrap();
+    let checked = check_project(&root);
+    assert!(
+        found(&checked, "linked.flow.json")
+            .iter()
+            .any(|(code, _, error)| code == "check.file.missing" && *error)
+    );
+    assert!(
+        found(&checked, "outside.flow.json")
+            .iter()
+            .any(|(code, _, error)| code == "check.path.link" && *error)
+    );
+    assert!(
+        found(&checked, "broken.flow.json")
+            .iter()
+            .any(|(code, _, error)| code == "check.file.missing" && *error)
+    );
+    assert_eq!(
+        fs::read_to_string(outside.join("outside.flow.json")).unwrap(),
+        "not valid JSON"
+    );
+}

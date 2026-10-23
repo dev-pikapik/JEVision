@@ -15,6 +15,7 @@
             "openai",
             "gemini",
             "jev",
+            "jev-cloudflare",
             "ollama",
             "lmstudio",
             "openai-compatible"
@@ -184,6 +185,49 @@
         }
       },
       "type": "object"
+    },
+    "RunRetention": {
+      "additionalProperties": false,
+      "description": "How much of its history a project keeps in `.jevision/runs`. Each limit is `None` for none. Whatever the limits, the latest run of every test and runs still going are kept.",
+      "properties": {
+        "maxAgeDays": {
+          "description": "Runs that started more than this many days ago are deleted.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maxRunsPerTest": {
+          "description": "Of the runs of one test, only this many of the latest are kept.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "maxTotalMb": {
+          "description": "While the saved runs take more megabytes than this, the oldest are deleted.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "mediaMaxAgeDays": {
+          "description": "Videos and screenshots of runs older than this many days are deleted; their reports stay.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
     }
   },
   "$id": "https://dev-pikapik.github.io/JEVision/schemas/project.schema.json",
@@ -194,6 +238,9 @@
     "ai": {
       "$ref": "#/$defs/FileAi",
       "description": "The AI the project asks, when it doesn't leave the choice to the app's settings."
+    },
+    "cleanHome": {
+      "type": "boolean"
     },
     "format": {
       "const": 1,
@@ -216,6 +263,16 @@
         "$ref": "#/$defs/Quarantined"
       },
       "type": "array"
+    },
+    "retention": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunRetention"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "retries": {
       "description": "How many times a failed test is retried when its file doesn't say; without it, none.",

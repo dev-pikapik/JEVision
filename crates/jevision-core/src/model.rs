@@ -272,9 +272,11 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         window_position: Option<WindowPosition>,
         /// Command-line arguments for an app that isn't running yet; a running one keeps its own.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "Vec::is_empty")]
         arguments: Vec<String>,
         /// Environment variables, name to value, for an app that isn't running yet.
+        #[cfg_attr(test, schemars(default))]
         #[serde(skip_serializing_if = "HashMap::is_empty", serialize_with = "sorted")]
         environment: HashMap<String, String>,
         #[serde(skip_serializing_if = "Option::is_none")]
