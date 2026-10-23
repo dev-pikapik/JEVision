@@ -27,8 +27,7 @@ struct MigrateCommand {
       defer { free(path) }
       return String(cString: path)
     }), isFolder(root) else {
-      Console.standardError.line("jevision: " + words("cli.error.noFolder", request.project))
-      return .failure
+      return fail(words("cli.error.noFolder", request.project), code: "noFolder", status: .usage)
     }
     do {
       switch request.action {
@@ -42,11 +41,19 @@ struct MigrateCommand {
         return .ok
       }
     } catch ResourceError.Failed(let issue) {
-      Console.standardError.line("jevision: " + issueSentence(issue: issue))
+      let status: ExitStatus = issue.code == "backup.notFound" ? .usage : asksForNewerJevision(code: issue.code) ? .needsNewer : .io
+      return fail(issueSentence(issue: issue), code: issue.code, status: status)
     } catch {
-      Console.standardError.line("jevision: " + describe(error))
+      return fail(describe(error), code: "cannotMigrate", status: .io)
     }
-    return .failure
+  }
+
+  private func fail(_ message: String, code: String, status: ExitStatus) -> ExitStatus {
+    Console.standardError.line("jevision: " + message)
+    if request.json {
+      output.line(JSON.result([("error", .object([("code", .string(code)), ("message", .string(message))]))]).pretty)
+    }
+    return status
   }
 
   private func migrate(_ report: MigrationReport, dryRun: Bool) -> ExitStatus {
@@ -79,7 +86,7 @@ struct MigrateCommand {
 
   private func backups(_ backups: [Backup]) {
     if request.json {
-      output.line(JSON.object([("backups", .array(backups.map(Self.json)))]).pretty)
+      output.line(JSON.result([("backups", .array(backups.map(Self.json)))]).pretty)
       return
     }
     guard !backups.isEmpty else { return output.line(words("cli.migrate.noBackups")) }
@@ -90,7 +97,7 @@ struct MigrateCommand {
 
   private func restored(_ files: [String], from id: String) {
     if request.json {
-      output.line(JSON.object([("backup", .string(id)), ("restored", .array(files.map { .string($0) }))]).pretty)
+      output.line(JSON.result([("backup", .string(id)), ("restored", .array(files.map { .string($0) }))]).pretty)
       return
     }
     output.line(words("cli.migrate.restored", files.count, id))
@@ -98,7 +105,7 @@ struct MigrateCommand {
   }
 
   static func json(_ report: MigrationReport, dryRun: Bool) -> JSON {
-    .object([
+    .result([
       ("dryRun", .bool(dryRun)),
       (
         "files",

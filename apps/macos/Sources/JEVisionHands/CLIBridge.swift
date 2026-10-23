@@ -41,7 +41,7 @@ public enum CLIBridge {
     func fail(_ message: String) -> Int32 {
       errorFile?.seekToEndOfFile()
       errorFile?.write(Data("jevision: \(message)\n".utf8))
-      return 2
+      return 3
     }
     guard let output = try? FileHandle(forWritingTo: folder.appending(path: Self.output)), let errors = errorFile,
       let data = try? Data(contentsOf: folder.appending(path: Self.request)),

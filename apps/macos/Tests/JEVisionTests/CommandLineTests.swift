@@ -507,6 +507,7 @@ struct CommandLineToolTests {
     let dry = try jevision("migrate", "--dry-run", "--json", dir.url.path)
     #expect(dry.status == 0)
     let plan = try #require(try JSONSerialization.jsonObject(with: Data(dry.out.utf8)) as? [String: Any])
+    #expect(plan["jsonVersion"] as? Int == 1)
     let planned = try #require((plan["files"] as? [[String: Any]])?.first)
     #expect(planned["path"] as? String == "t.flow.json")
     #expect(planned["newLabelFiles"] as? [String] == ["saved.png.jevmeta"])
@@ -704,7 +705,7 @@ struct CommandLineToolTests {
     let formats = try #require(json["formats"] as? [[String: Any]])
     #expect(
       formats.map { $0["file"] as? String } == [
-        "*.flow.json", "*.block.json", "jevision.project.json", "jevision.environments.json", "jevision.schedule.json",
+        "*.flow.json", "*.block.json", "*.template.json", "*.jevmeta", "jevision.project.json", "jevision.environments.json", "jevision.schedule.json",
         "block.json", "report.json", "jevision.notifications.json", "last-results.json", "schedule-history.json",
       ])
     #expect(formats.first?["version"] as? Int == Int(formatVersion()))

@@ -166,14 +166,14 @@ struct ThroughAppTests {
     command.errors = errors.fileHandleForWriting
     command.open = { _, _, _ in { false } }
 
-    #expect(command.execute() == 2)
+    #expect(command.execute() == 3)
     try errors.fileHandleForWriting.close()
     let said = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     #expect(said == "jevision: /Applications/JEVision.app ended without saying how the run went\n")
 
     command.errors = FileHandle.nullDevice
     command.open = { _, _, _ in throw CocoaError(.fileNoSuchFile) }
-    #expect(command.execute() == 2)
+    #expect(command.execute() == 4)
   }
 }
 

@@ -20,6 +20,7 @@ struct ThroughApp {
 
   struct Failure: LocalizedError {
     let message: String
+    var status: ExitStatus = .io
     var errorDescription: String? { message }
   }
 
@@ -68,14 +69,14 @@ struct ThroughApp {
     return found
   }
 
-  /// Hands the run to the app and waits for it to end; its exit status, or 2 when it couldn't
-  /// run or ended without saying how.
+  /// Hands the run to the app and waits for its exit status. Setup errors use the same status
+  /// codes as other commands: 3 for files and 4 when the application cannot start.
   func execute() -> Int32 {
     do {
       return try bridge()
     } catch {
       try? errors.write(contentsOf: Data("jevision: \(error.message)\n".utf8))
-      return ExitStatus.failure.rawValue
+      return error.status.rawValue
     }
   }
 
@@ -102,7 +103,7 @@ struct ThroughApp {
     do {
       isRunning = try open(app, folder, environment)
     } catch {
-      throw Failure(message: words("cli.bridge.cannotOpen", app.path(percentEncoded: false), error.localizedDescription))
+      throw Failure(message: words("cli.bridge.cannotOpen", app.path(percentEncoded: false), error.localizedDescription), status: .notReady)
     }
     let sources = interrupts(folder.appending(path: CLIBridge.stop))
     defer { sources.forEach { $0.cancel() } }

@@ -24,7 +24,7 @@ enum JEVisionCLI {
       Console.standardError.line(Help.usage(error.command))
       let more = error.command.map { "jevision \($0) --help" } ?? "jevision --help"
       Console.standardError.line(words("cli.help.more", more))
-      return .usage
+      return error.status.rawValue
     }
     if case .run(let request) = command, request.throughApp {
       let app: URL
@@ -34,7 +34,7 @@ enum JEVisionCLI {
           home: FileManager.default.homeDirectoryForCurrentUser, current: FileManager.default.currentDirectoryPath)
       } catch {
         Console.standardError.line("jevision: \(error.message)")
-        return ExitStatus.failure.rawValue
+        return error.status.rawValue
       }
       return ThroughApp(arguments: ThroughApp.forwarded(arguments), app: app).execute()
     }

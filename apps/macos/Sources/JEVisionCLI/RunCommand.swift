@@ -903,6 +903,7 @@ extension Blocker {
     case .failed: reason = "failed"
     case .notRun: reason = "notRun"
     case .missing: reason = "missing"
+    case .unknown: reason = "unknown"
     case .cycle(let tests):
       reason = "cycle"
       cycle = .array(tests.map { .string($0) })
