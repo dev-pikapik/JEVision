@@ -8,9 +8,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+base64 = "0.23"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 jevision-l10n.workspace = true
 chrono-tz = { version = "0.10", default-features = false }
+icu_normalizer = { version = "2.1", default-features = false, features = ["compiled_data"] }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

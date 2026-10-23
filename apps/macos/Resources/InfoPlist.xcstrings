@@ -17,6 +17,40 @@
           }
         }
       }
+    },
+    "Project Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project Folder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Папка проекта"
+          }
+        }
+      }
+    },
+    "Test or Project File": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test or Project File"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тест или файл проекта"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

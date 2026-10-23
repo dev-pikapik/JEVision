@@ -251,6 +251,64 @@ impl Run {
         runs.sort_by(|a, b| (&b.report.started_at, &b.dir).cmp(&(&a.report.started_at, &a.dir)));
         Ok(runs)
     }
+
+    /// The run [`Run::list`] puts first, reading only the reports of the latest second there
+    /// are runs in: run folders are named after the time they started.
+    pub fn newest(project: &Path) -> Option<Self> {
+        saved_runs(project).into_iter().find_map(|second| {
+            second
+                .into_iter()
+                .filter_map(SavedRun::load)
+                .max_by(|a, b| (&a.report.started_at, &a.dir).cmp(&(&b.report.started_at, &b.dir)))
+        })
+    }
+
+    /// The newest run of each test file in `files`, relative to the project with `/` as
+    /// reports name them, that has one: the first of its runs in [`Run::list`]. Reads only the
+    /// reports of runs whose folder is named after one of these tests, newest first, until
+    /// every test has its run, so it stays quick with thousands of runs.
+    pub fn latest(project: &Path, files: &[String]) -> HashMap<String, Self> {
+        let mut by_slug: HashMap<String, Vec<&str>> = HashMap::new();
+        for file in files {
+            by_slug.entry(slug(file)).or_default().push(file);
+        }
+        let mut open: BTreeSet<&str> = files.iter().map(String::as_str).collect();
+        let mut latest: HashMap<String, Self> = HashMap::new();
+        for second in saved_runs(project) {
+            if open.is_empty() {
+                break;
+            }
+            for saved in second {
+                let wanted = saved.rest.as_deref().is_none_or(|rest| {
+                    let numbered = rest
+                        .rsplit_once('-')
+                        .filter(|(_, n)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+                    [Some(rest), numbered.map(|(slug, _)| slug)]
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|slug| by_slug.get(slug))
+                        .flatten()
+                        .any(|file| open.contains(file))
+                });
+                let Some(run) = wanted.then(|| saved.load()).flatten() else {
+                    continue;
+                };
+                if !open.contains(run.report.file.as_str()) {
+                    continue;
+                }
+                let newer = latest.get(&run.report.file).is_none_or(|kept| {
+                    (&run.report.started_at, &run.dir) > (&kept.report.started_at, &kept.dir)
+                });
+                if newer {
+                    latest.insert(run.report.file.clone(), run);
+                }
+            }
+            for file in latest.keys() {
+                open.remove(file.as_str());
+            }
+        }
+        latest
+    }
 }
 
 impl Runner<'_> {
@@ -3145,18 +3203,7 @@ fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<P
     let file = test
         .file_name()
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    let stem = file.strip_suffix(".flow.json").unwrap_or(&file);
-    let slug: String = stem
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else {
-                '-'
-            }
-        })
-        .collect();
-    let base = format!("{}-{}-{slug}", &digits[..8], &digits[8..14]);
+    let base = format!("{}-{}-{}", &digits[..8], &digits[8..14], slug(&file));
     let mut n = 1u32;
     loop {
         let dir = runs.join(if n == 1 {
@@ -3170,6 +3217,106 @@ fn create_run_dir(project: &Path, test: &Path, started_at: &str) -> io::Result<P
             Err(e) => return Err(e),
         }
     }
+}
+
+/// The part of a run folder's name that comes from the test file `test`: its name without
+/// `.flow.json` and folders, with anything but ASCII letters, digits, `-` and `_` as `-`.
+fn slug(test: &str) -> String {
+    let file = test.rsplit('/').next().unwrap_or(test);
+    let stem = file.strip_suffix(".flow.json").unwrap_or(file);
+    stem.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect()
+}
+
+/// A run folder in `.jevision/runs`, known by its name before its report is read.
+struct SavedRun {
+    dir: PathBuf,
+    /// The time the run started, `YYYYMMDDhhmmss` in UTC.
+    second: String,
+    /// What follows the time in the name: the test's [`slug`], with `-2` and on for runs of the
+    /// same test in the same second. `None` for a folder named some other way.
+    rest: Option<String>,
+    /// The run, read already to learn its time when the name doesn't tell it.
+    run: Option<Run>,
+}
+
+impl SavedRun {
+    fn load(self) -> Option<Run> {
+        self.run.or_else(|| Run::load(&self.dir).ok())
+    }
+}
+
+/// The run folders of the project, grouped by the second they started in, newest first.
+/// Folders are named `20261018-101500-login`, or `ci-31-20261018-101500-login` when imported
+/// from CI; a folder named any other way is read to learn its time. Hidden folders, such as an
+/// import still going, are left out.
+fn saved_runs(project: &Path) -> Vec<Vec<SavedRun>> {
+    let Ok(entries) = fs::read_dir(project.join(".jevision").join("runs")) else {
+        return Vec::new();
+    };
+    let mut saved: Vec<SavedRun> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with('.') {
+                return None;
+            }
+            let dir = entry.path();
+            let stamped = name
+                .strip_prefix("ci-")
+                .and_then(|rest| rest.split_once('-'))
+                .filter(|(id, _)| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()))
+                .map_or(name.as_str(), |(_, rest)| rest);
+            let time = stamped.get(..15).filter(|time| {
+                time.bytes().enumerate().all(|(i, b)| {
+                    if i == 8 {
+                        b == b'-'
+                    } else {
+                        b.is_ascii_digit()
+                    }
+                })
+            });
+            let rest = stamped.get(15..).and_then(|rest| rest.strip_prefix('-'));
+            if let (Some(time), Some(rest)) = (time, rest) {
+                return Some(SavedRun {
+                    second: time.replace('-', ""),
+                    rest: Some(rest.to_owned()),
+                    dir,
+                    run: None,
+                });
+            }
+            let run = Run::load(&dir).ok()?;
+            let digits: String = run
+                .report
+                .started_at
+                .chars()
+                .filter(char::is_ascii_digit)
+                .take(14)
+                .collect();
+            Some(SavedRun {
+                second: digits,
+                rest: None,
+                dir,
+                run: Some(run),
+            })
+        })
+        .collect();
+    saved.sort_by(|a, b| b.second.cmp(&a.second));
+    let mut seconds: Vec<Vec<SavedRun>> = Vec::new();
+    for run in saved {
+        match seconds.last_mut() {
+            Some(second) if second[0].second == run.second => second.push(run),
+            _ => seconds.push(vec![run]),
+        }
+    }
+    seconds
 }
 
 /// UTC time as `2026-10-18T14:30:05.123Z`.
@@ -3230,5 +3377,155 @@ mod tests {
         assert_eq!(kept(VideoMode::Off), [false, false, false]);
         assert_eq!(kept(VideoMode::OnFailure), [false, true, false]);
         assert_eq!(kept(VideoMode::Always), [true, true, true]);
+    }
+
+    fn dir_name(dir: &Path) -> String {
+        dir.file_name().unwrap().to_string_lossy().into_owned()
+    }
+
+    /// A saved run's test file, verdict and start time.
+    type SavedReport<'a> = (&'a str, &'a str, &'a str);
+
+    /// A project folder with these runs saved in it: folder name and report; a run without a
+    /// report hasn't finished yet.
+    fn project_with_runs(name: &str, runs: &[(&str, Option<SavedReport>)]) -> PathBuf {
+        let project =
+            std::env::temp_dir().join(format!("jevision-runs-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&project);
+        for (folder, report) in runs {
+            let dir = project.join(".jevision/runs").join(folder);
+            fs::create_dir_all(&dir).unwrap();
+            if let Some((file, verdict, started_at)) = report {
+                let json = format!(
+                    r#"{{"format":1,"test":"t","file":"{file}","app":"a","startedAt":"{started_at}",
+                    "durationMs":1500,"verdict":"{verdict}","flaky":false,"virtualMachine":false,"attempts":[]}}"#
+                );
+                fs::write(dir.join("report.json"), json).unwrap();
+            }
+        }
+        project
+    }
+
+    #[test]
+    fn the_latest_run_of_each_test_is_the_one_the_history_shows_first() {
+        let project = project_with_runs(
+            "latest",
+            &[
+                (
+                    "20261018-100000-login",
+                    Some(("login.flow.json", "passed", "2026-10-18T10:00:00.000Z")),
+                ),
+                (
+                    "20261018-110000-login",
+                    Some(("login.flow.json", "failed", "2026-10-18T11:00:00.100Z")),
+                ),
+                (
+                    "20261018-110000-login-2",
+                    Some(("login.flow.json", "passed", "2026-10-18T11:00:00.900Z")),
+                ),
+                (
+                    "20261018-120000-login",
+                    Some((
+                        "admin/login.flow.json",
+                        "cancelled",
+                        "2026-10-18T12:00:00.000Z",
+                    )),
+                ),
+                (
+                    "ci-31-20261018-130000-pay",
+                    Some(("pay.flow.json", "failed", "2026-10-18T13:00:00.000Z")),
+                ),
+                ("20261018-140000-pay", None),
+                (
+                    ".ci-32.partial/20261018-150000-pay",
+                    Some(("pay.flow.json", "passed", "2026-10-18T15:00:00.000Z")),
+                ),
+                (
+                    "old-run",
+                    Some(("cart.flow.json", "blocked", "2026-10-18T09:00:00.000Z")),
+                ),
+                (
+                    "20261018-090000-gone",
+                    Some(("gone.flow.json", "passed", "2026-10-18T09:00:00.000Z")),
+                ),
+                (
+                    "20261018-160000-Sign-in-FLOW-JSON",
+                    Some(("Sign in.FLOW.JSON", "passed", "2026-10-18T16:00:00.000Z")),
+                ),
+            ],
+        );
+        let files: Vec<String> = [
+            "login.flow.json",
+            "admin/login.flow.json",
+            "pay.flow.json",
+            "cart.flow.json",
+            "never.flow.json",
+            "Sign in.FLOW.JSON",
+        ]
+        .map(String::from)
+        .into();
+        let latest = Run::latest(&project, &files);
+        let folder = |file: &str| latest.get(file).map(|run| dir_name(&run.dir));
+        assert_eq!(
+            folder("login.flow.json").as_deref(),
+            Some("20261018-110000-login-2")
+        );
+        assert_eq!(
+            folder("admin/login.flow.json").as_deref(),
+            Some("20261018-120000-login")
+        );
+        assert_eq!(
+            folder("pay.flow.json").as_deref(),
+            Some("ci-31-20261018-130000-pay")
+        );
+        assert_eq!(folder("cart.flow.json").as_deref(), Some("old-run"));
+        assert_eq!(
+            folder("Sign in.FLOW.JSON").as_deref(),
+            Some("20261018-160000-Sign-in-FLOW-JSON")
+        );
+        assert_eq!(latest.len(), 5);
+        // The same runs the history puts first for each test.
+        let history = Run::list(&project).unwrap();
+        for file in &files {
+            let first = history.iter().find(|run| &run.report.file == file);
+            assert_eq!(
+                first.map(|run| &run.dir),
+                latest.get(file).map(|run| &run.dir),
+                "{file}"
+            );
+        }
+        assert_eq!(
+            Run::newest(&project).map(|run| run.dir),
+            history.first().map(|run| run.dir.clone())
+        );
+        assert_eq!(
+            latest["login.flow.json"].report.finished_at(),
+            Some(1_792_321_202)
+        );
+        fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn the_newest_run_skips_runs_still_going() {
+        let project = project_with_runs(
+            "newest",
+            &[
+                ("20261018-120000-b", None),
+                (
+                    "20261018-110000-a",
+                    Some(("a.flow.json", "passed", "2026-10-18T11:00:00.200Z")),
+                ),
+                (
+                    "20261018-110000-a-2",
+                    Some(("a.flow.json", "failed", "2026-10-18T11:00:00.700Z")),
+                ),
+            ],
+        );
+        let newest = Run::newest(&project).unwrap();
+        assert_eq!(dir_name(&newest.dir), "20261018-110000-a-2");
+        assert_eq!(newest.report.verdict, Verdict::Failed);
+        fs::remove_dir_all(&project).unwrap();
+        assert!(Run::newest(&project).is_none());
+        assert!(Run::latest(&project, &["a.flow.json".into()]).is_empty());
     }
 }

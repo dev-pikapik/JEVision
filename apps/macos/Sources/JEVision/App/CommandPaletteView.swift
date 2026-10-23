@@ -53,6 +53,7 @@ struct CommandPaletteView: View {
             section(Text("Add a Block"), kind: .block)
             section(Text("Tests"), kind: .test)
             section(Text("Boards"), kind: .board)
+            section(Text("Projects"), kind: .project)
           }
         }
         .listStyle(.sidebar)
@@ -118,6 +119,7 @@ struct CommandPaletteView: View {
     case .block: Text("Block")
     case .test: Text("Test")
     case .board: Text("Board")
+    case .project: Text("Project")
     }
   }
 
@@ -133,7 +135,7 @@ struct CommandPaletteView: View {
   private var rowOrder: [PaletteAction] {
     let shown = entries
     if isSearching { return shown.map(\.id) }
-    return [PaletteEntry.Kind.command, .block, .test, .board].flatMap { kind in shown.filter { $0.kind == kind }.map(\.id) }
+    return [PaletteEntry.Kind.command, .block, .test, .board, .project].flatMap { kind in shown.filter { $0.kind == kind }.map(\.id) }
   }
 
   private func submit() {
@@ -186,6 +188,9 @@ struct CommandPaletteView: View {
       }.filter { !$0.1.trimmingCharacters(in: .whitespaces).isEmpty }
     }
     state.library = project.library.entries
+    state.recentProjects = project.openableRecent.filter { $0.path != project.rootURL?.path }.map {
+      ($0.path, $0.name, ProjectStore.shortPath($0.path))
+    }
     if case .tracked(let status) = project.git.state {
       state.git = PaletteState.Git(
         isTracked: true, hasChanges: !status.changes.isEmpty, hasCommits: status.hasCommits,
@@ -213,7 +218,11 @@ struct CommandPaletteView: View {
       } else {
         project.isCreatingTest = true
       }
+    case .newProject: project.newProject = .new
+    case .cloneRepository: project.newProject = .clone
     case .openProject: project.choose()
+    case .projects: project.close()
+    case .openRecentProject(let path): project.openRecent(path)
     case .settings: openSettings()
     case .run, .runStepByStep, .runFromSelection:
       guard let document, let root else { return }

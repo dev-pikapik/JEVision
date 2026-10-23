@@ -33,8 +33,23 @@ struct AppCommands: Commands {
         Button("New Test…") { project.isCreatingTest = true }
           .keyboardShortcut(Shortcuts.newTest)
           .disabled(project.status != .ready)
+        Button("New Project…") { project.newProject = .new }
+          .keyboardShortcut(Shortcuts.newProject)
         Button("Open Project…") { project.choose() }
           .keyboardShortcut(Shortcuts.openProject)
+        Menu("Open Recent") {
+          let recent = project.openableRecent
+          ForEach(recent, id: \.path) { entry in
+            Button(project.menuTitle(entry)) { project.openRecent(entry.path) }
+          }
+          if !recent.isEmpty { Divider() }
+          Button("Clear Menu") { project.clearRecent() }
+            .disabled(!project.recent.contains { !$0.pinned })
+        }
+        Button("Clone Repository…") { project.newProject = .clone }
+        Button("Close Project") { project.close() }
+          .keyboardShortcut(Shortcuts.closeProject)
+          .disabled(project.rootURL == nil)
         Button("Show Project in Finder") { project.revealRoot() }
           .disabled(project.rootURL == nil)
         Divider()

@@ -31,7 +31,7 @@ struct OnboardingView: View {
         case .welcome: WelcomeStep(runDemo: runDemo)
         case .permissions: PermissionsStep()
         case .ai: AIStep()
-        case .firstTest: FirstTestStep(app: $app, needsFolder: project.rootURL == nil, record: recordFirstTest, runDemo: runDemo)
+        case .firstTest: FirstTestStep(app: $app, myTests: project.rootURL == nil ? project.myTestsName : nil, record: recordFirstTest, runDemo: runDemo)
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -129,7 +129,7 @@ struct OnboardingView: View {
     do {
       try project.openDemo()
     } catch {
-      failure = error.localizedDescription
+      failure = ProjectStore.message(error)
       return
     }
     guard let document = project.document, let root = project.rootURL else { return }
@@ -139,15 +139,15 @@ struct OnboardingView: View {
     Task { runs.run(document, in: root) }
   }
 
-  /// Creates a test for the chosen app, in the default folder if no project is open, and records into it.
+  /// Creates a test for the chosen app, in “My Tests” if no project is open, and records into it.
   private func recordFirstTest() {
     guard let app else { return }
     Task {
       do {
-        if project.rootURL == nil { try project.openDefaultFolder() }
+        if project.rootURL == nil { try project.openMyTests() }
         try await project.createTest(name: String(localized: "First Test"), app: app)
       } catch {
-        failure = error.localizedDescription
+        failure = ProjectStore.message(error)
         return
       }
       guard let document = project.document else { return }

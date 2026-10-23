@@ -1,12 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// Last onboarding step: pick an app and record a first test in it.
+/// Last onboarding step, and the second of the New Project sheet for an empty project: pick an
+/// app and record a first test in it.
 struct FirstTestStep: View {
   @Binding var app: String?
-  let needsFolder: Bool
+  /// No project is open: the name of “My Tests”, where the test goes, and the step says so.
+  let myTests: String?
   let record: () -> Void
-  let runDemo: () -> Void
+  /// Offers the ready demo test instead, when given.
+  var runDemo: (() -> Void)?
   @State private var running: [String] = FirstTestStep.runningApps()
 
   private let columns = [GridItem(.adaptive(minimum: 104, maximum: 120), spacing: 12)]
@@ -34,8 +37,8 @@ struct FirstTestStep: View {
       .keyboardShortcut(.defaultAction)
       .disabled(app == nil)
       Group {
-        if needsFolder {
-          Text("Each test is saved as a file in the “JEVision Tests” folder in Documents.")
+        if let myTests {
+          Text("Tests are saved in the “\(myTests)” project in Documents › JEVision.")
         } else {
           Text("The test is saved as a file in the open project.")
         }
@@ -44,10 +47,12 @@ struct FirstTestStep: View {
       .foregroundStyle(.secondary)
       .multilineTextAlignment(.center)
       .padding(.top, 10)
-      Button("Or run the ready demo test on TextEdit", action: runDemo)
-        .buttonStyle(.link)
-        .font(.callout)
-        .padding(.top, 4)
+      if let runDemo {
+        Button("Or run the ready demo test on TextEdit", action: runDemo)
+          .buttonStyle(.link)
+          .font(.callout)
+          .padding(.top, 4)
+      }
     }
     .padding(.horizontal, 32)
     .padding(.top, 28)

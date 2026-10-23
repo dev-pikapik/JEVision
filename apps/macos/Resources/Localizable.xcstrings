@@ -2409,16 +2409,6 @@
         }
       }
     },
-    "A copy of a ready test for TextEdit, in a folder you choose" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Копия готового теста для TextEdit в выбранной вами папке"
-          }
-        }
-      }
-    },
     "A first value" : {
       "localizations" : {
         "ru" : {
@@ -2529,6 +2519,16 @@
         }
       }
     },
+    "A new project with a ready test for TextEdit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый проект с готовым тестом для TextEdit"
+          }
+        }
+      }
+    },
     "A newer version of JEVision saved this run. Update the app to see how it ended." : {
       "localizations" : {
         "ru" : {
@@ -2635,6 +2635,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест в карантине по-прежнему запускается, но его провалы не делают провальными «Запустить все», командную строку и отчёт JUnit. Карантин сохраняется в проекте, поэтому его видят все, кто запускает эти тесты."
+          }
+        }
+      }
+    },
+    "A test is being recorded" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт запись теста"
+          }
+        }
+      }
+    },
+    "A test is running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт тест"
           }
         }
       }
@@ -4811,6 +4831,16 @@
         }
       }
     },
+    "Blank" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пустой"
+          }
+        }
+      }
+    },
     "Block" : {
       "localizations" : {
         "ru" : {
@@ -6109,6 +6139,16 @@
         }
       }
     },
+    "Choose a folder that already has tests." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку, в которой уже есть тесты."
+          }
+        }
+      }
+    },
     "Choose a folder." : {
       "localizations" : {
         "ru" : {
@@ -6219,22 +6259,22 @@
         }
       }
     },
-    "Choose the folder that holds your tests. JEVision shows every .flow.json file in it." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Выберите папку с тестами. JEVision покажет все файлы .flow.json в ней."
-          }
-        }
-      }
-    },
     "Choose the folder to put the block in" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите папку, в которую положить блок"
+          }
+        }
+      }
+    },
+    "Choose the folder to put the project in" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите папку, в которой будет проект"
           }
         }
       }
@@ -6251,6 +6291,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите картинки для доски"
+          }
+        }
+      }
+    },
+    "Choose the project to copy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите проект, который нужно скопировать"
           }
         }
       }
@@ -6305,12 +6355,12 @@
         }
       }
     },
-    "Choose where to put a copy of the example project" : {
+    "Choose where the folder of “%@” is now" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выберите, куда положить копию примера проекта"
+            "value" : "Укажите, где теперь папка «%@»"
           }
         }
       }
@@ -6381,6 +6431,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сбросить фильтр"
+          }
+        }
+      }
+    },
+    "Clear Menu" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить меню"
           }
         }
       }
@@ -6485,12 +6545,42 @@
         }
       }
     },
+    "Clone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клонировать"
+          }
+        }
+      }
+    },
+    "Clone Repository…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клонировать репозиторий…"
+          }
+        }
+      }
+    },
     "Close" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Close Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть проект"
           }
         }
       }
@@ -6521,6 +6611,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрытый пул-реквест"
+          }
+        }
+      }
+    },
+    "Closes this project and shows all your projects." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывает этот проект и показывает все ваши проекты."
           }
         }
       }
@@ -7187,6 +7287,16 @@
         }
       }
     },
+    "Copies a project from GitHub or another Git server to this Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копирует проект с GitHub или другого Git-сервера на этот Mac."
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "ru" : {
@@ -7203,16 +7313,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать код"
-          }
-        }
-      }
-    },
-    "Copy Here" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скопировать сюда"
           }
         }
       }
@@ -7237,12 +7337,32 @@
         }
       }
     },
+    "Copy of Project…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копия проекта…"
+          }
+        }
+      }
+    },
     "Copy the title and description, to file the bug somewhere else" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать заголовок и описание, чтобы сообщить об ошибке в другом месте"
+          }
+        }
+      }
+    },
+    "Copying the repository…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копируем репозиторий…"
           }
         }
       }
@@ -7313,16 +7433,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось создать тест"
-          }
-        }
-      }
-    },
-    "Couldn’t open the example project" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось открыть пример проекта"
           }
         }
       }
@@ -7533,6 +7643,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Создаёт пустой тест или тест для записи."
+          }
+        }
+      }
+    },
+    "Creates the folder %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Будет создана папка %@"
           }
         }
       }
@@ -8203,6 +8323,16 @@
         }
       }
     },
+    "Documents › %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Документы › %@"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "ru" : {
@@ -8621,16 +8751,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Каждая сторона ведёт его к другому шагу."
-          }
-        }
-      }
-    },
-    "Each test is saved as a file in the “JEVision Tests” folder in Documents." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Каждый тест сохраняется файлом в папке «JEVision Tests» в Документах."
           }
         }
       }
@@ -9893,6 +10013,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Папка"
+          }
+        }
+      }
+    },
+    "Folder can’t be found" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка не найдена"
           }
         }
       }
@@ -11474,6 +11604,16 @@
         }
       }
     },
+    "JEVision can’t read this folder. Allow it in System Settings › Privacy & Security › Files and Folders, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision не может прочитать эту папку. Разрешите доступ в Системных настройках › Конфиденциальность и безопасность › Файлы и папки, затем попробуйте снова."
+          }
+        }
+      }
+    },
     "JEVision can’t see the app’s window. Bring it to the front." : {
       "localizations" : {
         "ru" : {
@@ -12216,6 +12356,16 @@
         }
       }
     },
+    "Locate…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти…"
+          }
+        }
+      }
+    },
     "Log detail" : {
       "localizations" : {
         "ru" : {
@@ -12554,6 +12704,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Собирает из этого блока пакет, который любой может установить в свой JEVision. В него попадают только шаги блока и его картинки, больше ничего из вашего проекта."
+          }
+        }
+      }
+    },
+    "Makes a project in a new folder: empty, with the example or a copy of another." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создаёт проект в новой папке: пустой, с примером или копию другого."
           }
         }
       }
@@ -12940,6 +13100,16 @@
         }
       }
     },
+    "My Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мои тесты"
+          }
+        }
+      }
+    },
     "My blocks" : {
       "localizations" : {
         "ru" : {
@@ -13148,6 +13318,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Новая рамка"
+          }
+        }
+      }
+    },
+    "New Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый проект"
+          }
+        }
+      }
+    },
+    "New Project…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый проект…"
           }
         }
       }
@@ -13830,12 +14020,32 @@
         }
       }
     },
+    "No tests yet: you record the first one next." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока без тестов: первый вы запишете следующим шагом."
+          }
+        }
+      }
+    },
     "No text yet" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Текста пока нет"
+          }
+        }
+      }
+    },
+    "No version history: Git isn’t installed." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без истории изменений: Git не установлен."
           }
         }
       }
@@ -14654,6 +14864,16 @@
         }
       }
     },
+    "Open Example Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть пример проекта"
+          }
+        }
+      }
+    },
     "Open Failed Block" : {
       "localizations" : {
         "ru" : {
@@ -14760,12 +14980,32 @@
         }
       }
     },
+    "Open Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть проект"
+          }
+        }
+      }
+    },
     "Open Project…" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть проект…"
+          }
+        }
+      }
+    },
+    "Open Recent" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть недавние"
           }
         }
       }
@@ -14842,16 +15082,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте новое окно Терминала и введите «jevision --help», чтобы узнать, что она умеет."
-          }
-        }
-      }
-    },
-    "Open a project" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Откройте проект"
           }
         }
       }
@@ -15328,6 +15558,16 @@
         }
       }
     },
+    "Other…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другое…"
+          }
+        }
+      }
+    },
     "Outdated" : {
       "localizations" : {
         "ru" : {
@@ -15684,6 +15924,16 @@
         }
       }
     },
+    "Paste the address you copied" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить скопированный адрес"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "ru" : {
@@ -15978,6 +16228,26 @@
         }
       }
     },
+    "Pin" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить"
+          }
+        }
+      }
+    },
+    "Pinned" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закреплённые"
+          }
+        }
+      }
+    },
     "Pixels" : {
       "localizations" : {
         "ru" : {
@@ -16238,6 +16508,16 @@
         }
       }
     },
+    "Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проект"
+          }
+        }
+      }
+    },
     "Project Default (%u)" : {
       "localizations" : {
         "ru" : {
@@ -16274,6 +16554,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проект: %@"
+          }
+        }
+      }
+    },
+    "Projects" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проекты"
           }
         }
       }
@@ -16812,6 +17102,16 @@
         }
       }
     },
+    "Ready tests for TextEdit, to see how everything works." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готовые тесты для TextEdit, чтобы посмотреть, как всё устроено."
+          }
+        }
+      }
+    },
     "Ready to replace the picture" : {
       "localizations" : {
         "ru" : {
@@ -16838,6 +17138,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Причина, например ссылка на баг"
+          }
+        }
+      }
+    },
+    "Recent" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недавние"
           }
         }
       }
@@ -17364,6 +17674,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Убрать с доски"
+          }
+        }
+      }
+    },
+    "Remove from List" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из списка"
           }
         }
       }
@@ -19434,6 +19754,16 @@
         }
       }
     },
+    "Search projects" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск проектов"
+          }
+        }
+      }
+    },
     "Search tests" : {
       "localizations" : {
         "ru" : {
@@ -19982,6 +20312,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поделиться…"
+          }
+        }
+      }
+    },
+    "Shop" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Магазин"
           }
         }
       }
@@ -20934,6 +21274,16 @@
         }
       }
     },
+    "Start From" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основа"
+          }
+        }
+      }
+    },
     "Start Recording" : {
       "localizations" : {
         "ru" : {
@@ -20950,6 +21300,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отслеживать изменения"
+          }
+        }
+      }
+    },
+    "Start a project in a new folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создайте проект в новой папке."
           }
         }
       }
@@ -21206,6 +21566,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стоп"
+          }
+        }
+      }
+    },
+    "Stop and Continue" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить и продолжить"
           }
         }
       }
@@ -21530,6 +21900,16 @@
         }
       }
     },
+    "Tests are saved in the “%@” project in Documents › JEVision." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты сохраняются в проекте «%@» в папке Документы › JEVision."
+          }
+        }
+      }
+    },
     "Tests can click, point at, drag, scroll over and type into an element described in words, like “the blue Save button”. %@ finds it, whichever provider checks by meaning, and gets the window’s screenshot and the description, with password fields and the areas the project hides painted over. Finding needs model jev-1.14.0 or newer, or jev-latest." : {
       "localizations" : {
         "ru" : {
@@ -21606,6 +21986,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тесты, которые работают с экраном, всё равно идут по очереди"
+          }
+        }
+      }
+    },
+    "Tests, blocks and settings of another project, without its history and runs." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты, блоки и настройки другого проекта — без истории изменений и прогонов."
           }
         }
       }
@@ -22416,12 +22806,12 @@
         }
       }
     },
-    "The folder was moved, deleted or is on a disk that isn’t connected. Choose it again to keep working." : {
+    "The folder was moved, deleted or is on a disk that isn’t connected." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папку переместили, удалили или она на отключённом диске. Выберите её снова, чтобы продолжить."
+            "value" : "Папку переместили или удалили, либо она на диске, который сейчас не подключён."
           }
         }
       }
@@ -24466,6 +24856,16 @@
         }
       }
     },
+    "Unpin" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открепить"
+          }
+        }
+      }
+    },
     "Unreliable %lld times in the last 7 days" : {
       "localizations" : {
         "en" : {
@@ -25140,6 +25540,26 @@
         }
       }
     },
+    "Version history is kept by the Git repository this folder is in." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Историю изменений ведёт репозиторий Git, в котором лежит эта папка."
+          }
+        }
+      }
+    },
+    "Version history is on: the project starts as a Git repository with a ready .gitignore." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История изменений включена: проект сразу становится репозиторием Git с готовым .gitignore."
+          }
+        }
+      }
+    },
     "Video" : {
       "localizations" : {
         "ru" : {
@@ -25732,6 +26152,16 @@
         }
       }
     },
+    "Where" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где"
+          }
+        }
+      }
+    },
     "Where It Fails" : {
       "localizations" : {
         "ru" : {
@@ -25868,6 +26298,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Размер окна"
+          }
+        }
+      }
+    },
+    "With Example" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С примером"
           }
         }
       }
@@ -34968,6 +35408,118 @@
         }
       }
     },
+    "clone.cancelled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The download was stopped."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скачивание остановлено."
+          }
+        }
+      }
+    },
+    "clone.error.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The repository couldn’t be downloaded: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось скачать репозиторий: %@"
+          }
+        }
+      }
+    },
+    "clone.error.noAccess" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No access to this repository. Sign in to GitHub or check that your account can see it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет доступа к репозиторию. Войдите в GitHub или проверьте, что у вашей учётной записи есть к нему доступ."
+          }
+        }
+      }
+    },
+    "clone.error.noNetwork" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server can’t be reached. Check the internet connection and the address."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сервер недоступен. Проверьте подключение к интернету и адрес."
+          }
+        }
+      }
+    },
+    "clone.error.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No repository was found at this address, or your account has no access to it. Check the address."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По этому адресу репозиторий не найден или у вашей учётной записи нет к нему доступа. Проверьте адрес."
+          }
+        }
+      }
+    },
+    "clone.error.notInstalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Git isn’t installed on this Mac. Install the Xcode command line tools and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac не установлен Git. Установите инструменты командной строки Xcode и попробуйте снова."
+          }
+        }
+      }
+    },
+    "clone.url.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the address of the repository."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введите адрес репозитория."
+          }
+        }
+      }
+    },
     "com.author.name" : {
       "localizations" : {
         "ru" : {
@@ -35004,6 +35556,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "содержит"
+          }
+        }
+      }
+    },
+    "create folder example" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "создать новый папка пример"
           }
         }
       }
@@ -36900,6 +37462,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ни один блок до этого не сохраняет значение %@."
+          }
+        }
+      }
+    },
+    "git github download copy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git github скачать копия клонировать"
           }
         }
       }
@@ -40992,6 +41564,16 @@
         }
       }
     },
+    "open recent project switch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "открыть недавний проект переключить"
+          }
+        }
+      }
+    },
     "open test" : {
       "localizations" : {
         "ru" : {
@@ -41404,6 +41986,22 @@
         }
       }
     },
+    "project.create.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The project couldn’t be created: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать проект: %@"
+          }
+        }
+      }
+    },
     "project.date.invalid" : {
       "localizations" : {
         "en" : {
@@ -41544,6 +42142,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "область %lld в «hide» не помещается в окно; x, y, width и height — это доли окна от 0 до 1, и у области должен быть размер, а заканчиваться она должна внутри окна"
+          }
+        }
+      }
+    },
+    "project.name.characters" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A project name can’t contain “/”, “:” or line breaks."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В названии проекта не может быть «/», «:» и переносов строк."
+          }
+        }
+      }
+    },
+    "project.name.dot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A project name can’t start with a dot: the Finder would hide its folder."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название проекта не может начинаться с точки: Finder скроет такую папку."
+          }
+        }
+      }
+    },
+    "project.name.empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a name for the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Введите название проекта."
+          }
+        }
+      }
+    },
+    "project.name.long" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The name is too long. Make it shorter."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название слишком длинное. Сократите его."
+          }
+        }
+      }
+    },
+    "project.name.taken" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There’s already a folder “%@” with files in it here. Choose another name or place."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь уже есть папка «%@» с файлами. Выберите другое название или место."
           }
         }
       }
@@ -41740,6 +42418,22 @@
         }
       }
     },
+    "project.template.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The folder to copy the project from isn’t there: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет папки, из которой копируется проект: %@"
+          }
+        }
+      }
+    },
     "project.test.invalid" : {
       "localizations" : {
         "en" : {
@@ -41802,6 +42496,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "прочитал справку по блокам"
+          }
+        }
+      }
+    },
+    "recent close switch" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "недавние закрыть переключить"
           }
         }
       }
@@ -46262,6 +46966,16 @@
         }
       }
     },
+    "“%@” is being recorded now. To go on, JEVision stops recording and adds the steps recorded so far to the test." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас идёт запись теста «%@». Чтобы продолжить, JEVision остановит запись и добавит в тест уже записанные шаги."
+          }
+        }
+      }
+    },
     "“%@” is installed" : {
       "localizations" : {
         "ru" : {
@@ -46278,6 +46992,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "«%@» подключён."
+          }
+        }
+      }
+    },
+    "“%@” is running now. To go on, JEVision stops it, and the run is kept as stopped." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас идёт тест «%@». Чтобы продолжить, JEVision остановит его, а прогон сохранится как остановленный."
           }
         }
       }

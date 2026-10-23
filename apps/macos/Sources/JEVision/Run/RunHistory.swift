@@ -20,6 +20,17 @@ enum RunStatus: Equatable, CaseIterable {
     }
   }
 
+  /// How a run shows when only its verdict is known.
+  init(_ verdict: Verdict) {
+    switch verdict {
+    case .passed: self = .passed
+    case .failed: self = .failed
+    case .cancelled: self = .cancelled
+    case .blocked: self = .blocked
+    case .unknown: self = .unknown
+    }
+  }
+
   /// A small shape for the test's row in the sidebar.
   var dot: String {
     switch self {

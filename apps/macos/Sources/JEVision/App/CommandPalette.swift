@@ -3,7 +3,7 @@ import SwiftUI
 
 /// What the command palette does when an entry is chosen.
 enum PaletteAction: Hashable {
-  case newTest, describeTest, openProject, settings
+  case newTest, describeTest, newProject, cloneRepository, openProject, projects, settings
   case run, runStepByStep, runFromSelection, runAll, record, schedules
   case installBlock, customBlocks
   case addBlock(String), addCondition, arrange, disconnect
@@ -20,11 +20,13 @@ enum PaletteAction: Hashable {
   case showBoard(String)
   /// Shows the item with this id on the board in view.
   case showOnBoard(String)
+  /// Opens the recent project in this folder.
+  case openRecentProject(String)
 }
 
 /// One line of the command palette: a command, a block to add or a test to open.
 struct PaletteEntry: Identifiable, Hashable {
-  enum Kind: Hashable { case command, block, test, board }
+  enum Kind: Hashable { case command, block, test, board, project }
 
   let action: PaletteAction
   let kind: Kind
@@ -75,6 +77,8 @@ struct PaletteState {
   var boardItems: [(id: String, title: String, kind: String)] = []
   /// The project's templates and custom blocks.
   var library: [LibraryEntry] = []
+  /// Recent projects other than the open one, as `(folder, name, folder as people read it)`.
+  var recentProjects: [(path: String, name: String, folder: String)] = []
 
   struct Git {
     var isTracked = false
@@ -90,9 +94,9 @@ struct PaletteState {
 /// The entries of the command palette and how a search orders them.
 enum CommandPalette {
   /// Everything that can be done in `state`: commands, then blocks to add, then tests to open,
-  /// then boards and what is on the board in view.
+  /// then boards and what is on the board in view, then other projects to open.
   static func entries(_ state: PaletteState) -> [PaletteEntry] {
-    commands(state) + blocks(state) + library(state) + tests(state) + boards(state)
+    commands(state) + blocks(state) + library(state) + tests(state) + boards(state) + projects(state)
   }
 
   /// `entries` that match `query`, best first; all of them for an empty query.
@@ -243,8 +247,19 @@ enum CommandPalette {
       symbol: ProjectLibrary.defaultBlockSymbol, keywords: String(localized: "community library share update remove"),
       if: state.hasProject)
     add(
+      .newProject, String(localized: "New Project…"), String(localized: "Makes a project in a new folder: empty, with the example or a copy of another."),
+      symbol: "plus.square.on.square", shortcut: Shortcuts.newProject, keywords: String(localized: "create folder example"))
+    add(
+      .cloneRepository, String(localized: "Clone Repository…"),
+      String(localized: "Copies a project from GitHub or another Git server to this Mac."),
+      symbol: "arrow.down.circle", keywords: String(localized: "git github download copy"))
+    add(
       .openProject, String(localized: "Open Project…"), String(localized: "Chooses the folder that holds your tests."),
       symbol: "folder", shortcut: Shortcuts.openProject)
+    add(
+      .projects, String(localized: "Projects"), String(localized: "Closes this project and shows all your projects."),
+      symbol: "square.grid.2x2", shortcut: Shortcuts.closeProject, keywords: String(localized: "recent close switch"),
+      if: state.hasProject)
     add(
       .settings, String(localized: "Settings…"), String(localized: "Permissions, AI, Git, iPhone and more."),
       symbol: "gearshape", shortcut: Shortcuts.settings, keywords: String(localized: "preferences options"))
@@ -265,6 +280,7 @@ enum CommandPalette {
   }
 
   private static func boards(_ state: PaletteState) -> [PaletteEntry] {
+    guard state.hasProject else { return [] }
     let boards = state.boards.map { name in
       PaletteEntry(
         action: .showBoard(name), kind: .board, title: name, detail: String(localized: "Board"),
@@ -295,6 +311,15 @@ enum CommandPalette {
       PaletteEntry(
         action: .openTest(test.id), kind: .test, title: test.name, detail: test.folder, symbol: "doc.text",
         color: .secondary, shortcut: nil, keywords: [test.folder, String(localized: "open test"), test.keywords].joined(separator: " "))
+    }
+  }
+
+  private static func projects(_ state: PaletteState) -> [PaletteEntry] {
+    state.recentProjects.map { project in
+      PaletteEntry(
+        action: .openRecentProject(project.path), kind: .project, title: project.name, detail: project.folder,
+        symbol: "folder", color: .secondary, shortcut: nil,
+        keywords: [project.folder, String(localized: "open recent project switch")].joined(separator: " "))
     }
   }
 }

@@ -1542,7 +1542,7 @@ pub fn json_path(path: &str) -> Option<Vec<JsonStep<'_>>> {
     Some(steps)
 }
 
-fn is_false(b: &bool) -> bool {
+pub(crate) fn is_false(b: &bool) -> bool {
     !b
 }
 

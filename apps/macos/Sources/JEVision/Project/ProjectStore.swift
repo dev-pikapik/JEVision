@@ -22,7 +22,7 @@ final class ProjectStore {
   var selection: ProjectItem.ID? {
     didSet {
       guard selection != oldValue else { return }
-      UserDefaults.standard.set(selection, forKey: Key.selection)
+      defaults.set(selection, forKey: Key.selection)
       if selection != nil { showsBoard = false }
       openSelection()
     }
@@ -33,6 +33,12 @@ final class ProjectStore {
   private(set) var document: FlowDocument?
   /// The New Test sheet is shown.
   var isCreatingTest = false
+  /// What the New Project sheet is asked to start with; set to show it.
+  var newProject: NewProjectRequest?
+  /// Projects opened on this Mac, pinned first, then the most recently opened.
+  private(set) var recent: [RecentProject] = []
+  /// What the cards on the Projects screen show, by project folder.
+  private(set) var summaries: [String: ProjectSummary] = [:]
   /// The block the Install Block sheet is reading or installing; set to show the sheet.
   var installingBlock: BlockInstallModel?
   /// The installed block being copied among the project's own blocks; set to show the sheet.
@@ -91,26 +97,51 @@ final class ProjectStore {
   @ObservationIgnored weak var boardDocuments: BoardTestDocuments?
   @ObservationIgnored private var watcher: FolderWatcher?
   @ObservationIgnored private var scanTask: Task<([ProjectItem], History), any Error>?
-  @ObservationIgnored private var accessedURL: URL?
+  /// The folder whose security scope is in use while its project is open.
+  @ObservationIgnored private(set) var accessedURL: URL?
+  @ObservationIgnored private(set) var summaryTask: Task<Void, Never>?
+  @ObservationIgnored private let defaults: UserDefaults
+  /// When a project is opened, for its place in the recent list.
+  @ObservationIgnored private let clock: () -> Date
+  /// The test running or being recorded now, which leaving the project would cut short; the
+  /// app tells.
+  @ObservationIgnored var activeWork: @MainActor () -> ProjectWork? = { nil }
+  /// Asks whether to stop `activeWork` before leaving the project; `true` to stop it.
+  @ObservationIgnored var asksToStop: @MainActor (ProjectWork) -> Bool = ProjectWork.ask
 
   enum Key {
+    /// The recent projects, as the core writes the list.
+    static let recent = "recentProjects"
+    /// The folder of the project open when the app quit, opened again at launch.
+    static let current = "openProject"
+    static let selection = "projectSelection"
+    /// Where versions before the recent list kept their one project; moved into the list once.
     static let bookmark = "projectBookmark"
     static let name = "projectName"
-    static let selection = "projectSelection"
+    /// The folder of “My Tests”, once made: it is known by where it is, as its name is in the
+    /// language the app had then.
+    static let myTests = "myTestsProject"
   }
 
-  init() {
+  init(defaults: UserDefaults = .standard, clock: @escaping () -> Date = { .now }) {
+    self.defaults = defaults
+    self.clock = clock
     ci.imported = { [weak self] in self?.rescan() }
-    guard UserDefaults.standard.data(forKey: Key.bookmark) != nil else { return }
-    name = UserDefaults.standard.string(forKey: Key.name) ?? ""
-    let selected = UserDefaults.standard.string(forKey: Key.selection)
-    if let url = resolveBookmark() {
-      open(url)
-      selection = selected.flatMap { FileManager.default.fileExists(atPath: url.appending(path: $0).path) ? $0 : nil }
-    } else {
-      status = .unavailable
-      AppLog.error("The project folder from last time can’t be opened", "project")
+    migrate()
+    recent = recentProjectsDecode(json: defaults.string(forKey: Key.recent) ?? "")
+    refreshSummaries()
+    guard let path = defaults.string(forKey: Key.current) else { return }
+    let entry = recent.first { $0.path == path }
+    guard let url = entry.flatMap(Self.folder) ?? Self.existing(URL(filePath: path, directoryHint: .isDirectory)) else {
+      // The Projects screen shows its card as missing, with a way to find it.
+      AppLog.error("The project folder from last time can’t be found", "project")
+      return
     }
+    let selected = defaults.string(forKey: Key.selection)
+    if let entry, url.path != entry.path { relocate(entry.path, to: url) }
+    // Opened like any other time, so a moved folder is opened there next time too.
+    openProject(url)
+    selection = selected.flatMap { FileManager.default.fileExists(atPath: url.appending(path: $0).path) ? $0 : nil }
   }
 
   func choose() {
@@ -123,8 +154,263 @@ final class ProjectStore {
     panel.directoryURL = rootURL ?? URL.documentsDirectory
     panel.prompt = String(localized: "Open")
     guard panel.runModal() == .OK, let url = panel.url else { return }
-    save(url)
-    open(url)
+    openProject(url)
+  }
+
+  /// Opens the project in `url`, puts it first among the recent projects and opens it again at
+  /// the next launch. `test`, relative to the project, is selected when given.
+  /// Opening another project asks first while a test runs or is being recorded.
+  func openProject(_ url: URL, test: String? = nil) {
+    guard let rootURL, rootURL.path != url.path else { return enter(url, test: test) }
+    leave { [weak self] in self?.enter(url, test: test) }
+  }
+
+  private func enter(_ url: URL, test: String?) {
+    remember(url)
+    if rootURL?.path != url.path || status == .unavailable { open(url) }
+    if let test {
+      sidebar = .tests
+      selection = test
+    }
+  }
+
+  /// Opens what the Finder, the Dock or a drop on the window hands over: a folder opens the
+  /// project around it, a jevision.project.json its folder, a test its project at that test.
+  /// `false` for anything else.
+  @discardableResult
+  func openItem(_ url: URL) -> Bool {
+    guard let location = projectLocationFor(path: url.path) else { return false }
+    openProject(URL(filePath: location.root, directoryHint: .isDirectory), test: location.test)
+    return true
+  }
+
+  /// Opens the project of the recent list in `path`, where its folder is now. When the folder
+  /// can't be found, says so and offers to find it.
+  func openRecent(_ path: String) {
+    guard let entry = recent.first(where: { $0.path == path }) else { return }
+    if let url = Self.folder(of: entry) {
+      if url.path != entry.path { relocate(entry.path, to: url) }
+      openProject(url)
+      return
+    }
+    summaries[path] = Self.missing(entry)
+    let alert = NSAlert()
+    alert.messageText = String(localized: "Can’t open “\(entry.name)”")
+    alert.informativeText = String(localized: "The folder was moved, deleted or is on a disk that isn’t connected.")
+    alert.addButton(withTitle: String(localized: "Locate…"))
+    alert.addButton(withTitle: String(localized: "Cancel"))
+    if alert.runModal() == .alertFirstButtonReturn, let url = locate(path) { openProject(url) }
+  }
+
+  /// Closes the project and shows the Projects screen, which the next launch shows too. Asks
+  /// first while a test runs or is being recorded.
+  func close() {
+    leave { [weak self] in
+      guard let self else { return }
+      defaults.removeObject(forKey: Key.current)
+      shut()
+      refreshSummaries()
+    }
+  }
+
+  /// Does `change`, closing the project or opening another, at once when no test runs or is
+  /// being recorded; else once `readyToLeave` says so.
+  private func leave(then change: @escaping () -> Void) {
+    guard rootURL != nil, activeWork() != nil else { return change() }
+    Task { if await readyToLeave() { change() } }
+  }
+
+  /// Whether the project can be left: at once when none is open or no test runs or is being
+  /// recorded; else the person is asked, and once they agree it is stopped and waited for.
+  /// `false` when they would rather it went on.
+  func readyToLeave() async -> Bool {
+    guard rootURL != nil, let work = activeWork() else { return true }
+    guard asksToStop(work) else { return false }
+    work.stop()
+    while activeWork() != nil { try? await Task.sleep(for: .milliseconds(50)) }
+    return true
+  }
+
+  /// Leaves the project: stops watching and using its folder and forgets what was shown of it.
+  private func shut() {
+    accessedURL?.stopAccessingSecurityScopedResource()
+    accessedURL = nil
+    watcher = nil
+    scanTask?.cancel()
+    scanTask = nil
+    rootURL = nil
+    name = ""
+    selection = nil
+    document = nil
+    showsBoard = false
+    items = []
+    filter = TestFilter()
+    show(History([]))
+    selectedRun = nil
+    runSource = nil
+    sidebar = .tests
+    historyPath = nil
+    bugReportRun = nil
+    statisticsTest = nil
+    referenceWizard = nil
+    unrestored = []
+    restoreDeclined = false
+    settings = ProjectSettings(retries: nil, quarantine: [])
+    settingsProblem = nil
+    git.open(nil)
+    ci.open(nil)
+    status = .closed
+  }
+
+  // MARK: Recent projects
+
+  /// The recent projects whose folders were there when last looked at, for the menus.
+  var openableRecent: [RecentProject] { recent.filter { summaries[$0.path]?.exists != false } }
+
+  /// How menus name `project`: by its name, with its folder when another project has the same name.
+  func menuTitle(_ project: RecentProject) -> String {
+    guard recent.contains(where: { $0.name == project.name && $0.path != project.path }) else { return project.name }
+    return "\(project.name) — \(Self.shortPath(URL(filePath: project.path).deletingLastPathComponent().path))"
+  }
+
+  /// `path` as people read it, with `~` for the home folder.
+  static func shortPath(_ path: String) -> String {
+    (path as NSString).abbreviatingWithTildeInPath
+  }
+
+  func setPinned(_ path: String, _ pinned: Bool) {
+    save(recentProjectsSetPinned(list: recent, path: path, pinned: pinned))
+  }
+
+  /// Takes the project off the list; its folder stays where it is.
+  func removeRecent(_ path: String) {
+    save(recentProjectsRemoved(list: recent, path: path))
+    summaries[path] = nil
+  }
+
+  /// Clear Menu: keeps only the pinned projects.
+  func clearRecent() {
+    save(recentProjectsCleared(list: recent))
+  }
+
+  /// Asks where the folder of the recent project in `path` is now and moves its place in the
+  /// list there; `nil` when the person cancels.
+  @discardableResult
+  func locate(_ path: String) -> URL? {
+    guard let entry = recent.first(where: { $0.path == path }) else { return nil }
+    let panel = NSOpenPanel()
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = false
+    panel.allowsMultipleSelection = false
+    panel.message = String(localized: "Choose where the folder of “\(entry.name)” is now")
+    panel.directoryURL = Self.existingParent(of: URL(filePath: path))
+    panel.prompt = String(localized: "Choose")
+    guard panel.runModal() == .OK, let url = panel.url else { return nil }
+    relocate(path, to: url)
+    return url
+  }
+
+  /// The project in `path` is in `url` now: it keeps its pin and its place in the list.
+  func relocate(_ path: String, to url: URL) {
+    move(path, to: url)
+    _ = lookAt(recent.filter { $0.path == url.path })
+  }
+
+  private func move(_ path: String, to url: URL) {
+    if defaults.string(forKey: Key.myTests) == path { defaults.set(url.path, forKey: Key.myTests) }
+    save(recentProjectsRelocated(
+      list: recent, oldPath: path, newPath: url.path, name: FileManager.default.displayName(atPath: url.path),
+      bookmark: Self.bookmark(url)))
+    summaries[path] = nil
+  }
+
+  /// Looks at the recent projects again for their cards and the menus, and follows folders that
+  /// moved on the same disk.
+  func refreshSummaries() {
+    summaryTask?.cancel()
+    summaryTask = lookAt(recent)
+  }
+
+  private func lookAt(_ list: [RecentProject]) -> Task<Void, Never> {
+    Task { [weak self] in
+      for entry in list {
+        let (summary, moved) = await Task.detached(priority: .utility) { () -> (ProjectSummary, URL?) in
+          let summary = projectSummary(root: entry.path)
+          guard !summary.exists, let moved = Self.folder(of: entry), moved.path != entry.path else { return (summary, nil) }
+          return (projectSummary(root: moved.path), moved)
+        }.value
+        guard let self, !Task.isCancelled else { return }
+        if let moved {
+          move(entry.path, to: moved)
+          summaries[moved.path] = summary
+        } else if recent.contains(where: { $0.path == entry.path }) {
+          summaries[entry.path] = summary
+        }
+      }
+    }
+  }
+
+  private func remember(_ url: URL) {
+    save(recentProjectsOpened(
+      list: recent, path: url.path, name: FileManager.default.displayName(atPath: url.path), bookmark: Self.bookmark(url),
+      now: Int64(clock().timeIntervalSince1970)))
+    defaults.set(url.path, forKey: Key.current)
+  }
+
+  private func save(_ list: [RecentProject]) {
+    recent = list
+    defaults.set(recentProjectsEncode(list: list), forKey: Key.recent)
+  }
+
+  /// Moves the one project of versions before the recent list into it, to open again at launch.
+  private func migrate() {
+    guard defaults.object(forKey: Key.recent) == nil, let bookmark = defaults.data(forKey: Key.bookmark) else { return }
+    // The path is read from the bookmark even when the folder is gone, so its card can say so.
+    if let path = URL.resourceValues(forKeys: [.pathKey], fromBookmarkData: bookmark)?.path {
+      save(recentProjectsOpened(
+        list: [], path: path, name: defaults.string(forKey: Key.name) ?? "", bookmark: bookmark,
+        now: Int64(clock().timeIntervalSince1970)))
+      defaults.set(path, forKey: Key.current)
+    }
+    defaults.removeObject(forKey: Key.bookmark)
+    defaults.removeObject(forKey: Key.name)
+  }
+
+  private static func bookmark(_ url: URL) -> Data {
+    (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil))
+      ?? (try? url.bookmarkData()) ?? Data()
+  }
+
+  /// Where the folder of `entry` is now: where its bookmark leads, which follows a folder moved
+  /// or renamed on the same disk, else its path. `nil` when it's gone, or in the Trash.
+  nonisolated static func folder(of entry: RecentProject) -> URL? {
+    var stale = false
+    // The security scope is tied to the app's signature, so a re-signed build can't use it.
+    // The app isn't sandboxed, so the plain bookmark still finds the folder; opening it saves a new one.
+    let options: URL.BookmarkResolutionOptions = [.withoutUI, .withoutMounting]
+    let found =
+      (try? URL(resolvingBookmarkData: entry.bookmark, options: options.union(.withSecurityScope), bookmarkDataIsStale: &stale))
+      ?? (try? URL(resolvingBookmarkData: entry.bookmark, options: options, bookmarkDataIsStale: &stale))
+    if let found = found.flatMap(existing), !found.pathComponents.contains(where: { $0 == ".Trash" || $0 == ".Trashes" }) {
+      return found
+    }
+    return existing(URL(filePath: entry.path, directoryHint: .isDirectory))
+  }
+
+  private nonisolated static func existing(_ url: URL) -> URL? {
+    var isFolder: ObjCBool = false
+    return FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder) && isFolder.boolValue ? url : nil
+  }
+
+  /// The nearest folder above `url` that is there, to start looking for it from.
+  private static func existingParent(of url: URL) -> URL {
+    var folder = url.deletingLastPathComponent()
+    while folder.path != "/", existing(folder) == nil { folder = folder.deletingLastPathComponent() }
+    return folder
+  }
+
+  private static func missing(_ entry: RecentProject) -> ProjectSummary {
+    ProjectSummary(exists: false, name: entry.name, testCount: 0, branch: nil, lastRun: nil, folders: [])
   }
 
   /// Shows the Install Block sheet, reading the block at `source` (a folder, a .zip file or an
@@ -246,42 +532,40 @@ final class ProjectStore {
     selection = folderID.isEmpty ? fileName : folderID + "/" + fileName
   }
 
-  /// Where a first project goes when the person hasn't chosen a folder.
-  static var defaultFolder: URL { URL.documentsDirectory.appending(path: "JEVision Tests", directoryHint: .isDirectory) }
-
-  /// Opens the default project folder, making it first if needed.
-  func openDefaultFolder() throws {
-    let url = Self.defaultFolder
-    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-    save(url)
-    open(url)
+  /// Opens the project tests go to when the person hasn't opened one: “My Tests” in Documents ›
+  /// JEVision of `home`, a project like any new one, made the first time and named `name`.
+  func openMyTests(home: URL = .homeDirectory, name: String = String(localized: "My Tests")) throws {
+    if let path = defaults.string(forKey: Key.myTests) {
+      let entry = recent.first { $0.path == path }
+      if let made = entry.flatMap(Self.folder) ?? Self.existing(URL(filePath: path, directoryHint: .isDirectory)) {
+        if let entry, made.path != entry.path { relocate(entry.path, to: made) }
+        return openProject(made)
+      }
+    }
+    let parent = projectLocations(home: home.path(percentEncoded: false))[0]
+    var folder = URL(filePath: parent, directoryHint: .isDirectory).appending(path: name, directoryHint: .isDirectory)
+    if let problem = projectNameProblem(parent: parent, name: name) {
+      // Made before, or a folder of that name with something in it: that is the one.
+      guard Self.existing(folder) != nil else { throw ProjectFolderError.Failed(reason: problem) }
+    } else {
+      folder = URL(filePath: try createProject(parent: parent, name: name, starter: .empty).path, directoryHint: .isDirectory)
+      AppLog.info("Project made: \(folder.path)", "project")
+    }
+    defaults.set(folder.path, forKey: Key.myTests)
+    openProject(folder)
   }
 
-  /// Puts the demo test in the open project, or in the default one, and selects it.
+  /// The name of “My Tests” for the person: its folder's once made, else the one it will get.
+  var myTestsName: String {
+    let made = defaults.string(forKey: Key.myTests).flatMap { Self.existing(URL(filePath: $0, directoryHint: .isDirectory)) }
+    return made?.lastPathComponent ?? String(localized: "My Tests")
+  }
+
+  /// Puts the demo test in the open project, or in “My Tests”, and selects it.
   func openDemo() throws {
-    if rootURL == nil { try openDefaultFolder() }
+    if rootURL == nil { try openMyTests() }
     guard let rootURL else { return }
     selection = try DemoTest.write(into: rootURL)
-  }
-
-  /// Copies the example project into a folder the person chooses and opens the copy; nothing
-  /// happens when they cancel.
-  func openExample() throws {
-    guard let source = ExampleProject.bundled() else { throw ExampleProject.Failure.missing }
-    let panel = NSOpenPanel()
-    panel.canChooseDirectories = true
-    panel.canChooseFiles = false
-    panel.allowsMultipleSelection = false
-    panel.canCreateDirectories = true
-    panel.message = String(localized: "Choose where to put a copy of the example project")
-    panel.directoryURL = URL.documentsDirectory
-    panel.prompt = String(localized: "Copy Here")
-    guard panel.runModal() == .OK, let parent = panel.url else { return }
-    let copy = try ExampleProject.copy(source, into: parent)
-    AppLog.info("Example project copied to \(copy.path)", "project")
-    save(copy)
-    open(copy)
-    selection = ExampleProject.firstTest
   }
 
   /// Renames the test file and the name inside it.
@@ -484,7 +768,7 @@ final class ProjectStore {
     }
   }
 
-  /// Why the project's settings couldn't be read or changed, for an alert.
+  /// Why the project, its folder or its settings couldn't be made, read or changed, for an alert.
   static func message(_ error: any Error) -> String {
     switch error {
     case ProjectSettingsError.Unreadable(let file, let reason):
@@ -503,6 +787,8 @@ final class ProjectStore {
       String(localized: "\(test) was changed meanwhile, so nothing was replaced.")
     case ReferenceError.Unwritable(let test, let reason):
       String(localized: "\(test) can’t be saved: \(reason)")
+    case ProjectFolderError.Failed(let reason):
+      reason
     default:
       error.localizedDescription
     }
@@ -607,12 +893,21 @@ final class ProjectStore {
         git.refresh()
       case .failure:
         // A moved or renamed folder is still found through the bookmark.
-        if let moved = resolveBookmark(), moved.standardizedFileURL != url.standardizedFileURL {
-          open(moved)
-        } else {
+        if let entry = recent.first(where: { $0.path == url.path }), let moved = Self.folder(of: entry),
+          moved.path != url.path
+        {
+          relocate(url.path, to: moved)
+          enter(moved, test: nil)
+        } else if Self.existing(url) != nil {
+          // The folder is there but can't be read, such as when macOS hasn't let the app into it.
           items = []
           show(History([]))
           status = .unavailable
+        } else {
+          // The Projects screen shows its card as missing, with a way to find it.
+          AppLog.error("The project folder is gone", "project")
+          shut()
+          refreshSummaries()
         }
       }
     }
@@ -644,23 +939,16 @@ final class ProjectStore {
     if flaky != history.flaky { flaky = history.flaky }
     if unreliable != history.unreliable { unreliable = history.unreliable }
   }
+}
 
-  private func save(_ url: URL) {
-    let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-    UserDefaults.standard.set(bookmark, forKey: Key.bookmark)
-    UserDefaults.standard.set(FileManager.default.displayName(atPath: url.path), forKey: Key.name)
-  }
+/// What the New Project sheet starts with.
+enum NewProjectRequest: Identifiable {
+  /// An empty project in a new folder.
+  case new
+  /// A copy of a git repository.
+  case clone
+  /// A copy of the example project that comes with the app.
+  case example
 
-  private func resolveBookmark() -> URL? {
-    guard let data = UserDefaults.standard.data(forKey: Key.bookmark) else { return nil }
-    var stale = false
-    // The security scope is tied to the app's signature, so a re-signed build can't use it.
-    // The app isn't sandboxed, so the plain bookmark still finds the folder; it is then saved again.
-    let scoped = try? URL(resolvingBookmarkData: data, options: .withSecurityScope, bookmarkDataIsStale: &stale)
-    guard let url = scoped ?? (try? URL(resolvingBookmarkData: data, options: [], bookmarkDataIsStale: &stale)),
-      FileManager.default.fileExists(atPath: url.path)
-    else { return nil }
-    if stale || scoped == nil { save(url) }
-    return url
-  }
+  var id: Self { self }
 }

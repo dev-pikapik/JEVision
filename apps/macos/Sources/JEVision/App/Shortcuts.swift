@@ -5,7 +5,9 @@ import SwiftUI
 enum Shortcuts {
   static let commandPalette = KeyboardShortcut("k")
   static let newTest = KeyboardShortcut("n")
+  static let newProject = KeyboardShortcut("n", modifiers: [.command, .shift])
   static let openProject = KeyboardShortcut("o")
+  static let closeProject = KeyboardShortcut("w", modifiers: [.command, .control])
   static let run = KeyboardShortcut("r")
   static let runStepByStep = KeyboardShortcut("r", modifiers: [.command, .option])
   static let runFromSelection = KeyboardShortcut(.return, modifiers: [.command, .shift])

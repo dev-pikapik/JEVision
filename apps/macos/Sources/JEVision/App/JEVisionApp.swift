@@ -15,6 +15,7 @@ struct JEVisionApp: App {
   /// Asks before an AI assistant runs a test, whether or not Settings is open.
   @State private var assistantRequests: AssistantRequests
   @State private var updates = Updates()
+  @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
 
   init() {
     AppLog.started()
@@ -25,6 +26,7 @@ struct JEVisionApp: App {
     let project = ProjectStore()
     let runs = RunCenter()
     let records = RecordCenter()
+    project.activeWork = { ProjectWork.current(runs: runs, records: records) }
     _project = State(initialValue: project)
     _runs = State(initialValue: runs)
     _records = State(initialValue: records)
@@ -36,11 +38,12 @@ struct JEVisionApp: App {
     let assistantRequests = AssistantRequests()
     assistantRequests.start()
     _assistantRequests = State(initialValue: assistantRequests)
+    appDelegate.project = project
   }
 
   var body: some Scene {
     Window("JEVision", id: SceneID.main) {
-      MainView()
+      MainView(appDelegate: appDelegate)
         .appLocale()
         .environment(project)
         .environment(permissions)

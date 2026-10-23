@@ -253,9 +253,11 @@ struct ResetSettingsSection: View {
 
 @MainActor
 enum SettingsReset {
-  /// Not settings: the open project and whether the welcome window was seen.
+  /// Not settings: the open and the recent projects, where “My Tests” is, and whether the
+  /// welcome window was seen.
   static let kept: Set<String> = [
-    ProjectStore.Key.bookmark, ProjectStore.Key.name, ProjectStore.Key.selection, OnboardingView.doneKey,
+    ProjectStore.Key.recent, ProjectStore.Key.current, ProjectStore.Key.selection, ProjectStore.Key.myTests,
+    OnboardingView.doneKey,
   ]
 
   static func reset(_ defaults: UserDefaults, domain: String) {

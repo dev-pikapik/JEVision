@@ -12,12 +12,14 @@ use std::process::{Command, Output, Stdio};
 use jevision_l10n::{tr, tr_in};
 
 mod atomic;
+mod clone;
 mod github;
 mod notes;
 mod signin;
 #[cfg(test)]
 mod tests;
 
+pub use clone::{CloneFailure, clone_folder_name, repository_address};
 pub use github::{
     API, ATTACHMENTS_BRANCH, Artifact, GitHub, GitHubAccount, GitHubIssue, GitHubRepo, IssueState,
     IssueStatus, PullRequest, PullRequestChanges, PullRequestDraft,
@@ -303,6 +305,22 @@ impl Git {
             .env("GIT_OPTIONAL_LOCKS", "0")
             .envs(self.env.iter().map(|(k, v)| (k, v)));
         command
+    }
+
+    /// Offers the command the user's GitHub sign-in: JEVision's own when it talks to a GitHub
+    /// repository (`to_github`), otherwise GitHub CLI's.
+    fn offer_github_sign_in(&self, command: &mut Command, to_github: bool) {
+        if let Some(token) = to_github.then(signin::token).flatten() {
+            command
+                .args(["-c", GITHUB_CREDENTIAL])
+                .env(GITHUB_TOKEN_VARIABLE, token);
+        } else if let Some(gh) = &self.gh {
+            let helper = format!(
+                "credential.https://github.com.helper=!'{}' auth git-credential",
+                gh.display()
+            );
+            command.args(["-c", &helper]);
+        }
     }
 
     fn output(&self, dir: &Path, args: &[&str]) -> Result<Output, GitError> {
@@ -802,18 +820,8 @@ impl Repo {
     /// own, otherwise GitHub CLI's.
     fn network(&self, args: &[&str]) -> Result<(), GitError> {
         let mut command = self.git.command(&self.dir);
-        let token = self.github().ok().and_then(|_| signin::token());
-        if let Some(token) = token {
-            command
-                .args(["-c", GITHUB_CREDENTIAL])
-                .env(GITHUB_TOKEN_VARIABLE, token);
-        } else if let Some(gh) = &self.git.gh {
-            let helper = format!(
-                "credential.https://github.com.helper=!'{}' auth git-credential",
-                gh.display()
-            );
-            command.args(["-c", &helper]);
-        }
+        self.git
+            .offer_github_sign_in(&mut command, self.github().is_ok());
         self.check(self.git.spawn(command.args(args))?).map(drop)
     }
 
@@ -891,10 +899,16 @@ fn classify(text: &str) -> GitError {
     ]) {
         return GitError::SignIn;
     }
-    if has(&[
-        "Repository not found",
-        "does not appear to be a git repository",
-    ]) {
+    let no_such_repository = text.lines().any(|line| {
+        line.starts_with("fatal: repository '")
+            && (line.ends_with("' not found") || line.ends_with("' does not exist"))
+    });
+    if no_such_repository
+        || has(&[
+            "Repository not found",
+            "does not appear to be a git repository",
+        ])
+    {
         return GitError::RemoteNotFound;
     }
     if has(&[
@@ -973,6 +987,33 @@ pub fn display_url(url: &str) -> String {
         }
         _ => url.to_owned(),
     }
+}
+
+/// The branch checked out in the repository the folder `folder` is in, read from its `HEAD`
+/// file without running git, so that it's quick enough for a list of projects. Works in a
+/// linked worktree too, where `.git` is a file naming the repository's folder for it. `None`
+/// outside a repository and when `HEAD` is detached, at a commit rather than a branch (as in
+/// the middle of a rebase): there is no branch name to show then.
+pub fn head_branch(folder: &Path) -> Option<String> {
+    let git = folder
+        .ancestors()
+        .map(|dir| dir.join(".git"))
+        .find(|git| git.exists())?;
+    let dir = if git.is_file() {
+        let text = std::fs::read_to_string(&git).ok()?;
+        let target = text.lines().next()?.strip_prefix("gitdir:")?.trim();
+        git.parent()?.join(target)
+    } else {
+        git
+    };
+    let head = std::fs::read_to_string(dir.join("HEAD")).ok()?;
+    let reference = head.trim().strip_prefix("ref:")?.trim();
+    Some(
+        reference
+            .strip_prefix("refs/heads/")
+            .unwrap_or(reference)
+            .to_owned(),
+    )
 }
 
 /// `name` in `PATH` or in the usual tool folders, if it can run here.

@@ -1,4 +1,5 @@
 use std::fs;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::*;
 
@@ -1741,4 +1742,195 @@ fn errors_are_told_in_the_language_asked_for() {
         message: "fatal: bad object".into(),
     };
     assert_eq!(failed.text_in("ru"), "fatal: bad object");
+}
+
+/// A repository with one commit on `main`, to copy.
+fn origin(scratch: &Scratch) -> (Git, PathBuf) {
+    let (git, repo) = repository(scratch);
+    let top = scratch.0.join("repo");
+    write(&top, "qa/login.flow.json", "{}");
+    repo.commit(&["login.flow.json".into()], "Add a test")
+        .unwrap();
+    (git, top)
+}
+
+#[test]
+fn a_repository_is_copied_into_a_new_folder() {
+    let scratch = Scratch::new("clone");
+    let (git, top) = origin(&scratch);
+    let url = format!("file://{}", top.display());
+    let into = scratch.0.join("projects/shop");
+    let never = AtomicBool::new(false);
+
+    let repo = git.clone_repository(&url, &into, &never).unwrap();
+    assert_eq!(read(&into, "qa/login.flow.json"), "{}");
+    assert_eq!(repo.status().unwrap().branch.as_deref(), Some("main"));
+    assert_eq!(head_branch(&into.join("qa")).as_deref(), Some("main"));
+    assert_eq!(
+        git.clone_repository(&url, &into, &never).unwrap_err(),
+        CloneFailure::FolderExists
+    );
+    // An empty folder is fine to copy into.
+    let empty = scratch.0.join("projects/empty");
+    fs::create_dir_all(&empty).unwrap();
+    git.clone_repository(&url, &empty, &never).unwrap();
+    assert_eq!(read(&empty, "qa/login.flow.json"), "{}");
+}
+
+#[test]
+fn a_copy_that_fails_says_why_and_leaves_nothing_behind() {
+    let scratch = Scratch::new("clone-missing");
+    let git = scratch.git();
+    let missing = scratch.0.join("nowhere");
+    let into = scratch.0.join("projects/shop");
+    let failure = git
+        .clone_repository(
+            &missing.display().to_string(),
+            &into,
+            &AtomicBool::new(false),
+        )
+        .unwrap_err();
+    let CloneFailure::Git { error, detail } = failure else {
+        panic!("{failure:?}");
+    };
+    assert_eq!(error, GitError::RemoteNotFound);
+    assert_eq!(
+        detail,
+        format!("repository '{}' does not exist", missing.display())
+    );
+    assert!(!into.exists());
+    // An empty folder chosen to copy into stays, empty.
+    fs::create_dir_all(&into).unwrap();
+    let url = missing.display().to_string();
+    assert!(
+        git.clone_repository(&url, &into, &AtomicBool::new(false))
+            .is_err()
+    );
+    assert_eq!(fs::read_dir(&into).unwrap().count(), 0);
+}
+
+#[test]
+fn a_copy_stops_at_once_when_cancelled() {
+    let scratch = Scratch::new("clone-cancel");
+    // Stands in for a git that starts copying and never finishes, with a helper of its own
+    // whose id it leaves next to the copy.
+    let exe = scratch.0.join("git");
+    fs::write(
+        &exe,
+        "#!/bin/sh\n[ \"$1\" = clone ] || exit 1\nmkdir -p \"$4\"\nsleep 30 &\n\
+         echo $! > \"$4.tmp\" && mv \"$4.tmp\" \"$4.pid\"\nwait\n",
+    )
+    .unwrap();
+    let mut mode = fs::metadata(&exe).unwrap().permissions();
+    std::os::unix::fs::PermissionsExt::set_mode(&mut mode, 0o755);
+    fs::set_permissions(&exe, mode).unwrap();
+    let into = scratch.0.join("projects/shop");
+    let cancelled = AtomicBool::new(false);
+    let started = std::time::Instant::now();
+    let result = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            while !into.with_extension("pid").exists() && started.elapsed().as_secs() < 10 {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            cancelled.store(true, Ordering::Relaxed);
+        });
+        Git::at(&exe).clone_repository("https://example.com/shop.git", &into, &cancelled)
+    });
+    assert_eq!(result.unwrap_err(), CloneFailure::Cancelled);
+    assert!(started.elapsed().as_secs() < 10);
+    assert!(!into.exists());
+    let helper: i32 = fs::read_to_string(into.with_extension("pid"))
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    // SAFETY: signal 0 is not sent; `kill` only says whether the process is there.
+    let gone = (0..200).any(|_| {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        (unsafe { libc::kill(helper, 0) }) != 0
+    });
+    assert!(gone, "the helper git started is still running");
+}
+
+#[test]
+fn the_branch_is_read_without_git() {
+    let scratch = Scratch::new("head");
+    let (git, top) = origin(&scratch);
+    assert_eq!(head_branch(&top.join("qa")).as_deref(), Some("main"));
+    assert_eq!(head_branch(&top).as_deref(), Some("main"));
+
+    let tree = scratch.0.join("feature-tree");
+    sh(
+        &git,
+        &top,
+        &[
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "feature/login",
+            tree.to_str().unwrap(),
+        ],
+    );
+    assert!(tree.join(".git").is_file());
+    assert_eq!(
+        head_branch(&tree.join("qa")).as_deref(),
+        Some("feature/login")
+    );
+
+    sh(&git, &top, &["checkout", "--quiet", "--detach"]);
+    assert_eq!(head_branch(&top), None);
+    let outside = scratch.0.join("outside");
+    fs::create_dir_all(&outside).unwrap();
+    assert_eq!(head_branch(&outside), None);
+}
+
+#[test]
+fn a_copy_is_named_after_the_repository() {
+    for (url, name) in [
+        ("https://github.com/acme/shop-tests.git", "shop-tests"),
+        ("https://github.com/acme/shop-tests/", "shop-tests"),
+        ("git@github.com:acme/shop-tests.git", "shop-tests"),
+        ("git@example.com:shop.git", "shop"),
+        ("ssh://git@example.com:2222/team/QA%20Suite", "QA%20Suite"),
+        ("file:///Users/ann/repos/bank/.git", "bank"),
+        (" /Users/ann/repos/bank ", "bank"),
+        ("", ""),
+    ] {
+        assert_eq!(clone_folder_name(url), name, "{url}");
+    }
+}
+
+#[test]
+fn a_copied_repository_address_is_told_from_other_text() {
+    for address in [
+        "https://github.com/acme/shop-tests.git",
+        "HTTPS://github.com/acme/shop-tests",
+        "http://git.example.com/team/shop",
+        "git@github.com:acme/shop-tests.git",
+        "ssh://git@example.com:2222/team/shop.git",
+        "git://example.com/shop.git",
+        "file:///Users/ann/repos/bank",
+    ] {
+        assert_eq!(
+            repository_address(&format!(" {address}\n")).as_deref(),
+            Some(address)
+        );
+    }
+    for text in [
+        "",
+        "Buy milk",
+        "https://github.com",
+        "https://github.com/",
+        "https:///acme/shop",
+        "see https://github.com/acme/shop",
+        "/Users/ann/repos/bank",
+        "acme/shop",
+        "git@github.com:",
+        "@github.com:acme/shop",
+        "C:/Users/ann/shop",
+        "mailto:ann@example.com",
+    ] {
+        assert_eq!(repository_address(text), None, "{text}");
+    }
 }

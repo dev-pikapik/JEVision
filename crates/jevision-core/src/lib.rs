@@ -9,12 +9,14 @@ mod batch;
 mod board;
 mod canvas;
 mod ci;
+mod create;
 mod data;
 mod decode;
 mod diff;
 mod edit;
 mod env;
 mod filter;
+mod folder;
 mod index;
 mod issue;
 mod layout;
@@ -24,6 +26,7 @@ mod notes;
 mod package;
 mod package_files;
 mod project;
+mod recent;
 mod references;
 mod route;
 mod schedule;
@@ -45,6 +48,10 @@ pub use ci::{
     CI_ARTIFACT, CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, ci_workflow, ci_workflow_text,
     repository_root, write_ci_workflow,
 };
+pub use create::{
+    CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,
+    gitignore_add, gitignore_needs_run_folder, project_locations, project_name_problem,
+};
 pub use data::{DataError, DataTable, parse_row_choice, primary_data_file, validate_data};
 pub use decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS, parse, parse_block};
 pub use diff::{BlockChange, BlockChangeKind, FlowDiff, diff};
@@ -55,6 +62,7 @@ pub use env::{
     validate_environment_values,
 };
 pub use filter::{TestCard, TestFilter};
+pub use folder::{ProjectLocation, project_files, project_location_for};
 pub use index::{ARROW_REACH, BoardHeading, BoardIndex, BoardVisible, RectIndex};
 pub use issue::{
     Issue, IssueParam, ParseError, Severity, describe, describe_in, sentence, sentence_in,
@@ -89,6 +97,11 @@ pub use package_files::{
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
     PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
+};
+pub use recent::{
+    MAX_RECENT_PROJECTS, RecentProject, recent_projects_cleared, recent_projects_decode,
+    recent_projects_encode, recent_projects_matching, recent_projects_opened,
+    recent_projects_relocated, recent_projects_removed, recent_projects_set_pinned,
 };
 pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_settings};
 pub use route::route_around;

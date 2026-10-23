@@ -25,7 +25,7 @@ struct CommandPaletteTests {
 
   @Test func offersOnlyWhatCanBeDoneNow() {
     let closed = actions(PaletteState())
-    #expect(closed == [.openProject, .settings])
+    #expect(closed == [.newProject, .cloneRepository, .openProject, .settings])
 
     let open = actions(editing)
     #expect(open.contains(.run))
@@ -42,6 +42,27 @@ struct CommandPaletteTests {
     running.canRun = false
     #expect(!actions(running).contains(.run))
     #expect(!actions(running).contains(.record))
+  }
+
+  @Test func offersTheProjectsScreenAndOtherProjects() {
+    var closed = PaletteState()
+    closed.boards = ["Overview"]
+    closed.recentProjects = [("/Users/me/Shop", "Shop", "~/Shop")]
+    #expect(
+      actions(closed) == [.newProject, .cloneRepository, .openProject, .settings, .openRecentProject("/Users/me/Shop")],
+      "No boards without a project")
+    let shop = CommandPalette.entries(closed).last
+    #expect(shop?.kind == .project)
+    #expect(shop?.title == "Shop")
+    #expect(shop?.detail == "~/Shop")
+    let found = CommandPalette.search("shop", in: CommandPalette.entries(closed))
+    #expect(found.first?.action == .openRecentProject("/Users/me/Shop"))
+
+    var open = editing
+    open.recentProjects = closed.recentProjects
+    #expect(actions(open).contains(.projects))
+    #expect(actions(open).last == .openRecentProject("/Users/me/Shop"))
+    #expect(!actions(closed).contains(.projects), "No project to close")
   }
 
   @Test func offersBugReportsAndStatisticsOnceTestsHaveRun() {
@@ -113,6 +134,8 @@ struct CommandPaletteTests {
     #expect(first("sign") == .openTest("Login/Sign In.flow.json"))
     #expect(first("login") == .openTest("Login/Sign In.flow.json"), "A test is found by its folder")
     #expect(first("debug") == .runStepByStep, "A command is found by its keywords")
+    #expect(first("clone") == .cloneRepository)
+    #expect(first("new proj") == .newProject)
     #expect(first("basket 4242") == .openTest("Checkout.flow.json"), "A test is found by what it says and does")
     #expect(CommandPalette.search("", in: entries) == entries)
     #expect(CommandPalette.search("zzzz", in: entries).isEmpty)
@@ -132,6 +155,7 @@ struct CommandPaletteTests {
   @Test func writesShortcutsTheWayMenusDo() {
     #expect(Shortcuts.symbols(Shortcuts.commandPalette) == "⌘K")
     #expect(Shortcuts.symbols(Shortcuts.record) == "⇧⌘R")
+    #expect(Shortcuts.symbols(Shortcuts.newProject) == "⇧⌘N")
     #expect(Shortcuts.symbols(Shortcuts.runAll) == "⌃⌘R")
     #expect(Shortcuts.symbols(Shortcuts.disconnect) == "⌥⌘L")
     #expect(Shortcuts.symbols(Shortcuts.runFromSelection) == "⇧⌘↩")

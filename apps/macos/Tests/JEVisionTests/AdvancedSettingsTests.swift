@@ -10,10 +10,12 @@ struct AdvancedSettingsTests {
     defer { defaults.removePersistentDomain(forName: suite) }
     defaults.set("dark", forKey: "appearance")
     defaults.set(true, forKey: OnboardingView.doneKey)
-    defaults.set("Smoke", forKey: ProjectStore.Key.name)
+    defaults.set("[]", forKey: ProjectStore.Key.recent)
+    defaults.set("/Users/me/Smoke", forKey: ProjectStore.Key.current)
     SettingsReset.reset(defaults, domain: suite)
     #expect(defaults.object(forKey: "appearance") == nil)
     #expect(defaults.bool(forKey: OnboardingView.doneKey))
-    #expect(defaults.string(forKey: ProjectStore.Key.name) == "Smoke")
+    #expect(defaults.string(forKey: ProjectStore.Key.recent) == "[]")
+    #expect(defaults.string(forKey: ProjectStore.Key.current) == "/Users/me/Smoke")
   }
 }

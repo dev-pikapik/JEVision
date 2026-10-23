@@ -147,22 +147,6 @@ struct CrashReportTests {
 }
 
 struct GuideTests {
-  @Test func theExampleIsCopiedAndTheOriginalStaysAsItWas() throws {
-    let parent = temporaryFolder()
-    defer { try? FileManager.default.removeItem(at: parent) }
-    let source = repository.appending(path: "examples/textedit", directoryHint: .isDirectory)
-    let before = try FileManager.default.contentsOfDirectory(atPath: source.path).sorted()
-    try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-
-    let first = try ExampleProject.copy(source, into: parent)
-    let second = try ExampleProject.copy(source, into: parent)
-    #expect(first.lastPathComponent == ExampleProject.name)
-    #expect(second.lastPathComponent == "\(ExampleProject.name) 2")
-    #expect(FileManager.default.fileExists(atPath: first.appending(path: ExampleProject.firstTest).path))
-    try FileManager.default.removeItem(at: first.appending(path: ExampleProject.firstTest))
-    #expect(try FileManager.default.contentsOfDirectory(atPath: source.path).sorted() == before)
-  }
-
   @Test func theExampleAndTheGuideAreWhereTheBuildScriptTakesThemFrom() {
     #expect(FileManager.default.fileExists(atPath: repository.appending(path: "examples/textedit/\(ExampleProject.firstTest)").path))
     #expect(FileManager.default.fileExists(atPath: repository.appending(path: "docs/vm.html").path))

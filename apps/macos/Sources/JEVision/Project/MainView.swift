@@ -8,7 +8,9 @@ struct MainView: View {
   @Environment(\.openSettings) private var openSettings
   @Environment(\.undoManager) private var undoManager
   @AppStorage(OnboardingView.doneKey) private var onboardingDone = false
-  /// The New Test sheet was opened to record: the test it creates is recorded once it closes.
+  let appDelegate: AppDelegate
+  /// The New Test or New Project sheet was opened to record: the test it creates is recorded
+  /// once it closes.
   @State private var recordsNewTest = false
   @State private var createdTestToRecord = false
 
@@ -21,17 +23,15 @@ struct MainView: View {
     Group {
       switch project.status {
       case .closed:
-        EmptyStateView(
-          symbol: "folder",
-          title: Text("Open a project"),
-          message: Text("Choose the folder that holds your tests. JEVision shows every .flow.json file in it."),
-          action: Text("Open Project…"), perform: project.choose)
+        ProjectsHomeView()
       case .unavailable:
+        // The folder is there, but its tests can't be read.
         EmptyStateView(
-          symbol: "questionmark.folder",
+          symbol: "lock.trianglebadge.exclamationmark",
           title: Text("Can’t open “\(project.name)”"),
-          message: Text("The folder was moved, deleted or is on a disk that isn’t connected. Choose it again to keep working."),
-          action: Text("Open Project…"), perform: project.choose)
+          message: Text("JEVision can’t read this folder. Allow it in System Settings › Privacy & Security › Files and Folders, then try again."),
+          action: Text("Try Again"), perform: { if let url = project.rootURL { project.openProject(url) } },
+          secondAction: Text("Close Project"), performSecond: project.close)
       case .loading:
         ProgressView()
           .accessibilityLabel(Text("Looking for tests"))
@@ -45,6 +45,9 @@ struct MainView: View {
     .sheet(isPresented: $project.isCreatingTest, onDismiss: recordCreatedTest) {
       NewTestSheet(records: recordsNewTest) { createdTestToRecord = recordsNewTest }
     }
+    .sheet(item: $project.newProject, onDismiss: recordCreatedTest) { request in
+      NewProjectSheet(request: request) { (recordsNewTest, createdTestToRecord) = (true, true) }
+    }
     .sheet(isPresented: Binding(get: { project.historyPath != nil }, set: { if !$0 { project.historyPath = nil } })) {
       if let path = project.historyPath { HistoryView(path: path, undoManager: undoManager) }
     }
@@ -55,9 +58,12 @@ struct MainView: View {
     .sheet(isPresented: $project.showsCustomBlocks) { CustomBlocksSheet() }
     .sheet(item: $project.owningBlock) { OwnBlockSheet(model: $0) }
     .dropDestination(for: URL.self) { urls, _ in
-      guard project.status == .ready, let source = urls.lazy.compactMap(BlockInstallModel.source).first else { return false }
-      project.installBlock(from: source)
-      return true
+      if project.status == .ready, let source = urls.lazy.compactMap(BlockInstallModel.source).first {
+        project.installBlock(from: source)
+        return true
+      }
+      // A project folder or one of its files opens that project.
+      return urls.contains { project.openItem($0) }
     }
     .sheet(item: $project.referenceWizard) { ReferenceWizardView(wizard: $0, undoManager: undoManager) }
     .sheet(isPresented: $schedules.isShowingSheet) { SchedulesSheet() }
@@ -92,8 +98,9 @@ struct MainView: View {
       }
     }
     .frame(minWidth: 640, minHeight: 420)
-    .navigationTitle(project.rootURL == nil ? "JEVision" : project.name)
+    .navigationTitle(project.rootURL == nil ? Text("Projects") : Text(verbatim: project.name))
     .onAppear {
+      appDelegate.showMainWindow = { openWindow(id: SceneID.main) }
       if !onboardingDone { openWindow(id: SceneID.onboarding) }
     }
   }

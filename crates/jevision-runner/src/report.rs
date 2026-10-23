@@ -101,6 +101,14 @@ pub struct UsedPackage {
 }
 
 impl RunReport {
+    /// When the run ended, in seconds since 1970 in UTC; `None` when the start time can't be
+    /// read.
+    pub fn finished_at(&self) -> Option<i64> {
+        let started = chrono::DateTime::parse_from_rfc3339(&self.started_at).ok()?;
+        let ms = started.timestamp_millis() + i64::try_from(self.duration_ms).ok()?;
+        Some(ms.div_euclid(1000))
+    }
+
     /// The run failed while the test was in quarantine, so it doesn't fail a batch of runs.
     pub fn is_quarantined_failure(&self) -> bool {
         self.quarantined && self.verdict == Verdict::Failed

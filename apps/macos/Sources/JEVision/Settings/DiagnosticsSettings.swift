@@ -75,14 +75,16 @@ struct CrashReportsSection: View {
 struct GuidesSection: View {
   @Environment(ProjectStore.self) private var project
   @Environment(\.openWindow) private var openWindow
-  @State private var failure: String?
 
   var body: some View {
     Section {
       LabeledContent {
-        Button("Open…", action: openExample)
+        Button("Open…") {
+          project.newProject = .example
+          openWindow(id: SceneID.main)
+        }
       } label: {
-        RowLabel(Text("Open the example project"), Text("A copy of a ready test for TextEdit, in a folder you choose"))
+        RowLabel(Text("Open the example project"), Text("A new project with a ready test for TextEdit"))
       }
       .settingAnchor("exampleProject")
       LabeledContent {
@@ -93,24 +95,6 @@ struct GuidesSection: View {
       .settingAnchor("vmGuide")
     } header: {
       Text("Learn")
-    }
-    .alert(
-      "Couldn’t open the example project",
-      isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } }),
-      presenting: failure
-    ) { _ in
-      Button("OK") {}
-    } message: { Text($0) }
-  }
-
-  private func openExample() {
-    do {
-      let before = project.rootURL
-      try project.openExample()
-      if project.rootURL != before { openWindow(id: SceneID.main) }
-    } catch {
-      AppLog.error("The example project couldn’t be opened: \(error.localizedDescription)", "project")
-      failure = error.localizedDescription
     }
   }
 }
