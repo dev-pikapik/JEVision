@@ -75,6 +75,7 @@
     <li><a href="#csv">Data tables</a></li>
     <li><a href="#report">Run reports</a></li>
     <li><a href="#schedule-history">Schedule history</a></li>
+    <li><a href="#last-results">Last results</a></li>
     <li><a href="#versions">Format versions</a></li>
   </ul>
 </nav>
@@ -96,6 +97,7 @@
     <tr><td><code>jevision.notifications.json</code></td><td><a href="notifications.html">Notifications</a> to Slack, Telegram and email</td><td>Yes</td></tr>
     <tr><td><code>.jevision/runs/</code></td><td>Reports, screenshots and videos of runs</td><td>No</td></tr>
     <tr><td><code>.jevision/schedule-history.json</code></td><td>What came of scheduled runs on this Mac</td><td>No</td></tr>
+    <tr><td><code>.jevision/last-results.json</code></td><td>The <a href="#last-results">last result of each test</a>, kept between CI runs</td><td>No</td></tr>
   </tbody>
 </table>
 </div>
@@ -275,6 +277,7 @@
 <h2 id="schedule-history">Schedule history</h2>
 <p><code>.jevision/schedule-history.json</code> keeps the newest 200 scheduled runs on this Mac, oldest first. <code>checkedAt</code> is the minute the schedules were last checked, counted in local time from the start of 1970:</p>
 <pre><code>{
+  "format": 1,
   "checkedAt": 29483460,
   "runs": [
     { "schedule": "Nightly", "startedAtMs": 1792292400000, "durationMs": 81000,
@@ -283,10 +286,22 @@
       "outcome": { "result": "skipped", "reason": "screenLocked" } }
   ]
 }</code></pre>
-<p><code>result</code> is <code>finished</code> (with the numbers of tests that passed and failed), <code>skipped</code> (with <code>reason</code> <code>screenLocked</code>, <code>noUser</code> or <code>notAllowed</code>) or <code>error</code> (with a <code>message</code>). If the file can't be read, it starts over: it is only a record and never stops schedules.</p>
+<p><code>result</code> is <code>finished</code> (with the numbers of tests that passed and failed), <code>skipped</code> (with <code>reason</code> <code>screenLocked</code>, <code>noUser</code> or <code>notAllowed</code>) or <code>error</code> (with a <code>message</code>). A damaged file starts over: it is only a record, and damage to it doesn't stop schedules. A file without <code>format</code> is read as format 1, and an older format is upgraded the next time the schedules are checked. A file from a newer JEVision is refused and left as it is, so the newer version still finds everything it wrote: scheduled runs on this Mac wait until JEVision is updated.</p>
+
+<h2 id="last-results">Last results</h2>
+<p><code>.jevision/last-results.json</code> keeps, for each test file, the last run that passed or failed: its folder in <code>.jevision/runs</code>, its <code>verdict</code>, and <code>before</code>, the verdict kept before it. Notifications read it to tell a new failure from an old one where the run history is gone, as in a CI job that starts from a fresh copy of the repository; see <a href="notifications.html#last-results">Keeping the last results between CI runs</a>. A stopped or blocked run leaves it as it was.</p>
+<pre><code>{
+  "format": 1,
+  "tests": {
+    "login.flow.json": { "run": "20261019-093000-login", "verdict": "failed", "before": "passed" },
+    "cart.flow.json": { "run": "20261019-093100-cart", "verdict": "passed" }
+  }
+}</code></pre>
+<p>If the file can't be read, it starts over: it is only a record and never stops a run. A file without <code>format</code> is read as format 1, and an older format is upgraded when a run saves the file. A file from a newer JEVision is left as it is: this version takes no last results from it and doesn't record its runs in it, so the newer version still finds everything it wrote.</p>
+<p>The app, <code>jevision</code> and the assistant's server may finish runs of the same project at once. Each takes its turn through <code>.jevision/last-results.json.lock</code> beside the file, so no result is lost. The lock file stays; it holds nothing.</p>
 
 <h2 id="versions">Format versions</h2>
-<p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand.</p>
+<p>Every JSON file JEVision writes starts with <code>"format"</code> and a number, <code>1</code> for all of them except the notification settings, which are at <code>2</code> (format 1 is still read). When a format changes in a way older versions can't read, the number goes up. A JEVision that finds a newer format than it knows refuses the file with “format 2 is from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. The <a href="#last-results">last results</a> are only a record, so a newer one is left alone without a word.</p>
 <p><code>block.json</code> of a package has a <code>"format"</code> of its own, at <code>1</code>. A JEVision that finds a newer one refuses the package.</p>
 <p>New blocks and fields that have a default, such as <code>modifiers</code> and <code>button</code> of a drag, <code>modifiers</code> of a hover or scroll, the <code>area</code> target, the <code>clipboard</code> and <code>dateTime</code> blocks with their <code>image</code>, <code>content</code>, <code>language</code> and <code>timeZone</code>, and the types of script inputs and outputs, don't change the number: every test written before they existed still opens and runs, and a field left at its default isn't written. A JEVision older than the feature reports the new field or block as unknown instead of ignoring it.</p>
 </main>

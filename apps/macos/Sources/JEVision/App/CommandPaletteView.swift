@@ -155,7 +155,7 @@ struct CommandPaletteView: View {
     var state = PaletteState()
     state.hasProject = project.status == .ready
     state.hasTest = flow != nil && document?.isReadOnly != true
-    state.canRun = !runs.isRunning && !records.isRecording && project.rootURL != nil && flow != nil
+    state.canRun = !runs.isBusy && !records.isRecording && project.rootURL != nil && flow != nil
       && document?.beforeDraft == nil
     state.selection = selection
     if let selection, let document {

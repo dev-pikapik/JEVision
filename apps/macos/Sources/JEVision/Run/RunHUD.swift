@@ -354,7 +354,10 @@ struct RunHUD: View {
 
   /// The tests of the batch running now and the next ones waiting, with what each waits for.
   private func queue(_ batch: RunCenter.Batch) -> some View {
-    let running = batch.entries.filter { $0.state == .running }
+    // The test the sheet holds back hasn't started, though the plan counts it as running.
+    let running = batch.entries.indices.filter { index in
+      batch.entries[index].state == .running && center.blocked?.position != UInt32(index)
+    }.map { batch.entries[$0] }
     let waiting = batch.entries.filter(Self.isWaiting)
     let names = Dictionary(batch.entries.map { ($0.file, $0.name) }, uniquingKeysWith: { first, _ in first })
     return VStack(alignment: .leading, spacing: 3) {

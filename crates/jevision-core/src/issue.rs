@@ -180,6 +180,22 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.noCheck" => tr_in!(lang, "flow.noCheck"),
         "flow.reference.notSaved" => tr_in!(lang, "flow.reference.notSaved", p("path")),
         "flow.file.missing" => tr_in!(lang, "flow.file.missing", p("path")),
+        "check.path.absolute" => tr_in!(lang, "check.path.absolute", p("path")),
+        "check.path.backslash" => tr_in!(lang, "check.path.backslash", p("path"), p("fixed")),
+        "check.path.outside" => tr_in!(lang, "check.path.outside", p("path")),
+        "check.path.link" => tr_in!(lang, "check.path.link", p("path")),
+        "check.path.case" => tr_in!(lang, "check.path.case", p("file"), p("actual")),
+        "check.file.missing" => tr_in!(lang, "check.file.missing", p("path")),
+        "check.folder.missing" => tr_in!(lang, "check.folder.missing", p("path")),
+        "check.file.large" => {
+            tr_in!(
+                lang,
+                "check.file.large",
+                p("path"),
+                megabytes(lang, p("bytes"))
+            )
+        }
+        "check.unreadable" => tr_in!(lang, "project.file.unreadable", p("path"), p("reason")),
         "flow.env.unknown" => {
             tr_in!(
                 lang,

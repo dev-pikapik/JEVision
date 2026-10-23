@@ -12,7 +12,8 @@ final class ProjectSchedules {
   private(set) var all: [ProjectSchedule] = []
   /// Scheduled runs on this Mac, newest first.
   private(set) var runs: [ScheduledRun] = []
-  /// Why the schedule file can't be read.
+  /// Why the schedule file or the history of its runs can't be read; the schedules don't run
+  /// on this Mac until it can.
   private(set) var problem: String?
   /// macOS has the job that starts the schedules, as they are now.
   private(set) var isOn = false
@@ -54,7 +55,12 @@ final class ProjectSchedules {
     } catch {
       problem = error.localizedDescription
     }
-    runs = (try? scheduledRuns(project: path)) ?? []
+    do {
+      runs = try scheduledRuns(project: path)
+    } catch {
+      runs = []
+      problem = problem ?? error.localizedDescription
+    }
   }
 
   /// Has macOS replace a job that no longer matches the file and, when `evenIfOff`, install one

@@ -96,7 +96,7 @@ impl ScreenLock {
             .create(true)
             .truncate(false)
             .open(path)?;
-        if !lock(&file)? {
+        if !lock(&file, false)? {
             let mut text = String::new();
             let _ = file.read_to_string(&mut text);
             return Ok(Err(serde_json::from_str(&text).ok()));
@@ -111,38 +111,46 @@ impl ScreenLock {
     }
 }
 
-/// Locks `file` for this open file, which also keeps out the other runs of this process.
-/// Returns whether it got the lock.
+/// Locks `file` for this open file, which also keeps out the other runs of this process; with
+/// `wait`, as soon as whoever has it lets go. Returns whether it got the lock.
 #[cfg(unix)]
-fn lock(file: &File) -> io::Result<bool> {
+pub(crate) fn lock(file: &File, wait: bool) -> io::Result<bool> {
     use std::os::fd::AsRawFd;
-    // SAFETY: `flock` only reads the descriptor, which `file` keeps open.
-    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
-        return Ok(true);
-    }
-    let error = io::Error::last_os_error();
-    if error.kind() == io::ErrorKind::WouldBlock {
-        Ok(false)
+    let how = if wait {
+        libc::LOCK_EX
     } else {
-        Err(error)
+        libc::LOCK_EX | libc::LOCK_NB
+    };
+    loop {
+        // SAFETY: `flock` only reads the descriptor, which `file` keeps open.
+        if unsafe { libc::flock(file.as_raw_fd(), how) } == 0 {
+            return Ok(true);
+        }
+        let error = io::Error::last_os_error();
+        match error.kind() {
+            io::ErrorKind::Interrupted => {}
+            io::ErrorKind::WouldBlock => return Ok(false),
+            _ => return Err(error),
+        }
     }
 }
 
-/// Where this platform's runner will keep its own lock; until then every run gets the screen.
+/// Where this platform's runner will keep its own lock; until then every run gets the screen,
+/// and only the runs of one process take turns with the last results.
 #[cfg(not(unix))]
-fn lock(_: &File) -> io::Result<bool> {
+pub(crate) fn lock(_: &File, _: bool) -> io::Result<bool> {
     Ok(true)
 }
 
 #[cfg(unix)]
-fn unlock(file: &File) {
+pub(crate) fn unlock(file: &File) {
     use std::os::fd::AsRawFd;
     // SAFETY: `flock` only reads the descriptor, which `file` keeps open.
     unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_UN) };
 }
 
 #[cfg(not(unix))]
-fn unlock(_: &File) {}
+pub(crate) fn unlock(_: &File) {}
 
 /// The lock file every JEVision program on this Mac shares:
 /// `~/Library/Application Support/JEVision/screen.lock`. A program that tests JEVision without

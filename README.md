@@ -477,15 +477,18 @@ jevision run tests/ --provider ollama --model qwen2.5vl:7b   # check by meaning 
 jevision run tests/ --json                # print results as JSON; progress goes to standard error
 jevision validate tests/                  # report errors and warnings (--json for machines)
 jevision fmt tests/                       # rewrite files in canonical form (--check to only report)
+jevision check                            # the project carries every file its tests read (--json too)
 jevision blocks list                      # the custom blocks installed in the project (install, update, remove too)
 jevision schedule run ~/Projects/AcmeMail # run the schedules of a project that are due now
 jevision --version                        # print the version (-V for short)
+jevision version --json                   # the version, file formats and protocols it supports, as JSON
 ```
 
 `jevision help <command>` lists every option. Exit status: **0** means all tests passed (or all
 files are valid and formatted); tests in quarantine may have failed (see
 [Retries, flaky tests and quarantine](#retries-flaky-tests-and-quarantine)). **1** means a test failed or was stopped, or a file has problems.
-**2** means wrong arguments, a file that can't be read, or a Mac that can't run tests right now.
+**2** means wrong arguments, **3** a file that can't be read or written, **4** a Mac that can't run tests
+right now, **5** a file that needs a newer JEVision. Every `--json` result starts with `"jsonVersion": 1`.
 
 `jevision run` uses the real mouse, keyboard and screen. These requirements apply wherever it runs:
 
@@ -526,10 +529,26 @@ jobs:
     runs-on: [self-hosted, macOS]
     steps:
       - uses: actions/checkout@v4
+      - name: Restore the last result of each test
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: jevision-last-results-
+      - name: Check the project carries its files
+        run: jevision check tests
       - name: Run UI tests
         env:
           ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
-        run: jevision run tests --junit junit.xml --html reports
+        run: jevision run --project tests tests --junit junit.xml --html reports
+      - name: Save the last result of each test
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -547,6 +566,16 @@ shows this file for the open project, with the secrets your tests use, and write
 `.github/workflows/jevision.yml` at the top of the git repository the project is in. The preview
 comes first, and an existing file is replaced only after you confirm. Nothing is committed or
 pushed.
+
+The two cache steps carry `.jevision/last-results.json`, the last result of each test, from one
+run to the next. A fresh checkout has no run history, and without the file every failure would look
+new to [notifications](#notifications) and no test would ever be reported fixed. `--project tests`
+keeps the run's results in `tests/.jevision`, where the cache and the artifact look: a fresh
+checkout has no `.jevision` folder yet to show where the project starts. A pull request can't see
+the results another one kept, so its first run starts without any unless the workflow also runs on
+your default branch; see
+[Keeping the last results between CI runs](docs/notifications.html#last-results), also for GitLab
+CI, Jenkins, Buildkite and other systems.
 
 The artifact `jevision-reports` also carries the run reports with their screenshots. Once you are
 signed in to GitHub (Settings › Git and GitHub) and the project's repository is on GitHub, the
@@ -727,6 +756,7 @@ Without `--project`, the project is the nearest folder above the current one tha
 | `read_test`, `write_test` | Read a test file, or write one; invalid tests are not saved, and each problem names its block and field |
 | `add_blocks`, `remove_block` | Edit a test the way the editor does |
 | `validate_test` | Checks a test or a folder of tests |
+| `check_project` | Checks the project carries every file its tests read |
 | `list_block_types` | Describes the file format and every block type, with examples |
 | `run_test`, `get_run`, `stop_run` | Run a test or a folder (optionally in an environment, `env`, and with some rows of its data table, `rows`), wait for the result, stop it |
 | `get_report` | A run's verdict, steps, failures, AI model answers and, on request, screenshots |

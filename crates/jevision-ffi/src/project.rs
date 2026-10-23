@@ -208,6 +208,24 @@ pub fn folder_run_mode(settings: &ProjectSettings, folder: String) -> RunMode {
     settings.run_mode(&folder)
 }
 
+/// The setting that decides how the tests of `folder` run, the one for it or for the nearest
+/// folder above it, to tell where the way they run comes from; `None` when there is none and they
+/// run one after another.
+#[uniffi::export]
+pub fn folder_run_mode_setting(
+    settings: &ProjectSettings,
+    folder: String,
+) -> Option<FolderRunMode> {
+    settings.run_mode_setting(&folder).cloned()
+}
+
+/// The deepest folder that holds all of `folders`, each relative to the project folder; `.` for
+/// the project folder.
+#[uniffi::export]
+pub fn shared_folder(folders: Vec<String>) -> String {
+    jevision_core::shared_folder(&folders)
+}
+
 /// Whether the quarantine `entry` is in force on `today` (`YYYY-MM-DD`): it has no end or its
 /// last day isn't past.
 #[uniffi::export]

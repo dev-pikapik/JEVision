@@ -19,20 +19,23 @@ enum JEVisionCLI {
       command = try Command.parse(rest)
     } catch {
       Console.standardError.line("jevision: \(error.message)")
+      if arguments.contains("--json") { Console.standardOutput.line(JSON.result([("error", error.json)]).pretty) }
       Console.standardError.line(Help.usage(error.command))
       let more = error.command.map { "jevision \($0) --help" } ?? "jevision --help"
       Console.standardError.line(words("cli.help.more", more))
-      return .failure
+      return .usage
     }
     switch command {
     case .help(let topic):
       Console.standardOutput.line(Help.text(topic))
       return .ok
-    case .version:
-      Console.standardOutput.line("jevision \(jevisionVersion())")
+    case .version(let json):
+      Console.standardOutput.line(json ? versionJSON().pretty : "jevision \(jevisionVersion())")
       return .ok
     case .validate(let paths, let json):
       return validate(paths, json: json)
+    case .check(let project, let json):
+      return CheckCommand(project: project, json: json).execute()
     case .fmt(let paths, let check):
       return format(paths, check: check)
     case .run(let request):
@@ -47,24 +50,59 @@ enum JEVisionCLI {
       return BlocksCommand(request: request).execute()
     }
   }
+
+  /// `version --json`: the version and what it reads and speaks.
+  static func versionJSON() -> JSON {
+    let about = compatibility()
+    return .result([
+      ("version", .string(jevisionVersion())),
+      ("formats", .array(about.formats.map { .object([("file", .string($0.file)), ("version", .int(Int64($0.version)))]) })),
+      ("iphoneProtocol", .object([
+        ("oldest", .int(Int64(about.iphoneProtocolOldest))), ("newest", .int(Int64(about.iphoneProtocolNewest))),
+      ])),
+      ("mcpProtocols", .array(about.mcpProtocols.map { .string($0) })),
+    ])
+  }
 }
 
-/// How a command ended, ordered by severity; the process exit status.
+/// How a command ended, ordered by severity; the process exit status. The same for every
+/// command, so scripts can tell why a command failed. 6 to 63 are kept for later.
 enum ExitStatus: Int32, Comparable {
   /// All good.
   case ok = 0
-  /// Problems found in a test, or a test failed or was stopped.
+  /// A test failed or was stopped, or problems found in a test or a project.
   case problems = 1
-  /// Wrong arguments, a file that could not be read or written, or a Mac not ready to run tests.
-  case failure = 2
+  /// Wrong arguments, or a file, folder or test that isn't there.
+  case usage = 2
+  /// A file couldn't be read or written.
+  case io = 3
+  /// This Mac can't run tests now, or a service it needs is out of reach.
+  case notReady = 4
+  /// A file was saved by a newer JEVision.
+  case needsNewer = 5
 
   static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+
+  /// `.needsNewer` for a file a newer JEVision saved, `.io` for any other file that can't be read.
+  static func unreadable(_ path: String) -> Self {
+    needsNewerJevision(path: path) ? .needsNewer : .io
+  }
 }
 
 struct UsageError: Error, Equatable {
   let message: String
+  /// Names the error in `--json` output, the same in every language.
+  var code = "usage"
   /// The command whose usage to show.
   var command: String?
+  /// The exit status, when the arguments are right but what they name can't be used.
+  var status: ExitStatus = .usage
+
+  /// The message without the `jevision: ` it starts with on standard error.
+  var reason: String { message.hasPrefix("jevision: ") ? String(message.dropFirst(10)) : message }
+
+  /// The error as `--json` output tells it.
+  var json: JSON { .object([("code", .string(code)), ("message", .string(reason))]) }
 }
 
 /// What `jevision run` was asked to do.
@@ -104,8 +142,9 @@ struct RunRequest: Equatable {
 
 enum Command: Equatable {
   case help(String?)
-  case version
+  case version(json: Bool)
   case validate(paths: [String], json: Bool)
+  case check(project: String?, json: Bool)
   case fmt(paths: [String], check: Bool)
   case run(RunRequest)
   case mcp(project: String?, action: MCPAction)
@@ -122,11 +161,21 @@ enum Command: Equatable {
       guard Help.commands.contains(topic) else { throw UsageError(message: words("cli.error.noCommand", topic)) }
       return .help(topic)
     case "-V", "--version":
-      return .version
+      return .version(json: false)
+    case "version":
+      let options = try Options.parse(rest, command: name, flags: ["--json"])
+      if options.wantsHelp { return .help(name) }
+      guard options.paths.isEmpty else { throw UsageError(message: words("cli.error.versionNoArguments"), command: name) }
+      return .version(json: options.flags.contains("--json"))
     case "validate":
       let options = try Options.parse(rest, command: name, flags: ["--json"])
       if options.wantsHelp { return .help(name) }
       return .validate(paths: try options.requirePaths(name), json: options.flags.contains("--json"))
+    case "check":
+      let options = try Options.parse(rest, command: name, flags: ["--json"])
+      if options.wantsHelp { return .help(name) }
+      guard options.paths.count <= 1 else { throw UsageError(message: words("cli.error.oneProject"), command: name) }
+      return .check(project: options.paths.first, json: options.flags.contains("--json"))
     case "fmt":
       let options = try Options.parse(rest, command: name, flags: ["--check"])
       if options.wantsHelp { return .help(name) }
@@ -384,17 +433,19 @@ struct Options {
 }
 
 enum Help {
-  static let commands = ["run", "validate", "fmt", "issue", "mcp", "schedule", "blocks"]
+  static let commands = ["run", "validate", "check", "fmt", "issue", "mcp", "schedule", "blocks", "version"]
 
   static func usage(_ command: String?) -> String {
     switch command {
     case "run": words("cli.usage.run")
     case "validate": words("cli.usage.validate")
+    case "check": words("cli.usage.check")
     case "fmt": words("cli.usage.fmt")
     case "issue": words("cli.usage.issue")
     case "mcp": words("cli.usage.mcp")
     case "schedule": words("cli.usage.schedule")
     case "blocks": words("cli.usage.blocks")
+    case "version": words("cli.usage.version")
     default: words("cli.usage.main")
     }
   }
@@ -404,11 +455,13 @@ enum Help {
     return switch command {
     case "run": words("cli.help.run", usage)
     case "validate": words("cli.help.validate", usage)
+    case "check": words("cli.help.check", usage)
     case "fmt": words("cli.help.fmt", usage)
     case "issue": words("cli.help.issue", usage)
     case "mcp": words("cli.help.mcp", usage)
     case "blocks": words("cli.help.blocks", usage)
     case "schedule": words("cli.help.schedule", usage)
+    case "version": words("cli.help.version", usage)
     default: words("cli.help.main", usage, catalogLanguages().joined(separator: ", "))
     }
   }

@@ -21,7 +21,7 @@ struct ScheduleCommand {
       return String(cString: path)
     }), isFolder(root) else {
       Console.standardError.line("jevision: " + words("cli.error.noFolder", project))
-      return .failure
+      return .usage
     }
     var status = ExitStatus.ok
     // Runs that came due while others ran are run next.
@@ -31,13 +31,26 @@ struct ScheduleCommand {
         due = try beginScheduleCheck(project: root, now: LocalMinute.of(now()))
       } catch {
         Console.standardError.line("jevision: \(error.localizedDescription)")
-        return .failure
+        return Self.status(error, in: root)
       }
       if due.isEmpty { return status }
       for schedule in due {
         status = max(status, run(schedule, in: root))
       }
     }
+  }
+
+  /// How an error of the schedule file or of the history of the runs ends the command: `.needsNewer`
+  /// when a newer JEVision saved the file, `.io` for any other.
+  static func status(_ error: Error, in root: String) -> ExitStatus {
+    let file: String
+    switch error as? ScheduleError {
+    case .Invalid(let code, _) where code == "project.format.tooNew": return .needsNewer
+    case .Invalid(_, let params): file = params["file"] ?? scheduleFileName()
+    case .Unreadable(let name, _), .Unwritable(let name, _): file = name
+    case nil: file = scheduleFileName()
+    }
+    return .unreadable((root as NSString).appendingPathComponent(file))
   }
 
   private func run(_ schedule: ProjectSchedule, in root: String) -> ExitStatus {
@@ -47,7 +60,7 @@ struct ScheduleCommand {
     if let reason = blocker() {
       progress.line(Self.skipped(schedule.name, reason))
       outcome = .skipped(reason: reason)
-      status = .problems
+      status = .notReady
     } else {
       progress.line(words("cli.schedule.started", schedule.name))
       var request = RunRequest(paths: Self.paths(of: schedule.tests, in: root), project: root)
@@ -60,10 +73,9 @@ struct ScheduleCommand {
         outcome = .finished(passed: UInt32(passed), failed: UInt32(results.count - passed))
         status = results.map(\.status).max() ?? .ok
       } catch {
-        let message = error.message.hasPrefix("jevision: ") ? String(error.message.dropFirst(10)) : error.message
-        Console.standardError.line("jevision: \(message)")
-        outcome = .error(message: message)
-        status = .failure
+        Console.standardError.line("jevision: \(error.reason)")
+        outcome = .error(message: error.reason)
+        status = error.status
       }
     }
     let run = ScheduledRun(
@@ -73,7 +85,7 @@ struct ScheduleCommand {
       try recordScheduledRun(project: root, run: run)
     } catch {
       Console.standardError.line("jevision: " + words("cli.schedule.historyNotSaved", error.localizedDescription))
-      status = .failure
+      status = max(status, Self.status(error, in: root))
     }
     return status
   }

@@ -146,11 +146,11 @@ impl std::fmt::Debug for Picture {
     }
 }
 
-/// A finished run and the run of the same test before it, to tell what changed.
+/// A finished run and the verdict of the run of the same test before it, to tell what changed.
 #[derive(Debug, Clone)]
 pub struct Finished {
     pub run: Run,
-    pub previous: Option<RunReport>,
+    pub previous: Option<Verdict>,
 }
 
 impl Finished {
@@ -173,9 +173,7 @@ impl Finished {
     }
 
     fn was_failing(&self) -> bool {
-        self.previous
-            .as_ref()
-            .is_some_and(|p| p.verdict == Verdict::Failed)
+        self.previous == Some(Verdict::Failed)
     }
 
     /// Passed after the run before failed.

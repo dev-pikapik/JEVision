@@ -19,8 +19,8 @@ use jevision_core::{
 
 use crate::control::{Cancelled, PauseReason};
 use crate::report::{
-    Attempt, DataRow, Failure, REPORT_FORMAT, RunReport, Step, StepStatus, UsedPackage, Verdict,
-    VisionAnswer, kept_percent, summarize,
+    Attempt, DataRow, Failure, REPORT_FILE, REPORT_FORMAT, RunReport, Step, StepStatus,
+    UsedPackage, Verdict, VisionAnswer, kept_percent, summarize,
 };
 use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
@@ -162,7 +162,7 @@ pub struct Run {
 impl Run {
     /// Reads the run saved in `dir`.
     pub fn load(dir: &Path) -> io::Result<Self> {
-        let text = fs::read_to_string(dir.join("report.json"))?;
+        let text = fs::read_to_string(dir.join(REPORT_FILE))?;
         let report: RunReport = serde_json::from_str(&text)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         if report.format > REPORT_FORMAT {
@@ -232,7 +232,7 @@ impl Run {
         };
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
         json.push('\n');
-        fs::write(dir.join("report.json"), json)?;
+        fs::write(dir.join(REPORT_FILE), json)?;
         Ok(Self { dir, report })
     }
 
@@ -552,20 +552,23 @@ impl Runner<'_> {
         report.packages = used_packages(&project, &report.attempts);
         report.duration_ms = millis(clock.elapsed());
         report.display_scale = display_scale.get();
-        let path = dir.join("report.json");
+        let path = dir.join(REPORT_FILE);
         let mut json = serde_json::to_string_pretty(&report).map_err(io::Error::other)?;
         json.push('\n');
         fs::write(&path, json)?;
+        let run = Run { dir, report };
+        // The run itself is saved; failing here only leaves the next CI job an older result.
+        let _ = crate::last_results::record(&project, &run);
         if let Some(age) = options.keep_videos_for {
             // Old videos only cost disk space; failing to delete one must not fail this run.
             let _ = prune_videos(&project, age, SystemTime::now());
         }
         self.events.send(&Event::RunFinished {
-            verdict: report.verdict,
-            flaky: report.flaky,
+            verdict: run.report.verdict,
+            flaky: run.report.flaky,
             report: path,
         });
-        Ok(Run { dir, report })
+        Ok(run)
     }
 
     /// Takes the screen if the test acts on it, waiting while another run has it: `Ok(None)`
@@ -828,7 +831,15 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
                 .with("have", jevision_core::app_version()));
         }
     }
-    let flow = jevision_core::parse(&text).map_err(|e| unreadable(e.to_string()))?;
+    let flow = jevision_core::parse(&text).map_err(|e| {
+        match e.issues.iter().find(|i| i.code == "flow.format.tooNew") {
+            Some(newer) => Failure::new("run.test.needsNewer")
+                .with("test", &file)
+                .with("found", newer.param("found").unwrap_or_default())
+                .with("supported", newer.param("supported").unwrap_or_default()),
+            None => unreadable(e.to_string()),
+        }
+    })?;
     let errors = jevision_core::validate(&flow)
         .iter()
         .filter(|i| i.severity == Severity::Error)

@@ -174,6 +174,7 @@ private struct AssistantRow: View {
     case "add_blocks": String(localized: "added blocks")
     case "remove_block": String(localized: "removed a block")
     case "validate_test": String(localized: "checked a test")
+    case "check_project": String(localized: "checked the project")
     case "list_block_types": String(localized: "read the guide to blocks")
     case "run_test": String(localized: "ran a test")
     case "get_run": String(localized: "looked at a run")

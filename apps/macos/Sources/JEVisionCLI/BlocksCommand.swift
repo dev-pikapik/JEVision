@@ -37,7 +37,7 @@ struct BlocksCommand {
   func execute() -> ExitStatus {
     guard let project = request.project ?? MCPCommand.defaultProject(), isFolder(project) else {
       errors.line("jevision: " + words("cli.error.noFolder", request.project ?? FileManager.default.currentDirectoryPath))
-      return .failure
+      return .usage
     }
     do {
       switch request.action {
@@ -49,11 +49,18 @@ struct BlocksCommand {
       }
     } catch BlockPackageError.Failed(let issues) {
       for issue in issues { errors.line("jevision: \(describeIssue(issue: issue))") }
+      if issues.contains(where: { asksForNewerJevision(code: $0.code) }) { return .needsNewer }
+      return issues.contains { Self.wrongArgument.contains($0.code) } ? .usage : .io
     } catch {
       errors.line("jevision: \(error.localizedDescription)")
+      return .io
     }
-    return .failure
   }
+
+  /// Problems that mean the block or address given isn't one to install, update or remove.
+  private static let wrongArgument: Set = [
+    "block.notInstalled", "block.source.none", "block.source.missing", "block.source.unsupported", "block.download.notHttps",
+  ]
 
   // MARK: Commands
 

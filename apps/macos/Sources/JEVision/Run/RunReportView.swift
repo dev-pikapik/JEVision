@@ -75,7 +75,7 @@ struct RunReportView: View {
     return ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         ReportHeader(
-          run: run, hasTest: project.hasTest, isRunning: runs.isRunning,
+          run: run, hasTest: project.hasTest, isBusy: runs.isBusy,
           openFailedBlock: { step in project.showBlock(step.block, in: step.test, from: run.id) },
           runAgain: { runAgain(report) },
           reportBug: { project.bugReportRun = run.dir },
@@ -224,7 +224,8 @@ private struct ReportHeader: View {
   let run: SavedRun
   /// Whether a test file, relative to the project, is still there.
   let hasTest: (String) -> Bool
-  let isRunning: Bool
+  /// Another run can't start now.
+  let isBusy: Bool
   let openFailedBlock: (Step) -> Void
   let runAgain: () -> Void
   let reportBug: () -> Void
@@ -296,7 +297,7 @@ private struct ReportHeader: View {
           }
           Button("Run Again", systemImage: "arrow.clockwise", action: runAgain)
             .buttonStyle(.glass)
-            .disabled(!hasTest(report.file) || isRunning)
+            .disabled(!hasTest(report.file) || isBusy)
           if report.verdict == .failed {
             Button("Report Bug…", systemImage: "ladybug", action: reportBug)
               .buttonStyle(.glass)

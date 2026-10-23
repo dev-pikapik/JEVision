@@ -10,7 +10,7 @@ use std::time::Duration;
 use std::{fs, io};
 
 use jevision_l10n::{language, tr, tr_in};
-use jevision_runner::{Run, RunReport, Verdict};
+use jevision_runner::{Run, RunReport, Verdict, verdict_before};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -29,7 +29,7 @@ pub use message::{
 /// Name of the notification settings file in the project folder.
 pub const FILE: &str = "jevision.notifications.json";
 /// The layout the file is saved in. Format 1, with one `when` for every channel, is still read.
-const FORMAT: u32 = 2;
+pub const FORMAT: u32 = 2;
 /// Telegram's Bot API.
 pub const TELEGRAM_API: &str = "https://api.telegram.org";
 const TIMEOUT: Duration = Duration::from_secs(20);
@@ -404,9 +404,16 @@ pub fn on_ci() -> bool {
     std::env::var("CI").is_ok_and(|v| !v.is_empty() && v != "false" && v != "0")
 }
 
-/// The run of the same test file before `run`, skipping stopped and blocked ones: they don't
-/// say whether the test was passing.
-pub fn previous(project: &Path, run: &Run) -> Option<RunReport> {
+/// The verdict of the run of the same test file before `run`, skipping stopped and blocked
+/// ones: they don't say whether the test was passing. Where the run folders before it are gone,
+/// as in a CI job that starts from a fresh checkout, it is the last result the project kept.
+pub fn previous(project: &Path, run: &Run) -> Option<Verdict> {
+    earlier_run(project, run)
+        .map(|r| r.verdict)
+        .or_else(|| verdict_before(project, run))
+}
+
+fn earlier_run(project: &Path, run: &Run) -> Option<RunReport> {
     let runs = project.join(".jevision").join("runs");
     let name = run.dir.file_name()?.to_string_lossy().into_owned();
     let test = test_part(&name);

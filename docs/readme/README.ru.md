@@ -489,16 +489,19 @@ jevision run tests/ --provider ollama --model qwen2.5vl:7b   # проверка 
 jevision run tests/ --json                # вывести результаты в JSON; ход прогона идёт в stderr
 jevision validate tests/                  # сообщить об ошибках и предупреждениях (--json для программ)
 jevision fmt tests/                       # переписать файлы в каноническом виде (--check — только сообщить)
+jevision check                            # в проекте есть все файлы, которые читают тесты (--json тоже)
 jevision blocks list                      # свои блоки, установленные в проекте (ещё install, update, remove)
 jevision schedule run ~/Projects/AcmeMail # выполнить расписания проекта, время которых пришло
 jevision --version                        # вывести версию (кратко -V)
+jevision version --json                   # версия, форматы файлов и протоколы, которые она понимает, в JSON
 ```
 
 `jevision help <command>` перечисляет все параметры. Код выхода: **0** — все тесты прошли (или все
 файлы корректны и отформатированы); тесты в карантине при этом могли упасть (см.
 [Повторы, нестабильные тесты и карантин](#retries-flaky-tests-and-quarantine)). **1** — тест упал
-или был остановлен либо в файле есть проблемы. **2** — неверные аргументы, файл не читается или
-Mac сейчас не может запускать тесты.
+или был остановлен либо в файле есть проблемы. **2** — неверные аргументы, **3** — файл не
+читается или не записывается, **4** — Mac сейчас не может запускать тесты, **5** — файлу нужна более
+новая JEVision. Любой результат `--json` начинается с `"jsonVersion": 1`.
 
 `jevision run` работает с настоящими мышью, клавиатурой и экраном. Где бы он ни запускался,
 действуют такие требования:
@@ -545,10 +548,26 @@ jobs:
     runs-on: [self-hosted, macOS]
     steps:
       - uses: actions/checkout@v4
+      - name: Restore the last result of each test
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: jevision-last-results-
+      - name: Check the project carries its files
+        run: jevision check tests
       - name: Run UI tests
         env:
           ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
-        run: jevision run tests --junit junit.xml --html reports
+        run: jevision run --project tests tests --junit junit.xml --html reports
+      - name: Save the last result of each test
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -566,6 +585,16 @@ jobs:
 и записывает его как `.github/workflows/jevision.yml` в корне git-репозитория, где лежит проект.
 Сначала показывается предпросмотр, а существующий файл заменяется только после вашего
 подтверждения. Ничего не коммитится и не отправляется.
+
+Два шага с кэшем переносят `.jevision/last-results.json`, последний результат каждого теста, из
+одного прогона в следующий. В свежей копии репозитория истории прогонов нет, и без этого файла
+[уведомления](../notifications.html) считали бы каждое падение новым и ни разу не сообщили бы,
+что тест снова проходит. `--project tests` сохраняет результаты прогона в `tests/.jevision`, где
+их ищут кэш и артефакт: в свежей копии ещё нет папки `.jevision`, по которой видно, где
+начинается проект. Пул-реквест не видит результатов, сохранённых другим, поэтому его первый прогон
+начинается без них, если workflow не запускается и на основной ветке; см.
+[Последние результаты между прогонами CI](../notifications.html#last-results), там же — для
+GitLab CI, Jenkins, Buildkite и других систем.
 
 Артефакт `jevision-reports` несёт и отчёты о прогонах со снимками экрана. Когда вы вошли в GitHub
 (Настройки › Git и GitHub), а репозиторий проекта лежит на GitHub, приложение забирает самые
@@ -714,6 +743,7 @@ ssh admin@192.168.64.5 /usr/local/bin/jevision run my-tests --junit junit.xml --
 | `read_test`, `write_test` | Читают файл теста или записывают его. Некорректные тесты не сохраняются, а для каждой проблемы указаны её блок и поле |
 | `add_blocks`, `remove_block` | Меняют тест так же, как редактор |
 | `validate_test` | Проверяет тест или папку с тестами |
+| `check_project` | Проверяет, что в проекте есть все файлы, которые читают тесты |
 | `list_block_types` | Описывает формат файла и все типы блоков, с примерами |
 | `run_test`, `get_run`, `stop_run` | Запускают тест или папку (по желанию в окружении, `env`, и с частью строк таблицы данных, `rows`), ждут результата, останавливают прогон |
 | `get_report` | Вердикт прогона, шаги, провалы, ответы модели ИИ и, по запросу, снимки экрана |

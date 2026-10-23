@@ -20,17 +20,18 @@ struct RunCommand {
       return finish(try runTests())
     } catch {
       Console.standardError.line(error.message)
-      return .failure
+      if request.json { output.line(JSON.result([("error", error.json)]).pretty) }
+      return error.status
     }
   }
 
   /// Runs the tests one after another; the error is what to tell when they can't start.
   func runTests() throws(UsageError) -> [TestResult] {
-    let plan: (project: String, tests: [String], environment: String?, filteredOut: Int)
+    let plan: (project: String, tests: [String], environment: String?, filteredOut: Int, folder: String)
     do {
       plan = try Self.plan(request)
     } catch {
-      throw UsageError(message: "jevision: \(error.message)")
+      throw UsageError(message: "jevision: \(error.message)", code: error.code, status: error.status)
     }
     if plan.filteredOut > 0 {
       progress.line(progress.paint(words("cli.run.filteredOut", plan.filteredOut + plan.tests.count, plan.filteredOut), .dim))
@@ -38,10 +39,10 @@ struct RunCommand {
     let ai = AISettings.app
     let vision = ai.settings(provider: request.provider, model: request.model)
     if request.model != nil, vision == nil {
-      throw UsageError(message: "jevision: " + words("cli.error.modelNeedsProvider"))
+      throw UsageError(message: "jevision: " + words("cli.error.modelNeedsProvider"), code: "modelNeedsProvider")
     }
     if let problem = Readiness.problem() {
-      throw UsageError(message: problem)
+      throw UsageError(message: problem, code: "notReady", status: .notReady)
     }
     let input = InputWatcher()
     let videos = VideoSettings.app
@@ -49,7 +50,7 @@ struct RunCommand {
     request.environment = plan.environment
     request.video = request.video ?? videos.mode
     let session = TestSession(
-      project: plan.project, tests: plan.tests, request: request, progress: progress, input: input,
+      project: plan.project, tests: plan.tests, folder: plan.folder, request: request, progress: progress, input: input,
       vision: vision, fallback: vision.flatMap { ai.fallback(besides: $0.provider) }, providers: ai.namedProviders,
       usage: ai.usage,
       localOnly: ai.localOnly, keepVideosDays: videos.keepDays
@@ -58,7 +59,7 @@ struct RunCommand {
     }
     // Esc Esc stops the run right on the watcher's thread.
     guard input.start(onEmergencyStop: { [session] in session.stop() }) else {
-      throw UsageError(message: "jevision: " + words("cli.run.noKeyboardWatch"))
+      throw UsageError(message: "jevision: " + words("cli.run.noKeyboardWatch"), code: "noKeyboardWatch", status: .notReady)
     }
     defer { input.stop() }
     let interrupts = Interrupts.install { [session, progress] in
@@ -72,39 +73,50 @@ struct RunCommand {
 
   /// The project folder and the test files to run, as real absolute paths, and the environment
   /// to run in: the one asked for, otherwise the default of the project's environments file.
-  /// `filteredOut` counts the named tests the request's filter leaves out.
+  /// `filteredOut` counts the named tests the request's filter leaves out. `folder`, relative to
+  /// the project, is the deepest one that holds the files and folders named: its settings choose
+  /// how the tests run together.
   static func plan(_ request: RunRequest) throws(UsageError) -> (
-    project: String, tests: [String], environment: String?, filteredOut: Int
+    project: String, tests: [String], environment: String?, filteredOut: Int, folder: String
   ) {
     var targets: [String] = []
     for path in request.paths {
       // The app lists tests without the suffix, so `notes/add-milk` runs notes/add-milk.flow.json.
       guard let real = realPath(path) ?? realPath(path + ".flow.json") else {
-        throw UsageError(message: words("cli.error.noFileOrFolder", path))
+        throw UsageError(message: words("cli.error.noFileOrFolder", path), code: "noFileOrFolder")
       }
       targets.append(real)
     }
     var (tests, _) = collectTests(targets)
     guard !tests.isEmpty else {
-      throw UsageError(message: words("cli.error.noTests", request.paths.joined(separator: ", ")))
+      throw UsageError(message: words("cli.error.noTests", request.paths.joined(separator: ", ")), code: "noTests")
     }
     let project: String
     if let given = request.project {
-      guard let real = realPath(given), isFolder(real) else { throw UsageError(message: words("cli.error.noFolder", given)) }
+      guard let real = realPath(given), isFolder(real) else {
+        throw UsageError(message: words("cli.error.noFolder", given), code: "noFolder")
+      }
       project = real
     } else {
       project = defaultProject(for: targets[0], tests: tests)
     }
     if let outside = tests.first(where: { !isInside($0, project) }) {
-      throw UsageError(message: words("cli.error.outsideProject", outside, project))
+      throw UsageError(message: words("cli.error.outsideProject", outside, project), code: "outsideProject")
     }
     let named = tests.count
     tests = try chosen(tests, by: request.filter, in: project)
+    let folder = sharedFolder(
+      folders: targets.map { target in
+        let folder = isFolder(target) ? target : (target as NSString).deletingLastPathComponent
+        return isInside(folder, project) ? String(folder.dropFirst(project == "/" ? 1 : project.count + 1)) : "."
+      })
     guard let environment = request.environment else {
-      return (project, tests, try readEnvironments(in: project) { try defaultEnvironment(project: project) }, named - tests.count)
+      return (
+        project, tests, try readEnvironments(in: project) { try defaultEnvironment(project: project) }, named - tests.count, folder
+      )
     }
     try checkEnvironment(environment, in: project)
-    return (project, tests, environment, named - tests.count)
+    return (project, tests, environment, named - tests.count, folder)
   }
 
   /// The `tests` whose cards `filter` chooses; all of them for a filter that asks nothing. Flaky
@@ -123,7 +135,7 @@ struct RunCommand {
     }
     let kept = filterTests(filter: filter, cards: cards).map { tests[Int($0)] }
     guard !kept.isEmpty else {
-      throw UsageError(message: words("cli.error.noTestFits", tests.count))
+      throw UsageError(message: words("cli.error.noTestFits", tests.count), code: "noTestFits")
     }
     return kept
   }
@@ -134,20 +146,25 @@ struct RunCommand {
     let all = try readEnvironments(in: project) { try projectEnvironments(project: project) }
     guard !all.contains(where: { $0.name == name }) else { return }
     if all.isEmpty {
-      throw UsageError(message: words("cli.error.noEnvironmentsFile", name, file, project))
+      throw UsageError(message: words("cli.error.noEnvironmentsFile", name, file, project), code: "noEnvironmentsFile")
     }
-    throw UsageError(message: words("cli.error.noEnvironment", name, file, all.map(\.name).joined(separator: ", ")))
+    throw UsageError(
+      message: words("cli.error.noEnvironment", name, file, all.map(\.name).joined(separator: ", ")), code: "noEnvironment")
   }
 
   /// What `read` gets from the environments file of `project`, or why the file can't be read.
   private static func readEnvironments<T>(in project: String, _ read: () throws -> T) throws(UsageError) -> T {
     let file = environmentsFileName()
+    let status = ExitStatus.unreadable((project as NSString).appendingPathComponent(file))
     do {
       return try read()
     } catch EnvironmentsError.Unreadable(_, let reason) {
-      throw UsageError(message: words("cli.error.environmentsUnreadable", file, project, reason))
+      throw UsageError(
+        message: words("cli.error.environmentsUnreadable", file, project, reason), code: "environmentsUnreadable", status: status)
     } catch {
-      throw UsageError(message: words("cli.error.environmentsUnreadable", file, project, error.localizedDescription))
+      throw UsageError(
+        message: words("cli.error.environmentsUnreadable", file, project, error.localizedDescription),
+        code: "environmentsUnreadable", status: status)
     }
   }
 
@@ -156,12 +173,7 @@ struct RunCommand {
   /// the folder of `target`.
   static func defaultProject(for target: String, tests: [String]) -> String {
     let start = isFolder(target) ? target : (target as NSString).deletingLastPathComponent
-    var folder = start
-    while true {
-      if isProjectFolder(folder) { return folder }
-      guard folder != "/" else { break }
-      folder = (folder as NSString).deletingLastPathComponent
-    }
+    if let project = enclosingProject(start) { return project }
     // Not `/`, where launchd starts programs: reports can't be saved there.
     if let current = realPath(FileManager.default.currentDirectoryPath), current != "/",
       tests.allSatisfy({ isInside($0, current) })
@@ -188,13 +200,17 @@ struct RunCommand {
     var status =
       results.map { request.includeQuarantinedFailures && $0.verdict == "quarantined" ? .problems : $0.status }.max() ?? .ok
     let runs = results.compactMap(\.dir)
+    // A report that can't be saved is told on standard error; the JSON result tells the first.
+    var problem: UsageError?
     if let junit = request.junit {
       do {
         try exportJunit(dirs: runs, to: junit, includeQuarantinedFailures: request.includeQuarantinedFailures)
         progress.line(progress.paint(words("cli.run.junitReport", junit), .dim))
       } catch {
-        Console.standardError.line(words("cli.error.cannotWrite", junit, "\(error)"))
-        status = .failure
+        let error = UsageError(message: words("cli.error.cannotWrite", junit, "\(error)"), code: "cannotWrite", status: .io)
+        Console.standardError.line(error.message)
+        problem = error
+        status = max(status, .io)
       }
     }
     if let folder = request.html {
@@ -205,17 +221,19 @@ struct RunCommand {
         }
         if !runs.isEmpty { progress.line(progress.paint(words("cli.run.htmlReports", folder), .dim)) }
       } catch {
-        Console.standardError.line(words("cli.error.cannotWrite", folder, "\(error)"))
-        status = .failure
+        let error = UsageError(message: words("cli.error.cannotWrite", folder, "\(error)"), code: "cannotWrite", status: .io)
+        Console.standardError.line(error.message)
+        problem = problem ?? error
+        status = max(status, .io)
       }
     }
-    if request.json { output.line(Self.json(results).pretty) }
+    if request.json { output.line(Self.json(results, error: problem).pretty) }
     return status
   }
 
-  static func json(_ results: [TestResult]) -> JSON {
+  static func json(_ results: [TestResult], error: UsageError? = nil) -> JSON {
     let count = { (verdict: String) in JSON.int(Int64(results.count { $0.verdict == verdict })) }
-    return .object([
+    return .result([
       ("passed", count("passed")),
       ("nothingChecked", count("nothingChecked")),
       ("failed", count("failed")),
@@ -225,7 +243,7 @@ struct RunCommand {
       ("notRun", count("notRun")),
       ("errors", count("error")),
       ("tests", .array(results.map(\.json))),
-    ])
+    ] + (error.map { [("error", $0.json)] } ?? []))
   }
 }
 
@@ -266,9 +284,15 @@ struct TestResult {
   var status: ExitStatus {
     switch verdict {
     case "passed", "quarantined", "nothingChecked": .ok
-    case "error": .failure
-    default: .problems
+    case "error": .io
+    default: needsNewer ? .needsNewer : .problems
     }
+  }
+
+  /// The test or a block it uses was saved by a newer JEVision.
+  private var needsNewer: Bool {
+    guard case .finished(_, _, let report) = outcome, let code = decidingAttempt(report: report)?.failure?.code else { return false }
+    return asksForNewerJevision(code: code)
   }
 
   var json: JSON {
@@ -281,13 +305,13 @@ struct TestResult {
         ("flaky", .bool(report.flaky)),
         ("quarantined", .bool(report.quarantined)),
         ("quarantineReason", report.quarantineReason.map { .string($0) } ?? .null),
-        ("blockedBy", report.blocked.map { .string(describeBlocker(blocker: $0)) } ?? .null),
+        ("blockedBy", report.blocked.map(\.json) ?? .null),
         ("addedAsDependency", .bool(report.addedAsDependency)),
         ("attempts", .int(Int64(report.attempts.count))),
         ("rows", .array(report.rows.map(\.json))),
         ("durationMs", .int(Int64(report.durationMs))),
         ("newReferences", .array(report.baselinesCreated.map { .string($0) })),
-        ("failure", failure.map { .object([("code", .string($0.code)), ("message", .string(describeFailure(failure: $0)))]) } ?? .null),
+        ("failure", failure.map(\.json) ?? .null),
         ("report", .string((dir as NSString).appendingPathComponent("report.json"))),
         ("html", .string(html)),
         ("video", report.video.map { .string((dir as NSString).appendingPathComponent($0)) } ?? .null),
@@ -301,11 +325,13 @@ struct TestResult {
   }
 }
 
-/// Runs the tests one at a time, or with `--parallel` side by side as the core's plan allows;
-/// `stop` cancels the ones running and skips the rest.
+/// Runs the tests one at a time, or side by side as `--parallel` or the project settings for
+/// their folder ask and the core's plan allows; `stop` cancels the ones running and skips the rest.
 final class TestSession: @unchecked Sendable {
   private let project: String
   private let tests: [String]
+  /// Relative to the project: the folder whose settings choose how the tests run together.
+  private let folder: String
   private let request: RunRequest
   private let progress: Console
   private let makeHands: (TestRun) -> any Hands
@@ -328,7 +354,7 @@ final class TestSession: @unchecked Sendable {
   private let printing = NSLock()
 
   init(
-    project: String, tests: [String], request: RunRequest, progress: Console, input: InputWatcher?,
+    project: String, tests: [String], folder: String = ".", request: RunRequest, progress: Console, input: InputWatcher?,
     vision: VisionSettings? = nil, fallback: VisionSettings? = nil, providers: ProviderSettings? = nil,
     usage: AiUsageSettings? = nil,
     localOnly: Bool = false, keepVideosDays: UInt32? = nil, makeHands: @escaping (TestRun) -> any Hands
@@ -341,6 +367,7 @@ final class TestSession: @unchecked Sendable {
     self.keepVideosDays = keepVideosDays
     self.project = project
     self.tests = tests
+    self.folder = folder
     self.request = request
     self.progress = progress
     self.input = input
@@ -358,6 +385,28 @@ final class TestSession: @unchecked Sendable {
     emit("\n" + progress.paint(words("cli.run.stopping"), .yellow) + "\n")
   }
 
+  /// How the tests run together: as `--parallel` asks, otherwise as the project settings say for
+  /// the folder of the run, with the words that tell so; one at a time, with a warning, when the
+  /// settings can't be read.
+  private func runMode() -> (RunMode, String?) {
+    if let limit = request.parallel { return (.parallel(limit: limit), nil) }
+    guard tests.count > 1 else { return (.sequential, nil) }
+    let file = projectSettingsFileName()
+    let settings: ProjectSettings
+    do {
+      settings = try projectSettings(project: project)
+    } catch {
+      let reason = if case ProjectSettingsError.Unreadable(_, let reason) = error { reason } else { error.localizedDescription }
+      emit(progress.paint(words("cli.run.settingsUnreadable", file, reason), .yellow) + "\n")
+      return (.sequential, nil)
+    }
+    guard let setting = folderRunModeSetting(settings: settings, folder: folder) else { return (.sequential, nil) }
+    let source =
+      setting.folder == "."
+      ? words("cli.run.modeForProject", file) : words("cli.run.modeForFolder", file, setting.folder)
+    return (setting.mode, source)
+  }
+
   /// Writes `text` in one piece, so it doesn't mix with what another test prints.
   private func emit(_ text: String) {
     printing.withLock { progress.write(text) }
@@ -365,16 +414,19 @@ final class TestSession: @unchecked Sendable {
 
   func runAll() -> [TestResult] {
     let started = Date()
-    let mode: RunMode = request.parallel.map { .parallel(limit: $0) } ?? .sequential
+    let (mode, chosenBy) = runMode()
     let batch = TestBatch(
       project: project, tests: tests.map { String($0.dropFirst(project == "/" ? 1 : project.count + 1)) }, mode: mode)
     let entries = batch.entries()
     // Tests that use the screen take turns, so side by side only pays when one of them leaves it alone.
-    let limit = request.parallel ?? 1
+    let limit: UInt32 = if case .parallel(let limit) = mode { limit } else { 1 }
     let sideBySide = limit > 1 && entries.count > 1 && entries.contains { !$0.usesScreen }
     emit(
       (sideBySide
         ? words("cli.run.startingSideBySide", tests.count, project, limit) : words("cli.run.starting", tests.count, project)) + "\n")
+    if sideBySide, let chosenBy {
+      emit(progress.paint(chosenBy, .dim) + "\n")
+    }
     if limit > 1, entries.count > 1, !sideBySide {
       emit(progress.paint(words("cli.run.screenOneAtATime"), .dim) + "\n")
     }
@@ -784,7 +836,35 @@ extension RowResult {
       ("verdict", .string(String(describing: verdict))),
       ("flaky", .bool(flaky)),
       ("attempts", .int(Int64(attempts))),
-      ("failure", failure.map { .string(describeFailure(failure: $0)) } ?? .null),
+      ("failure", failure.map(\.json) ?? .null),
+    ])
+  }
+}
+
+extension Failure {
+  var json: JSON {
+    .object([
+      ("code", .string(code)), ("message", .string(describeFailure(failure: self))),
+      ("params", .object(params.sorted { $0.key < $1.key }.map { ($0.key, .string($0.value)) })),
+    ])
+  }
+}
+
+extension Blocker {
+  var json: JSON {
+    let reason: String
+    var cycle = JSON.null
+    switch self.reason {
+    case .failed: reason = "failed"
+    case .notRun: reason = "notRun"
+    case .missing: reason = "missing"
+    case .cycle(let tests):
+      reason = "cycle"
+      cycle = .array(tests.map { .string($0) })
+    }
+    return .object([
+      ("reason", .string(reason)), ("dependency", .string(dependency)), ("cause", .string(cause)), ("cycle", cycle),
+      ("message", .string(describeBlocker(blocker: self))),
     ])
   }
 }

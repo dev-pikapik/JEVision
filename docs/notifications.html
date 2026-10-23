@@ -93,7 +93,7 @@
   </tbody>
 </table>
 </div>
-<p>“The run before” is the last earlier run of the same test file that finished, in this project's run history. Runs that were stopped or blocked don't count, because they don't say whether the test was passing. The history is the <code>.jevision/runs</code> folder of the project, so on a CI runner that starts from an empty folder every time, every failure counts as new and nothing counts as fixed; a self-hosted runner that keeps the folder between runs works as on your Mac.</p>
+<p>“The run before” is the last earlier run of the same test file that finished, in this project's run history. Runs that were stopped or blocked don't count, because they don't say whether the test was passing. The history is the <code>.jevision/runs</code> folder of the project. A CI job usually starts from a fresh copy of the repository without that folder, so JEVision also keeps the last result of each test in a small file and looks there when the history has no earlier run. Keep that file from one CI run to the next, as <a href="#last-results">Keeping the last results between CI runs</a> shows; without it, every failure on CI counts as new and nothing counts as fixed.</p>
 <p>These rules hold for every choice:</p>
 <ul>
   <li><strong>A stopped run sends nothing</strong>, and neither does a batch of runs with a stopped run in it.</li>
@@ -194,6 +194,55 @@
     JEVISION_SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
   run: jevision run tests</code></pre>
 <p><code>jevision run</code> sends the messages when it finishes and says how each went (<code>Message sent to Slack</code>, or why not). A message that couldn't be sent never changes the exit status. Add <code>--no-notify</code> to run without sending anything. On GitHub Actions the message links to the run, where the reports can be uploaded as artifacts. See <a href="cli.html#ci">Running in CI</a>.</p>
+
+<h3 id="last-results">Keeping the last results between CI runs</h3>
+<p>To say that a test is fixed, or to stay quiet while a test keeps failing, JEVision has to know how each test did last time. On your Mac it reads the run history. A CI job usually starts from a fresh copy of the repository, where that history is gone, so every run that passes or fails also writes the result into one small file in the project folder: <code>.jevision/last-results.json</code>. It says, for each test file, whether its last run passed or failed, and nothing else. All a CI job has to do is bring this file back before the tests run and keep it after they finish, also when they fail. Leave it out of git, like the rest of <code>.jevision</code>: CI doesn't commit what a run changes, so a committed copy would never move on.</p>
+<p>Name the project folder when you run the tests, as <code>jevision run --project tests tests</code> does below. Without it, a fresh copy, which has no <code>.jevision</code> folder yet to show where the project starts, can make the run keep the file at the top of the repository instead, where the CI never looks for it.</p>
+<p><strong>GitHub Actions.</strong> The workflow that <strong>Settings → Advanced → Continuous Integration → Add to Project…</strong> writes does this for you with GitHub's cache. A workflow added before doesn't: add it again, or put these two steps around the step that runs the tests, with your project folder in <code>path</code>:</p>
+<pre><code>- name: Restore the last result of each test
+  uses: actions/cache/restore@v4
+  with:
+    path: |
+      tests/.jevision/last-results.json
+    key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
+    restore-keys: jevision-last-results-
+- name: Run UI tests
+  run: jevision run --project tests tests
+- name: Save the last result of each test
+  if: always()
+  uses: actions/cache/save@v4
+  with:
+    path: |
+      tests/.jevision/last-results.json
+    key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}</code></pre>
+<p>GitHub keeps each cache for the branch that saved it. A run of a pull request finds the results of the pull request's own earlier runs, and those of the branch it goes into and of the default branch, but never those of another pull request. The workflow runs only for pull requests and when started by hand, so the branches it goes into have no results of their own, and the first run of each pull request starts with none: every test that fails is reported as a new failure, even one that was already failing, and no test is reported as fixed. From the second run on, the pull request compares with its own last run.</p>
+<p>To compare the first run of a pull request with your default branch instead, run the tests on that branch too: add a <code>push</code> trigger for it, and each push keeps the results for the pull requests that follow. Starting the workflow by hand on that branch does the same once.</p>
+<pre><code>on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:</code></pre>
+<p><strong>GitLab CI.</strong> Add the file to the cache of the job that runs the tests. <code>when: always</code> keeps it after a failed run too; without it GitLab keeps the cache only when the job passes. Each branch has its own results and starts from those of the default branch:</p>
+<pre><code>ui-tests:
+  script:
+    - jevision run --project tests tests
+  cache:
+    key: jevision-last-results-$CI_COMMIT_REF_SLUG
+    fallback_keys:
+      - jevision-last-results-$CI_DEFAULT_BRANCH
+    paths:
+      - tests/.jevision/last-results.json
+    when: always</code></pre>
+<p><strong>Jenkins.</strong> Jenkins keeps the workspace between builds unless the job cleans it, and then the run history is still there and nothing more is needed. If the job starts from a clean workspace, run the tests with the script below.</p>
+<p><strong>Buildkite and any other CI.</strong> The tests run on a Mac you set up, so the file can wait for the next run in a folder on that Mac, outside the copy of the repository. Save these lines in the repository, for example as <code>ui-tests.sh</code>, and make the CI run <code>sh ui-tests.sh</code> instead of <code>jevision run</code>. Change <code>tests</code> to your project folder and <code>my-app</code> to a name of your own, one per project:</p>
+<pre><code>kept="$HOME/jevision-kept/my-app"
+mkdir -p "$kept" tests/.jevision
+cp "$kept/last-results.json" tests/.jevision/ 2&gt;/dev/null || true
+status=0
+jevision run --project tests tests || status=$?
+cp tests/.jevision/last-results.json "$kept/" 2&gt;/dev/null || true
+exit $status</code></pre>
+<p>If the jobs of one project can run on different Macs, use the cache or artifacts of your CI the same way instead: bring <code>.jevision/last-results.json</code> back before the tests run and keep it after they finish, whatever the result.</p>
 
 <h2 id="trouble">When a message doesn't arrive</h2>
 <ul>

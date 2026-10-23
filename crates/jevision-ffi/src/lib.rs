@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use jevision_core::{
     Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent,
-    CanvasItem, CanvasSection, ClipboardAction, ClipboardContent, Compare, Condition,
+    CanvasItem, CanvasSection, CheckedTest, ClipboardAction, ClipboardContent, Compare, Condition,
     DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField,
     Issue, IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton,
     NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
@@ -19,6 +19,7 @@ use jevision_core::{
 
 uniffi::setup_scaffolding!();
 
+mod about;
 mod ai;
 mod batch;
 mod board;
@@ -44,6 +45,7 @@ mod signin;
 mod stats;
 mod vision;
 
+pub use about::*;
 pub use ai::*;
 pub use batch::*;
 pub use board::*;
@@ -150,6 +152,14 @@ pub fn validate_flow(flow: Flow) -> Vec<Issue> {
 #[uniffi::export]
 pub fn validate_flow_in(flow: Flow, folder: String) -> Vec<Issue> {
     jevision_core::validate_in(&flow, std::path::Path::new(&folder))
+}
+
+/// The problems of each test and custom block in the folder `project` and its folders, in the
+/// order of their paths: files the project lacks, named otherwise than on disk, too big for Git,
+/// or found only on this computer.
+#[uniffi::export]
+pub fn check_project(project: String) -> Vec<CheckedTest> {
+    jevision_core::check_project(std::path::Path::new(&project))
 }
 
 /// A sentence for a problem in the current language, saying which block and field it concerns.
@@ -1126,6 +1136,12 @@ pub struct Issue {
     pub code: String,
     pub severity: Severity,
     pub params: Vec<IssueParam>,
+}
+
+#[uniffi::remote(Record)]
+pub struct CheckedTest {
+    pub file: String,
+    pub issues: Vec<Issue>,
 }
 
 #[uniffi::remote(Record)]

@@ -11,6 +11,8 @@ private let valid = #"""
     "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s", "next": "b"},
       "b": {"type": "check", "reference": {"image": "saved.png"}}}}
   """#
+/// A test saved by a JEVision newer than any there is.
+private let newer = #"{"format": 99, "name": "t", "app": "com.example.App", "start": "a", "blocks": {}}"#
 private let brokenEdge = #"""
   {"format": 1, "name": "t", "app": "com.example.App", "start": "a",
     "blocks": {"a": {"type": "pressKeys", "keys": "cmd+s", "next": "gone"}}}
@@ -22,9 +24,17 @@ struct CommandLineArgumentTests {
     #expect(try Command.parse(["--help"]) == .help(nil))
     #expect(try Command.parse(["help", "run"]) == .help("run"))
     #expect(try Command.parse(["fmt", "-h"]) == .help("fmt"))
-    #expect(try Command.parse(["--version"]) == .version)
+    #expect(try Command.parse(["--version"]) == .version(json: false))
+    #expect(try Command.parse(["version", "--json"]) == .version(json: true))
+    #expect(try Command.parse(["version", "-h"]) == .help("version"))
+    #expect(throws: UsageError(message: "version takes no arguments", command: "version")) {
+      try Command.parse(["version", "now"])
+    }
     #expect(try Command.parse(["validate", "a", "--json", "b"]) == .validate(paths: ["a", "b"], json: true))
     #expect(try Command.parse(["fmt", "--check", "--", "--odd-name"]) == .fmt(paths: ["--odd-name"], check: true))
+    #expect(try Command.parse(["check"]) == .check(project: nil, json: false))
+    #expect(try Command.parse(["check", "--json", "p"]) == .check(project: "p", json: true))
+    #expect(throws: UsageError.self) { try Command.parse(["check", "a", "b"]) }
 
     let run = try Command.parse([
       "run", "t.flow.json", "--project", "p", "--retries=2", "--start-at", "b", "--junit", "j.xml", "--html", "h",
@@ -92,7 +102,32 @@ struct CommandLineArgumentTests {
     defer { try? FileManager.default.removeItem(at: root) }
     try? FileManager.default.createDirectory(at: root.appending(path: ".jevision"), withIntermediateDirectories: true)
     let request = IssueRequest(project: root.path(percentEncoded: false))
-    #expect(IssueCommand(request: request).execute() == .failure, "No run has failed, so nothing is sent")
+    #expect(IssueCommand(request: request).execute() == .usage, "No run has failed, so nothing is sent")
+  }
+
+  @Test func aBugReportThatCantBeSentEndsAsTheExitStatusesSay() {
+    let wrongRequest: [GitError] = [
+      .NotRepository, .NoCommits, .NoRemote, .NoUpstream(branch: "main"), .Detached, .RemoteNotFound, .Rejected,
+      .Conflict(paths: ["a"]), .LocalChanges(paths: ["a"]), .EmptyMessage, .NothingToCommit, .BadBranchName(name: "a b"),
+      .BranchExists(name: "a"), .NotInCommit(path: "a"), .NotGitHub, .NotPushed(branch: "main"), .PullRequestExists,
+      .NothingToPropose(base: "main"),
+    ]
+    let notReady: [GitError] = [
+      .NotInstalled, .NoGitHubCli, .GitHubSignedOut, .SignIn, .SignInExpired, .SignInDenied, .SignInUnavailable,
+      .NoIdentity, .NoPermission, .Unreachable, .Failed(message: "HTTP 502"),
+    ]
+    for error in wrongRequest { #expect(IssueCommand.status(error) == .usage, "retrying won't help: \(error)") }
+    for error in notReady { #expect(IssueCommand.status(error) == .notReady, "the Mac or GitHub isn't ready: \(error)") }
+  }
+
+  @Test func aFailureInJSONKeepsItsParams() throws {
+    let json = Failure(code: "run.env.missing", params: ["name": "PASSWORD", "environment": "Staging"]).json.pretty
+    let failure = try #require(JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+    #expect(failure["code"] as? String == "run.env.missing")
+    #expect(failure["params"] as? [String: String] == ["name": "PASSWORD", "environment": "Staging"])
+    let environment = try #require(json.range(of: "\"environment\""))
+    let name = try #require(json.range(of: "\"name\""))
+    #expect(environment.lowerBound < name.lowerBound, "params come in the same order every time")
   }
 
   @Test func assistantServer() throws {
@@ -319,15 +354,18 @@ struct CommandLineToolTests {
     _ = try dir.file("notes.txt", "not a test")
     let result = try jevision("validate", "--json", dir.url.path)
     #expect(result.status == 1)
-    let reports = try #require(JSONSerialization.jsonObject(with: Data(result.out.utf8)) as? [[String: Any]])
+    let json = try #require(JSONSerialization.jsonObject(with: Data(result.out.utf8)) as? [String: Any])
+    #expect(json["jsonVersion"] as? Int == 1)
+    let reports = try #require(json["tests"] as? [[String: Any]])
     #expect(reports.count == 1, "folders yield only *.flow.json files")
     #expect(reports[0]["valid"] as? Bool == false)
     let issue = try #require((reports[0]["issues"] as? [[String: Any]])?.first)
     #expect(issue["code"] as? String == "flow.edge.unknownTarget")
     #expect(issue["severity"] as? String == "error")
     #expect((issue["params"] as? [String: String])?["target"] == "gone")
+    #expect(issue["message"] as? String == "Block “a”, edge “next”: Leads to “gone”, but there’s no such block.")
     #expect(
-      result.out.contains("\"params\": {\n          \"block\": \"a\",\n          \"edge\": \"next\","),
+      result.out.contains("\"params\": {\n            \"block\": \"a\",\n            \"edge\": \"next\","),
       "keeps the order and layout of the issue")
   }
 
@@ -370,12 +408,165 @@ struct CommandLineToolTests {
     }
   }
 
+  @Test func jsonTellsWhyTheCommandCouldntDoItsWork() throws {
+    let dir = try Scratch()
+    try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)
+    _ = try dir.file("notes.txt", "not a test")
+    let missing = dir.url.appending(path: "gone").path
+    func error(_ arguments: String..., language: String = "en") throws -> (status: Int32, json: [String: Any], err: String) {
+      let result = try jevision(arguments, language: language)
+      let json = try #require(
+        try? JSONSerialization.jsonObject(with: Data(result.out.utf8)) as? [String: Any], "\(arguments): \(result.out)")
+      #expect(json["jsonVersion"] as? Int == 1)
+      return (result.status, json, result.err)
+    }
+    func code(_ json: [String: Any]) -> String? { (json["error"] as? [String: Any])?["code"] as? String }
+    func message(_ json: [String: Any]) -> String? { (json["error"] as? [String: Any])?["message"] as? String }
+
+    let noTests = "there are no tests (*.flow.json files) in \(dir.url.path)"
+    let check = try error("check", dir.url.path, "--json")
+    #expect(check.status == 2)
+    #expect(code(check.json) == "noTests")
+    #expect(message(check.json) == noTests, "the message without the tool's name before it")
+    #expect(check.err == "jevision: \(noTests)\n", "standard error says it as before")
+
+    let russian = try error("check", dir.url.path, "--json", language: "ru")
+    #expect(code(russian.json) == "noTests", "the code is the same in every language")
+    #expect(message(russian.json).map { $0 != noTests && $0.contains(dir.url.path) } == true)
+
+    let noFolder = try error("check", missing, "--json")
+    #expect(noFolder.status == 2)
+    #expect(code(noFolder.json) == "noFolder")
+
+    let validate = try error("validate", dir.url.path, "--json")
+    #expect(validate.status == 2)
+    #expect((validate.json["tests"] as? [Any])?.isEmpty == true)
+    #expect(code(validate.json) == "noTests")
+
+    let unreadable = try error("validate", missing + ".flow.json", "--json")
+    #expect(unreadable.status == 2)
+    #expect(code(unreadable.json) == "cannotRead")
+
+    let run = try error("run", missing, "--json")
+    #expect(run.status == 2)
+    #expect(code(run.json) == "noFileOrFolder")
+    #expect(message(run.json) == "there is no file or folder “\(missing)”")
+
+    let arguments = try error("check", dir.url.path, "--json", "--fast")
+    #expect(arguments.status == 2)
+    #expect(code(arguments.json) == "usage", "wrong arguments say so in JSON too")
+  }
+
+  @Test func checkFailsOnFilesOnlyThisMacHas() throws {
+    let dir = try Scratch()
+    for folder in [".jevision", "Data"] {
+      try FileManager.default.createDirectory(at: dir.url.appending(path: folder), withIntermediateDirectories: true)
+    }
+    _ = try dir.file("Data/users.csv", "name\nann\n")
+    _ = try dir.file("button.png", "png")
+    let test = { (data: String, image: String) in
+      #"{"format": 1, "name": "t", "app": "com.example.App", "start": "a", "blocks": {"#
+        + #""a": {"type": "useData", "file": "\#(data)", "body": "b"}, "b": {"type": "click", "target": {"image": "\#(image)"}}}}"#
+    }
+    _ = try dir.file("sign-in.flow.json", test("data/users.csv", "/Users/ann/button.png"))
+
+    let failed = try jevision("check", dir.url.path)
+    #expect(failed.status == 1)
+    #expect(
+      failed.out == """
+        sign-in.flow.json: 2 errors, 0 warnings
+          error   Block “a”, field “file”: The test names “data/users.csv”, but the file is called “Data/users.csv”. \
+        A Mac treats capital and small letters alike, but Linux and many CI servers don’t. Write the name exactly as the file is called.
+          error   Block “b”, field “target.image”: “/Users/ann/button.png” points to a place on this computer only, so the \
+        test won’t find the file anywhere else. Put the file in the project and choose it again.
+        1 test checked: 2 errors, 0 warnings
+
+        """)
+    let json = try jevision("check", "--json", dir.url.path)
+    #expect(json.status == 1)
+    let checked = try #require(try JSONSerialization.jsonObject(with: Data(json.out.utf8)) as? [String: Any])
+    #expect(checked["jsonVersion"] as? Int == 1)
+    let tests = try #require(checked["tests"] as? [[String: Any]])
+    #expect(tests.map { $0["file"] as? String } == ["sign-in.flow.json"])
+    #expect(tests.first?["valid"] as? Bool == false)
+    let issues = try #require(tests.first?["issues"] as? [[String: Any]])
+    #expect(issues.map { $0["code"] as? String } == ["check.path.case", "check.path.absolute"])
+
+    _ = try dir.file("sign-in.flow.json", test("Data/users.csv", "button.png"))
+    let fixed = try jevision("check", dir.url.path)
+    #expect(fixed.status == 0)
+    #expect(fixed.out == "1 test checked: every file it reads is in the project.\n")
+
+    let none = dir.url.appending(path: "none").path
+    let missing = try jevision("check", none)
+    #expect(missing.status == 2)
+    #expect(missing.err == "jevision: there is no folder “\(none)”\n")
+
+    _ = try dir.file("newer.flow.json", newer)
+    #expect(try jevision("check", dir.url.path).status == 5)
+  }
+
   @Test func usageErrorsExitWith2() throws {
     let result = try jevision("validate")
     #expect(result.status == 2)
     #expect(result.err.contains("Usage: jevision validate"))
     #expect(try jevision("run", "/no/such/test.flow.json").status == 2)
     #expect(try jevision("--version").out == "jevision \(jevisionVersion())\n")
+  }
+
+  @Test func filesThatCantBeReadOrWrittenExitWith3() throws {
+    let dir = try Scratch()
+    let locked = try dir.file("locked.flow.json", valid)
+    chmod(locked, 0)
+    let unreadable = try jevision("validate", locked)
+    #expect(unreadable.status == 3)
+    #expect(unreadable.err.contains("cannot read: Permission denied"))
+    chmod(locked, 0o644)
+
+    let folder = dir.url.appending(path: "kept")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let file = folder.appending(path: "t.flow.json").path
+    try valid.write(toFile: file, atomically: false, encoding: .utf8)
+    chmod(folder.path, 0o555)
+    defer { chmod(folder.path, 0o755) }
+    #expect(try jevision("fmt", file).status == 3, "the formatted test can't be written")
+
+    _ = try dir.file("jevision.environments.json", "{ not json")
+    #expect(try jevision("run", locked).status == 3)
+  }
+
+  @Test func filesFromANewerJEVisionExitWith5() throws {
+    let dir = try Scratch()
+    let test = try dir.file("newer.flow.json", newer)
+    for command in ["validate", "fmt"] {
+      let result = try jevision(command, test)
+      #expect(result.status == 5, "\(command)")
+      #expect(result.out.contains("The file uses format 99 from a newer JEVision"))
+    }
+    _ = try dir.file("old.flow.json", valid)
+    _ = try dir.file("jevision.environments.json", #"{"format": 99, "environments": {}}"#)
+    let run = try jevision("run", dir.url.appending(path: "old.flow.json").path)
+    #expect(run.status == 5)
+    #expect(run.err.contains("jevision.environments.json"))
+  }
+
+  @Test func versionTellsWhatThisJEVisionReadsAndSpeaks() throws {
+    #expect(try jevision("version").out == "jevision \(jevisionVersion())\n")
+    let result = try jevision("version", "--json")
+    #expect(result.status == 0)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(result.out.utf8)) as? [String: Any])
+    #expect(json["jsonVersion"] as? Int == 1)
+    #expect(json["version"] as? String == jevisionVersion())
+    let formats = try #require(json["formats"] as? [[String: Any]])
+    #expect(
+      formats.map { $0["file"] as? String } == [
+        "*.flow.json", "*.block.json", "jevision.project.json", "jevision.environments.json", "jevision.schedule.json",
+        "block.json", "report.json", "jevision.notifications.json", "last-results.json", "schedule-history.json",
+      ])
+    #expect(formats.first?["version"] as? Int == Int(formatVersion()))
+    #expect(json["iphoneProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])
+    #expect(json["mcpProtocols"] as? [String] == ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"])
+    #expect(try jevision("help", "version").out.contains("Usage: jevision version [--json]"))
   }
 
   @Test func langWordsTheMessagesInThatLanguage() throws {
@@ -393,6 +584,10 @@ struct CommandLineToolTests {
 
   /// Runs the built `jevision`, in English unless `language` names another or is `nil`.
   private func jevision(_ arguments: String..., language: String? = "en") throws -> (status: Int32, out: String, err: String) {
+    try jevision(arguments, language: language)
+  }
+
+  private func jevision(_ arguments: [String], language: String?) throws -> (status: Int32, out: String, err: String) {
     let process = Process()
     process.executableURL = Bundle(for: Marker.self).bundleURL.deletingLastPathComponent().appending(path: "JEVisionCLI")
     process.arguments = (language.map { ["--lang", $0] } ?? []) + arguments
@@ -437,6 +632,21 @@ private final class Scratch {
 /// `jevision run` with hands that wait until the run is cancelled.
 @Suite(.serialized)
 struct CommandLineRunTests {
+  @Test func aReportThatCantBeSavedIsInTheJSONResult() throws {
+    var request = RunRequest(paths: ["t"], json: true)
+    request.junit = "/dev/null/junit.xml"
+    var command = RunCommand(request: request)
+    let output = Lines()
+    command.output = Console(write: { output.append($0) })
+    command.progress = Console(write: { _ in })
+    #expect(command.finish([]) == .io)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+    let error = try #require(json["error"] as? [String: Any], "\(output.text)")
+    #expect(error["code"] as? String == "cannotWrite")
+    #expect((error["message"] as? String)?.hasPrefix("/dev/null/junit.xml") == true)
+    #expect((json["tests"] as? [Any])?.isEmpty == true, "the result is there as well")
+  }
+
   init() { OwnScreenLock.use() }
 
   /// The run starts with every thread of the system's shared queue stuck, as a busy machine, or a
@@ -444,8 +654,6 @@ struct CommandLineRunTests {
   /// go as soon as it has started: stuck for longer, they would stop the tests beside this one.
   @Test(arguments: [false, true])
   func interruptCancelsTheRunAndReportsIt(whileTheSharedQueueIsBusy busy: Bool) throws {
-    let t0 = Date()
-    func tick(_ what: String) { FileHandle.standardError.write(Data("[T] busy=\(busy) \(what) \(Int(Date().timeIntervalSince(t0) * 1000)) ms\n".utf8)) }
     let stuck = busy ? 300 : 0
     let release = DispatchSemaphore(value: 0)
     var stuckNow = stuck
@@ -454,8 +662,6 @@ struct CommandLineRunTests {
       stuckNow = 0
     }
     for _ in 0..<stuck { DispatchQueue.global().async { release.wait() } }
-    defer { letGo(); tick("end") }
-    tick("queued")
     let dir = try Scratch()
     let test = try dir.file(
       "wait.flow.json",
@@ -468,7 +674,6 @@ struct CommandLineRunTests {
     let session = TestSession(project: dir.url.path, tests: [test], request: request, progress: progress, input: nil) { run in
       WaitingHands(opening: opening, isCancelled: { run.isCancelled() })
     }
-    tick("session")
     let interrupts = Interrupts.install { session.stop() }
     defer {
       interrupts.forEach { $0.cancel() }
@@ -482,15 +687,11 @@ struct CommandLineRunTests {
       results.value = session.runAll()
       finished.signal()
     }
-    tick("launched")
     try #require(opening.wait(timeout: .now() + hangGuard) == .success, "the test never reached its first block")
-    tick("opened")
     letGo()
     kill(getpid(), SIGINT)
-    tick("killed")
     try #require(finished.wait(timeout: .now() + hangGuard) == .success, "Ctrl-C didn’t stop the run")
 
-    tick("finished")
     let result = try #require(results.value?.first)
     #expect(result.verdict == "cancelled")
     #expect(result.file == "wait.flow.json")
@@ -575,6 +776,7 @@ struct CommandLineRunTests {
 
     let honoured = try run(counting: false)
     #expect(honoured.status == 0)
+    #expect(honoured.json["jsonVersion"] as? Int == 1)
     #expect(honoured.json["quarantined"] as? Int == 1)
     #expect(honoured.json["failed"] as? Int == 0)
     let entry = try #require((honoured.json["tests"] as? [[String: Any]])?.first)
@@ -615,9 +817,29 @@ struct CommandLineRunTests {
     #expect(tests.map { $0["file"] as? String } == ["login.flow.json", "inbox.flow.json"])
     #expect(tests[0]["addedAsDependency"] as? Bool == true)
     #expect(tests[1]["verdict"] as? String == "blocked")
-    #expect(tests[1]["blockedBy"] as? String == "Blocked: Login failed")
+    let blocker = try #require(tests[1]["blockedBy"] as? [String: Any])
+    #expect(blocker["reason"] as? String == "failed")
+    #expect(blocker["dependency"] as? String == "login.flow.json")
+    #expect(blocker["cause"] as? String == "login.flow.json")
+    #expect(blocker["cycle"] is NSNull)
+    #expect(blocker["message"] as? String == "Blocked: Login failed")
     let junit = try String(contentsOfFile: try #require(request.junit), encoding: .utf8)
     #expect(junit.contains("<skipped message=\"Blocked: Login failed."))
+  }
+
+  @Test func aTestFromANewerJEVisionAsksForIt() throws {
+    let dir = try Scratch()
+    let test = try dir.file("newer.flow.json", newer)
+    let (session, request) = session(dir, [test], parallel: nil)
+    var command = RunCommand(request: request)
+    let output = Lines()
+    command.output = Console(write: { output.append($0) })
+    command.progress = Console(write: { _ in })
+    #expect(command.finish(session.runAll()).rawValue == 5)
+    let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
+    let failure = try #require((json["tests"] as? [[String: Any]])?.first?["failure"] as? [String: Any])
+    #expect(failure["code"] as? String == "run.test.needsNewer")
+    #expect((failure["message"] as? String)?.contains("format 99") == true)
   }
 
   /// What a test that only runs a command and passes ends as: it checked nothing on the screen.
@@ -636,13 +858,16 @@ struct CommandLineRunTests {
   }
 
   private func session(
-    _ dir: Scratch, _ tests: [String], parallel: UInt32?, console: Console = Console(write: { _ in }),
+    _ dir: Scratch, _ tests: [String], parallel: UInt32?, folder: String = ".", console: Console = Console(write: { _ in }),
     hands: @escaping (TestRun) -> any Hands = { run in WaitingHands(opening: DispatchSemaphore(value: 0), isCancelled: { run.isCancelled() }) }
   ) -> (TestSession, RunRequest) {
     var request = RunRequest(paths: tests, json: true)
     request.parallel = parallel
     request.junit = dir.url.appending(path: "junit.xml").path
-    return (TestSession(project: dir.url.path, tests: tests, request: request, progress: console, input: nil, makeHands: hands), request)
+    return (
+      TestSession(project: dir.url.path, tests: tests, folder: folder, request: request, progress: console, input: nil, makeHands: hands),
+      request
+    )
   }
 
   @Test func testsThatLeaveTheScreenAloneRunSideBySide() throws {
@@ -665,6 +890,76 @@ struct CommandLineRunTests {
     let second = try quiet(dir, "second", "test -f done")
     let (session, _) = session(dir, [first, second], parallel: nil)
     #expect(session.runAll().map(\.verdict) == [Self.ended, Self.ended])
+  }
+
+  @Test func withoutParallelTheProjectSettingsChoose() throws {
+    let dir = try Scratch()
+    _ = try dir.file("jevision.project.json", #"{"format": 1, "runModes": [{"folder": ".", "run": "parallel", "limit": 2}]}"#)
+    // Each waits for the file of the other: one after another, the first would wait for nothing.
+    let wait = { (mine: String, theirs: String) in
+      "touch \(mine); for i in $(seq 200); do [ -f \(theirs) ] && exit 0; sleep 0.05; done; exit 1"
+    }
+    let first = try quiet(dir, "first", wait("one", "two"))
+    let second = try quiet(dir, "second", wait("two", "one"))
+    let printed = Lines()
+    let (session, _) = session(dir, [first, second], parallel: nil, console: Console(write: { printed.append($0) }))
+    #expect(session.runAll().map(\.verdict) == [Self.ended, Self.ended], "side by side, as jevision.project.json sets")
+    #expect(printed.text.contains("up to 2 at a time"), "\(printed.text)")
+    #expect(
+      printed.text.contains(
+        "Side by side, as jevision.project.json sets for the whole project. Add --parallel 1 to run them one at a time."))
+  }
+
+  @Test func theFolderAboveTheTestsChoosesAndTheRunSaysWhich() throws {
+    let dir = try Scratch()
+    _ = try dir.file("jevision.project.json", #"{"format": 1, "runModes": [{"folder": "login", "run": "parallel", "limit": 2}]}"#)
+    try FileManager.default.createDirectory(at: dir.url.appending(path: "login/deep"), withIntermediateDirectories: true)
+    let wait = { (mine: String, theirs: String) in
+      "touch \(mine); for i in $(seq 200); do [ -f \(theirs) ] && exit 0; sleep 0.05; done; exit 1"
+    }
+    let first = try quiet(dir, "login/deep/first", wait("one", "two"))
+    let second = try quiet(dir, "login/deep/second", wait("two", "one"))
+    let printed = Lines()
+    let (session, _) = session(
+      dir, [first, second], parallel: nil, folder: "login/deep", console: Console(write: { printed.append($0) }))
+    #expect(session.runAll().map(\.verdict) == [Self.ended, Self.ended], "side by side, as set for login")
+    #expect(printed.text.contains("as jevision.project.json sets for the folder “login”."), "\(printed.text)")
+  }
+
+  @Test func unreadableSettingsRunTheTestsOneAtATime() throws {
+    let dir = try Scratch()
+    _ = try dir.file("jevision.project.json", "{ not settings")
+    let first = try quiet(dir, "first", "true")
+    let second = try quiet(dir, "second", "true")
+    let printed = Lines()
+    let (session, _) = session(dir, [first, second], parallel: nil, console: Console(write: { printed.append($0) }))
+    // Every test needs the settings, so each fails and says why.
+    let results = session.runAll()
+    #expect(results.map(\.verdict) == ["failed", "failed"])
+    let codes = results.map { result -> String? in
+      guard case .finished(_, _, let report) = result.outcome else { return nil }
+      return decidingAttempt(report: report)?.failure?.code
+    }
+    #expect(codes == ["run.project.unreadable", "run.project.unreadable"])
+    #expect(printed.text.contains("jevision.project.json can’t be read ("), "\(printed.text)")
+    #expect(printed.text.contains("so the tests run one at a time. Fix the file.\n"))
+    #expect(!printed.text.contains("up to"), "not side by side")
+  }
+
+  @Test func planNamesTheFolderThatHoldsWhatIsNamed() throws {
+    let dir = try Scratch()
+    for folder in [".jevision", "login/deep", "other"] {
+      try FileManager.default.createDirectory(at: dir.url.appending(path: folder), withIntermediateDirectories: true)
+    }
+    for test in ["login/a", "login/deep/b", "other/c"] { _ = try dir.file("\(test).flow.json", valid) }
+    let folder = { (paths: [String]) in
+      try RunCommand.plan(RunRequest(paths: paths.map { dir.url.appending(path: $0).path })).folder
+    }
+    #expect(try folder(["login"]) == "login")
+    #expect(try folder(["login/deep/b.flow.json"]) == "login/deep")
+    #expect(try folder(["login/a.flow.json", "login/deep"]) == "login")
+    #expect(try folder(["login", "other/c.flow.json"]) == ".")
+    #expect(try folder(["."]) == ".")
   }
 
   @Test func aTestStartsAfterItsDependencyEvenWithPlacesFree() throws {
@@ -694,7 +989,9 @@ struct CommandLineRunTests {
     let json = try #require(JSONSerialization.jsonObject(with: Data(output.text.utf8)) as? [String: Any])
     #expect(json["blocked"] as? Int == 1)
     let tests = try #require(json["tests"] as? [[String: Any]])
-    #expect(tests[1]["blockedBy"] as? String == "Blocked: setup failed")
+    let blocker = try #require(tests[1]["blockedBy"] as? [String: Any])
+    #expect(blocker["reason"] as? String == "failed")
+    #expect(blocker["message"] as? String == "Blocked: setup failed")
   }
 
   @Test func reportsKeepTheOrderOfTheTestsAndEachTestPrintsInOnePiece() throws {
@@ -809,12 +1106,12 @@ struct CommandLineRunTests {
     #expect(throws: UsageError.self) { try RunCommand.plan(RunRequest(paths: [dir.url.appending(path: ".jevision").path])) }
 
     let login = dir.url.appending(path: "login").path
-    #expect(throws: UsageError(message: "there is no environment “staging”: the project has no jevision.environments.json in \(dir.url.path)")) {
+    #expect(throws: UsageError(message: "there is no environment “staging”: the project has no jevision.environments.json in \(dir.url.path)", code: "noEnvironmentsFile")) {
       try RunCommand.plan(RunRequest(paths: [login], environment: "staging"))
     }
     _ = try dir.file("jevision.environments.json", #"{"format":1,"environments":{"dev":{},"prod":{}}}"#)
     #expect(try RunCommand.plan(RunRequest(paths: [login], environment: "dev")).project == dir.url.path)
-    #expect(throws: UsageError(message: "there is no environment “staging” in jevision.environments.json; use one of: dev, prod")) {
+    #expect(throws: UsageError(message: "there is no environment “staging” in jevision.environments.json; use one of: dev, prod", code: "noEnvironment")) {
       try RunCommand.plan(RunRequest(paths: [login], environment: "staging"))
     }
     #expect(try RunCommand.plan(RunRequest(paths: [login])).environment == nil)

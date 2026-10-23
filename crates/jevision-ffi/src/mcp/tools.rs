@@ -119,6 +119,14 @@ pub(super) fn definitions() -> Vec<Value> {
             read_only(),
         ),
         tool(
+            "check_project",
+            "Check the project",
+            "Checks that the project carries every file its tests read, so it runs the same once copied, cloned or on CI. Errors: a path to a place on this computer only, out of the project folder or through a link that leads out of it; a name that differs from the file on disk in capital letters; a missing file. Warns about files of 50 MB or more, which belong in Git LFS.",
+            json!({}),
+            &[],
+            read_only(),
+        ),
+        tool(
             "list_block_types",
             "Describe the test format",
             "Describes the test file format: the fields of a test, every block type with its fields and an example, how blocks lead to each other, and the shapes of targets, references, areas and durations.",
@@ -247,6 +255,7 @@ impl Server {
             "add_blocks" => self.add_blocks(args),
             "remove_block" => self.remove_one(args),
             "validate_test" => self.validate_tests(args),
+            "check_project" => self.check_project(),
             "list_block_types" => Ok(vec![pretty(&blocks::guide())]),
             "run_test" => self.run_test(args),
             "get_run" => self.get_run(args),
@@ -456,6 +465,18 @@ impl Server {
                 Ok(Ok(flow)) => checked(&flow, file),
             };
             lines.push(format!("{}: {}", self.relative(file), problems(&issues)));
+        }
+        Ok(vec![text(lines.join("\n"))])
+    }
+
+    fn check_project(&self) -> Content {
+        let lines: Vec<String> = jevision_core::check_project(&self.project)
+            .into_iter()
+            .filter(|t| !t.issues.is_empty())
+            .map(|t| format!("{}: {}", t.file, problems(&t.issues)))
+            .collect();
+        if lines.is_empty() {
+            return Ok(vec![text(tr!("mcp.check.fine"))]);
         }
         Ok(vec![text(lines.join("\n"))])
     }

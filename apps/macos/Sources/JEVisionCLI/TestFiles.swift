@@ -3,10 +3,11 @@ import JEVisionCore
 
 /// `jevision validate`: lists the errors and warnings of every test.
 func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) -> ExitStatus {
-  var (files, status) = collectTests(paths, reportingEmptyFolders: true)
+  var (files, problem) = collectTests(paths, reportingEmptyFolders: true)
+  var status = ExitStatus.ok
   var reports: [(file: String, issues: [Issue])] = []
   for file in files {
-    guard let text = read(file, status: &status) else { continue }
+    guard let text = read(file, problem: &problem) else { continue }
     let issues: [Issue]
     do {
       let folder = URL(filePath: file).deletingLastPathComponent().path
@@ -17,17 +18,18 @@ func validate(_ paths: [String], json: Bool, output: Console = .standardOutput) 
     } catch {
       issues = []
     }
-    if !isValid(issues) { status = max(status, .problems) }
+    status = max(status, exitStatus(issues))
     reports.append((file, issues))
   }
   if json {
-    let value = JSON.array(
-      reports.map { .object([("file", .string($0.file)), ("valid", .bool(isValid($0.issues))), ("issues", .array($0.issues.map(\.json)))]) })
-    output.line(value.pretty)
+    let tests = reports.map {
+      JSON.object([("file", .string($0.file)), ("valid", .bool(isValid($0.issues))), ("issues", .array($0.issues.map(\.json)))])
+    }
+    output.line(JSON.result([("tests", .array(tests))] + (problem.map { [("error", $0.json)] } ?? [])).pretty)
   } else {
     for report in reports { printIssues(report.issues, of: report.file, to: output) }
   }
-  return status
+  return max(status, problem?.status ?? .ok)
 }
 
 /// Tests `flow`, saved as `file`, runs after that don't exist or that run after it in turn,
@@ -40,16 +42,17 @@ private func dependencyProblems(_ flow: Flow, _ file: String) -> [Issue] {
 
 /// `jevision fmt`: rewrites tests in canonical form, or with `check` only names the ones that aren't.
 func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -> ExitStatus {
-  var (files, status) = collectTests(paths, reportingEmptyFolders: true)
+  var (files, problem) = collectTests(paths, reportingEmptyFolders: true)
+  var status = ExitStatus.ok
   var changed = 0
   for file in files {
-    guard let text = read(file, status: &status) else { continue }
+    guard let text = read(file, problem: &problem) else { continue }
     let canonical: String
     do {
       canonical = saveFlow(flow: try loadFlow(json: text))
     } catch let FlowError.Invalid(issues) {
       printIssues(issues, of: file, to: output)
-      status = max(status, .problems)
+      status = max(status, exitStatus(issues))
       continue
     } catch {
       continue
@@ -64,21 +67,28 @@ func format(_ paths: [String], check: Bool, output: Console = .standardOutput) -
         try writeAtomically(canonical, to: file)
         output.line(words("cli.fmt.formatted", file))
       } catch {
-        status = max(status, ioFailure(words("cli.error.cannotWrite", file, describe(error))))
+        tell(UsageError(message: words("cli.error.cannotWrite", file, describe(error)), code: "cannotWrite", status: .io), &problem)
       }
     }
   }
   if !files.isEmpty {
     output.line(check ? words("cli.fmt.summaryCheck", files.count, changed) : words("cli.fmt.summary", files.count, changed))
   }
-  return status
+  return max(status, problem?.status ?? .ok)
 }
 
 private func isValid(_ issues: [Issue]) -> Bool {
   !issues.contains { $0.severity == .error }
 }
 
-private func printIssues(_ issues: [Issue], of file: String, to output: Console) {
+/// How the issues of a file end a command: `.needsNewer` when a newer JEVision saved the file,
+/// `.problems` for any other error.
+func exitStatus(_ issues: [Issue]) -> ExitStatus {
+  if issues.contains(where: { asksForNewerJevision(code: $0.code) }) { return .needsNewer }
+  return isValid(issues) ? .ok : .problems
+}
+
+func printIssues(_ issues: [Issue], of file: String, to output: Console) {
   guard !issues.isEmpty else { return output.line(words("cli.validate.ok", file)) }
   let errors = issues.count { $0.severity == .error }
   let warnings = issues.count - errors
@@ -96,6 +106,7 @@ extension Issue {
     .object([
       ("code", .string(code)),
       ("severity", .string(severity == .error ? "error" : "warning")),
+      ("message", .string(describeIssue(issue: self))),
       ("params", .object(params.map { ($0.name, .string($0.value)) })),
     ])
   }
@@ -105,10 +116,11 @@ extension Issue {
 
 /// Expands folders into the `*.flow.json` files inside them, sorted by path; hidden files and
 /// folders are skipped. Other paths are taken as they are. With `reportingEmptyFolders`, a folder
-/// without tests is an error, so the command never ends without a word.
-func collectTests(_ paths: [String], reportingEmptyFolders: Bool = false) -> (files: [String], status: ExitStatus) {
+/// without tests is an error, so the command never ends without a word. `problem` is the error
+/// that ends the command with the highest exit status, if any; each one is told on standard error.
+func collectTests(_ paths: [String], reportingEmptyFolders: Bool = false) -> (files: [String], problem: UsageError?) {
   var files: [String] = []
-  var status = ExitStatus.ok
+  var problem: UsageError?
   for path in paths {
     guard isFolder(path) else {
       files.append(path)
@@ -118,14 +130,13 @@ func collectTests(_ paths: [String], reportingEmptyFolders: Bool = false) -> (fi
       let found = files.count
       try walk(path, into: &files)
       if reportingEmptyFolders && files.count == found {
-        Console.standardError.line("jevision: " + words("cli.error.noTests", path))
-        status = .failure
+        tell(UsageError(message: "jevision: " + words("cli.error.noTests", path), code: "noTests"), &problem)
       }
     } catch {
-      status = max(status, ioFailure(words("cli.error.cannotRead", path, describe(error))))
+      tell(UsageError(message: words("cli.error.cannotRead", path, describe(error)), code: "cannotRead", status: .io), &problem)
     }
   }
-  return (files, status)
+  return (files, problem)
 }
 
 private func walk(_ folder: String, into files: inout [String]) throws {
@@ -153,7 +164,17 @@ func isProjectFolder(_ folder: String) -> Bool {
     || FileManager.default.fileExists(atPath: (folder as NSString).appendingPathComponent(environmentsFileName()))
 }
 
-private func read(_ file: String, status: inout ExitStatus) -> String? {
+/// The nearest project at or above `folder`.
+func enclosingProject(_ folder: String) -> String? {
+  var folder = folder
+  while !isProjectFolder(folder) {
+    guard folder != "/" else { return nil }
+    folder = (folder as NSString).deletingLastPathComponent
+  }
+  return folder
+}
+
+private func read(_ file: String, problem: inout UsageError?) -> String? {
   do {
     let data = try Data(contentsOf: URL(filePath: file))
     guard let text = String(data: data, encoding: .utf8) else {
@@ -161,7 +182,10 @@ private func read(_ file: String, status: inout ExitStatus) -> String? {
     }
     return text
   } catch {
-    status = max(status, ioFailure(words("cli.error.cannotRead", file, describe(error))))
+    let missing = (error as? CocoaError)?.code == .fileReadNoSuchFile
+    tell(
+      UsageError(message: words("cli.error.cannotRead", file, describe(error)), code: "cannotRead", status: missing ? .usage : .io),
+      &problem)
     return nil
   }
 }
@@ -182,10 +206,11 @@ private func writeAtomically(_ text: String, to path: String) throws {
   }
 }
 
-/// Says on standard error that a file can't be read or written.
-private func ioFailure(_ message: String) -> ExitStatus {
-  Console.standardError.line(message)
-  return .failure
+/// Says `error` on standard error and keeps it as `problem` unless that one ends the command
+/// with a higher exit status already.
+private func tell(_ error: UsageError, _ problem: inout UsageError?) {
+  Console.standardError.line(error.message)
+  if error.status > problem?.status ?? .ok { problem = error }
 }
 
 /// The system's own words for a file error, such as “No such file or directory”.

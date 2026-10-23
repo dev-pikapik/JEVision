@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use crate::CiOrigin;
 use crate::words::describe_in;
 
+/// Name of the report in the folder of a run.
+pub const REPORT_FILE: &str = "report.json";
+
 /// Version of the `report.json` layout.
 pub const REPORT_FORMAT: u32 = 1;
 

@@ -8,6 +8,7 @@ mod atomic;
 mod batch;
 mod board;
 mod canvas;
+mod check;
 mod ci;
 mod create;
 mod data;
@@ -44,9 +45,10 @@ pub use board::{
     LaidBoardEdge, LaidNode, OPEN_HEADER, blocks_area, is_image_file,
 };
 pub use canvas::CanvasItem;
+pub use check::{CheckedTest, LARGE_FILE_BYTES, check_project, check_test};
 pub use ci::{
-    CI_ARTIFACT, CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, ci_workflow, ci_workflow_text,
-    repository_root, write_ci_workflow,
+    CI_ARTIFACT, CI_WORKFLOW_FILE, CiWorkflow, CiWorkflowError, LAST_RESULTS_FILE, ci_workflow,
+    ci_workflow_text, repository_root, write_ci_workflow,
 };
 pub use create::{
     CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,
@@ -97,6 +99,7 @@ pub use package_files::{
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER, PROJECT_FILE,
     PROJECT_FORMAT, ProjectSettings, QUARANTINE_DAYS, Quarantined, default_quarantine_until,
+    shared_folder,
 };
 pub use recent::{
     MAX_RECENT_PROJECTS, RecentProject, recent_projects_cleared, recent_projects_decode,
@@ -107,10 +110,11 @@ pub use references::{ReferenceUse, SettingsError, reference_uses, set_reference_
 pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
-    SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES, Schedule, ScheduleHistory,
-    ScheduleProblem, ScheduleTests, ScheduledOutcome, ScheduledRun, SkipReason, TimeOfDay, Weekday,
-    begin_schedule_check, calendar_intervals, due_schedules, launch_agent_plist, load_schedules,
-    parse_schedules, record_scheduled_run, save_schedules, schedule_agent_label, schedules_to_json,
+    SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_FORMAT, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES,
+    Schedule, ScheduleHistory, ScheduleProblem, ScheduleTests, ScheduledOutcome, ScheduledRun,
+    SkipReason, TimeOfDay, Weekday, begin_schedule_check, calendar_intervals, due_schedules,
+    launch_agent_plist, load_schedules, parse_schedules, record_scheduled_run, save_schedules,
+    schedule_agent_label, schedules_to_json,
 };
 pub use search::{SearchCandidate, rank, test_keywords};
 pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};

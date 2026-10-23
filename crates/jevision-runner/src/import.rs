@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 use serde_json::{Value, json};
 use zip::ZipArchive;
 
-use crate::{CiOrigin, Run};
+use crate::{CiOrigin, REPORT_FILE, Run};
 
 /// Which CI artifacts were brought in already, in `<project>/.jevision`.
 const LEDGER: &str = "ci-artifacts.json";
@@ -168,7 +168,7 @@ fn settle(staging: &Path, runs: &Path, id: u64, fallback: &CiOrigin) -> io::Resu
         if target.exists() {
             continue;
         }
-        name_origin(&dir.join("report.json"), fallback)?;
+        name_origin(&dir.join(REPORT_FILE), fallback)?;
         fs::rename(&dir, &target)?;
         brought += 1;
     }

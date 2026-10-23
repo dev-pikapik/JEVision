@@ -21,11 +21,13 @@ struct IssueCommand {
   var output = Console.standardOutput
 
   func execute() -> ExitStatus {
+    var run: String?
     do {
       let (project, dir) = try locate()
+      run = dir
       guard var report = try draftBugReport(project: project, dir: dir, secrets: StoredSecrets()) else {
         Console.standardError.line("jevision: " + words("cli.issue.notFailed", dir))
-        return .failure
+        return .usage
       }
       if let title = request.title { report.title = title }
       guard request.send else {
@@ -35,12 +37,15 @@ struct IssueCommand {
       return try send(report, project: project, dir: dir)
     } catch let error as UsageError {
       Console.standardError.line("jevision: \(error.message)")
+      return error.status
     } catch let error as GitError {
       Console.standardError.line("jevision: \(Self.message(error))")
+      return Self.status(error)
     } catch {
+      // Only the report of the run is read past the arguments.
       Console.standardError.line("jevision: \(describe(error))")
+      return run.map { .unreadable(($0 as NSString).appendingPathComponent("report.json")) } ?? .io
     }
-    return .failure
   }
 
   private func preview(_ report: BugReport, dir: String) {
@@ -121,6 +126,21 @@ struct IssueCommand {
     guard let resolved = realpath(path, nil) else { return nil }
     defer { free(resolved) }
     return String(cString: resolved)
+  }
+
+  /// How a git or GitHub error ends the command: `.notReady` when signing in, setting up the Mac
+  /// or trying again later can help, an error GitHub didn't explain included; `.usage` when the
+  /// project or the request can't be sent as it is.
+  static func status(_ error: GitError) -> ExitStatus {
+    switch error {
+    case .NotInstalled, .NoGitHubCli, .GitHubSignedOut, .SignIn, .SignInExpired, .SignInDenied, .SignInUnavailable,
+      .NoIdentity, .NoPermission, .Unreachable, .Failed:
+      .notReady
+    case .NotRepository, .NoCommits, .NoRemote, .NoUpstream, .Detached, .RemoteNotFound, .Rejected, .Conflict,
+      .LocalChanges, .EmptyMessage, .NothingToCommit, .BadBranchName, .BranchExists, .NotInCommit, .NotGitHub,
+      .NotPushed, .PullRequestExists, .NothingToPropose:
+      .usage
+    }
   }
 
   static func message(_ error: GitError) -> String {

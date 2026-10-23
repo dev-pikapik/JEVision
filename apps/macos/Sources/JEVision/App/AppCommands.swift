@@ -130,7 +130,7 @@ struct AppCommands: Commands {
           runs.runAll(project.chosen(from: project.items).map(\.url), in: root, title: project.runAllTitle)
         }
         .keyboardShortcut(Shortcuts.runAll)
-        .disabled(runs.isRunning || records.isRecording || project.status != .ready || project.chosen(from: project.items).isEmpty)
+        .disabled(runs.isBusy || records.isRecording || project.status != .ready || project.chosen(from: project.items).isEmpty)
         Button("Schedules…") { project.schedules.isShowingSheet = true }
           .disabled(project.status != .ready)
         Divider()
@@ -169,7 +169,7 @@ struct AppCommands: Commands {
   }
 
   private var canRun: Bool {
-    !runs.isRunning && !records.isRecording && project.rootURL != nil && project.document?.flow != nil
+    !runs.isBusy && !records.isRecording && project.rootURL != nil && project.document?.flow != nil
       && project.document?.beforeDraft == nil
   }
 

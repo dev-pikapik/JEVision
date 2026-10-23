@@ -2845,6 +2845,27 @@ fn an_unreadable_test_says_what_is_wrong_in_plain_words() {
     );
 }
 
+#[test]
+fn a_test_from_a_newer_jevision_asks_for_it() {
+    let p = Project::new();
+    p.write(
+        "t.flow.json",
+        r#"{"format":99,"name":"T","app":"com.example.App","start":"a","blocks":{}}"#,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let failure = run(&p, &hands).report.attempts[0].failure.clone().unwrap();
+    assert_eq!(failure.code, "run.test.needsNewer");
+    assert_eq!(
+        describe(&failure),
+        format!(
+            "The test t.flow.json is saved in format 99 by a newer JEVision, and this one reads up to \
+             format {}. Update JEVision to run it.",
+            jevision_core::FORMAT_VERSION
+        )
+    );
+    assert!(hands.log().is_empty());
+}
+
 fn meaning_check(p: &Project, model: &str) {
     p.test(
         &format!(

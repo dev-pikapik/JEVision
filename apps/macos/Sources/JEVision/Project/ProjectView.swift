@@ -304,9 +304,9 @@ struct ProjectView: View {
     }
   }
 
-  private var canRun: Bool { !runs.isRunning && !records.isRecording && project.rootURL != nil }
+  private var canRun: Bool { !runs.isBusy && !records.isRecording && project.rootURL != nil }
 
-  /// Opens and runs a test; runs every test of a folder one after another.
+  /// Opens and runs a test; runs every test of a folder as the folder's run mode says.
   private func run(_ item: ProjectItem) {
     guard let root = project.rootURL else { return }
     switch item.kind {

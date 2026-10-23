@@ -34,7 +34,7 @@ struct MCPCommand {
   private func serveHere() -> ExitStatus {
     guard let folder = project ?? Self.defaultProject() else {
       Console.standardError.line("jevision: " + words("cli.mcp.noProject"))
-      return .failure
+      return .usage
     }
     do {
       try serveAssistants(
@@ -42,10 +42,11 @@ struct MCPCommand {
       return .ok
     } catch AssistantServerError.NoProject(let path) {
       Console.standardError.line("jevision: " + words("cli.error.noFolder", path))
+      return .usage
     } catch {
       Console.standardError.line("jevision: \(error.localizedDescription)")
+      return .io
     }
-    return .failure
   }
 
   private func pair(_ link: String) -> ExitStatus {
@@ -56,36 +57,44 @@ struct MCPCommand {
       Console.standardOutput.line(words("cli.mcp.paired", mac.name, "jevision mcp --remote \(shellWord(mac.name))"))
       return .ok
     } catch {
-      Console.standardError.line("jevision: \(error.localizedDescription)")
-      return .failure
+      return Self.failed(error)
     }
   }
 
   private func serveRemote(_ name: String) -> ExitStatus {
     do {
-      guard let mac = try pairedMac(name) else { return .failure }
+      guard let mac = try pairedMac(name) else { return .usage }
       guard let key = ComputerKey.existing() else {
         Console.standardError.line("jevision: " + words("cli.mcp.noKey"))
-        return .failure
+        return .notReady
       }
       try serveRemoteAssistant(mac: mac, key: key, project: project)
       return .ok
     } catch {
-      Console.standardError.line("jevision: \(error.localizedDescription)")
-      return .failure
+      return Self.failed(error)
     }
   }
 
   private func forget(_ name: String) -> ExitStatus {
     do {
-      guard let mac = try pairedMac(name) else { return .failure }
+      guard let mac = try pairedMac(name) else { return .usage }
       try RemoteMacs.standard.remove(mac)
       if try RemoteMacs.standard.all().isEmpty { try ComputerKey.remove() }
       Console.standardOutput.line(words("cli.mcp.forgot", mac.name))
       return .ok
     } catch {
-      Console.standardError.line("jevision: \(error.localizedDescription)")
-      return .failure
+      return Self.failed(error)
+    }
+  }
+
+  /// Says why the other Mac can't be paired or served: it is out of reach, or the list of paired
+  /// Macs or this computer's key can't be read or written.
+  private static func failed(_ error: Error) -> ExitStatus {
+    Console.standardError.line("jevision: \(error.localizedDescription)")
+    switch error {
+    case AssistantServerError.NoProject: return .usage
+    case AssistantServerError.Io: return .notReady
+    default: return .io
     }
   }
 

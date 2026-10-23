@@ -46,7 +46,7 @@ struct ScheduleCommandTests {
       Issue.record("tests ran while the screen was locked")
       return []
     }
-    #expect(command.execute() == .problems)
+    #expect(command.execute() == .notReady)
     let runs = try scheduledRuns(project: project.path)
     #expect(runs.map(\.schedule) == ["Nightly"])
     #expect(runs.first?.outcome == .skipped(reason: .screenLocked))
@@ -67,8 +67,50 @@ struct ScheduleCommandTests {
       #expect(request.paths == [project.path])
       throw UsageError(message: "jevision: no tests")
     }
-    #expect(command.execute() == .failure)
+    #expect(command.execute() == .usage)
     #expect(try scheduledRuns(project: project.path).first?.outcome == .error(message: "no tests"))
+  }
+
+  @Test func aHistoryFromANewerJEVisionAsksForANewerOne() throws {
+    let project = try scratch()
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
+    let history = try newerHistory(in: project)
+    var command = ScheduleCommand(project: project.path)
+    command.progress = Console(write: { _ in })
+    command.now = { Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now)! }
+    command.blocker = { nil }
+    command.runTests = { _ throws(UsageError) in
+      Issue.record("tests ran though their history can't be kept")
+      return []
+    }
+    #expect(command.execute() == .needsNewer)
+    #expect(try String(contentsOf: history, encoding: .utf8) == Self.newer, "the newer history is left as it is")
+  }
+
+  static let newer = #"{"format": 99, "runs": []}"#
+}
+
+/// Saves a schedule history only a newer JEVision reads in `project`.
+private func newerHistory(in project: URL) throws -> URL {
+  let history = project.appending(path: ".jevision/schedule-history.json")
+  try FileManager.default.createDirectory(at: history.deletingLastPathComponent(), withIntermediateDirectories: true)
+  try ScheduleCommandTests.newer.write(to: history, atomically: true, encoding: .utf8)
+  return history
+}
+
+@MainActor
+struct ProjectSchedulesTests {
+  @Test func aHistoryThatCantBeReadIsShownNotAnEmptyList() throws {
+    let project = try scratch()
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
+    _ = try newerHistory(in: project)
+    var agents = ScheduleAgents()
+    agents.folder = try scratch().appending(path: "LaunchAgents")
+    agents.launchctl = { _ in Issue.record("nothing is installed while the history can't be kept") }
+    let schedules = ProjectSchedules(agents: agents, defaults: UserDefaults(suiteName: "ProjectSchedulesTests")!)
+    schedules.open(project)
+    #expect(schedules.all.map(\.name) == ["Nightly"], "the schedules themselves are read")
+    #expect(schedules.problem?.contains(".jevision/schedule-history.json") == true, "\(schedules.problem ?? "no problem")")
   }
 }
 

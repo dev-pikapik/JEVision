@@ -68,6 +68,7 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
     let key = f.code.as_str();
     match key {
         "run.test.unreadable" => Phrase::new(key, &[p("test"), reason()]),
+        "run.test.needsNewer" => Phrase::new(key, &[p("test"), p("found"), p("supported")]),
         "run.test.invalid" => Phrase::new(key, &[p("errors")]),
         "run.start.unknownBlock" => Phrase::new(key, &[p("block")]),
         "run.secret.missing" => Phrase::new(key, &[p("name")]),

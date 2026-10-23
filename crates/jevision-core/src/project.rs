@@ -428,14 +428,21 @@ impl ProjectSettings {
     /// How the tests of `folder`, relative to the project folder (`.` for the project folder),
     /// run: as set for it or for the nearest folder above it, otherwise one after another.
     pub fn run_mode(&self, folder: &str) -> RunMode {
+        self.run_mode_setting(folder)
+            .map_or(RunMode::Sequential, |m| m.mode)
+    }
+
+    /// The setting [`Self::run_mode`] follows for `folder`: the one for it or for the nearest
+    /// folder above it; `None` when there is none.
+    pub fn run_mode_setting(&self, folder: &str) -> Option<&FolderRunMode> {
         let mut folder = folder.trim_matches('/');
         loop {
             let key = if folder.is_empty() { "." } else { folder };
             if let Some(m) = self.run_modes.iter().find(|m| m.folder == key) {
-                return m.mode;
+                return Some(m);
             }
             if folder.is_empty() || folder == "." {
-                return RunMode::Sequential;
+                return None;
             }
             folder = folder.rfind('/').map_or("", |at| &folder[..at]);
         }
@@ -491,6 +498,32 @@ fn check_hide(hide: &[Rect]) -> Result<(), String> {
     match hide.iter().position(|r| !rect_fits(r)) {
         Some(i) => Err(tr!("project.hide.area", i + 1)),
         None => Ok(()),
+    }
+}
+
+/// The deepest folder that holds all of `folders`, each relative to the project folder with `/`
+/// between folders; `.` for the project folder.
+pub fn shared_folder(folders: &[String]) -> String {
+    let parts = |folder: &str| -> Vec<String> {
+        (folder.split('/'))
+            .filter(|part| !part.is_empty() && *part != ".")
+            .map(str::to_owned)
+            .collect()
+    };
+    let mut iter = folders.iter();
+    let mut shared = iter.next().map(|f| parts(f)).unwrap_or_default();
+    for folder in iter {
+        let same = shared
+            .iter()
+            .zip(parts(folder))
+            .take_while(|(a, b)| **a == *b)
+            .count();
+        shared.truncate(same);
+    }
+    if shared.is_empty() {
+        ".".to_owned()
+    } else {
+        shared.join("/")
     }
 }
 
@@ -723,6 +756,21 @@ mod tests {
     }
 
     #[test]
+    fn the_shared_folder_is_the_deepest_that_holds_them_all() {
+        let shared = |folders: &[&str]| {
+            shared_folder(&folders.iter().map(|f| f.to_string()).collect::<Vec<_>>())
+        };
+        assert_eq!(shared(&["checkout/cart"]), "checkout/cart");
+        assert_eq!(
+            shared(&["checkout/cart", "checkout/pay", "checkout"]),
+            "checkout"
+        );
+        assert_eq!(shared(&["checkout", "checkout-old"]), ".");
+        assert_eq!(shared(&["checkout", "."]), ".");
+        assert_eq!(shared(&[]), ".");
+    }
+
+    #[test]
     fn folders_run_as_set_for_them_or_above_them() {
         let text = r#"{"format": 1, "runModes": [
             {"folder": "checkout/slow", "run": "sequential"},
@@ -747,6 +795,16 @@ mod tests {
             RunMode::Parallel { limit: 8 }
         );
         assert_eq!(settings.run_mode("checkout/slow/pay"), RunMode::Sequential);
+        assert_eq!(
+            settings
+                .run_mode_setting("checkout/cart")
+                .map(|m| m.folder.as_str()),
+            Some("checkout")
+        );
+        assert_eq!(
+            ProjectSettings::default().run_mode_setting("checkout"),
+            None
+        );
         assert_eq!(
             ProjectSettings::default().run_mode("checkout"),
             RunMode::Sequential

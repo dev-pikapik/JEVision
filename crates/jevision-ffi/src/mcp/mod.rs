@@ -30,7 +30,8 @@ use crate::{Hands, HandsError, RunOptions, SecretSource, TestRun};
 use jevision_runner::Screenshot;
 
 /// Protocol versions this server speaks, newest first.
-const PROTOCOL_VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
+pub(crate) const PROTOCOL_VERSIONS: &[&str] =
+    &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 
 /// What the person allowed assistants to do, in the app's settings.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, uniffi::Record)]

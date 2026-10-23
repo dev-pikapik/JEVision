@@ -186,14 +186,14 @@ struct BoardStatusTests {
     #expect(glance("pic").shape == .picture && glance("pic").title == "Shot.png")
     #expect(glance("n").shape == .note)
 
-    source.running = "a.flow.json"
+    source.running = ["a.flow.json"]
     let running = BoardLook(scene, source)
     #expect(running != still)
     #expect(running.status["a.flow.json"]?.kind == .running)
     #expect(running.rollups["f"]?.running == 1)
     #expect(running.glances[scene.places["again"] ?? 0].badge?.kind == .running, "every card of the test shows it")
 
-    source.running = nil
+    source.running = []
     source.waiting = ["a.flow.json"]
     #expect(BoardLook(scene, source).status["a.flow.json"]?.kind == .waiting)
   }

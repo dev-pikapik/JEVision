@@ -12,6 +12,11 @@ pub const CI_WORKFLOW_FILE: &str = ".github/workflows/jevision.yml";
 /// The name of the artifact the workflow uploads: the app looks for it to bring CI runs in.
 pub const CI_ARTIFACT: &str = "jevision-reports";
 
+/// The last result of each test, relative to the project folder; not committed. A run is told
+/// apart from the one before by the run folders, and where a CI job starts without them, by
+/// this file, which the workflow keeps between jobs.
+pub const LAST_RESULTS_FILE: &str = ".jevision/last-results.json";
+
 /// The workflow can't be put into the repository.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CiWorkflowError {
@@ -111,8 +116,34 @@ pub fn ci_workflow_text(tests_path: &str, secrets: &[String]) -> String {
         "    runs-on: [self-hosted, macOS]".to_owned(),
         "    steps:".to_owned(),
         "      - uses: actions/checkout@v4".to_owned(),
-        "      - name: Run UI tests".to_owned(),
     ];
+    let inside = |file: &str| match tests_path {
+        "." => file.to_owned(),
+        _ => format!("{tests_path}/{file}"),
+    };
+    // GitHub looks for a cache of this branch first, then of the base and default branches; a
+    // branch name in the key could hold a comma, which the cache action refuses.
+    let cache = [
+        "        with:".to_owned(),
+        "          path: |".to_owned(),
+        format!("            {}", inside(LAST_RESULTS_FILE)),
+        "          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}"
+            .to_owned(),
+    ];
+    lines.extend([
+        "      - name: Restore the last result of each test".to_owned(),
+        "        uses: actions/cache/restore@v4".to_owned(),
+    ]);
+    lines.extend(cache.clone());
+    // A file only this Mac has, or one named in the wrong case, stops the job here with the
+    // name of the file instead of failing tests one by one.
+    lines.extend([
+        "          restore-keys: jevision-last-results-".to_owned(),
+        "      - name: Check the project carries its files".to_owned(),
+        "        run: |".to_owned(),
+        format!("          jevision check {}", shell_word(tests_path)),
+        "      - name: Run UI tests".to_owned(),
+    ]);
     if !secrets.is_empty() {
         lines.push("        env:".to_owned());
         lines.extend(
@@ -121,18 +152,22 @@ pub fn ci_workflow_text(tests_path: &str, secrets: &[String]) -> String {
                 .map(|name| format!("          {name}: ${{{{ secrets.{name} }}}}")),
         );
     }
-    // A block scalar keeps any folder name out of YAML's way; the shell gets it quoted.
+    // A block scalar keeps any folder name out of YAML's way; the shell gets it quoted. A fresh
+    // checkout has no `.jevision` folder to mark the project, so the run is told where it is:
+    // otherwise it could keep its results at the top of the repository, away from the cache.
+    let project = shell_word(tests_path);
     lines.push("        run: |".to_owned());
     lines.push(format!(
-        "          jevision run {} --junit junit.xml --html reports",
-        shell_word(tests_path)
+        "          jevision run --project {project} {project} --junit junit.xml --html reports"
     ));
+    lines.extend([
+        "      - name: Save the last result of each test".to_owned(),
+        "        if: always()".to_owned(),
+        "        uses: actions/cache/save@v4".to_owned(),
+    ]);
+    lines.extend(cache);
     // The run reports live in a hidden folder, which the action skips unless told to include
     // it. A re-run of the same workflow run makes a new artifact under the same name.
-    let runs = match tests_path {
-        "." => ".jevision/runs/".to_owned(),
-        _ => format!("{tests_path}/.jevision/runs/"),
-    };
     lines.extend([
         "      - uses: actions/upload-artifact@v4".to_owned(),
         "        if: always()".to_owned(),
@@ -143,7 +178,7 @@ pub fn ci_workflow_text(tests_path: &str, secrets: &[String]) -> String {
         "          path: |".to_owned(),
         "            junit.xml".to_owned(),
         "            reports/".to_owned(),
-        format!("            {runs}"),
+        format!("            {}", inside(".jevision/runs/")),
     ]);
     lines.join("\n") + "\n"
 }
@@ -181,18 +216,35 @@ mod tests {
     fn the_workflow_passes_secrets_and_quotes_the_path() {
         let plain = ci_workflow_text("tests/smoke", &[]);
         assert!(
-            plain.contains("          jevision run tests/smoke --junit junit.xml --html reports\n")
+            plain.contains("          jevision run --project tests/smoke tests/smoke --junit junit.xml --html reports\n")
         );
         assert!(!plain.contains("env:"));
         assert!(plain.contains("runs-on: [self-hosted, macOS]"));
 
         let names = ["API_KEY".to_owned(), "PASSWORD".to_owned()];
         let spaced = ci_workflow_text("ui tests/it's", &names);
-        assert!(spaced.contains(r#"jevision run 'ui tests/it'\''s' --junit"#));
+        assert!(
+            spaced.contains(
+                r#"jevision run --project 'ui tests/it'\''s' 'ui tests/it'\''s' --junit"#
+            )
+        );
         assert!(spaced.contains(
             "        env:\n          API_KEY: ${{ secrets.API_KEY }}\n          PASSWORD: ${{ secrets.PASSWORD }}\n"
         ));
         assert!(spaced.ends_with("            ui tests/it's/.jevision/runs/\n"));
+    }
+
+    #[test]
+    fn the_workflow_checks_the_project_carries_its_files_before_the_run() {
+        let step = |path: &str| {
+            format!(
+                "      - name: Check the project carries its files\n        run: |\n          jevision check {path}\n      - name: Run UI tests\n"
+            )
+        };
+        let text = ci_workflow_text("tests/smoke", &[]);
+        assert!(text.contains(&step("tests/smoke")), "{text}");
+        let odd = ci_workflow_text("ui tests: it's #1", &[]);
+        assert!(odd.contains(&step(r#"'ui tests: it'\''s #1'"#)), "{odd}");
     }
 
     #[test]
@@ -206,6 +258,51 @@ mod tests {
     }
 
     #[test]
+    fn the_workflow_keeps_the_last_result_of_each_test_between_jobs() {
+        let with = "        with:\n          path: |\n            tests/.jevision/last-results.json\n          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}\n";
+        let text = ci_workflow_text("tests", &[]);
+        let restore = format!(
+            "      - uses: actions/checkout@v4\n      - name: Restore the last result of each test\n        uses: actions/cache/restore@v4\n{with}          restore-keys: jevision-last-results-\n"
+        );
+        let save = format!(
+            "--junit junit.xml --html reports\n      - name: Save the last result of each test\n        if: always()\n        uses: actions/cache/save@v4\n{with}      - uses: actions/upload-artifact@v4\n"
+        );
+        assert!(text.contains(&restore), "{text}");
+        assert!(text.contains(&save), "{text}");
+        let top = ci_workflow_text(".", &[]);
+        assert!(top.contains("          path: |\n            .jevision/last-results.json\n"));
+        assert_eq!(LAST_RESULTS_FILE, ".jevision/last-results.json");
+    }
+
+    #[test]
+    fn the_run_keeps_its_results_where_the_cache_and_the_artifact_look() {
+        // A fresh checkout has no `.jevision` folder to mark the project, and without
+        // `--project` the run could take the top of the repository for it.
+        for (folder, cached) in [
+            ("tests", "tests/.jevision/"),
+            (".", ".jevision/"),
+            ("ui tests", "ui tests/.jevision/"),
+        ] {
+            let text = ci_workflow_text(folder, &[]);
+            let quoted = shell_word(folder);
+            assert!(
+                text.contains(&format!(
+                    "          jevision run --project {quoted} {quoted} --junit"
+                )),
+                "{text}"
+            );
+            assert!(
+                text.contains(&format!("            {cached}last-results.json\n")),
+                "{text}"
+            );
+            assert!(
+                text.ends_with(&format!("            {cached}runs/\n")),
+                "{text}"
+            );
+        }
+    }
+
+    #[test]
     fn it_finds_the_project_inside_its_repository() {
         let repo = folder();
         let project = repo.join("ui tests/mac");
@@ -214,19 +311,19 @@ mod tests {
         let outside = ci_workflow(&project, &[]);
         assert_eq!(outside.path, None);
         assert!(!outside.exists);
-        assert!(outside.text.contains("jevision run . --junit"));
+        assert!(outside.text.contains("jevision run --project . . --junit"));
 
         fs::create_dir(repo.join(".git")).unwrap();
         let workflow = ci_workflow(&project, &[]);
         assert!(
             workflow
                 .text
-                .contains("jevision run 'ui tests/mac' --junit")
+                .contains("jevision run --project 'ui tests/mac' 'ui tests/mac' --junit")
         );
         assert_eq!(workflow.path, Some(repo.join(CI_WORKFLOW_FILE)));
         assert!(!workflow.exists);
         let top = ci_workflow(&repo, &[]);
-        assert!(top.text.contains("jevision run . --junit"));
+        assert!(top.text.contains("jevision run --project . . --junit"));
         fs::remove_dir_all(repo).unwrap();
     }
 
@@ -247,7 +344,7 @@ mod tests {
         assert!(
             fs::read_to_string(&path)
                 .unwrap()
-                .contains("jevision run .")
+                .contains("jevision run --project . .")
         );
         assert!(ci_workflow(&repo, &[]).exists);
 

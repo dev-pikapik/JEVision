@@ -13,6 +13,7 @@ mod ci;
 mod control;
 mod env;
 mod import;
+mod last_results;
 mod machine;
 mod packages;
 mod report;
@@ -42,11 +43,12 @@ pub use jevision_vision::{
     Provider, Question, Search, TIMEOUT, Usage, VideoMask, VideoWindow, VisionError, VisionJudge,
     video_mask,
 };
+pub use last_results::{LAST_RESULTS_FORMAT, verdict_before};
 pub use packages::{StagedSet, discard_staged, stage_source_set, zip_package};
 pub use report::{
-    Attempt, DataRow, Failure, REPORT_FORMAT, RetryVerdict, RowResult, RunReport, Step, StepStatus,
-    UsedPackage, Verdict, VisionAnswer, branch_text, branch_text_in, html, html_in, junit_xml,
-    junit_xml_in, nothing_checked_in,
+    Attempt, DataRow, Failure, REPORT_FILE, REPORT_FORMAT, RetryVerdict, RowResult, RunReport,
+    Step, StepStatus, UsedPackage, Verdict, VisionAnswer, branch_text, branch_text_in, html,
+    html_in, junit_xml, junit_xml_in, nothing_checked_in,
 };
 pub use run::{
     Run, RunOptions, Runner, VIDEO_FILE, VideoMode, prune_videos, today, vision_failure,

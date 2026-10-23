@@ -250,12 +250,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%@ подключён, %lld инструмент."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -266,6 +260,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%@ подключён, %lld инструментов."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@ подключён, %lld инструмент."
                 }
               },
               "other" : {
@@ -714,12 +714,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Установлен %lld блок"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -730,6 +724,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Установлено %lld блоков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Установлен %lld блок"
                 }
               },
               "other" : {
@@ -766,12 +766,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld блок из jevision.blocks.json не установлен на этом Mac"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -782,6 +776,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld блоков из jevision.blocks.json не установлены на этом Mac"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блок из jevision.blocks.json не установлен на этом Mac"
                 }
               },
               "other" : {
@@ -818,12 +818,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld блок требует внимания, например нужно снять эталон. Он отмечен на холсте."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -834,6 +828,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld блоков требуют внимания, например нужно снять эталоны. Они отмечены на холсте."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блок требует внимания, например нужно снять эталон. Он отмечен на холсте."
                 }
               },
               "other" : {
@@ -870,12 +870,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld столбец"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -886,6 +880,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld столбцов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld столбец"
                 }
               },
               "other" : {
@@ -922,12 +922,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld коммит получить"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -938,6 +932,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld коммитов получить"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммит получить"
                 }
               },
               "other" : {
@@ -974,12 +974,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld коммит отправить"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -990,6 +984,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld коммитов отправить"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld коммит отправить"
                 }
               },
               "other" : {
@@ -1026,12 +1026,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld конфликт"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1042,6 +1036,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld конфликтов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld конфликт"
                 }
               },
               "other" : {
@@ -1130,12 +1130,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld упал"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1146,6 +1140,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld упали"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld упал"
                 }
               },
               "other" : {
@@ -1182,12 +1182,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld падение"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1198,6 +1192,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld падений"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld падение"
                 }
               },
               "other" : {
@@ -1234,12 +1234,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld файл"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1250,6 +1244,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld файлов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл"
                 }
               },
               "other" : {
@@ -1286,12 +1286,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld файл или ссылка"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1302,6 +1296,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld файлов и ссылок"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл или ссылка"
                 }
               },
               "other" : {
@@ -1338,12 +1338,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld файл больше %@, вместе %@."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1354,6 +1348,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld файлов больше %@, вместе %@."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld файл больше %@, вместе %@."
                 }
               },
               "other" : {
@@ -1400,12 +1400,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld элемент"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1416,6 +1410,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld элементов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld элемент"
                 }
               },
               "other" : {
@@ -1452,12 +1452,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld строку"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1468,6 +1462,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld строк"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строку"
                 }
               },
               "other" : {
@@ -1504,12 +1504,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld заметка относится к тому, что вы удаляете."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1520,6 +1514,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld заметок относятся к тому, что вы удаляете."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заметка относится к тому, что вы удаляете."
                 }
               },
               "other" : {
@@ -1545,6 +1545,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пройдено блоков: %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld done · %lld running" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово %1$lld из %2$lld · идут: %3$lld"
           }
         }
       }
@@ -1598,12 +1608,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld другой файл"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1614,6 +1618,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld других файлов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld другой файл"
                 }
               },
               "other" : {
@@ -1650,12 +1660,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld прошёл с повтора"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1666,6 +1670,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld прошли с повтора"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld прошёл с повтора"
                 }
               },
               "other" : {
@@ -1722,12 +1732,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ответ"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1738,6 +1742,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld ответов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ответ"
                 }
               },
               "other" : {
@@ -1774,12 +1784,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld строка"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1790,6 +1794,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld строк"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld строка"
                 }
               },
               "other" : {
@@ -1842,12 +1852,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld запуск"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1858,6 +1862,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld запусков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld запуск"
                 }
               },
               "other" : {
@@ -1904,12 +1914,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld шаг"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1920,6 +1924,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld шагов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld шаг"
                 }
               },
               "other" : {
@@ -1956,12 +1966,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld тест"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -1972,6 +1976,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld тест"
                 }
               },
               "other" : {
@@ -2008,12 +2018,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld раз"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -2021,6 +2025,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld раз"
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld раз"
@@ -2244,12 +2254,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : ", а %lld запуск прошёл только с повтора"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -2260,6 +2264,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : ", а %lld запусков прошли только с повтора"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : ", а %lld запуск прошёл только с повтора"
                 }
               },
               "other" : {
@@ -3716,12 +3726,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "В тест добавлен %lld шаг."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -3732,6 +3736,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "В тест добавлено %lld шагов."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "В тест добавлен %lld шаг."
                 }
               },
               "other" : {
@@ -4040,12 +4050,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Разрешить «%@» запустить %lld тест?"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -4056,6 +4060,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Разрешить «%@» запустить %lld тестов?"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Разрешить «%@» запустить %lld тест?"
                 }
               },
               "other" : {
@@ -4752,12 +4762,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Перед запуском %lld теста"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -4768,6 +4772,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Перед запуском %lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Перед запуском %lld теста"
                 }
               },
               "other" : {
@@ -9978,12 +9988,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Свёрнута, %lld тест"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -9994,6 +9998,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Свёрнута, %lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свёрнута, %lld тест"
                 }
               },
               "other" : {
@@ -11222,12 +11232,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Установить %lld блок"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -11238,6 +11242,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Установить %lld блоков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Установить %lld блок"
                 }
               },
               "other" : {
@@ -17547,12 +17557,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Убрать %lld элемент с доски"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -17563,6 +17567,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Убрать %lld элементов с доски"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Убрать %lld элемент с доски"
                 }
               },
               "other" : {
@@ -18203,12 +18213,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Восстановить %lld блок"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -18219,6 +18223,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Восстановить %lld блоков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Восстановить %lld блок"
                 }
               },
               "other" : {
@@ -20921,12 +20931,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Пропущен %lld блок: у него прежние настройки, и он тоже сравнивает с новой картинкой."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -20937,6 +20941,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Пропущено %lld блоков: у них прежние настройки, и они тоже сравнивают с новой картинкой."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пропущен %lld блок: у него прежние настройки, и он тоже сравнивает с новой картинкой."
                 }
               },
               "other" : {
@@ -22113,12 +22123,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "ИИ видел %u снимок экрана прогона."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22129,6 +22133,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "ИИ видел %u снимков экрана прогона."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ видел %u снимок экрана прогона."
                 }
               },
               "other" : {
@@ -22175,12 +22185,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "ИИ остановлен после %u вызова инструмента без ответа."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22191,6 +22195,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "ИИ остановлен после %u вызовов инструментов без ответа."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ остановлен после %u вызова инструмента без ответа."
                 }
               },
               "other" : {
@@ -22587,12 +22597,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Черновик на холсте: %lld блок. Примите его или скажите, что изменить."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -22603,6 +22607,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Черновик на холсте: %lld блоков. Примите его или скажите, что изменить."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Черновик на холсте: %lld блок. Примите его или скажите, что изменить."
                 }
               },
               "other" : {
@@ -24889,12 +24899,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Нестабилен %lld раз за последние 7 дней"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -24902,6 +24906,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Нестабилен %lld раз за последние 7 дней"
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Нестабилен %lld раз за последние 7 дней"
@@ -25087,12 +25097,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Обновлён %lld блок"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -25103,6 +25107,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Обновлено %lld блоков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Обновлён %lld блок"
                 }
               },
               "other" : {
@@ -25269,12 +25279,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Использовать копию в %lld тесте, где стоит этот блок"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -25285,6 +25289,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Использовать копию в %lld тестах, где стоит этот блок"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Использовать копию в %lld тесте, где стоит этот блок"
                 }
               },
               "other" : {
@@ -25331,12 +25341,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Используется в %lld блоке"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -25347,6 +25351,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Используется в %lld блоках"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Используется в %lld блоке"
                 }
               },
               "other" : {
@@ -26415,12 +26425,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Не больше %lld символа."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -26431,6 +26435,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Не больше %lld символов."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не больше %lld символа."
                 }
               },
               "other" : {
@@ -26861,12 +26871,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "ИИ запросил больше %lld вызова инструментов"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -26877,6 +26881,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "ИИ запросил больше %lld вызовов инструментов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ИИ запросил больше %lld вызова инструментов"
                 }
               },
               "other" : {
@@ -29347,12 +29357,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Повторить %lld раз"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -29360,6 +29364,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Повторить %lld раз"
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Повторить %lld раз"
@@ -29463,12 +29473,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Прокрутить %2$@ на %1$lld строку: %3$@"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -29479,6 +29483,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Прокрутить %2$@ на %1$lld строк: %3$@"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Прокрутить %2$@ на %1$lld строку: %3$@"
                 }
               },
               "other" : {
@@ -29515,12 +29525,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Прокрутить %2$@ на %1$lld пункт: %3$@"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -29531,6 +29535,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Прокрутить %2$@ на %1$lld пунктов: %3$@"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Прокрутить %2$@ на %1$lld пункт: %3$@"
                 }
               },
               "other" : {
@@ -30159,12 +30169,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld день"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30175,6 +30179,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld дней"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld день"
                 }
               },
               "other" : {
@@ -30211,12 +30221,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld час"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30227,6 +30231,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld часов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld час"
                 }
               },
               "other" : {
@@ -30263,12 +30273,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld минута"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30279,6 +30283,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld минут"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld минута"
                 }
               },
               "other" : {
@@ -30315,12 +30325,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld месяц"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30331,6 +30335,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld месяцев"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld месяц"
                 }
               },
               "other" : {
@@ -30367,12 +30377,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld секунда"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30383,6 +30387,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld секунд"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld секунда"
                 }
               },
               "other" : {
@@ -30419,12 +30429,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld неделя"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30435,6 +30439,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld недель"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld неделя"
                 }
               },
               "other" : {
@@ -30471,12 +30481,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$@%1$lld год"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30487,6 +30491,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$@%1$lld лет"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$@%1$lld год"
                 }
               },
               "other" : {
@@ -30571,12 +30581,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld более ранний шаг пройден и опущен."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -30587,6 +30591,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld более ранних шагов пройдено и опущено."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld более ранний шаг пройден и опущен."
                 }
               },
               "other" : {
@@ -31122,12 +31132,150 @@
         }
       }
     },
+    "check.file.large" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” takes %@. Files this big make the project slow to download; consider keeping them in Git LFS."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» занимает %@. Из-за таких больших файлов проект долго скачивается — лучше храните их в Git LFS."
+          }
+        }
+      }
+    },
+    "check.file.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing file “%@” in the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте нет файла «%@»."
+          }
+        }
+      }
+    },
+    "check.folder.missing" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missing folder “%@” in the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В проекте нет папки «%@»."
+          }
+        }
+      }
+    },
+    "check.path.absolute" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” points to a place on this computer only, so the test won’t find the file anywhere else. Put the file in the project and choose it again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» указывает на место только на этом компьютере, поэтому на другом тест файл не найдёт. Положите файл в проект и выберите его заново."
+          }
+        }
+      }
+    },
+    "check.path.backslash" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” separates folders with \\, which works only on Windows. Write it with / instead: “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В «%@» папки разделены знаком \\, а так работает только в Windows. Напишите через /: «%@»."
+          }
+        }
+      }
+    },
+    "check.path.case" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test names “%@”, but the file is called “%@”. A Mac treats capital and small letters alike, but Linux and many CI servers don’t. Write the name exactly as the file is called."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В тесте написано «%@», а файл называется «%@». Mac не различает заглавные и строчные буквы, а Linux и многие CI-серверы различают. Напишите имя точно так, как называется файл."
+          }
+        }
+      }
+    },
+    "check.path.link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is a link to a file outside the project, so the file itself won’t come along when the project is copied or run on CI. Put the file itself in the project."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — ссылка на файл вне проекта, поэтому сам файл не попадёт в копию проекта и в CI. Положите в проект сам файл."
+          }
+        }
+      }
+    },
+    "check.path.outside" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” leads out of the project folder, so the file won’t come along when the project is copied or run on CI. Move the file into the project and choose it again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» ведёт за пределы папки проекта, поэтому файл не попадёт в копию проекта и в CI. Перенесите файл в проект и выберите его заново."
+          }
+        }
+      }
+    },
     "checked a test" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "проверил тест"
+          }
+        }
+      }
+    },
+    "checked the project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "проверил проект"
           }
         }
       }
@@ -31667,12 +31815,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld блок в %@"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -31683,6 +31825,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld блоков в %@"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блок в %@"
                 }
               },
               "other" : {
@@ -32007,12 +32155,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld блок из %@ не установлен."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -32023,6 +32165,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld блоков из %@ не установлены."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld блок из %@ не установлен."
                 }
               },
               "other" : {
@@ -32176,6 +32324,110 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Предупреждение: %@"
+          }
+        }
+      }
+    },
+    "cli.check.clean" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld test checked: every file it reads is in the project."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld tests checked: every file they read is in the project."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %lld теста: все файлы, которые они читают, есть в проекте."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %lld тестов: все файлы, которые они читают, есть в проекте."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверен %lld тест: все файлы, которые он читает, есть в проекте."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %lld теста: все файлы, которые они читают, есть в проекте."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cli.check.summary" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld test checked: %2$@, %3$@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld tests checked: %2$@, %3$@"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %1$lld теста: %2$@, %3$@"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %1$lld тестов: %2$@, %3$@"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверен %1$lld тест: %2$@, %3$@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверено %1$lld теста: %2$@, %3$@"
+                }
+              }
+            }
           }
         }
       }
@@ -32539,12 +32791,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "ни один тест не подходит под фильтр (указан %lld тест); проверьте --type, --priority, --status, --author и --flaky"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -32555,6 +32801,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "ни один тест не подходит под фильтр (указано %lld тестов); проверьте --type, --priority, --status, --author и --flaky"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ни один тест не подходит под фильтр (указан %lld тест); проверьте --type, --priority, --status, --author и --flaky"
                 }
               },
               "other" : {
@@ -32936,6 +33188,22 @@
         }
       }
     },
+    "cli.error.versionNoArguments" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "version takes no arguments"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "version не принимает аргументов"
+          }
+        }
+      }
+    },
     "cli.error.videoMode" : {
       "localizations" : {
         "en" : {
@@ -33023,12 +33291,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Проверен %1$lld тест, отформатировано: %2$lld"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -33039,6 +33301,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Проверено %1$lld тестов, отформатировано: %2$lld"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверен %1$lld тест, отформатировано: %2$lld"
                 }
               },
               "other" : {
@@ -33075,12 +33343,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Проверен %1$lld тест, не отформатировано: %2$lld"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -33091,6 +33353,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Проверено %1$lld тестов, не отформатировано: %2$lld"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Проверен %1$lld тест, не отформатировано: %2$lld"
                 }
               },
               "other" : {
@@ -33109,13 +33377,29 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lists, installs, updates and removes the blocks others shared: a block is a set of\nsteps in a folder (ID.jevblock) or a .zip file, which tests run as one step. Blocks\nlive in the project, in blocks/, and the address each came from is kept in\njevision.blocks.json so it can be updated and installed again on another Mac.\n\n%@\n\nCommands:\n  list                      Show the installed blocks\n  install <source>          Show what the blocks at the source do; install them with\n                            --yes. The source is a block folder, a folder or .zip file\n                            of several blocks, or an https address of a .zip file, a\n                            GitHub repository or a GitHub release\n  update [<id>]             Fetch the newest version of a block installed from an\n                            address, or of all of them; install it with --yes\n  remove <id>               Remove a block\n  restore                   Fetch the blocks jevision.blocks.json names that aren't\n                            installed, from the address of each; install them with --yes\n\nOptions:\n  --project <folder>        Project folder. Default: the nearest folder at or above\n                            the current one that has a .jevision folder, otherwise\n                            the current folder\n  --yes                     Install, update or restore after showing what the blocks do\n  --only <id>[,<id>…]       Install or restore only these blocks, and the blocks they\n                            need\n  --force                   Remove a block that tests or other blocks use, install the\n                            version that is installed again, go back to an older\n                            version, install a block that an installed block needs in\n                            another version, or restore a block whose address now has\n                            another version than jevision.blocks.json keeps\n  -h, --help                Show this help\n\nInstalling shows the steps in plain words and, apart, the steps that run a script,\nsend network requests, use a database, open apps, type on the keyboard or use the\nclipboard. A block that needs other blocks names them, with the versions that fit\nand where to get them: the ones that aren't installed are fetched and shown too, and\ninstalled first. Nothing is installed without --yes, and nothing in a block runs\nwhile it is installed. Only https addresses are downloaded.\n\nExit status: 0 — done, 1 — nothing was installed or removed because of what the\nblock or the project says, or because --yes or --force is missing, 2 — the project,\nblock or address couldn’t be read."
+            "value" : "Lists, installs, updates and removes the blocks others shared: a block is a set of\nsteps in a folder (ID.jevblock) or a .zip file, which tests run as one step. Blocks\nlive in the project, in blocks/, and the address each came from is kept in\njevision.blocks.json so it can be updated and installed again on another Mac.\n\n%@\n\nCommands:\n  list                      Show the installed blocks\n  install <source>          Show what the blocks at the source do; install them with\n                            --yes. The source is a block folder, a folder or .zip file\n                            of several blocks, or an https address of a .zip file, a\n                            GitHub repository or a GitHub release\n  update [<id>]             Fetch the newest version of a block installed from an\n                            address, or of all of them; install it with --yes\n  remove <id>               Remove a block\n  restore                   Fetch the blocks jevision.blocks.json names that aren't\n                            installed, from the address of each; install them with --yes\n\nOptions:\n  --project <folder>        Project folder. Default: the nearest folder at or above\n                            the current one that has a .jevision folder, otherwise\n                            the current folder\n  --yes                     Install, update or restore after showing what the blocks do\n  --only <id>[,<id>…]       Install or restore only these blocks, and the blocks they\n                            need\n  --force                   Remove a block that tests or other blocks use, install the\n                            version that is installed again, go back to an older\n                            version, install a block that an installed block needs in\n                            another version, or restore a block whose address now has\n                            another version than jevision.blocks.json keeps\n  -h, --help                Show this help\n\nInstalling shows the steps in plain words and, apart, the steps that run a script,\nsend network requests, use a database, open apps, type on the keyboard or use the\nclipboard. A block that needs other blocks names them, with the versions that fit\nand where to get them: the ones that aren't installed are fetched and shown too, and\ninstalled first. Nothing is installed without --yes, and nothing in a block runs\nwhile it is installed. Only https addresses are downloaded.\n\nExit status: 0 — done, 1 — nothing was installed or removed because of what the\nblock or the project says, or because --yes or --force is missing, 2 — wrong arguments,\na project folder that isn't there, a block that isn't installed, or a source that isn't\na block folder, a .zip file or an https address, 3 — the project or the source couldn't\nbe read or downloaded, 5 — the block needs a newer JEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывает, устанавливает, обновляет и удаляет блоки, которыми с вами поделились: блок —\nэто набор шагов в папке (ID.jevblock) или файле .zip, который тесты выполняют как один\nшаг. Блоки лежат в проекте, в blocks/, а адрес, откуда взят каждый, хранится в\njevision.blocks.json, чтобы блок можно было обновить и установить заново на другом Mac.\n\n%@\n\nКоманды:\n  list                      Показать установленные блоки\n  install <источник>        Показать, что делают блоки из источника; установить их с\n                            --yes. Источник — папка блока, папка или файл .zip с\n                            несколькими блоками или адрес https файла .zip, репозитория\n                            GitHub или релиза GitHub\n  update [<id>]             Получить самую новую версию блока, установленного по адресу,\n                            или всех таких блоков; установить её с --yes\n  remove <id>               Удалить блок\n  restore                   Получить блоки, которые названы в jevision.blocks.json, но не\n                            установлены, каждый по его адресу; установить их с --yes\n\nПараметры:\n  --project <папка>         Папка проекта. По умолчанию — ближайшая папка с папкой\n                            .jevision: текущая или одна из папок над ней, иначе текущая\n                            папка\n  --yes                     Установить, обновить или восстановить, показав, что делают\n                            блоки\n  --only <id>[,<id>…]       Установить или восстановить только эти блоки и блоки, которые\n                            им нужны\n  --force                   Удалить блок, который используют тесты или другие блоки,\n                            установить заново уже установленную версию, вернуться к более\n                            старой, установить блок, который нужен установленному блоку в\n                            другой версии, или восстановить блок, по адресу которого\n                            теперь другая версия, чем записана в jevision.blocks.json\n  -h, --help                Показать эту справку\n\nПри установке шаги показываются простыми словами, а отдельно — шаги, которые запускают\nскрипт, отправляют сетевые запросы, работают с базой данных, открывают приложения, вводят\nтекст с клавиатуры или работают с буфером обмена. Блок, которому нужны другие блоки,\nназывает их вместе с подходящими версиями и адресами: те, что не установлены, тоже\nзагружаются, показываются и устанавливаются первыми. Без --yes ничего не устанавливается,\nи при установке ничего из блока не выполняется. Скачиваются только адреса https.\n\nКод завершения: 0 — готово, 1 — ничего не установлено и не удалено из-за того, что сказано\nв блоке или проекте, или потому что не хватает --yes либо --force, 2 — не удалось\nпрочитать проект, блок или адрес."
+            "value" : "Показывает, устанавливает, обновляет и удаляет блоки, которыми с вами поделились: блок —\nэто набор шагов в папке (ID.jevblock) или файле .zip, который тесты выполняют как один\nшаг. Блоки лежат в проекте, в blocks/, а адрес, откуда взят каждый, хранится в\njevision.blocks.json, чтобы блок можно было обновить и установить заново на другом Mac.\n\n%@\n\nКоманды:\n  list                      Показать установленные блоки\n  install <источник>        Показать, что делают блоки из источника; установить их с\n                            --yes. Источник — папка блока, папка или файл .zip с\n                            несколькими блоками или адрес https файла .zip, репозитория\n                            GitHub или релиза GitHub\n  update [<id>]             Получить самую новую версию блока, установленного по адресу,\n                            или всех таких блоков; установить её с --yes\n  remove <id>               Удалить блок\n  restore                   Получить блоки, которые названы в jevision.blocks.json, но не\n                            установлены, каждый по его адресу; установить их с --yes\n\nПараметры:\n  --project <папка>         Папка проекта. По умолчанию — ближайшая папка с папкой\n                            .jevision: текущая или одна из папок над ней, иначе текущая\n                            папка\n  --yes                     Установить, обновить или восстановить, показав, что делают\n                            блоки\n  --only <id>[,<id>…]       Установить или восстановить только эти блоки и блоки, которые\n                            им нужны\n  --force                   Удалить блок, который используют тесты или другие блоки,\n                            установить заново уже установленную версию, вернуться к более\n                            старой, установить блок, который нужен установленному блоку в\n                            другой версии, или восстановить блок, по адресу которого\n                            теперь другая версия, чем записана в jevision.blocks.json\n  -h, --help                Показать эту справку\n\nПри установке шаги показываются простыми словами, а отдельно — шаги, которые запускают\nскрипт, отправляют сетевые запросы, работают с базой данных, открывают приложения, вводят\nтекст с клавиатуры или работают с буфером обмена. Блок, которому нужны другие блоки,\nназывает их вместе с подходящими версиями и адресами: те, что не установлены, тоже\nзагружаются, показываются и устанавливаются первыми. Без --yes ничего не устанавливается,\nи при установке ничего из блока не выполняется. Скачиваются только адреса https.\n\nКод завершения: 0 — готово, 1 — ничего не установлено и не удалено из-за того, что сказано\nв блоке или проекте, или потому что не хватает --yes либо --force, 2 — неверные аргументы,\nпапки проекта нет, блок не установлен или источник — не папка блока, не файл .zip и не адрес\nhttps, 3 — не удалось прочитать или скачать проект или источник, 5 — блоку нужна более\nновая JEVision."
+          }
+        }
+      }
+    },
+    "cli.help.check" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks that a project carries every file its tests read, so it runs the same once\ncopied, cloned or on CI.\n\n%@\n\nArguments:\n  <project>   Project folder. Default: the project the current folder is in\n\nOptions:\n  --json      Print the result as JSON\n  -h, --help  Show this help\n\nErrors: a path to a place on this computer only (/Users/…, ~/…, C:\\…), out of the\nproject folder or through a link that leads out of it; \\ between folders; a name that\ndiffers from the file on disk in capital letters; a missing file or folder.\nWarnings: files of 50 MB or more, which belong in Git LFS, and references that the\nfirst run of a check block will save.\n\nA path with placeholders, such as ${var.folder}/logo.png, names a file only while the\ntest runs, so only its part before the first placeholder is checked.\n\nExit status: 0 — all good, 1 — errors found, 2 — wrong arguments, a folder that isn't\nthere, or a project with no tests, 3 — a file or folder couldn't be read, 5 — a test\nneeds a newer JEVision."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверяет, что в проекте есть все файлы, которые читают его тесты, — чтобы он работал\nтак же после копирования, клонирования и в CI.\n\n%@\n\nАргументы:\n  <проект>    Папка проекта. По умолчанию — проект, в котором текущая папка\n\nПараметры:\n  --json      Вывести результат в JSON\n  -h, --help  Показать эту справку\n\nОшибки: путь к месту только на этом компьютере (/Users/…, ~/…, C:\\…), за пределы\nпапки проекта или через ссылку, ведущую за её пределы; \\ между папками; имя, которое\nотличается от файла на диске заглавными буквами; отсутствующий файл или папка.\nПредупреждения: файлы от 50 МБ, которым место в Git LFS, и эталоны, которые сохранит\nпервый прогон блока проверки.\n\nПуть с подстановками, например ${var.folder}/logo.png, называет файл только во время\nпрогона, поэтому проверяется лишь его часть до первой подстановки.\n\nКод завершения: 0 — всё в порядке, 1 — найдены ошибки, 2 — неверные аргументы, папки нет\nили в проекте нет тестов, 3 — файл или папку не удалось прочитать, 5 — тесту нужна более\nновая JEVision."
           }
         }
       }
@@ -33125,13 +33409,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rewrites test files in canonical form: fixed key order, blocks in reading order,\nsettings that are off or empty left out, and the click button, comparison and\nwait timeout always written, so every change shows up as a small, readable diff.\n\n%@\n\nArguments:\n  <tests>…    Test files (.flow.json) or folders to search for them\n\nOptions:\n  --check     Only list the files that are not in canonical form; change nothing\n  -h, --help  Show this help\n\nExit status: 0 — all good, 1 — a file is not in canonical form or can't be read as\na test, 2 — wrong arguments, a folder with no tests, or a file that could not be\nread or written."
+            "value" : "Rewrites test files in canonical form: fixed key order, blocks in reading order,\nsettings that are off or empty left out, and the click button, comparison and\nwait timeout always written, so every change shows up as a small, readable diff.\n\n%@\n\nArguments:\n  <tests>…    Test files (.flow.json) or folders to search for them\n\nOptions:\n  --check     Only list the files that are not in canonical form; change nothing\n  -h, --help  Show this help\n\nExit status: 0 — all good, 1 — a file is not in canonical form or can't be read as\na test, 2 — wrong arguments, a file or folder that isn't there, or a folder with no\ntests, 3 — a file couldn't be read or written, 5 — a test needs a newer JEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переписывает файлы тестов в каноническом виде: постоянный порядок ключей, блоки в порядке\nчтения, выключенные и пустые настройки опущены, а кнопка клика, сравнение и время ожидания\nзаписаны всегда — так любое изменение видно как небольшой понятный diff.\n\n%@\n\nАргументы:\n  <тесты>…    Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --check     Только перечислить файлы не в каноническом виде; ничего не менять\n  -h, --help  Показать эту справку\n\nКод завершения: 0 — всё в порядке, 1 — файл не в каноническом виде или не читается как\nтест, 2 — неверные аргументы, папка без тестов или файл, который не удалось прочитать или\nзаписать."
+            "value" : "Переписывает файлы тестов в каноническом виде: постоянный порядок ключей, блоки в порядке\nчтения, выключенные и пустые настройки опущены, а кнопка клика, сравнение и время ожидания\nзаписаны всегда — так любое изменение видно как небольшой понятный diff.\n\n%@\n\nАргументы:\n  <тесты>…    Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --check     Только перечислить файлы не в каноническом виде; ничего не менять\n  -h, --help  Показать эту справку\n\nКод завершения: 0 — всё в порядке, 1 — файл не в каноническом виде или не читается как\nтест, 2 — неверные аргументы, файла или папки нет либо в папке нет тестов, 3 — файл не\nудалось прочитать или записать, 5 — тесту нужна более новая JEVision."
           }
         }
       }
@@ -33141,13 +33425,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Writes a bug report about a failed run: the steps, what was expected and what\nhappened, the cause, screenshots of the failed step and this Mac's versions. It is\nprinted for you to read; with --send it is filed as an issue of the project's GitHub\nrepository. Secret values are replaced with ••••, and areas the project always hides\nare painted over in the screenshots, which are saved in the repository's\njevision-attachments branch.\n\n%@\n\nArguments:\n  <test or run>        A test file (.flow.json), to report its newest failed run, or\n                       the folder of a run in .jevision/runs. Default: the newest\n                       failed run of the project\n\nOptions:\n  --project <folder>   Project folder. Default: the nearest folder at or above the\n                       test (or the current folder) that has a .jevision folder\n  --send               File the report on GitHub and print the address of the issue\n  --title <text>       Title of the issue instead of the drafted one\n  --comment-on <n>     Add the report to issue n as a comment\n  --new                Open a new issue even when one about the same failure is open\n  -h, --help           Show this help\n\nSending uses the GitHub account JEVision is signed in to (Settings → Git and GitHub), or\nthe token in GH_TOKEN or GITHUB_TOKEN when set. When an issue about the same failure is\nalready open, nothing is sent until you choose --comment-on or --new.\n\nExit status: 0 — printed or sent, 1 — not sent because an issue about the failure is\nopen, 2 — wrong arguments, no failed run, or GitHub didn't take the report."
+            "value" : "Writes a bug report about a failed run: the steps, what was expected and what\nhappened, the cause, screenshots of the failed step and this Mac's versions. It is\nprinted for you to read; with --send it is filed as an issue of the project's GitHub\nrepository. Secret values are replaced with ••••, and areas the project always hides\nare painted over in the screenshots, which are saved in the repository's\njevision-attachments branch.\n\n%@\n\nArguments:\n  <test or run>        A test file (.flow.json), to report its newest failed run, or\n                       the folder of a run in .jevision/runs. Default: the newest\n                       failed run of the project\n\nOptions:\n  --project <folder>   Project folder. Default: the nearest folder at or above the\n                       test (or the current folder) that has a .jevision folder\n  --send               File the report on GitHub and print the address of the issue\n  --title <text>       Title of the issue instead of the drafted one\n  --comment-on <n>     Add the report to issue n as a comment\n  --new                Open a new issue even when one about the same failure is open\n  -h, --help           Show this help\n\nSending uses the GitHub account JEVision is signed in to (Settings → Git and GitHub), or\nthe token in GH_TOKEN or GITHUB_TOKEN when set. When an issue about the same failure is\nalready open, nothing is sent until you choose --comment-on or --new.\n\nExit status: 0 — printed or sent, 1 — not sent because an issue about the failure is\nopen, 2 — wrong arguments or no failed run, 3 — the report of the run couldn't be read,\n4 — GitHub didn't take the report (not signed in or out of reach), 5 — the report is\nfrom a newer JEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Составляет отчёт об ошибке по проваленному прогону: шаги, что ожидалось и что произошло,\nпричина, снимки экрана проваленного шага и версии этого Mac. Отчёт выводится, чтобы вы его\nпрочитали; с --send он создаётся задачей в репозитории проекта на GitHub. Значения\nсекретов заменяются на ••••, а области, которые проект всегда скрывает, закрашиваются на\nснимках экрана; снимки сохраняются в ветке jevision-attachments репозитория.\n\n%@\n\nАргументы:\n  <тест или прогон>    Файл теста (.flow.json) — чтобы сообщить о его последнем\n                       проваленном прогоне — или папка прогона в .jevision/runs. По\n                       умолчанию — последний проваленный прогон проекта\n\nПараметры:\n  --project <папка>    Папка проекта. По умолчанию — ближайшая папка с папкой .jevision:\n                       папка теста (или текущая папка) либо одна из папок над ней\n  --send               Создать задачу на GitHub и вывести её адрес\n  --title <текст>      Заголовок задачи вместо предложенного\n  --comment-on <n>     Добавить отчёт комментарием к задаче n\n  --new                Создать новую задачу, даже если задача о таком же падении уже\n                       открыта\n  -h, --help           Показать эту справку\n\nДля отправки используется учётная запись GitHub, в которую выполнен вход в JEVision\n(Настройки → Git и GitHub), или токен из GH_TOKEN либо GITHUB_TOKEN, если он задан. Если\nзадача о таком же падении уже открыта, ничего не отправляется, пока вы не выберете\n--comment-on или --new.\n\nКод завершения: 0 — выведено или отправлено, 1 — не отправлено, потому что задача об этом\nпадении открыта, 2 — неверные аргументы, нет проваленного прогона или GitHub не принял\nотчёт."
+            "value" : "Составляет отчёт об ошибке по проваленному прогону: шаги, что ожидалось и что произошло,\nпричина, снимки экрана проваленного шага и версии этого Mac. Отчёт выводится, чтобы вы его\nпрочитали; с --send он создаётся задачей в репозитории проекта на GitHub. Значения\nсекретов заменяются на ••••, а области, которые проект всегда скрывает, закрашиваются на\nснимках экрана; снимки сохраняются в ветке jevision-attachments репозитория.\n\n%@\n\nАргументы:\n  <тест или прогон>    Файл теста (.flow.json) — чтобы сообщить о его последнем\n                       проваленном прогоне — или папка прогона в .jevision/runs. По\n                       умолчанию — последний проваленный прогон проекта\n\nПараметры:\n  --project <папка>    Папка проекта. По умолчанию — ближайшая папка с папкой .jevision:\n                       папка теста (или текущая папка) либо одна из папок над ней\n  --send               Создать задачу на GitHub и вывести её адрес\n  --title <текст>      Заголовок задачи вместо предложенного\n  --comment-on <n>     Добавить отчёт комментарием к задаче n\n  --new                Создать новую задачу, даже если задача о таком же падении уже\n                       открыта\n  -h, --help           Показать эту справку\n\nДля отправки используется учётная запись GitHub, в которую выполнен вход в JEVision\n(Настройки → Git и GitHub), или токен из GH_TOKEN либо GITHUB_TOKEN, если он задан. Если\nзадача о таком же падении уже открыта, ничего не отправляется, пока вы не выберете\n--comment-on или --new.\n\nКод завершения: 0 — выведено или отправлено, 1 — не отправлено, потому что задача об этом\nпадении открыта, 2 — неверные аргументы или нет проваленного прогона, 3 — не удалось\nпрочитать отчёт прогона, 4 — GitHub не принял отчёт (нет входа или нет связи), 5 — отчёт\nиз более новой JEVision."
           }
         }
       }
@@ -33157,13 +33441,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs, checks and formats JEVision tests.\n\n%1$@\n\nCommands:\n  run        Run tests on this Mac\n  validate   Check tests for errors and warnings\n  fmt        Rewrite tests in canonical form\n  issue      Report a failed run as a GitHub issue\n  mcp        Let AI assistants read, edit and run tests (MCP server)\n  schedule   Run the schedules of a project that are due now\n  blocks     Install, update, remove and restore blocks others shared\n\nOptions:\n  -h, --help     Show this help\n  -V, --version  Show the version\n  --lang <code>  Language of the messages, with any command: %2$@. Default:\n                 the Mac’s language, English when the CI variable is set\n\nRun “jevision <command> --help” for the options of a command."
+            "value" : "Runs, checks and formats JEVision tests.\n\n%1$@\n\nCommands:\n  run        Run tests on this Mac\n  validate   Check tests for errors and warnings\n  check      Check the project carries every file its tests read\n  fmt        Rewrite tests in canonical form\n  issue      Report a failed run as a GitHub issue\n  mcp        Let AI assistants read, edit and run tests (MCP server)\n  schedule   Run the schedules of a project that are due now\n  blocks     Install, update, remove and restore blocks others shared\n  version    Show the version; with --json, the file formats and protocols too\n\nOptions:\n  -h, --help     Show this help\n  -V, --version  Show the version\n  --lang <code>  Language of the messages, with any command: %2$@. Default:\n                 the Mac’s language, English when the CI variable is set\n\nExit status, for every command: 0 — all good, 1 — a test failed or problems found,\n2 — wrong arguments, 3 — a file couldn't be read or written, 4 — this Mac isn't ready\nto run tests, 5 — a file needs a newer JEVision.\n\nRun “jevision <command> --help” for the options of a command."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускает, проверяет и форматирует тесты JEVision.\n\n%1$@\n\nКоманды:\n  run        Запустить тесты на этом Mac\n  validate   Проверить тесты на ошибки и предупреждения\n  fmt        Переписать тесты в каноническом виде\n  issue      Сообщить о проваленном прогоне задачей на GitHub\n  mcp        Дать ИИ-ассистентам читать, править и запускать тесты (сервер MCP)\n  schedule   Выполнить расписания проекта, время которых пришло\n  blocks     Устанавливать, обновлять, удалять и восстанавливать блоки, которыми с вами поделились\n\nПараметры:\n  -h, --help     Показать эту справку\n  -V, --version  Показать версию\n  --lang <код>   Язык сообщений, с любой командой: %2$@. По умолчанию — язык Mac, а если\n                 задана переменная CI — английский\n\nПараметры команды: «jevision <команда> --help»."
+            "value" : "Запускает, проверяет и форматирует тесты JEVision.\n\n%1$@\n\nКоманды:\n  run        Запустить тесты на этом Mac\n  validate   Проверить тесты на ошибки и предупреждения\n  check      Проверить, что в проекте есть все файлы, которые читают тесты\n  fmt        Переписать тесты в каноническом виде\n  issue      Сообщить о проваленном прогоне задачей на GitHub\n  mcp        Дать ИИ-ассистентам читать, править и запускать тесты (сервер MCP)\n  schedule   Выполнить расписания проекта, время которых пришло\n  blocks     Устанавливать, обновлять, удалять и восстанавливать блоки, которыми с вами поделились\n  version    Показать версию; с --json — ещё форматы файлов и протоколы\n\nПараметры:\n  -h, --help     Показать эту справку\n  -V, --version  Показать версию\n  --lang <код>   Язык сообщений, с любой командой: %2$@. По умолчанию — язык Mac, а если\n                 задана переменная CI — английский\n\nКод завершения у всех команд: 0 — всё в порядке, 1 — тест провален или найдены проблемы,\n2 — неверные аргументы, 3 — файл не удалось прочитать или записать, 4 — этот Mac не готов\nзапускать тесты, 5 — файлу нужна более новая JEVision.\n\nПараметры команды: «jevision <команда> --help»."
           }
         }
       }
@@ -33173,13 +33457,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or\nCopilot, over the Model Context Protocol. The assistant starts this command itself and\ntalks to it over standard input and output; add it to the assistant's MCP servers.\n\nWith --remote, the assistant uses the tools of another Mac instead: its projects, its\nscreen, its mouse and keyboard. Pair this computer with that Mac once: in JEVision on\nit, open Settings → iPhone & Remote → Add → Assistant on another computer and run the\ncommand it shows, which is jevision mcp --pair with a one-time code. The traffic is\nend-to-end encrypted and opens no ports; the key of this computer stays in its Keychain.\n\n%@\n\nOptions:\n  --project <folder>  Project folder whose tests the assistant may see. Default: the\n                      nearest folder at or above the current one that has a .jevision\n                      folder, otherwise the current folder. With --remote, the name\n                      of the project the Mac shares; without it, the only one it shares\n  --pair <code>       Pair this computer with the Mac showing the code\n  --remote <Mac>      Serve the tools of that paired Mac, by its name\n  --forget <Mac>      Forget a paired Mac on this computer. The Mac still lists it until\n                      the person there disconnects it in Settings → iPhone & Remote\n  -h, --help          Show this help\n\nAssistants can list, read, write and check tests, read reports and see the test format.\nRunning tests and taking screenshots work only after you allow them in JEVision →\nSettings → AI → Assistants on the Mac that does them; an assistant on another Mac needs\nthe Assistant switch on in Settings → iPhone & Remote too. Assistants never get the\nvalues of secrets or API keys, and can't touch files outside the project folder."
+            "value" : "Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or\nCopilot, over the Model Context Protocol. The assistant starts this command itself and\ntalks to it over standard input and output; add it to the assistant's MCP servers.\n\nWith --remote, the assistant uses the tools of another Mac instead: its projects, its\nscreen, its mouse and keyboard. Pair this computer with that Mac once: in JEVision on\nit, open Settings → iPhone & Remote → Add → Assistant on another computer and run the\ncommand it shows, which is jevision mcp --pair with a one-time code. The traffic is\nend-to-end encrypted and opens no ports; the key of this computer stays in its Keychain.\n\n%@\n\nOptions:\n  --project <folder>  Project folder whose tests the assistant may see. Default: the\n                      nearest folder at or above the current one that has a .jevision\n                      folder, otherwise the current folder. With --remote, the name\n                      of the project the Mac shares; without it, the only one it shares\n  --pair <code>       Pair this computer with the Mac showing the code\n  --remote <Mac>      Serve the tools of that paired Mac, by its name\n  --forget <Mac>      Forget a paired Mac on this computer. The Mac still lists it until\n                      the person there disconnects it in Settings → iPhone & Remote\n  -h, --help          Show this help\n\nAssistants can list, read, write and check tests, read reports and see the test format.\nRunning tests and taking screenshots work only after you allow them in JEVision →\nSettings → AI → Assistants on the Mac that does them; an assistant on another Mac needs\nthe Assistant switch on in Settings → iPhone & Remote too. Assistants never get the\nvalues of secrets or API keys, and can't touch files outside the project folder.\n\nExit status: 0 — the assistant disconnected, or the Mac was paired or forgotten, 2 — wrong\narguments, no project, or a Mac that isn't paired, 3 — the list of paired Macs, this\ncomputer's key, standard input or output couldn't be read or written, 4 — the other Mac\ncan't be reached or this computer has no key."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открывает тесты проекта ИИ-ассистентам на этом Mac — Claude, Cursor, Copilot и другим — по\nпротоколу Model Context Protocol. Ассистент сам запускает эту команду и общается с ней\nчерез стандартные ввод и вывод; добавьте её в MCP-серверы ассистента.\n\nС --remote ассистент пользуется инструментами другого Mac: его проектами, экраном, мышью и\nклавиатурой. Один раз выполните сопряжение этого компьютера с тем Mac: в JEVision на нём\nоткройте Настройки → iPhone и удалённо → Добавить → Ассистент на другом компьютере и\nвыполните показанную команду — это jevision mcp --pair с одноразовым кодом. Трафик\nзашифрован из конца в конец и не открывает портов; ключ этого компьютера остаётся в его\nСвязке ключей.\n\n%@\n\nПараметры:\n  --project <папка>   Папка проекта, тесты которого может видеть ассистент. По умолчанию —\n                      ближайшая папка с папкой .jevision: текущая или одна из папок над\n                      ней, иначе текущая папка. С --remote — имя проекта, которым делится\n                      Mac; без него — единственный такой проект\n  --pair <код>        Выполнить сопряжение этого компьютера с Mac, который показывает код\n  --remote <Mac>      Открыть инструменты сопряжённого Mac по его имени\n  --forget <Mac>      Забыть сопряжённый Mac на этом компьютере. Mac показывает этот\n                      компьютер, пока человек за ним не отключит его в Настройках → iPhone\n                      и удалённо\n  -h, --help          Показать эту справку\n\nАссистенты могут перечислять, читать, писать и проверять тесты, читать отчёты и смотреть\nформат тестов. Запуск тестов и снимки экрана работают, только когда вы разрешите их в\nJEVision → Настройки → ИИ → Ассистенты на том Mac, где они выполняются; ассистенту на\nдругом Mac нужен ещё и включённый переключатель «Ассистент» в Настройках → iPhone и\nудалённо. Ассистенты никогда не получают значения секретов и API-ключей и не могут трогать\nфайлы вне папки проекта."
+            "value" : "Открывает тесты проекта ИИ-ассистентам на этом Mac — Claude, Cursor, Copilot и другим — по\nпротоколу Model Context Protocol. Ассистент сам запускает эту команду и общается с ней\nчерез стандартные ввод и вывод; добавьте её в MCP-серверы ассистента.\n\nС --remote ассистент пользуется инструментами другого Mac: его проектами, экраном, мышью и\nклавиатурой. Один раз выполните сопряжение этого компьютера с тем Mac: в JEVision на нём\nоткройте Настройки → iPhone и удалённо → Добавить → Ассистент на другом компьютере и\nвыполните показанную команду — это jevision mcp --pair с одноразовым кодом. Трафик\nзашифрован из конца в конец и не открывает портов; ключ этого компьютера остаётся в его\nСвязке ключей.\n\n%@\n\nПараметры:\n  --project <папка>   Папка проекта, тесты которого может видеть ассистент. По умолчанию —\n                      ближайшая папка с папкой .jevision: текущая или одна из папок над\n                      ней, иначе текущая папка. С --remote — имя проекта, которым делится\n                      Mac; без него — единственный такой проект\n  --pair <код>        Выполнить сопряжение этого компьютера с Mac, который показывает код\n  --remote <Mac>      Открыть инструменты сопряжённого Mac по его имени\n  --forget <Mac>      Забыть сопряжённый Mac на этом компьютере. Mac показывает этот\n                      компьютер, пока человек за ним не отключит его в Настройках → iPhone\n                      и удалённо\n  -h, --help          Показать эту справку\n\nАссистенты могут перечислять, читать, писать и проверять тесты, читать отчёты и смотреть\nформат тестов. Запуск тестов и снимки экрана работают, только когда вы разрешите их в\nJEVision → Настройки → ИИ → Ассистенты на том Mac, где они выполняются; ассистенту на\nдругом Mac нужен ещё и включённый переключатель «Ассистент» в Настройках → iPhone и\nудалённо. Ассистенты никогда не получают значения секретов и API-ключей и не могут трогать\nфайлы вне папки проекта.\n\nКод завершения: 0 — ассистент отключился, Mac сопряжён или забыт, 2 — неверные аргументы,\nнет проекта или такой Mac не сопряжён, 3 — не удалось прочитать или записать список\nсопряжённых Mac, ключ этого компьютера, стандартный ввод или вывод, 4 — другой Mac\nнедоступен или у этого компьютера нет ключа."
           }
         }
       }
@@ -33205,13 +33489,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs tests on this Mac, one after another (or side by side with --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible\n  --model <name>      AI model for checks by meaning instead of the chosen one\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac) instead of one after\n                      another. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, a file could not be read or written, or this\nMac can't run tests now."
+            "value" : "Runs tests on this Mac, one after another or side by side (see --parallel), and\nsaves a report of every run.\nThe tests a test runs after (\"dependsOn\") run before it, even when they aren't\nnamed. When one of them doesn't pass, the tests that need it are blocked: they\ndon't run, and their reports say why.\n\n%@\n\nArguments:\n  <tests>…            Test files (.flow.json) or folders to search for them\n\nOptions:\n  --project <folder>  Project folder. Files the tests use must be inside it, and\n                      reports are saved in <folder>/.jevision/runs. Default: the\n                      nearest folder above the tests that has a .jevision folder,\n                      otherwise the current folder if it holds the tests\n  --env <name>        Environment from jevision.environments.json in the project\n                      folder whose values the tests read as ${env.NAME}, such as\n                      staging. Secrets come from the Keychain items of that\n                      environment first. Default: the \"default\" environment\n                      named in that file, if any\n  --retries <n>       Run a failed test up to <n> more times (instead of the\n                      number in the test, or the project's default from\n                      jevision.project.json)\n  --row <n>           Run a data-driven test with row <n> of its CSV table only,\n                      counting from 1 (the header line isn't a row)\n  --rows <which>      Rows of a data-driven test's CSV table to run: all (the\n                      default), one row such as 3, or a range such as 2-4. Each\n                      row runs the whole test and has its own retries\n  --start-at <block>  Start from this block instead of the first one (one test only)\n  --provider <id>     AI provider for checks by meaning instead of the one chosen\n                      in the app (Settings → AI): anthropic, openai, gemini, jev,\n                      ollama, lmstudio or openai-compatible\n  --model <name>      AI model for checks by meaning instead of the chosen one\n  --junit <file>      Also save a JUnit XML report of all the tests, for CI\n  --html <folder>     Also save the HTML report of every run in this folder\n  --video <when>      Record a video of the app: off, on-failure (keep it only\n                      when the test fails) or always. Default: as chosen in the\n                      app (Settings → Advanced), otherwise on-failure\n  --type <type>       Run only the named tests whose card says this type: smoke,\n                      regression or acceptance\n  --priority <level>  Run only tests with this priority: critical, high, medium\n                      or low\n  --status <status>   Run only tests with this status: draft, ready or outdated\n  --author <name>     Run only tests written by this author (case doesn't matter)\n  --flaky             Run only flaky tests: marked flaky in their card, or found\n                      flaky from their runs of the last 30 days. Filters combine:\n                      each test must fit all of them. A test whose card doesn't\n                      say a field the filter asks for isn't run. Fails when no\n                      test fits\n  --include-quarantined-failures\n                      Count failures of tests in quarantine (listed in\n                      jevision.project.json, until the date set there, if any)\n                      like any other failure. Without it they still run, but\n                      don't change the exit status and are skipped in the JUnit\n                      report. Once the date is past, the test counts again\n  --parallel [<n>]    Run up to <n> tests at the same time (1 to 16; without a\n                      number, one per core of this Mac); --parallel 1 runs them\n                      one after another. Without it, they run as\n                      jevision.project.json sets for their folder, the deepest\n                      one that holds all the tests and folders named, and one\n                      after another when it sets nothing there or can't be\n                      read. Tests that click, type, look at the screen or use\n                      the clipboard still run one at a time; only tests that\n                      leave the screen alone (commands, requests, files,\n                      databases, scripts, dates) run beside them. A test starts\n                      after the tests it runs after. Each test's lines are\n                      printed together when it ends, and reports keep the order\n                      of the tests. A folder named with digits only needs ./ in\n                      front: --parallel 4 ./2024\n  --no-notify         Don't send the message about the runs that\n                      jevision.notifications.json in the project folder asks for\n                      (Slack, Telegram, email): one message for one test, one\n                      summary for several. A stopped run sends nothing. The\n                      webhook, bot token and mail password come from the\n                      Keychain, or on CI from JEVISION_SLACK_WEBHOOK,\n                      JEVISION_TELEGRAM_TOKEN and JEVISION_SMTP_PASSWORD\n  --json              Print the result as JSON; progress goes to standard error\n  -h, --help          Show this help\n\nWhile tests run, JEVision uses the mouse and keyboard. Press Esc twice or Ctrl-C\nto stop. Running needs a logged-in user with an unlocked screen, and Screen &\nSystem Audio Recording and Accessibility (Device Control and Data Access from\nmacOS 27) allowed for the app jevision runs in (Terminal or your CI agent).\nSecrets (${secret.NAME}) come from environment variables or the Keychain. So do\nAPI keys of AI providers, such as ANTHROPIC_API_KEY.\n\nExit status: 0 — all tests passed (tests in quarantine may have failed), 1 — a test\nfailed or was stopped, 2 — wrong arguments, 3 — a file couldn't be read or written,\n4 — this Mac can't run tests now, 5 — a test, a block or a settings file needs a newer\nJEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запускает тесты на этом Mac — по одному (или параллельно с --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac) вместо того, чтобы идти по одному.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, файл не удалось прочитать или записать, или этот\nMac сейчас не может запускать тесты."
+            "value" : "Запускает тесты на этом Mac — по одному или параллельно (см. --parallel) — и сохраняет отчёт\nо каждом прогоне.\nТесты, после которых идёт тест («dependsOn»), запускаются раньше него, даже если их не\nназвали. Если какой-то из них не пройден, зависящие от него тесты блокируются: они не\nзапускаются, а в их отчётах сказано почему.\n\n%@\n\nАргументы:\n  <тесты>…              Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --project <папка>     Папка проекта. Файлы, с которыми работают тесты, должны лежать в\n                        ней, а отчёты сохраняются в <папка>/.jevision/runs. По умолчанию —\n                        ближайшая папка над тестами, в которой есть папка .jevision, иначе\n                        текущая папка, если тесты лежат в ней\n  --env <имя>           Окружение из jevision.environments.json в папке проекта, значения\n                        которого тесты читают как ${env.NAME}, например staging. Секреты\n                        сначала берутся из объектов Связки ключей этого окружения. По\n                        умолчанию — окружение «default», названное в этом файле, если оно\n                        есть\n  --retries <n>         Повторять проваленный тест до <n> раз (вместо числа, указанного в\n                        тесте, или значения проекта по умолчанию из jevision.project.json)\n  --row <n>             Запустить тест на данных только со строкой <n> его таблицы CSV,\n                        считая с 1 (строка заголовка не считается)\n  --rows <какие>        Строки таблицы CSV теста на данных, которые нужно прогнать: all\n                        (все, по умолчанию), одна строка, например 3, или диапазон,\n                        например 2-4. Каждая строка прогоняет весь тест, и повторы у неё\n                        свои\n  --start-at <блок>     Начать с этого блока вместо первого (только для одного теста)\n  --provider <id>       ИИ-провайдер для проверок по смыслу вместо выбранного в приложении\n                        (Настройки → ИИ): anthropic, openai, gemini, jev, ollama, lmstudio\n                        или openai-compatible\n  --model <имя>         Модель ИИ для проверок по смыслу вместо выбранной\n  --junit <файл>        Также сохранить отчёт JUnit XML обо всех тестах — для CI\n  --html <папка>        Также сохранить в эту папку отчёт HTML о каждом прогоне\n  --video <когда>       Записывать видео приложения: off (не записывать), on-failure\n                        (хранить только если тест провален) или always (всегда). По\n                        умолчанию — как выбрано в приложении (Настройки → Дополнительно),\n                        иначе on-failure\n  --type <тип>          Запустить только названные тесты, в карточке которых указан этот\n                        тип: smoke, regression или acceptance\n  --priority <уровень>  Запустить только тесты с этим приоритетом: critical, high, medium\n                        или low\n  --status <статус>     Запустить только тесты с этим статусом: draft, ready или outdated\n  --author <имя>        Запустить только тесты этого автора (регистр не важен)\n  --flaky               Запустить только нестабильные тесты: отмеченные так в карточке или\n                        признанные нестабильными по прогонам за последние 30 дней. Фильтры\n                        складываются: тест должен подходить под все. Тест, в карточке\n                        которого нет поля, о котором спрашивает фильтр, не запускается.\n                        Если ни один тест не подходит, команда завершается с ошибкой\n  --include-quarantined-failures\n                        Считать падения тестов в карантине (он задаётся в\n                        jevision.project.json, до указанной там даты, если она есть) как\n                        любые другие. Без этого параметра такие тесты всё равно\n                        запускаются, но не меняют код завершения и пропускаются в отчёте\n                        JUnit. Когда дата прошла, тест снова учитывается\n  --parallel [<n>]      Запускать до <n> тестов одновременно (от 1 до 16; без числа — по\n                        одному на ядро этого Mac); --parallel 1 запускает их по одному.\n                        Без параметра тесты идут так, как jevision.project.json задаёт\n                        для их папки — самой глубокой, в которой лежат все названные\n                        тесты и папки, — а по одному, если там ничего не задано или\n                        файл не удаётся прочитать.\n                        Тесты, которые кликают, вводят текст, смотрят на экран или\n                        работают с буфером обмена, всё равно идут по одному; рядом с ними\n                        запускаются только тесты, которые не трогают экран (команды,\n                        запросы, файлы, базы данных, скрипты, даты). Тест начинается после\n                        тестов, после которых он идёт. Строки каждого теста выводятся\n                        вместе, когда он завершается, а отчёты сохраняют порядок тестов.\n                        Перед папкой, названной одними цифрами, нужно ./ — --parallel 4\n                        ./2024\n  --no-notify           Не отправлять сообщение о прогонах, которое запрашивает\n                        jevision.notifications.json в папке проекта (Slack, Telegram,\n                        почта): одно сообщение для одного теста, одна сводка для\n                        нескольких. Об остановленном прогоне ничего не отправляется.\n                        Вебхук, токен бота и пароль почты берутся из Связки ключей, а на\n                        CI — из JEVISION_SLACK_WEBHOOK, JEVISION_TELEGRAM_TOKEN и\n                        JEVISION_SMTP_PASSWORD\n  --json                Вывести результат в JSON; ход прогона идёт в стандартный поток\n                        ошибок\n  -h, --help            Показать эту справку\n\nВо время прогона JEVision пользуется мышью и клавиатурой. Чтобы остановить, нажмите Esc\nдважды или Ctrl-C. Для прогона нужен пользователь, вошедший в систему, с разблокированным\nэкраном, а приложению, в котором запущен jevision (Терминалу или вашему CI-агенту), должны\nбыть разрешены «Запись экрана и системного аудио» и «Универсальный доступ» («Управление\nустройством и доступ к данным» начиная с macOS 27). Секреты (${secret.NAME}) берутся из\nпеременных окружения или Связки ключей. Оттуда же — API-ключи ИИ-провайдеров, например\nANTHROPIC_API_KEY.\n\nКод завершения: 0 — все тесты пройдены (тесты в карантине могли упасть), 1 — тест провален\nили остановлен, 2 — неверные аргументы, 3 — файл не удалось прочитать или записать,\n4 — этот Mac сейчас не может запускать тесты, 5 — тесту, блоку или файлу настроек нужна\nболее новая JEVision."
           }
         }
       }
@@ -33221,13 +33505,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Runs the schedules of a project that are due now, from jevision.schedule.json in the\nproject folder. The JEVision app sets up macOS to start this command at the times of\nthe schedules you make in it (Test → Schedules…); you don’t need to run it yourself.\n\n%@\n\nArguments:\n  <project>   Project folder\n\nOptions:\n  -h, --help  Show this help\n\nA schedule is due once for its latest time since the last check, even when the Mac\nslept through it, unless that time is more than 12 hours ago. When the screen is\nlocked, nobody is logged in or macOS hasn’t allowed jevision to record the screen\nand control the computer, the run is skipped and nothing is clicked or typed. What\ncame of every scheduled run is kept in .jevision/schedule-history.json, and reports\nof the tests are saved like those of jevision run.\n\nExit status: 0 — nothing was due or all tests passed, 1 — a test failed or a run was\nskipped, 2 — the project or its schedule file couldn’t be read, or a run couldn’t start."
+            "value" : "Runs the schedules of a project that are due now, from jevision.schedule.json in the\nproject folder. The JEVision app sets up macOS to start this command at the times of\nthe schedules you make in it (Test → Schedules…); you don’t need to run it yourself.\n\n%@\n\nArguments:\n  <project>   Project folder\n\nOptions:\n  -h, --help  Show this help\n\nA schedule is due once for its latest time since the last check, even when the Mac\nslept through it, unless that time is more than 12 hours ago. When the screen is\nlocked, nobody is logged in or macOS hasn’t allowed jevision to record the screen\nand control the computer, the run is skipped and nothing is clicked or typed. What\ncame of every scheduled run is kept in .jevision/schedule-history.json, and reports\nof the tests are saved like those of jevision run.\n\nExit status: 0 — nothing was due or all tests passed, 1 — a test failed, 2 — the\nproject folder isn't there or a run asked for what the project doesn't have, 3 — the\nschedule file or the history of runs couldn't be read or written, 4 — a run was skipped\nbecause this Mac wasn't ready, 5 — the schedule file or a test needs a newer JEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выполняет расписания проекта, время которых пришло, из jevision.schedule.json в папке\nпроекта. Приложение JEVision настраивает macOS так, чтобы эта команда запускалась во время\nрасписаний, которые вы в нём создаёте (Тест → Расписания…); запускать её самим не нужно.\n\n%@\n\nАргументы:\n  <проект>    Папка проекта\n\nПараметры:\n  -h, --help  Показать эту справку\n\nРасписание выполняется один раз за своё последнее время после прошлой проверки, даже если\nMac в это время спал, — если только это время не наступило больше 12 часов назад. Если\nэкран заблокирован, никто не вошёл в систему или macOS не разрешила jevision записывать\nэкран и управлять компьютером, прогон пропускается, и ничего не нажимается и не вводится.\nИтог каждого прогона по расписанию хранится в .jevision/schedule-history.json, а отчёты\nтестов сохраняются так же, как у jevision run.\n\nКод завершения: 0 — ничего не нужно было выполнять или все тесты пройдены, 1 — тест\nпровален или прогон пропущен, 2 — не удалось прочитать проект или его файл расписаний либо\nне удалось начать прогон."
+            "value" : "Выполняет расписания проекта, время которых пришло, из jevision.schedule.json в папке\nпроекта. Приложение JEVision настраивает macOS так, чтобы эта команда запускалась во время\nрасписаний, которые вы в нём создаёте (Тест → Расписания…); запускать её самим не нужно.\n\n%@\n\nАргументы:\n  <проект>    Папка проекта\n\nПараметры:\n  -h, --help  Показать эту справку\n\nРасписание выполняется один раз за своё последнее время после прошлой проверки, даже если\nMac в это время спал, — если только это время не наступило больше 12 часов назад. Если\nэкран заблокирован, никто не вошёл в систему или macOS не разрешила jevision записывать\nэкран и управлять компьютером, прогон пропускается, и ничего не нажимается и не вводится.\nИтог каждого прогона по расписанию хранится в .jevision/schedule-history.json, а отчёты\nтестов сохраняются так же, как у jevision run.\n\nКод завершения: 0 — ничего не нужно было выполнять или все тесты пройдены, 1 — тест\nпровален, 2 — папки проекта нет или прогон попросил то, чего в проекте нет, 3 — не удалось\nпрочитать или записать файл расписаний или историю прогонов, 4 — прогон пропущен, потому\nчто этот Mac не был готов, 5 — файлу расписаний или тесту нужна более новая JEVision."
           }
         }
       }
@@ -33237,13 +33521,29 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checks test files for errors and warnings.\n\n%@\n\nArguments:\n  <tests>…    Test files (.flow.json) or folders to search for them\n\nOptions:\n  --json      Print the result as JSON\n  -h, --help  Show this help\n\nExit status: 0 — all good, 1 — problems found, 2 — wrong arguments, a folder with\nno tests, or a file that could not be read."
+            "value" : "Checks test files for errors and warnings.\n\n%@\n\nArguments:\n  <tests>…    Test files (.flow.json) or folders to search for them\n\nOptions:\n  --json      Print the result as JSON\n  -h, --help  Show this help\n\nExit status: 0 — all good, 1 — problems found, 2 — wrong arguments, a file or folder\nthat isn't there, or a folder with no tests, 3 — a file couldn't be read, 5 — a test\nneeds a newer JEVision."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Проверяет файлы тестов на ошибки и предупреждения.\n\n%@\n\nАргументы:\n  <тесты>…    Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --json      Вывести результат в JSON\n  -h, --help  Показать эту справку\n\nКод завершения: 0 — всё в порядке, 1 — найдены проблемы, 2 — неверные аргументы, папка без\nтестов или файл, который не удалось прочитать."
+            "value" : "Проверяет файлы тестов на ошибки и предупреждения.\n\n%@\n\nАргументы:\n  <тесты>…    Файлы тестов (.flow.json) или папки, в которых их искать\n\nПараметры:\n  --json      Вывести результат в JSON\n  -h, --help  Показать эту справку\n\nКод завершения: 0 — всё в порядке, 1 — найдены проблемы, 2 — неверные аргументы, файла\nили папки нет либо в папке нет тестов, 3 — файл не удалось прочитать, 5 — тесту нужна\nболее новая JEVision."
+          }
+        }
+      }
+    },
+    "cli.help.version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows the version of jevision.\n\n%@\n\nOptions:\n  --json      Also tell, as JSON, the file formats and protocols this version\n              supports: jsonVersion, version, formats (each file and the format\n              version written in it), iphoneProtocol (the oldest and newest version\n              of the connection with the iPhone app) and mcpProtocols (the versions\n              of MCP)\n  -h, --help  Show this help\n\nExit status: 0 — shown, 2 — wrong arguments."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает версию jevision.\n\n%@\n\nПараметры:\n  --json      Также сообщить в JSON, какие форматы файлов и протоколы понимает эта\n              версия: jsonVersion, version, formats (каждый файл и версия формата,\n              в которой он записывается), iphoneProtocol (самая старая и самая новая\n              версия связи с приложением для iPhone) и mcpProtocols (версии MCP)\n  -h, --help  Показать эту справку\n\nКод завершения: 0 — версия показана, 2 — неверные аргументы."
           }
         }
       }
@@ -33863,12 +34163,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Фильтр исключает %2$lld из %1$lld теста."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -33879,6 +34173,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Фильтр исключает %2$lld из %1$lld тестов."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Фильтр исключает %2$lld из %1$lld теста."
                 }
               },
               "other" : {
@@ -33968,6 +34268,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сообщение отправлено: %@"
+          }
+        }
+      }
+    },
+    "cli.run.modeForFolder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Side by side, as %1$@ sets for the folder “%2$@”. Add --parallel 1 to run them one at a time."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параллельно, как задано в %1$@ для папки «%2$@». Чтобы запускать по одному, добавьте --parallel 1."
+          }
+        }
+      }
+    },
+    "cli.run.modeForProject" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Side by side, as %@ sets for the whole project. Add --parallel 1 to run them one at a time."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параллельно, как задано в %@ для всего проекта. Чтобы запускать по одному, добавьте --parallel 1."
           }
         }
       }
@@ -34123,12 +34455,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Пауза: кто-то пользуется мышью или клавиатурой. Тест продолжится, когда их не будут трогать %lld секунду."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34139,6 +34465,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Пауза: кто-то пользуется мышью или клавиатурой. Тест продолжится, когда их не будут трогать %lld секунд."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пауза: кто-то пользуется мышью или клавиатурой. Тест продолжится, когда их не будут трогать %lld секунду."
                 }
               },
               "other" : {
@@ -34335,12 +34667,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Пройдено строк: %2$lld из %1$lld"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34348,6 +34674,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пройдено строк: %2$lld из %1$lld"
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Пройдено строк: %2$lld из %1$lld"
@@ -34412,6 +34744,22 @@
         }
       }
     },
+    "cli.run.settingsUnreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ can’t be read (%2$@), so the tests run one at a time. Fix the file."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удаётся прочитать %1$@ (%2$@), поэтому тесты идут по одному. Исправьте файл."
+          }
+        }
+      }
+    },
     "cli.run.starting" : {
       "localizations" : {
         "en" : {
@@ -34435,12 +34783,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Запускаем %1$lld тест в %2$@. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34451,6 +34793,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Запускаем %1$lld тестов в %2$@. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запускаем %1$lld тест в %2$@. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
                 }
               },
               "other" : {
@@ -34487,12 +34835,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Запускаем %1$lld тест в %2$@, до %3$lld одновременно. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34503,6 +34845,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Запускаем %1$lld тестов в %2$@, до %3$lld одновременно. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запускаем %1$lld тест в %2$@, до %3$lld одновременно. Чтобы остановить, нажмите Esc дважды или Ctrl-C."
                 }
               },
               "other" : {
@@ -34667,12 +35015,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld заблокирован"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34683,6 +35025,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld заблокировано"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld заблокирован"
                 }
               },
               "other" : {
@@ -34719,12 +35067,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld провален"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34735,6 +35077,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld провалено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld провален"
                 }
               },
               "other" : {
@@ -34771,12 +35119,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld не запущен"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34787,6 +35129,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld не запущено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld не запущен"
                 }
               },
               "other" : {
@@ -34823,12 +35171,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld не сохранён"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34839,6 +35181,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld не сохранено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld не сохранён"
                 }
               },
               "other" : {
@@ -34875,12 +35223,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ничего не проверил"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34891,6 +35233,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld ничего не проверили"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ничего не проверил"
                 }
               },
               "other" : {
@@ -34927,12 +35275,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld пройден"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34943,6 +35285,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld пройдено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld пройден"
                 }
               },
               "other" : {
@@ -34979,12 +35327,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld провален в карантине"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -34995,6 +35337,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld провалено в карантине"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld провален в карантине"
                 }
               },
               "other" : {
@@ -35031,12 +35379,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld остановлен"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -35047,6 +35389,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld остановлено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld остановлен"
                 }
               },
               "other" : {
@@ -35083,12 +35431,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%1$lld тест за %2$@:"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -35099,6 +35441,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%1$lld тестов за %2$@:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%1$lld тест за %2$@:"
                 }
               },
               "other" : {
@@ -35124,6 +35472,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Использование: jevision blocks list | install <папка, .zip или адрес https> | update [<id>] | remove <id> | restore [параметры]"
+          }
+        }
+      }
+    },
+    "cli.usage.check" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage: jevision check [<project>] [--json]"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использование: jevision check [<проект>] [--json]"
           }
         }
       }
@@ -35240,6 +35604,22 @@
         }
       }
     },
+    "cli.usage.version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usage: jevision version [--json]"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использование: jevision version [--json]"
+          }
+        }
+      }
+    },
     "cli.validate.counts" : {
       "localizations" : {
         "en" : {
@@ -35295,12 +35675,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ошибка"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -35311,6 +35685,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld ошибок"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ошибка"
                 }
               },
               "other" : {
@@ -35379,12 +35759,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld предупреждение"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -35395,6 +35769,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld предупреждений"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld предупреждение"
                 }
               },
               "other" : {
@@ -35884,32 +36264,32 @@
     },
     "flow.app.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — не идентификатор приложения вроде com.apple.TextEdit. Выберите приложение заново."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t an app identifier like com.apple.TextEdit. Choose the app again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не идентификатор приложения вроде com.apple.TextEdit. Выберите приложение заново."
           }
         }
       }
     },
     "flow.area.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Область должна лежать внутри картинки."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The area must lie inside the image."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Область должна лежать внутри картинки."
           }
         }
       }
@@ -35948,32 +36328,32 @@
     },
     "flow.block.duplicateId" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Два блока называются «%@»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Two blocks are named “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Два блока называются «%@»."
           }
         }
       }
     },
     "flow.block.invalidId" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» не годится в имя блока: используйте только буквы, цифры, - и _."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” can’t be a block name: use only letters, digits, - and _."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» не годится в имя блока: используйте только буквы, цифры, - и _."
           }
         }
       }
@@ -36012,48 +36392,48 @@
     },
     "flow.block.unknownType" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У блока «%1$@» неизвестный тип «%2$@»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Block “%@” has an unknown type “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У блока «%1$@» неизвестный тип «%2$@»."
           }
         }
       }
     },
     "flow.block.unreachable" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "К этому блоку ничего не ведёт, поэтому он никогда не выполнится."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing leads to this block, so it never runs."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "К этому блоку ничего не ведёт, поэтому он никогда не выполнится."
           }
         }
       }
     },
     "flow.cycle" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Эти блоки ходят по кругу: %@. Чтобы повторить шаги, используйте «Повтор»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "These blocks lead round in a circle: %@. Use Repeat to run steps again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эти блоки ходят по кругу: %@. Чтобы повторить шаги, используйте «Повтор»."
           }
         }
       }
@@ -36204,16 +36584,16 @@
     },
     "flow.edge.unknownTarget" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ведёт к «%@», но такого блока нет."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leads to “%@”, but there’s no such block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ведёт к «%@», но такого блока нет."
           }
         }
       }
@@ -36396,96 +36776,96 @@
     },
     "flow.field.duration" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — не длительность. Пишите так: 500ms, 10s или 2m."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a duration. Write it like 500ms, 10s or 2m."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не длительность. Пишите так: 500ms, 10s или 2m."
           }
         }
       }
     },
     "flow.field.empty" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не может быть пустым."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "This can’t be empty."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не может быть пустым."
           }
         }
       }
     },
     "flow.field.missing" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не хватает «%@»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” is missing."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не хватает «%@»."
           }
         }
       }
     },
     "flow.field.oneOf" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Используйте ровно одно из: %@."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use exactly one of: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте ровно одно из: %@."
           }
         }
       }
     },
     "flow.field.range" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Допустимо от %1$@ до %2$@."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Must be from %@ to %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Допустимо от %1$@ до %2$@."
           }
         }
       }
     },
     "flow.field.type" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У «%@» значение не того вида."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” has the wrong kind of value."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У «%@» значение не того вида."
           }
         }
       }
@@ -36508,32 +36888,32 @@
     },
     "flow.field.unknown" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — неизвестная настройка."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a known setting."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — неизвестная настройка."
           }
         }
       }
     },
     "flow.field.value" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%1$@» здесь недопустимо. Используйте одно из: %2$@."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t allowed here. Use one of: %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%1$@» здесь недопустимо. Используйте одно из: %2$@."
           }
         }
       }
@@ -36572,48 +36952,48 @@
     },
     "flow.format.missing" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В файле не указана версия формата."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The file doesn’t say which format version it uses."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле не указана версия формата."
           }
         }
       }
     },
     "flow.format.tooNew" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файл в формате %1$@ из более новой версии JEVision, а эта версия читает формат до %2$@. Обновите приложение, чтобы открыть его."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The file uses format %@ from a newer JEVision, and this version reads up to format %@. Update the app to open it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл в формате %1$@ из более новой версии JEVision, а эта версия читает формат до %2$@. Обновите приложение, чтобы открыть его."
           }
         }
       }
     },
     "flow.format.unsupported" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Формат %1$@ слишком старый: эта версия читает формат %2$@ и новее."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Format %@ is too old: this version reads format %@ and newer."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат %1$@ слишком старый: эта версия читает формат %2$@ и новее."
           }
         }
       }
@@ -36668,16 +37048,16 @@
     },
     "flow.if.sameCondition" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Предыдущее условие этого блока проверяет то же самое, поэтому это условие никуда не ведёт."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "An earlier condition of this block checks the same thing, so this one never leads anywhere."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущее условие этого блока проверяет то же самое, поэтому это условие никуда не ведёт."
           }
         }
       }
@@ -36716,96 +37096,96 @@
     },
     "flow.json.notObject" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В файле нет теста."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The file doesn’t hold a test."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В файле нет теста."
           }
         }
       }
     },
     "flow.json.syntax" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файл не является корректным JSON. Проверьте строку %1$@, столбец %2$@."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The file isn’t valid JSON. Check line %@, column %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл не является корректным JSON. Проверьте строку %1$@, столбец %2$@."
           }
         }
       }
     },
     "flow.keys.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — не сочетание клавиш. Запишите клавиши заново."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a key combination. Record the keys again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не сочетание клавиш. Запишите клавиши заново."
           }
         }
       }
     },
     "flow.link.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — не веб-адрес. Начните его с https://."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a web address. Start it with https://."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не веб-адрес. Начните его с https://."
           }
         }
       }
     },
     "flow.loop.emptyBody" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Внутри пока пусто. Добавьте блок, который будет повторяться."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing inside yet. Add a block to run in the loop."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Внутри пока пусто. Добавьте блок, который будет повторяться."
           }
         }
       }
     },
     "flow.loop.noReturn" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Блоки внутри не возвращаются к этому циклу."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The blocks inside don’t lead back to this loop."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки внутри не возвращаются к этому циклу."
           }
         }
       }
@@ -36860,48 +37240,48 @@
     },
     "flow.note.attachment.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В заметке «%@» есть «%@», а это не имя файла и не веб-адрес."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The note “%@” has “%@”, which isn’t a file name or a web address."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В заметке «%@» есть «%@», а это не имя файла и не веб-адрес."
           }
         }
       }
     },
     "flow.note.reply.duplicateId" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В заметке «%@» два ответа с одним именем «%@»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The note “%@” has two replies named “%@”."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В заметке «%@» два ответа с одним именем «%@»."
           }
         }
       }
     },
     "flow.note.unknownBlock" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заметка «%@» относится к блоку «%@», но такого блока нет."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The note “%@” is about the block “%@”, but there is no such block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметка «%@» относится к блоку «%@», но такого блока нет."
           }
         }
       }
@@ -36940,32 +37320,32 @@
     },
     "flow.path.extension" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Выберите файл %@."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose a %@ file."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите файл %@."
           }
         }
       }
     },
     "flow.path.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — не путь внутри проекта. Выберите файл заново."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a path inside the project. Choose the file again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — не путь внутри проекта. Выберите файл заново."
           }
         }
       }
@@ -37052,32 +37432,32 @@
     },
     "flow.placeholder.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME}, ${env.NAME}, ${data.column} или ${var.NAME}."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "“%@” isn’t a valid placeholder. Use ${secret.NAME}, ${env.NAME}, ${data.column} or ${var.NAME}."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» — неверная подстановка. Используйте ${secret.NAME}, ${env.NAME}, ${data.column} или ${var.NAME}."
           }
         }
       }
     },
     "flow.point.invalid" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Точка должна быть внутри окна."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The point must be inside the window."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Точка должна быть внутри окна."
           }
         }
       }
@@ -37148,16 +37528,16 @@
     },
     "flow.reference.thresholdNeedsSimilar" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Порог сходства работает только при сравнении «Похоже»."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A similarity threshold works only with “Similar” comparison."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Порог сходства работает только при сравнении «Похоже»."
           }
         }
       }
@@ -37292,32 +37672,32 @@
     },
     "flow.start.unknownBlock" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тест начинается с «%@», но такого блока нет."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The test starts at “%@”, but there’s no such block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест начинается с «%@», но такого блока нет."
           }
         }
       }
     },
     "flow.tags.duplicate" : {
       "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тег «%@» указан дважды."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The tag “%@” is listed twice."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тег «%@» указан дважды."
           }
         }
       }
@@ -38399,12 +38779,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "в %lld тесте"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -38415,6 +38789,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "в %lld тестах"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в %lld тесте"
                 }
               },
               "other" : {
@@ -38871,12 +39251,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Человек за этим Mac не ответил за %lld секунду, поэтому запуск не начался. Попросите его заглянуть в JEVision и попробуйте снова."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -38887,6 +39261,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Человек за этим Mac не ответил за %lld секунд, поэтому запуск не начался. Попросите его заглянуть в JEVision и попробуйте снова."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Человек за этим Mac не ответил за %lld секунду, поэтому запуск не начался. Попросите его заглянуть в JEVision и попробуйте снова."
                 }
               },
               "other" : {
@@ -39008,6 +39388,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задача открыта: %@"
+          }
+        }
+      }
+    },
+    "mcp.check.fine" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every test reads only files that are in the project, under the same names."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все тесты читают только файлы, которые есть в проекте, под теми же именами."
           }
         }
       }
@@ -39947,12 +40343,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Приложен только первый %lld снимок экрана; в HTML-отчёте есть все."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -39963,6 +40353,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Приложены только первые %lld снимков экрана; в HTML-отчёте есть все."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Приложен только первый %lld снимок экрана; в HTML-отчёте есть все."
                 }
               },
               "other" : {
@@ -40303,12 +40699,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld тест."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -40319,6 +40709,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld тестов."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld тест."
                 }
               },
               "other" : {
@@ -41025,12 +41421,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "(провалено %2$lld из %1$lld строки)"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41041,6 +41431,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "(провалено %2$lld из %1$lld строк)"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "(провалено %2$lld из %1$lld строки)"
                 }
               },
               "other" : {
@@ -41285,12 +41681,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Заблокировано: %2$lld из %1$lld теста"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41301,6 +41691,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Заблокировано: %2$lld из %1$lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Заблокировано: %2$lld из %1$lld теста"
                 }
               },
               "other" : {
@@ -41337,12 +41733,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Провалено: %2$lld из %1$lld теста"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41353,6 +41743,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Провалено: %2$lld из %1$lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Провалено: %2$lld из %1$lld теста"
                 }
               },
               "other" : {
@@ -41389,12 +41785,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Исправлено: %lld тест снова проходит"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41405,6 +41795,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Исправлено: %lld тестов снова проходят"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Исправлено: %lld тест снова проходит"
                 }
               },
               "other" : {
@@ -41441,12 +41837,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Пройдено: %lld тест"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41457,6 +41847,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Пройдено: %lld тестов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Пройдено: %lld тест"
                 }
               },
               "other" : {
@@ -41525,12 +41921,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "из %lld запуска за последние 30 дней"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41541,6 +41931,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "из %lld запусков за последние 30 дней"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "из %lld запуска за последние 30 дней"
                 }
               },
               "other" : {
@@ -41697,12 +42093,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "в релизе больше %lld файла блоков"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -41713,6 +42103,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "в релизе больше %lld файлов блоков"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "в релизе больше %lld файла блоков"
                 }
               },
               "other" : {
@@ -43711,12 +44107,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld попытка"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -43727,6 +44117,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld попыток"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld попытка"
                 }
               },
               "other" : {
@@ -44035,12 +44431,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%2$lld из %1$lld строки пройдено"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -44051,6 +44441,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%2$lld из %1$lld строк пройдено"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$lld из %1$lld строки пройдено"
                 }
               },
               "other" : {
@@ -44267,12 +44663,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Упал %1$lld раз из %2$lld, каждый раз по-разному — тест может быть нестабилен."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -44280,6 +44670,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Упал %1$lld раз из %2$lld, каждый раз по-разному — тест может быть нестабилен."
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Упал %1$lld раз из %2$lld, каждый раз по-разному — тест может быть нестабилен."
@@ -44319,12 +44715,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Упал %lld раз подряд — это настоящий сбой, а не нестабильность."
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -44332,6 +44722,12 @@
                 }
               },
               "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Упал %lld раз подряд — это настоящий сбой, а не нестабильность."
+                }
+              },
+              "one" : {
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Упал %lld раз подряд — это настоящий сбой, а не нестабильность."
@@ -45580,6 +45976,22 @@
         }
       }
     },
+    "run.test.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test %1$@ is saved in format %2$@ by a newer JEVision, and this one reads up to format %3$@. Update JEVision to run it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест %1$@ сохранён в формате %2$@ более новой версией JEVision, а эта версия читает формат до %3$@. Обновите JEVision, чтобы его запустить."
+          }
+        }
+      }
+    },
     "run.test.unreadable" : {
       "localizations" : {
         "en" : {
@@ -46333,12 +46745,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "«%1$@» не подходит как имя расписания: используйте до %2$lld символа без пробелов по краям"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -46349,6 +46755,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "«%1$@» не подходит как имя расписания: используйте до %2$lld символов без пробелов по краям"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "«%1$@» не подходит как имя расписания: используйте до %2$lld символа без пробелов по краям"
                 }
               },
               "other" : {

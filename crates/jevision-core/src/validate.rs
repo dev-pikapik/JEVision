@@ -327,18 +327,13 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
                 && !dir.join(&r.image).exists()
             {
                 saved_by_check.insert(r.image.as_str());
-                out.push(
-                    Issue::warning("flow.reference.notSaved")
-                        .with("block", &b.id)
-                        .with("field", "reference.image")
-                        .with("path", &r.image),
-                );
+                out.push(reference_not_saved(&b.id, &r.image));
             }
         }
         read.extend(
             files_read(&b.kind)
                 .into_iter()
-                .map(|(field, path)| (&b.id, field, path)),
+                .map(|(field, path)| (b, field, path)),
         );
     }
     for (block, field, path) in read {
@@ -349,27 +344,12 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
             && !dir.join(path).exists()
         {
             if let Some(package) = package_of_path(path).filter(|_| field == "test") {
-                let mut issue = Issue::error("flow.block.notInstalled")
-                    .with("block", block)
-                    .with("field", field)
-                    .with("id", package)
-                    .with("path", path);
-                let need = blocks.iter().find_map(|b| match &b.kind {
-                    BlockKind::RunTest { package, .. } if b.id == *block => package.as_ref(),
-                    _ => None,
-                });
-                if let Some(need) = need {
-                    issue = issue.with("version", &need.version);
-                    if let Some(source) = &need.source {
-                        issue = issue.with("source", source);
-                    }
-                }
-                out.push(issue);
+                out.push(not_installed(block, &field, path, package));
                 continue;
             }
             out.push(
                 Issue::warning("flow.file.missing")
-                    .with("block", block)
+                    .with("block", &block.id)
                     .with("field", field)
                     .with("path", path),
             );
@@ -392,6 +372,8 @@ pub fn validate_in(flow: &Flow, dir: &Path) -> Vec<Issue> {
     }
     out.extend(crate::env::validate_environment_values(flow, dir));
     out.extend(crate::data::validate_data(flow, dir));
+    let elsewhere = crate::check::path_warnings(flow, dir, &out);
+    out.extend(elsewhere);
     out[checked..].sort_by(|a, b| a.param("block").cmp(&b.param("block")));
     out
 }
@@ -446,8 +428,36 @@ fn block_inputs(dir: &Path, path: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// A check block's reference that isn't there yet: the first run saves the screen as it.
+pub(crate) fn reference_not_saved(block: &str, path: &str) -> Issue {
+    Issue::warning("flow.reference.notSaved")
+        .with("block", block)
+        .with("field", "reference.image")
+        .with("path", path)
+}
+
+/// The step `block` runs the package `id`, in `path` of its `field`, which isn't installed.
+pub(crate) fn not_installed(block: &Block, field: &str, path: &str, id: &str) -> Issue {
+    let mut issue = Issue::error("flow.block.notInstalled")
+        .with("block", &block.id)
+        .with("field", field)
+        .with("id", id)
+        .with("path", path);
+    if let BlockKind::RunTest {
+        package: Some(need),
+        ..
+    } = &block.kind
+    {
+        issue = issue.with("version", &need.version);
+        if let Some(source) = &need.source {
+            issue = issue.with("source", source);
+        }
+    }
+    issue
+}
+
 /// Fields of a block that name a file to read, other than a check block's reference.
-fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
+pub(crate) fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
     use crate::model::WaitUntil::*;
     let image = |field: &str, t: Option<&'a Target>| match t {
         Some(Target::Image(path)) => vec![(format!("{field}.image"), path)],
@@ -1528,13 +1538,21 @@ pub(crate) fn is_web_address(s: &str) -> bool {
 /// A portable path relative to the test file's folder, written with `/`.
 pub(crate) fn is_relative_path(s: &str) -> bool {
     !s.is_empty()
-        && !s.starts_with('/')
-        && !s.starts_with('~')
+        && !is_elsewhere(s)
         && !s.ends_with('/')
         && !s.contains('\\')
         && !s.contains('\0')
         && !s.split('/').any(str::is_empty)
-        && !s.as_bytes().get(1).is_some_and(|&b| b == b':')
+}
+
+/// Whether `path` starts outside the project: at the root, in the home folder (`~` and `~/…`)
+/// or on a drive (`C:/…`). A run reads `~notes.png`, `~ann/…` and `a:b.png` in the project.
+pub(crate) fn is_elsewhere(path: &str) -> bool {
+    let drive = matches!(
+        path.as_bytes(),
+        [letter, b':', b'/' | b'\\', ..] if letter.is_ascii_alphabetic()
+    );
+    path.starts_with('/') || path == "~" || path.starts_with("~/") || drive
 }
 
 const MODIFIERS: &[&str] = &["cmd", "shift", "option", "ctrl"];
@@ -1644,8 +1662,12 @@ mod tests {
         for ok in ["refs/a.png", "../shared/login.flow.json", "a.csv"] {
             assert!(is_relative_path(ok), "{ok}");
         }
-        for bad in ["", "/etc/x", "~/x", "a//b", "a\\b", "C:x", "dir/"] {
+        for bad in ["", "/etc/x", "~", "~/x", "a//b", "a\\b", "C:/x", "dir/"] {
             assert!(!is_relative_path(bad), "{bad}");
+        }
+        // As a run reads them: in the project, like `check` says.
+        for in_project in ["~notes.png", "~ann/x.png", "a:b.png", "C:x"] {
+            assert!(is_relative_path(in_project), "{in_project}");
         }
         assert!(is_bundle_id("com.apple.TextEdit") && is_bundle_id("org.my-app.x1"));
         assert!(!is_bundle_id("TextEdit") && !is_bundle_id("com..x") && !is_bundle_id("com.a b"));

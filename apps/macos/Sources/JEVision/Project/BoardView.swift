@@ -83,7 +83,7 @@ struct BoardView: View {
 
   private var boards: ProjectBoards { project.boards }
   private var isAllTests: Bool { boards.current != nil && boards.current == boards.allTests }
-  private var canRun: Bool { !runs.isRunning && !records.isRecording && project.rootURL != nil }
+  private var canRun: Bool { !runs.isBusy && !records.isRecording && project.rootURL != nil }
 
   var body: some View {
     content
@@ -97,7 +97,7 @@ struct BoardView: View {
       .onChange(of: names) { refreshLook() }
       .onChange(of: map) { refreshLook() }
       .onChange(of: project.latestRuns) { refreshLook() }
-      .onChange(of: runningFile) { refreshLook() }
+      .onChange(of: runningFiles) { refreshLook() }
       .onChange(of: waitingFiles) { refreshLook() }
       .onChange(of: project.items) { documents.reload() }
       .onAppear { project.boardDocuments = documents }
@@ -1359,30 +1359,31 @@ struct BoardView: View {
     return project.items.flatMap(\.tests).filter { !on.contains($0.id) }
   }
 
-  /// The test started now, relative to the project.
-  private var startedFile: String? {
-    guard let running = runs.running, let root = project.rootURL else { return nil }
-    return RelativePath.from(root, to: running.document.url)
+  /// The tests started now, relative to the project, and whether each waits for another run to
+  /// give up the screen.
+  private var startedFiles: [(file: String, isWaiting: Bool)] {
+    guard let root = project.rootURL else { return [] }
+    return runs.live.map { (RelativePath.from(root, to: $0.request.document.url), $0.state.isWaitingForScreen) }
   }
 
-  /// The test running now; one waiting for another run to give up the screen hasn't begun.
-  private var runningFile: String? {
-    runs.state?.isWaitingForScreen == true ? nil : startedFile
+  /// The tests running now; one waiting for another run to give up the screen hasn't begun.
+  private var runningFiles: Set<String> {
+    Set(startedFiles.filter { !$0.isWaiting }.map(\.file))
   }
 
-  /// The tests of the batch running now that haven't started, and the test waiting for the screen.
+  /// The tests of the batch running now that haven't started, and the tests waiting for the screen.
   private var waitingFiles: Set<String> {
     var files = Set(
       (runs.batch?.entries ?? []).compactMap { entry in
         if case .waiting = entry.state { entry.file } else { nil }
       })
-    if runs.state?.isWaitingForScreen == true, let file = startedFile { files.insert(file) }
+    files.formUnion(startedFiles.filter(\.isWaiting).map(\.file))
     return files
   }
 
   private var source: BoardStatusSource {
     BoardStatusSource(
-      names: names, map: map, latest: project.latestRuns, running: runningFile, waiting: waitingFiles)
+      names: names, map: map, latest: project.latestRuns, running: runningFiles, waiting: waitingFiles)
   }
 
   /// Works out again how each test stands and how the board looks from afar.

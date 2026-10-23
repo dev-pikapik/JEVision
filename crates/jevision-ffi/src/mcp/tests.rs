@@ -348,6 +348,7 @@ fn speaks_the_protocol_over_lines() {
             "add_blocks",
             "remove_block",
             "validate_test",
+            "check_project",
             "list_block_types",
             "run_test",
             "get_run",
@@ -448,6 +449,28 @@ fn missing_reference_images_are_reported_next_to_the_test() {
         json!({ "path": "login/new.flow.json" }),
     );
     assert!(text.ends_with("No problems found."), "{text}");
+}
+
+#[test]
+fn the_project_check_names_the_files_it_lacks() {
+    let (project, _, server) = setup();
+    let (failed, text) = call(&server, "check_project", json!({}));
+    assert!(!failed, "{text}");
+    assert_eq!(
+        text,
+        "Every test reads only files that are in the project, under the same names."
+    );
+
+    let mut test: Value = serde_json::from_str(&sign_in()).unwrap();
+    test["blocks"]["password"]["next"] = json!("go");
+    test["blocks"]["go"] = json!({ "type": "click", "target": { "image": "refs/go.png" } });
+    project.write("login/go.flow.json", &test.to_string());
+    let (failed, text) = call(&server, "check_project", json!({}));
+    assert!(!failed, "{text}");
+    assert_eq!(
+        text,
+        "login/go.flow.json: Problems:\n- error: Block “go”, field “target.image”: Missing file “login/refs/go.png” in the project."
+    );
 }
 
 #[test]

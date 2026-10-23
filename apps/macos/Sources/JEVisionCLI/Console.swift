@@ -56,6 +56,12 @@ indirect enum JSON {
     value.map { .string($0) } ?? .null
   }
 
+  /// What a command prints with `--json`: an object whose first member, `jsonVersion`, tells the
+  /// layout, so a script can tell a layout it doesn't know from one it reads.
+  static func result(_ members: [(String, JSON)]) -> JSON {
+    .object([("jsonVersion", .int(1))] + members)
+  }
+
   var pretty: String {
     var out = ""
     write(to: &out, indent: "")

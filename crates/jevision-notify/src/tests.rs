@@ -9,6 +9,7 @@ use super::*;
 use crate::message::duration;
 
 mod chats;
+mod ci;
 mod rich;
 mod summary;
 
@@ -55,7 +56,7 @@ fn slack_only(when: NotifyWhen) -> NotificationSettings {
 fn finished(value: serde_json::Value, previous: Option<serde_json::Value>) -> Finished {
     Finished {
         run: run(value),
-        previous: previous.map(|v| serde_json::from_value(v).unwrap()),
+        previous: previous.map(|v| serde_json::from_value(v["verdict"].clone()).unwrap()),
     }
 }
 
@@ -441,10 +442,7 @@ fn fixed_is_told_against_the_last_finished_run_of_the_same_file() {
     save("20261019-100000-sign-in", report("passed", None));
     let now = save("20261019-090000-sign-in", report("passed", None));
     let now = Run::load(&now).unwrap();
-    assert_eq!(
-        previous(&project, &now).map(|r| r.verdict),
-        Some(Verdict::Failed)
-    );
+    assert_eq!(previous(&project, &now), Some(Verdict::Failed));
     assert_eq!(test_part("20261019-090000-sign-in-12"), "sign-in");
     assert_eq!(test_part("20261019-090000-v2"), "v2");
 }

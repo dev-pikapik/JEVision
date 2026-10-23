@@ -26,6 +26,12 @@ pub const ENVIRONMENT_NAME: &str = "ENVIRONMENT";
 /// Values of one environment, by name.
 pub type EnvironmentValues = BTreeMap<String, String>;
 
+/// A project folder has the environments file or the `.jevision` folder the app makes in the
+/// project it opens.
+pub(crate) fn is_project_folder(folder: &Path) -> bool {
+    folder.join(ENVIRONMENTS_FILE).is_file() || folder.join(".jevision").is_dir()
+}
+
 /// The environments of a project.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Environments {
@@ -93,9 +99,7 @@ impl Environments {
     /// with an environments file or a `.jevision` folder.
     pub fn find(dir: &Path) -> Result<Self, String> {
         dir.ancestors()
-            .find(|folder| {
-                folder.join(ENVIRONMENTS_FILE).is_file() || folder.join(".jevision").is_dir()
-            })
+            .find(|folder| is_project_folder(folder))
             .map_or_else(|| Ok(Self::default()), Self::load)
     }
 

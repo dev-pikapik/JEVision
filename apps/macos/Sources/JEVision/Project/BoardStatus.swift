@@ -141,14 +141,14 @@ struct BoardStatusSource {
   var names: [String: String] = [:]
   var map: [String: MapTest] = [:]
   var latest: [String: SavedRun] = [:]
-  /// The test running now, relative to the project.
-  var running: String?
+  /// The tests running now, relative to the project.
+  var running: Set<String> = []
   /// Tests of the batch running now that haven't started.
   var waiting: Set<String> = []
 
   func status(of file: String) -> BoardTestStatus {
     BoardTestStatus(
-      info: map[file], last: latest[file], isRunning: running == file, isWaiting: waiting.contains(file),
+      info: map[file], last: latest[file], isRunning: running.contains(file), isWaiting: waiting.contains(file),
       isMissing: names[file] == nil)
   }
 }

@@ -172,6 +172,9 @@
 <p>Checks a test file, or every test in a folder, for errors and warnings, each with the block and field it concerns. Tests with errors can't run.</p>
 <ul><li><code>path</code> (required): a test file or folder; <code>.</code> for the whole project.</li></ul>
 
+<h3 id="check_project"><code>check_project</code></h3>
+<p>Checks that the project carries every file its tests read, as <a href="cli.html#check"><code>jevision check</code></a> does: paths to a place on this computer only, out of the project, through a link out of it or with <code>\</code>, names that differ from the file in capital letters, and missing files are errors; files of 50 MB or more, which belong in Git LFS, are warnings. Takes no arguments.</p>
+
 <h3 id="list_block_types"><code>list_block_types</code></h3>
 <p>Describes the test format: the fields of a test, every block type with its fields and an example, how blocks lead to each other, and the shapes of targets, references, areas and durations. Takes no arguments. Assistants call it before writing a test.</p>
 

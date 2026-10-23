@@ -65,16 +65,19 @@
   <ul>
     <li><a href="#install">Install</a></li>
     <li><a href="#overview">Commands</a></li>
+    <li><a href="#exit-codes">Exit codes</a></li>
     <li><a href="#run"><code>jevision run</code></a></li>
     <li><a href="#filter">Choosing tests by their cards</a></li>
     <li><a href="#parallel">Running tests side by side</a></li>
     <li><a href="#screen">One run at a time on the screen</a></li>
     <li><a href="#run-json">The result of <code>run --json</code></a></li>
     <li><a href="#validate"><code>jevision validate</code></a></li>
+    <li><a href="#check"><code>jevision check</code></a></li>
     <li><a href="#fmt"><code>jevision fmt</code></a></li>
     <li><a href="#mcp"><code>jevision mcp</code></a></li>
     <li><a href="#blocks"><code>jevision blocks</code></a></li>
     <li><a href="#schedule"><code>jevision schedule run</code></a></li>
+    <li><a href="#version"><code>jevision version</code></a></li>
     <li><a href="#ready">What a Mac needs to run tests</a></li>
     <li><a href="#ci">Running in CI</a></li>
   </ul>
@@ -92,21 +95,40 @@ jevision --help</code></pre>
   <tbody>
     <tr><td><a href="#run"><code>jevision run</code></a></td><td>Run tests on this Mac</td></tr>
     <tr><td><a href="#validate"><code>jevision validate</code></a></td><td>Check tests for errors and warnings</td></tr>
+    <tr><td><a href="#check"><code>jevision check</code></a></td><td>Check the project carries every file its tests read</td></tr>
     <tr><td><a href="#fmt"><code>jevision fmt</code></a></td><td>Rewrite tests in canonical form</td></tr>
     <tr><td><a href="#mcp"><code>jevision mcp</code></a></td><td>Let AI assistants read, edit and run tests</td></tr>
     <tr><td><a href="#blocks"><code>jevision blocks</code></a></td><td>List, install, update, remove and restore <a href="custom-blocks.html">blocks that other people shared</a></td></tr>
     <tr><td><a href="#schedule"><code>jevision schedule run</code></a></td><td>Run the schedules of a project that are due now</td></tr>
     <tr><td><code>jevision --help</code>, <code>-h</code>, <code>help</code></td><td>Show help; <code>jevision help run</code> or <code>jevision run --help</code> for one command</td></tr>
-    <tr><td><code>jevision --version</code>, <code>-V</code></td><td>Show the version</td></tr>
+    <tr><td><a href="#version"><code>jevision version</code></a>, <code>--version</code>, <code>-V</code></td><td>Show the version; with <code>--json</code>, also the file formats and protocols it supports</td></tr>
   </tbody>
 </table>
 </div>
 <p>Wherever a command takes <code><var>tests</var>…</code>, give test files (<code>.flow.json</code>) or folders. Folders are searched for <code>.flow.json</code> files, including folders inside them, in order of their paths. Files and folders whose names start with a dot are skipped.</p>
-<p>Every command ends with an <strong>exit status</strong>, a number a script or CI system reads to know how it went: <code>0</code> means all good, <code>1</code> means a test failed or a problem was found, and <code>2</code> means the command itself couldn't do its work.</p>
+<p>Every command ends with an <a href="#exit-codes">exit status</a>: <code>0</code> means all good, <code>1</code> means a test failed or a problem was found, and higher numbers say what kept the command from its work.</p>
 <p id="lang"><strong>Language.</strong> Messages, errors, hints and the reports a command writes (<code>--html</code>, <code>--junit</code>, bug drafts) use the language of your Mac, or English when the <code>CI</code> environment variable is set, so logs on a CI machine read the same for everyone. Every command takes <code>--lang <var>code</var></code> to choose another language of the app, for example <code>jevision run tests/ --lang ru</code>; an unknown code is an error that lists the languages there are. Test files, <code>--json</code> results, issue codes and the names of options never change with the language. New languages are added in the string catalog without changing code (see <a href="https://github.com/dev-pikapik/JEVision/blob/main/CONTRIBUTING.md#languages-and-localization">Contributing</a>).</p>
 
+<h2 id="exit-codes">Exit codes</h2>
+<p>Every command ends with an <strong>exit status</strong>, a number a script or CI system reads to know how it went. Each number means the same for every command:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>0</code></td><td>All good: the tests passed, or no problems were found.</td></tr>
+    <tr><td><code>1</code></td><td>A test failed or was stopped, or problems were found in the tests.</td></tr>
+    <tr><td><code>2</code></td><td>The command can't be done as asked, and trying again won't help: an unknown command or option, a file or folder that isn't there, a folder with no tests. For <code>jevision issue</code>, also: no run failed, so there is nothing to report, or the project can't take the report as it is, such as one that isn't on GitHub or has no remote.</td></tr>
+    <tr><td><code>3</code></td><td>A file couldn't be read or written: a test, a settings file of the project, a report.</td></tr>
+    <tr><td><code>4</code></td><td>This Mac isn't ready yet, and trying again later can help: nobody is logged in, the screen is locked, or macOS hasn't allowed <code>jevision</code> what it needs (see <a href="#ready">below</a>). For <code>jevision issue --send</code>, also: git or the GitHub CLI isn't installed, you aren't signed in to GitHub or your sign-in ran out, your account can't write to the repository, or GitHub can't be reached or turned the report down without saying why. For <code>jevision mcp --pair</code> and <code>--remote</code>, also: the other Mac can't be reached.</td></tr>
+    <tr><td><code>5</code></td><td>A file needs a newer JEVision: a test, a block or a settings file saved in a newer format.</td></tr>
+    <tr><td><code>6</code>–<code>63</code></td><td>Kept for later versions.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>When several of these happen in one command, the status is the highest of them: a run where a test failed and the JUnit report couldn't be written ends with <code>3</code>.</p>
+
 <h2 id="run"><code>jevision run</code></h2>
-<p>Runs tests on this Mac, one after another (or <a href="#parallel">side by side</a>), and saves a report of every run.</p>
+<p>Runs tests on this Mac, one after another or <a href="#parallel">side by side</a>, and saves a report of every run.</p>
 <pre><code>jevision run <var>tests</var>… [options]</code></pre>
 <p>Each of <var>tests</var> is a test file, a folder of tests, or a test's name as the app shows it, without <code>.flow.json</code>: <code>jevision run notes/add-milk</code>.</p>
 <div class="table-wrap">
@@ -126,7 +148,7 @@ jevision --help</code></pre>
     <tr><td><code>--html <var>folder</var></code></td><td>Also save the <a href="reports.html#html">HTML report</a> of every run in this folder.</td></tr>
     <tr><td><code>--video <var>when</var></code></td><td>Record a <a href="reports.html#video">video</a> of the app: <code>off</code>, <code>on-failure</code> (keep it only when the test fails) or <code>always</code>. Default: as chosen in the app (Settings → Advanced), otherwise <code>on-failure</code>.</td></tr>
     <tr><td><code>--include-quarantined-failures</code></td><td>Count failures of tests in <a href="retries.html#quarantine">quarantine</a> like any other failure. Without it they still run, but don't change the exit status and are listed as skipped in the JUnit report. A test whose quarantine <code>until</code> day is past counts either way.</td></tr>
-    <tr><td><code>--parallel [<var>n</var>]</code></td><td>Run up to <var>n</var> tests at the same time, 1 to 16, instead of one after another. Without a number: one per core of this Mac. Tests that use the screen still take turns. See <a href="#parallel">below</a>. A folder named with digits only needs <code>./</code> in front: <code>--parallel 4 ./2024</code>.</td></tr>
+    <tr><td><code>--parallel [<var>n</var>]</code></td><td>Run up to <var>n</var> tests at the same time, 1 to 16, instead of one after another. Without a number: one per core of this Mac; <code>--parallel 1</code> runs them one after another. Without this option, tests run as the project sets for their folder. Tests that use the screen still take turns. See <a href="#parallel">below</a>. A folder named with digits only needs <code>./</code> in front: <code>--parallel 4 ./2024</code>.</td></tr>
     <tr><td><code>--no-notify</code></td><td>Don't send the message that <a href="notifications.html"><code>jevision.notifications.json</code></a> asks for (Slack, Telegram, email): one message for one test, one summary for several. A stopped run sends nothing. On CI the webhook, bot token and mail password come from <code>JEVISION_SLACK_WEBHOOK</code>, <code>JEVISION_TELEGRAM_TOKEN</code> and <code>JEVISION_SMTP_PASSWORD</code>.</td></tr>
     <tr><td><code>--json</code></td><td>Print the result as JSON (see <a href="#run-json">below</a>). Progress goes to standard error.</td></tr>
   </tbody>
@@ -145,7 +167,10 @@ jevision run tests/ --priority critical --type smoke</code></pre>
   <tbody>
     <tr><td><code>0</code></td><td>All tests passed. Tests in quarantine may have failed, and tests with no check may have finished without checking anything: the output says so and the JUnit report lists them as skipped.</td></tr>
     <tr><td><code>1</code></td><td>A test failed or was stopped.</td></tr>
-    <tr><td><code>2</code></td><td>Wrong arguments, a file could not be read or written, or this Mac can't run tests now (see <a href="#ready">below</a>).</td></tr>
+    <tr><td><code>2</code></td><td>Wrong arguments: a file or folder that isn't there, an environment the project doesn't have, or no test fits the <a href="#filter">filter</a>.</td></tr>
+    <tr><td><code>3</code></td><td>A file couldn't be read or written: the environments file, the JUnit or HTML report, or the report of a test.</td></tr>
+    <tr><td><code>4</code></td><td>This Mac can't run tests now (see <a href="#ready">below</a>).</td></tr>
+    <tr><td><code>5</code></td><td>A test, a block it uses or the environments file needs a newer JEVision.</td></tr>
   </tbody>
 </table>
 </div>
@@ -165,7 +190,15 @@ jevision run tests/ --flaky --retries 3
 jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 
 <h2 id="parallel">Running tests side by side</h2>
-<p>Tests run one after another unless you add <code>--parallel</code>. <code>--parallel 4</code> runs up to four tests at a time, and <code>--parallel</code> alone runs one per core of the Mac (at most 16), so a suite of tests that don't need the screen finishes sooner.</p>
+<p>Tests run one after another unless the project or <code>--parallel</code> says otherwise. <code>--parallel 4</code> runs up to four tests at a time, <code>--parallel</code> alone runs one per core of the Mac (at most 16), and <code>--parallel 1</code> runs them one after another. Side by side, a suite of tests that don't need the screen finishes sooner.</p>
+<p>Without <code>--parallel</code>, the tests run the way the project sets for their folder. In the app, right-click a folder and choose under <strong>Run Tests</strong>, or right-click <strong>All Tests</strong> for the whole project. The choice is kept in <code>jevision.project.json</code>, so the app, <code>jevision run</code> and CI run the tests the same way.</p>
+<ul>
+  <li><strong>Which folder.</strong> The folder you name; for several tests or folders, the deepest folder that holds them all. A folder with no choice of its own takes the one of the folder above it, up to the whole project.</li>
+  <li><strong>Nothing set.</strong> When no folder up to the project has a choice, the tests run one after another. When <code>jevision.project.json</code> can't be read, they run one after another too, and the run says why.</li>
+  <li><strong>The run says so.</strong> When the tests run side by side because of the project, the line after the first one tells where the choice comes from:</li>
+</ul>
+<pre><code>Running 6 tests in /Users/ann/Notes, up to 4 at a time. Press Esc twice or Ctrl-C to stop.
+Side by side, as jevision.project.json sets for the folder “login”. Add --parallel 1 to run them one at a time.</code></pre>
 <ul>
   <li><strong>The screen is never shared.</strong> A test that clicks, types, looks at the screen, runs AppleScript or uses the clipboard has the screen to itself: another test that does the same waits. Only tests that leave the screen alone run beside it: commands, requests, files, databases, scripts other than AppleScript, pauses, dates, loops and conditions on values. A test that runs another test counts as the tests it runs, and a test JEVision can't read counts as one that uses the screen. If every test uses the screen, <code>--parallel</code> changes nothing.</li>
   <li><strong>“Runs after” is kept.</strong> A test starts only after the tests it runs after (<code>dependsOn</code> in the test) have passed. When one of them fails, the tests that need it are blocked, as without <code>--parallel</code>.</li>
@@ -185,6 +218,7 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 <h2 id="run-json">The result of <code>run --json</code></h2>
 <p>With <code>--json</code>, standard output holds only this result, so a script can read it:</p>
 <pre><code>{
+  "jsonVersion": 1,
   "passed": 1,
   "nothingChecked": 0,
   "failed": 1,
@@ -207,7 +241,7 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
       "rows": [],
       "durationMs": 18234,
       "newReferences": [],
-      "failure": { "code": "…", "message": "…" },
+      "failure": { "code": "…", "message": "…", "params": { … } },
       "report": "…/.jevision/runs/20261018-031500-sign-in/report.json",
       "html": null,
       "video": null
@@ -216,10 +250,39 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 }</code></pre>
 <ul>
   <li><code>verdict</code> is <code>passed</code>, <code>nothingChecked</code> (finished, but no block looked at the screen, so the test couldn't have caught a wrong result), <code>failed</code>, <code>quarantined</code> (failed, but in quarantine), <code>cancelled</code>, <code>blocked</code> (didn't run because a test it depends on didn't pass; <code>blockedBy</code> says which and why), <code>notRun</code> (the run was stopped before this test) or <code>error</code> (the run couldn't save its report; <code>error</code> then holds the reason).</li>
+  <li><code>blockedBy</code> of a blocked test is an object: <code>reason</code> is <code>failed</code> (the test behind it ran and failed), <code>notRun</code> (it couldn't run), <code>missing</code> (it isn't there) or <code>cycle</code> (tests depend on each other in a circle, and <code>cycle</code> lists them round it); <code>dependency</code> is the test's own dependency and <code>cause</code> the test that didn't pass, which can be further down the chain; <code>message</code> says it in words, such as <code>Blocked: Login failed</code>. For other tests it is <code>null</code>.</li>
+  <li><code>failure</code> has a <code>code</code>, such as <code>run.target.notFound</code>, a <code>message</code>, and <code>params</code>: the details the message names, such as the block or the value, as text by name, so a script doesn't have to pick them out of the message.</li>
   <li><code>addedAsDependency</code> is <code>true</code> for a test you didn't choose that ran because a chosen test depends on it.</li>
   <li><code>file</code> is relative to the project folder. <code>newReferences</code> lists the reference images this run saved for the first time.</li>
-  <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>.</li>
+  <li>For a data-driven test, <code>rows</code> holds one entry per row: <code>row</code>, <code>label</code>, <code>verdict</code>, <code>flaky</code>, <code>attempts</code> and <code>failure</code>, with a <code>code</code>, a <code>message</code> and <code>params</code> as above.</li>
 </ul>
+<p id="json-version">Every <code>--json</code> result is an object that starts with <code>jsonVersion</code>, now <code>1</code>. Within a version, members are only added, never renamed or removed, so a script keeps working when JEVision is updated. Codes such as <code>verdict</code>, <code>reason</code> and <code>code</code> stay the same in every language; <code>message</code> next to a code says the same in words, in the <a href="#lang">language of the messages</a>.</p>
+<p id="json-error">When <code>validate</code>, <code>check</code> or <code>run</code> can't do all its work, the JSON result says why in <code>error</code>, with a <code>code</code> and a <code>message</code>, and standard error says it too. The result has what the command got done as well: <code>tests</code> of <code>validate</code> lists the files it could read, and a run whose report couldn't be saved still has its tests. When several things went wrong, <code>error</code> tells the one that set the exit status, and standard error tells each of them.</p>
+<pre><code>{
+  "jsonVersion": 1,
+  "error": {
+    "code": "noTests",
+    "message": "there are no tests (*.flow.json files) in /Users/ann/Shop"
+  }
+}</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col"><code>code</code></th><th scope="col">What went wrong</th><th scope="col">Exit status</th></tr></thead>
+  <tbody>
+    <tr><td><code>usage</code></td><td>An unknown command or option, or an option without its value</td><td><code>2</code></td></tr>
+    <tr><td><code>noFileOrFolder</code>, <code>noFolder</code></td><td>A file or folder named isn't there</td><td><code>2</code></td></tr>
+    <tr><td><code>noTests</code></td><td>A folder or project has no tests</td><td><code>2</code></td></tr>
+    <tr><td><code>noTestFits</code></td><td>The filter leaves no test to run</td><td><code>2</code></td></tr>
+    <tr><td><code>outsideProject</code></td><td>A test isn't in the project given with <code>--project</code></td><td><code>2</code></td></tr>
+    <tr><td><code>noEnvironment</code>, <code>noEnvironmentsFile</code></td><td>The project has no environment by the name given, or no environments at all</td><td><code>2</code></td></tr>
+    <tr><td><code>modelNeedsProvider</code></td><td><code>--model</code> without a provider to ask</td><td><code>2</code></td></tr>
+    <tr><td><code>cannotRead</code></td><td>A test or folder couldn't be read; one that isn't there ends with <code>2</code></td><td><code>3</code></td></tr>
+    <tr><td><code>environmentsUnreadable</code></td><td>The environments file of the project couldn't be read</td><td><code>3</code>, or <code>5</code> when a newer JEVision saved it</td></tr>
+    <tr><td><code>cannotWrite</code></td><td>The JUnit or HTML report couldn't be saved</td><td><code>3</code></td></tr>
+    <tr><td><code>notReady</code>, <code>noKeyboardWatch</code></td><td>This Mac isn't ready to run tests (see <a href="#ready">below</a>), or <kbd>Esc</kbd> twice couldn't be set up to stop the run</td><td><code>4</code></td></tr>
+  </tbody>
+</table>
+</div>
 
 <h2 id="validate"><code>jevision validate</code></h2>
 <p>Checks test files for errors and warnings, as the editor does. See <a href="writing-tests.html#problems">Problems the editor reports</a>.</p>
@@ -228,11 +291,45 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
 <table>
   <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
   <tbody>
-    <tr><td><code>--json</code></td><td>Print the result as JSON: a list with one entry per file, with <code>file</code>, <code>valid</code> and <code>issues</code>. Each issue has a <code>code</code> such as <code>flow.edge.unknownTarget</code>, a <code>severity</code> (<code>error</code> or <code>warning</code>) and <code>params</code> with the details.</td></tr>
+    <tr><td><code>--json</code></td><td>Print the result as JSON: <code>jsonVersion</code> and <code>tests</code>, a list with one entry per file, with <code>file</code>, <code>valid</code> and <code>issues</code>. Each issue has a <code>code</code> such as <code>flow.edge.unknownTarget</code>, a <code>severity</code> (<code>error</code> or <code>warning</code>), <code>params</code> with the details and a <code>message</code>. A file or folder that can't be read, or a folder with no tests, is in <a href="#json-error"><code>error</code></a>. See <a href="#json-version">versions of the JSON result</a>.</td></tr>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, problems found; <code>2</code>, wrong arguments, a file or folder that isn't there, or a folder with no tests; <code>3</code>, a file couldn't be read; <code>5</code>, a test needs a newer JEVision.</p>
+
+<h2 id="check"><code>jevision check</code></h2>
+<p>Checks that a project carries every file its tests read, so it runs the same once copied, cloned or on CI. A test can pass on your Mac and fail everywhere else when it reads a file that only your Mac has.</p>
+<pre><code>jevision check [<var>project</var>] [--json]</code></pre>
+<p>Without <var>project</var>, it checks the project the current folder is in. Every test of the project and every <a href="custom-blocks.html">block of your own</a> (<code>.flow.json</code> and <code>.block.json</code> files, except in folders whose names start with a dot) is checked, and in each of them every path to a file or folder: the files a test opens, the pictures it clicks, drags, scrolls, types into, waits for or puts on the clipboard (and their dark versions), the CSV tables it reads data from, the tests it runs, the references of its checks, the folders its commands run in, the tests it runs after, and the files attached to its notes. A note doesn't change how the test runs, so problems with its files are only warnings.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Found</th><th scope="col">Why it matters</th><th scope="col">Is</th></tr></thead>
+  <tbody>
+    <tr><td>A path to a place on this computer only, such as <code>/Users/ann/button.png</code>, <code>~/button.png</code> or <code>C:\button.png</code></td><td>No other computer has it</td><td>Error</td></tr>
+    <tr><td>A path out of the project folder, such as <code>../../button.png</code>, or through a link that leads out of it</td><td>The file isn't copied, cloned or committed with the project</td><td>Error</td></tr>
+    <tr><td><code>\</code> between folders</td><td>Only Windows reads it; JEVision paths use <code>/</code></td><td>Error</td></tr>
+    <tr><td>A name that differs from the file on disk in capital letters, such as <code>data/users.csv</code> for <code>Data/users.csv</code></td><td>The Mac finds it; Linux, most CI runners and some Mac disks don't</td><td>Error</td></tr>
+    <tr><td>A file or folder that isn't there</td><td>The test fails when it gets there</td><td>Error</td></tr>
+    <tr><td>A file of 50 MB or more</td><td>GitHub refuses files over 100 MB and warns from 50 MB; keep such files in <a href="https://git-lfs.com">Git LFS</a></td><td>Warning</td></tr>
+    <tr><td>A reference of a check block that isn't saved yet</td><td>The first run saves it</td><td>Warning</td></tr>
+  </tbody>
+</table>
+</div>
+<p>A path with placeholders, such as <code>${var.folder}/logo.png</code>, names a file only while the test runs, so only its part before the first placeholder is checked: <code>/tmp/${var.name}.png</code> is still a path on this computer only, and <code>../../${var.name}.png</code> still leads out of the project. The files of “check a file” and database blocks aren't checked: they belong to the app under test, not to the project.</p>
+<p><a href="#validate"><code>jevision validate</code></a> shows the same problems of a test in a project as warnings, so a test you are still writing isn't stopped by them; <code>jevision check</code> counts them as errors.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Option</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>--json</code></td><td>Print the result as JSON: <code>jsonVersion</code> and <code>tests</code>, a list with one entry per test, with <code>file</code>, <code>valid</code> and <code>issues</code>, as <a href="#validate"><code>validate --json</code></a> does. Issue codes start with <code>check.</code>, such as <code>check.path.case</code>. A folder that isn't there, or a project with no tests, is in <a href="#json-error"><code>error</code></a> instead.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>$ jevision check
+login/sign-in.flow.json: 1 error, 0 warnings
+  error   Block “avatar”, field “target.image”: “/Users/ann/avatar.png” points to a place on this computer only, so the test won’t find the file anywhere else. Put the file in the project and choose it again.
+1 test checked: 1 error, 0 warnings</code></pre>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, errors found; <code>2</code>, wrong arguments, a folder that isn't there, or a project with no tests (so a check of the wrong folder doesn't pass without checking anything); <code>3</code>, a file or folder couldn't be read; <code>5</code>, a test needs a newer JEVision.</p>
 
 <h2 id="fmt"><code>jevision fmt</code></h2>
 <p>Rewrites test files in <a href="writing-tests.html#canonical">canonical form</a>, so every change shows up as a small, readable diff.</p>
@@ -245,7 +342,7 @@ jevision run tests/ --author "Anna Lee" --status ready</code></pre>
   </tbody>
 </table>
 </div>
-<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments, a folder with no tests, or a file that could not be read or written.</p>
+<p>Exit status: <code>0</code>, all good; <code>1</code>, a file is not in canonical form or can't be read as a test; <code>2</code>, wrong arguments, a file or folder that isn't there, or a folder with no tests; <code>3</code>, a file couldn't be read or written; <code>5</code>, a test needs a newer JEVision.</p>
 
 <h2 id="mcp"><code>jevision mcp</code></h2>
 <p>Serves the tests of a project to AI assistants on this Mac, such as Claude, Cursor or Copilot, over the Model Context Protocol. The assistant starts this command itself; you add it to the assistant's settings. See <a href="mcp.html">AI assistants (MCP)</a>.</p>
@@ -266,6 +363,7 @@ jevision mcp --forget <var>Mac</var></code></pre>
   </tbody>
 </table>
 </div>
+<p>Exit status: <code>0</code>, the assistant disconnected, or the Mac was paired or forgotten; <code>2</code>, wrong arguments, no project, or a Mac that isn't paired; <code>3</code>, the list of paired Macs, this computer's key, or the assistant's input or output couldn't be read or written; <code>4</code>, the other Mac can't be reached, or this computer has no key.</p>
 
 <h2 id="blocks"><code>jevision blocks</code></h2>
 <p>Lists, installs, updates and removes the <a href="custom-blocks.html">blocks that other people shared</a> in a project, as <strong>Install Block…</strong> and <strong>Custom Blocks…</strong> do in the app, and installs the blocks of a project again from <code>jevision.blocks.json</code>. Installed blocks are in the <code>blocks</code> folder of the project.</p>
@@ -309,16 +407,41 @@ jevision blocks update --yes
 jevision blocks remove com.acme.sign-in
 jevision blocks restore --yes</code></pre>
 <p>A test that needs a block you haven't installed says so in <code>jevision validate</code> and <code>jevision run</code>, with the id and version the test was made with and the command that installs it, such as <code>needs the block com.acme.sign-in 1.2.0 … install it with `jevision blocks install https://github.com/acme/sign-in-block`</code>. A test that knows no address says <code>jevision blocks install &lt;folder, .zip file or https address&gt;</code>.</p>
-<p>Exit status: <code>0</code>, done (or nothing to do); <code>1</code>, a block wasn't installed because <code>--yes</code> is missing, <code>--force</code> is needed (to go back to an older version, to update a block that another one needs in another version, or to restore a block whose version changed), a block it needs is missing, or the block has an error; a block that is installed already in the same version is left as it is, with status <code>0</code>; <code>2</code>, wrong arguments, a source that can't be read or downloaded, or a block that isn't installed.</p>
+<p>Exit status: <code>0</code>, done (or nothing to do); <code>1</code>, a block wasn't installed because <code>--yes</code> is missing, <code>--force</code> is needed (to go back to an older version, to update a block that another one needs in another version, or to restore a block whose version changed), a block it needs is missing, or the block has an error; a block that is installed already in the same version is left as it is, with status <code>0</code>; <code>2</code>, wrong arguments, a project folder that isn't there, a block that isn't installed, or a source that isn't a block folder, a <code>.zip</code> file or an https address; <code>3</code>, a source that can't be read or downloaded; <code>5</code>, the block needs a newer JEVision.</p>
 
 <h2 id="schedule"><code>jevision schedule run</code></h2>
 <p>Runs the <a href="schedules.html">schedules</a> of a project that are due now. The app sets up macOS to start this command at the right times, so you don't need to run it yourself.</p>
 <pre><code>jevision schedule run <var>project</var></code></pre>
 <p>A schedule is due once for its latest time since the last check, even when the Mac slept through it, unless that time is more than 12 hours ago. When the screen is locked, nobody is logged in, or macOS hasn't allowed <code>jevision</code> to record the screen and control the computer, the run is skipped and nothing is clicked or typed.</p>
-<p>Exit status: <code>0</code>, nothing was due or all tests passed; <code>1</code>, a test failed or a run was skipped; <code>2</code>, the project or its schedule file couldn't be read, or a run couldn't start.</p>
+<p>Exit status: <code>0</code>, nothing was due or all tests passed; <code>1</code>, a test failed; <code>2</code>, the project folder isn't there, or a run asked for something the project doesn't have; <code>3</code>, the schedule file or the history of runs couldn't be read or written; <code>4</code>, a run was skipped because this Mac wasn't ready; <code>5</code>, the schedule file, the history of runs or a test needs a newer JEVision.</p>
+
+<h2 id="version"><code>jevision version</code></h2>
+<p>Shows the version, as <code>jevision --version</code> does. With <code>--json</code>, it also tells which file formats and protocols this version reads and speaks, so a script can check it works with your files before it runs anything.</p>
+<pre><code>jevision version [--json]</code></pre>
+<pre><code>$ jevision version --json
+{
+  "jsonVersion": 1,
+  "version": "0.1.0",
+  "formats": [
+    { "file": "*.flow.json", "version": 1 },
+    { "file": "*.block.json", "version": 1 },
+    { "file": "jevision.project.json", "version": 1 },
+    { "file": "jevision.environments.json", "version": 1 },
+    { "file": "jevision.schedule.json", "version": 1 },
+    { "file": "block.json", "version": 1 },
+    { "file": "report.json", "version": 1 }
+  ],
+  "iphoneProtocol": { "oldest": 1, "newest": 1 },
+  "mcpProtocols": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
+}</code></pre>
+<ul>
+  <li><code>formats</code> lists the <a href="file-formats.html">files</a> by name, or by the ending of their name: tests, your own blocks, the settings of a project, its environments and schedules, the description of a shared block (<code>block.json</code>) and the report of a run. <code>version</code> is the <code>format</code> this version writes in the file; a file with a higher one needs a newer JEVision, and commands that meet one end with <a href="#exit-codes">status <code>5</code></a>.</li>
+  <li><code>iphoneProtocol</code> is the range of versions of the connection between the <a href="iphone.html">iPhone app</a> and this Mac. The iPhone app works with this Mac when its version is in the range.</li>
+  <li><code>mcpProtocols</code> are the versions of the Model Context Protocol <a href="#mcp"><code>jevision mcp</code></a> speaks, newest first.</li>
+</ul>
 
 <h2 id="ready">What a Mac needs to run tests</h2>
-<p>Before running anything, <code>jevision run</code> checks that the Mac can run tests, and if not, says what to do and exits with status <code>2</code>. A Mac can run tests when:</p>
+<p>Before running anything, <code>jevision run</code> checks that the Mac can run tests, and if not, says what to do and exits with status <code>4</code>. A Mac can run tests when:</p>
 <ul>
   <li><strong>a user is logged in</strong> and <code>jevision</code> runs in that user's session: from Terminal, from a CI agent started in that session, or over SSH as that same user while they stay logged in at the screen, as in a <a href="vm.html#ssh">virtual machine</a>; not as a system service;</li>
   <li><strong>the screen is unlocked</strong>;</li>
@@ -333,11 +456,25 @@ jevision blocks restore --yes</code></pre>
     steps:
       - uses: actions/checkout@v4
       - name: Check test files
-        run: jevision validate tests &amp;&amp; jevision fmt --check tests
+        run: jevision validate tests &amp;&amp; jevision fmt --check tests &amp;&amp; jevision check tests
+      - name: Restore the last result of each test
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: jevision-last-results-
       - name: Run UI tests
         env:
           ACME_PASSWORD: ${{ secrets.ACME_PASSWORD }}
         run: jevision run tests --junit junit.xml --html reports
+      - name: Save the last result of each test
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tests/.jevision/last-results.json
+          key: jevision-last-results-${{ github.run_id }}-${{ github.run_attempt }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -349,6 +486,7 @@ jevision blocks restore --yes</code></pre>
             reports/
             tests/.jevision/runs/</code></pre>
 <p>Secrets go in as environment variables named like the secret, here <code>ACME_PASSWORD</code> for <code>${secret.ACME_PASSWORD}</code>.</p>
+<p>The cache keeps the <a href="file-formats.html#last-results">last result of each test</a> from one job to the next, so <a href="notifications.html#last-results">notifications</a> can tell a new failure from one that goes on. <code>jevision check</code> fails the job before the tests run when a test reads a file the repository doesn't have.</p>
 <p>The app can write the workflow for you: <strong>Settings → Advanced → Continuous Integration → Add to Project…</strong>. It shows the file first, with the secrets your tests use, and saves it as <code>.github/workflows/jevision.yml</code> at the top of the git repository your project is in. It replaces an existing file only after you confirm, and it doesn't commit or push anything.</p>
 <h3 id="ci-runs">CI runs in the app</h3>
 <p>The artifact <code>jevision-reports</code> also carries the run reports, with their screenshots, from <code>.jevision/runs</code>. In a CI job, <code>jevision run</code> writes where the run came from into each report: the CI system, the repository, the branch, the commit, the pull request and the page of the run. GitHub Actions, GitLab CI, Buildkite, CircleCI and Jenkins are recognized.</p>

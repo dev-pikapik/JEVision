@@ -22,6 +22,13 @@ pub const SCHEDULE_FILE: &str = "jevision.schedule.json";
 pub const SCHEDULE_FORMAT: u32 = 1;
 /// What came of scheduled runs, relative to the project folder; not committed.
 pub const SCHEDULE_HISTORY_FILE: &str = ".jevision/schedule-history.json";
+/// Format of the history written by this build.
+pub const SCHEDULE_HISTORY_FORMAT: u32 = OLDEST_HISTORY_FORMAT + HISTORY_MIGRATIONS.len() as u32;
+/// The oldest history read. The first ones had no `format`; their layout is format 1.
+const OLDEST_HISTORY_FORMAT: u32 = 1;
+/// `HISTORY_MIGRATIONS[i]` upgrades a history from format `OLDEST_HISTORY_FORMAT + i` to the next
+/// one. Appending a step raises [`SCHEDULE_HISTORY_FORMAT`] by one.
+const HISTORY_MIGRATIONS: &[fn(&mut serde_json::Map<String, Value>)] = &[];
 /// Scheduled runs the history keeps, newest ones.
 pub const SCHEDULE_HISTORY_KEPT: usize = 200;
 /// A run missed while the computer slept or was off is made up once it wakes, unless it is
@@ -650,9 +657,10 @@ pub enum SkipReason {
 }
 
 /// Scheduled runs of a project on this computer, and up to when schedules were checked.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleHistory {
+    format: u32,
     /// Local minute schedules were last checked at; runs up to it are done or missed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checked_at: Option<i64>,
@@ -661,19 +669,52 @@ pub struct ScheduleHistory {
     pub runs: Vec<ScheduledRun>,
 }
 
+impl Default for ScheduleHistory {
+    fn default() -> Self {
+        Self {
+            format: SCHEDULE_HISTORY_FORMAT,
+            checked_at: None,
+            runs: Vec::new(),
+        }
+    }
+}
+
 impl ScheduleHistory {
     /// The history of `project`. It is only a record of this computer, so one that can't be
-    /// read as JSON starts over instead of stopping the schedules.
+    /// read as JSON starts over instead of stopping the schedules. One from a newer JEVision is
+    /// refused, as a newer schedule file is, rather than overwritten.
     pub fn load(project: &Path) -> Result<Self, ScheduleProblem> {
-        match fs::read_to_string(project.join(SCHEDULE_HISTORY_FILE)) {
-            Ok(text) => Ok(serde_json::from_str(&text).unwrap_or_default()),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(ScheduleProblem::io(
-                "project.file.unreadable",
-                SCHEDULE_HISTORY_FILE,
-                &e,
-            )),
+        let text = match fs::read_to_string(project.join(SCHEDULE_HISTORY_FILE)) {
+            Ok(text) => text,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Self::default()),
+            Err(e) => {
+                return Err(ScheduleProblem::io(
+                    "project.file.unreadable",
+                    SCHEDULE_HISTORY_FILE,
+                    &e,
+                ));
+            }
+        };
+        let Ok(Value::Object(mut history)) = serde_json::from_str(&text) else {
+            return Ok(Self::default());
+        };
+        match history.get("format").map_or(Some(1), Value::as_u64) {
+            Some(found) if found > u64::from(SCHEDULE_HISTORY_FORMAT) => {
+                return Err(ScheduleProblem::new("project.format.tooNew")
+                    .with("file", SCHEDULE_HISTORY_FILE)
+                    .with("found", found)
+                    .with("supported", SCHEDULE_HISTORY_FORMAT));
+            }
+            Some(found) if found >= u64::from(OLDEST_HISTORY_FORMAT) => {
+                let from = (found - u64::from(OLDEST_HISTORY_FORMAT)) as usize;
+                for step in &HISTORY_MIGRATIONS[from..] {
+                    step(&mut history);
+                }
+            }
+            _ => return Ok(Self::default()),
         }
+        history.insert("format".into(), SCHEDULE_HISTORY_FORMAT.into());
+        Ok(serde_json::from_value(Value::Object(history)).unwrap_or_default())
     }
 
     pub fn save(&self, project: &Path) -> Result<(), ScheduleProblem> {
@@ -1007,6 +1048,77 @@ mod tests {
         save_schedules(&project, &[]).unwrap();
         assert!(!project.join(SCHEDULE_FILE).exists());
         assert!(load_schedules(&project).unwrap().is_empty());
+        fs::remove_dir_all(&project).unwrap();
+    }
+
+    fn history_in(name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+        let project =
+            std::env::temp_dir().join(format!("jevision-history-{name}-{}", std::process::id()));
+        let file = project.join(SCHEDULE_HISTORY_FILE);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        (project, file)
+    }
+
+    fn finished_run() -> ScheduledRun {
+        ScheduledRun {
+            schedule: "Nightly".into(),
+            started_at_ms: 0,
+            duration_ms: 10,
+            outcome: ScheduledOutcome::Finished {
+                passed: 1,
+                failed: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn a_history_from_a_newer_jevision_is_neither_read_nor_rewritten() {
+        let (project, file) = history_in("newer");
+        save_schedules(&project, &[schedule(Repeat::Daily, 9, 0)]).unwrap();
+        let newer = format!(
+            r#"{{"format": {}, "checkedAt": 1, "runs": [], "added": true}}"#,
+            SCHEDULE_HISTORY_FORMAT + 1
+        );
+        fs::write(&file, &newer).unwrap();
+
+        let refused = ScheduleHistory::load(&project).unwrap_err();
+        assert_eq!(refused.code, "project.format.tooNew");
+        assert_eq!(refused.param("file"), SCHEDULE_HISTORY_FILE);
+        assert_eq!(
+            refused.param("supported"),
+            SCHEDULE_HISTORY_FORMAT.to_string()
+        );
+        let nine = at(2026, 10, 19, 9, 0);
+        assert_eq!(begin_schedule_check(&project, nine), Err(refused.clone()));
+        assert_eq!(record_scheduled_run(&project, finished_run()), Err(refused));
+        assert_eq!(fs::read_to_string(&file).unwrap(), newer);
+        fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn a_history_without_a_format_is_read_as_format_1() {
+        let (project, file) = history_in("format");
+        fs::write(&file, r#"{"checkedAt": 7, "runs": []}"#).unwrap();
+        assert_eq!(ScheduleHistory::load(&project).unwrap().checked_at, Some(7));
+
+        record_scheduled_run(&project, finished_run()).unwrap();
+        let text = fs::read_to_string(&file).unwrap();
+        assert!(
+            text.starts_with("{\n  \"format\": "),
+            "first, as in every file"
+        );
+        let saved: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(saved["format"], SCHEDULE_HISTORY_FORMAT);
+        assert_eq!(saved["checkedAt"], 7);
+
+        // A format that is no version is as unreadable as broken JSON.
+        for broken in [r#"{"format": 0, "checkedAt": 7}"#, r#"{"format": "1"}"#] {
+            fs::write(&file, broken).unwrap();
+            assert_eq!(
+                ScheduleHistory::load(&project).unwrap(),
+                ScheduleHistory::default()
+            );
+        }
         fs::remove_dir_all(&project).unwrap();
     }
 
