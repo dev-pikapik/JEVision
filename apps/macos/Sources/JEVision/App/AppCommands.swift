@@ -13,8 +13,9 @@ struct AppCommands: Commands {
   @FocusedValue(\.blockPalette) private var blockPalette
 
   var body: some Commands {
-    CommandGroup(after: .appInfo) {
+    CommandGroup(replacing: .appInfo) {
       Group {
+        Button("About JEVision") { openWindow(id: SceneID.about) }
         if updates.isAvailable {
           Button("Check for Updates…") { updates.check() }
             .disabled(!updates.canCheck)

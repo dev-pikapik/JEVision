@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Observation
 
 /// Paired Macs, their connections and the app lock. Screens reach Macs only through here.
@@ -37,16 +38,23 @@ final class AppModel {
   var isScanning = false
   /// A scanned or opened code waiting for the owner to confirm.
   var pairingLink: PairingLink?
+  /// The example opened from the first screen, to look around before pairing a Mac. It has its
+  /// own Mac and lock and saves nothing; it stands in for the app while it has its Mac.
+  var example: AppModel? {
+    // A lock time chosen in the example is the app's own.
+    didSet { if let oldValue, oldValue !== example { lock.timeout = oldValue.lock.timeout } }
+  }
 
   private let client: any RemoteClient
-  private let store: HostStore
+  private let store: HostStore?
   private var pending: [String: Task<any MacSession, any Error>] = [:]
 
-  init(client: any RemoteClient, store: HostStore = .standard, lock: AppLock) {
+  /// With no `store` the paired Macs are kept in memory only.
+  init(client: any RemoteClient, store: HostStore? = .standard, lock: AppLock) {
     self.client = client
     self.store = store
     self.lock = lock
-    let saved = store.load()
+    let saved = store?.load() ?? (hosts: [], problem: nil)
     hosts = saved.hosts
     listWasUnreadable = saved.problem == .unreadable
     listDidNotOpen = saved.problem == .notOpened
@@ -57,7 +65,7 @@ final class AppModel {
   /// Macs paired in the meantime stay and are saved with it.
   func reopenList() {
     guard storageProblem == .notOpened else { return }
-    let saved = store.load()
+    let saved = store?.load() ?? (hosts: [], problem: nil)
     guard saved.problem != .notOpened else { return }
     let paired = hosts.filter { host in !saved.hosts.contains { $0.id == host.id } }
     hosts = saved.hosts + paired
@@ -65,6 +73,18 @@ final class AppModel {
     listDidNotOpen = false
     storageProblem = nil
     if !paired.isEmpty { save() }
+  }
+
+  var isExample: Bool { client is ExampleClient }
+
+  /// Opens the example with its Mac paired and unlocked. Nothing in it is private, so it asks
+  /// for no Face ID.
+  func openExample(deviceName: String) async {
+    let lock = AppLock(authenticate: { _ in LAContext() })
+    let example = AppModel(client: ExampleClient(deviceName: deviceName), store: nil, lock: lock)
+    await lock.unlock(reason: "")
+    example.hosts = [ExampleClient.mac]
+    self.example = example
   }
 
   /// Nothing to protect until a Mac is paired, so a fresh install opens straight to pairing.
@@ -82,6 +102,7 @@ final class AppModel {
     if case .online(let old) = connections[record.id], old !== session { await old.close() }
     connections[record.id] = .online(session)
     remember(record)
+    example = nil
     return record
   }
 
@@ -179,6 +200,7 @@ final class AppModel {
   }
 
   private func save() {
+    guard let store else { return }
     // Until the list opens, writing would drop the Macs in it.
     guard storageProblem != .notOpened else { return }
     do {

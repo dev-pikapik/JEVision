@@ -191,7 +191,7 @@ fn write_run(root: &Path, file: &str, n: usize, run: usize) {
     let steps: Vec<Value> = (0..20)
         .map(|seq| json!({"seq": seq, "test": file, "block": format!("s{seq}-click"), "type": "click", "status": "passed", "durationMs": 40}))
         .collect();
-    let verdict = if (n + run) % 7 == 0 {
+    let verdict = if (n + run).is_multiple_of(7) {
         "failed"
     } else {
         "passed"

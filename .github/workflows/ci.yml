@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # The release workflow runs every test of CI before it builds anything.
+  workflow_call:
 
 permissions:
   contents: read
@@ -33,6 +35,12 @@ jobs:
       - name: Install zsh for the Command block tests
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh
+      - name: Version, lock file and changelog agree
+        if: runner.os == 'Linux'
+        run: scripts/check-version.sh
+      - name: Documentation links
+        if: runner.os == 'Linux'
+        run: python3 docs/check-links.py
       - name: Format
         run: cargo fmt --all --check
       - name: Lint
@@ -100,10 +108,46 @@ jobs:
       - name: Test app
         run: swift test --package-path apps/macos
 
+  ios-app:
+    name: iPhone app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count.
+          fetch-depth: 0
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+      # The Rust library of the simulator slice is arm64 only, like the runner.
+      - name: Build and test on a simulator
+        run: |
+          udid=$(xcrun simctl list devices available iPhone -j | python3 -c '
+          import json, sys
+          phones = [d for ds in json.load(sys.stdin)["devices"].values() for d in ds if d["isAvailable"]]
+          print(sorted(phones, key=lambda d: d["name"])[0]["udid"])')
+          xcodebuild test -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
+            -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build/ios \
+            -only-testing:JEVisionRemoteTests CODE_SIGNING_ALLOWED=NO
+      - name: The app carries the version of the core
+        run: |
+          plist=build/ios/Build/Products/Debug-iphonesimulator/JEVisionRemote.app/Info.plist
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" = "$(scripts/version.sh version)" ]
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")" = "$(scripts/version.sh build)" ]
+      - name: Every iPhone string is translated
+        run: python3 apps/macos/scripts/check-localization.py --ios build/ios
+      - name: The App Store texts are complete and fit the limits
+        run: python3 apps/ios/scripts/check-metadata.py
+
   release-build:
     name: Release build and packaging
-    # Packaging is slow on the shared macOS queue: run it on main and on demand.
-    if: github.event_name != 'pull_request'
+    # Packaging is slow on the shared macOS queue: run it on main and on demand. A tag is built
+    # for real by the release workflow.
+    if: github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

@@ -70,14 +70,14 @@ pub fn validate(flow: &Flow) -> Vec<Issue> {
 /// reply, a block for the note to be about.
 fn notes(flow: &Flow, blocks: &HashSet<&str>, out: &mut Vec<Issue>) {
     for note in &flow.canvas.notes {
-        if let NoteAnchor::Block { id } = &note.anchor {
-            if !blocks.contains(id.as_str()) {
-                out.push(
-                    Issue::warning("flow.note.unknownBlock")
-                        .with("note", &note.id)
-                        .with("block", id),
-                );
-            }
+        if let NoteAnchor::Block { id } = &note.anchor
+            && !blocks.contains(id.as_str())
+        {
+            out.push(
+                Issue::warning("flow.note.unknownBlock")
+                    .with("note", &note.id)
+                    .with("block", id),
+            );
         }
         for a in &note.attachments {
             let fine = match a.kind {
@@ -1145,10 +1145,10 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                     out.push(err("flow.http.header", &field).with("value", &h.name));
                 }
             }
-            if let ExpectStatus::Exactly(code) = expect_status {
-                if !(100..=599).contains(code) {
-                    out.push(range(Some(id), "expectStatus", 100, 599));
-                }
+            if let ExpectStatus::Exactly(code) = expect_status
+                && !(100..=599).contains(code)
+            {
+                out.push(range(Some(id), "expectStatus", 100, 599));
             }
             for (i, s) in save.iter().enumerate() {
                 if !is_answer_part(&s.from) {
@@ -1203,14 +1203,14 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
             {
                 out.push(err("flow.dateTime.format", "format").with("value", format));
             }
-            if let Some(TimeShift { amount, .. }) = shift {
-                if amount.unsigned_abs() > MAX_TIME_SHIFT.unsigned_abs() {
-                    out.push(
-                        err("flow.field.range", "shift.amount")
-                            .with("min", -MAX_TIME_SHIFT)
-                            .with("max", MAX_TIME_SHIFT),
-                    );
-                }
+            if let Some(TimeShift { amount, .. }) = shift
+                && amount.unsigned_abs() > MAX_TIME_SHIFT.unsigned_abs()
+            {
+                out.push(
+                    err("flow.field.range", "shift.amount")
+                        .with("min", -MAX_TIME_SHIFT)
+                        .with("max", MAX_TIME_SHIFT),
+                );
             }
         }
     }
@@ -1510,16 +1510,16 @@ pub(crate) fn reference(block: &str, field: &str, r: &Reference, out: &mut Vec<I
                 .with("allowed", AI_PROVIDERS.join(", ")),
         );
     }
-    if let Compare::Similar { threshold } = r.compare {
-        if !(threshold > 0.0 && threshold <= 1.0) {
-            out.push(
-                Issue::error("flow.field.range")
-                    .with("block", block)
-                    .with("field", format!("{field}.threshold"))
-                    .with("min", 0)
-                    .with("max", 1),
-            );
-        }
+    if let Compare::Similar { threshold } = r.compare
+        && !(threshold > 0.0 && threshold <= 1.0)
+    {
+        out.push(
+            Issue::error("flow.field.range")
+                .with("block", block)
+                .with("field", format!("{field}.threshold"))
+                .with("min", 0)
+                .with("max", 1),
+        );
     }
     if let Some(a) = &r.area {
         rect(block, &format!("{field}.area"), a, out);
@@ -1577,10 +1577,11 @@ fn graph(flow: &Flow, blocks: &[&Block], out: &mut Vec<Issue>) {
             BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } => body,
             _ => continue,
         };
-        if let Some(&body) = index.get(body.as_str()) {
-            if body != i && !reachable(&all, body)[i] {
-                out.push(Issue::warning("flow.loop.noReturn").with("block", &b.id));
-            }
+        if let Some(&body) = index.get(body.as_str())
+            && body != i
+            && !reachable(&all, body)[i]
+        {
+            out.push(Issue::warning("flow.loop.noReturn").with("block", &b.id));
         }
     }
 }

@@ -105,7 +105,10 @@ fn paint(image: &mut Image, areas: &[Rect]) -> bool {
         let (x0, x1) = (x0 as usize, x1 as usize);
         for y in y0 as usize..y1 as usize {
             let row = y * width as usize;
-            for pixel in image.rgba[(row + x0) * 4..(row + x1) * 4].chunks_exact_mut(4) {
+            for pixel in image.rgba[(row + x0) * 4..(row + x1) * 4]
+                .as_chunks_mut::<4>()
+                .0
+            {
                 pixel.copy_from_slice(&MASK_COLOUR);
             }
         }
@@ -333,7 +336,9 @@ mod tests {
         assert!(
             after
                 .rgba
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .all(|p| p[0] >= MASK_COLOUR[0] && p[1] >= MASK_COLOUR[1])
         );
     }
@@ -348,8 +353,10 @@ mod tests {
         assert!(
             decoded(&masked)
                 .rgba
-                .chunks_exact(4)
-                .all(|p| p == MASK_COLOUR)
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| *p == MASK_COLOUR)
         );
         assert!(MaskedImage::from_png(b"not a picture", &[rect(0.0, 0.0, 1.0, 1.0)]).is_err());
     }

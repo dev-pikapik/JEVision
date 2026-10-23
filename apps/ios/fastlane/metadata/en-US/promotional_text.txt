@@ -1,0 +1,1 @@
+Start a UI test on your Mac from anywhere, follow it block by block and read why it failed. No Mac at hand? Look around the built-in example.

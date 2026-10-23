@@ -17,8 +17,24 @@ it and a failure points at the block where it happened.
 
 ## Get JEVision
 
-JEVision needs macOS 26 or later, on Apple silicon or Intel. Until the first release, build it
-from source with Xcode 26 or later and Rust 1.85 or later, installed with
+JEVision needs macOS 26 or later, on Apple silicon or Intel.
+
+**Disk image.** Download `JEVision-<version>.dmg` from
+[GitHub Releases](https://github.com/dev-pikapik/JEVision/releases/latest), open it and drag JEVision
+to Applications. The app is signed with a Developer ID and notarized by Apple. It checks for new
+versions itself; **JEVision ▸ Check for Updates…** does it on request.
+
+**Homebrew.**
+
+```sh
+brew install --cask dev-pikapik/jevision/jevision
+```
+
+A copy from Homebrew updates itself the same way; `brew upgrade --cask jevision` updates it through
+Homebrew instead. Updates, beta versions and the copies JEVision saves before an update:
+[Updating JEVision](docs/faq.html#updates).
+
+**From source.** You need Xcode 26 or later and Rust 1.91 or later, installed with
 [rustup](https://rustup.rs):
 
 ```sh
@@ -30,7 +46,8 @@ open apps/macos/build/JEVision.app
 
 `build.sh` builds the Rust core for both architectures, then the app and the `jevision` tool
 into `apps/macos/build/JEVision.app`. Set `ARCHS=arm64` to build for one architecture only, and
-`SIGN_IDENTITY` to sign with your own certificate instead of an ad-hoc signature.
+`SIGN_IDENTITY` to sign with your own certificate instead of an ad-hoc signature. A build from
+source has no update key, so it never looks for updates.
 
 ## What it does
 
@@ -839,46 +856,23 @@ with device flow turned on in the app.
 <details>
 <summary><b>Releasing</b></summary>
 
-Releases are made by the maintainer on a Mac. The version is `version` in the root
-`Cargo.toml`, shared by the core, the app and the `jevision` tool; the build number is the
-number of commits, so build releases from a full clone.
+The version is `version` in the root `Cargo.toml`, shared by the core, the Mac app, the iPhone app
+and `jevision --version`; the build number is the number of commits, so release from a full clone.
 
-One-time setup:
+Pushing a tag `v<version>` runs [`release.yml`](.github/workflows/release.yml). It checks the tag
+against the version and the changelog, runs every test of CI, builds the app, signs it with a
+Developer ID, notarizes and staples it, signs the update feed and leaves a **draft** GitHub release
+with the disk image, its checksum and `appcast.xml`. Publishing the draft is the release: the app
+looks for updates at
+`https://github.com/dev-pikapik/JEVision/releases/latest/download/appcast.xml`.
 
-1. **Signing.** Install a *Developer ID Application* certificate in the login keychain
-   (`security find-identity -v -p codesigning` lists it).
-2. **Notarization.** Create an app-specific password at
-   [appleid.apple.com](https://appleid.apple.com) and store it as a keychain profile:
-   `xcrun notarytool store-credentials jevision --apple-id <Apple ID> --team-id <Team ID>`.
-3. **Update key.** Sparkle checks every update against a key pair. Create it once; the private
-   key stays in the login keychain (back it up with `generate_keys --account jevision -x <file>`):
-   `apps/macos/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account jevision`
-   (run `swift package resolve --package-path apps/macos` first if the folder is missing).
-   `release.sh` reads the public key from the keychain, or from `SPARKLE_PUBLIC_ED_KEY`.
-4. **Appcast.** The app looks for updates at `https://dev-pikapik.github.io/JEVision/appcast.xml`
-   (`SUFeedURL` in `apps/macos/Resources/Info.plist`). Turn on GitHub Pages for the repository
-   and publish `appcast.xml` at its root. Until it exists, the app simply finds no updates.
-5. **Homebrew.** Create the tap repository `dev-pikapik/homebrew-jevision` with a `Casks` folder.
+`apps/macos/scripts/release.sh` does the same build on a Mac. What every secret is, where to keep the
+update key, the Homebrew tap and what to do when a step fails are in
+[docs/maintainers/releasing.md](docs/maintainers/releasing.md); the steps of one release are in the
+[release checklist](docs/maintainers/release-checklist.md).
+A release ships only with a passing self-test: run `scripts/selftest.sh` on the release commit
+and publish nothing if it fails (see [`selftest/README.md`](selftest/README.md)).
 
-Each release:
-
-A release, version 1.0 first of all, ships only with a green self-test: run `scripts/selftest.sh`
-on the release commit and publish nothing if it fails (see [`selftest/README.md`](selftest/README.md)).
-
-```sh
-# 1. Build, sign, notarize and staple; makes apps/macos/build/JEVision-<version>.dmg
-SIGN_IDENTITY="Developer ID Application: <Name> (<Team ID>)" NOTARY_PROFILE=jevision \
-  apps/macos/scripts/release.sh
-# 2. Appcast with the new version, signed with the update key (RELEASE_NOTES=notes.md to embed notes)
-apps/macos/scripts/make-appcast.sh apps/macos/build/JEVision-<version>.dmg
-# 3. Homebrew cask with the new version and checksum
-packaging/homebrew/update-cask.sh apps/macos/build/JEVision-<version>.dmg
-```
-
-Then tag the commit `v<version>`, attach the disk image to a GitHub release of that tag, publish
-`apps/macos/build/appcast/appcast.xml` to GitHub Pages, and copy `packaging/homebrew/jevision.rb`
-to `Casks/` in the tap. Without `NOTARY_PROFILE`, `release.sh` stops after signing, which is
-enough to check a build; `ADHOC=1` builds the same disk image without any certificate, as CI does.
 
 </details>
 

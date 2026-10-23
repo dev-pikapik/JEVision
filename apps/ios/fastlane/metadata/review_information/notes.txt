@@ -1,0 +1,24 @@
+JEVision Remote is the iPhone remote for JEVision, a free, open-source Mac app that tests the user interface of Mac apps. The tests run on the Mac; the iPhone browses them, starts runs, follows them block by block and shows the reports.
+
+HOW TO REVIEW THE APP WITHOUT A MAC
+1. Open the app and tap "See an Example" at the bottom of the first screen. No Face ID, permission or network is needed for the example.
+2. "Example Mac" appears in the list of Macs. Tap it, then the project "Acme Mail".
+3. Tap "Greet every person": the test is drawn as a flowchart, with its card and sticky notes (tap a note to read it whole). Tap "Run on Example Mac" and follow the run block by block; it passes in about 10 seconds. "Stop" stops a run.
+4. Go back, open the folder "login", then "Sign in with valid credentials", and run it. It fails at its last check; "Show Report" says why, and tapping the failed step shows the screen the Mac saw and the picture it expected.
+5. "Runs" (top right of the project) lists the run history. The gear on the Macs list opens Settings: the app lock and the About links.
+6. "Close Example" at the top of the Macs list returns to the first screen. Nothing from the example is saved.
+
+WHAT A REAL MAC NEEDS
+To use the app for real you need a Mac with JEVision 1.0 or later, which needs macOS 26 or later. JEVision for Mac is free, open source, and distributed through GitHub Releases, not the Mac App Store: https://github.com/dev-pikapik/JEVision/releases
+On the Mac, JEVision Settings → iPhone & Remote shows a pairing code. The iPhone scans it and the owner confirms with Face ID or the passcode.
+
+PERMISSIONS AND WHY
+- Camera: only to scan the pairing code shown on the Mac. The picture is read on the iPhone and is neither saved nor sent.
+- Local Network: to reach the paired Mac directly on the same Wi-Fi. When that is not possible, the end-to-end encrypted connection goes through a relay server that can't read it.
+- Face ID: to lock the app and to confirm pairing. The key that proves the iPhone to the Mac lives in the Secure Enclave and works only after Face ID or the passcode.
+Each permission is asked for only when it is first needed: the camera when you tap "Scan Pairing Code", Face ID when you pair or unlock, the local network when the app first connects to a Mac.
+
+ACCOUNTS
+There is no account and no sign-in, so there is no demo account. The app has no in-app purchases, ads, tracking or analytics, and nothing in it talks to a server of ours.
+
+Source code (MIT license): https://github.com/dev-pikapik/JEVision

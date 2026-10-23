@@ -135,7 +135,7 @@ pub fn format_version() -> u32 {
     jevision_core::FORMAT_VERSION
 }
 
-/// Version of this build of JEVision, such as `0.1.0`.
+/// Version of this build of JEVision, such as `1.0.0`.
 #[uniffi::export]
 pub fn jevision_version() -> String {
     env!("CARGO_PKG_VERSION").to_owned()

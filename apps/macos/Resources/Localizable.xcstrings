@@ -2913,6 +2913,16 @@
         }
       }
     },
+    "About JEVision" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О программе JEVision"
+          }
+        }
+      }
+    },
     "About the block %@" : {
       "localizations" : {
         "ru" : {
@@ -5075,6 +5085,16 @@
         }
       }
     },
+    "Before an update that stores tests and settings in a new way, JEVision saves a copy of them here. Copies stay until you delete them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перед обновлением, которое хранит тесты и настройки по-новому, JEVision сохраняет здесь их копию. Копии остаются, пока вы их не удалите."
+          }
+        }
+      }
+    },
     "Before on the left, after on the right" : {
       "localizations" : {
         "ru" : {
@@ -6213,6 +6233,16 @@
         }
       }
     },
+    "Check for Updates" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить обновления"
+          }
+        }
+      }
+    },
     "Check for Updates…" : {
       "localizations" : {
         "ru" : {
@@ -6419,6 +6449,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Выберите папку блока или файл .zip"
+          }
+        }
+      }
+    },
+    "Choose a component to see its license." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите компонент, чтобы увидеть его лицензию."
           }
         }
       }
@@ -7601,6 +7641,16 @@
         }
       }
     },
+    "Copies made before updates" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копии перед обновлениями"
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "ru" : {
@@ -8637,6 +8687,16 @@
         }
       }
     },
+    "Documentation" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Документация"
+          }
+        }
+      }
+    },
     "Documents › %@" : {
       "localizations" : {
         "ru" : {
@@ -8753,6 +8813,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дважды щёлкните, чтобы написать заметку"
+          }
+        }
+      }
+    },
+    "Download and install updates automatically" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружать и устанавливать обновления автоматически"
           }
         }
       }
@@ -10689,6 +10759,16 @@
         }
       }
     },
+    "Get beta versions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Получать бета-версии"
+          }
+        }
+      }
+    },
     "Get the latest commits from the server" : {
       "localizations" : {
         "ru" : {
@@ -12048,12 +12128,12 @@
     "JEVision" : {
       "shouldTranslate" : false
     },
-    "JEVision asks before installing an update and installs only updates signed by the JEVision project." : {
+    "JEVision %@ wasn’t installed. It stores tests and settings in a new way, and JEVision couldn’t save a copy of yours first: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JEVision спрашивает перед установкой обновления и ставит только обновления, подписанные проектом JEVision."
+            "value" : "JEVision %1$@ не установлен. Эта версия хранит тесты и настройки по-новому, а JEVision не смог заранее сохранить их копию: %2$@"
           }
         }
       }
@@ -12098,6 +12178,16 @@
         }
       }
     },
+    "JEVision checks for updates on its own again, asks before installing them and offers no beta versions." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision снова сам проверяет обновления, спрашивает перед установкой и не предлагает бета-версии."
+          }
+        }
+      }
+    },
     "JEVision collects no usage data. Nothing leaves this Mac unless a feature you turned on needs it." : {
       "localizations" : {
         "ru" : {
@@ -12118,6 +12208,16 @@
         }
       }
     },
+    "JEVision downloads an update in the background and installs it when you quit." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision загружает обновление в фоне и устанавливает его, когда вы выходите из приложения."
+          }
+        }
+      }
+    },
     "JEVision forgot your GitHub sign-in on this Mac." : {
       "localizations" : {
         "ru" : {
@@ -12134,6 +12234,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JEVision прячется и оставляет небольшую панель, чтобы проверяемое приложение было на виду."
+          }
+        }
+      }
+    },
+    "JEVision installs only updates signed by the JEVision project, and never an older version than the one you have." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision устанавливает только обновления, подписанные проектом JEVision, и никогда не заменяет вашу версию более старой."
           }
         }
       }
@@ -12474,6 +12584,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Крупные файлы замедляют загрузку проекта. Чтобы не пускать их в историю, установите Git LFS в проекте, который ведётся в git. Что считать крупным, можно изменить в Настройках."
+          }
+        }
+      }
+    },
+    "Last checked: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последняя проверка: %@"
           }
         }
       }
@@ -14660,6 +14780,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Недоступно в отдельном профиле: обновления — для копии JEVision, которой вы пользуетесь каждый день."
+          }
+        }
+      }
+    },
+    "Not checked yet" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не проверялось"
           }
         }
       }
@@ -18694,6 +18824,16 @@
         }
       }
     },
+    "Report a Problem" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщить о проблеме"
+          }
+        }
+      }
+    },
     "Repository" : {
       "localizations" : {
         "ru" : {
@@ -20558,6 +20698,16 @@
         }
       }
     },
+    "Security Policy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Политика безопасности"
+          }
+        }
+      }
+    },
     "See what it changed." : {
       "localizations" : {
         "ru" : {
@@ -21892,6 +22042,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Иногда нестабилен"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник"
+          }
+        }
+      }
+    },
+    "Source Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исходный код"
           }
         }
       }
@@ -23840,6 +24010,16 @@
         }
       }
     },
+    "The open-source software inside JEVision and its licenses." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытые программы, из которых собран JEVision, и их лицензии."
+          }
+        }
+      }
+    },
     "The page has no preview." : {
       "localizations" : {
         "ru" : {
@@ -24730,6 +24910,16 @@
         }
       }
     },
+    "Third-Party Licenses" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лицензии сторонних компонентов"
+          }
+        }
+      }
+    },
     "This Mac" : {
       "localizations" : {
         "en" : {
@@ -24898,6 +25088,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этой копии JEVision нет примера проекта."
+          }
+        }
+      }
+    },
+    "This copy of JEVision doesn’t include the list of third-party licenses." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой копии JEVision нет списка лицензий сторонних компонентов."
           }
         }
       }
@@ -25464,6 +25664,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попробовать другой"
+          }
+        }
+      }
+    },
+    "Try new features before the release. A beta can have bugs. When you turn this off, you keep the beta until the next release replaces it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые возможности ещё до выхода версии. В бета-версиях бывают ошибки. Если выключить, бета-версия останется, пока её не заменит следующая обычная версия."
           }
         }
       }
@@ -26484,12 +26694,12 @@
         }
       }
     },
-    "Version %@" : {
+    "Version %@ (%@)" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Версия %@"
+            "value" : "Версия %1$@ (%2$@)"
           }
         }
       }
@@ -27086,12 +27296,32 @@
         }
       }
     },
+    "What’s New" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что нового"
+          }
+        }
+      }
+    },
     "When 80 percent of a limit is used, run reports warn. At the limit, AI checks with that provider stop with a message, or go to the fallback provider. Leave empty for no limit." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Когда израсходовано 80 процентов лимита, отчёты о прогонах предупреждают. При достижении лимита проверки ИИ с этим провайдером останавливаются с сообщением или переходят к запасному провайдеру. Оставьте пустым, чтобы не ограничивать."
+          }
+        }
+      }
+    },
+    "When JEVision opens and once a day. It asks before installing." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При запуске JEVision и раз в день. Перед установкой JEVision спросит."
           }
         }
       }
@@ -27202,6 +27432,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Какой ИИ проверяет этот блок. «Как в проекте или настройках» — тот, что назван в проекте, а если там нет, то выбранный в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "Which version of JEVision this is, and how it gets the next one." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какая у вас версия JEVision и как приходит следующая."
           }
         }
       }

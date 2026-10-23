@@ -5,7 +5,7 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "%1$@ · %2$@"
           }
         },
@@ -103,22 +103,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Автор"
-          }
-        }
-      }
-    },
-    "Block “%@”: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Block “%1$@”: %2$@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Блок «%1$@»: %2$@"
           }
         }
       }
@@ -1405,7 +1389,7 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "Step %1$lld of %2$lld, %3$@, %4$@"
           }
         },
@@ -1877,40 +1861,6 @@
         }
       }
     },
-    "run.target.notFound" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Block “%1$@”: %2$@ wasn’t found on the screen."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Блок «%1$@»: картинка %2$@ не найдена на экране."
-          }
-        }
-      }
-    },
-    "run.vision.noModel" : {
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No model is chosen for %@. Choose one in Settings → AI."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Для %@ не выбрана модель. Выберите её в Настройках → ИИ."
-          }
-        }
-      }
-    },
     "Data Rows" : {
       "localizations" : {
         "ru" : {
@@ -2281,6 +2231,256 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "О папке"
+          }
+        }
+      }
+    },
+    "Documentation" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Документация"
+          }
+        }
+      }
+    },
+    "What’s New" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что нового"
+          }
+        }
+      }
+    },
+    "Report a Problem" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сообщить о проблеме"
+          }
+        }
+      }
+    },
+    "Security Policy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Политика безопасности"
+          }
+        }
+      }
+    },
+    "License" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лицензия"
+          }
+        }
+      }
+    },
+    "Third-Party Licenses" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лицензии сторонних компонентов"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник"
+          }
+        }
+      }
+    },
+    "This copy of JEVision Remote doesn’t include the list of third-party licenses." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой копии JEVision Remote нет списка лицензий сторонних компонентов."
+          }
+        }
+      }
+    },
+    "Example Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac для примера"
+          }
+        }
+      }
+    },
+    "See an Example" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотреть пример"
+          }
+        }
+      }
+    },
+    "Close Example" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть пример"
+          }
+        }
+      }
+    },
+    "You’re looking at an example" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это пример"
+          }
+        }
+      }
+    },
+    "This Mac, its tests and its runs are built into the app, so you can look around without a Mac. Nothing leaves this iPhone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот Mac, его тесты и прогоны встроены в приложение, чтобы всё можно было посмотреть без Mac. Ничего не уходит с этого iPhone."
+          }
+        }
+      }
+    },
+    "Sign in with valid credentials" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход с верными данными"
+          }
+        }
+      }
+    },
+    "Signs in with a known account and checks that the inbox appears." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Входит под известной учётной записью и проверяет, что появились входящие."
+          }
+        }
+      }
+    },
+    "Greet every person" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приветствие для каждого"
+          }
+        }
+      }
+    },
+    "Types a greeting for each person in people.csv." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Печатает приветствие для каждого человека из people.csv."
+          }
+        }
+      }
+    },
+    "An empty document" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пустой документ"
+          }
+        }
+      }
+    },
+    "Hello, ${data.name}!" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привет, ${data.name}!"
+          }
+        }
+      }
+    },
+    "Hello, %@!" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привет, %@!"
+          }
+        }
+      }
+    },
+    "**Check** the greeting for every row. The wording is in [the ticket](https://example.com/tickets/42)." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "**Проверьте** приветствие в каждой строке. Текст — в [задаче](https://example.com/tickets/42)."
+          }
+        }
+      }
+    },
+    "Chen has no email yet, the greeting still works." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У Chen пока нет почты, но приветствие работает."
+          }
+        }
+      }
+    },
+    "Fine, **keep** it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хорошо, **оставляем**."
+          }
+        }
+      }
+    },
+    "TextEdit starts with a **blank** document." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TextEdit открывается с **пустым** документом."
+          }
+        }
+      }
+    },
+    "Runs about *40 seconds* for three rows." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Три строки идут примерно *40 секунд*."
           }
         }
       }

@@ -1755,7 +1755,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jevision-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -1774,7 +1774,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-ffi"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "jevision-core",
@@ -1797,7 +1797,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-git"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "jevision-core",
@@ -1810,14 +1810,14 @@ dependencies = [
 
 [[package]]
 name = "jevision-l10n"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "jevision-mobile"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "jevision-l10n",
  "jevision-remote",
@@ -1830,7 +1830,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-notify"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "jevision-core",
  "jevision-l10n",
@@ -1847,7 +1847,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-remote"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "getrandom 0.4.3",
  "iroh",
@@ -1866,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-runner"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -1886,7 +1886,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-schema"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "boon",
  "schemars",
@@ -1895,7 +1895,7 @@ dependencies = [
 
 [[package]]
 name = "jevision-vision"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.23.1",
  "jevision-core",

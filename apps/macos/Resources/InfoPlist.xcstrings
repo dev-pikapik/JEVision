@@ -1,57 +1,74 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSLocalNetworkUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JEVision finds your iPhone on the same Wi-Fi, so it can run tests on this Mac."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSAppleEventsUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision controls other apps with the AppleScript blocks of your tests, and only when a test says so."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "JEVision находит ваш iPhone в той же сети Wi-Fi, чтобы с него можно было запускать тесты на этом Mac."
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision управляет другими приложениями блоками AppleScript из ваших тестов и только тогда, когда этого требует тест."
           }
         }
       }
     },
-    "Project Folder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Project Folder"
+    "NSLocalNetworkUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision finds your iPhone on the same Wi-Fi, so it can run tests on this Mac."
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Папка проекта"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JEVision находит ваш iPhone в той же сети Wi-Fi, чтобы с него можно было запускать тесты на этом Mac."
           }
         }
       }
     },
-    "Test or Project File": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Test or Project File"
+    "Project Folder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Project Folder"
           }
         },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Тест или файл проекта"
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка проекта"
+          }
+        }
+      }
+    },
+    "Test or Project File" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test or Project File"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест или файл проекта"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

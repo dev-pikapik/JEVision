@@ -71,6 +71,7 @@
     <li><a href="#dark">Tests fail in dark mode</a></li>
     <li><a href="#keychain">macOS asks about the Keychain</a></li>
     <li><a href="#newer">“format 2 is from a newer JEVision”</a></li>
+    <li><a href="#updates">Updating JEVision</a></li>
     <li><a href="#gitignore">What to commit</a></li>
     <li><a href="#logs">Logs and crash reports</a></li>
     <li><a href="#other-apps">Questions about testing</a></li>
@@ -144,6 +145,18 @@
 
 <h2 id="newer">“format 2 is from a newer JEVision”</h2>
 <p>The file was saved by a newer version of JEVision. Update JEVision on this Mac. JEVision won't open such a file, so it can't damage it. See <a href="file-formats.html#versions">Format versions</a>.</p>
+
+<h2 id="updates">Updating JEVision</h2>
+<p>JEVision looks for a new version when it opens and once a day, and asks before installing it: <strong>Install Update</strong>, <strong>Remind Me Later</strong> or <strong>Skip This Version</strong>. The window shows what's new in English or in Russian, after the language of your Mac. To look right away, choose <strong>JEVision ▸ Check for Updates…</strong>.</p>
+<p>In <strong>Settings ▸ Updates</strong> you see which version you have and when JEVision last looked, and you can:</p>
+<ul>
+  <li>turn off <strong>Check for updates automatically</strong>;</li>
+  <li>turn on <strong>Download and install updates automatically</strong>: JEVision downloads an update in the background and installs it when you quit;</li>
+  <li>turn on <strong>Get beta versions</strong> to try new features before the release. A beta can have bugs. When you turn it off, you keep the beta until the next release replaces it.</li>
+</ul>
+<p>JEVision installs only updates signed by the JEVision project, and never an older version than the one you have.</p>
+<p>When an update stores tests or settings in a new way, JEVision first saves a copy of them in <code>~/Library/Application Support/JEVision/Backups</code>, in a folder named after the version and the date, so an older JEVision can still open them. If the copy can't be made, the update isn't installed and JEVision says why. JEVision never deletes these copies; <strong>Settings ▸ Updates ▸ Show in Finder</strong> opens the folder, and you can delete the ones you don't need.</p>
+<p><strong>Installed with Homebrew?</strong> The built-in updates work the same way, and the cask knows it (<code>auto_updates true</code>), so a plain <code>brew upgrade</code> leaves JEVision alone. To update with Homebrew instead, name it: <code>brew upgrade --cask jevision</code>. <code>brew uninstall --zap --cask jevision</code> also removes the copies.</p>
 
 <h2 id="gitignore">What to commit</h2>
 <p>Commit the tests, their images and CSV files, and the <code>jevision.*.json</code> files. Leave out the <code>.jevision</code> folder: it holds run results and history for one Mac. After the first run in a git project, JEVision offers to add it to <code>.gitignore</code>. See <a href="file-formats.html#overview">Files in a project</a>.</p>

@@ -3,9 +3,9 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.91"
 license = "MIT"
 repository = "https://github.com/dev-pikapik/JEVision"
 
@@ -26,3 +26,5 @@ uniffi = "0.32"
 
 [profile.release]
 lto = true
+# File and line of every frame in a crash report; the app keeps them in its dSYM, not in the binary.
+debug = "line-tables-only"

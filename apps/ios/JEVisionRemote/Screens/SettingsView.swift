@@ -6,6 +6,7 @@ struct SettingsView: View {
   /// Closes Settings and opens the camera.
   let pairMac: () -> Void
   @State private var forgetting: HostRecord?
+  private let version = AppVersion()
 
   var body: some View {
     @Bindable var lock = model.lock
@@ -44,10 +45,24 @@ struct SettingsView: View {
         }
 
         Section {
-          LabeledContent("Version", value: Bundle.main.version)
-          Link(destination: URL(string: "https://github.com/dev-pikapik/JEVision")!) {
-            Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
+          LabeledContent("Version", value: "\(version.version) (\(version.build))")
+          ForEach(AboutLink.allCases) { link in
+            Link(destination: link.url) {
+              Label(link.title, systemImage: link.symbol)
+            }
           }
+          NavigationLink {
+            LicenseView()
+          } label: {
+            Label("License", systemImage: "doc.text")
+          }
+          .accessibilityIdentifier("license")
+          NavigationLink {
+            ThirdPartyLicensesView()
+          } label: {
+            Label("Third-Party Licenses", systemImage: "books.vertical")
+          }
+          .accessibilityIdentifier("thirdPartyLicenses")
         } header: {
           Text("About")
         } footer: {
@@ -83,13 +98,5 @@ extension LockTimeout {
     case .fiveMinutes: String(localized: "After 5 Minutes")
     case .fifteenMinutes: String(localized: "After 15 Minutes")
     }
-  }
-}
-
-extension Bundle {
-  fileprivate var version: String {
-    let short = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    let build = object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-    return "\(short) (\(build))"
   }
 }

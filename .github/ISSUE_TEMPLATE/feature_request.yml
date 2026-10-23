@@ -2,6 +2,10 @@ name: Feature or block request
 description: Suggest a new feature or a new block type
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the [existing issues](https://github.com/dev-pikapik/JEVision/issues?q=is%3Aissue) first. To talk an idea through before it is ready, start a [discussion](https://github.com/dev-pikapik/JEVision/discussions).
   - type: textarea
     id: problem
     attributes:
@@ -20,3 +24,4 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
+      description: Other ways you tried or thought of, and why they fall short.

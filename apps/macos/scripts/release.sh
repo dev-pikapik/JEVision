@@ -3,14 +3,20 @@
 # and the hardened runtime, in build/JEVision-<version>.dmg. Notarizes and staples both the app and
 # the disk image when NOTARY_PROFILE is set; without it the script stops after signing.
 #   SIGN_IDENTITY="Developer ID Application: Name (TEAMID)"   required, unless ADHOC=1
-#   NOTARY_PROFILE=name     a notarytool keychain profile (see "Releasing" in README.md)
+#   NOTARY_PROFILE=name     a notarytool keychain profile (see docs/maintainers/releasing.md)
 #   SPARKLE_PUBLIC_ED_KEY   public key of update archives (default: the Keychain's, from generate_keys)
 #   SPARKLE_KEY_ACCOUNT     Keychain account of the update key (default: jevision)
 #   BUILD_NUMBER=42         CFBundleVersion (default: the number of commits on this branch)
+#   RELEASE_TAG=v1.0.0      the tag being released: fails unless it is this version (CI sets it)
 #   ADHOC=1                 sign ad-hoc to check the build and packaging (CI); can't be shipped
-# The version is the workspace version in the root Cargo.toml.
+#   SPARKLE_ED_KEY_FILE     file with the private update key (CI); default: the key in the Keychain
+# The version is the workspace version in the root Cargo.toml (scripts/version.sh). Next to the
+# disk image the script writes JEVision-<version>.dmg.sha256, the debug symbols as
+# JEVision-<version>.dSYMs.zip and, when it can sign one, the update feed build/appcast/appcast.xml
+# (make-appcast.sh). A real release is built from a clean checkout: uncommitted changes stop it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+ROOT=$(cd ../.. && pwd)
 
 if ! xcrun --find notarytool >/dev/null 2>&1; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -38,9 +44,20 @@ if [ -z "${BUILD_NUMBER:-}" ]; then
     echo "This is a shallow clone, so the commit count isn't a build number: fetch the full history or set BUILD_NUMBER." >&2
     exit 2
   fi
-  BUILD_NUMBER=$(git rev-list --count HEAD)
 fi
+BUILD_NUMBER=$("$ROOT/scripts/version.sh" build)
 export BUILD_NUMBER
+"$ROOT/scripts/check-version.sh" ${RELEASE_TAG:+"$RELEASE_TAG"}
+if [ -z "$ADHOC" ] && [ -n "$(git status --porcelain)" ]; then
+  echo "There are uncommitted changes. Release from a clean checkout of the commit that gets the tag:" >&2
+  git status --short >&2
+  exit 2
+fi
+# A wrong profile name should fail now, not after the build.
+if [ -n "$NOTARY_PROFILE" ] && ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+  echo "No working notarytool profile called $NOTARY_PROFILE: see docs/maintainers/releasing.md." >&2
+  exit 2
+fi
 
 swift package resolve >/dev/null
 SPARKLE_BIN=.build/artifacts/sparkle/Sparkle/bin
@@ -60,7 +77,8 @@ else
   export SPARKLE_PUBLIC_ED_KEY
 fi
 
-echo "==> Building the core (release)"
+echo "==> Building the core (release, from the locked sources)"
+rm -rf "$ROOT/build/apple"
 PROFILE=release ../../scripts/build-core-apple.sh
 echo "==> Building and signing the app"
 scripts/build.sh
@@ -93,6 +111,38 @@ for code in "${NESTED[@]}"; do
   fi
 done
 
+# The app and its tool run with the hardened runtime and the fewest entitlements: the app has the one
+# in Resources/JEVision.entitlements, the tool none. Anything else was added by mistake; ad-hoc
+# builds also carry the one that lets them load Sparkle.
+if [ -z "$ADHOC" ]; then
+  entitlements() { codesign --display --entitlements - --xml "$1" 2>/dev/null | python3 -c '
+import plistlib, sys
+data = sys.stdin.buffer.read()
+print(" ".join(sorted(plistlib.loads(data))) if data else "")'; }
+  expected=$(plutil -convert json -o - Resources/JEVision.entitlements | python3 -c 'import json, sys; print(" ".join(sorted(json.load(sys.stdin))))')
+  for pair in "$APP:$expected" "$APP/Contents/Helpers/jevision:"; do
+    code=${pair%%:*}
+    if [ "$(entitlements "$code")" != "${pair#*:}" ]; then
+      echo "Unexpected entitlements on $code (expected: ${pair#*:}):" >&2
+      codesign --display --entitlements - "$code" >&2 || true
+      exit 1
+    fi
+  done
+fi
+
+# The debug symbols have to be the ones of the binaries that ship: crash reports are matched to
+# them by UUID, one per architecture.
+echo "==> Checking the debug symbols"
+uuids() { dwarfdump --uuid "$1" | awk '{ print $2, $3 }' | sort; }
+for pair in "MacOS/JEVision:JEVision.app" "Helpers/jevision:jevision"; do
+  binary=$APP/Contents/${pair%%:*}
+  symbols=build/dSYMs/${pair##*:}.dSYM/Contents/Resources/DWARF/$(basename "$binary")
+  if [ -z "$(uuids "$symbols")" ] || [ "$(uuids "$binary")" != "$(uuids "$symbols")" ]; then
+    echo "The symbols in ${symbols} don't belong to $binary." >&2
+    exit 1
+  fi
+done
+
 # Submits a file to Apple's notary service and waits; prints the log when Apple rejects it.
 notarize() {
   local result id status
@@ -114,7 +164,8 @@ if [ -n "$NOTARY_PROFILE" ]; then
   notarize "$ZIP"
   rm "$ZIP"
   xcrun stapler staple "$APP"
-  spctl --assess --type execute --verbose=2 "$APP"
+  xcrun stapler validate "$APP"
+  spctl -a -vv -t execute "$APP"
 fi
 
 echo "==> Making $DMG"
@@ -136,10 +187,10 @@ if [ -n "$NOTARY_PROFILE" ]; then
   notarize "$DMG"
   xcrun stapler staple "$DMG"
   xcrun stapler validate "$DMG"
-  spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+  spctl -a -vv -t open --context context:primary-signature "$DMG"
 elif [ -z "$ADHOC" ]; then
   echo "==> Gatekeeper (rejects the app until it is notarized):"
-  spctl --assess --type execute --verbose=2 "$APP" || true
+  spctl -a -vv -t execute "$APP" || true
   cat <<EOF
 
 Signed, not notarized. To notarize, store an app-specific password once
@@ -149,5 +200,16 @@ then run again with NOTARY_PROFILE=jevision.
 EOF
 fi
 
+(cd build && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
+
+SYMBOLS=build/JEVision-$VERSION.dSYMs.zip
+rm -f "$SYMBOLS"
+ditto -c -k build/dSYMs "$SYMBOLS"
+
+# The feed is signed after the disk image is final: any later change to it breaks the signature.
+if [ -n "${SPARKLE_PUBLIC_ED_KEY:-}" ] && { [ -z "$ADHOC" ] || [ -n "${SPARKLE_ED_KEY_FILE:-}" ]; }; then
+  echo "==> Signing the update feed"
+  scripts/make-appcast.sh "$DMG"
+fi
 echo "==> $VERSION ($BUILD_NUMBER): $PWD/$DMG"
-shasum -a 256 "$DMG"
+cat "$DMG.sha256"

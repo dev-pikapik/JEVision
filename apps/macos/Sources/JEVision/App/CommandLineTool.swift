@@ -96,7 +96,7 @@ struct CommandLineTool {
   /// Adds ~/.local/bin to the PATH of new zsh windows.
   static let pathCommand = #"echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zprofile"#
 
-  /// What `jevision --version` prints at `link`, such as `0.1.0`.
+  /// What `jevision --version` prints at `link`, such as `1.0.0`.
   private static func version(of link: URL) -> String? {
     let process = Process()
     let output = Pipe()

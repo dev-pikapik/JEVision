@@ -64,6 +64,8 @@
   </array>
   <key>NSLocalNetworkUsageDescription</key>
   <string>JEVision finds your iPhone on the same Wi-Fi, so it can run tests on this Mac.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>JEVision controls other apps with the AppleScript blocks of your tests, and only when a test says so.</string>
   <key>NSHumanReadableCopyright</key>
   <string>MIT License</string>
   <key>NSPrincipalClass</key>
@@ -82,6 +84,14 @@
     </dict>
   </array>
   <key>SUFeedURL</key>
-  <string>https://dev-pikapik.github.io/JEVision/appcast.xml</string>
+  <string>https://github.com/dev-pikapik/JEVision/releases/latest/download/appcast.xml</string>
+  <key>JEVisionBetaFeedURL</key>
+  <string>https://github.com/dev-pikapik/JEVision/releases/download/appcast-beta/appcast-beta.xml</string>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUScheduledCheckInterval</key>
+  <integer>86400</integer>
+  <key>JEVisionDataFormat</key>
+  <integer>1</integer>
 </dict>
 </plist>

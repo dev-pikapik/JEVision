@@ -17,9 +17,25 @@ JEVision тестирует интерфейс любого приложения
 
 ## Как получить JEVision
 
-Для JEVision нужна macOS 26 или новее, на Apple silicon или Intel. До первого релиза
-соберите его из исходников. Для этого нужны Xcode 26 или новее и Rust 1.85 или новее,
-установленный через [rustup](https://rustup.rs):
+Для JEVision нужна macOS 26 или новее, на Apple silicon или Intel.
+
+**Образ диска.** Скачайте `JEVision-<version>.dmg` со страницы
+[GitHub Releases](https://github.com/dev-pikapik/JEVision/releases/latest), откройте его и
+перетащите JEVision в «Программы». Приложение подписано Developer ID и нотаризовано Apple. Оно само
+проверяет новые версии; **JEVision ▸ Проверить обновления…** делает это по запросу.
+
+**Homebrew.**
+
+```sh
+brew install --cask dev-pikapik/jevision/jevision
+```
+
+Копия из Homebrew обновляется сама так же; `brew upgrade --cask jevision` обновляет её через
+Homebrew. Об обновлениях, бета-версиях и копиях, которые JEVision сохраняет перед обновлением:
+[Updating JEVision](../faq.html#updates) (на английском).
+
+**Из исходников.** Нужны Xcode 26 или новее и Rust 1.91 или новее, установленный через
+[rustup](https://rustup.rs):
 
 ```sh
 git clone https://github.com/dev-pikapik/JEVision.git
@@ -30,7 +46,8 @@ open apps/macos/build/JEVision.app
 
 `build.sh` собирает ядро на Rust для обеих архитектур, а затем приложение и инструмент `jevision`
 в `apps/macos/build/JEVision.app`. Задайте `ARCHS=arm64`, чтобы собрать только для одной
-архитектуры, и `SIGN_IDENTITY`, чтобы подписать своим сертификатом вместо ad-hoc-подписи.
+архитектуры, и `SIGN_IDENTITY`, чтобы подписать своим сертификатом вместо ad-hoc-подписи. У сборки
+из исходников нет ключа обновлений, поэтому она никогда не ищет обновлений.
 
 ## Возможности
 
@@ -835,46 +852,22 @@ Device flow.
 <details>
 <summary><b>Выпуск релизов</b></summary>
 
-Релизы выпускает мейнтейнер на Mac. Версия задаётся полем `version` в корневом `Cargo.toml` и
-общая для ядра, приложения и инструмента `jevision`. Номер сборки — это число коммитов, поэтому
-собирайте релизы из полного клона.
+Версия задаётся полем `version` в корневом `Cargo.toml` и общая для ядра, приложения для Mac,
+приложения для iPhone и `jevision --version`. Номер сборки — это число коммитов, поэтому выпускайте
+релизы из полного клона.
 
-Настройка, один раз:
+Тег `v<version>`, отправленный в репозиторий, запускает
+[`release.yml`](../../.github/workflows/release.yml). Он сверяет тег с версией и журналом
+изменений, прогоняет все тесты CI, собирает приложение, подписывает его Developer ID, нотаризует и
+прикрепляет тикет (staple), подписывает ленту обновлений и оставляет **черновик** релиза GitHub с
+образом диска, его контрольной суммой и `appcast.xml`. Релизом становится публикация черновика:
+приложение ищет обновления по адресу
+`https://github.com/dev-pikapik/JEVision/releases/latest/download/appcast.xml`.
 
-1. **Подпись.** Установите сертификат *Developer ID Application* в связку ключей «Вход» (login).
-   Его покажет команда `security find-identity -v -p codesigning`.
-2. **Нотаризация.** Создайте пароль для приложения на
-   [appleid.apple.com](https://appleid.apple.com) и сохраните его как профиль в связке ключей:
-   `xcrun notarytool store-credentials jevision --apple-id <Apple ID> --team-id <Team ID>`.
-3. **Ключ обновлений.** Sparkle проверяет каждое обновление по паре ключей. Создайте её один раз.
-   Закрытый ключ остаётся в связке ключей «Вход» (сделайте резервную копию командой
-   `generate_keys --account jevision -x <file>`):
-   `apps/macos/.build/artifacts/sparkle/Sparkle/bin/generate_keys --account jevision`
-   (если этой папки нет, сначала выполните `swift package resolve --package-path apps/macos`).
-   `release.sh` читает открытый ключ из связки ключей или из `SPARKLE_PUBLIC_ED_KEY`.
-4. **Appcast.** Приложение ищет обновления по адресу `https://dev-pikapik.github.io/JEVision/appcast.xml`
-   (`SUFeedURL` в `apps/macos/Resources/Info.plist`). Включите GitHub Pages для репозитория и
-   опубликуйте `appcast.xml` в его корне. Пока этого файла нет, приложение просто не находит
-   обновлений.
-5. **Homebrew.** Создайте tap-репозиторий `dev-pikapik/homebrew-jevision` с папкой `Casks`.
-
-Для каждого релиза:
-
-```sh
-# 1. Собрать, подписать, нотаризовать и прикрепить тикет (staple); получится apps/macos/build/JEVision-<version>.dmg
-SIGN_IDENTITY="Developer ID Application: <Name> (<Team ID>)" NOTARY_PROFILE=jevision \
-  apps/macos/scripts/release.sh
-# 2. Appcast с новой версией, подписанный ключом обновлений (RELEASE_NOTES=notes.md, чтобы встроить заметки)
-apps/macos/scripts/make-appcast.sh apps/macos/build/JEVision-<version>.dmg
-# 3. Cask для Homebrew с новой версией и контрольной суммой
-packaging/homebrew/update-cask.sh apps/macos/build/JEVision-<version>.dmg
-```
-
-Затем поставьте на коммит тег `v<version>`, приложите образ диска к релизу GitHub с этим тегом,
-опубликуйте `apps/macos/build/appcast/appcast.xml` на GitHub Pages и скопируйте
-`packaging/homebrew/jevision.rb` в папку `Casks/` tap-репозитория. Без `NOTARY_PROFILE` скрипт
-`release.sh` останавливается после подписи, и этого достаточно, чтобы проверить сборку. `ADHOC=1`
-собирает тот же образ диска вообще без сертификата, как это делает CI.
+Ту же сборку на Mac делает `apps/macos/scripts/release.sh`. Что такое каждый секрет, где хранить
+ключ обновлений, про tap Homebrew и что делать, если шаг упал, написано в
+[docs/maintainers/releasing.md](../maintainers/releasing.md); шаги одного релиза — в
+[чек-листе выпуска](../maintainers/release-checklist.md).
 
 </details>
 

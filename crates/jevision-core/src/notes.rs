@@ -61,10 +61,10 @@ impl Flow {
     /// Makes note `note` about `anchor`. Refuses, returning `false`, an unknown note and a
     /// block that isn't there.
     pub fn set_note_anchor(&mut self, note: &str, anchor: NoteAnchor) -> bool {
-        if let NoteAnchor::Block { id } = &anchor {
-            if !self.blocks.iter().any(|b| &b.id == id) {
-                return false;
-            }
+        if let NoteAnchor::Block { id } = &anchor
+            && !self.blocks.iter().any(|b| &b.id == id)
+        {
+            return false;
         }
         self.note_mut(note).map(|n| n.anchor = anchor).is_some()
     }

@@ -80,6 +80,20 @@ and saves a screenshot of every screen into the folder. It runs on a new Simulat
 model and iOS version as the one named, enrolls Face ID there and confirms it, and deletes that
 Simulator afterwards, so the one named stays as it was.
 
+*See an Example* on the first screen needs no stand-in at all: it opens a Mac built into the app
+(`JEVisionRemote/Remote/ExampleMac.swift`), with a project, notes, a run that passes and one that
+fails, and no network. `apps/ios/scripts/screenshots.sh [folder]` takes the App Store
+screenshots there, on new 6.9-inch and 6.5-inch Simulators, in English and Russian.
+
+## Release to the App Store
+
+`apps/ios/scripts/archive.sh` archives the app without signing and checks what App Store Connect
+would get: bundle ID, version and build, icon, privacy manifest, the encryption answer and both
+languages. With the account's key, `archive.sh validate` signs and exports it and has App Store
+Connect validate it, and `archive.sh upload` uploads it; the top of the script says what each
+needs. The texts of the App Store page are in [`fastlane`](fastlane/README.md), and the steps of
+a release in the [release checklist](../../docs/maintainers/release-checklist.md).
+
 ## Run on an iPhone
 
 1. Open `apps/ios/JEVisionRemote.xcodeproj` in Xcode.

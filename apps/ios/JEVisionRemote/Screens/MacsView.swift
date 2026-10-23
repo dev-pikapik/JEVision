@@ -24,6 +24,8 @@ extension EnvironmentValues {
 /// The paired Macs, which of them can be reached, and the way into each.
 struct MacsView: View {
   @Environment(AppModel.self) private var model
+  /// Opens the camera to pair a Mac.
+  let pairMac: () -> Void
   @State private var path: [Route] = []
   @State private var showsSettings = false
   @State private var scanAfterSettings = false
@@ -31,6 +33,20 @@ struct MacsView: View {
   var body: some View {
     NavigationStack(path: $path) {
       List {
+        if model.isExample {
+          Section {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("You’re looking at an example").font(.headline)
+              Text("This Mac, its tests and its runs are built into the app, so you can look around without a Mac. Nothing leaves this iPhone.")
+                .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            Button("Close Example", systemImage: "xmark.circle") {
+              Task { await model.forget(ExampleClient.mac) }
+            }
+            .accessibilityIdentifier("closeExample")
+          }
+        }
         switch model.storageProblem {
         case .failed:
           Label("This iPhone couldn’t save the list of paired Macs. They’ll be forgotten when JEVision quits.", systemImage: "exclamationmark.triangle")
@@ -60,7 +76,7 @@ struct MacsView: View {
           Button("Settings", systemImage: "gearshape") { showsSettings = true }
         }
         ToolbarItem(placement: .topBarTrailing) {
-          Button("Pair a Mac", systemImage: "plus") { model.isScanning = true }
+          Button("Pair a Mac", systemImage: "plus", action: pairMac)
         }
       }
       .refreshable { await model.connectAll() }
@@ -88,7 +104,7 @@ struct MacsView: View {
   private func scanIfAsked() {
     if scanAfterSettings {
       scanAfterSettings = false
-      model.isScanning = true
+      pairMac()
     }
   }
 }

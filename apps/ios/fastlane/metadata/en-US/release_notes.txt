@@ -1,0 +1,10 @@
+The first release of JEVision Remote.
+
+• Pair the iPhone with JEVision on your Mac by scanning a QR code and confirming with Face ID.
+• Browse projects and tests, start a test or one row of its data, and follow the run block by block.
+• Read reports with a short reason for each failure, and look through the run history.
+• See test cards, sticky notes and runs that are waiting for the screen.
+• The Mac decides whether each iPhone may run tests or only view them.
+• The link to the Mac is end-to-end encrypted, and the iPhone signs in with its own hardware-protected key.
+• No Mac at hand? Look around the built-in example.
+• Use the app in English or Russian, and at the largest text sizes.

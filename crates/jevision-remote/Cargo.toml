@@ -3,7 +3,7 @@ name = "jevision-remote"
 description = "Remote control of JEVision from a phone: pairing, device sign-in and the Mac-to-phone protocol"
 version.workspace = true
 edition.workspace = true
-rust-version = "1.91"
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 

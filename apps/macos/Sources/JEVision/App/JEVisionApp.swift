@@ -73,6 +73,21 @@ struct JEVisionApp: App {
     .defaultPosition(.center)
     .restorationBehavior(.disabled)
 
+    Window("About JEVision", id: SceneID.about) {
+      AboutView()
+        .appLocale()
+    }
+    .windowResizability(.contentSize)
+    .defaultPosition(.center)
+    .restorationBehavior(.disabled)
+
+    Window("Third-Party Licenses", id: SceneID.thirdPartyLicenses) {
+      ThirdPartyLicensesView()
+        .appLocale()
+    }
+    .defaultSize(width: 900, height: 640)
+    .restorationBehavior(.disabled)
+
     Window("Command Line Tool", id: SceneID.commandLineTool) {
       CommandLineToolView()
         .appLocale()
@@ -135,6 +150,8 @@ struct JEVisionApp: App {
 enum SceneID {
   static let main = "main"
   static let onboarding = "onboarding"
+  static let about = "about"
+  static let thirdPartyLicenses = "thirdPartyLicenses"
   static let commandLineTool = "commandLineTool"
   static let commit = "commit"
   static let pullRequests = "pullRequests"

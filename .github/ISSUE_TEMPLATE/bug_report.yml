@@ -1,12 +1,46 @@
 name: Bug report
-description: Something does not work as expected
+description: Something in JEVision does not work as expected
 labels: [bug]
 body:
-  - type: textarea
-    id: what
+  - type: markdown
     attributes:
-      label: What happened
-      description: A clear description of the problem.
+      value: |
+        Thanks for taking the time to report a problem. For a security problem, please don't open an issue: follow [SECURITY.md](https://github.com/dev-pikapik/JEVision/security/policy) instead.
+  - type: input
+    id: version
+    attributes:
+      label: JEVision version
+      description: On the Mac, **JEVision → About JEVision**, or run `jevision --version`. On iPhone, **Settings → About → Version** in JEVision Remote.
+      placeholder: "1.0.0 (512)"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: macOS or iOS version
+      description: On the Mac, **Apple menu → About This Mac**. On iPhone, **Settings → General → About**.
+      placeholder: macOS 26.1, iOS 26.1
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed JEVision
+      options:
+        - Disk image from GitHub Releases
+        - Homebrew
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If you can, attach the `.flow.json` test that fails. Remove any private data first.
+      placeholder: |
+        1. Open the project ...
+        2. Run the test ...
+        3. See ...
     validations:
       required: true
   - type: textarea
@@ -16,21 +50,15 @@ body:
     validations:
       required: true
   - type: textarea
-    id: steps
+    id: actual
     attributes:
-      label: Steps to reproduce
-      description: If possible, attach the `.flow.json` test that fails.
-      placeholder: |
-        1. Run ...
-        2. See ...
+      label: What happened instead
+      description: Error messages and screenshots help a lot.
     validations:
       required: true
-  - type: input
-    id: version
+  - type: textarea
+    id: log
     attributes:
-      label: JEVision version
-  - type: input
-    id: env
-    attributes:
-      label: Environment
-      placeholder: OS, application under test, browser or platform
+      label: Log or crash report
+      description: |
+        Open **JEVision → Settings → Advanced**. Under **Logs**, click **Show in Finder** and drag `JEVision.log` here. If JEVision crashed and **Save crash reports** is on, the crash report is under **Crash Reports → Show in Finder**. Secrets and typed text are never written to the log, but please look it over before you attach it.

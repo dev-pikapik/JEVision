@@ -4,6 +4,8 @@ import SwiftUI
 struct WelcomeView: View {
   let scan: () -> Void
   let paste: (PairingLink) -> Void
+  /// Opens a Mac built into the app, for a look around without one.
+  let example: () -> Void
 
   var body: some View {
     ScrollView {
@@ -50,6 +52,9 @@ struct WelcomeView: View {
         .buttonStyle(.glassProminent)
         .controlSize(.large)
         PasteLinkButton(paste: paste)
+        Button("See an Example", action: example)
+          .buttonStyle(.borderless)
+          .accessibilityIdentifier("example")
       }
       .padding(.horizontal, 24)
       .padding(.bottom, 12)
@@ -111,5 +116,5 @@ struct PasteLinkButton: View {
 }
 
 #Preview {
-  WelcomeView(scan: {}, paste: { _ in })
+  WelcomeView(scan: {}, paste: { _ in }, example: {})
 }

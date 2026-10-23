@@ -129,10 +129,10 @@ fn straighten(points: Vec<Point>) -> Vec<Point> {
         if clean.last() == Some(&p) {
             continue;
         }
-        if let [.., a, b] = clean[..] {
-            if (a.x == b.x && b.x == p.x) || (a.y == b.y && b.y == p.y) {
-                clean.pop();
-            }
+        if let [.., a, b] = clean[..]
+            && ((a.x == b.x && b.x == p.x) || (a.y == b.y && b.y == p.y))
+        {
+            clean.pop();
         }
         clean.push(p);
     }

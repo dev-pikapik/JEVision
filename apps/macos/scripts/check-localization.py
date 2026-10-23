@@ -2,9 +2,14 @@
 """Fails when the app's texts and Resources/Localizable.xcstrings drift apart.
 
 Usage: scripts/check-localization.py [dir with .stringsdata]
+       scripts/check-localization.py --ios dir
 build.sh passes the strings swiftc found while compiling. Without an argument the
 sources are compiled into a temporary folder first (needs Xcode, not only the
 Command Line Tools, and the core built by scripts/build-core-apple.sh).
+With --ios the iPhone app's catalog (apps/ios/JEVisionRemote/Localizable.xcstrings) is checked
+against the .stringsdata files that xcodebuild left in dir (its -derivedDataPath): the same
+rules for the catalog and the texts of the code, none of the ones about the Mac app's sources
+and the Rust core.
 
 Checks: every text in the code is in the catalog, every key in the catalog is still
 used, every language has a translation with the same format arguments as the text in
@@ -33,6 +38,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CRATES = os.path.join(ROOT, '..', '..', 'crates')
 CATALOG = os.path.join(ROOT, 'Resources', 'Localizable.xcstrings')
+IOS_CATALOG = os.path.join(ROOT, '..', 'ios', 'JEVisionRemote', 'Localizable.xcstrings')
 # The plural forms of the languages the catalog can hold; the core's `plural_category` follows the same rules.
 PLURALS = {'ru': {'one', 'few', 'many', 'other'}, 'uk': {'one', 'few', 'many', 'other'},
            'be': {'one', 'few', 'many', 'other'}, 'ja': {'other'}, 'zh': {'other'}, 'ko': {'other'},
@@ -283,9 +289,9 @@ def cli_keys():
     return keys, problems
 
 
-def check(strings_dir, env):
+def check(strings_dir, env, catalog_path=CATALOG, ios=False):
     problems = []
-    catalog = json.load(open(CATALOG, encoding='utf-8'))
+    catalog = json.load(open(catalog_path, encoding='utf-8'))
     if catalog.get('sourceLanguage') != 'en':
         problems.append('catalog: sourceLanguage must be "en"')
     strings = catalog.get('strings', {})
@@ -294,12 +300,13 @@ def check(strings_dir, env):
 
     with tempfile.TemporaryDirectory() as tmp:
         compiled = subprocess.run(
-            ['xcrun', 'xcstringstool', 'compile', CATALOG, '--output-directory', tmp, '--dry-run'],
+            ['xcrun', 'xcstringstool', 'compile', catalog_path, '--output-directory', tmp, '--dry-run'],
             capture_output=True, text=True, env=env)
         if compiled.returncode:
             problems.append(f'catalog: xcstringstool can’t compile it: {compiled.stderr.strip()}')
 
-    problems += keyed_without_app_language()
+    if not ios:
+        problems += keyed_without_app_language()
     used = code_keys(strings_dir)
     if not used:
         problems.append(f'no texts found in {strings_dir}')
@@ -308,10 +315,12 @@ def check(strings_dir, env):
             problems.append(f'{where}: "{key}" is in table "{table}", expected Localizable')
         if key not in strings:
             problems.append(f'{where}: "{key}" is missing from the catalog')
-    core_used, core_problems = rust_keys(set(strings))
-    problems += core_problems
-    cli_used, cli_problems = cli_keys()
-    problems += cli_problems
+    core_used, cli_used = set(), {}
+    if not ios:
+        core_used, core_problems = rust_keys(set(strings))
+        problems += core_problems
+        cli_used, cli_problems = cli_keys()
+        problems += cli_problems
     for key, where in sorted(cli_used.items()):
         if key not in strings:
             problems.append(f'{where}: "{key}" is missing from the catalog')
@@ -352,7 +361,9 @@ def check(strings_dir, env):
 
 def main():
     env = tool_env()
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 3 and sys.argv[1] == '--ios':
+        problems = check(sys.argv[2], env, IOS_CATALOG, ios=True)
+    elif len(sys.argv) > 1:
         problems = check(sys.argv[1], env)
     else:
         with tempfile.TemporaryDirectory() as tmp:

@@ -325,10 +325,10 @@ impl Flow {
         if !self.blocks[i].kind.has_edge(edge) {
             return false;
         }
-        if let Some(to) = to {
-            if !self.blocks.iter().any(|b| b.id == to) || (to == from && edge != BODY) {
-                return false;
-            }
+        if let Some(to) = to
+            && (!self.blocks.iter().any(|b| b.id == to) || (to == from && edge != BODY))
+        {
+            return false;
         }
         let cycles = |flow: &Flow| {
             validate(flow)

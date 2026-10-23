@@ -1,0 +1,266 @@
+name: Release
+
+# Runs when a version tag is pushed. It checks that the tag is the version of the code, runs every
+# test of CI, builds the app signed with a Developer ID, notarizes it, signs the update feed and
+# leaves a DRAFT release with the disk image, its checksum, the debug symbols and the update feeds
+# (which lists the earlier versions too). Nothing goes public
+# until someone publishes the draft. Alongside, it archives the iPhone app and, with the App Store
+# secrets set, has App Store Connect validate it; the upload stays a step you take yourself.
+# The secrets it needs are listed in docs/maintainers/releasing.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Tag matches the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the version, the lock file and the changelog against the tag
+        run: scripts/check-version.sh "$GITHUB_REF_NAME"
+      - name: Check that the changelog has notes for this version
+        run: |
+          scripts/changelog-section.sh "${GITHUB_REF_NAME#v}" > /dev/null
+          scripts/changelog-section.sh "${GITHUB_REF_NAME#v}" ru > /dev/null
+
+  tests:
+    name: Tests
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Signed, notarized disk image
+    needs: tests
+    runs-on: macos-latest
+    environment: release
+    env:
+      KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count.
+          fetch-depth: 0
+      - name: Check that every secret is set
+        env:
+          DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          NOTARY_API_KEY_P8: ${{ secrets.NOTARY_API_KEY_P8 }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          missing=()
+          for name in DEVELOPER_ID_CERT_P12 DEVELOPER_ID_CERT_PASSWORD NOTARY_API_KEY_P8 \
+            NOTARY_API_KEY_ID NOTARY_API_ISSUER_ID SPARKLE_PRIVATE_KEY SPARKLE_PUBLIC_ED_KEY; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not set in the 'release' environment: ${missing[*]}. See docs/maintainers/releasing.md."
+            exit 1
+          fi
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: apps/macos/.build/artifacts
+          key: swiftpm-artifacts-${{ hashFiles('apps/macos/Package.resolved') }}
+      - name: Put the signing certificate and the notarization key in a temporary keychain
+        env:
+          DEVELOPER_ID_CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          NOTARY_API_KEY_P8: ${{ secrets.NOTARY_API_KEY_P8 }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          umask 077
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 7200 "$keychain"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$keychain"
+          base64 --decode <<<"$DEVELOPER_ID_CERT_P12" > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$DEVELOPER_ID_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain" > /dev/null
+          rm "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$NOTARY_API_KEY_P8" > "$RUNNER_TEMP/notary.p8"
+          xcrun notarytool store-credentials jevision-release --key "$RUNNER_TEMP/notary.p8" \
+            --key-id "$NOTARY_API_KEY_ID" --issuer "$NOTARY_API_ISSUER_ID" --keychain "$keychain"
+          rm "$RUNNER_TEMP/notary.p8"
+          identity=$(security find-identity -v -p codesigning "$keychain" \
+            | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+          if [ -z "$identity" ]; then
+            echo "::error::The certificate in DEVELOPER_ID_CERT_P12 isn't a Developer ID Application certificate."
+            exit 1
+          fi
+          echo "SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+      - name: Put the update key in a file
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle.key"
+      - name: Build, sign, notarize, staple and sign the update feed
+        run: apps/macos/scripts/release.sh
+        env:
+          NOTARY_PROFILE: jevision-release
+          RELEASE_TAG: ${{ github.ref_name }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          SPARKLE_ED_KEY_FILE: ${{ runner.temp }}/sparkle.key
+      - name: Collect the release files
+        run: |
+          mkdir release
+          cp apps/macos/build/JEVision-*.dmg apps/macos/build/JEVision-*.dmg.sha256 \
+            apps/macos/build/JEVision-*.dSYMs.zip release/
+          # A beta has only appcast-beta.xml; a release has both feeds (make-appcast.sh).
+          cp apps/macos/build/appcast/appcast*.xml release/
+          (cd release && shasum -a 256 -c JEVision-*.dmg.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release/
+          if-no-files-found: error
+      - name: Remove the temporary keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/release.keychain-db" || true
+          rm -f "$RUNNER_TEMP/sparkle.key" "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/cert.p12"
+
+  ios-archive:
+    name: iPhone app for the App Store
+    needs: tests
+    runs-on: macos-latest
+    environment: release
+    env:
+      KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-ios
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The build number is the commit count.
+          fetch-depth: 0
+      - name: Check the App Store texts
+        run: python3 apps/ios/scripts/check-metadata.py
+      - name: See whether the App Store secrets are set
+        id: secrets
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          IOS_DISTRIBUTION_CERT_P12: ${{ secrets.IOS_DISTRIBUTION_CERT_P12 }}
+          IOS_DISTRIBUTION_CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          IOS_APP_STORE_PROFILE: ${{ secrets.IOS_APP_STORE_PROFILE }}
+        run: |
+          present=()
+          missing=()
+          for name in APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY \
+            IOS_DISTRIBUTION_CERT_P12 IOS_DISTRIBUTION_CERT_PASSWORD IOS_APP_STORE_PROFILE; do
+            if [ -n "${!name}" ]; then present+=("$name"); else missing+=("$name"); fi
+          done
+          if [ ${#present[@]} -eq 0 ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          elif [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Not set in the 'release' environment: ${missing[*]}. Set all the App Store secrets or none of them; see docs/maintainers/releasing.md."
+            exit 1
+          else
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+      - name: Put the distribution certificate, the profile and the API key in place
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          IOS_DISTRIBUTION_CERT_P12: ${{ secrets.IOS_DISTRIBUTION_CERT_P12 }}
+          IOS_DISTRIBUTION_CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+          IOS_APP_STORE_PROFILE: ${{ secrets.IOS_APP_STORE_PROFILE }}
+        run: |
+          umask 077
+          keychain="$RUNNER_TEMP/ios.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 7200 "$keychain"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          base64 --decode <<<"$IOS_DISTRIBUTION_CERT_P12" > "$RUNNER_TEMP/ios-cert.p12"
+          security import "$RUNNER_TEMP/ios-cert.p12" -k "$keychain" -P "$IOS_DISTRIBUTION_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain" > /dev/null
+          rm "$RUNNER_TEMP/ios-cert.p12"
+          if ! security find-identity -v -p codesigning "$keychain" | grep -q '"Apple Distribution: '; then
+            echo "::error::The certificate in IOS_DISTRIBUTION_CERT_P12 isn't an Apple Distribution certificate."
+            exit 1
+          fi
+          profile="$RUNNER_TEMP/ios.mobileprovision"
+          base64 --decode <<<"$IOS_APP_STORE_PROFILE" > "$profile"
+          details=$(security cms -D -i "$profile")
+          uuid=$(plutil -extract UUID raw - <<<"$details")
+          for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" \
+            "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            cp "$profile" "$dir/$uuid.mobileprovision"
+          done
+          printf '%s' "$APP_STORE_CONNECT_KEY" > "$RUNNER_TEMP/AuthKey.p8"
+          {
+            echo "DEVELOPMENT_TEAM=$(plutil -extract TeamIdentifier.0 raw - <<<"$details")"
+            echo "PROVISIONING_PROFILE=$(plutil -extract Name raw - <<<"$details")"
+            echo "APP_STORE_CONNECT_KEY_FILE=$RUNNER_TEMP/AuthKey.p8"
+          } >> "$GITHUB_ENV"
+      - name: Archive, check, and have App Store Connect validate it
+        if: steps.secrets.outputs.signed == 'true'
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: apps/ios/scripts/archive.sh validate
+      - name: Archive unsigned and check it
+        if: steps.secrets.outputs.signed != 'true'
+        run: |
+          apps/ios/scripts/archive.sh
+          echo "::notice::The App Store secrets are not set, so the iPhone app was archived unsigned and checked, and App Store Connect did not validate it. See docs/maintainers/releasing.md."
+      - name: Remove the temporary keychain and keys
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/ios.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/ios.mobileprovision" "$RUNNER_TEMP/ios-cert.p12"
+
+  draft:
+    name: Draft release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          scripts/changelog-section.sh "$version" > notes.md
+          # -alpha.N, -beta.N and -rc.N are pre-releases: `latest` (and the appcast.xml the app asks) never points at one.
+          kind=(--latest)
+          case "$version" in *-*) kind=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "JEVision $version" \
+            "${kind[@]}" --notes-file notes.md release/*

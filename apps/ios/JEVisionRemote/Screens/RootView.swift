@@ -9,17 +9,23 @@ struct RootView: View {
 
   var body: some View {
     @Bindable var model = model
+    // The example stands in for the app while it has its Mac; pairing stays with the app.
+    let shown = model.example.flatMap { $0.hosts.isEmpty ? nil : $0 } ?? model
     Group {
-      if model.hosts.isEmpty {
-        WelcomeView(scan: { model.isScanning = true }, paste: { model.pairingLink = $0 })
-      } else if model.lock.isUnlocked {
-        MacsView()
+      if shown.hosts.isEmpty {
+        WelcomeView(scan: { model.isScanning = true }, paste: { model.pairingLink = $0 }) {
+          Task { await model.openExample(deviceName: UIDevice.current.name) }
+        }
+      } else if shown.lock.isUnlocked {
+        MacsView { model.isScanning = true }
       } else {
         LockView()
       }
     }
-    .animation(.smooth, value: model.hosts.isEmpty)
-    .animation(.smooth, value: model.lock.isUnlocked)
+    .environment(shown)
+    .animation(.smooth, value: shown.hosts.isEmpty)
+    .animation(.smooth, value: shown.lock.isUnlocked)
+    .animation(.smooth, value: shown.isExample)
     .fullScreenCover(isPresented: $model.isScanning) {
       ScannerView()
     }

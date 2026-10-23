@@ -447,10 +447,10 @@ impl Flow {
         let mut slot = slot.cloned();
         for mut kind in kinds {
             let id = edited.unique_id(kind.type_name());
-            if let BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } = &mut kind {
-                if body.is_empty() {
-                    body.clone_from(&id);
-                }
+            if let BlockKind::Repeat { body, .. } | BlockKind::UseData { body, .. } = &mut kind
+                && body.is_empty()
+            {
+                body.clone_from(&id);
             }
             let id = edited.insert_kind(id, kind, slot.as_ref())?;
             slot = Some(Slot {

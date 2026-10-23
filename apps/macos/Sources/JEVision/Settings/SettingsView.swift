@@ -12,7 +12,7 @@ struct SettingsView: View {
     NavigationSplitView {
       List(selection: $model.selection) {
         if model.query.isEmpty {
-          Section { rows([.general]) }
+          Section { rows([.general, .updates]) }
           Section("Testing") { rows([.ai, .permissions, .advanced]) }
           Section("Connections") { rows([.remote, .git, .notifications]) }
         } else {
@@ -100,6 +100,7 @@ struct SettingsView: View {
   private func detail(_ tab: SettingsTab) -> some View {
     switch tab {
     case .general: GeneralSettingsView()
+    case .updates: UpdatesSettingsView()
     case .ai: AISettingsView()
     case .permissions: PermissionsSettingsView()
     case .remote: RemoteSettingsView()
@@ -112,7 +113,7 @@ struct SettingsView: View {
 
 /// The open Settings pane; set it before opening Settings to show a given one.
 enum SettingsTab: String, CaseIterable, Identifiable {
-  case general, ai, permissions, remote, git, notifications, advanced
+  case general, updates, ai, permissions, remote, git, notifications, advanced
 
   static let key = "settingsTab"
   static let iconSize: CGFloat = 20
@@ -126,6 +127,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
   var title: String {
     switch self {
     case .general: String(localized: "General")
+    case .updates: String(localized: "Updates")
     case .ai: String(localized: "AI")
     case .permissions: String(localized: "Permissions")
     case .remote: String(localized: "iPhone & Remote")
@@ -139,6 +141,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     let (symbol, color): (String, Color) =
       switch self {
       case .general: ("gearshape.fill", .gray)
+      case .updates: ("arrow.down.circle.fill", .teal)
       case .ai: ("sparkles", .purple)
       case .permissions: warns ? ("exclamationmark.triangle.fill", .orange) : ("hand.raised.fill", .blue)
       case .remote: ("iphone", .green)
@@ -214,12 +217,16 @@ struct SettingsItem: Identifiable {
     [
       SettingsItem(tab: .general, id: "appearance", title: String(localized: "Appearance")),
       SettingsItem(tab: .general, id: "language", title: String(localized: "Language")),
-      SettingsItem(tab: .general, id: "updates", title: String(localized: "Updates")),
       SettingsItem(tab: .general, id: "runCollapses", title: String(localized: "Step aside while a test runs")),
       SettingsItem(tab: .general, id: "runPausesOnMouse", title: String(localized: "Pause when you move the mouse")),
       SettingsItem(tab: .general, id: "runEscapeStops", title: String(localized: "Stop with Esc Esc")),
       SettingsItem(tab: .general, id: "snapToGrid", title: String(localized: "Snap to grid")),
       SettingsItem(tab: .general, id: "noteLargeFile", title: String(localized: "Large file in a note")),
+      SettingsItem(tab: .updates, id: "updates", title: String(localized: "Check for Updates")),
+      SettingsItem(tab: .updates, id: "updatesCheck", title: String(localized: "Check for updates automatically")),
+      SettingsItem(tab: .updates, id: "updatesInstall", title: String(localized: "Download and install updates automatically")),
+      SettingsItem(tab: .updates, id: "updatesBetas", title: String(localized: "Get beta versions")),
+      SettingsItem(tab: .updates, id: "updatesBackups", title: String(localized: "Copies made before updates")),
       SettingsItem(tab: .ai, id: "provider", title: String(localized: "Provider")),
       SettingsItem(tab: .ai, id: "localOnly", title: String(localized: "Only models on this Mac")),
       SettingsItem(tab: .ai, id: "finder", title: String(localized: "Finding by Description")),

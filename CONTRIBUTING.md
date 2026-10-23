@@ -4,9 +4,11 @@ Thanks for taking the time to help. Ideas and discussion are as valuable as code
 
 ## Ways to help
 
-- **Share an idea or ask a question** — open a [Discussion](../../discussions).
-- **Report a bug** — open an [issue](../../issues/new/choose) using the bug template.
+- **Share an idea or ask a question** — open a [Discussion](https://github.com/dev-pikapik/JEVision/discussions).
+- **Report a bug** — open an [issue](https://github.com/dev-pikapik/JEVision/issues/new/choose) using the bug template.
 - **Propose a feature or a block type** — open an issue using the feature template.
+- **Report a security problem** — privately, as described in [SECURITY.md](SECURITY.md), never in
+  a public issue.
 - **Send a pull request** — for anything larger than a typo, please open an issue first so we
   can agree on the approach.
 
@@ -17,13 +19,15 @@ Thanks for taking the time to help. Ideas and discussion are as valuable as code
 2. Keep the change focused: one topic per pull request.
 3. Write commit messages in the [Conventional Commits](https://www.conventionalcommits.org/)
    style, for example `feat(runner): add wait block` or `docs: describe if block`.
-4. Update the documentation and examples if behaviour changes.
+4. Update the documentation and examples if behaviour changes, and add a line for any change
+   people will notice under `Unreleased` in [CHANGELOG.md](CHANGELOG.md).
 5. Open the pull request and fill in the template.
 
 ## Build and checks
 
-You need macOS 26, Xcode 26 and Rust from [rustup](https://rustup.rs). The core is Rust in
-[`crates/`](crates); the macOS app and the `jevision` tool are Swift in [`apps/macos`](apps/macos).
+You need macOS 26, Xcode 26 and the current stable Rust from [rustup](https://rustup.rs). The
+core is Rust in [`crates/`](crates); the macOS app and the `jevision` tool are Swift in
+[`apps/macos`](apps/macos); the iPhone app is in [`apps/ios`](apps/ios).
 
 ```sh
 apps/macos/scripts/build.sh                 # core, app and jevision tool → apps/macos/build/JEVision.app
@@ -45,11 +49,23 @@ apps/macos/build/JEVision.app/Contents/Helpers/jevision validate examples
 CI also builds the core for Swift on its own and tests the generated bindings:
 `scripts/build-core-apple.sh && swift test --package-path build/apple/JEVisionCore`.
 
+The iPhone app builds and tests in the Simulator without an Apple developer account; the first
+build also builds its part of the core (`scripts/build-mobile-apple.sh`). Pairing in the
+Simulator, testing against a Mac and running on an iPhone are in
+[`apps/ios/README.md`](apps/ios/README.md).
+
+```sh
+xcodebuild -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO test
+```
+
 ## Languages and localization
 
-Every text a person reads lives in one file,
-[`Localizable.xcstrings`](apps/macos/Resources/Localizable.xcstrings): the Mac app, the reports,
-bug drafts, notifications, the command line and the iPhone app all take their words from it.
+Every text a person reads lives in a string catalog.
+[`apps/macos/Resources/Localizable.xcstrings`](apps/macos/Resources/Localizable.xcstrings) holds
+the words of the Mac app, the reports, bug drafts, notifications, the command line and the core,
+including the failures the iPhone app shows; the iPhone app's own screens are in
+[`apps/ios/JEVisionRemote/Localizable.xcstrings`](apps/ios/JEVisionRemote/Localizable.xcstrings).
 English is the source language and Russian is translated; a key with no text in a language is
 an error, not a blank.
 
@@ -70,10 +86,13 @@ an error, not a blank.
   region (`set_number_format`), and `jevision_l10n::decimal` writes numbers in the current
   language with them; until then, and in any other language, a number has the language's own
   decimal separator and no grouping.
-- `apps/macos/scripts/check-localization.py` runs in `build.sh` and in CI. It fails when a text
+- `apps/macos/scripts/check-localization.py` checks the Mac catalog in `build.sh` and in CI. It fails when a text
   or a key the core asks for is missing from the catalog, a key is no longer used by the app or
   the core, a language lacks a translation or a plural form, or the arguments of a translation
   differ from the English text. Write every key out in full: the check rejects a key built with `format!`.
+  `check-localization.py --ios build/ios` does the same for the iPhone catalog, against the
+  texts of the build that `xcodebuild -derivedDataPath build/ios` just made; CI runs it after
+  building the iPhone app.
 - To add a language, add its translation of every text to the catalog (Xcode's String Catalog
   editor works). The check, the language picker and the core pick it up; a language whose
   plural forms are not `one`/`other` also needs its rule in `plural_category`

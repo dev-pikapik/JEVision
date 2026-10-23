@@ -1803,8 +1803,8 @@ fn duration<S: Serializer>(ms: &u64, s: S) -> Result<S::Ok, S::Error> {
 pub fn format_duration(ms: u64) -> String {
     match ms {
         0 => "0s".to_owned(),
-        _ if ms % 60_000 == 0 => format!("{}m", ms / 60_000),
-        _ if ms % 1000 == 0 => format!("{}s", ms / 1000),
+        _ if ms.is_multiple_of(60_000) => format!("{}m", ms / 60_000),
+        _ if ms.is_multiple_of(1000) => format!("{}s", ms / 1000),
         _ => format!("{ms}ms"),
     }
 }
