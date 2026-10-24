@@ -3,7 +3,7 @@
     "ScheduledOutcome": {
       "oneOf": [
         {
-          "additionalProperties": false,
+          "additionalProperties": true,
           "description": "The tests ran; `failed` counts every test that didn't pass.",
           "properties": {
             "failed": {
@@ -29,7 +29,7 @@
           "type": "object"
         },
         {
-          "additionalProperties": false,
+          "additionalProperties": true,
           "description": "Nothing ran, so nothing touched the computer.",
           "properties": {
             "reason": {
@@ -47,7 +47,7 @@
           "type": "object"
         },
         {
-          "additionalProperties": false,
+          "additionalProperties": true,
           "description": "The tests couldn't start, such as with an environment the project doesn't have.",
           "properties": {
             "message": {
@@ -67,7 +67,7 @@
       ]
     },
     "ScheduledRun": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "What came of one scheduled run.",
       "properties": {
         "durationMs": {
@@ -120,11 +120,15 @@
   },
   "$id": "https://dev-pikapik.github.io/JEVision/schemas/schedule-history.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "What came of the scheduled runs of a project on this computer, in `.jevision/schedule-history.json`. JEVision keeps it itself; it isn't shared.",
   "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
     "checkedAt": {
-      "description": "Local minute schedules were last checked at; runs up to it are done or missed.",
+      "description": "Local minute last checked; earlier runs are complete or missed.",
       "format": "int64",
       "type": [
         "integer",
@@ -135,9 +139,14 @@
       "const": 1,
       "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
     },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "type": "string"
+    },
     "runs": {
       "default": [],
-      "description": "Oldest first.",
+      "description": "Newest retained runs, oldest first.",
       "items": {
         "$ref": "#/$defs/ScheduledRun"
       },

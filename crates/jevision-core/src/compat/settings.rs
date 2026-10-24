@@ -92,8 +92,24 @@ pub(crate) fn check_settings_header(
     text: &str,
     supported: u32,
 ) -> Result<Value, SettingsFileError> {
-    let UniqueValue(value) = serde_json::from_str(text)
-        .map_err(|error| SettingsFileError::Invalid(json_problem(&error)))?;
+    check_settings_value(read_settings_json(text)?, supported, None)
+}
+
+pub(crate) fn read_settings_json(text: &str) -> Result<Value, SettingsFileError> {
+    serde_json::from_str::<UniqueValue>(text)
+        .map(|value| value.0)
+        .map_err(|error| SettingsFileError::Invalid(json_problem(&error)))
+}
+
+/// A missing format is accepted only by explicitly legacy readers.
+pub(crate) fn check_settings_value(
+    mut value: Value,
+    supported: u32,
+    legacy: Option<u32>,
+) -> Result<Value, SettingsFileError> {
+    if let (Some(object), Some(format)) = (value.as_object_mut(), legacy) {
+        object.entry("format").or_insert_with(|| format.into());
+    }
     let object = value
         .as_object()
         .ok_or_else(|| SettingsFileError::Invalid(tr!("flow.json.notObject")))?;
@@ -138,7 +154,7 @@ pub(crate) fn check_settings_header(
 
 /// Reject duplicate keys before reducing the JSON to known fields. Otherwise two conflicting
 /// values could collapse into one before the typed settings reader sees them.
-struct UniqueValue(Value);
+pub(crate) struct UniqueValue(pub(crate) Value);
 impl<'de> Deserialize<'de> for UniqueValue {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         use serde::de::{Error, MapAccess, SeqAccess, Visitor};

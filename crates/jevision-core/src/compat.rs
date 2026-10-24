@@ -6,8 +6,10 @@
 //! raised, and then the first time that raises the project asks before it does.
 
 mod settings;
-pub(crate) use settings::check_settings_header;
 pub use settings::{SettingsFileError, SettingsMetadata};
+pub(crate) use settings::{
+    UniqueValue, check_settings_header, check_settings_value, read_settings_json,
+};
 
 use std::collections::BTreeMap;
 use std::fs;

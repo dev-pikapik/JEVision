@@ -50202,6 +50202,22 @@
         }
       }
     },
+    "schedule.history.changed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule history changed while it was being edited. Try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "История расписаний изменилась во время редактирования. Повторите попытку."
+          }
+        }
+      }
+    },
     "schedule.hourMinute.invalid" : {
       "localizations" : {
         "en" : {

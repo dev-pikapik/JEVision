@@ -102,6 +102,54 @@ struct ScheduleCommandTests {
   }
 
   static let newer = #"{"format": 99, "runs": []}"#
+
+  @Test func unsupportedOrBrokenHistoryStopsBeforeScreenChecksAndInput() throws {
+    let project = try scratch()
+    defer { try? FileManager.default.removeItem(at: project) }
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
+    let history = try newerHistory(in: project)
+    for (text, expected) in [
+      (#"{"format":1,"minVersion":"9999.0.0","runs":false}"#, ExitStatus.needsNewer),
+      (#"{"format":1,"minVersion":"invalid","runs":[]}"#, .io),
+      (#"{"format":1,"checkedAt":"broken","runs":[]}"#, .io),
+      (#"{"format":1,"runs":[],"runs":[]}"#, .io),
+      ("{", .io),
+    ] {
+      try text.write(to: history, atomically: true, encoding: .utf8)
+      var command = ScheduleCommand(project: project.path)
+      command.blocker = { Testing.Issue.record("screen readiness was checked despite unreadable history"); return .screenLocked }
+      command.runTests = { _ throws(UsageError) in Testing.Issue.record("a test ran despite unreadable history"); return [] }
+      #expect(command.execute() == expected)
+      #expect(try String(contentsOf: history, encoding: .utf8) == text)
+      #expect(!FileManager.default.fileExists(atPath: project.appending(path: ".jevision/runs").path))
+    }
+  }
+
+  @Test func checkpointAndSkippedRunPreserveHistoryMetadata() throws {
+    let project = try scratch()
+    defer { try? FileManager.default.removeItem(at: project) }
+    try saveProjectSchedules(project: project.path, schedules: [daily("Nightly", at: 9, 0)])
+    let history = try newerHistory(in: project)
+    let date = try #require(Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now))
+    let row: [String: Any] = ["schedule": "Previous", "startedAtMs": 0, "durationMs": 0,
+      "host": ["id": 42], "outcome": ["result": "finished", "passed": 1, "failed": 0, "report": "retained"]]
+    let original: [String: Any] = ["format": 1, "minVersion": "0.1.0", "checkedAt": LocalMinute.of(date) - 1,
+      "runs": [row], "cursor": ["generation": 3]]
+    try JSONSerialization.data(withJSONObject: original).write(to: history)
+    var command = ScheduleCommand(project: project.path)
+    command.progress = Console(write: { _ in })
+    command.now = { date }
+    command.blocker = { .screenLocked }
+    command.runTests = { _ throws(UsageError) in Testing.Issue.record("tests ran while blocked"); return [] }
+    #expect(command.execute() == .notReady)
+    let saved = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: history)) as? [String: Any])
+    let rows = try #require(saved["runs"] as? [[String: Any]])
+    #expect(rows.count == 2)
+    #expect(NSDictionary(dictionary: rows[0]) == NSDictionary(dictionary: row))
+    #expect((saved["cursor"] as? [String: Int]) == ["generation": 3])
+    #expect(saved["minVersion"] as? String == "0.1.0")
+    #expect(try scheduledRuns(project: project.path).first?.outcome == .skipped(reason: .screenLocked))
+  }
 }
 
 /// Saves a schedule history only a newer JEVision reads in `project`.

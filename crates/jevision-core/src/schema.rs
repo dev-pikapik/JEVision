@@ -76,7 +76,7 @@ const SCHEDULE_HISTORY: Kind = Kind {
     description: "What came of the scheduled runs of a project on this computer, in \
         `.jevision/schedule-history.json`. JEVision keeps it itself; it isn't shared.",
     formats: &[crate::SCHEDULE_HISTORY_FORMAT],
-    header: false,
+    header: true,
 };
 const BOARD: Kind = Kind {
     name: "board",
@@ -1009,6 +1009,19 @@ mod tests {
         schema
     }
 
+    fn history_schema() -> Value {
+        let mut schema = SCHEDULE_HISTORY.schema::<ScheduleHistory>();
+        schema["additionalProperties"] = true.into();
+        schema["$defs"]["ScheduledRun"]["additionalProperties"] = true.into();
+        for variant in schema["$defs"]["ScheduledOutcome"]["oneOf"]
+            .as_array_mut()
+            .expect("outcome variants")
+        {
+            variant["additionalProperties"] = true.into();
+        }
+        schema
+    }
+
     /// The schema of each kind of file this crate reads.
     fn schemas() -> Vec<(&'static Kind, Value)> {
         vec![
@@ -1017,10 +1030,7 @@ mod tests {
             (&PROJECT, project_schema()),
             (&ENVIRONMENTS, ENVIRONMENTS.schema::<crate::env::File>()),
             (&SCHEDULES, schedule_schema()),
-            (
-                &SCHEDULE_HISTORY,
-                SCHEDULE_HISTORY.schema::<ScheduleHistory>(),
-            ),
+            (&SCHEDULE_HISTORY, history_schema()),
             (&BOARD, BOARD.schema::<Board>()),
             (&BLOCK, BLOCK.schema::<BlockManifest>()),
             (&BLOCKS_LOCK, BLOCKS_LOCK.schema::<PackageLock>()),
@@ -1160,38 +1170,41 @@ mod tests {
         .unwrap();
         let schedules: Value = serde_json::from_str(&schedules).unwrap();
 
-        let history = ScheduleHistory {
-            format: crate::SCHEDULE_HISTORY_FORMAT,
-            checked_at: Some(29_000_000),
-            runs: vec![
-                ScheduledRun {
-                    schedule: "Nightly".into(),
-                    started_at_ms: 1_760_000_000_000,
-                    duration_ms: 5_000,
-                    outcome: ScheduledOutcome::Finished {
-                        passed: 3,
-                        failed: 1,
-                    },
+        let mut history = ScheduleHistory::default();
+        history.checked_at = Some(29_000_000);
+        history.runs = vec![
+            ScheduledRun {
+                schedule: "Nightly".into(),
+                started_at_ms: 1_760_000_000_000,
+                duration_ms: 5_000,
+                outcome: ScheduledOutcome::Finished {
+                    passed: 3,
+                    failed: 1,
                 },
-                ScheduledRun {
-                    schedule: "Nightly".into(),
-                    started_at_ms: 1_760_086_400_000,
-                    duration_ms: 0,
-                    outcome: ScheduledOutcome::Skipped {
-                        reason: SkipReason::ScreenLocked,
-                    },
+            },
+            ScheduledRun {
+                schedule: "Nightly".into(),
+                started_at_ms: 1_760_086_400_000,
+                duration_ms: 0,
+                outcome: ScheduledOutcome::Skipped {
+                    reason: SkipReason::ScreenLocked,
                 },
-                ScheduledRun {
-                    schedule: "Checkout".into(),
-                    started_at_ms: 1_760_090_000_000,
-                    duration_ms: 12,
-                    outcome: ScheduledOutcome::Error {
-                        message: "No environment staging".into(),
-                    },
+            },
+            ScheduledRun {
+                schedule: "Checkout".into(),
+                started_at_ms: 1_760_090_000_000,
+                duration_ms: 12,
+                outcome: ScheduledOutcome::Error {
+                    message: "No environment staging".into(),
                 },
-            ],
-        };
-        let history = serde_json::to_value(&history).unwrap();
+            },
+        ];
+        let mut history = serde_json::to_value(&history).unwrap();
+        history["host"] = json!({"name": "local"});
+        for run in history["runs"].as_array_mut().unwrap() {
+            run["report"] = json!({"relativePath": "report/index.html"});
+            run["outcome"]["detail"] = json!(["retained", null]);
+        }
 
         let id = "org.jevision.add-date";
         let lock = PackageLock {
@@ -1385,7 +1398,7 @@ mod tests {
                 );
                 assert_eq!(
                     read(&no_format),
-                    !sample.strict && !sample.kind.header,
+                    !sample.strict && (!sample.kind.header || name == "schedule-history"),
                     "{name}: a file without format"
                 );
             }
