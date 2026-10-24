@@ -134,17 +134,26 @@ struct DiffCanvas: View {
 
   var body: some View {
     let layout = layoutFlow(flow: flow)
-    let scale = layout.width > 0 && width > 0 ? min(1, width / layout.width) : 1
+    let bounds = FlowViewport.bounds(layout: layout, canvas: flow.canvas)
+    let scale = width > 0 ? min(1, width / bounds.width) : 1
     ZStack(alignment: .topLeading) {
-      GridDots(inset: 0)
+      GridDots(inset: -bounds.minX)
+        .frame(width: bounds.width, height: bounds.height)
+        .offset(x: bounds.minX, y: bounds.minY)
       ForEach(flow.canvas.sections, id: \.id) { section in
-        FrameView(section: section, isPicked: false, isEditing: false, title: .constant(section.title), endEditing: {})
-          .modifier(ChangeMark(mark: sections[section.id], radius: 16))
-          .accessibilityElement(children: .ignore)
-          .accessibilityLabel(Text("Frame"))
-          .accessibilityValue(Text(verbatim: [sections[section.id].map(\.title), section.title]
-            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
-          .offset(x: section.rect.x, y: section.rect.y)
+        FrameView(
+          section: section, isPicked: false, isEditing: false, title: .constant(section.title),
+          endEditing: {}
+        )
+        .modifier(ChangeMark(mark: sections[section.id], radius: 16))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Frame"))
+        .accessibilityValue(
+          Text(
+            verbatim: [sections[section.id].map(\.title), section.title]
+              .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". "))
+        )
+        .offset(x: section.rect.x, y: section.rect.y)
       }
       Edges(layout: layout)
       ForEach(layout.edges, id: \.self) { edge in
@@ -156,28 +165,40 @@ struct DiffCanvas: View {
       }
       ForEach(layout.blocks, id: \.id) { laid in
         if let block = flow.blocks.first(where: { $0.id == laid.id }) {
-          DiffBlockNode(block: block, appName: { AppCatalog.shared.name(of: $0) }, mark: blocks[laid.id])
-            .frame(width: laid.rect.width, height: laid.rect.height)
-            .offset(x: laid.rect.x, y: laid.rect.y)
+          DiffBlockNode(
+            block: block, appName: { AppCatalog.shared.name(of: $0) }, mark: blocks[laid.id]
+          )
+          .frame(width: laid.rect.width, height: laid.rect.height)
+          .offset(x: laid.rect.x, y: laid.rect.y)
         }
       }
       ForEach(flow.canvas.notes, id: \.id) { note in
-        NoteView(note: note, isPicked: false, isEditing: false, text: .constant(note.text), endEditing: {})
-          .frame(width: note.rect.width, height: note.rect.height)
-          .modifier(ChangeMark(mark: notes[note.id], radius: 14))
-          .accessibilityElement(children: .ignore)
-          .accessibilityLabel(Text("Note"))
-          .accessibilityValue(Text(verbatim: [notes[note.id].map(\.title), note.text, note.author]
-            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". ")))
-          .offset(x: note.rect.x, y: note.rect.y)
+        NoteView(
+          note: note, isPicked: false, isEditing: false, text: .constant(note.text), endEditing: {}
+        )
+        .frame(width: note.rect.width, height: note.rect.height)
+        .modifier(ChangeMark(mark: notes[note.id], radius: 14))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Note"))
+        .accessibilityValue(
+          Text(
+            verbatim: [notes[note.id].map(\.title), note.text, note.author]
+              .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ". "))
+        )
+        .offset(x: note.rect.x, y: note.rect.y)
       }
     }
-    .frame(width: layout.width, height: layout.height, alignment: .topLeading)
+    .offset(x: -bounds.minX, y: -bounds.minY)
+    .frame(width: bounds.width, height: bounds.height, alignment: .topLeading)
     .scaleEffect(scale, anchor: .topLeading)
-    .frame(width: layout.width * scale, height: layout.height * scale, alignment: .topLeading)
+    .frame(width: bounds.width * scale, height: bounds.height * scale, alignment: .topLeading)
     .frame(maxWidth: .infinity)
     .unmirrored()
-    .onGeometryChange(for: Double.self) { $0.size.width } action: { width = $0 }
+    .onGeometryChange(for: Double.self) {
+      $0.size.width
+    } action: {
+      width = $0
+    }
     .accessibilityElement(children: .contain)
   }
 }
@@ -338,7 +359,8 @@ private struct ChangeList: View {
     case .removed: return Text(verbatim: was ?? "")
     case .changed:
       let fields = change.fields.map(FlowDiffView.fieldName).formatted(.list(type: .and))
-      let old = was ?? "", new = now ?? ""
+      let old = was ?? ""
+      let new = now ?? ""
       guard old != new else { return Text("Changed: \(fields)") }
       return Text("Was: \(old)\nNow: \(new)\nChanged: \(fields)")
     }

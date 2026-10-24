@@ -238,7 +238,8 @@ struct BoardBlocksTests {
 
   @Test func showsNothingForATestWithoutBlocks() {
     let card = CGRect(x: 0, y: 0, width: 600, height: 400)
-    #expect(BoardBlockGeometry(card: card, layout: layout(width: 0, height: 0)) == nil)
+    let empty = FlowLayout(width: 0, height: 0, blocks: [], frames: [], edges: [], slots: [], ports: [])
+    #expect(BoardBlockGeometry(card: card, layout: empty) == nil)
   }
 
   @Test func countsHowTheBlocksOfATestDid() {

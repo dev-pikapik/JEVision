@@ -1,3 +1,4 @@
+import AppKit
 import JEVisionCore
 import SwiftUI
 
@@ -8,11 +9,12 @@ struct MarkdownText: View {
   let text: String
   /// Names a `@name` in the text can stand for; those are drawn as mentions.
   var names: [String] = []
+  var scale = 1.0
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: 4 * scale) {
       ForEach(Array(Self.lines(of: text, names: names).enumerated()), id: \.offset) { _, line in
-        Self.line(line)
+        Self.line(line, scale: scale)
       }
     }
   }
@@ -23,19 +25,19 @@ struct MarkdownText: View {
     return source.components(separatedBy: "\n")
   }
 
-  @ViewBuilder static func line(_ line: String) -> some View {
+  @ViewBuilder static func line(_ line: String, scale: Double = 1) -> some View {
     let trimmed = line.trimmingCharacters(in: .whitespaces)
     if let heading = trimmed.firstMatch(of: /^(#{1,6})\s+(.*)$/) {
-      let size: [Font] = [.title, .title2, .title3, .headline, .headline, .headline]
-      inline(String(heading.2)).font(size[heading.1.count - 1].weight(.semibold))
+      let styles: [NSFont.TextStyle] = [.title1, .title2, .title3, .headline, .headline, .headline]
+      inline(String(heading.2)).font(.system(size: NSFont.preferredFont(forTextStyle: styles[heading.1.count - 1]).pointSize * scale, weight: .semibold))
     } else if let task = trimmed.firstMatch(of: /^[-*+]\s+\[([ xX])\]\s+(.*)$/) {
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
+      HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
         Image(systemName: task.1 == " " ? "square" : "checkmark.square.fill")
           .foregroundStyle(task.1 == " " ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
         inline(String(task.2)).strikethrough(task.1 != " ")
       }
     } else if let item = trimmed.firstMatch(of: /^(?:[-*+]|\d+[.)])\s+(.*)$/) {
-      HStack(alignment: .firstTextBaseline, spacing: 6) {
+      HStack(alignment: .firstTextBaseline, spacing: 6 * scale) {
         Text(verbatim: trimmed.first?.isNumber == true ? String(trimmed.prefix { $0 != " " }) : "•")
           .foregroundStyle(.secondary)
         inline(String(item.1))
@@ -43,8 +45,8 @@ struct MarkdownText: View {
     } else if trimmed.hasPrefix(">") {
       inline(String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces))
         .foregroundStyle(.secondary)
-        .padding(.leading, 10)
-        .overlay(alignment: .leading) { Capsule().fill(.quaternary).frame(width: 3) }
+        .padding(.leading, 10 * scale)
+        .overlay(alignment: .leading) { Capsule().fill(.quaternary).frame(width: 3 * scale) }
     } else {
       inline(line)
     }

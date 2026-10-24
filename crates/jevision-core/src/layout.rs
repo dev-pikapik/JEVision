@@ -4,7 +4,7 @@
 //! show only real changes: the chain reads top to bottom, the branches of an `if` sit side by
 //! side, and a loop is a frame around its body. Once blocks are moved by hand, they stay where
 //! they were put and the connectors are routed between them. Coordinates are canvas points from
-//! the top-left corner, not fractions of a window.
+//! a fixed origin (negative coordinates lie left or above it), not fractions of a window.
 //!
 //! [`rows`] is the other arrangement: the chain wraps like text, three blocks to a row, each row
 //! in a frame of its own. A recorded test gets it, and anyone can ask for it; it is saved as

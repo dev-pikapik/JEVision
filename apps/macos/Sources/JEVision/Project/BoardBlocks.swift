@@ -23,17 +23,24 @@ struct BoardBlockGeometry: Equatable {
   let area: CGRect
   /// How much smaller than on the test's own canvas the blocks are drawn.
   let fit: Double
+  let origin: CGPoint
 
   /// `nil` for a test with no blocks to show.
   init?(card: CGRect, layout: FlowLayout) {
-    guard layout.width > 0, layout.height > 0 else { return nil }
-    area = boardBlocksArea(card: Rect(card), width: layout.width, height: layout.height).cgRect
-    fit = area.width / layout.width
+    guard !layout.blocks.isEmpty else { return nil }
+    let bounds = FlowViewport.bounds(layout: layout, canvas: nil, padding: 0)
+    // Preserve the established card layout for nonnegative drawings.
+    origin = CGPoint(x: min(0, bounds.minX), y: min(0, bounds.minY))
+    let width = max(layout.width, bounds.maxX) - origin.x
+    let height = max(layout.height, bounds.maxY) - origin.y
+    area = boardBlocksArea(card: Rect(card), width: width, height: height).cgRect
+    fit = area.width / width
   }
 
   func rect(of block: Rect) -> CGRect {
     CGRect(
-      x: area.minX + block.x * fit, y: area.minY + block.y * fit, width: block.width * fit, height: block.height * fit)
+      x: area.minX + (block.x - origin.x) * fit, y: area.minY + (block.y - origin.y) * fit,
+      width: block.width * fit, height: block.height * fit)
   }
 
   /// The topmost block at a point in the card's points.
@@ -257,6 +264,7 @@ struct BoardOpenTestView: View {
       guard let geometry = BoardBlockGeometry(card: CGRect(origin: .zero, size: size), layout: layout) else { return }
       context.translateBy(x: geometry.area.minX, y: geometry.area.minY)
       context.scaleBy(x: geometry.fit, y: geometry.fit)
+      context.translateBy(x: -geometry.origin.x, y: -geometry.origin.y)
       let heavy = detail == .shape
       for edge in layout.edges where edge.points.count > 1 {
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }

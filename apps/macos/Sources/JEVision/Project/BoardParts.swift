@@ -573,6 +573,7 @@ struct BoardInput: NSViewRepresentable {
   let smartZoom: (CGPoint) -> Void
   /// The menu for a right click at a point of the view.
   let menu: (CGPoint) -> NSMenu?
+  var capturesSecondaryClicks = true
 
   func makeNSView(context: Context) -> InputView { InputView() }
 
@@ -623,7 +624,8 @@ struct BoardInput: NSViewRepresentable {
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-      guard let event = NSApp.currentEvent, Self.isSecondary(event) else { return nil }
+      guard owner?.capturesSecondaryClicks == true,
+        let event = NSApp.currentEvent, Self.isSecondary(event) else { return nil }
       return super.hitTest(point)
     }
 

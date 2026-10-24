@@ -451,3 +451,19 @@ struct CardAndQueueTextTests {
     #expect(VisionText.failure(Failure(code: "run.vision.noModel", params: ["provider": "Ollama"])).contains("Ollama"))
   }
 }
+
+
+struct CanvasOriginTests {
+  @Test func negativeGeometryIsShiftedOnlyForDisplay() {
+    let original = TestFlow(name: "Negative", app: "com.apple.TextEdit", start: "a", size: .zero,
+      blocks: [.init(id: "a", kind: "pause", title: "", area: CGRect(x: -400, y: -200, width: 208, height: 64))],
+      frames: [], edges: [.init(from: "a", edge: "next", to: "a", points: [CGPoint(x: -296, y: -136), CGPoint(x: -296, y: -220)])])
+    let drawing = original.normalizedCanvas
+    #expect(drawing.blocks[0].area?.minX == 0)
+    #expect(drawing.blocks[0].area?.minY == 20)
+    #expect(drawing.edges[0].points.last?.y == 0)
+    #expect(drawing.size.width >= 208 && drawing.size.height >= 84)
+    #expect(original.blocks[0].area?.minX == -400)
+    #expect(drawing.normalizedCanvas == drawing)
+  }
+}

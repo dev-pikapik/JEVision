@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The test drawn as a flowchart, at the positions the core laid out, with its frames and notes.
 /// Blocks, frames and notes move by dragging; a block links to another by dragging from the dot
-/// under it, or from the keyboard. Unscaled: the editor zooms it.
+/// under it, or from the keyboard. The camera keeps world coordinates independent of panels.
 struct FlowCanvas: View {
   static let space = "flowCanvas"
   static let grid = canvasGrid()
@@ -13,8 +13,9 @@ struct FlowCanvas: View {
   @Environment(ProjectStore.self) private var project
   let document: FlowDocument
   let appName: (String) -> String
-  /// The smallest size to fill: the visible part of the editor at the current zoom.
-  let minSize: CGSize
+  let camera: FlowViewport
+  let size: CGSize
+  @Environment(\.displayScale) private var displayScale
   /// How each block did in the last saved run; a run started since replaces them.
   let outcomes: [String: BlockOutcome]
   /// Ways out of the `if`s the last saved run took; a run started since replaces them.
@@ -40,19 +41,31 @@ struct FlowCanvas: View {
   var body: some View {
     let flow = preview?.flow ?? document.flow
     let layout = preview?.layout ?? document.layout
-    let inset = inset
+    let bounds = FlowViewport.bounds(layout: layout, canvas: flow?.canvas).union(
+      camera.visible(in: size))
     ZStack(alignment: .topLeading) {
-      backdrop(inset: inset)
-      content(canvas: flow?.canvas, layout: layout)
-        .offset(x: inset)
+      BoardGrid(viewport: BoardViewport(offset: camera.offset, scale: camera.scale))
+      ZStack(alignment: .topLeading) {
+        backdrop
+        content(canvas: flow?.canvas, layout: layout)
+          .offset(x: -bounds.minX, y: -bounds.minY)
+      }
+      .frame(width: bounds.width, height: bounds.height, alignment: .topLeading)
+      .scaleEffect(camera.scale, anchor: .topLeading)
+      .frame(
+        width: bounds.width * camera.scale, height: bounds.height * camera.scale,
+        alignment: .topLeading
+      )
+      .offset(
+        x: bounds.minX * camera.scale + camera.offset.x,
+        y: bounds.minY * camera.scale + camera.offset.y)
     }
-    .frame(
-      width: max(layout.width + inset, minSize.width), height: max(layout.height, minSize.height),
-      alignment: .topLeading)
+    .frame(width: size.width, height: size.height, alignment: .topLeading)
+    .clipped()
+    .coordinateSpace(.named(Self.space))
     .onContinuousHover(coordinateSpace: .named(Self.space)) { phase in
       if case .active(let at) = phase { pointer = at } else { pointer = nil }
     }
-    .coordinateSpace(.named(Self.space))
     .dropDestination(for: BlockDrag.self) { drags, location in
       guard !document.isReadOnly, let type = drags.first?.type else { return false }
       drop(type, at: onCanvas(location))
@@ -61,12 +74,6 @@ struct FlowCanvas: View {
     .onChange(of: document.picked) {
       if let editing, !document.picked.contains(editing) { self.editing = nil }
     }
-  }
-
-  /// How far right the test is drawn to center a narrow one: whole grid steps, so the grid lines up.
-  private var inset: Double {
-    let spare = max(0, minSize.width - document.layout.width) / 2
-    return (spare / Self.grid).rounded(.down) * Self.grid
   }
 
   /// Adds a block dragged from the palette: after the block it was dropped on, otherwise after the
@@ -85,11 +92,11 @@ struct FlowCanvas: View {
 
   /// A point of this view on the canvas the core lays out.
   private func onCanvas(_ point: CGPoint) -> CGPoint {
-    CGPoint(x: point.x - inset, y: point.y)
+    camera.world(point)
   }
 
-  private func backdrop(inset: Double) -> some View {
-    GridDots(inset: inset)
+  private var backdrop: some View {
+    Color.clear
       .overlay {
         RightClickCatcher {
           guard let pointer else { return }
@@ -98,6 +105,7 @@ struct FlowCanvas: View {
         }
       }
       .contentShape(.rect)
+      .onTapGesture { onPick([], nil) }
       .gesture(marqueeGesture)
   }
 
@@ -129,8 +137,9 @@ struct FlowCanvas: View {
         title: Binding(
           get: { document.flow?.canvas.sections.first { $0.id == section.id }?.title ?? "" },
           set: { document.editFrame(section.id, title: $0) }),
-        endEditing: { endEditing(item) }
+        endEditing: { endEditing(item) }, scale: camera.scale
       )
+      .canvasElementSize(section.rect.cgRect.size, scale: camera.scale)
       .modifier(CanvasItemGestures(
         item: item, isEditing: editing == item, move: moveGesture(item), pick: { pick(item) },
         edit: { edit(item) }))
@@ -160,21 +169,28 @@ struct FlowCanvas: View {
     let taken = runs.taken(for: document) ?? self.taken
     let decided = Set(taken.map(\.from))
     return ZStack(alignment: .topLeading) {
-      Edges(layout: layout, taken: taken)
-      Edges(layout: layout, only: document.pickedLinks)
+      Edges(layout: layout, drawingBounds: camera.visible(in: size).insetBy(dx: -32, dy: -32), renderScale: camera.scale, taken: taken)
+        .environment(\.displayScale, displayScale)
+      if !document.pickedLinks.isEmpty {
+        Edges(layout: layout, drawingBounds: camera.visible(in: size).insetBy(dx: -32, dy: -32), renderScale: camera.scale, only: document.pickedLinks)
+          .environment(\.displayScale, displayScale)
+      }
       ForEach(layout.edges.filter { $0.points.count > 1 }, id: \.self) { edge in
         let slot = Slot(from: edge.from, edge: edge.edge)
         EdgeHit(
           edge: edge, label: linkLabel(edge),
           value: taken.contains(slot)
-            ? Text("Taken in the last run") : decided.contains(edge.from) ? Text("Not taken in the last run") : nil,
+            ? Text("Taken in the last run")
+            : decided.contains(edge.from) ? Text("Not taken in the last run") : nil,
           isPicked: document.pickedLinks.contains(slot),
           pick: { pickLink(slot) },
           delete: document.isReadOnly ? nil : { document.unlink([slot]) })
       }
       ForEach(layout.frames, id: \.block) { frame in
         RoundedRectangle(cornerRadius: 16)
-          .fill(BlockInfo.color(ofType: document.block(frame.block)?.kind.typeName ?? "").opacity(0.05))
+          .fill(
+            BlockInfo.color(ofType: document.block(frame.block)?.kind.typeName ?? "").opacity(0.05)
+          )
           .strokeBorder(.separator, style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
           .frame(width: frame.rect.width, height: frame.rect.height)
           .offset(x: frame.rect.x, y: frame.rect.y)
@@ -184,7 +200,8 @@ struct FlowCanvas: View {
       ForEach(layout.edges, id: \.self) { edge in
         if let name = document.block(edge.from)?.kind.branchName(edge.edge) {
           let at = BranchLabel.position(of: edge)
-          BranchLabel(name: name)
+          BranchLabel(name: name, scale: camera.scale)
+            .scaleEffect(1 / camera.scale, anchor: .topLeading)
             .offset(x: at.x, y: at.y)
         }
       }
@@ -225,8 +242,8 @@ struct FlowCanvas: View {
             document.addCondition()
           },
           disconnect: document.hasLinks(laid.id) ? { document.disconnect(laid.id) } : nil,
-          actions: actions(for: item))
-        .frame(width: laid.rect.width, height: laid.rect.height)
+          actions: actions(for: item), scale: camera.scale)
+        .canvasElementSize(laid.rect.cgRect.size, scale: camera.scale)
         .onHover { hover(laid.id, $0) }
         .gesture(moveGesture(item))
         .offset(x: laid.rect.x, y: laid.rect.y)
@@ -262,9 +279,9 @@ struct FlowCanvas: View {
         text: Binding(
           get: { document.flow?.canvas.notes.first { $0.id == note.id }?.text ?? "" },
           set: { document.editNote(note.id, text: $0) }),
-        endEditing: { endEditing(item) }
+        endEditing: { endEditing(item) }, scale: camera.scale
       )
-      .frame(width: note.rect.width, height: note.rect.height)
+      .canvasElementSize(note.rect.cgRect.size, scale: camera.scale)
       .modifier(CanvasItemGestures(
         item: item, isEditing: editing == item, move: moveGesture(item), pick: { pick(item) },
         edit: { edit(item) }))
@@ -312,15 +329,17 @@ struct FlowCanvas: View {
       ForEach(layout.slots, id: \.slot) { laid in
         SlotButton(
           isPinned: layout.blocks.isEmpty || (document.selection != nil && laid.slot.from == document.selection),
-          label: slotLabel(laid.slot)
+          label: slotLabel(laid.slot), scale: camera.scale
         ) { onAdd(laid.slot) }
+        .canvasElementSize(CGSize(width: SlotButton.size, height: SlotButton.size), scale: camera.scale)
         .offset(x: laid.at.x - SlotButton.size / 2, y: laid.at.y - SlotButton.size / 2)
       }
       ForEach(layout.ports.filter { showsPorts(of: $0.slot.from) }, id: \.slot) { port in
         PortHandle(
           label: portLabel(port.slot), accessibilityLabel: portAccessibilityLabel(port.slot),
-          isLinking: document.linking?.slot == port.slot
+          isLinking: document.linking?.slot == port.slot, scale: camera.scale
         ) { if !document.startLink(from: port.slot) { NSSound.beep() } }
+          .canvasElementSize(CGSize(width: PortHandle.size, height: PortHandle.size), scale: camera.scale)
           .onHover { hover(port.slot.from, $0) }
           .gesture(linkGesture(port))
           .offset(x: port.at.x - PortHandle.size / 2, y: port.at.y - PortHandle.size / 2)
@@ -332,7 +351,8 @@ struct FlowCanvas: View {
     let placed = (canvas?.sections.map { Placed(item: .section(id: $0.id), rect: $0.rect) } ?? [])
       + (canvas?.notes.map { Placed(item: .note(id: $0.id), rect: $0.rect) } ?? [])
     return ForEach(placed.filter { document.picked.contains($0.item) && editing != $0.item }) { placed in
-      ResizeHandle()
+      ResizeHandle(scale: camera.scale)
+        .canvasElementSize(CGSize(width: ResizeHandle.size, height: ResizeHandle.size), scale: camera.scale)
         .gesture(resizeGesture(placed.item))
         .offset(
           x: placed.rect.x + placed.rect.width - ResizeHandle.size,
@@ -421,7 +441,8 @@ struct FlowCanvas: View {
         if !document.picked.contains(item) { onPick([item], item.blockID) }
         guard !document.isReadOnly, let flow = document.flow,
           let moved = moveOnCanvas(
-            flow: flow, items: dragged(item), dx: value.translation.width, dy: value.translation.height,
+            flow: flow, items: dragged(item), dx: value.translation.width / camera.scale,
+            dy: value.translation.height / camera.scale,
             snap: snapping)
         else {
           preview = nil
@@ -432,7 +453,8 @@ struct FlowCanvas: View {
       .onEnded { value in
         preview = nil
         document.move(
-          dragged(item), dx: value.translation.width, dy: value.translation.height, snap: snapping)
+          dragged(item), dx: value.translation.width / camera.scale,
+          dy: value.translation.height / camera.scale, snap: snapping)
       }
   }
 
@@ -467,14 +489,26 @@ struct FlowCanvas: View {
   private func resizeGesture(_ item: CanvasItem) -> some Gesture {
     DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.space))
       .onChanged { value in
-        guard let flow = document.flow, let rect = grown(item, by: value.translation),
+        guard let flow = document.flow,
+          let rect = grown(
+            item,
+            by: CGSize(
+              width: value.translation.width / camera.scale,
+              height: value.translation.height / camera.scale)),
           let resized = resizeOnCanvas(flow: flow, item: item, rect: rect, snap: snapping)
         else { return }
         preview = (resized, layoutFlow(flow: resized))
       }
       .onEnded { value in
         preview = nil
-        if let rect = grown(item, by: value.translation) { document.resize(item, to: rect, snap: snapping) }
+        if let rect = grown(
+          item,
+          by: CGSize(
+            width: value.translation.width / camera.scale,
+            height: value.translation.height / camera.scale))
+        {
+          document.resize(item, to: rect, snap: snapping)
+        }
       }
   }
 
@@ -493,8 +527,10 @@ struct FlowCanvas: View {
   private var marqueeGesture: some Gesture {
     DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.space))
       .onChanged { value in
-        let a = onCanvas(value.startLocation), b = onCanvas(value.location)
-        marquee = CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
+        let a = onCanvas(value.startLocation)
+        let b = onCanvas(value.location)
+        marquee = CGRect(
+          x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
       }
       .onEnded { _ in
         guard let marquee else { return }
@@ -581,9 +617,11 @@ struct FlowCanvas: View {
   private func linkLabel(_ edge: LaidEdge) -> Text {
     func name(_ id: String) -> String {
       let step = document.step(of: id)
-      return String(localized: "step \(step), \(BlockInfo.title(document.block(id)?.kind.typeName ?? ""))")
+      return String(
+        localized: "step \(step), \(BlockInfo.title(document.block(id)?.kind.typeName ?? ""))")
     }
-    let from = name(edge.from), to = name(edge.to)
+    let from = name(edge.from)
+    let to = name(edge.to)
     if let branch = document.block(edge.from)?.kind.branchName(edge.edge) {
       return Text("\(branch) link from \(from) to \(to)")
     }
@@ -650,7 +688,8 @@ struct GridDots: View {
   var body: some View {
     Canvas { context, size in
       let step = FlowCanvas.grid
-      var minor = Path(), major = Path()
+      var minor = Path()
+      var major = Path()
       for x in stride(from: 0, to: size.width, by: step) {
         let column = Int(((x - inset) / step).rounded())
         for y in stride(from: 0, to: size.height, by: step) {
@@ -671,18 +710,24 @@ struct GridDots: View {
 /// Arrows between blocks: lines with rounded corners and a head at the end.
 struct Edges: View {
   let layout: FlowLayout
+  var drawingBounds: CGRect?
+  var renderScale = 1.0
   /// Draws only these links, highlighted as selected; `nil` draws every link plainly.
   var only: Set<Slot>?
   /// Ways out of `if`s a run took, drawn green; the other ways out of those `if`s are dashed.
   var taken: Set<Slot> = []
 
   var body: some View {
+    let bounds = drawingBounds ?? FlowViewport.bounds(layout: layout, canvas: nil)
     Canvas { context, _ in
+      context.scaleBy(x: renderScale, y: renderScale)
+      context.translateBy(x: -bounds.minX, y: -bounds.minY)
       let decided = Set(taken.map(\.from))
       for edge in layout.edges where edge.points.count > 1 {
         let slot = Slot(from: edge.from, edge: edge.edge)
         if let only, !only.contains(slot) { continue }
-        var shading: GraphicsContext.Shading = only == nil ? .style(.secondary) : .color(.accentColor)
+        var shading: GraphicsContext.Shading =
+          only == nil ? .style(.secondary) : .color(.accentColor)
         var style = StrokeStyle(lineWidth: only == nil ? 1.5 : 3, lineJoin: .round)
         if only == nil, taken.contains(slot) {
           shading = .color(.green)
@@ -693,10 +738,14 @@ struct Edges: View {
         }
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
         context.stroke(Self.line(points), with: shading, style: style)
-        context.fill(Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: shading)
+        context.fill(
+          Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: shading)
       }
     }
-    .frame(width: layout.width, height: layout.height)
+    .frame(width: bounds.width * renderScale, height: bounds.height * renderScale)
+    .scaleEffect(1 / renderScale, anchor: .topLeading)
+    .frame(width: bounds.width, height: bounds.height, alignment: .topLeading)
+    .offset(x: bounds.minX, y: bounds.minY)
     .allowsHitTesting(false)
     .accessibilityHidden(true)
   }
@@ -705,7 +754,9 @@ struct Edges: View {
     var path = Path()
     path.move(to: points[0])
     for i in 1..<points.count - 1 {
-      let a = points[i - 1], b = points[i], c = points[i + 1]
+      let a = points[i - 1]
+      let b = points[i]
+      let c = points[i + 1]
       let room = min(hypot(b.x - a.x, b.y - a.y), hypot(c.x - b.x, c.y - b.y)) / 2
       path.addArc(tangent1End: b, tangent2End: c, radius: min(8, room))
     }
@@ -715,11 +766,14 @@ struct Edges: View {
 
   static func head(from a: CGPoint, to b: CGPoint) -> Path {
     let angle = atan2(b.y - a.y, b.x - a.x)
-    let length = 8.0, spread = 0.45
+    let length = 8.0
+    let spread = 0.45
     var path = Path()
     path.move(to: b)
-    path.addLine(to: CGPoint(x: b.x - length * cos(angle - spread), y: b.y - length * sin(angle - spread)))
-    path.addLine(to: CGPoint(x: b.x - length * cos(angle + spread), y: b.y - length * sin(angle + spread)))
+    path.addLine(
+      to: CGPoint(x: b.x - length * cos(angle - spread), y: b.y - length * sin(angle - spread)))
+    path.addLine(
+      to: CGPoint(x: b.x - length * cos(angle + spread), y: b.y - length * sin(angle + spread)))
     path.closeSubpath()
     return path
   }
@@ -762,6 +816,7 @@ private struct EdgeHit: View {
 
 struct BranchLabel: View {
   let name: String
+  var scale = 1.0
 
   /// The top-left corner of the label: beside the arrow, just below where it leaves the block.
   static func position(of edge: LaidEdge) -> CGPoint {
@@ -771,7 +826,7 @@ struct BranchLabel: View {
 
   var body: some View {
     Text(verbatim: name)
-      .font(.caption2.weight(.semibold))
+      .font(.system(size: NSFont.preferredFont(forTextStyle: .caption2).pointSize * scale, weight: .semibold))
       .foregroundStyle(.secondary)
       .allowsHitTesting(false)
       .accessibilityHidden(true)
@@ -860,6 +915,7 @@ private struct BlockNode: View {
   /// Removes the links into and out of the block; `nil` when it has none.
   let disconnect: (() -> Void)?
   let actions: ItemActions
+  var scale = 1.0
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
 
@@ -886,62 +942,80 @@ private struct BlockNode: View {
   }
 
   var body: some View {
-    HStack(spacing: 10) {
-      IconTile(symbol: custom?.symbol ?? BlockInfo.symbol(type), color: BlockInfo.color(ofType: type), size: 34)
-      VStack(alignment: .leading, spacing: 1) {
+    HStack(spacing: 10 * scale) {
+      IconTile(
+        symbol: custom?.symbol ?? BlockInfo.symbol(type), color: BlockInfo.color(ofType: type),
+        size: 34 * scale)
+      VStack(alignment: .leading, spacing: scale) {
         Text(title)
-          .font(.headline)
+          .font(.system(size: NSFont.preferredFont(forTextStyle: .headline).pointSize * scale, weight: .semibold))
           .lineLimit(1)
           .minimumScaleFactor(0.8)
         Text(summary)
-          .font(.subheadline)
+          .font(.system(size: NSFont.preferredFont(forTextStyle: .subheadline).pointSize * scale))
           .foregroundStyle(.secondary)
           .lineLimit(2)
           .truncationMode(.middle)
       }
       Spacer(minLength: 0)
       if !issues.isEmpty {
-        Image(systemName: hasError ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
-          .foregroundStyle(hasError ? .red : .orange)
-          .help(issues.map(IssueText.line).joined(separator: "\n"))
+        Image(
+          systemName: hasError ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill"
+        )
+        .font(.system(size: NSFont.systemFontSize * scale))
+        .foregroundStyle(hasError ? .red : .orange)
+        .help(issues.map(IssueText.line).joined(separator: "\n"))
       }
     }
-    .padding(.horizontal, 12)
+    .padding(.horizontal, 12 * scale)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(.background, in: .rect(cornerRadius: 14))
+    .background(.background, in: .rect(cornerRadius: 14 * scale))
     .overlay {
-      RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(border.color, lineWidth: border.width)
+      RoundedRectangle(cornerRadius: 14 * scale)
+        .strokeBorder(border.color, lineWidth: border.width * scale)
     }
     .overlay(alignment: .topTrailing) { badge }
     .overlay(alignment: .leading) {
       if hasBreakpoint {
         Button(action: toggleBreakpoint) {
           Image(systemName: "pause.fill")
-            .font(.system(size: 9, weight: .bold))
+            .font(.system(size: 9 * scale, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: 18, height: 26)
-            .background(.blue, in: UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 5, bottomTrailingRadius: 9, topTrailingRadius: 9))
+            .frame(width: 18 * scale, height: 26 * scale)
+            .background(
+              .blue,
+              in: UnevenRoundedRectangle(
+                topLeadingRadius: 5 * scale, bottomLeadingRadius: 5 * scale, bottomTrailingRadius: 9 * scale,
+                topTrailingRadius: 9 * scale))
         }
         .buttonStyle(.plain)
-        .offset(x: -10)
+        .offset(x: -10 * scale)
         .help(Text("The run pauses before this block. Click to remove."))
         .accessibilityHidden(true)
       }
     }
-    .shadow(color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: isCurrent ? 10 : 3, y: 1)
+    .shadow(
+      color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: (isCurrent ? 10 : 3) * scale,
+      y: scale
+    )
     .animation(reduceMotion ? nil : .snappy, value: isCurrent)
-    .contentShape(.rect(cornerRadius: 14))
+    .contentShape(.rect(cornerRadius: 14 * scale))
     .help(environmentHelp ?? "")
     .onTapGesture(perform: select)
     .contextMenu {
       Button("Run from Here", systemImage: "play", action: { runFromHere?() })
         .disabled(runFromHere == nil)
-      Toggle("Pause Here", systemImage: "pause", isOn: Binding(get: { hasBreakpoint }, set: { _ in toggleBreakpoint() }))
+      Toggle(
+        "Pause Here", systemImage: "pause",
+        isOn: Binding(get: { hasBreakpoint }, set: { _ in toggleBreakpoint() }))
       Divider()
       if actions.canEdit {
         Button(action: addCondition) {
-          Label { addConditionTitle } icon: { Image(systemName: "arrow.triangle.branch") }
+          Label {
+            addConditionTitle
+          } icon: {
+            Image(systemName: "arrow.triangle.branch")
+          }
         }
         Button("Disconnect", systemImage: "scissors", action: { disconnect?() })
           .disabled(disconnect == nil)
@@ -952,16 +1026,23 @@ private struct BlockNode: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("Step \(step) of \(steps), \(title)"))
     .accessibilityIdentifier(AccessibilityID.Canvas.block)
-    .accessibilityValue(Text(
-      ([runValue, summary, environmentHelp?.replacingOccurrences(of: "\n", with: ". "), hasBreakpoint ? String(localized: "The run pauses here") : nil].compactMap { $0 }
-        + issues.map(IssueText.line)).joined(separator: ". ")))
+    .accessibilityValue(
+      Text(
+        ([
+          runValue, summary, environmentHelp?.replacingOccurrences(of: "\n", with: ". "),
+          hasBreakpoint ? String(localized: "The run pauses here") : nil,
+        ].compactMap { $0 }
+          + issues.map(IssueText.line)).joined(separator: ". "))
+    )
     .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     .accessibilityAction(.default, select)
     .accessibilityActions {
       if actions.canEdit { Button("Link to Another Block", action: startLink) }
     }
     .accessibilityAction(named: Text("Run from Here")) { runFromHere?() }
-    .accessibilityAction(named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint)
+    .accessibilityAction(
+      named: hasBreakpoint ? Text("Don’t Pause Here") : Text("Pause Here"), toggleBreakpoint
+    )
     .accessibilityActions {
       if actions.canEdit {
         Button(action: addCondition) { addConditionTitle }
@@ -990,10 +1071,10 @@ private struct BlockNode: View {
       }
     if let look {
       Image(systemName: look.symbol)
-        .font(.system(size: 16))
+        .font(.system(size: 16 * scale))
         .symbolRenderingMode(.palette)
         .foregroundStyle(.white, look.color)
-        .offset(x: 6, y: -6)
+        .offset(x: 6 * scale, y: -6 * scale)
         .accessibilityHidden(true)
     }
   }
@@ -1007,16 +1088,17 @@ struct FrameView: View {
   let isEditing: Bool
   let title: Binding<String>
   let endEditing: () -> Void
+  var scale = 1.0
   @FocusState private var focused: Bool
   @Environment(\.colorSchemeContrast) private var contrast
 
   var body: some View {
     titleBar
-      .frame(width: section.rect.width, height: section.rect.height, alignment: .topLeading)
+      .frame(width: section.rect.width * scale, height: section.rect.height * scale, alignment: .topLeading)
       .background {
-        RoundedRectangle(cornerRadius: 16)
+        RoundedRectangle(cornerRadius: 16 * scale)
           .fill(Color.primary.opacity(0.03))
-          .strokeBorder(isPicked ? Color.accentColor : Color.primary.opacity(contrast == .increased ? 0.6 : 0.15), lineWidth: isPicked ? 2 : 1)
+          .strokeBorder(isPicked ? Color.accentColor : Color.primary.opacity(contrast == .increased ? 0.6 : 0.15), lineWidth: (isPicked ? 2 : 1) * scale)
           .allowsHitTesting(false)
       }
   }
@@ -1038,10 +1120,10 @@ struct FrameView: View {
         Text(verbatim: section.title).lineLimit(1)
       }
     }
-    .font(.headline)
-    .padding(.horizontal, 14)
+    .font(.system(size: NSFont.preferredFont(forTextStyle: .headline).pointSize * scale, weight: .semibold))
+    .padding(.horizontal, 14 * scale)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .frame(height: 36)
+    .frame(height: 36 * scale)
     .contentShape(.rect)
   }
 }
@@ -1056,6 +1138,7 @@ struct NoteView: View {
   let isEditing: Bool
   let text: Binding<String>
   let endEditing: () -> Void
+  var scale = 1.0
   @FocusState private var focused: Bool
 
   private static let paper = Color(nsColor: NSColor(name: nil) { appearance in
@@ -1072,7 +1155,7 @@ struct NoteView: View {
   private var written: Date? { NoteTime.date(note.time) }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 8 * scale) {
       Group {
         if isEditing {
           TextEditor(text: text)
@@ -1083,33 +1166,33 @@ struct NoteView: View {
         } else if note.text.isEmpty {
           Text("Double-click to write a note").opacity(0.6)
         } else {
-          MarkdownText(text: note.text, names: names)
+          MarkdownText(text: note.text, names: names, scale: scale)
         }
       }
-      .font(.callout)
+      .font(.system(size: NSFont.preferredFont(forTextStyle: .callout).pointSize * scale))
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
       .clipped()
       footer
     }
-    .padding(12)
+    .padding(12 * scale)
     .foregroundStyle(Self.ink)
-    .background(Self.paper, in: .rect(cornerRadius: 14))
+    .background(Self.paper, in: .rect(cornerRadius: 14 * scale))
     .overlay {
-      RoundedRectangle(cornerRadius: 14)
-        .strokeBorder(isPicked ? Color.accentColor : .clear, lineWidth: 2)
+      RoundedRectangle(cornerRadius: 14 * scale)
+        .strokeBorder(isPicked ? Color.accentColor : .clear, lineWidth: 2 * scale)
     }
-    .shadow(color: .black.opacity(0.1), radius: 7, y: 4)
+    .shadow(color: .black.opacity(0.1), radius: 7 * scale, y: 4 * scale)
     .opacity(note.resolved == nil || isPicked ? 1 : 0.6)
-    .contentShape(.rect(cornerRadius: 14))
+    .contentShape(.rect(cornerRadius: 14 * scale))
   }
 
   @ViewBuilder private var footer: some View {
     if !note.author.isEmpty || written != nil || hasBadges {
-      HStack(spacing: 6) {
+      HStack(spacing: 6 * scale) {
         if !note.author.isEmpty {
           Text(verbatim: Initials.letters(of: note.author))
-            .font(.system(size: 9, weight: .bold))
-            .frame(width: 18, height: 18)
+            .font(.system(size: 9 * scale, weight: .bold))
+            .frame(width: 18 * scale, height: 18 * scale)
             .background(Self.ink.opacity(0.15), in: .circle)
           Text(verbatim: note.author)
         }
@@ -1127,7 +1210,7 @@ struct NoteView: View {
           Image(systemName: "checkmark.circle.fill")
         }
       }
-      .font(.caption)
+      .font(.system(size: NSFont.preferredFont(forTextStyle: .caption1).pointSize * scale))
       .lineLimit(1)
       .opacity(0.75)
     }
@@ -1161,15 +1244,16 @@ private struct PortHandle: View {
   let accessibilityLabel: Text
   /// A link is being made from this dot from the keyboard.
   let isLinking: Bool
+  var scale = 1.0
   /// Starts a link from this dot, to finish with the keyboard or a click on a block.
   let startLink: () -> Void
 
   var body: some View {
     Circle()
       .fill(isLinking ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background))
-      .overlay { Circle().strokeBorder(Color.accentColor, lineWidth: 1.5) }
-      .frame(width: 10, height: 10)
-      .frame(width: Self.size, height: Self.size)
+      .overlay { Circle().strokeBorder(Color.accentColor, lineWidth: 1.5 * scale) }
+      .frame(width: 10 * scale, height: 10 * scale)
+      .frame(width: Self.size * scale, height: Self.size * scale)
       .contentShape(.circle)
       .pointerStyle(.grabIdle)
       .onTapGesture(perform: startLink)
@@ -1185,13 +1269,14 @@ private struct PortHandle: View {
 /// The corner of a selected frame or note that resizes it.
 private struct ResizeHandle: View {
   static let size = 16.0
+  var scale = 1.0
 
   var body: some View {
     Image(systemName: "arrow.up.left.and.arrow.down.right")
-      .font(.system(size: 8, weight: .bold))
+      .font(.system(size: 8 * scale, weight: .bold))
       .foregroundStyle(.white)
-      .frame(width: Self.size, height: Self.size)
-      .background(Color.accentColor, in: .rect(cornerRadius: 4))
+      .frame(width: Self.size * scale, height: Self.size * scale)
+      .background(Color.accentColor, in: .rect(cornerRadius: 4 * scale))
       .contentShape(.rect)
       .pointerStyle(.frameResize(position: .bottomTrailing))
       .help(Text("Drag to resize"))
@@ -1204,24 +1289,25 @@ private struct SlotButton: View {
   static let size = 22.0
   let isPinned: Bool
   let label: Text
+  var scale = 1.0
   let add: () -> Void
   @State private var isHovered = false
 
   var body: some View {
     Button(action: add) {
       Image(systemName: "plus")
-        .font(.system(size: 11, weight: .bold))
-        .frame(width: Self.size, height: Self.size)
+        .font(.system(size: 11 * scale, weight: .bold))
+        .frame(width: Self.size * scale, height: Self.size * scale)
         .background(.background, in: .circle)
-        .overlay { Circle().strokeBorder(Color.accentColor, lineWidth: 1.5) }
+        .overlay { Circle().strokeBorder(Color.accentColor, lineWidth: 1.5 * scale) }
         .foregroundStyle(Color.accentColor)
     }
     .buttonStyle(.plain)
     .opacity(isPinned || isHovered ? 1 : 0)
-    .padding(10)
+    .padding(10 * scale)
     .contentShape(.rect)
     .onHover { isHovered = $0 }
-    .padding(-10)
+    .padding(-10 * scale)
     .help(label)
     .accessibilityLabel(label)
   }

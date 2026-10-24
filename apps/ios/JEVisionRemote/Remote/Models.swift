@@ -77,6 +77,27 @@ struct TestFlow: Hashable, Sendable {
   /// The sticky notes on the canvas; empty without any and from Macs that don't send them.
   var notes: [TestNote] = []
 
+  /// The read-only drawing shifted into its scroll view, without changing wire coordinates.
+  var normalizedCanvas: Self {
+    let rects = blocks.compactMap(\.area) + frames.map(\.area) + notes.map(\.area)
+    var bounds = rects.reduce(CGRect.null) { $0.union($1) }
+    for point in edges.flatMap(\.points) {
+      bounds = bounds.union(CGRect(x: point.x, y: point.y, width: 1, height: 1))
+    }
+    guard !bounds.isNull else { return self }
+    let left = min(0, bounds.minX), top = min(0, bounds.minY)
+    guard left < 0 || top < 0 else { return self }
+    var copy = self
+    copy.size = CGSize(width: max(size.width, bounds.maxX) - left, height: max(size.height, bounds.maxY) - top)
+    for i in copy.blocks.indices { copy.blocks[i].area = copy.blocks[i].area?.offsetBy(dx: -left, dy: -top) }
+    for i in copy.frames.indices { copy.frames[i].area = copy.frames[i].area.offsetBy(dx: -left, dy: -top) }
+    for i in copy.notes.indices { copy.notes[i].area = copy.notes[i].area.offsetBy(dx: -left, dy: -top) }
+    for i in copy.edges.indices {
+      copy.edges[i].points = copy.edges[i].points.map { CGPoint(x: $0.x - left, y: $0.y - top) }
+    }
+    return copy
+  }
+
   struct Block: Hashable, Identifiable, Sendable {
     var id: String
     /// The block's `type`, such as `click`.

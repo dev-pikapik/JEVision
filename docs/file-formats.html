@@ -137,7 +137,7 @@
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead>
   <tbody>
-    <tr><td><code>positions</code></td><td>Where each block sits: block id → <code>{ "x": …, "y": … }</code>, the top-left corner of the block in canvas points from the top-left corner of the canvas. Without <code>positions</code>, the editor lays out every block itself.</td></tr>
+    <tr><td><code>positions</code></td><td>Where each block sits: block id → <code>{ "x": …, "y": … }</code>, the top-left corner of the block in canvas points relative to the drawing’s origin. Negative coordinates place a block left of or above that origin. Without <code>positions</code>, the editor lays out every block itself.</td></tr>
     <tr><td><code>sections</code></td><td>Titled frames that group blocks: section id → <code>{ "title": "…", "frame": { "x": …, "y": …, "width": …, "height": … } }</code>.</td></tr>
     <tr><td><code>notes</code></td><td>Sticky notes: note id → <code>{ "text": "…", "author": "…", "time": "…", "frame": { … } }</code>, with more fields for what a note is about, its files and links, and the talk under it; see <a href="#notes">Notes</a>. <code>author</code> and <code>time</code> (an RFC 3339 date and time, such as <code>2026-10-18T09:30:00Z</code>) are optional.</td></tr>
   </tbody>

@@ -6,7 +6,8 @@ import SwiftUI
 /// the sidebar uses for a finished run.
 struct RunMiniMap: Equatable {
   enum Status: Equatable {
-    case pending, passed, failed, current(paused: Bool)
+    case pending, passed, failed
+    case current(paused: Bool)
 
     var symbol: String {
       switch self {
@@ -52,25 +53,43 @@ struct RunMiniMap: Equatable {
 
   /// Lays `layout` out in a box of `size`, marked as `state` says.
   init(layout: FlowLayout, state: RunState, in size: CGSize) {
-    guard layout.width > 0, layout.height > 0 else {
+    guard !layout.blocks.isEmpty else {
       nodes = []
       links = []
       return
     }
-    let scale = max(min(Double(size.width) / layout.width, Double(size.height) / layout.height), Self.smallest)
+    let drawn = FlowViewport.bounds(layout: layout, canvas: nil, padding: 0)
+    let left = min(0, drawn.minX)
+    let top = min(0, drawn.minY)
+    let width = max(layout.width, drawn.maxX) - left
+    let height = max(layout.height, drawn.maxY) - top
+    let scale = max(min(Double(size.width) / width, Double(size.height) / height), Self.smallest)
     let focus = layout.blocks.first { $0.id == state.current }.map {
-      CGPoint(x: ($0.rect.x + $0.rect.width / 2) * scale, y: ($0.rect.y + $0.rect.height / 2) * scale)
+      CGPoint(
+        x: ($0.rect.x - left + $0.rect.width / 2) * scale,
+        y: ($0.rect.y - top + $0.rect.height / 2) * scale)
     }
     let origin = CGPoint(
-      x: Self.offset(content: layout.width * scale, box: Double(size.width), focus: Double(focus?.x ?? 0)),
-      y: Self.offset(content: layout.height * scale, box: Double(size.height), focus: Double(focus?.y ?? 0)))
-    let place = { (x: Double, y: Double) in CGPoint(x: origin.x + x * scale, y: origin.y + y * scale) }
-    let status = layout.blocks.reduce(into: [String: Status]()) { $0[$1.id] = Self.status(of: $1.id, in: state) }
+      x: Self.offset(content: width * scale, box: Double(size.width), focus: Double(focus?.x ?? 0))
+        - left * scale,
+      y: Self.offset(
+        content: height * scale, box: Double(size.height), focus: Double(focus?.y ?? 0)) - top
+        * scale)
+    let place = { (x: Double, y: Double) in
+      CGPoint(x: origin.x + x * scale, y: origin.y + y * scale)
+    }
+    let status = layout.blocks.reduce(into: [String: Status]()) {
+      $0[$1.id] = Self.status(of: $1.id, in: state)
+    }
     nodes = layout.blocks.map {
-      Node(id: $0.id, at: place($0.rect.x + $0.rect.width / 2, $0.rect.y + $0.rect.height / 2), status: status[$0.id] ?? .pending)
+      Node(
+        id: $0.id, at: place($0.rect.x + $0.rect.width / 2, $0.rect.y + $0.rect.height / 2),
+        status: status[$0.id] ?? .pending)
     }
     links = layout.edges.map { edge in
-      Link(points: edge.points.map { place($0.x, $0.y) }, reached: status[edge.to].map { $0 != .pending } ?? false)
+      Link(
+        points: edge.points.map { place($0.x, $0.y) },
+        reached: status[edge.to].map { $0 != .pending } ?? false)
     }
   }
 

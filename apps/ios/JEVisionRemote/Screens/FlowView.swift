@@ -11,7 +11,8 @@ struct FlowView: View {
   @State private var openNote: TestNote?
 
   var body: some View {
-    let scale = width > 0 ? min(1, max(0.45, width / max(flow.size.width, 1))) : 1
+    let drawing = flow.normalizedCanvas
+    let scale = width > 0 ? min(1, max(0.45, width / max(drawing.size.width, 1))) : 1
     VStack(alignment: .leading, spacing: 8) {
       if flow.hasResolvedNotes {
         Toggle("Hide Resolved Notes", isOn: $hidesResolved)
@@ -20,13 +21,13 @@ struct FlowView: View {
           .accessibilityIdentifier("hideResolved")
       }
       ScrollView([.horizontal, .vertical]) {
-        canvas
+        canvas(drawing)
           .scaleEffect(scale, anchor: .topLeading)
-          .frame(width: flow.size.width * scale, height: flow.size.height * scale, alignment: .topLeading)
+          .frame(width: drawing.size.width * scale, height: drawing.size.height * scale, alignment: .topLeading)
           .frame(minWidth: width)
       }
       .scrollBounceBehavior(.basedOnSize)
-      .frame(height: min(flow.size.height * scale, maxHeight))
+      .frame(height: min(drawing.size.height * scale, maxHeight))
       .frame(maxWidth: .infinity)
       .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
@@ -35,8 +36,10 @@ struct FlowView: View {
     }
   }
 
-  private var canvas: some View {
-    ZStack(alignment: .topLeading) {
+  private func canvas(_ flow: TestFlow) -> some View {
+    let notes = flow.notes(hidingResolved: hidesResolved)
+    let steps = flow.blocks.filter { $0.area != nil }
+    return ZStack(alignment: .topLeading) {
       ForEach(flow.frames, id: \.self) { frame in
         RoundedRectangle(cornerRadius: 16)
           .fill(BlockInfo.color(kind(of: frame.block)).opacity(0.05))
@@ -68,10 +71,6 @@ struct FlowView: View {
     }
     .frame(width: flow.size.width, height: flow.size.height, alignment: .topLeading)
   }
-
-  private var notes: [TestNote] { flow.notes(hidingResolved: hidesResolved) }
-
-  private var steps: [TestFlow.Block] { flow.blocks.filter { $0.area != nil } }
 
   private func kind(of block: String) -> String {
     flow.blocks.first { $0.id == block }?.kind ?? ""

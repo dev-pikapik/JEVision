@@ -37,17 +37,27 @@ struct BlockSummaryTests {
   }
 
   @Test func namesEveryWayOutOfAnIf() {
-    let plain = BlockKind.if(condition: .screen(Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: [])), then: nil, elseIf: [], otherwise: nil)
+    let plain = BlockKind.if(
+      condition: .screen(
+        Reference(image: "a.png", compare: .exact, area: nil, ignore: [], hide: [])), then: nil,
+      elseIf: [], otherwise: nil)
     #expect(summary(plain) == "If “a” is on screen")
     #expect(plain.branchName("then") == "Yes")
     #expect(plain.branchName("else") == "No")
     #expect(plain.branchName("elseIf1") == nil)
     let three = addIfCondition(kind: addIfCondition(kind: plain))
     #expect(summary(three) == "If “a” is on screen · or 2 more")
-    #expect(["then", "elseIf1", "elseIf2", "else"].map { three.branchName($0) } == ["Condition 1", "Condition 2", "Condition 3", "Otherwise"])
+    #expect(
+      ["then", "elseIf1", "elseIf2", "else"].map { three.branchName($0) } == [
+        "Condition 1", "Condition 2", "Condition 3", "Otherwise",
+      ])
     #expect(three.branchName("elseIf3") == nil)
     #expect(three.branchName("next") == nil)
-    #expect(BlockKind.check(of: .screen(Reference(image: "", compare: .exact, area: nil, ignore: [], hide: [])), next: nil).branchName("then") == nil)
+    #expect(
+      BlockKind.check(
+        of: .screen(Reference(image: "", compare: .exact, area: nil, ignore: [], hide: [])),
+        next: nil
+      ).branchName("then") == nil)
   }
 
   @Test func describesBlocksThatDontLookAtTheScreen() {
@@ -746,6 +756,27 @@ struct FlowDocumentTests {
     #expect(document.layout.blocks == before)
   }
 
+  @Test func movingPastTheOriginPersistsAndUndoes() throws {
+    let url = try file(Self.chain)
+    let document = FlowDocument(url: url)
+    let before = document.layout.blocks
+    let undo = UndoManager()
+    undo.groupsByEvent = false
+    document.undoManager = undo
+    undo.beginUndoGrouping()
+    document.move([.block(id: "a")], dx: -800, dy: -500, snap: false)
+    undo.endUndoGrouping()
+    let moved = try #require(document.flow?.canvas.positions["a"])
+    #expect(moved.x < 0 && moved.y < 0)
+    let reopened = FlowDocument(url: url)
+    #expect(reopened.flow?.canvas.positions["a"] == moved)
+    #expect(reopened.layout.edges.allSatisfy { !$0.points.isEmpty })
+    undo.undo()
+    #expect(document.layout.blocks == before)
+    undo.redo()
+    #expect(document.flow?.canvas.positions["a"] == moved)
+  }
+
   @Test func linksAndUnlinksBlocksButMakesNoLoops() throws {
     let document = FlowDocument(url: try file(Self.chain))
     let undo = UndoManager()
@@ -950,27 +981,31 @@ struct CanvasKeyboardTests {
     #expect(Zoom.fit(CGSize(width: 100_000, height: 100), in: CGSize(width: 800, height: 600)) == Zoom.range.lowerBound)
     #expect(Zoom.fit(.zero, in: CGSize(width: 800, height: 600)) == 1)
 
-    let viewport = CGSize(width: 400, height: 300)
-    let zoomed = Zoom.offset(
-      CGPoint(x: 100, y: 50), keeping: CGPoint(x: 200, y: 150), from: 1, to: 2,
-      content: CGSize(width: 2000, height: 2000), viewport: viewport)
-    #expect(zoomed == CGPoint(x: 400, y: 250), "Canvas point (300, 200) stays at (200, 150)")
-    let edge = Zoom.offset(
-      CGPoint(x: 10, y: 0), keeping: CGPoint(x: 0, y: 0), from: 2, to: 1,
-      content: CGSize(width: 400, height: 300), viewport: viewport)
-    #expect(edge == .zero, "Never scrolls past the canvas")
+    var camera = FlowViewport(offset: CGPoint(x: 100, y: 50), scale: 1)
+    let anchor = CGPoint(x: 200, y: 150)
+    let point = camera.world(anchor)
+    camera.zoom(to: 2, around: anchor)
+    #expect(camera.world(anchor) == point)
+    camera.offset = CGPoint(x: 900, y: 700)
+    let negative = camera.world(.zero)
+    #expect(negative.x < 0 && negative.y < 0)
+    camera.zoom(to: 0.5, around: .zero)
+    #expect(camera.world(.zero) == negative, "Zoom does not clamp at the world origin")
   }
 
   @Test func diffsNotesAndFramesOfTheCanvas() throws {
     var before = try loadFlow(json: Self.branches)
     before.canvas.notes = [
       Note(
-        id: "n1", text: "Old", author: "Ann", time: "", anchor: .test, attachments: [], replies: [], resolved: nil,
+        id: "n1", text: "Old", author: "Ann", time: "", anchor: .test, attachments: [], replies: [],
+        resolved: nil,
         rect: Rect(x: 0, y: 0, width: 200, height: 100))
     ]
     var after = before
     after.canvas.notes[0].text = "New"
-    after.canvas.sections = [CanvasSection(id: "s1", title: "Sign in", rect: Rect(x: 0, y: 0, width: 300, height: 200))]
+    after.canvas.sections = [
+      CanvasSection(id: "s1", title: "Sign in", rect: Rect(x: 0, y: 0, width: 300, height: 200))
+    ]
     let diff = diffFlows(before: before, after: after)
     #expect(diff.notes == [BlockChange(id: "n1", kind: .changed, fields: ["text"])])
     #expect(diff.sections == [BlockChange(id: "s1", kind: .added, fields: [])])
@@ -980,9 +1015,13 @@ struct CanvasKeyboardTests {
     #expect(
       diffFlows(before: before, after: after).notes
         == [BlockChange(id: "n1", kind: .changed, fields: ["text", "replies", "resolved"])])
-    #expect(FlowDiffView.marks(diff.sections, on: .before).isEmpty, "An added frame isn’t on the old version")
+    #expect(
+      FlowDiffView.marks(diff.sections, on: .before).isEmpty,
+      "An added frame isn’t on the old version")
     #expect(FlowDiffView.marks(diff.notes, on: .before) == ["n1": DiffMark(.changed)])
-    for field in ["text", "title", "author", "position", "size", "anchor", "attachments", "replies", "resolved"] {
+    for field in [
+      "text", "title", "author", "position", "size", "anchor", "attachments", "replies", "resolved",
+    ] {
       #expect(FlowDiffView.fieldName(field) != field)
     }
   }

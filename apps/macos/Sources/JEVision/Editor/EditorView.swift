@@ -10,17 +10,13 @@ struct EditorView: View {
   @Environment(\.undoManager) private var undoManager
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   let document: FlowDocument
-  @State private var zoom = 1.0
-  @State private var pinchStart: Double?
+  @State private var camera = FlowViewport()
+  @State private var needsInitialPosition = true
+  @AppStorage("flowShowsMinimap") private var showsMinimap = true
   @State private var showsInspector = true
   @State private var showsDetails = false
   /// Where the palette adds a block; `nil` while it is closed.
   @State private var palette: PaletteTarget?
-  /// How far the canvas is scrolled, in zoomed points.
-  @State private var scroll = CGPoint.zero
-  @State private var scrollPosition = ScrollPosition()
-  /// Where to scroll once the canvas has its size at a new zoom.
-  @State private var pendingScroll: CGPoint?
   @State private var viewport = CGSize.zero
   /// The pointer over the canvas, in the visible part of it; zooming keeps the spot under it in place.
   @State private var pointer: CGPoint?
@@ -298,43 +294,24 @@ struct EditorView: View {
   }
 
   private var canvasZoom: CanvasZoom {
-    CanvasZoom(value: zoom, set: { setZoom($0) }, fit: fitZoom)
+    CanvasZoom(value: camera.scale, set: { setZoom($0, anchor: CGPoint(x: viewport.width / 2, y: viewport.height / 2)) }, fit: fitZoom)
   }
 
-  /// The size of the canvas in the scroll view at zoom `zoom`.
-  private func contentSize(at zoom: Double) -> CGSize {
-    CGSize(
-      width: max(document.layout.width * zoom, viewport.width),
-      height: max(document.layout.height * zoom, viewport.height))
-  }
-
-  /// Zooms to `value`, keeping the canvas under `anchor`, a point of the visible part, in place;
-  /// without one, under the pointer or in the middle.
+  /// Zooms around the pointer, preserving the world point under it even past the origin.
   private func setZoom(_ value: Double, anchor: CGPoint? = nil) {
-    let new = Zoom.clamp(value)
-    guard new != zoom else { return }
     let at = anchor ?? pointer ?? CGPoint(x: viewport.width / 2, y: viewport.height / 2)
-    let target = Zoom.offset(
-      scroll, keeping: at, from: zoom, to: new, content: contentSize(at: new), viewport: viewport)
-    let resized = contentSize(at: new) != contentSize(at: zoom)
-    zoom = new
-    scrollCanvas(to: target, resized: resized)
+    camera.zoom(to: value, around: at)
   }
 
-  /// Zooms so the whole test is in view, centered.
+  private var contentBounds: CGRect {
+    FlowViewport.bounds(layout: document.layout, canvas: document.flow?.canvas)
+  }
+
+  /// Frames the content itself, including items to the left or above the world origin.
   private func fitZoom() {
-    let new = Zoom.fit(CGSize(width: document.layout.width, height: document.layout.height), in: viewport)
-    let content = contentSize(at: new)
-    let resized = content != contentSize(at: zoom)
-    zoom = new
-    scrollCanvas(
-      to: CGPoint(x: (content.width - viewport.width) / 2, y: (content.height - viewport.height) / 2), resized: resized)
-  }
-
-  /// Scrolls to `point`; again once the canvas has its new size, when the zoom just resized it.
-  private func scrollCanvas(to point: CGPoint, resized: Bool) {
-    pendingScroll = resized ? point : nil
-    scrollPosition.scrollTo(point: point)
+    let bounds = contentBounds
+    camera.scale = Zoom.fit(bounds.size, in: viewport)
+    camera.center(on: CGPoint(x: bounds.midX, y: bounds.midY), in: viewport)
   }
 
   /// The environment, data row and retries the next runs use.
@@ -390,37 +367,31 @@ struct EditorView: View {
   }
 
   private func canvas(outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
-    GeometryReader { viewport in
-      ScrollView([.horizontal, .vertical]) {
-        let visible = CGSize(width: viewport.size.width / zoom, height: viewport.size.height / zoom)
-        FlowCanvas(document: document, appName: apps.name(of:), minSize: visible, outcomes: outcomes, taken: taken) { items, block in
-          document.pick(items, prefer: block)
-          showsInspector = true
-          canvasFocused = true
-        } onAdd: { slot in
-          palette = PaletteTarget(slot: slot)
-        } onPalette: { slot, point, at in
-          guard !document.isReadOnly else { return }
-          palette = PaletteTarget(
-            slot: slot ?? document.slotAfterSelection, point: point,
-            anchor: CGPoint(x: at.x * zoom - scroll.x, y: at.y * zoom - scroll.y))
-        }
-        .scaleEffect(zoom, anchor: .topLeading)
-        .frame(
-          width: max(document.layout.width, visible.width) * zoom,
-          height: max(document.layout.height, visible.height) * zoom, alignment: .topLeading)
-        .contentShape(.rect)
-        .onTapGesture {
-          document.pick([])
-          canvasFocused = true
-        }
+    GeometryReader { box in
+      FlowCanvas(
+        document: document, appName: apps.name(of:), camera: camera, size: box.size,
+        outcomes: outcomes, taken: taken
+      ) { items, block in
+        document.pick(items, prefer: block)
+        showsInspector = true
+        canvasFocused = true
+      } onAdd: { slot in
+        palette = PaletteTarget(slot: slot)
+      } onPalette: { slot, point, at in
+        guard !document.isReadOnly else { return }
+        palette = PaletteTarget(slot: slot ?? document.slotAfterSelection, point: point, anchor: at)
       }
-      .scrollPosition($scrollPosition)
-      .onScrollGeometryChange(for: CGPoint.self) { $0.contentOffset } action: { scroll = $1 }
-      .onScrollGeometryChange(for: CGSize.self) { $0.contentSize } action: { _, _ in
-        // A new zoom resizes the canvas after it asked to scroll; scroll again to where it asked.
-        if let pendingScroll { scrollPosition.scrollTo(point: pendingScroll) }
-        pendingScroll = nil
+      .overlay {
+        BoardInput(
+          pan: { by in
+            camera.offset = CGPoint(x: camera.offset.x + by.width, y: camera.offset.y + by.height)
+          },
+          zoom: { factor, at in setZoom(camera.scale * factor, anchor: at) },
+          smartZoom: { at in if camera.scale < 0.95 { setZoom(1, anchor: at) } else { fitZoom() } },
+          menu: { _ in nil }, capturesSecondaryClicks: false)
+      }
+      .overlay(alignment: .bottomTrailing) {
+        if !document.layout.blocks.isEmpty { minimap.padding(12) }
       }
       .overlay(alignment: .topTrailing) {
         if project.rootURL != nil, let flow = document.flow {
@@ -444,42 +415,85 @@ struct EditorView: View {
         }
       }
     }
-    .onGeometryChange(for: CGSize.self) { $0.size } action: { viewport = $0 }
+    .onGeometryChange(for: CGSize.self) {
+      $0.size
+    } action: { size in
+      viewport = size
+      if needsInitialPosition, size.width > 0, size.height > 0 {
+        needsInitialPosition = false
+        let bounds = contentBounds
+        camera.offset = CGPoint(
+          x: max(48, (size.width - bounds.width) / 2) - bounds.minX, y: 48 - bounds.minY)
+      }
+    }
     .onContinuousHover { phase in
       if case .active(let at) = phase { pointer = at } else { pointer = nil }
     }
-    .gesture(
-      MagnifyGesture()
-        .onChanged { value in
-          let start = pinchStart ?? zoom
-          pinchStart = start
-          setZoom(
-            start * value.magnification,
-            anchor: CGPoint(x: value.startAnchor.x * viewport.width, y: value.startAnchor.y * viewport.height))
-        }
-        .onEnded { _ in pinchStart = nil }
-    )
     .focusable()
     .focusEffectDisabled()
     .focused($canvasFocused)
     .onAppear { canvasFocused = true }
-    .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .space, .return, .escape, .delete, .deleteForward]) {
+    .onKeyPress(keys: [
+      .upArrow, .downArrow, .leftArrow, .rightArrow, .space, .return, .escape, .delete,
+      .deleteForward,
+    ]) {
       press in handle(press.key)
     }
     .onCopyCommand(perform: document.picked.isEmpty ? nil : { clipboardItems() })
-    .onCutCommand(perform: document.picked.isEmpty || document.isReadOnly ? nil : {
-      let items = clipboardItems()
-      document.remove(document.pickedInOrder)
-      return items
-    })
+    .onCutCommand(
+      perform: document.picked.isEmpty || document.isReadOnly
+        ? nil
+        : {
+          let items = clipboardItems()
+          document.remove(document.pickedInOrder)
+          return items
+        }
+    )
     .onPasteCommand(of: [.utf8PlainText], validator: { document.isReadOnly ? nil : $0 }) { _ in
       CanvasClipboard.paste(into: document)
     }
     .focusedValue(\.canvasDocument, document)
     .onChange(of: document.linking) { old, new in announce(old: old, new: new) }
-    .onChange(of: document.pickedLinks) { if !document.pickedLinks.isEmpty { canvasFocused = true } }
+    .onChange(of: document.pickedLinks) {
+      if !document.pickedLinks.isEmpty { canvasFocused = true }
+    }
     .accessibilityElement(children: .contain)
     .accessibilityLabel(document.isReadOnly ? Text("Canvas, read-only") : Text("Canvas"))
+    .accessibilityScrollAction { edge in
+      switch edge {
+      case .top: camera.offset.y += viewport.height * 0.8
+      case .bottom: camera.offset.y -= viewport.height * 0.8
+      case .leading: camera.offset.x += viewport.width * 0.8
+      case .trailing: camera.offset.x -= viewport.width * 0.8
+      }
+    }
+  }
+
+  @ViewBuilder private var minimap: some View {
+    if showsMinimap {
+      FlowMinimap(
+        layout: document.layout, canvas: document.flow?.canvas,
+        visible: camera.visible(in: viewport), picked: document.picked
+      ) {
+        camera.center(on: $0, in: viewport)
+      }
+      .padding(6)
+      .adaptiveGlass(in: .rect(cornerRadius: 16))
+      .overlay(alignment: .topTrailing) {
+        Button("Hide Minimap", systemImage: "xmark") { showsMinimap = false }
+          .labelStyle(.iconOnly)
+          .buttonStyle(.borderless)
+          .controlSize(.small)
+          .padding(8)
+          .help(Text("Hide the minimap"))
+      }
+    } else {
+      Button("Show Minimap", systemImage: "map") { showsMinimap = true }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .padding(8)
+        .adaptiveGlass(in: .circle)
+    }
   }
 
   /// Tells VoiceOver which block a link being made from the keyboard leads to.
@@ -508,22 +522,24 @@ struct EditorView: View {
     runs.marks(for: document)?.marks.first { $0.value == .failed }?.key
   }
 
-  /// Selects block `id`, scrolls it to the middle of the view and shows it in the inspector.
+  /// Selects block `id`, centers the camera on it and shows it in the inspector.
   private func showBlock(_ id: String) {
     document.pick([.block(id: id)], prefer: id)
     showsInspector = true
     canvasFocused = true
-    guard let rect = document.layout.blocks.first(where: { $0.id == id })?.rect.cgRect else { return }
-    scrollCanvas(
-      to: CGPoint(
-        x: max(0, rect.midX * zoom - viewport.width / 2), y: max(0, rect.midY * zoom - viewport.height / 2)),
-      resized: false)
+    guard let rect = document.layout.blocks.first(where: { $0.id == id })?.rect.cgRect else {
+      return
+    }
+    camera.center(on: CGPoint(x: rect.midX, y: rect.midY), in: viewport)
   }
 
   /// The palette next to where the canvas was right-clicked, inside the editor; otherwise at the top.
   private func paletteOffset(_ target: PaletteTarget, in box: CGSize) -> CGSize {
-    let size = PaletteView.size, margin = 12.0
-    guard let anchor = target.anchor else { return CGSize(width: (box.width - size.width) / 2, height: 24) }
+    let size = PaletteView.size
+    let margin = 12.0
+    guard let anchor = target.anchor else {
+      return CGSize(width: (box.width - size.width) / 2, height: 24)
+    }
     return CGSize(
       width: min(max(anchor.x, margin), max(margin, box.width - size.width - margin)),
       height: min(max(anchor.y, margin), max(margin, box.height - size.height - margin)))
@@ -532,10 +548,13 @@ struct EditorView: View {
   /// A free place for a note or frame added without a point: right of the selected block, or near
   /// the top-left corner of what is in view.
   private var freeSpot: Point {
-    if let id = document.selection, let rect = document.layout.blocks.first(where: { $0.id == id })?.rect {
+    if let id = document.selection,
+      let rect = document.layout.blocks.first(where: { $0.id == id })?.rect
+    {
       return Point(x: rect.x + rect.width + 2 * FlowCanvas.grid, y: rect.y)
     }
-    return Point(x: scroll.x / zoom + 2 * FlowCanvas.grid, y: scroll.y / zoom + 2 * FlowCanvas.grid)
+    let at = camera.world(CGPoint(x: 2 * FlowCanvas.grid, y: 2 * FlowCanvas.grid))
+    return Point(x: at.x, y: at.y)
   }
 
   /// Adds a note signed with the git user's name.
@@ -695,19 +714,6 @@ enum Zoom {
     return clamp(min(1, width, height))
   }
 
-  /// Where to scroll, when the zoom goes from `old` to `new`, so the canvas under `anchor`, a
-  /// point of the visible part, stays under it; inside `content`, the zoomed canvas.
-  static func offset(
-    _ offset: CGPoint, keeping anchor: CGPoint, from old: Double, to new: Double, content: CGSize, viewport: CGSize
-  ) -> CGPoint {
-    let ratio = new / old
-    func axis(_ offset: Double, _ anchor: Double, _ content: Double, _ visible: Double) -> Double {
-      min(max((offset + anchor) * ratio - anchor, 0), max(content - visible, 0))
-    }
-    return CGPoint(
-      x: axis(offset.x, anchor.x, content.width, viewport.width),
-      y: axis(offset.y, anchor.y, content.height, viewport.height))
-  }
 }
 
 /// The zoom of the canvas in view, for the View menu and the zoom bar.

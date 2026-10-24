@@ -701,6 +701,58 @@
         }
       }
     },
+  "%lld blocks" : {
+    "localizations" : {
+      "en" : {
+        "variations" : {
+          "plural" : {
+            "one" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld block"
+              }
+            },
+            "other" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld blocks"
+              }
+            }
+          }
+        }
+      },
+      "ru" : {
+        "variations" : {
+          "plural" : {
+            "one" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld блок"
+              }
+            },
+            "few" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld блока"
+              }
+            },
+            "many" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld блоков"
+              }
+            },
+            "other" : {
+              "stringUnit" : {
+                "state" : "translated",
+                "value" : "%lld блока"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
     "%lld blocks are installed" : {
       "localizations" : {
         "en" : {
