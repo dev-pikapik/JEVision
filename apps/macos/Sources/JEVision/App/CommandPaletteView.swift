@@ -232,7 +232,7 @@ struct CommandPaletteView: View {
     case .runAll:
       guard let root else { return }
       runs.runAll(project.chosen(from: project.items).map(\.url), in: root, title: project.runAllTitle)
-    case .record: if let document { records.record(document) }
+    case .record: if let document { records.record(document, in: project.rootURL) }
     case .schedules: project.schedules.isShowingSheet = true
     case .installBlock: project.installBlock()
     case .customBlocks: project.showsCustomBlocks = true

@@ -174,7 +174,7 @@ struct OnboardingView: View {
       finish()
       openWindow(id: SceneID.main)
       // After the main window is up, so the recording puts it out of the app's way.
-      Task { records.record(document) }
+      Task { records.record(document, in: project.rootURL) }
     }
   }
 }

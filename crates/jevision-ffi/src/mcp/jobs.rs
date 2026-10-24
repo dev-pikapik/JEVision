@@ -246,7 +246,7 @@ impl Job {
             &project.join(file).to_string_lossy(),
             options,
             hands,
-            host.secrets(),
+            host.secrets(project.to_string_lossy().into_owned()),
             &events,
             run.control.clone(),
         );

@@ -20,28 +20,10 @@ struct MainView: View {
     @Bindable var records = records
     @Bindable var schedules = project.schedules
     @Bindable var git = project.git
-    Group {
-      switch project.status {
-      case .closed:
-        ProjectsHomeView()
-      case .unavailable:
-        // The folder is there, but its tests can't be read.
-        EmptyStateView(
-          symbol: "lock.trianglebadge.exclamationmark",
-          title: Text("Can’t open “\(project.name)”"),
-          message: Text("JEVision can’t read this folder. Allow it in System Settings › Privacy & Security › Files and Folders, then try again."),
-          action: Text("Try Again"), perform: { if let url = project.rootURL { project.openProject(url) } },
-          secondAction: Text("Close Project"), performSecond: project.close)
-      case .loading:
-        ProgressView()
-          .accessibilityLabel(Text("Looking for tests"))
-      case .ready:
-        ProjectView(recordFirstTest: {
-          recordsNewTest = true
-          project.isCreatingTest = true
-        })
-      }
-    }
+    ProjectView(recordFirstTest: {
+      recordsNewTest = true
+      project.isCreatingTest = true
+    })
     .sheet(isPresented: $project.isCreatingTest, onDismiss: recordCreatedTest) {
       NewTestSheet(records: recordsNewTest) { createdTestToRecord = recordsNewTest }
     }
@@ -78,7 +60,7 @@ struct MainView: View {
       get: { records.unsetSecrets.first.map(SecretName.init) },
       set: { if $0 == nil, !records.unsetSecrets.isEmpty { records.unsetSecrets.removeFirst() } }
     )) { secret in
-      SetSecretSheet(name: secret.id) {}
+      ProjectSecretSheet(name: secret.id, project: records.secretsProject, environment: nil) {}
     }
     .alert(
       "Recording not added", isPresented: Binding(get: { records.failure != nil }, set: { if !$0 { records.failure = nil } })
@@ -108,6 +90,6 @@ struct MainView: View {
   private func recordCreatedTest() {
     defer { (recordsNewTest, createdTestToRecord) = (false, false) }
     guard createdTestToRecord, let document = project.document else { return }
-    records.record(document)
+    records.record(document, in: project.rootURL)
   }
 }

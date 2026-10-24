@@ -136,7 +136,7 @@ struct AppCommands: Commands {
           .disabled(project.status != .ready)
         Divider()
         Button("Record") {
-          if let document = project.document { records.record(document) }
+          if let document = project.document { records.record(document, in: project.rootURL) }
         }
         .keyboardShortcut(Shortcuts.record)
         .disabled(!canRun || project.document?.isReadOnly == true)

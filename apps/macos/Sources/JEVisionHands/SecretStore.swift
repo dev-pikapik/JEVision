@@ -91,9 +91,13 @@ public enum SecretStore {
 
 /// Secrets for a run, from `SecretStore`.
 public final class StoredSecrets: SecretSource {
-  public init() {}
+  private let scope: ProjectSecrets
+
+  public init(project: String) {
+    scope = ProjectSecrets(project: URL(filePath: project, directoryHint: .isDirectory))
+  }
 
   public func secret(name: String, environment: String?) -> String? {
-    SecretStore.value(name, environment: environment)
+    scope.value(name, environment: environment)
   }
 }

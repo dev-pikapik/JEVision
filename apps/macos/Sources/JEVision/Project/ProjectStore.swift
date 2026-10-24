@@ -214,6 +214,26 @@ final class ProjectStore {
     }
   }
 
+  var sidebarSelection: ProjectSidebarSelection? {
+    guard let path = rootURL?.path else { return nil }
+    if sidebar == .runs { return selectedRun.map(ProjectSidebarSelection.run) ?? .project(path) }
+    if showsBoard, let name = boards.current { return .board(name) }
+    return selection.map { .item(project: path, file: $0) } ?? .project(path)
+  }
+
+  func selectSidebar(_ destination: ProjectSidebarSelection?) {
+    switch destination {
+    case .project(let path): openRecent(path)
+    case .item(let path, let file):
+      if rootURL?.path == path { selection = file }
+      else { openRecent(path, test: file) }
+    case .board(let name): showBoard(name)
+    case .run(let id): selectedRun = id
+    case nil:
+      if sidebar == .runs { selectedRun = nil } else { selection = nil }
+    }
+  }
+
   /// Opens what the Finder, the Dock or a drop on the window hands over: a folder opens the
   /// project around it, a jevision.project.json its folder, a test its project at that test.
   /// `false` for anything else.
@@ -226,11 +246,11 @@ final class ProjectStore {
 
   /// Opens the project of the recent list in `path`, where its folder is now. When the folder
   /// can't be found, says so and offers to find it.
-  func openRecent(_ path: String) {
+  func openRecent(_ path: String, test: String? = nil) {
     guard let entry = recent.first(where: { $0.path == path }) else { return }
     if let url = Self.folder(of: entry) {
       if url.path != entry.path { relocate(entry.path, to: url) }
-      openProject(url)
+      openProject(url, test: test)
       return
     }
     summaries[path] = Self.missing(entry)
@@ -239,7 +259,7 @@ final class ProjectStore {
     alert.informativeText = String(localized: "The folder was moved, deleted or is on a disk that isn’t connected.")
     alert.addButton(withTitle: String(localized: "Locate…"))
     alert.addButton(withTitle: String(localized: "Cancel"))
-    if alert.runModal() == .alertFirstButtonReturn, let url = locate(path) { openProject(url) }
+    if alert.runModal() == .alertFirstButtonReturn, let url = locate(path) { openProject(url, test: test) }
   }
 
   /// Closes the project and shows the Projects screen, which the next launch shows too. Asks
@@ -306,7 +326,7 @@ final class ProjectStore {
   // MARK: Recent projects
 
   /// The recent projects whose folders were there when last looked at, for the menus.
-  var openableRecent: [RecentProject] { recent.filter { summaries[$0.path]?.exists != false } }
+  var openableRecent: [RecentProject] { Array(recent.filter { summaries[$0.path]?.exists != false }.prefix(30)) }
 
   /// How menus name `project`: by its name, with its folder when another project has the same name.
   func menuTitle(_ project: RecentProject) -> String {

@@ -200,7 +200,7 @@ final class RunCenter {
     let permissions = Permission.allCases.filter { !$0.isGranted }
     let environments = environments ?? ProjectEnvironments.read(request.project)
     let values = request.document.flow.map {
-      MissingValues(for: $0, in: environments, isSet: { SecretStore.isSet($0, environment: $1) })
+      MissingValues(for: $0, in: environments, isSet: { ProjectSecrets(project: request.project).isSet($0, environment: $1) })
     } ?? MissingValues()
     let errors = request.document.issues.count { $0.severity == .error }
     return (permissions, values, errors)
@@ -415,7 +415,7 @@ final class RunCenter {
         usage: ai.usage, video: videos.mode,
         keepVideosDays: videos.keepDays, addedAsDependency: request.addedAsDependency, language: AppLanguage.shared.language),
       hands: MacHands(input: input, isCancelled: { run.isCancelled() }, clicking: clicking),
-      secrets: StoredSecrets(), listener: listener)
+      secrets: StoredSecrets(project: request.project.path), listener: listener)
     return true
   }
 

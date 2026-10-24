@@ -77,8 +77,8 @@ public final class MacAssistantHost: AssistantHost, @unchecked Sendable {
     }
   }
 
-  public func secrets() -> SecretSource {
-    StoredSecrets()
+  public func secrets(project: String) -> SecretSource {
+    StoredSecrets(project: project)
   }
 
   public func runOptions() -> RunOptions {

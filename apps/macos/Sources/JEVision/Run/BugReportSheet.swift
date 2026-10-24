@@ -255,7 +255,7 @@ struct BugReportSheet: View {
     guard let root = project.rootURL?.path(percentEncoded: false) else { return }
     let dir = dir
     let result = await Task.detached(priority: .userInitiated) {
-      Result { try draftBugReport(project: root, dir: dir, secrets: StoredSecrets()) }
+      Result { try draftBugReport(project: root, dir: dir, secrets: StoredSecrets(project: root)) }
     }.value
     switch result {
     case .success(let found?):
@@ -297,7 +297,7 @@ struct BugReportSheet: View {
     Task {
       let result = await Task.detached(priority: .userInitiated) {
         Result {
-          try githubSendBugReport(project: root, dir: dir, report: report, commentOn: comment, secrets: StoredSecrets())
+          try githubSendBugReport(project: root, dir: dir, report: report, commentOn: comment, secrets: StoredSecrets(project: root))
         }
       }.value
       isSending = false

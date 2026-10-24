@@ -14,7 +14,7 @@ struct EnvironmentStrip: View {
   var body: some View {
     let snapshot = project.environments.current
     let readout = EnvironmentReadout(for: flow, in: snapshot)
-    let unset = requiredSecrets(flow: flow).filter { !SecretStore.isSet($0, environment: readout.environment) }
+    let unset = requiredSecrets(flow: flow).filter { name in project.rootURL.map { !ProjectSecrets(project: $0).isSet(name, environment: readout.environment) } ?? true }
     let needsAttention = snapshot.problem != nil || !readout.missing.isEmpty || !unset.isEmpty
     if !snapshot.all.isEmpty || snapshot.problem != nil || !readout.values.isEmpty || needsAttention {
       Button { open.toggle() } label: {
@@ -136,7 +136,7 @@ private struct EnvironmentPanel: View {
           ForEach(secrets, id: \.self) { name in
             SecretStatusRow(
               name: name,
-              isSet: secretsVersion >= 0 && SecretStore.isSet(name, environment: readout.environment)
+              isSet: secretsVersion >= 0 && project.rootURL.map { ProjectSecrets(project: $0).isSet(name, environment: readout.environment) } == true
             ) { settingSecret = SecretName(id: name) }
           }
         } header: {
@@ -159,7 +159,7 @@ private struct EnvironmentPanel: View {
     .frame(width: 380)
     .frame(minHeight: 160, maxHeight: 520)
     .sheet(item: $settingSecret) { secret in
-      SetSecretSheet(name: secret.id, environment: readout.environment) { secretsVersion += 1 }
+      ProjectSecretSheet(name: secret.id, project: project.rootURL, environment: readout.environment) { secretsVersion += 1 }
     }
     .sheet(isPresented: $adding) {
       AddEnvironmentSheet(valueNames: readout.values.map(\.name), undoManager: undoManager)

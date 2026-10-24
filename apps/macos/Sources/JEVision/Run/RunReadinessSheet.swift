@@ -129,7 +129,7 @@ struct RunReadinessSheet: View {
     .frame(minHeight: 280)
     .task { await monitor.watch() }
     .sheet(item: $settingSecret) { secret in
-      SetSecretSheet(name: secret.id, environment: missing.values.environment) { secretsVersion += 1 }
+      ProjectSecretSheet(name: secret.id, project: request.project, environment: missing.values.environment) { secretsVersion += 1 }
     }
     .sheet(isPresented: $addingEnvironment, onDismiss: { secretsVersion += 1 }) {
       AddEnvironmentSheet(valueNames: values.values, undoManager: undoManager)

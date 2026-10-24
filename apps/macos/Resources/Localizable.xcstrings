@@ -7711,6 +7711,16 @@
         }
       }
     },
+    "Copy to This Project" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать в этот проект"
+          }
+        }
+      }
+    },
     "Copying the repository…" : {
       "localizations" : {
         "ru" : {
@@ -15482,6 +15492,16 @@
         }
       }
     },
+    "Only this project can use this value. Existing shared values stay unchanged." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это значение доступно только этому проекту. Существующие общие значения не изменятся."
+          }
+        }
+      }
+    },
     "Only when a test fails" : {
       "localizations" : {
         "ru" : {
@@ -16288,6 +16308,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Другое приложение…"
+          }
+        }
+      }
+    },
+    "Other projects can use this value only after you enable shared access there." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другие проекты смогут использовать это значение только после разрешения общего доступа в них."
           }
         }
       }
@@ -20648,6 +20678,16 @@
         }
       }
     },
+    "Search projects and tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск проектов и тестов"
+          }
+        }
+      }
+    },
     "Search tests" : {
       "localizations" : {
         "ru" : {
@@ -20674,6 +20714,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Секреты"
+          }
+        }
+      }
+    },
+    "Secrets belong to this project. Shared values are used only when you choose them." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Секреты принадлежат этому проекту. Общие значения используются только по вашему выбору."
           }
         }
       }
@@ -21196,6 +21246,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Поделиться «%@»"
+          }
+        }
+      }
+    },
+    "Share this value on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить общий доступ на этом Mac"
           }
         }
       }
@@ -22530,6 +22590,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стоп"
+          }
+        }
+      }
+    },
+    "Stop Using Shared Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отключить общее значение"
           }
         }
       }
@@ -26330,6 +26400,16 @@
         }
       }
     },
+    "Use Shared Value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать общее значение"
+          }
+        }
+      }
+    },
     "Use This Account" : {
       "localizations" : {
         "ru" : {
@@ -26580,6 +26660,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Использует буфер обмена"
+          }
+        }
+      }
+    },
+    "Using a shared value" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используется общее значение"
           }
         }
       }

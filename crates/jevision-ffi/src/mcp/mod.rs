@@ -61,7 +61,8 @@ pub trait AssistantHost: Send + Sync {
     fn run_paused(&self, run: Arc<TestRun>);
     /// The run started last has ended.
     fn run_ended(&self);
-    fn secrets(&self) -> Arc<dyn SecretSource>;
+    /// Secrets scoped to the project whose run or report is being read.
+    fn secrets(&self, project: String) -> Arc<dyn SecretSource>;
     /// How runs start: the model for checks by meaning, chosen in the app.
     fn run_options(&self) -> RunOptions;
     /// The front window of the application with bundle id `app`.

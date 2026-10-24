@@ -4,8 +4,7 @@
 //!
 //! Every function returns the list in the order it is shown: pinned projects first, then the
 //! most recently opened. A folder is in it once, by its absolute path without a `/` at the end;
-//! paths are compared exactly. Besides the pinned projects the list keeps the
-//! [`MAX_RECENT_PROJECTS`] opened last.
+//! paths are compared exactly. Projects stay until explicitly removed from the list.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -18,7 +17,7 @@ use serde_json::Value;
 
 use crate::model::is_false;
 
-/// Most projects the list keeps besides the pinned ones; the one opened longest ago goes first.
+/// Suggested maximum for a compact Open Recent menu; the project library keeps every folder.
 pub const MAX_RECENT_PROJECTS: usize = 30;
 
 /// A project in the list.
@@ -123,8 +122,7 @@ pub fn recent_projects_opened(
 }
 
 /// The list with the project in `path` pinned or not. Unpinned, it takes its place among the
-/// others by when it was opened, and leaves the list if [`MAX_RECENT_PROJECTS`] were opened
-/// after it.
+/// others by when it was opened, without removing older projects.
 pub fn recent_projects_set_pinned(
     list: Vec<RecentProject>,
     path: &str,
@@ -253,8 +251,7 @@ fn folded(text: &str) -> String {
         .collect()
 }
 
-/// The list in the order it is shown, each folder once and at most [`MAX_RECENT_PROJECTS`]
-/// projects that aren't pinned. Of two entries for one folder, the one opened later gives the
+/// The list in the order it is shown, each folder once. Of two entries for one folder, the one opened later gives the
 /// name and bookmark (an empty bookmark doesn't replace one), and a pin on either stays.
 fn tidy(list: Vec<RecentProject>) -> Vec<RecentProject> {
     let mut kept: Vec<RecentProject> = Vec::with_capacity(list.len());
@@ -281,11 +278,6 @@ fn tidy(list: Vec<RecentProject>) -> Vec<RecentProject> {
         (b.pinned, b.opened_at)
             .cmp(&(a.pinned, a.opened_at))
             .then_with(|| a.path.cmp(&b.path))
-    });
-    let mut unpinned = 0;
-    kept.retain(|p| {
-        unpinned += usize::from(!p.pinned);
-        p.pinned || unpinned <= MAX_RECENT_PROJECTS
     });
     kept
 }
@@ -370,20 +362,20 @@ mod tests {
     }
 
     #[test]
-    fn only_the_last_thirty_unpinned_projects_stay() {
+    fn every_project_stays_until_explicitly_removed() {
         let mut list = vec![project("/pinned", 0)];
         list[0].pinned = true;
         for i in 1..=40 {
             list = recent_projects_opened(list, &format!("/p{i}"), "", Vec::new(), i);
         }
-        assert_eq!(list.len(), MAX_RECENT_PROJECTS + 1);
+        assert_eq!(list.len(), 41);
         assert_eq!(list[0].path, "/pinned");
         assert_eq!(list[1].path, "/p40");
-        assert_eq!(list.last().unwrap().path, "/p11");
+        assert_eq!(list.last().unwrap().path, "/p1");
         let list = recent_projects_set_pinned(list, "/pinned", false);
         assert!(
-            !list.iter().any(|p| p.path == "/pinned"),
-            "older than the 30"
+            list.iter().any(|p| p.path == "/pinned"),
+            "unpinning keeps the folder available"
         );
     }
 

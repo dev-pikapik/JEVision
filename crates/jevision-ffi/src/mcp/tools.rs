@@ -622,7 +622,8 @@ impl Server {
         let draft = draft_bug_report(
             self.project.to_string_lossy().into_owned(),
             run.dir.to_string_lossy().into_owned(),
-            self.host.secrets(),
+            self.host
+                .secrets(self.project.to_string_lossy().into_owned()),
         )
         .map_err(|e| e.to_string())?
         .ok_or_else(|| tr!("mcp.bug.notFailed"))?;
@@ -684,7 +685,9 @@ impl Server {
             &run.dir,
             &draft,
             comment_on,
-            &*self.host.secrets(),
+            &*self
+                .host
+                .secrets(self.project.to_string_lossy().into_owned()),
         )
         .map_err(|e| github_message(&e))?;
         Ok(vec![text(match comment_on {

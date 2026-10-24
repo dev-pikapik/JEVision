@@ -25,7 +25,7 @@ struct IssueCommand {
     do {
       let (project, dir) = try locate()
       run = dir
-      guard var report = try draftBugReport(project: project, dir: dir, secrets: StoredSecrets()) else {
+      guard var report = try draftBugReport(project: project, dir: dir, secrets: StoredSecrets(project: project)) else {
         Console.standardError.line("jevision: " + words("cli.issue.notFailed", dir))
         return .usage
       }
@@ -79,7 +79,7 @@ struct IssueCommand {
       return .problems
     }
     let url = try githubSendBugReport(
-      project: project, dir: dir, report: report, commentOn: request.commentOn, secrets: StoredSecrets())
+      project: project, dir: dir, report: report, commentOn: request.commentOn, secrets: StoredSecrets(project: project))
     output.line(url)
     return .ok
   }

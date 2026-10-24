@@ -123,18 +123,21 @@
 <p>A secret is a value that must never be written in a file: a password, a token, a key. A test refers to it by name, as <code>${secret.NAME}</code>:</p>
 <pre><code>{ "type": "type", "text": "${secret.ACME_PASSWORD}", "into": { "image": "refs/password-field.png" } }</code></pre>
 <ul>
-  <li>When you record and type into a password field, JEVision turns what you typed into a secret, saves it in the Keychain and writes only its name in the test.</li>
+  <li>When you record a password field, JEVision writes only a secret name in the test and asks you to set its value for this project in the Keychain.</li>
   <li>Secret values are never shown, printed or written to reports, where they are masked. AI assistants see only <code>${secret.NAME}</code>.</li>
-  <li>A secret can differ per environment: the app saves it in the Keychain for the environment chosen when you set it.</li>
+  <li>A secret belongs to its project and can differ per environment. Opening another project never gives it access to your existing secrets.</li>
+  <li>In the secret sheet, <strong>Copy to This Project</strong> copies an existing shared value without changing the original. <strong>Use Shared Value</strong> explicitly enables that value for this project. <strong>Stop Using Shared Value</strong> revokes access.</li>
+  <li><strong>Share this value on this Mac</strong> saves a shared value and enables it for this project. Other projects must opt in separately. Older global Keychain values remain untouched and require the same explicit choice.</li>
 </ul>
 
 <h2 id="secret-order">Where a secret's value comes from</h2>
 <p>At run time, JEVision looks for the value of <code>${secret.NAME}</code> in this order and takes the first it finds:</p>
 <ol>
   <li>the environment variable <code>NAME</code>, which is how CI systems pass secrets;</li>
-  <li>the Keychain item of the chosen environment;</li>
-  <li>the Keychain item shared by all environments.</li>
+  <li>if shared access is enabled for this secret: the shared Keychain value for the chosen environment, then its shared default;</li>
+  <li>otherwise: this project's Keychain value for the chosen environment, then this project's default.</li>
 </ol>
+<p>App runs, CLI runs, schedules and assistant runs use the same project scope. Renaming or moving the project folder on the same disk keeps its scope; a separate copy or checkout gets a separate scope. Environment variables still take precedence, including in CI.</p>
 <p>The first time <code>jevision</code> reads a Keychain item, macOS may ask whether to allow it. For runs nobody watches, such as <a href="schedules.html">schedules</a> and CI, choose <strong>Always Allow</strong>.</p>
 <pre><code># In CI, pass the secret as an environment variable:
 ACME_PASSWORD="$ACME_PASSWORD" jevision run tests/ --env staging</code></pre>

@@ -42,6 +42,52 @@ final class RecentProjectsTests {
     return url
   }
 
+  @Test func browsingOtherProjectTreesDoesNotSwitchOrWriteProjects() async throws {
+    let (shop, blog) = (try project("Shop"), try project("Blog"))
+    let store = makeStore()
+    store.openProject(shop)
+    store.openProject(blog)
+    let selected = "Login/Sign In.flow.json"
+    store.selection = selected
+    let catalog = ProjectCatalog()
+    let entry = try #require(store.recent.first { $0.path == shop.path })
+    catalog.load(entry)
+    catalog.load(try #require(store.recent.first { $0.path == blog.path }))
+    await catalog.wait(for: shop.path)
+    await catalog.wait(for: blog.path)
+    #expect(catalog.snapshots[blog.path]?.items.flatMap(\.tests).map(\.id) == [selected])
+    #expect(store.rootURL == blog)
+    #expect(store.selection == selected)
+    #expect(catalog.snapshots[shop.path]?.items.flatMap(\.tests).map(\.id) == [selected])
+    #expect(!FileManager.default.fileExists(atPath: shop.appending(path: ".jevision").path))
+    store.selectSidebar(.item(project: shop.path, file: selected))
+    #expect(store.rootURL == shop)
+    #expect(store.selection == selected)
+    #expect(store.document?.url == shop.appending(path: selected))
+    #expect(store.sidebarSelection == .item(project: shop.path, file: selected))
+    store.selectSidebar(.item(project: blog.path, file: selected))
+    #expect(store.rootURL == blog)
+    #expect(store.document?.url == blog.appending(path: selected))
+  }
+
+  @Test func missingProjectTreesRemainVisibleAndCanBeRetried() async throws {
+    let shop = try project("Shop")
+    let store = makeStore()
+    store.openProject(shop)
+    store.close()
+    let entry = try #require(store.recent.first)
+    try FileManager.default.removeItem(at: shop)
+    let catalog = ProjectCatalog()
+    catalog.load(entry)
+    await catalog.wait(for: shop.path)
+    #expect(catalog.snapshots[shop.path]?.problem != nil)
+    #expect(store.recent.map(\.path) == [shop.path])
+    _ = try project("Shop")
+    catalog.load(entry, refresh: true)
+    await catalog.wait(for: shop.path)
+    #expect(catalog.snapshots[shop.path]?.problem == nil)
+  }
+
   @Test func keepsTheListAndReopensTheLastProject() throws {
     let shop = try project("Shop")
     let store = makeStore()

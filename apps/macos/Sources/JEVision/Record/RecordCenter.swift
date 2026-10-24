@@ -13,6 +13,7 @@ final class RecordCenter {
   struct Request: Identifiable {
     let id = UUID()
     let document: FlowDocument
+    let project: URL
     /// Where the blocks go: after this block, or at the end of the test.
     let slot: Slot?
   }
@@ -26,6 +27,7 @@ final class RecordCenter {
   private(set) var isPaused = false
   /// Secrets the recording typed that have no value yet, to ask for one by one.
   var unsetSecrets: [String] = []
+  private(set) var secretsProject: URL?
   /// Why the recording couldn't be added to the test.
   var failure: String?
 
@@ -51,9 +53,9 @@ final class RecordCenter {
   }
 
   /// Records into `document` after its selected block, or asks for what's missing first.
-  func record(_ document: FlowDocument) {
-    guard !isRecording, document.flow != nil, !document.isReadOnly else { return }
-    let request = Request(document: document, slot: document.slotAfterSelection)
+  func record(_ document: FlowDocument, in project: URL?) {
+    guard let project, !isRecording, document.flow != nil, !document.isReadOnly else { return }
+    let request = Request(document: document, project: project, slot: document.slotAfterSelection)
     if let app = Self.app(of: request), AppCatalog.shared.isInstalled(app), Self.missingPermissions().isEmpty {
       start(request, app: app)
     } else {
@@ -162,7 +164,8 @@ final class RecordCenter {
       let folder = request.document.url.deletingLastPathComponent()
       let (blocks, files) = try Recording.blocks(for: result.steps, testFolder: folder)
       request.document.insertRecorded(blocks, files: files, at: request.slot, app: app)
-      unsetSecrets = result.secrets.filter { !SecretStore.isSet($0) }
+      secretsProject = request.project
+      unsetSecrets = result.secrets.filter { !ProjectSecrets(project: request.project).isSet($0, environment: nil) }
       let count = blocks.count
       AccessibilityNotification.Announcement(String(localized: "Added \(count) steps to the test.")).post()
     } catch {

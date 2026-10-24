@@ -9,6 +9,8 @@ struct ProjectView: View {
   @Environment(RecordCenter.self) private var records
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var search = SidebarSearch()
+  @State private var catalog = ProjectCatalog()
+  @State private var expandedProjects: Set<String> = []
   @State private var renaming: ProjectItem?
   @State private var newName = ""
   @State private var newBoardName = ""
@@ -21,16 +23,19 @@ struct ProjectView: View {
     @Bindable var project = project
     @Bindable var search = search
     NavigationSplitView {
-      Group {
-        if project.sidebar == .runs {
-          RunsList(query: search.text)
-        } else {
-          testList
-        }
-      }
+      testList
       // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
       .safeAreaBar(edge: .top, spacing: 0) {
         VStack(spacing: 0) {
+          HStack(spacing: 8) {
+            Button("Projects", systemImage: "square.grid.2x2") { project.close() }
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Button("Open…", systemImage: "folder.badge.plus", action: project.choose)
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Button("New Project", systemImage: "plus") { project.newProject = .new }
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Spacer()
+          }.padding(.horizontal, 10).padding(.bottom, 8)
           HStack(spacing: 8) {
             Picker("Show", selection: $project.sidebar) {
               Text("Tests").tag(ProjectStore.Sidebar.tests)
@@ -47,14 +52,16 @@ struct ProjectView: View {
       }
       .safeAreaBar(edge: .bottom, spacing: 0) {
         VStack(spacing: 0) {
-          EnvironmentChip()
-          ScheduleChip()
-          if let status = project.git.status { GitChip(status: status) }
+          if project.rootURL != nil {
+            EnvironmentChip()
+            ScheduleChip()
+            if let status = project.git.status { GitChip(status: status) }
+          }
         }
       }
       .searchable(
         text: $search.text, placement: .sidebar,
-        prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search tests"))
+        prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search projects and tests"))
       .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
     } detail: {
       detail
@@ -81,6 +88,14 @@ struct ProjectView: View {
     }
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
       project.git.refresh()
+      project.refreshSummaries()
+      for entry in project.recent where expandedProjects.contains(entry.path) { catalog.load(entry, refresh: true) }
+    }
+    .onChange(of: project.rootURL, initial: true) {
+      if let path = project.rootURL?.path { expandedProjects.insert(path) }
+    }
+    .onChange(of: search.isSearching) {
+      if search.isSearching { for entry in project.recent { catalog.load(entry, refresh: true) } }
     }
     .quarantineSheet($quarantining)
     .alert("Rename Test", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
@@ -112,7 +127,17 @@ struct ProjectView: View {
   }
 
   @ViewBuilder private var detail: some View {
-    if project.sidebar == .runs {
+    if project.status == .closed {
+      ProjectsHomeView()
+    } else if project.status == .unavailable {
+      EmptyStateView(
+        symbol: "lock.trianglebadge.exclamationmark", title: Text("Can’t open “\(project.name)”"),
+        message: Text("JEVision can’t read this folder. Allow it in System Settings › Privacy & Security › Files and Folders, then try again."),
+        action: Text("Try Again"), perform: { if let url = project.rootURL { project.openProject(url) } },
+        secondAction: Text("Close Project"), performSecond: project.close)
+    } else if project.status == .loading {
+      ProgressView().accessibilityLabel(Text("Looking for tests"))
+    } else if project.sidebar == .runs {
       if let dir = project.selectedRun {
         RunReportView(dir: dir)
           .id(dir)
@@ -148,38 +173,15 @@ struct ProjectView: View {
   private var testList: some View {
     @Bindable var project = project
     let shown = project.filtered(project.items)
-    let selection = Binding<ProjectItem.ID?>(
-      get: { project.showsBoard ? project.boards.current.map(Self.boardTag) : project.selection },
-      set: { id in
-        if let id, id.hasPrefix(Self.boardTag("")) {
-          project.showBoard(String(id.dropFirst(Self.boardTag("").count)))
-        } else {
-          project.selection = id
-        }
-      })
+    let selection = Binding(get: { project.sidebarSelection }, set: project.selectSidebar)
     return List(selection: selection) {
-        if search.isSearching {
-          ForEach(search.found) { row($0, showsPath: true) }
-        } else {
-          if !project.items.isEmpty {
-            Section {
-              ForEach(project.boards.names, id: \.self) { boardRow($0) }
-            } header: {
-              HStack {
-                Text("Boards")
-                Spacer()
-                Button("New Board", systemImage: "plus") { newBoard() }
-                  .labelStyle(.iconOnly)
-                  .buttonStyle(.borderless)
-                  .help(Text("Make a new board"))
-              }
-            }
-            Section("Tests") {
-              ForEach(shown) { tree($0) }
-            }
-          }
+      Section("Projects") {
+        ForEach(listedProjects, id: \.path) { entry in
+          projectFolder(entry, shown: shown)
         }
+        if search.isSearching, listedProjects.isEmpty { ContentUnavailableView.search(text: search.query) }
       }
+    }
       // A fresh list for search results: reusing the tree's rows left a ghost of the selected one.
       .id(search.isSearching)
       .onChange(of: shown, initial: true) { search.search(in: shown) }
@@ -191,22 +193,101 @@ struct ProjectView: View {
           expanded.insert(folder)
         }
       }
-      .overlay {
-        if search.isSearching, search.found.isEmpty {
-          ContentUnavailableView.search(text: search.query)
-        } else if !search.isSearching, project.filtersTests, shown.isEmpty {
-          ContentUnavailableView {
-            Label("No tests match", systemImage: "line.3.horizontal.decrease.circle")
-          } description: {
-            Text("No test has a card that fits the filter: \(TestFilterText.summary(project.filter)).")
-          } actions: {
-            Button("Clear Filter") { project.filter = TestFilter() }
-          }
-        }
-      }
       .onDeleteCommand {
-        if let id = project.selection, let item = project.items.item(withID: id), item.kind == .test { trash(item) }
+        if project.sidebar == .tests, let id = project.selection, let item = project.items.item(withID: id), item.kind == .test { trash(item) }
       }
+  }
+
+  private var listedProjects: [RecentProject] {
+    guard search.isSearching else { return project.recent }
+    return project.recent.filter { entry in
+      if !recentProjectsMatching(list: [entry], query: search.query).isEmpty { return true }
+      if project.rootURL?.path == entry.path { return !search.found.isEmpty }
+      guard let snapshot = catalog.snapshots[entry.path] else { return true }
+      return !ProjectScanner.tests(in: snapshot.items, matching: search.query).isEmpty
+    }
+  }
+
+  private func projectFolder(_ entry: RecentProject, shown: [ProjectItem]) -> some View {
+    let active = project.rootURL?.path == entry.path
+    let matchesProject = search.isSearching && !recentProjectsMatching(list: [entry], query: search.query).isEmpty
+    let binding = Binding(
+      get: { expandedProjects.contains(entry.path) || search.isSearching },
+      set: { open in
+        if open { expandedProjects.insert(entry.path); catalog.load(entry, refresh: true) }
+        else { expandedProjects.remove(entry.path) }
+      })
+    return DisclosureGroup(isExpanded: binding) {
+      if active {
+        if project.sidebar == .runs {
+          RunsList(query: search.text, embedded: true)
+        } else if search.isSearching && !matchesProject {
+          ForEach(search.found) { row($0, showsPath: true) }
+        } else {
+          ForEach(project.boards.names, id: \.self) { boardRow($0) }
+          ForEach(shown) { tree($0) }
+          if shown.isEmpty, project.filtersTests {
+            Text("No test has a card that fits the filter: \(TestFilterText.summary(project.filter)).")
+              .font(.caption).foregroundStyle(.secondary)
+            Button("Clear Filter") { project.filter = TestFilter() }.buttonStyle(.borderless)
+          } else if shown.isEmpty {
+            Button("New Test…") { project.isCreatingTest = true }.buttonStyle(.borderless)
+              .disabled(project.status != .ready)
+          }
+          Button("New Board", systemImage: "plus", action: newBoard).buttonStyle(.borderless)
+            .help(Text("Make a new board"))
+            .disabled(project.status != .ready)
+        }
+      } else if let snapshot = catalog.snapshots[entry.path] {
+        if let problem = snapshot.problem {
+          Text(problem).font(.caption).foregroundStyle(.secondary)
+          Button("Locate…") { project.openRecent(entry.path) }.buttonStyle(.borderless)
+        } else if search.isSearching && !matchesProject {
+          ForEach(ProjectScanner.tests(in: snapshot.items, matching: search.query)) { item in
+            catalogTest(item, in: entry)
+          }
+        } else if snapshot.items.isEmpty {
+          Text("No tests yet").foregroundStyle(.secondary)
+        } else {
+          ForEach(snapshot.items) { catalogTree($0, in: entry) }
+        }
+      } else { ProgressView().controlSize(.small) }
+    } label: {
+      Label {
+        HStack {
+          Text(project.menuTitle(entry)).fontWeight(active ? .semibold : .regular)
+          if entry.pinned { Image(systemName: "pin.fill").imageScale(.small).foregroundStyle(.secondary) }
+        }
+      } icon: { Image(systemName: active ? "folder.fill" : "folder") }
+      .help(ProjectStore.shortPath(entry.path))
+      .accessibilityIdentifier("project.folder." + entry.path)
+      .contextMenu {
+        Button("Open") { project.openRecent(entry.path) }
+        Button(entry.pinned ? "Unpin" : "Pin") { project.setPinned(entry.path, !entry.pinned) }
+        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(filePath: entry.path)]) }
+        Divider()
+        if active { Button("Close Project", action: project.close) }
+        Button("Remove from List") { project.removeRecent(entry.path) }.disabled(active)
+      }
+    }
+    .tag(ProjectSidebarSelection.project(entry.path))
+    .task(id: entry.path) { if !active, expandedProjects.contains(entry.path) { catalog.load(entry) } }
+  }
+
+  private func catalogTree(_ item: ProjectItem, in entry: RecentProject) -> AnyView {
+    if item.kind == .folder {
+      return AnyView(DisclosureGroup {
+        ForEach(item.children) { catalogTree($0, in: entry) }
+      } label: { Label(item.name, systemImage: "folder") }
+        .tag(ProjectSidebarSelection.item(project: entry.path, file: item.id)))
+    }
+    return AnyView(catalogTest(item, in: entry))
+  }
+
+  private func catalogTest(_ item: ProjectItem, in entry: RecentProject) -> some View {
+    Label(item.name, systemImage: "flowchart")
+      .tag(ProjectSidebarSelection.item(project: entry.path, file: item.id))
+      .help(item.parentPath)
   }
 
   private func tree(_ item: ProjectItem) -> AnyView {
@@ -227,6 +308,7 @@ struct ProjectView: View {
       item: item, showsPath: showsPath, status: project.latestRuns[item.id]?.status, quarantine: project.quarantine(of: item.id),
       flaky: project.flaky[item.id], suggestion: project.quarantineSuggestion(for: item.id), run: canRun ? { run(item) } : nil
     )
+      .tag(ProjectSidebarSelection.item(project: project.rootURL?.path ?? "", file: item.id))
       .contextMenu {
         Button(item.kind == .test ? "Run" : "Run Folder") { run(item) }
           .disabled(!canRun)
@@ -264,16 +346,13 @@ struct ProjectView: View {
       }
   }
 
-  /// Tag of a board's row: no test or folder path looks like it.
-  private static func boardTag(_ name: String) -> String { "\u{1}board:" + name }
-
   private func boardRow(_ name: String) -> some View {
     let isAllTests = name == project.boards.allTests
     return BoardRow(
       name: name, isAllTests: isAllTests,
       run: isAllTests && canRun ? { runAll(project.items, title: project.runAllTitle) } : nil
     )
-    .tag(Self.boardTag(name))
+    .tag(ProjectSidebarSelection.board(name))
     .contextMenu {
       if isAllTests {
         Button("Run All Tests") { runAll(project.items, title: project.runAllTitle) }

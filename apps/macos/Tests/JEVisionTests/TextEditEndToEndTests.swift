@@ -98,7 +98,7 @@ struct TextEditEndToEndTests {
     run.start(
       project: project.path, test: test, options: RunOptions(startAt: nil, retries: nil, vision: nil, localOnly: false, video: .off, language: "en"),
       hands: MacHands(input: InputWatcher(), isCancelled: { run.isCancelled() }),
-      secrets: StoredSecrets(), listener: listener)
+      secrets: StoredSecrets(project: project.path), listener: listener)
     guard listener.done.wait(timeout: .now() + 90) == .success else {
       run.cancel()
       throw Failure("The run didn’t finish in 90 seconds")

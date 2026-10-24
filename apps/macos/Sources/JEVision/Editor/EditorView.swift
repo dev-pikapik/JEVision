@@ -225,7 +225,7 @@ struct EditorView: View {
           .disabled(runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil)
           .labelStyle(.titleAndIcon)
           .help(Text("Run the test (⌘R)"))
-          Button("Record", systemImage: "record.circle") { records.record(document) }
+          Button("Record", systemImage: "record.circle") { records.record(document, in: project.rootURL) }
             .disabled(
               runs.isRunning || records.isRecording || project.rootURL == nil || document.beforeDraft != nil
                 || document.isReadOnly)

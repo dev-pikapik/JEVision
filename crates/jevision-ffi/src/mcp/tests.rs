@@ -199,6 +199,7 @@ pub(crate) struct Host {
     /// Where the server and the app meet.
     pub(crate) shared: Project,
     pub(crate) permissions: Mutex<AssistantPermissions>,
+    secret_projects: Mutex<Vec<String>>,
     /// Why this Mac can't run tests, such as a locked screen.
     pub(crate) problem: Mutex<Option<String>>,
     hands: Arc<FakeHands>,
@@ -233,7 +234,8 @@ impl AssistantHost for Host {
     fn run_ended(&self) {
         self.ended.fetch_add(1, Ordering::Relaxed);
     }
-    fn secrets(&self) -> Arc<dyn SecretSource> {
+    fn secrets(&self, project: String) -> Arc<dyn SecretSource> {
+        self.secret_projects.lock().unwrap().push(project);
         Arc::new(Secrets)
     }
     fn run_options(&self) -> RunOptions {
@@ -756,6 +758,15 @@ fn runs_on_fake_hands_without_giving_away_secrets() {
     assert_eq!(status["status"], "finished", "{status}");
     assert_eq!(status["passed"], 1, "{status}");
     assert_eq!(*host.hands.typed.lock().unwrap(), [SECRET]);
+    assert_eq!(
+        *host.secret_projects.lock().unwrap(),
+        [project
+            .0
+            .canonicalize()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()]
+    );
 
     let report = status["tests"][0]["report"].as_str().unwrap();
     let (failed, text) = call(
@@ -1082,7 +1093,7 @@ fn a_failed_run_is_drafted_as_a_bug_report_and_sent_with_secrets_masked() {
     let report = crate::draft_bug_report(
         project.0.to_string_lossy().into(),
         dir.to_string_lossy().into(),
-        host.secrets(),
+        host.secrets(project.0.to_string_lossy().into_owned()),
     )
     .unwrap()
     .unwrap();

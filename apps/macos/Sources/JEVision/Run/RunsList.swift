@@ -7,40 +7,23 @@ struct RunsList: View {
   @Environment(ProjectStore.self) private var project
   /// Shows only runs of tests whose name contains it.
   let query: String
+  var embedded = false
   @State private var failure: String?
 
   var body: some View {
     @Bindable var project = project
     let days = project.runDays(matching: query, from: project.runSource)
     let isFiltering = !query.trimmingCharacters(in: .whitespaces).isEmpty
-    List(selection: $project.selectedRun) {
-      if let test = healthTest {
-        let runs = project.runs.filter { $0.report.file == test }
-        if !runs.isEmpty {
-          Section {
-            HealthView(test: test, health: testHealth(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)))
-          } header: {
-            Text("\(runs[0].report.test.isEmpty ? ProjectScanner.testName((test as NSString).lastPathComponent) : runs[0].report.test) · health")
-              .lineLimit(nil)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-        }
-      }
-      ForEach(days) { day in
-        Section(RunHistory.title(of: day.day)) {
-          ForEach(day.runs) { run in
-            RunRow(run: run, isToday: Calendar.current.isDateInToday(day.day))
-              .tag(run.id)
-              .contextMenu {
-                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([run.url]) }
-                Divider()
-                Button("Move to Trash") { trash(run) }
-              }
-          }
-        }
+    Group {
+      if embedded {
+        RunSourceBar()
+        rows
+        if days.isEmpty { Text("No runs yet").foregroundStyle(.secondary) }
+      } else {
+        List(selection: $project.selectedRun) { rows }
       }
     }
-    .safeAreaBar(edge: .top, spacing: 0) { RunSourceBar() }
+    .safeAreaBar(edge: .top, spacing: 0) { if !embedded { RunSourceBar() } }
     // A report of a run the new filter hides would stay open beside a list that lacks it.
     .onChange(of: project.runSource) {
       project.selectedRun = RunHistory.selection(project.selectedRun, in: project.runs, from: project.runSource)
@@ -48,19 +31,19 @@ struct RunsList: View {
     // Opening the runs asks GitHub for the ones CI finished since last time.
     .task { project.ci.refresh() }
     .overlay {
-      if days.isEmpty, !isFiltering, project.runSource == .ci {
+      if !embedded, days.isEmpty, !isFiltering, project.runSource == .ci {
         CIRunsUnavailable()
-      } else if project.runs.isEmpty, project.isLoadingRuns {
+      } else if !embedded, project.runs.isEmpty, project.isLoadingRuns {
         ProgressView("Reading the runs…")
-      } else if project.runs.isEmpty {
+      } else if !embedded, project.runs.isEmpty {
         ContentUnavailableView {
           Label("No runs yet", systemImage: "clock.arrow.circlepath")
         } description: {
           Text("Every run of a test is kept here.")
         }
-      } else if days.isEmpty, isFiltering {
+      } else if !embedded, days.isEmpty, isFiltering {
         ContentUnavailableView.search(text: query)
-      } else if days.isEmpty, let source = project.runSource {
+      } else if !embedded, days.isEmpty, let source = project.runSource {
         ContentUnavailableView {
           Label("No runs from \(source.title)", systemImage: source.symbol)
         } description: {
@@ -77,6 +60,40 @@ struct RunsList: View {
     ) { _ in
       Button("OK") {}
     } message: { Text($0) }
+  }
+
+  @ViewBuilder private var rows: some View {
+    let days = project.runDays(matching: query, from: project.runSource)
+    if let test = healthTest {
+      let runs = project.runs.filter { $0.report.file == test }
+      if !runs.isEmpty {
+        Section {
+          HealthView(test: test, health: testHealth(runs: runs.map(\.report), nowMs: Int64(Date.now.timeIntervalSince1970 * 1000)))
+        } header: {
+          Text("\(runs[0].report.test.isEmpty ? ProjectScanner.testName((test as NSString).lastPathComponent) : runs[0].report.test) · health")
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+    }
+    ForEach(days) { day in
+      Section(RunHistory.title(of: day.day)) {
+        ForEach(day.runs) { run in
+          Group {
+            if embedded {
+              RunRow(run: run, isToday: Calendar.current.isDateInToday(day.day)).tag(ProjectSidebarSelection.run(run.id))
+            } else {
+              RunRow(run: run, isToday: Calendar.current.isDateInToday(day.day)).tag(run.id)
+            }
+          }
+            .contextMenu {
+              Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([run.url]) }
+              Divider()
+              Button("Move to Trash") { trash(run) }
+            }
+        }
+      }
+    }
   }
 
   /// The test the health block is about: the one selected among the tests, or else the one of

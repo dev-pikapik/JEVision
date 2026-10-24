@@ -134,7 +134,7 @@ struct TestDetailsView: View {
           }
           ForEach(secrets, id: \.self) { name in
             SecretStatusRow(
-              name: name, isSet: secretsVersion >= 0 && SecretStore.isSet(name, environment: environment)
+              name: name, isSet: secretsVersion >= 0 && project.rootURL.map { ProjectSecrets(project: $0).isSet(name, environment: environment) } == true
             ) { settingSecret = SecretName(id: name) }
           }
         } header: {
@@ -174,7 +174,7 @@ struct TestDetailsView: View {
       .frame(width: 400)
       .frame(minHeight: 300, maxHeight: 560)
       .sheet(item: $settingSecret) { secret in
-        SetSecretSheet(name: secret.id, environment: project.environments.current.selected?.name) {
+        ProjectSecretSheet(name: secret.id, project: project.rootURL, environment: project.environments.current.selected?.name) {
           secretsVersion += 1
         }
       }
@@ -194,7 +194,8 @@ struct TestDetailsView: View {
   @ViewBuilder
   private func missingSection(_ flow: Flow) -> some View {
     let missing = MissingValues(for: flow, in: project.environments.current) {
-      secretsVersion >= 0 && SecretStore.isSet($0, environment: $1)
+      name, environment in
+      secretsVersion >= 0 && project.rootURL.map { ProjectSecrets(project: $0).isSet(name, environment: environment) } == true
     }
     if !missing.isEmpty {
       Section {

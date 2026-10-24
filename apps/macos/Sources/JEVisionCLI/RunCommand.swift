@@ -598,7 +598,7 @@ final class TestSession: @unchecked Sendable {
         usage: usage,
         video: request.video ?? .off, keepVideosDays: keepVideosDays, addedAsDependency: entry.added,
         language: RunLanguage.app, forceVision: request.forceAI),
-      hands: makeHands(run), secrets: StoredSecrets(), listener: listener)
+      hands: makeHands(run), secrets: StoredSecrets(project: project), listener: listener)
     listener.done.wait()
     switch listener.outcome {
     case .finished(let dir, let html, let report)?:
