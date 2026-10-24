@@ -92,6 +92,14 @@ struct CustomBlocksSheet: View {
         .font(.title2.bold())
         .accessibilityAddTraits(.isHeader)
       List {
+        if !project.library.packageIssues.isEmpty {
+          Section {
+            ForEach(Array(project.library.packageIssues.enumerated()), id: \.offset) { _, issue in
+              Label(describeIssue(issue: issue), systemImage: "exclamationmark.triangle")
+                .foregroundStyle(issue.severity == .error ? Color.red : Color.orange)
+            }
+          }
+        }
         Section {
           if community.isEmpty {
             Text("No blocks from the community yet. Install one from a folder, a .zip file or an address.")

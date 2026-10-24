@@ -17,7 +17,7 @@ use jevision_l10n::{language, tr, tr_in};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::issue::{Issue, ParseError, describe, json_problem};
+use crate::issue::{Issue, ParseError, describe};
 use crate::model::{
     BlockKind, CheckOf, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
 };
@@ -1254,40 +1254,65 @@ pub fn risky_steps(flow: &Flow) -> Vec<RiskyStep> {
 pub struct PackageLock {
     pub sources: BTreeMap<String, String>,
     pub versions: BTreeMap<String, Version>,
+    /// Requirements and optional fields retained when packages are changed.
+    pub metadata: crate::SettingsMetadata,
 }
 
 impl PackageLock {
     /// Reads the text of the lock file.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let value: Value = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
-        let map = |key: &str| match value.get(key) {
-            None => Ok(Vec::new()),
-            Some(Value::Object(map)) => map
-                .iter()
-                .map(|(id, v)| {
-                    v.as_str()
-                        .map(|v| (id.clone(), v))
-                        .ok_or_else(|| match key {
-                            "sources" => tr!("package.lock.sourceType", id),
-                            _ => tr!("package.lock.versionType", id),
-                        })
+        Self::parse_compatible(text).map_err(|error| error.to_string())
+    }
+
+    /// A structured reader used before changes to installed packages. Older locks omitted
+    /// the format header; only this explicitly legacy reader supplies format 1 for them.
+    pub fn parse_compatible(text: &str) -> Result<Self, crate::SettingsFileError> {
+        use crate::compat::{check_settings_value, read_settings_json};
+        let value = check_settings_value(read_settings_json(text)?, PACKAGE_FORMAT, Some(1))?;
+        let parsed = (|| -> Result<Self, String> {
+            let map = |key: &str| match value.get(key) {
+                None => Ok(Vec::new()),
+                Some(Value::Object(map)) => map
+                    .iter()
+                    .map(|(id, v)| {
+                        v.as_str()
+                            .map(|v| (id.clone(), v))
+                            .ok_or_else(|| match key {
+                                "sources" => tr!("package.lock.sourceType", id),
+                                _ => tr!("package.lock.versionType", id),
+                            })
+                    })
+                    .collect(),
+                Some(_) => Err(match key {
+                    "sources" => tr!("package.lock.sources"),
+                    _ => tr!("package.lock.versions"),
+                }),
+            };
+            let sources = (map("sources")?.into_iter())
+                .map(|(id, source)| (id, source.to_owned()))
+                .collect();
+            let versions = (map("versions")?.into_iter())
+                .map(|(id, version)| {
+                    (version.parse().map(|v| (id.clone(), v)))
+                        .map_err(|()| tr!("package.lock.version", id))
                 })
-                .collect(),
-            Some(_) => Err(match key {
-                "sources" => tr!("package.lock.sources"),
-                _ => tr!("package.lock.versions"),
-            }),
-        };
-        let sources = (map("sources")?.into_iter())
-            .map(|(id, source)| (id, source.to_owned()))
-            .collect();
-        let versions = (map("versions")?.into_iter())
-            .map(|(id, version)| {
-                (version.parse().map(|v| (id.clone(), v)))
-                    .map_err(|()| tr!("package.lock.version", id))
+                .collect::<Result<_, _>>()?;
+            let mut fields = value
+                .as_object()
+                .expect("the header checked an object")
+                .clone();
+            for key in ["format", "sources", "versions"] {
+                fields.remove(key);
+            }
+            let metadata =
+                serde_json::from_value(Value::Object(fields)).map_err(|e| e.to_string())?;
+            Ok(Self {
+                sources,
+                versions,
+                metadata,
             })
-            .collect::<Result<_, _>>()?;
-        Ok(Self { sources, versions })
+        })();
+        parsed.map_err(crate::SettingsFileError::Invalid)
     }
 
     /// The lock file: ids in alphabetical order so that git shows clean differences.
@@ -1298,11 +1323,14 @@ impl PackageLock {
             sources: &'a BTreeMap<String, String>,
             #[serde(skip_serializing_if = "BTreeMap::is_empty")]
             versions: &'a BTreeMap<String, Version>,
+            #[serde(flatten)]
+            metadata: &'a crate::SettingsMetadata,
         }
         let mut text = serde_json::to_string_pretty(&File {
             format: PACKAGE_FORMAT,
             sources: &self.sources,
             versions: &self.versions,
+            metadata: &self.metadata,
         })
         .expect("a lock always serializes to JSON");
         text.push('\n');

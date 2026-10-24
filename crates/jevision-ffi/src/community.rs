@@ -606,6 +606,12 @@ pub fn discard_block_staging(folder: String) {
     discard_staged(Path::new(&folder));
 }
 
+/// Compatibility diagnostics for the installed-package list, before using its sources.
+#[uniffi::export]
+pub fn block_package_issues(project: String) -> Vec<Issue> {
+    jevision_core::package_lock_issues(Path::new(&project))
+}
+
 /// The packages installed in the project folder `project`, by name.
 #[uniffi::export]
 pub fn list_community_blocks(project: String) -> Vec<InstalledBlock> {
@@ -651,6 +657,13 @@ pub fn update_block_package(
     project: String,
     id: String,
 ) -> Result<BlockPreview, BlockPackageError> {
+    let issues: Vec<_> = jevision_core::package_lock_issues(Path::new(&project))
+        .into_iter()
+        .filter(|issue| issue.severity == Severity::Error)
+        .collect();
+    if !issues.is_empty() {
+        return Err(BlockPackageError::Failed { issues });
+    }
     let source = jevision_core::installed(Path::new(&project), &id)
         .ok_or_else(|| PackageError::new("block.notInstalled", &[("id", &id)]))?
         .source

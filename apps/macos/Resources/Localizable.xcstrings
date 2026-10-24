@@ -29206,6 +29206,22 @@
         }
       }
     },
+    "block.lock.changed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The package list changed while it was being edited. Try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список пакетов изменился во время редактирования. Повторите попытку."
+          }
+        }
+      }
+    },
     "block.lock.invalid" : {
       "localizations" : {
         "en" : {

@@ -40,6 +40,10 @@ struct BlocksCommand {
       return .usage
     }
     do {
+      let diagnostics = blockPackageIssues(project: project)
+      let problems = diagnostics.filter { $0.severity == .error }
+      if !problems.isEmpty { throw BlockPackageError.Failed(issues: problems) }
+      for warning in diagnostics { errors.line("jevision: \(describeIssue(issue: warning))") }
       switch request.action {
       case .list: return list(project)
       case .install(let source): return try install(source, in: project)

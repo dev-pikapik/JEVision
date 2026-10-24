@@ -109,6 +109,55 @@ struct BlocksCommandTests {
     #expect(throws: UsageError.self) { try Command.parse(["blocks", "install", "x", "--only", ","]) }
   }
 
+  @Test func lockRequirementsStopEveryCommandBeforeChangingPackages() throws {
+    let project = try folder()
+    let shelf = try folder()
+    defer { try? FileManager.default.removeItem(atPath: project); try? FileManager.default.removeItem(atPath: shelf) }
+    let id = "com.acme.guarded"
+    try package(id, in: shelf)
+    let source = shelf + "/\(id).jevblock"
+    #expect(run(.install(source: source), in: project, yes: true).status == 0)
+    let manifest = project + "/blocks/\(id).jevblock/block.json"
+    let original = try Data(contentsOf: URL(filePath: manifest))
+    let lock = project + "/jevision.blocks.json"
+    let actions: [BlocksRequest.Action] = [.list, .update(id: nil), .update(id: id), .restore, .remove(id: id), .install(source: source)]
+    for (text, status) in [
+      (#"{"format":99,"sources":false}"#, Int32(5)),
+      (#"{"minVersion":"9999.0.0","sources":false}"#, 5),
+      (#"{"format":1,"minVersion":null}"#, 3),
+      (#"{"format":1,"sources":{},"sources":{}}"#, 3),
+      ("{", 3),
+    ] {
+      try text.write(toFile: lock, atomically: true, encoding: .utf8)
+      for action in actions {
+        let result = run(action, in: project, yes: true, force: true)
+        #expect(result.status == status, "\(action): \(result.err)")
+        #expect(result.err.contains("jevision.blocks.json"))
+        #expect(try Data(contentsOf: URL(filePath: manifest)) == original)
+        #expect(try String(contentsOfFile: lock, encoding: .utf8) == text)
+      }
+    }
+  }
+
+  @Test func compatibleLockFieldsWarnAndSurvivePackageRemoval() throws {
+    let project = try folder()
+    let shelf = try folder()
+    defer { try? FileManager.default.removeItem(atPath: project); try? FileManager.default.removeItem(atPath: shelf) }
+    let id = "com.acme.retained"
+    try package(id, in: shelf)
+    let lock = project + "/jevision.blocks.json"
+    try #"{"format":1,"minVersion":"0.1.0","sources":{},"extra":{"keep":42}}"#
+      .write(toFile: lock, atomically: true, encoding: .utf8)
+    let installed = run(.install(source: shelf + "/\(id).jevblock"), in: project, yes: true)
+    #expect(installed.status == 0)
+    #expect(installed.err.contains("extra"))
+    #expect(run(.remove(id: id), in: project, force: true).status == 0)
+    let value = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: URL(filePath: lock))) as? [String: Any])
+    #expect(value["minVersion"] as? String == "0.1.0")
+    #expect((value["extra"] as? [String: Int]) == ["keep": 42])
+    #expect(blockPackageIssues(project: project).map(\.code) == ["settings.field.unknown"])
+  }
+
   @Test func restoresWhatJevisionBlocksJsonNamesOnlyWithYes() throws {
     let (shelf, project) = (try folder(), try folder())
     try package("com.acme.a", in: shelf)

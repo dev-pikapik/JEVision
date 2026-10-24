@@ -103,7 +103,7 @@ const BLOCKS_LOCK: Kind = Kind {
         `jevision.blocks.json` in the project folder, so the whole team can update them. \
         JEVision keeps it itself.",
     formats: &[PACKAGE_FORMAT],
-    header: false,
+    header: true,
 };
 
 pub(crate) fn wait_timeout() -> u64 {
@@ -485,7 +485,7 @@ impl JsonSchema for PackageLock {
                     "additionalProperties": { "type": "string", "pattern": SEMVER_PATTERN },
                 },
             },
-            "additionalProperties": false,
+            "additionalProperties": true,
         })
     }
 }
@@ -1213,6 +1213,10 @@ mod tests {
                 "https://example.com/add-date.jevblock".to_owned(),
             )]),
             versions: BTreeMap::from([(id.to_owned(), "1.2.0-beta.2".parse().unwrap())]),
+            metadata: crate::SettingsMetadata {
+                extra: BTreeMap::from([("cursor".into(), json!({"generation": 2}))]),
+                ..Default::default()
+            },
         };
         let lock_text = lock.to_json();
         assert_eq!(PackageLock::parse(&lock_text).unwrap(), lock);
@@ -1398,7 +1402,9 @@ mod tests {
                 );
                 assert_eq!(
                     read(&no_format),
-                    !sample.strict && (!sample.kind.header || name == "schedule-history"),
+                    !sample.strict
+                        && (!sample.kind.header
+                            || matches!(name, "schedule-history" | "blocks-lock")),
                     "{name}: a file without format"
                 );
             }

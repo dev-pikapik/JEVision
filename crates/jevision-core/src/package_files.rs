@@ -303,27 +303,183 @@ fn swap_in(built: &Path, target: &Path) -> io::Result<()> {
 }
 
 fn read_lock(project: &Path) -> Result<PackageLock, PackageError> {
+    read_lock_state(project).map(|(lock, _)| lock)
+}
+
+fn read_lock_state(project: &Path) -> Result<(PackageLock, bool), PackageError> {
     match fs::read_to_string(project.join(PACKAGE_LOCK_FILE)) {
-        Ok(text) => PackageLock::parse(&text)
-            .map_err(|reason| failure("block.lock.invalid", &[("reason", &reason)])),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(PackageLock::default()),
+        Ok(text) => PackageLock::parse_compatible(&text)
+            .map(|lock| (lock, true))
+            .map_err(|error| PackageError {
+                issues: vec![error.issue(PACKAGE_LOCK_FILE, "block.lock.invalid")],
+            }),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok((PackageLock::default(), false)),
         Err(e) => Err(failure("block.lock.invalid", &[("reason", &e.to_string())])),
     }
 }
 
-/// Writes the lock; an empty one is deleted, so a project without installed-from-address
-/// packages has no extra file.
-fn write_lock(project: &Path, lock: &PackageLock) -> Result<(), PackageError> {
+/// Recheck the file before committing the matching package-folder change. Optional fields
+/// come from the latest file, while concurrent changes to known entries refuse replacement.
+fn write_lock(
+    project: &Path,
+    before: &PackageLock,
+    lock: &PackageLock,
+    existed: bool,
+) -> Result<(), PackageError> {
     let path = project.join(PACKAGE_LOCK_FILE);
-    let done = if lock.sources.is_empty() {
+    let (current, current_exists) = read_lock_state(project)?;
+    if current_exists != existed
+        || current.sources != before.sources
+        || current.versions != before.versions
+    {
+        return Err(failure(
+            "block.lock.invalid",
+            &[("reason", &tr!("block.lock.changed"))],
+        ));
+    }
+    let mut saved = lock.clone();
+    if existed {
+        saved.metadata = current.metadata;
+    }
+    let text = saved.to_json();
+    PackageLock::parse_compatible(&text).map_err(|error| PackageError {
+        issues: vec![error.issue(PACKAGE_LOCK_FILE, "block.lock.invalid")],
+    })?;
+    let done = if saved.sources.is_empty()
+        && saved.versions.is_empty()
+        && saved.metadata == crate::SettingsMetadata::default()
+    {
         match fs::remove_file(&path) {
             Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
             _ => Ok(()),
         }
     } else {
-        fs::write(&path, lock.to_json())
+        crate::atomic::write(&path, text)
     };
     done.map_err(|e| failure("block.lock.invalid", &[("reason", &e.to_string())]))
+}
+
+/// App and command-line edits take turns through a stable local lock, never the inode
+/// replaced by the atomic JSON writer.
+fn editing_packages<T>(
+    project: &Path,
+    work: impl FnOnce() -> Result<T, PackageError>,
+) -> Result<T, PackageError> {
+    let acquire = || -> io::Result<fs::File> {
+        let path = project.join(".jevision/packages.lock");
+        fs::create_dir_all(path.parent().expect("a project-relative path"))?;
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)?;
+        file.lock()?;
+        Ok(file)
+    };
+    let _lock =
+        acquire().map_err(|e| failure("block.lock.invalid", &[("reason", &e.to_string())]))?;
+    work()
+}
+
+/// A unique folder beside the destination holds a replacement and its previous contents.
+/// An old folder that could not be restored or cleaned is kept for recovery.
+struct PackageEdit(PathBuf);
+
+impl PackageEdit {
+    fn new(target: &Path) -> io::Result<Self> {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        fs::create_dir_all(target.parent().expect("a package folder"))?;
+        loop {
+            let name = format!(
+                "edit-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            );
+            let path = beside(target, &name);
+            match fs::create_dir(&path) {
+                Ok(()) => return Ok(Self(path)),
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn commit(
+        &self,
+        target: &Path,
+        replacement: Option<&Path>,
+        save: impl FnOnce() -> Result<(), PackageError>,
+    ) -> Result<(), PackageError> {
+        let previous = self.0.join("previous");
+        let had = match fs::symlink_metadata(target) {
+            Ok(_) => true,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            Err(e) => return Err(failure("block.lock.invalid", &[("reason", &e.to_string())])),
+        };
+        let mut moved_old = false;
+        let mut moved_new = false;
+        let mut change = || -> io::Result<()> {
+            if had {
+                fs::rename(target, &previous)?;
+                moved_old = true;
+            }
+            if let Some(replacement) = replacement {
+                fs::rename(replacement, target)?;
+                moved_new = true;
+            }
+            Ok(())
+        };
+        let result = change()
+            .map_err(|e| failure("block.lock.invalid", &[("reason", &e.to_string())]))
+            .and_then(|()| save());
+        if let Err(mut error) = result {
+            let rollback = || -> io::Result<()> {
+                if moved_new {
+                    fs::remove_dir_all(target)?;
+                }
+                if moved_old {
+                    if fs::symlink_metadata(target).is_ok() {
+                        return Err(io::Error::from(io::ErrorKind::AlreadyExists));
+                    }
+                    fs::rename(&previous, target)?;
+                }
+                Ok(())
+            };
+            if let Err(e) = rollback() {
+                error.issues.extend(
+                    failure(
+                        "block.lock.invalid",
+                        &[("reason", &format!("{}: {e}", previous.display()))],
+                    )
+                    .issues,
+                );
+            }
+            return Err(error);
+        }
+        if had {
+            let _ = fs::remove_dir_all(previous);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for PackageEdit {
+    fn drop(&mut self) {
+        if fs::symlink_metadata(self.0.join("previous"))
+            .is_err_and(|e| e.kind() == io::ErrorKind::NotFound)
+        {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+}
+
+/// Requirements, unreadable contents and optional fields of the installed-package list.
+pub fn package_lock_issues(project: &Path) -> Vec<Issue> {
+    match read_lock(project) {
+        Ok(lock) => lock.metadata.warnings(PACKAGE_LOCK_FILE),
+        Err(error) => error.issues,
+    }
 }
 
 /// The packages installed in `project`, by name. A folder that isn't a readable package is left
@@ -398,59 +554,74 @@ pub fn install_folder(
     if !errors.is_empty() {
         return Err(PackageError { issues: errors });
     }
-    let id = package.manifest.id.clone();
-    if let Some(old) = installed(project, &id).filter(|_| !replace) {
-        return Err(failure(
-            "block.install.exists",
-            &[("id", &id), ("version", &old.manifest.version.to_string())],
-        ));
-    }
-    let mut lock = read_lock(project)?;
-    let target = package_folder(project, &id);
-    let built = beside(&target, "partial");
-    let _ = fs::remove_dir_all(&built);
-    let result = (|| {
+    editing_packages(project, || {
+        let (before, existed) = read_lock_state(project)?;
+        let id = package.manifest.id.clone();
+        let old = installed(project, &id);
+        let target = package_folder(project, &id);
+        // A folder that isn't an installed package may contain work of the project's own.
+        // Even an approved version replacement must not erase it.
+        if old.is_none() && fs::symlink_metadata(&target).is_ok() {
+            return Err(io_failure(
+                "block.install.failed",
+                &id,
+                &io::Error::from(io::ErrorKind::AlreadyExists),
+            ));
+        }
+        if let Some(old) = old.filter(|_| !replace) {
+            return Err(failure(
+                "block.install.exists",
+                &[("id", &id), ("version", &old.manifest.version.to_string())],
+            ));
+        }
+        let edit =
+            PackageEdit::new(&target).map_err(|e| io_failure("block.install.failed", &id, &e))?;
+        let built = edit.0.join("replacement");
         for file in &package.files {
-            write_file(&source_dir.join(&file.path), &built.join(&file.path))?;
+            write_file(&source_dir.join(&file.path), &built.join(&file.path))
+                .map_err(|e| io_failure("block.install.failed", &id, &e))?;
         }
-        swap_in(&built, &target)
-    })();
-    if let Err(e) = result {
-        let _ = fs::remove_dir_all(&built);
-        return Err(io_failure("block.install.failed", &id, &e));
-    }
-    match source {
-        Some(source) => {
-            lock.sources.insert(id.clone(), source.to_owned());
-            lock.versions
-                .insert(id.clone(), package.manifest.version.clone());
+        let mut lock = before.clone();
+        match source {
+            Some(source) => {
+                lock.sources.insert(id.clone(), source.to_owned());
+                lock.versions
+                    .insert(id.clone(), package.manifest.version.clone());
+            }
+            None => {
+                lock.sources.remove(&id);
+                lock.versions.remove(&id);
+            }
         }
-        None => {
-            lock.sources.remove(&id);
-            lock.versions.remove(&id);
-        }
-    }
-    write_lock(project, &lock)?;
-    Ok(Installed {
-        folder: format!("{BLOCKS_FOLDER}/{id}{PACKAGE_SUFFIX}"),
-        manifest: package.manifest,
-        source: source.map(str::to_owned),
+        edit.commit(&target, Some(&built), || {
+            write_lock(project, &before, &lock, existed)
+        })?;
+        Ok(Installed {
+            folder: format!("{BLOCKS_FOLDER}/{id}{PACKAGE_SUFFIX}"),
+            manifest: package.manifest,
+            source: source.map(str::to_owned),
+        })
     })
 }
 
 /// Deletes the installed package `id`. The tests that use it are not touched; see [`usage`].
 pub fn remove_package(project: &Path, id: &str) -> Result<(), PackageError> {
-    if !is_package_id(id) || installed(project, id).is_none() {
-        return Err(failure("block.notInstalled", &[("id", id)]));
-    }
-    fs::remove_dir_all(package_folder(project, id))
-        .map_err(|e| io_failure("block.remove.failed", id, &e))?;
-    let mut lock = read_lock(project)?;
-    let had_source = lock.sources.remove(id).is_some();
-    if lock.versions.remove(id).is_some() || had_source {
-        write_lock(project, &lock)?;
-    }
-    Ok(())
+    editing_packages(project, || {
+        // Refuse unsupported files before moving or deleting the installed package.
+        let (before, existed) = read_lock_state(project)?;
+        if !is_package_id(id) || installed(project, id).is_none() {
+            return Err(failure("block.notInstalled", &[("id", id)]));
+        }
+        let target = package_folder(project, id);
+        let edit =
+            PackageEdit::new(&target).map_err(|e| io_failure("block.remove.failed", id, &e))?;
+        let mut lock = before.clone();
+        lock.sources.remove(id);
+        lock.versions.remove(id);
+        edit.commit(&target, None, || {
+            write_lock(project, &before, &lock, existed)
+        })
+    })
 }
 
 /// The tests and blocks of `project`, as files relative to it, sorted.
@@ -1088,6 +1259,239 @@ mod tests {
             ["block.json", "flow.json", "images/go.png", "images/ok.png"]
         );
         assert!(!read.has_errors(), "{:?}", read.issues);
+    }
+
+    #[test]
+    fn lock_requirements_are_checked_before_known_values_and_duplicate_keys_are_refused() {
+        for text in [
+            r#"{"format":2,"sources":false}"#,
+            r#"{"minVersion":"9999.0.0","sources":false}"#,
+        ] {
+            assert!(
+                PackageLock::parse_compatible(text)
+                    .unwrap_err()
+                    .requires_newer()
+            );
+        }
+        for text in [
+            "{",
+            "[]",
+            r#"{"format":0}"#,
+            r#"{"format":"1"}"#,
+            r#"{"minVersion":null}"#,
+            r#"{"$schema":false}"#,
+            r#"{"sources":{},"sources":{}}"#,
+            r#"{"extra":{"key":1,"key":2}}"#,
+            r#"{"sources":{"com.acme.a":null}}"#,
+            r#"{"versions":{"com.acme.a":"1.0"}}"#,
+        ] {
+            assert!(PackageLock::parse_compatible(text).is_err(), "{text}");
+        }
+        let text = r#"{"$schema":"https://example.test/lock.json","minVersion":"0.1.0+legacy","extra":[null,{"keep":true}],"sources":{}}"#;
+        let lock = PackageLock::parse_compatible(text).unwrap();
+        let mut expected: serde_json::Value = serde_json::from_str(text).unwrap();
+        expected["format"] = 1.into();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&lock.to_json()).unwrap(),
+            expected
+        );
+    }
+
+    #[test]
+    fn package_edits_preserve_optional_fields_and_empty_headers() {
+        let root = temp("lock-fields");
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let file = project.join(PACKAGE_LOCK_FILE);
+        fs::write(&file, r#"{"format":1,"$schema":"https://example.test/lock.json","minVersion":"0.1.0","cursor":{"generation":3},"sources":{}}"#).unwrap();
+        let source = package(&root, "1.0.0");
+        install_folder(&project, &source, Some("https://example.test/pkg"), false).unwrap();
+        assert_eq!(
+            read_lock(&project).unwrap().metadata.extra["cursor"]["generation"],
+            3
+        );
+        remove_package(&project, "com.acme.sign-in").unwrap();
+        let lock = read_lock(&project).unwrap();
+        assert!(file.exists() && lock.sources.is_empty() && lock.versions.is_empty());
+        assert_eq!(lock.metadata.min_version.as_deref(), Some("0.1.0"));
+        assert_eq!(package_lock_issues(&project).len(), 1);
+        assert_eq!(
+            package_lock_issues(&project)[0].code,
+            "settings.field.unknown"
+        );
+        fs::write(
+            &file,
+            r#"{"format":1,"versions":{"com.acme.orphan":"1.0.0"}}"#,
+        )
+        .unwrap();
+        install_folder(&project, &source, None, false).unwrap();
+        remove_package(&project, "com.acme.sign-in").unwrap();
+        assert_eq!(
+            read_lock(&project).unwrap().versions["com.acme.orphan"],
+            Version::new(1, 0, 0)
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn unsupported_or_broken_locks_leave_installed_packages_and_lock_bytes_untouched() {
+        let root = temp("lock-refusals");
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let source = package(&root, "1.0.0");
+        install_folder(&project, &source, Some("https://example.test/pkg"), false).unwrap();
+        let target = package_folder(&project, "com.acme.sign-in");
+        let original = fs::read(target.join(MANIFEST_FILE)).unwrap();
+        fs::write(source.join(MANIFEST_FILE), manifest("2.0.0")).unwrap();
+        let file = project.join(PACKAGE_LOCK_FILE);
+        for text in [
+            r#"{"format":99,"sources":false}"#,
+            r#"{"format":1,"minVersion":"9999.0.0","sources":false}"#,
+            r#"{"format":1,"versions":{"com.acme.sign-in":false}}"#,
+            "{",
+        ] {
+            fs::write(&file, text).unwrap();
+            assert!(
+                install_folder(&project, &source, Some("https://example.test/new"), true).is_err()
+            );
+            assert!(remove_package(&project, "com.acme.sign-in").is_err());
+            assert!(restore_entries(&project).is_err());
+            assert_eq!(fs::read(target.join(MANIFEST_FILE)).unwrap(), original);
+            assert_eq!(fs::read_to_string(&file).unwrap(), text);
+            assert_eq!(
+                fs::read_dir(project.join(BLOCKS_FOLDER)).unwrap().count(),
+                1
+            );
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn installation_never_erases_an_unrecognized_existing_folder() {
+        let root = temp("lock-unknown-folder");
+        let project = root.join("project");
+        let source = package(&root, "1.0.0");
+        let target = package_folder(&project, "com.acme.sign-in");
+        fs::create_dir_all(&target).unwrap();
+        fs::write(target.join("unfinished.json"), b"saved work").unwrap();
+        for replace in [false, true] {
+            assert!(install_folder(&project, &source, None, replace).is_err());
+            assert_eq!(
+                fs::read(target.join("unfinished.json")).unwrap(),
+                b"saved work"
+            );
+            assert!(!project.join(PACKAGE_LOCK_FILE).exists());
+            assert_eq!(
+                fs::read_dir(project.join(BLOCKS_FOLDER)).unwrap().count(),
+                1
+            );
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn stale_writes_use_current_optional_fields_but_refuse_changed_entries() {
+        let project = temp("lock-stale");
+        let file = project.join(PACKAGE_LOCK_FILE);
+        fs::write(&file, r#"{"format":1,"sources":{},"removed":true}"#).unwrap();
+        let before = read_lock(&project).unwrap();
+        let mut edited = before.clone();
+        edited
+            .sources
+            .insert("com.acme.new".into(), "https://example.test/pkg".into());
+        fs::write(&file, r#"{"format":1,"sources":{},"latest":{"keep":42}}"#).unwrap();
+        write_lock(&project, &before, &edited, true).unwrap();
+        let saved = read_lock(&project).unwrap();
+        assert!(!saved.metadata.extra.contains_key("removed"));
+        assert_eq!(saved.metadata.extra["latest"]["keep"], 42);
+        let bytes = fs::read(&file).unwrap();
+        assert!(write_lock(&project, &before, &edited, true).is_err());
+        assert_eq!(fs::read(&file).unwrap(), bytes);
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn failed_lock_commits_restore_replaced_deleted_and_new_folders() {
+        let root = temp("lock-rollback");
+        let file = root.join(PACKAGE_LOCK_FILE);
+        let target = package_folder(&root, "com.acme.a");
+        for (had, replace) in [(true, true), (true, false), (false, true)] {
+            fs::write(&file, r#"{"format":1,"sources":{}}"#).unwrap();
+            if had {
+                fs::create_dir_all(&target).unwrap();
+                fs::write(target.join("sentinel"), b"original").unwrap();
+            }
+            let before = read_lock(&root).unwrap();
+            let edit = PackageEdit::new(&target).unwrap();
+            let built = edit.0.join("replacement");
+            if replace {
+                fs::create_dir_all(&built).unwrap();
+                fs::write(built.join("sentinel"), b"new").unwrap();
+            }
+            let future = r#"{"format":2,"unfamiliar":true}"#;
+            fs::write(&file, future).unwrap();
+            assert!(
+                edit.commit(&target, replace.then_some(built.as_path()), || write_lock(
+                    &root, &before, &before, true
+                ))
+                .is_err()
+            );
+            assert_eq!(fs::read_to_string(&file).unwrap(), future);
+            if had {
+                assert_eq!(fs::read(target.join("sentinel")).unwrap(), b"original");
+                fs::remove_dir_all(&target).unwrap();
+            } else {
+                assert!(!target.exists());
+            }
+            drop(edit);
+            assert_eq!(fs::read_dir(root.join(BLOCKS_FOLDER)).unwrap().count(), 0);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn concurrent_installs_keep_every_source_version_and_optional_field() {
+        let root = temp("lock-concurrent");
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        fs::write(
+            project.join(PACKAGE_LOCK_FILE),
+            r#"{"format":1,"sources":{},"extra":[null,42]}"#,
+        )
+        .unwrap();
+        let sources: Vec<_> = (0..8)
+            .map(|i| {
+                let dir = package(&root.join(format!("source-{i}")), "1.0.0");
+                fs::write(
+                    dir.join(MANIFEST_FILE),
+                    manifest("1.0.0").replace("com.acme.sign-in", &format!("com.acme.unit{i}")),
+                )
+                .unwrap();
+                dir
+            })
+            .collect();
+        let barrier = std::sync::Barrier::new(sources.len());
+        std::thread::scope(|scope| {
+            for source in &sources {
+                let project = &project;
+                let barrier = &barrier;
+                scope.spawn(move || {
+                    barrier.wait();
+                    install_folder(project, source, Some("https://example.test/pkg"), false)
+                        .unwrap();
+                });
+            }
+        });
+        let lock = read_lock(&project).unwrap();
+        assert_eq!(lock.sources.len(), 8);
+        assert_eq!(lock.versions.len(), 8);
+        assert_eq!(list_installed(&project).len(), 8);
+        assert_eq!(lock.metadata.extra["extra"], json!([null, 42]));
+        assert_eq!(
+            fs::read_dir(project.join(BLOCKS_FOLDER)).unwrap().count(),
+            8
+        );
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

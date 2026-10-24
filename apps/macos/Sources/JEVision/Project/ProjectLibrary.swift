@@ -55,6 +55,7 @@ final class ProjectLibrary {
   nonisolated static let blockSuffix = ".block.json"
 
   private(set) var entries: [LibraryEntry] = ProjectLibrary.builtins
+  private(set) var packageIssues: [Issue] = []
   @ObservationIgnored private var project: URL?
 
   func open(_ url: URL) {
@@ -64,6 +65,7 @@ final class ProjectLibrary {
 
   /// Reads the folders again, after something in the project changed.
   func reload() {
+    packageIssues = project.map { blockPackageIssues(project: $0.path) } ?? []
     let found = Self.builtins + (project.map(Self.read) ?? [])
     if found != entries { entries = found }
     let names = found.compactMap { entry in entry.package.map { ($0.id, entry.name) } }

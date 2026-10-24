@@ -1,12 +1,21 @@
 {
   "$id": "https://dev-pikapik.github.io/JEVision/schemas/blocks-lock.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Where the shared blocks installed in a project came from, in `jevision.blocks.json` in the project folder, so the whole team can update them. JEVision keeps it itself.",
   "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
     "format": {
       "const": 1,
       "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "type": "string"
     },
     "sources": {
       "additionalProperties": {

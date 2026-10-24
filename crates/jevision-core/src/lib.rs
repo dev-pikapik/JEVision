@@ -113,8 +113,8 @@ pub use package_files::{
     BLOCKS_FOLDER, Change, ExportMeta, Exported, Installed, MAX_PACKAGE_BYTES, MAX_PACKAGE_FILES,
     OwnBlock, Package, PackageFile, RestoreEntry, block_dependents, change_for, export_package,
     input_defaults, install_folder, installed, list_installed, make_own_block, package_flow_path,
-    package_folder, read_package, remove_package, restore_entries, skipped_links_warning,
-    switch_tests_to_copy, unmet_dependencies, usage,
+    package_folder, package_lock_issues, read_package, remove_package, restore_entries,
+    skipped_links_warning, switch_tests_to_copy, unmet_dependencies, usage,
 };
 pub use profile::{
     PROFILE_VARIABLE, keychain_service, profile_folder, profile_folder_from,
