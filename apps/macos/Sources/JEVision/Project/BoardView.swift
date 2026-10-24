@@ -213,6 +213,7 @@ struct BoardView: View {
   private static let spokenLimit = 150
 
   private func canvas(_ scene: BoardScene) -> some View {
+    let mapIsShown = showsMinimap
     let scale = viewport.scale
     let area = drawingRect.insetBy(dx: -60 / scale, dy: -60 / scale)
     let seen = scene.visible(in: area, moved: movedIDs, by: moveShift)
@@ -262,7 +263,7 @@ struct BoardView: View {
         .padding(12)
         .padding(.leading, workspaceInsets.leading)
     }
-    .overlay(alignment: .bottomTrailing) { minimap(scene).padding(12) }
+    .overlay(alignment: .bottomTrailing) { minimap(scene, isShown: mapIsShown).padding(12) }
     .overlay(alignment: .top) {
       connectionBanner.padding(.top, workspaceInsets.top + headerHeight)
         .padding(.leading, workspaceInsets.leading)
@@ -590,8 +591,8 @@ struct BoardView: View {
 
   // MARK: Minimap
 
-  @ViewBuilder private func minimap(_ scene: BoardScene) -> some View {
-    if showsMinimap {
+  @ViewBuilder private func minimap(_ scene: BoardScene, isShown: Bool) -> some View {
+    if isShown {
       BoardMinimap(layout: scene.layout, glances: look.glances, revision: lookRevision, visible: visibleRect) {
         center(on: $0)
       }

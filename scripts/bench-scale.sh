@@ -73,6 +73,8 @@ if ((APP)); then
   for scenario in sidebar board largestTest longReport; do
     measure_app "ScaleUIBenchmarkTests.$scenario"
   done
+  measure_app CanvasControlTests
+  measure_app WorkspaceChromeTests
 fi
 
 # A test's own output may follow the test runner's text on the same line.

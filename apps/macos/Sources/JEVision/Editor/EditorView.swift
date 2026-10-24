@@ -434,7 +434,8 @@ struct EditorView: View {
   }
 
   private func canvas(outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
-    GeometryReader { box in
+    let mapIsShown = showsMinimap
+    return GeometryReader { box in
       FlowCanvas(
         document: document, appName: apps.name(of:), camera: camera, size: box.size,
         outcomes: outcomes, taken: taken
@@ -461,7 +462,7 @@ struct EditorView: View {
           menu: { _ in nil }, capturesSecondaryClicks: false)
       }
       .overlay(alignment: .bottomTrailing) {
-        if !document.layout.blocks.isEmpty { minimap.padding(12).padding(.trailing, canvasTrailingInset) }
+        if !document.layout.blocks.isEmpty { minimap(isShown: mapIsShown).padding(12).padding(.trailing, canvasTrailingInset) }
       }
       .overlay(alignment: .topTrailing) {
         if project.rootURL != nil, let flow = document.flow {
@@ -546,8 +547,8 @@ struct EditorView: View {
     }
   }
 
-  @ViewBuilder private var minimap: some View {
-    if showsMinimap {
+  @ViewBuilder private func minimap(isShown: Bool) -> some View {
+    if isShown {
       FlowMinimap(
         layout: document.layout, canvas: document.flow?.canvas,
         visible: CGRect(origin: camera.world(workingArea.origin),
