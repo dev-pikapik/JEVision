@@ -710,6 +710,7 @@ struct CommandLineToolTests {
       ])
     #expect(formats.first?["version"] as? Int == Int(formatVersion()))
     #expect(json["iphoneProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])
+    #expect(json["cliBridgeProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])
     #expect(json["mcpProtocols"] as? [String] == ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"])
     #expect(try jevision("help", "version").out.contains("Usage: jevision version [--json]"))
   }

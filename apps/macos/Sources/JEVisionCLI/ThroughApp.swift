@@ -115,14 +115,27 @@ struct ThroughApp {
         if let data = try? file.from.readToEnd(), !data.isEmpty { try? file.to.write(contentsOf: data) }
       }
     }
-    let status = folder.appending(path: CLIBridge.status)
+    func ended() throws(Failure) -> Int32? {
+      do {
+        return try CLIBridge.readStatus(in: folder)
+      } catch CLIBridge.ProtocolError.unsupportedFormat(let found) {
+        throw Failure(message: CLIBridge.ProtocolError.unsupportedFormat(found).localizedDescription, status: .needsNewer)
+      } catch {
+        throw Failure(message: words("cli.bridge.noStatus", app.path(percentEncoded: false)))
+      }
+    }
     while true {
       // The status comes last, so what the run printed before it is all there to show.
-      let ended = try? String(contentsOf: status, encoding: .utf8)
-      let gone = ended == nil && !isRunning()
+      let code = try ended()
+      let gone = code == nil && !isRunning()
       show()
-      if let ended, let code = Int32(ended.trimmingCharacters(in: .whitespacesAndNewlines)) { return code }
-      if gone, (try? String(contentsOf: status, encoding: .utf8)) == nil {
+      if let code { return code }
+      // A process can publish its result between the first read and the liveness check.
+      if gone {
+        if let code = try ended() {
+          show()
+          return code
+        }
         throw Failure(message: words("cli.bridge.noStatus", app.path(percentEncoded: false)))
       }
       usleep(50_000)

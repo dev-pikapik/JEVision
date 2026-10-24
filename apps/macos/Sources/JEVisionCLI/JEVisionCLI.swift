@@ -79,6 +79,9 @@ enum JEVisionCLI {
       ("iphoneProtocol", .object([
         ("oldest", .int(Int64(about.iphoneProtocolOldest))), ("newest", .int(Int64(about.iphoneProtocolNewest))),
       ])),
+      ("cliBridgeProtocol", .object([
+        ("oldest", .int(Int64(CLIBridge.version))), ("newest", .int(Int64(CLIBridge.version))),
+      ])),
       ("mcpProtocols", .array(about.mcpProtocols.map { .string($0) })),
     ])
   }

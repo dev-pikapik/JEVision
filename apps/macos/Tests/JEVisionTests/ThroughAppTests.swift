@@ -95,6 +95,141 @@ struct ThroughAppTests {
     #expect(text(CLIBridge.output, in: folder) == "hi\n\(directory.path(percentEncoded: false).dropLast())\nfrom the command\n")
     #expect(text(CLIBridge.errors, in: folder) == "oops\n")
     #expect(text(CLIBridge.status, in: folder) == "3\n")
+    #expect(try CLIBridge.readStatus(in: folder) == 3)
+    let result = try JSONDecoder().decode(CLIBridge.Result.self, from: Data(contentsOf: folder.appending(path: CLIBridge.result)))
+    #expect(result.format == 1 && result.exitStatus == 3)
+  }
+
+  @Test func newRequestsHaveAVersionAndLegacyRequestsRemainReadableWithoutRewriting() throws {
+    let directory = try scratch()
+    let folder = try bridge("echo legacy", in: directory)
+    defer {
+      try? FileManager.default.removeItem(at: folder)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let file = folder.appending(path: CLIBridge.request)
+    var json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    #expect(json["format"] as? Int == 1)
+    json.removeValue(forKey: "format")
+    json["optionalFutureField"] = ["preserved": true]
+    let legacy = try JSONSerialization.data(withJSONObject: json)
+    try legacy.write(to: file)
+    #expect(CLIBridge.serve(folder, helper: shell) == 0)
+    #expect(text(CLIBridge.output, in: folder) == "legacy\n")
+    #expect(try Data(contentsOf: file) == legacy)
+  }
+
+  @Test func newerRequestRequirementsAreCheckedBeforeThePayloadAndBeforeStartingAnything() throws {
+    let directory = try scratch()
+    let folder = try bridge("touch ran", in: directory, environment: ["SECRET": "private-demo-key"])
+    defer {
+      try? FileManager.default.removeItem(at: folder)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let file = folder.appending(path: CLIBridge.request)
+    var json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    json["format"] = 2
+    // A future payload need not be decodable by this version at all.
+    json["directory"] = ["future": true]
+    let bytes = try JSONSerialization.data(withJSONObject: json)
+    try bytes.write(to: file)
+    #expect(CLIBridge.serve(folder, helper: shell) == 5)
+    #expect(try CLIBridge.readStatus(in: folder) == 5)
+    #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "ran").path))
+    #expect(text(CLIBridge.output, in: folder).isEmpty)
+    #expect(!text(CLIBridge.errors, in: folder).contains("private-demo-key"))
+    #expect(try Data(contentsOf: file) == bytes)
+  }
+
+  @Test func malformedRequestHeadersNeverLaunchTheHelper() throws {
+    let directory = try scratch()
+    let folder = try bridge("touch ran", in: directory)
+    defer {
+      try? FileManager.default.removeItem(at: folder)
+      try? FileManager.default.removeItem(at: directory)
+    }
+    let file = folder.appending(path: CLIBridge.request)
+    let original = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    for format: Any in [NSNull(), false, 0, -1, "1", 1.5] {
+      var json = original
+      json["format"] = format
+      let bytes = try JSONSerialization.data(withJSONObject: json)
+      try bytes.write(to: file)
+      #expect(CLIBridge.serve(folder, helper: shell) == 3)
+      #expect(try Data(contentsOf: file) == bytes)
+      #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "ran").path))
+    }
+  }
+
+  @Test func versionedResultsValidateTheirHeaderBeforeTheirPayload() throws {
+    let decoder = JSONDecoder()
+    let valid = Data(#"{"format":1,"exitStatus":137,"optionalFutureField":{"a":true}}"#.utf8)
+    #expect(try decoder.decode(CLIBridge.Result.self, from: valid) == CLIBridge.Result(exitStatus: 137))
+    do {
+      _ = try decoder.decode(CLIBridge.Result.self, from: Data(#"{"format":2,"exitStatus":null}"#.utf8))
+      Issue.record("A future result must refuse this reader")
+    } catch CLIBridge.ProtocolError.unsupportedFormat(let found) {
+      #expect(found == 2)
+    }
+    for json in [#"{"exitStatus":0}"#, #"{"format":null,"exitStatus":0}"#,
+      #"{"format":0,"exitStatus":0}"#, #"{"format":true,"exitStatus":0}"#,
+      #"{"format":1,"exitStatus":-1}"#, #"{"format":1,"exitStatus":256}"#,
+      #"{"format":1,"exitStatus":true}"#, #"{"format":1,"exitStatus":1.5}"#]
+    {
+      #expect(throws: (any Error).self) { try decoder.decode(CLIBridge.Result.self, from: Data(json.utf8)) }
+    }
+  }
+
+  @Test func modernResultsTakePrecedenceAndAnUnreadableOneCannotFallBackToLegacySuccess() throws {
+    let folder = try scratch()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    #expect(try CLIBridge.readStatus(in: folder) == nil)
+    let legacy = folder.appending(path: CLIBridge.status)
+    try "0\n".write(to: legacy, atomically: true, encoding: .utf8)
+    #expect(try CLIBridge.readStatus(in: folder) == 0)
+    let result = folder.appending(path: CLIBridge.result)
+    try JSONEncoder().encode(CLIBridge.Result(exitStatus: 9)).write(to: result)
+    #expect(try CLIBridge.readStatus(in: folder) == 9)
+    for json in [#"{"format":2}"#, #"{"format":1,"exitStatus":null}"#, "{"] {
+      try Data(json.utf8).write(to: result)
+      #expect(throws: (any Error).self) { try CLIBridge.readStatus(in: folder) }
+    }
+  }
+
+  @Test func legacyStatusCodesStayCompatibleButMalformedOnesAreErrors() throws {
+    let folder = try scratch()
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let file = folder.appending(path: CLIBridge.status)
+    for code: Int32 in [0, 1, 3, 5, 137, 255] {
+      try "\(code)\n".write(to: file, atomically: true, encoding: .utf8)
+      #expect(try CLIBridge.readStatus(in: folder) == code)
+    }
+    for invalid in ["", "bad", "-1", "256", "999999999999999", "1\n2"] {
+      try invalid.write(to: file, atomically: true, encoding: .utf8)
+      #expect(throws: (any Error).self) { try CLIBridge.readStatus(in: folder) }
+    }
+  }
+
+  @Test func theCommandAcceptsOldApplicationsAndReportsNewerOrMalformedResults() throws {
+    for (result, legacy, expected): (String?, String?, Int32) in [
+      (nil, "7\n", 7),
+      (#"{"format":1,"exitStatus":9}"#, "0\n", 9),
+      (#"{"format":2}"#, "0\n", 5),
+      (#"{"format":1,"exitStatus":null}"#, "0\n", 3),
+      ("{", "0\n", 3),
+      (nil, "broken", 3),
+    ] {
+      var command = ThroughApp(arguments: ["run", "unused"], app: URL(filePath: "/Applications/JEVision.app"))
+      command.interrupts = { _ in [] }
+      command.output = FileHandle.nullDevice
+      command.errors = FileHandle.nullDevice
+      command.open = { _, folder, _ in
+        if let result { try Data(result.utf8).write(to: folder.appending(path: CLIBridge.result), options: .atomic) }
+        if let legacy { try legacy.write(to: folder.appending(path: CLIBridge.status), atomically: true, encoding: .utf8) }
+        return { false }
+      }
+      #expect(command.execute() == expected)
+    }
   }
 
   @Test func eachStopInterruptsTheRunOnceMore() throws {

@@ -236,7 +236,7 @@ Side by side, as jevision.project.json sets for the folder “login”. Add --pa
 <h2 id="through-app">Running through the app</h2>
 <p>macOS asks for the Screen &amp; System Audio Recording and Accessibility permissions for the app that <code>jevision</code> runs in: Terminal, your editor or your CI agent, each one separately. With <code>--through-app</code>, the JEVision app runs the tests instead, so allowing JEVision once is enough wherever you start the run from:</p>
 <pre><code>jevision run tests/ --through-app</code></pre>
-<p>It works the same as without it: what the run prints shows in your terminal, <kbd>Ctrl</kbd>-<kbd>C</kbd> stops the run, and the exit status is the run's own. The app runs in the background with no window and no Dock icon, gets your current folder and environment variables, and quits when the run ends. If the app can't be found or opened, or quits before the run ends, the exit status is <code>2</code> and the message says why.</p>
+<p>It works the same as without it: what the run prints shows in your terminal, <kbd>Ctrl</kbd>-<kbd>C</kbd> stops the run, and the exit status is the run's own. The app runs in the background with no window and no Dock icon, gets your current folder and environment variables, and quits when the run ends. A missing app or invalid argument uses status <code>2</code>, a failed handoff or unreadable result uses <code>3</code>, and an app that cannot open uses <code>4</code>. A request or result requiring a newer bridge protocol uses <code>5</code>. See the <a href="file-formats.html#cli-bridge">bridge compatibility contract</a>.</p>
 <p>The app it uses is the first one found of:</p>
 <ol>
   <li>the JEVision app the <code>jevision</code> you run comes from, when it was installed with <strong>JEVision → Install Command Line Tool…</strong>;</li>
@@ -485,11 +485,13 @@ jevision blocks restore --yes</code></pre>
     { "file": "report.json", "version": 1 }
   ],
   "iphoneProtocol": { "oldest": 1, "newest": 1 },
+  "cliBridgeProtocol": { "oldest": 1, "newest": 1 },
   "mcpProtocols": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 }</code></pre>
 <ul>
   <li><code>formats</code> lists the <a href="file-formats.html">files</a> by name, or by the ending of their name: tests, your own blocks, the settings of a project, its environments and schedules, the description of a shared block (<code>block.json</code>) and the report of a run. <code>version</code> is the <code>format</code> this version writes in the file; a file with a higher one needs a newer JEVision, and commands that meet one end with <a href="#exit-codes">status <code>5</code></a>.</li>
   <li><code>iphoneProtocol</code> is the range of versions of the connection between the <a href="iphone.html">iPhone app</a> and this Mac. The iPhone app works with this Mac when its version is in the range.</li>
+  <li><code>cliBridgeProtocol</code> is the range of formats supported by <a href="#through-app"><code>--through-app</code></a>. The current bridge also accepts its original unversioned request and plain exit-status file.</li>
   <li><code>mcpProtocols</code> are the versions of the Model Context Protocol <a href="#mcp"><code>jevision mcp</code></a> speaks, newest first.</li>
 </ul>
 
