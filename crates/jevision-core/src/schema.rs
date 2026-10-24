@@ -1465,7 +1465,7 @@ mod tests {
             version: "1.2.0-beta.2".parse().unwrap(),
             author: "Acme".into(),
             license: "MIT".into(),
-            min_version: Some("1.4.0".parse().unwrap()),
+            min_version: Some(crate::app_version()),
             inputs: vec![PackageInput {
                 name: "USER".into(),
                 label: Some("User name".into()),
@@ -1481,6 +1481,15 @@ mod tests {
         assert_eq!(crate::package::parse_manifest(&text).unwrap(), manifest);
         let file: Value = serde_json::from_str(&text).unwrap();
         passes(&schema, &file, "the sample block");
+        let newer = with(&file, "/minVersion", "9999.0.0".into());
+        passes(&schema, &newer, "a structurally valid future requirement");
+        assert_eq!(
+            crate::package::parse_manifest(&newer.to_string())
+                .unwrap_err()
+                .issues[0]
+                .code,
+            "block.version.needsNewer"
+        );
         let mut short = file.clone();
         short.as_object_mut().unwrap().remove("dependencies");
         short["dependencies"] = json!([{ "id": "com.acme.open-app" }]);

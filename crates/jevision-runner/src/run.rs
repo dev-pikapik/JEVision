@@ -885,16 +885,26 @@ fn load_test(project: &Path, path: &Path) -> Result<TestFile, Failure> {
         _ => unreadable(e.to_string()),
     })?;
     if let Some(id) = package {
-        let manifest = read_manifest(path).map_err(unreadable)?;
-        if let Some(needs) = manifest
-            .min_version
-            .filter(|v| *v > jevision_core::app_version())
-        {
-            return Err(Failure::new("run.block.needsNewer")
-                .with("package", id)
-                .with("needs", needs)
-                .with("have", jevision_core::app_version()));
-        }
+        read_manifest(path).map_err(|error| {
+            match error.issues.iter().find(|issue| {
+                matches!(
+                    issue.code.as_str(),
+                    "block.version.needsNewer" | "settings.format.tooNew"
+                )
+            }) {
+                Some(issue) if issue.code == "block.version.needsNewer" => {
+                    Failure::new("run.block.needsNewer")
+                        .with("package", id)
+                        .with("needs", issue.param("needs").unwrap_or_default())
+                        .with("have", issue.param("have").unwrap_or_default())
+                }
+                Some(issue) => issue.params.iter().fold(
+                    Failure::new(&issue.code).with("test", &file),
+                    |failure, param| failure.with(&param.name, &param.value),
+                ),
+                None => unreadable(error.to_string()),
+            }
+        })?;
     }
     let flow = jevision_core::parse(&text).map_err(|e| {
         match e.issues.iter().find(|i| i.code == "flow.format.tooNew") {
@@ -969,11 +979,20 @@ fn used_packages(project: &Path, attempts: &[Attempt]) -> Vec<UsedPackage> {
 }
 
 /// The `block.json` beside the steps of a package.
-fn read_manifest(flow_file: &Path) -> Result<jevision_core::BlockManifest, String> {
+fn read_manifest(
+    flow_file: &Path,
+) -> Result<jevision_core::BlockManifest, jevision_core::PackageError> {
     let file = flow_file.with_file_name(jevision_core::MANIFEST_FILE);
-    let text =
-        fs::read_to_string(&file).map_err(|e| format!("{}: {e}", jevision_core::MANIFEST_FILE))?;
-    jevision_core::parse_manifest(&text).map_err(|e| e.to_string())
+    let text = fs::read_to_string(&file).map_err(|e| {
+        jevision_core::PackageError::new(
+            "block.file.unreadable",
+            &[
+                ("file", jevision_core::MANIFEST_FILE),
+                ("reason", &e.to_string()),
+            ],
+        )
+    })?;
+    jevision_core::parse_manifest(&text)
 }
 
 fn fetch_secrets(

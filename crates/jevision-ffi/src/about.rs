@@ -6,9 +6,9 @@ use std::path::Path;
 
 use jevision_core::{
     BLOCK_SUFFIX, ENVIRONMENTS_FILE, ENVIRONMENTS_FORMAT, FORMAT_VERSION, LAST_RESULTS_FILE,
-    MANIFEST_FILE, META_SUFFIX, PACKAGE_FORMAT, PROJECT_FILE, PROJECT_FORMAT, RESOURCE_FORMAT,
-    SCHEDULE_FILE, SCHEDULE_FORMAT, SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_FORMAT,
-    TEMPLATE_SUFFIX, TEST_SUFFIX,
+    MANIFEST_FILE, META_SUFFIX, PACKAGE_FORMAT, PACKAGE_LOCK_FILE, PROJECT_FILE, PROJECT_FORMAT,
+    RESOURCE_FORMAT, SCHEDULE_FILE, SCHEDULE_FORMAT, SCHEDULE_HISTORY_FILE,
+    SCHEDULE_HISTORY_FORMAT, TEMPLATE_SUFFIX, TEST_SUFFIX,
 };
 use jevision_runner::{LAST_RESULTS_FORMAT, REPORT_FILE, REPORT_FORMAT};
 
@@ -111,6 +111,7 @@ fn formats() -> Vec<FileFormat> {
         format(ENVIRONMENTS_FILE.to_owned(), ENVIRONMENTS_FORMAT),
         format(SCHEDULE_FILE.to_owned(), SCHEDULE_FORMAT),
         format(MANIFEST_FILE.to_owned(), PACKAGE_FORMAT),
+        format(PACKAGE_LOCK_FILE.to_owned(), PACKAGE_FORMAT),
         format(REPORT_FILE.to_owned(), REPORT_FORMAT),
         format(jevision_notify::FILE.to_owned(), jevision_notify::FORMAT),
         format(by_name(LAST_RESULTS_FILE), LAST_RESULTS_FORMAT),
@@ -155,6 +156,10 @@ mod tests {
             Some(jevision_core::SCHEDULE_FORMAT)
         );
         assert_eq!(version("block.json"), Some(jevision_core::PACKAGE_FORMAT));
+        assert_eq!(
+            version(PACKAGE_LOCK_FILE),
+            Some(jevision_core::PACKAGE_FORMAT)
+        );
         assert_eq!(version("report.json"), Some(jevision_runner::REPORT_FORMAT));
         assert_eq!(
             version("jevision.notifications.json"),
@@ -218,6 +223,15 @@ mod tests {
             r#"{"format":1,"minVersion":"9999.0.0"}"#
         )));
         assert!(!newer(file("notes.json", r#"{"format": 99}"#)));
+        assert!(newer(file(PACKAGE_LOCK_FILE, r#"{"format":99}"#)));
+        assert!(newer(file(
+            PACKAGE_LOCK_FILE,
+            r#"{"format":1,"minVersion":"9999.0.0+release.1"}"#
+        )));
+        assert!(!newer(file(
+            PACKAGE_LOCK_FILE,
+            r#"{"format":1,"sources":{}}"#
+        )));
         assert!(newer(file("last-results.json", r#"{"format": 99}"#)));
         assert!(newer(file("schedule-history.json", r#"{"format": 99}"#)));
         assert!(newer(file(

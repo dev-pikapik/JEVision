@@ -109,6 +109,38 @@ struct BlocksCommandTests {
     #expect(throws: UsageError.self) { try Command.parse(["blocks", "install", "x", "--only", ","]) }
   }
 
+  @Test func manifestRequirementsStopInstallationBeforeUnfamiliarSteps() throws {
+    let (shelf, project) = (try folder(), try folder())
+    defer {
+      try? FileManager.default.removeItem(atPath: shelf)
+      try? FileManager.default.removeItem(atPath: project)
+    }
+    let source = URL(filePath: shelf).appending(path: "com.acme.future.jevblock")
+    try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+    let flow = source.appending(path: "flow.json")
+    let steps = Data("{future steps".utf8)
+    try steps.write(to: flow)
+    for header in [
+      #"{"format":99,"inputs":"future"}"#,
+      #"{"format":1,"minVersion":"9999.0.0","inputs":"future"}"#,
+    ] {
+      let manifest = source.appending(path: "block.json")
+      let bytes = Data(header.utf8)
+      try bytes.write(to: manifest)
+      let result = run(.install(source: source.path), in: project, yes: true)
+      #expect(result.status == 5, "\(result.err)")
+      #expect(try Data(contentsOf: manifest) == bytes)
+      #expect(try Data(contentsOf: flow) == steps)
+      #expect(installed(project).isEmpty)
+      #expect(!FileManager.default.fileExists(atPath: project + "/jevision.blocks.json"))
+    }
+    let formats = compatibility().formats
+    #expect(formats.contains { $0.file == "jevision.blocks.json" && $0.version == 1 })
+    let lock = URL(filePath: project).appending(path: "jevision.blocks.json")
+    try Data(#"{"format":99}"#.utf8).write(to: lock)
+    #expect(needsNewerJevision(path: lock.path))
+  }
+
   @Test func lockRequirementsStopEveryCommandBeforeChangingPackages() throws {
     let project = try folder()
     let shelf = try folder()

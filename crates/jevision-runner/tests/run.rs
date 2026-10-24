@@ -2712,6 +2712,26 @@ fn a_package_that_is_not_installed_or_too_new_stops_the_run_with_a_reason() {
     let report = run(&p, &hands).report;
     assert_eq!(failure_code(&report), "run.block.needsNewer");
     assert!(hands.typed().is_empty());
+
+    for (manifest, code) in [
+        (
+            r#"{"format":99,"inputs":"future"}"#,
+            "settings.format.tooNew",
+        ),
+        (
+            r#"{"format":1,"minVersion":"9999.0.0","inputs":"future"}"#,
+            "run.block.needsNewer",
+        ),
+    ] {
+        p.write("blocks/com.acme.sign-in.jevblock/block.json", manifest);
+        p.write(
+            "blocks/com.acme.sign-in.jevblock/flow.json",
+            "{future steps",
+        );
+        let report = run(&p, &hands).report;
+        assert_eq!(failure_code(&report), code, "{report:?}");
+        assert!(hands.typed().is_empty());
+    }
 }
 
 #[test]

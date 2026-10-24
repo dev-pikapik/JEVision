@@ -706,7 +706,7 @@ struct CommandLineToolTests {
     #expect(
       formats.map { $0["file"] as? String } == [
         "*.flow.json", "*.block.json", "*.template.json", "*.jevmeta", "jevision.project.json", "jevision.environments.json", "jevision.schedule.json",
-        "block.json", "report.json", "jevision.notifications.json", "last-results.json", "schedule-history.json",
+        "block.json", "jevision.blocks.json", "report.json", "jevision.notifications.json", "last-results.json", "schedule-history.json",
       ])
     #expect(formats.first?["version"] as? Int == Int(formatVersion()))
     #expect(json["iphoneProtocol"] as? [String: Int] == ["oldest": 1, "newest": 1])

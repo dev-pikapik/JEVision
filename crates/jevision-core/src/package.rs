@@ -17,6 +17,7 @@ use jevision_l10n::{language, tr, tr_in};
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+use crate::compat::{SettingsFileError, UniqueValue};
 use crate::issue::{Issue, ParseError, describe};
 use crate::model::{
     BlockKind, CheckOf, ClipboardAction, Condition, Flow, Reference, Target, ValueKind, WaitUntil,
@@ -579,9 +580,9 @@ fn is_icon(name: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.')
 }
 
-/// Reads the text of a `block.json`. Holds every problem found.
+/// Reads `block.json`, checking its requirements before decoding the known payload.
 pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
-    let value: Value = serde_json::from_str(text).map_err(|e| {
+    let UniqueValue(value) = serde_json::from_str::<UniqueValue>(text).map_err(|e| {
         PackageError::new(
             "block.json.syntax",
             &[
@@ -598,6 +599,20 @@ pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
         issues: Vec::new(),
     };
     reader.format();
+    if !reader.issues.is_empty() {
+        return Err(PackageError {
+            issues: reader.issues,
+        });
+    }
+    let min_version = reader.version("minVersion", false);
+    if let Some(issue) = minimum_version_issue(min_version.as_ref()) {
+        reader.issues.push(issue);
+    }
+    if !reader.issues.is_empty() {
+        return Err(PackageError {
+            issues: reader.issues,
+        });
+    }
     let id = reader.text("id", MAX_ID_LEN, true);
     let name = reader.text("name", MAX_NAME_LEN, true);
     let description = reader.text("description", MAX_TEXT_LEN, false);
@@ -605,7 +620,6 @@ pub fn parse_manifest(text: &str) -> Result<BlockManifest, PackageError> {
     let version = reader.version("version", true);
     let author = reader.text("author", MAX_SHORT_LEN, true);
     let license = reader.text("license", MAX_SHORT_LEN, true);
-    let min_version = reader.version("minVersion", false);
     let inputs = reader.inputs();
     let dependencies = reader.dependencies(id.as_deref());
     for key in object.keys() {
@@ -674,6 +688,15 @@ impl<'a> Reader<'a> {
                 .issues
                 .push(Issue::error("block.field.missing").with("field", "format")),
             Some(v) if v.as_u64() == Some(u64::from(PACKAGE_FORMAT)) => {}
+            Some(v) if v.as_u64().is_some_and(|v| v > u64::from(PACKAGE_FORMAT)) => {
+                self.issues.push(
+                    SettingsFileError::TooNew {
+                        found: v.as_u64().unwrap(),
+                        supported: PACKAGE_FORMAT,
+                    }
+                    .issue(MANIFEST_FILE, "block.format.unsupported"),
+                );
+            }
             Some(v) => self.issues.push(
                 Issue::error("block.format.unsupported")
                     .with("found", v)
@@ -881,21 +904,22 @@ impl<'a> Reader<'a> {
     }
 }
 
+fn minimum_version_issue(version: Option<&Version>) -> Option<Issue> {
+    let needs = version.filter(|needs| **needs > app_version())?;
+    Some(
+        Issue::error("block.version.needsNewer")
+            .with("needs", needs)
+            .with("have", app_version()),
+    )
+}
+
 /// Everything wrong with the package whose block.json is `manifest` and whose steps are `flow`,
 /// the contents of the folder `dir`: for a block that can't be installed, errors; for one that
 /// can but has a flaw to know of, warnings.
 pub fn check_package(manifest: &BlockManifest, flow: &Flow, dir: &Path) -> Vec<Issue> {
     let mut out = Vec::new();
-    if let Some(needs) = manifest
-        .min_version
-        .as_ref()
-        .filter(|needs| **needs > app_version())
-    {
-        out.push(
-            Issue::error("block.version.needsNewer")
-                .with("needs", needs)
-                .with("have", app_version()),
-        );
+    if let Some(issue) = minimum_version_issue(manifest.min_version.as_ref()) {
+        return vec![issue];
     }
     // The package the step `path` runs, when it leaves this one for another installed beside it.
     let home = package_flow_path(&manifest.id);
@@ -1575,10 +1599,9 @@ mod tests {
         assert_eq!(found("[]"), ["block.json.notObject"]);
         assert_eq!(
             found(
-                r#"{"id":"acme","name":" ","version":"1.0","license":3,"icon":"A B","extra":1,"format":2}"#
+                r#"{"id":"acme","name":" ","version":"1.0","license":3,"icon":"A B","extra":1,"format":1}"#
             ),
             [
-                "block.format.unsupported",
                 "block.field.empty",
                 "block.version.invalid",
                 "block.field.missing",
@@ -1610,6 +1633,65 @@ mod tests {
                 "block.field.type"
             ]
         );
+    }
+
+    #[test]
+    fn manifest_requirements_precede_unfamiliar_payloads() {
+        for (text, code) in [
+            (
+                r#"{"format":99,"version":false,"inputs":"future"}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":4294967296,"minVersion":null}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":1,"minVersion":"9999.0.0+build.1","version":false}"#,
+                "block.version.needsNewer",
+            ),
+        ] {
+            let error = parse_manifest(text).unwrap_err();
+            assert_eq!(error.issues.len(), 1, "{error:?}");
+            assert_eq!(error.issues[0].code, code);
+        }
+        for format in ["null", "0", "-1", "1.5", "\"1\""] {
+            let error =
+                parse_manifest(&format!(r#"{{"format":{format},"minVersion":"9999.0.0"}}"#))
+                    .unwrap_err();
+            assert_eq!(codes(error), ["block.format.unsupported"]);
+        }
+        for version in ["false", "\"1.0\"", "\"1.0.0+bad..build\""] {
+            assert!(parse_manifest(&MANIFEST.replace(r#""0.1.0""#, version)).is_err());
+        }
+        assert!(parse_manifest(&MANIFEST.replace("0.1.0", "0.1.0+build.1")).is_ok());
+        let mut newer = parse_manifest(MANIFEST).unwrap();
+        newer.min_version = Some(Version::new(9999, 0, 0));
+        let flow = parse(
+            r#"{"format":1,"name":"Empty","app":"com.example.App","start":"missing","blocks":{}}"#,
+        )
+        .unwrap();
+        assert_eq!(check_package(&newer, &flow, Path::new(".")).len(), 1);
+    }
+
+    #[test]
+    fn manifests_reject_duplicate_headers_and_nested_fields() {
+        for text in [
+            MANIFEST.replace(r#""format": 1"#, r#""format":99,"format":1"#),
+            MANIFEST.replace(
+                r#""minVersion": "0.1.0""#,
+                r#""minVersion":"9999.0.0","minVersion":"0.1.0""#,
+            ),
+            MANIFEST.replace(
+                r#""name": "password""#,
+                r#""name":"password","name":"other""#,
+            ),
+        ] {
+            assert_eq!(
+                codes(parse_manifest(&text).unwrap_err()),
+                ["block.json.syntax"]
+            );
+        }
     }
 
     #[test]

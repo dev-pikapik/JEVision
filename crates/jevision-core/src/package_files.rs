@@ -158,6 +158,19 @@ pub fn read_package(dir: &Path) -> Result<Package, PackageError> {
     }
     let mut issues = Vec::new();
     let manifest = manifest_text.and_then(|text| parse_manifest(&text));
+    let manifest = match manifest {
+        Err(error)
+            if error.issues.iter().any(|issue| {
+                matches!(
+                    issue.code.as_str(),
+                    "settings.format.tooNew" | "block.version.needsNewer"
+                )
+            }) =>
+        {
+            return Err(error);
+        }
+        other => other,
+    };
     let flow = flow_text.and_then(|text| parse(&text).map_err(PackageError::from));
     let (manifest, flow) = match (manifest, flow) {
         (Ok(manifest), Ok(flow)) => (manifest, flow),
@@ -1246,6 +1259,42 @@ mod tests {
         fs::write(dir.join("images/go.png"), b"png").unwrap();
         fs::write(dir.join("images/ok.png"), b"png").unwrap();
         dir
+    }
+
+    #[test]
+    fn newer_manifests_refuse_install_before_decoding_steps_or_changing_files() {
+        let root = temp("manifest-requirements");
+        let source = package(&root, "1.0.0");
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let original_flow = "{unfamiliar future steps";
+        fs::write(source.join(PACKAGE_FLOW_FILE), original_flow).unwrap();
+        for (text, code) in [
+            (
+                r#"{"format":99,"inputs":"future"}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":1,"minVersion":"9999.0.0","inputs":"future"}"#,
+                "block.version.needsNewer",
+            ),
+        ] {
+            fs::write(source.join(MANIFEST_FILE), text).unwrap();
+            let error = install_folder(&project, &source, None, false).unwrap_err();
+            assert_eq!(error.issues.len(), 1, "{error:?}");
+            assert_eq!(error.issues[0].code, code);
+            assert_eq!(
+                fs::read_to_string(source.join(MANIFEST_FILE)).unwrap(),
+                text
+            );
+            assert_eq!(
+                fs::read_to_string(source.join(PACKAGE_FLOW_FILE)).unwrap(),
+                original_flow
+            );
+            assert!(!project.join(PACKAGE_LOCK_FILE).exists());
+            assert!(!project.join("blocks").exists());
+        }
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
