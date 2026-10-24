@@ -107,6 +107,7 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.format.unsupported" => {
             tr_in!(lang, "flow.format.unsupported", p("found"), p("oldest"))
         }
+        "settings.project.invalid" => p("reason").to_owned(),
         "settings.needsNewer" => tr_in!(lang, "settings.needsNewer", p("version")),
         "settings.format.tooNew" => {
             tr_in!(lang, "project.format.tooNew", p("found"), p("supported"))

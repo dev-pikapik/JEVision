@@ -1710,6 +1710,31 @@ fn environment_values_and_one_data_row() {
 }
 
 #[test]
+fn project_requirements_stop_runs_before_input_and_optional_fields_do_not_override_settings() {
+    let p = Project::new();
+    p.test(r#""type":{"type":"type","text":"actual"}"#, "type", 0);
+    for (text, code) in [
+        (r#"{"format":99,"ai":false}"#, "settings.format.tooNew"),
+        (
+            r#"{"format":1,"minVersion":"9999.0.0","ai":false}"#,
+            "settings.needsNewer",
+        ),
+    ] {
+        p.write("jevision.project.json", text);
+        let hands = Fake::new(solid([0, 0, 0]));
+        let report = run_with(&p, &hands, RunControl::new(), &options()).0.report;
+        assert_eq!(failure_code(&report), code);
+        assert!(hands.log().is_empty());
+        assert!(hands.typed().is_empty());
+    }
+    p.write("jevision.project.json", r#"{"format":1,"minVersion":"1.0.0+build.7","future":{"retries":99},"retention":{"maxAgeDays":30,"future":true}}"#);
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run_with(&p, &hands, RunControl::new(), &options()).0.report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(hands.typed(), ["actual"]);
+}
+
+#[test]
 fn environment_requirements_stop_runs_before_input() {
     let p = Project::new();
     p.test(r#""type":{"type":"type","text":"${env.HOST}"}"#, "type", 0);

@@ -16,12 +16,17 @@ use std::{fs, io};
 use chrono::{Days, NaiveDate};
 use jevision_l10n::tr;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::Rect;
+mod metadata;
+pub use metadata::ProjectMetadata;
+
 use crate::batch::{DEFAULT_PARALLEL, MAX_PARALLEL, RunMode};
+use crate::compat::check_settings_header;
 use crate::issue::json_problem;
 use crate::model::{AI_PROVIDERS, TEST_SUFFIX};
 use crate::validate::{MAX_RETRIES, rect_fits};
+use crate::{Issue, Rect, SettingsFileError};
 
 /// Name of the project settings file in the project folder.
 pub const PROJECT_FILE: &str = "jevision.project.json";
@@ -76,6 +81,8 @@ pub struct ProjectSettings {
     /// How long saved runs are kept, when the project chose; `None` keeps them as
     /// [`RunRetention::default`] says.
     pub retention: Option<RunRetention>,
+    /// Requirements and optional fields retained across edits, separate from execution settings.
+    pub metadata: ProjectMetadata,
 }
 
 /// How much of its history a project keeps in `.jevision/runs`. Each limit is `None` for none.
@@ -363,13 +370,30 @@ impl FileAi {
 impl ProjectSettings {
     /// Reads the text of a project settings file; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
-        if file.format > PROJECT_FORMAT {
-            return Err(tr!("project.format.tooNew", file.format, PROJECT_FORMAT));
+        Self::parse_checked(text).map_err(|error| error.to_string())
+    }
+
+    fn parse_checked(text: &str) -> Result<Self, SettingsFileError> {
+        let value = check_settings_header(text, PROJECT_FORMAT)?;
+        // Provider keys have always been refused here; they belong to local credentials,
+        // not to shared optional settings.
+        if ["/ai/screen/key", "/ai/text/key"]
+            .iter()
+            .any(|path| value.pointer(path).is_some())
+        {
+            let error: serde_json::Error =
+                serde::de::Error::unknown_field("key", &["provider", "model"]);
+            return Err(SettingsFileError::Invalid(json_problem(&error)));
         }
-        if file.format < 1 {
-            return Err(tr!("project.format.invalid", PROJECT_FORMAT));
-        }
+        let (known, metadata) = ProjectMetadata::read(value);
+        let file: File = serde_json::from_value(known)
+            .map_err(|error| SettingsFileError::Invalid(json_problem(&error)))?;
+        let mut settings = Self::from_file(file).map_err(SettingsFileError::Invalid)?;
+        settings.metadata = metadata;
+        Ok(settings)
+    }
+
+    fn from_file(file: File) -> Result<Self, String> {
         if let Some(retries) = file.retries.filter(|r| *r > MAX_RETRIES) {
             return Err(tr!("project.retries.range", retries, MAX_RETRIES));
         }
@@ -430,17 +454,28 @@ impl ProjectSettings {
             run_modes,
             clean_home: file.clean_home,
             retention: file.retention,
+            metadata: ProjectMetadata::default(),
         })
     }
 
     /// Reads the settings file of the project folder `project`; a project without one has the
     /// default settings.
     pub fn load(project: &Path) -> Result<Self, String> {
+        Self::load_checked(project).map_err(|error| error.to_string())
+    }
+
+    /// Reads with structured compatibility errors for validation and run reports.
+    pub fn load_checked(project: &Path) -> Result<Self, SettingsFileError> {
         match fs::read_to_string(project.join(PROJECT_FILE)) {
-            Ok(text) => Self::parse(&text),
+            Ok(text) => Self::parse_checked(&text),
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(SettingsFileError::Invalid(e.to_string())),
         }
+    }
+
+    /// Optional fields this version keeps but does not interpret.
+    pub fn compatibility_warnings(&self) -> Vec<Issue> {
+        self.metadata.warnings()
     }
 
     /// The settings as the text of the file: fixed key order, defaults left out, two-space
@@ -476,7 +511,26 @@ impl ProjectSettings {
             clean_home: self.clean_home,
             retention: self.retention,
         };
-        let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
+        let mut text = if self.metadata.is_empty() {
+            serde_json::to_string_pretty(&file).expect("settings always serialize")
+        } else {
+            let value = serde_json::to_value(&file).expect("settings always serialize");
+            let Value::Object(mut fields) = self.metadata.restore(value) else {
+                unreachable!("settings are an object")
+            };
+            fields.remove("format");
+            #[derive(Serialize)]
+            struct Ordered {
+                format: u32,
+                #[serde(flatten)]
+                fields: serde_json::Map<String, Value>,
+            }
+            serde_json::to_string_pretty(&Ordered {
+                format: PROJECT_FORMAT,
+                fields,
+            })
+            .expect("settings always serialize")
+        };
         text.push('\n');
         text
     }
@@ -485,18 +539,24 @@ impl ProjectSettings {
     /// replace settings that became unreadable or require a newer format after it opened.
     pub fn save(&self, project: &Path) -> io::Result<()> {
         let file = project.join(PROJECT_FILE);
-        let text = self.to_json();
+        let mut edited = self.clone();
         let valid = |text: &str| {
             Self::parse(text)
                 .map(|_| ())
                 .map_err(|reason| io::Error::new(io::ErrorKind::InvalidData, reason))
         };
-        valid(&text)?;
+        valid(&edited.to_json())?;
         match fs::read_to_string(&file) {
-            Ok(current) => valid(&current)?,
+            Ok(current) => {
+                edited.metadata = Self::parse(&current)
+                    .map_err(|reason| io::Error::new(io::ErrorKind::InvalidData, reason))?
+                    .metadata;
+            }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => return Err(error),
         }
+        let text = edited.to_json();
+        valid(&text)?;
         crate::atomic::write(&file, text)
     }
 
@@ -601,17 +661,26 @@ impl ProjectSettings {
     /// How the tests of `folder`, relative to the project folder (`.` for the project folder),
     /// run: as set for it or for the nearest folder above it, otherwise one after another.
     pub fn run_mode(&self, folder: &str) -> RunMode {
-        self.run_mode_setting(folder)
-            .map_or(RunMode::Sequential, |m| m.mode)
+        Self::mode_for(&self.run_modes, folder)
+    }
+
+    /// Looks up a mode without copying the settings snapshot across a binding boundary.
+    pub fn mode_for(modes: &[FolderRunMode], folder: &str) -> RunMode {
+        Self::mode_setting(modes, folder).map_or(RunMode::Sequential, |m| m.mode)
     }
 
     /// The setting [`Self::run_mode`] follows for `folder`: the one for it or for the nearest
     /// folder above it; `None` when there is none.
     pub fn run_mode_setting(&self, folder: &str) -> Option<&FolderRunMode> {
+        Self::mode_setting(&self.run_modes, folder)
+    }
+
+    /// The setting in a borrowed mode list; unrelated project settings need not be copied.
+    pub fn mode_setting<'a>(modes: &'a [FolderRunMode], folder: &str) -> Option<&'a FolderRunMode> {
         let mut folder = folder.trim_matches('/');
         loop {
             let key = if folder.is_empty() { "." } else { folder };
-            if let Some(m) = self.run_modes.iter().find(|m| m.folder == key) {
+            if let Some(m) = modes.iter().find(|m| m.folder == key) {
                 return Some(m);
             }
             if folder.is_empty() || folder == "." {
@@ -780,7 +849,6 @@ mod tests {
             (r#"{"format":2}"#, "reads up to 1"),
             (r#"{"format":0}"#, "“format” must be 1"),
             (r#"{"format":1,"retries":11}"#, "from 0 to 10"),
-            (r#"{"format":1,"other":1}"#, "unknown field"),
             (r#"{"format":1,"localOnly":"yes"}"#, "expected a boolean"),
             (
                 r#"{"format":1,"hide":[{"x":0.5,"y":0,"width":0.6,"height":0.1}]}"#,
@@ -836,7 +904,6 @@ mod tests {
                 r#"{"format":1,"retention":{"maxTotalMb":10000001}}"#,
                 "from 1 to 10000000",
             ),
-            (r#"{"format":1,"retention":{"days":30}}"#, "unknown field"),
         ] {
             let error = ProjectSettings::parse(text).unwrap_err();
             assert!(error.contains(says), "{text}: {error}");
@@ -1103,10 +1170,6 @@ mod tests {
                 r#"{"format":1,"ai":{"screen":{"provider":"openai","key":"sk-1"}}}"#,
                 "unknown field `key`",
             ),
-            (
-                r#"{"format":1,"ai":{"screen":{"provider":"openai"},"speech":{}}}"#,
-                "unknown field `speech`",
-            ),
         ] {
             let error = ProjectSettings::parse(bad).unwrap_err();
             assert!(error.contains(says), "{bad}: {error}");
@@ -1169,6 +1232,160 @@ mod tests {
     }
 
     #[test]
+    fn optional_project_fields_follow_their_owners_and_survive_stale_saves() {
+        let dir =
+            std::env::temp_dir().join(format!("jevision-project-extras-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(PROJECT_FILE);
+        let original = r#"{"format":1,"minVersion":"1.0.0+build.7","$schema":"https://example.com/project.json",
+            "future":{"nested":[null,true]},"removedLater":1,
+            "retention":{"maxAgeDays":90,"futureRetention":[1,2]},
+            "ai":{"screen":{"provider":"openai","futureChoice":true},"speech":{"futureTask":true}},
+            "hide":[{"x":0,"y":0,"width":0.5,"height":0.5,"futureArea":"first"},
+                {"x":0.5,"y":0.5,"width":0.5,"height":0.5,"futureArea":"second"}],
+            "quarantine":[{"test":"z.flow.json","futureEntry":"z"},{"test":"a.flow.json","futureEntry":"a"}],
+            "runModes":[{"folder":"z","run":"parallel","futureMode":"z"},{"folder":"a","run":"sequential","futureMode":"a"}]}"#;
+        fs::write(&file, original).unwrap();
+        let mut settings = ProjectSettings::load(&dir).unwrap();
+        assert_eq!(
+            ProjectSettings::parse(&settings.to_json())
+                .unwrap()
+                .metadata,
+            settings.metadata
+        );
+        settings.retries = Some(2);
+        settings
+            .quarantine("a.flow.json", Some("changed"), None)
+            .unwrap();
+        settings
+            .set_run_mode("a", RunMode::Parallel { limit: 2 })
+            .unwrap();
+        settings.save(&dir).unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(saved["quarantine"][0]["futureEntry"], "a");
+        assert_eq!(saved["quarantine"][1]["futureEntry"], "z");
+        assert_eq!(saved["runModes"][0]["futureMode"], "a");
+        assert_eq!(saved["hide"][0]["futureArea"], "first");
+        assert_eq!(saved["hide"][1]["futureArea"], "second");
+        assert_eq!(
+            saved["retention"]["futureRetention"],
+            serde_json::json!([1, 2])
+        );
+
+        let mut external = saved.clone();
+        external.as_object_mut().unwrap().remove("removedLater");
+        external.as_object_mut().unwrap().remove("minVersion");
+        external["future"] = serde_json::json!({"new":42});
+        external["retention"]["futureRetention"] = false.into();
+        external["quarantine"][0]["futureEntry"] = "external".into();
+        fs::write(&file, external.to_string()).unwrap();
+        settings.retries = Some(3);
+        settings.save(&dir).unwrap();
+        let latest = ProjectSettings::load(&dir).unwrap();
+        assert_eq!(
+            latest.metadata,
+            ProjectSettings::parse(&external.to_string())
+                .unwrap()
+                .metadata
+        );
+        assert_eq!(latest.retries, Some(3));
+        assert!(
+            latest
+                .compatibility_warnings()
+                .iter()
+                .all(|i| i.severity == crate::Severity::Warning)
+        );
+        let issues = crate::validate_in(&crate::parse(r#"{"format":1,"name":"T","app":"com.example.App","start":"a","blocks":{"a":{"type":"pressKeys","keys":"cmd+s"}}}"#).unwrap(), &dir);
+        assert!(
+            issues.iter().any(
+                |i| i.code == "settings.field.unknown" && i.param("file") == Some(PROJECT_FILE)
+            )
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn removing_or_replacing_project_entries_cannot_move_their_optional_fields() {
+        let mut settings = ProjectSettings::parse(r#"{"format":1,
+            "retention":{"maxAgeDays":90,"future":true},
+            "ai":{"screen":{"provider":"openai","future":true},"speech":{"enabled":true}},
+            "quarantine":[{"test":"a.flow.json","future":"a"},{"test":"b.flow.json","future":"b"}],
+            "runModes":[{"folder":"a","run":"sequential","future":"a"},{"folder":"b","run":"sequential","future":"b"}],
+            "hide":[{"x":0,"y":0,"width":0.5,"height":0.5,"future":"a"},{"x":0.5,"y":0.5,"width":0.5,"height":0.5,"future":"b"}]}"#).unwrap();
+        settings.set_retention(None).unwrap();
+        settings.set_ai(AiTask::Screen, None).unwrap();
+        settings.release("a.flow.json");
+        settings.quarantine("c.flow.json", None, None).unwrap();
+        settings.run_modes.remove(0);
+        settings.hide.remove(0);
+        let saved: serde_json::Value = serde_json::from_str(&settings.to_json()).unwrap();
+        assert!(saved.get("retention").is_none());
+        assert!(saved["ai"].get("screen").is_none());
+        assert_eq!(saved["ai"]["speech"]["enabled"], true);
+        assert_eq!(saved["quarantine"][0]["future"], "b");
+        assert!(saved["quarantine"][1].get("future").is_none());
+        assert_eq!(saved["runModes"][0]["future"], "b");
+        assert_eq!(saved["hide"][0]["future"], "b");
+        assert!(ProjectSettings::parse(&saved.to_string()).is_ok());
+    }
+
+    #[test]
+    fn identical_areas_keep_separate_fields_without_transferring_a_deleted_owners_fields() {
+        let mut settings = ProjectSettings::parse(
+            r#"{"format":1,"hide":[
+            {"x":0,"y":0,"width":0.5,"height":0.5,"future":"first"},
+            {"x":0,"y":0,"width":0.5,"height":0.5,"future":"second"}]}"#,
+        )
+        .unwrap();
+        let saved: serde_json::Value = serde_json::from_str(&settings.to_json()).unwrap();
+        assert_eq!(saved["hide"][0]["future"], "first");
+        assert_eq!(saved["hide"][1]["future"], "second");
+        assert_eq!(
+            ProjectSettings::parse(&saved.to_string()).unwrap().metadata,
+            settings.metadata
+        );
+        settings.hide.remove(0);
+        let saved: serde_json::Value = serde_json::from_str(&settings.to_json()).unwrap();
+        assert!(saved["hide"][0].get("future").is_none());
+    }
+
+    #[test]
+    fn project_requirements_precede_payload_decoding_and_duplicates_are_rejected() {
+        for (text, code) in [
+            (
+                r#"{"format":99,"retention":false}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":1,"minVersion":"9999.0.0","ai":false}"#,
+                "settings.needsNewer",
+            ),
+            (
+                r#"{"format":1,"minVersion":"1.0.0+"}"#,
+                "settings.minVersion.invalid",
+            ),
+            (
+                r#"{"format":1,"minVersion":null}"#,
+                "settings.minVersion.invalid",
+            ),
+        ] {
+            let error = ProjectSettings::parse_checked(text).unwrap_err();
+            assert_eq!(error.issue(PROJECT_FILE, "invalid").code, code);
+        }
+        for text in [
+            r#"{"format":1,"retries":1,"retries":2}"#,
+            r#"{"format":1,"retention":{"maxAgeDays":2,"maxAgeDays":3}}"#,
+            r#"{"format":1,"future":{"x":1,"x":2}}"#,
+            r#"{"format":1,"ai":{"screen":{"provider":"openai","model":123}}}"#,
+            r#"{"format":1,"retention":{"maxAgeDays":"90"}}"#,
+            r#"{"format":1,"runModes":[{"folder":"a","run":"future"}]}"#,
+        ] {
+            assert!(ProjectSettings::parse(text).is_err(), "{text}");
+        }
+    }
+
+    #[test]
     fn a_project_without_the_file_has_defaults() {
         let dir = std::env::temp_dir().join(format!("jevision-project-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -1203,7 +1420,7 @@ mod tests {
         edited.retries = Some(2);
         for changed in [
             r#"{"format":99,"future":{"enabled":true}}"#,
-            r#"{"format":1,"future":{"enabled":true}}"#,
+            r#"{"format":1,"minVersion":"9999.0.0","future":{"enabled":true}}"#,
             "{",
         ] {
             fs::write(&file, changed).unwrap();

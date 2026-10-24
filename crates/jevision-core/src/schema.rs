@@ -49,7 +49,7 @@ const PROJECT: Kind = Kind {
         covered in every screenshot, the AI the project asks and the folders whose tests run \
         side by side. API keys never go in this file.",
     formats: &[PROJECT_FORMAT],
-    header: false,
+    header: true,
 };
 const ENVIRONMENTS: Kind = Kind {
     name: "environments",
@@ -975,12 +975,39 @@ mod tests {
         }
     }
 
+    // Project settings retain unfamiliar fields in their objects without changing the strict
+    // schemas of the same value types when they occur in executable test blocks.
+    fn project_schema() -> Value {
+        fn allow_optional(value: &mut Value) {
+            match value {
+                Value::Object(object) => {
+                    if object.get("additionalProperties") == Some(&Value::Bool(false)) {
+                        object.insert("additionalProperties".into(), true.into());
+                    }
+                    for value in object.values_mut() {
+                        allow_optional(value);
+                    }
+                }
+                Value::Array(values) => {
+                    for value in values {
+                        allow_optional(value);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut schema = PROJECT.schema::<crate::project::File>();
+        allow_optional(&mut schema);
+        schema["$defs"]["AiChoice"]["properties"]["key"] = false.into();
+        schema
+    }
+
     /// The schema of each kind of file this crate reads.
     fn schemas() -> Vec<(&'static Kind, Value)> {
         vec![
             (&TEST, test_schema()),
             (&JEVMETA, JEVMETA.schema::<ResourceMeta>()),
-            (&PROJECT, PROJECT.schema::<crate::project::File>()),
+            (&PROJECT, project_schema()),
             (&ENVIRONMENTS, ENVIRONMENTS.schema::<crate::env::File>()),
             (&SCHEDULES, SCHEDULES.schema::<crate::schedule::File>()),
             (
@@ -1035,6 +1062,7 @@ mod tests {
 
     fn settings_samples() -> Vec<Sample> {
         let project = ProjectSettings {
+            metadata: Default::default(),
             clean_home: true,
             retention: None,
             retries: Some(2),
@@ -1201,7 +1229,7 @@ mod tests {
                 kind: &PROJECT,
                 file: project,
                 reads: |text| ProjectSettings::parse(text).is_ok(),
-                strict: true,
+                strict: false,
                 not_text: "retries",
             },
             Sample {

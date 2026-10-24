@@ -1231,6 +1231,30 @@ struct CommandLineRunTests {
     #expect(throws: UsageError.self) { try names(TestFilter(priority: .low)) }
   }
 
+  @Test func projectRequirementsStopPlanningBeforeForcedProbes() throws {
+    let dir = try Scratch()
+    try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)
+    let test = try dir.file("test.flow.json", valid)
+    var request = RunRequest(paths: [test])
+    request.forceAI = true
+    for (json, status) in [
+      (#"{"format":99,"ai":false}"#, ExitStatus.needsNewer),
+      (#"{"format":1,"minVersion":"9999.0.0","ai":false}"#, .needsNewer),
+      (#"{"format":1,"retries":"two"}"#, .io),
+    ] {
+      _ = try dir.file("jevision.project.json", json)
+      do {
+        _ = try RunCommand.plan(request)
+        Testing.Issue.record("Unsupported settings must stop planning")
+      } catch {
+        #expect(error.status == status)
+        #expect(error.code == "projectSettingsUnreadable")
+      }
+    }
+    _ = try dir.file("jevision.project.json", #"{"format":1,"minVersion":"1.0.0+build.7","future":true}"#)
+    #expect(try RunCommand.plan(request).tests == [test])
+  }
+
   @Test func planFindsTestsAndTheProject() throws {
     let dir = try Scratch()
     try FileManager.default.createDirectory(at: dir.url.appending(path: ".jevision"), withIntermediateDirectories: true)

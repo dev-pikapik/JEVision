@@ -8,8 +8,8 @@ use jevision_l10n::tr;
 
 use jevision_core::{
     AiChoice, AiTask, FolderRunMode, MAX_QUARANTINE_AFTER, MAX_RETENTION_DAYS, MAX_RETENTION_MB,
-    MAX_RETENTION_RUNS, MAX_RETRIES, PROJECT_FILE, ProjectSettings, Quarantined, Rect, RunMode,
-    RunRetention, default_quarantine_until,
+    MAX_RETENTION_RUNS, MAX_RETRIES, PROJECT_FILE, ProjectSettings as CoreProjectSettings,
+    Quarantined, Rect, RunMode, RunRetention, default_quarantine_until,
 };
 
 /// The project settings file can't be read or written, or the change isn't allowed.
@@ -23,7 +23,7 @@ pub enum ProjectSettingsError {
     Unwritable { file: String, reason: String },
 }
 
-#[uniffi::remote(Record)]
+#[derive(Debug, Clone, Default, PartialEq, uniffi::Record)]
 pub struct ProjectSettings {
     pub retries: Option<u32>,
     pub quarantine: Vec<Quarantined>,
@@ -44,6 +44,25 @@ pub struct ProjectSettings {
     /// How long saved runs are kept; `None` keeps them as [`default_run_retention`] says.
     #[uniffi(default = None)]
     pub retention: Option<RunRetention>,
+}
+
+// The frontend carries execution settings only. Write operations reload the complete core
+// document, keeping opaque compatibility fields out of the public binding record.
+impl From<CoreProjectSettings> for ProjectSettings {
+    fn from(settings: CoreProjectSettings) -> Self {
+        Self {
+            retries: settings.retries,
+            quarantine: settings.quarantine,
+            suggest_quarantine_after: settings.suggest_quarantine_after,
+            local_only: settings.local_only,
+            hide: settings.hide,
+            ai_screen: settings.ai_screen,
+            ai_text: settings.ai_text,
+            run_modes: settings.run_modes,
+            clean_home: settings.clean_home,
+            retention: settings.retention,
+        }
+    }
 }
 
 /// How long the saved runs of a project are kept; a limit that is `None` doesn't apply.
@@ -90,7 +109,7 @@ pub struct Quarantined {
 /// The settings of the project folder `project`; the defaults when it has no settings file.
 #[uniffi::export]
 pub fn project_settings(project: String) -> Result<ProjectSettings, ProjectSettingsError> {
-    load(Path::new(&project))
+    load(Path::new(&project)).map(Into::into)
 }
 
 /// Puts the test file `test`, relative to the project folder, in quarantine with an optional
@@ -174,7 +193,11 @@ pub fn set_run_retention(
 /// How long the project keeps its saved runs: as set, otherwise the defaults.
 #[uniffi::export]
 pub fn run_retention(settings: &ProjectSettings) -> RunRetention {
-    settings.run_retention()
+    CoreProjectSettings {
+        retention: settings.retention,
+        ..Default::default()
+    }
+    .run_retention()
 }
 
 /// How long a project keeps its saved runs when its settings don't say.
@@ -258,7 +281,11 @@ pub fn set_project_ai(
 /// otherwise empty, which stands for what the app's settings choose.
 #[uniffi::export]
 pub fn resolve_ai_choice(settings: &ProjectSettings, task: AiTask, block: AiChoice) -> AiChoice {
-    AiChoice::resolve(&block, settings.ai(task))
+    let project = match task {
+        AiTask::Screen => &settings.ai_screen,
+        AiTask::Text => &settings.ai_text,
+    };
+    AiChoice::resolve(&block, project.as_ref())
 }
 
 /// Sets how the tests of `folder`, relative to the project folder (`.` for the project
@@ -280,7 +307,7 @@ pub fn set_folder_run_mode(
 /// after another.
 #[uniffi::export]
 pub fn folder_run_mode(settings: &ProjectSettings, folder: String) -> RunMode {
-    settings.run_mode(&folder)
+    CoreProjectSettings::mode_for(&settings.run_modes, &folder)
 }
 
 /// The setting that decides how the tests of `folder` run, the one for it or for the nearest
@@ -291,7 +318,7 @@ pub fn folder_run_mode_setting(
     settings: &ProjectSettings,
     folder: String,
 ) -> Option<FolderRunMode> {
-    settings.run_mode_setting(&folder).cloned()
+    CoreProjectSettings::mode_setting(&settings.run_modes, &folder).cloned()
 }
 
 /// The deepest folder that holds all of `folders`, each relative to the project folder; `.` for
@@ -311,7 +338,11 @@ pub fn quarantine_active(entry: &Quarantined, today: String) -> bool {
 /// How many flaky runs of a test within 7 days make its quarantine worth suggesting.
 #[uniffi::export]
 pub fn quarantine_threshold(settings: &ProjectSettings) -> u32 {
-    settings.quarantine_threshold()
+    CoreProjectSettings {
+        suggest_quarantine_after: settings.suggest_quarantine_after,
+        ..Default::default()
+    }
+    .quarantine_threshold()
 }
 
 /// Today's date on this computer as `YYYY-MM-DD`.
@@ -332,8 +363,8 @@ pub fn project_settings_file_name() -> String {
     PROJECT_FILE.to_owned()
 }
 
-fn load(project: &Path) -> Result<ProjectSettings, ProjectSettingsError> {
-    ProjectSettings::load(project).map_err(|reason| ProjectSettingsError::Unreadable {
+fn load(project: &Path) -> Result<CoreProjectSettings, ProjectSettingsError> {
+    CoreProjectSettings::load(project).map_err(|reason| ProjectSettingsError::Unreadable {
         file: PROJECT_FILE.to_owned(),
         reason,
     })
@@ -343,7 +374,7 @@ fn load(project: &Path) -> Result<ProjectSettings, ProjectSettingsError> {
 /// changed. A file that can't be read isn't overwritten.
 fn change(
     project: &str,
-    edit: impl FnOnce(&mut ProjectSettings) -> Result<(), ProjectSettingsError>,
+    edit: impl FnOnce(&mut CoreProjectSettings) -> Result<(), ProjectSettingsError>,
 ) -> Result<ProjectSettings, ProjectSettingsError> {
     let project = Path::new(project);
     let mut settings = load(project)?;
@@ -357,12 +388,59 @@ fn change(
                 reason: e.to_string(),
             })?;
     }
-    Ok(settings)
+    Ok(settings.into())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn frontend_edits_preserve_opaque_project_fields_without_exposing_them() {
+        let dir = std::env::temp_dir().join(format!(
+            "jevision-ffi-project-extras-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = dir.to_string_lossy().into_owned();
+        let file = dir.join(PROJECT_FILE);
+        std::fs::write(
+            &file,
+            r#"{"format":1,"minVersion":"1.0.0","future":{"keep":[null,true]},
+            "ai":{"screen":{"provider":"openai","futureChoice":42}},
+            "retention":{"maxAgeDays":90,"futureRetention":true}}"#,
+        )
+        .unwrap();
+        let changed = set_default_retries(project.clone(), Some(2)).unwrap();
+        assert_eq!(changed.retries, Some(2));
+        set_project_ai(
+            project.clone(),
+            AiTask::Screen,
+            Some(AiChoice {
+                provider: "openai".into(),
+                model: "model".into(),
+            }),
+        )
+        .unwrap();
+        set_run_retention(
+            project.clone(),
+            Some(RunRetention {
+                max_age_days: Some(30),
+                ..RunRetention::default()
+            }),
+        )
+        .unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["future"]["keep"], serde_json::json!([null, true]));
+        assert_eq!(value["ai"]["screen"]["futureChoice"], 42);
+        assert_eq!(value["retention"]["futureRetention"], true);
+        let newer = r#"{"format":1,"minVersion":"9999.0.0","retries":2}"#;
+        std::fs::write(&file, newer).unwrap();
+        assert!(set_default_retries(project, Some(3)).is_err());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), newer);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn how_long_runs_are_kept_is_saved_and_checked() {

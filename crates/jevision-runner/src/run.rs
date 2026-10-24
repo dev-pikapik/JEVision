@@ -361,10 +361,22 @@ impl Runner<'_> {
 
         let mut secrets = HashMap::new();
         let loaded = load_test(&project, &test);
-        let settings = ProjectSettings::load(&project).map_err(|reason| {
+        let settings = ProjectSettings::load_checked(&project).map_err(|error| {
+            if error.requires_newer() {
+                let issue = error.issue(PROJECT_FILE, "run.project.unreadable");
+                return Failure {
+                    code: issue.code,
+                    params: issue
+                        .params
+                        .into_iter()
+                        .map(|param| (param.name, param.value))
+                        .collect(),
+                    message: String::new(),
+                };
+            }
             Failure::new("run.project.unreadable")
                 .with("file", PROJECT_FILE)
-                .with("reason", reason)
+                .with("reason", error)
         });
         let quarantine = settings
             .as_ref()

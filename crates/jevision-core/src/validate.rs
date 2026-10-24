@@ -333,6 +333,7 @@ pub struct DiskCache {
     inputs: HashMap<PathBuf, Vec<String>>,
     unmet: HashMap<(PathBuf, String), Vec<Issue>>,
     environments: HashMap<PathBuf, Result<Environments, crate::SettingsFileError>>,
+    projects: HashMap<PathBuf, Result<crate::ProjectSettings, crate::SettingsFileError>>,
     tables: HashMap<PathBuf, Result<DataTable, DataError>>,
 }
 
@@ -342,6 +343,22 @@ impl DiskCache {
             .exists
             .entry(path)
             .or_insert_with_key(|path| path.exists())
+    }
+
+    fn project_settings(
+        &mut self,
+        dir: &Path,
+    ) -> Result<&crate::ProjectSettings, &crate::SettingsFileError> {
+        let root = dir
+            .ancestors()
+            .find(|folder| {
+                folder.join(crate::PROJECT_FILE).is_file() || crate::env::is_project_folder(folder)
+            })
+            .unwrap_or(dir);
+        self.projects
+            .entry(root.to_path_buf())
+            .or_insert_with(|| crate::ProjectSettings::load_checked(root))
+            .as_ref()
     }
 
     pub(crate) fn environments(
@@ -428,6 +445,10 @@ pub fn validate_in_with(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Is
                 }
             }
         }
+    }
+    match disk.project_settings(dir) {
+        Ok(settings) => out.extend(settings.compatibility_warnings()),
+        Err(error) => out.push(error.issue(crate::PROJECT_FILE, "settings.project.invalid")),
     }
     out.extend(crate::env::environment_issues(flow, dir, disk));
     out.extend(crate::data::data_issues(flow, dir, disk));

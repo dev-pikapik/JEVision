@@ -33904,22 +33904,6 @@
         }
       }
     },
-    "cli.error.environmentsUnreadable" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ in %2$@ can’t be read: %3$@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "не удаётся прочитать %1$@ в %2$@: %3$@"
-          }
-        }
-      }
-    },
     "cli.error.forceBelongs" : {
       "localizations" : {
         "en" : {
@@ -34672,6 +34656,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "--comment-on и --new указывают, куда --send отправит отчёт; добавьте --send"
+          }
+        }
+      }
+    },
+    "cli.error.settingsUnreadable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ in %2$@ can’t be read: %3$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "не удаётся прочитать %1$@ в %2$@: %3$@"
           }
         }
       }

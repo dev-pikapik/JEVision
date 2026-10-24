@@ -123,8 +123,8 @@ pub use profile::{
 pub use project::{
     AiChoice, AiTask, DEFAULT_QUARANTINE_AFTER, FolderRunMode, MAX_QUARANTINE_AFTER,
     MAX_RETENTION_DAYS, MAX_RETENTION_MB, MAX_RETENTION_RUNS, PROJECT_FILE, PROJECT_FORMAT,
-    ProjectSettings, QUARANTINE_DAYS, Quarantined, RunRetention, default_quarantine_until,
-    shared_folder,
+    ProjectMetadata, ProjectSettings, QUARANTINE_DAYS, Quarantined, RunRetention,
+    default_quarantine_until, shared_folder,
 };
 pub use recent::{
     MAX_RECENT_PROJECTS, RecentProject, recent_projects_cleared, recent_projects_decode,

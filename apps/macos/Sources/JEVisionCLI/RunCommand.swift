@@ -46,7 +46,7 @@ struct RunCommand {
       throw UsageError(message: problem, code: "notReady", status: .notReady)
     }
     if request.forceAI {
-      let projectLocalOnly = (try? projectSettings(project: plan.project))?.localOnly ?? false
+      let projectLocalOnly = try Self.readProjectSettings(in: plan.project).localOnly
       try Self.checkForcedAI(vision, localOnly: ai.localOnly || projectLocalOnly, progress: progress)
     }
     let input = InputWatcher()
@@ -141,6 +141,7 @@ struct RunCommand {
     if let outside = tests.first(where: { !isInside($0, project) }) {
       throw UsageError(message: words("cli.error.outsideProject", outside, project), code: "outsideProject")
     }
+    _ = try readProjectSettings(in: project)
     let named = tests.count
     tests = try chosen(tests, by: request.filter, in: project)
     let folder = sharedFolder(
@@ -190,19 +191,31 @@ struct RunCommand {
       message: words("cli.error.noEnvironment", name, file, all.map(\.name).joined(separator: ", ")), code: "noEnvironment")
   }
 
+  /// Project requirements are checked while planning, before permissions, input watchers or
+  /// the optional model probe can start. Forced probes recheck rather than falling back to defaults.
+  private static func readProjectSettings(in project: String) throws(UsageError) -> ProjectSettings {
+    try readSettings(file: projectSettingsFileName(), code: "projectSettingsUnreadable", in: project) {
+      try projectSettings(project: project)
+    }
+  }
+
   /// What `read` gets from the environments file of `project`, or why the file can't be read.
   private static func readEnvironments<T>(in project: String, _ read: () throws -> T) throws(UsageError) -> T {
-    let file = environmentsFileName()
+    try readSettings(file: environmentsFileName(), code: "environmentsUnreadable", in: project, read)
+  }
+
+  private static func readSettings<T>(file: String, code: String, in project: String, _ read: () throws -> T) throws(UsageError) -> T {
     let status = ExitStatus.unreadable((project as NSString).appendingPathComponent(file))
     do {
       return try read()
-    } catch EnvironmentsError.Unreadable(_, let reason) {
-      throw UsageError(
-        message: words("cli.error.environmentsUnreadable", file, project, reason), code: "environmentsUnreadable", status: status)
     } catch {
+      let reason = switch error {
+      case EnvironmentsError.Unreadable(_, let reason): reason
+      case ProjectSettingsError.Unreadable(_, let reason): reason
+      default: error.localizedDescription
+      }
       throw UsageError(
-        message: words("cli.error.environmentsUnreadable", file, project, error.localizedDescription),
-        code: "environmentsUnreadable", status: status)
+        message: words("cli.error.settingsUnreadable", file, project, reason), code: code, status: status)
     }
   }
 

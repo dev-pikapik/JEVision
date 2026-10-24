@@ -95,6 +95,7 @@
     { "folder": "checkout", "run": "parallel", "limit": 4 }
   ]
 }</code></pre>
+<p>The file supports optional <code>$schema</code> and <code>minVersion</code> headers and preserves unfamiliar optional fields when edited. A newer requirement prevents editing or running the project. See <a href="file-formats.html#project">Project settings compatibility</a>.</p>
 <ul>
   <li><code>format</code> is <code>1</code>.</li>
   <li><code>retries</code> (optional) is the project's default number of retries, 0 to 10.</li>

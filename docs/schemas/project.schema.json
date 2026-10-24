@@ -1,9 +1,10 @@
 {
   "$defs": {
     "AiChoice": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Which AI to ask: a provider by its id, and one of its models. The key and the address of the provider are the person's own and stay in the app's settings.",
       "properties": {
+        "key": false,
         "model": {
           "description": "Empty for the model the settings choose for the provider.",
           "type": "string"
@@ -29,7 +30,7 @@
       "type": "object"
     },
     "FileAi": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "screen": {
           "anyOf": [
@@ -68,7 +69,7 @@
       "type": "object"
     },
     "Quarantined": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "A test in quarantine.",
       "properties": {
         "reason": {
@@ -99,7 +100,7 @@
       "type": "object"
     },
     "Rect": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "A rectangle in fractions (0–1) of the image or window, from the top-left corner.",
       "properties": {
         "height": {
@@ -143,7 +144,7 @@
       ]
     },
     "RunModeEntry": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "How the tests of one folder run.",
       "if": {
         "properties": {
@@ -187,7 +188,7 @@
       "type": "object"
     },
     "RunRetention": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "How much of its history a project keeps in `.jevision/runs`. Each limit is `None` for none. Whatever the limits, the latest run of every test and runs still going are kept.",
       "properties": {
         "maxAgeDays": {
@@ -232,9 +233,13 @@
   },
   "$id": "https://dev-pikapik.github.io/JEVision/schemas/project.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Settings a project shares with everyone who runs its tests, in `jevision.project.json` in the project folder: retries, tests in quarantine, areas covered in every screenshot, the AI the project asks and the folders whose tests run side by side. API keys never go in this file.",
   "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
     "ai": {
       "$ref": "#/$defs/FileAi",
       "description": "The AI the project asks, when it doesn't leave the choice to the app's settings."
@@ -256,6 +261,11 @@
     "localOnly": {
       "description": "Screenshots go only to AI models running on this computer; checks that would need a cloud service fail instead.",
       "type": "boolean"
+    },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "type": "string"
     },
     "quarantine": {
       "description": "Tests in quarantine: they still run, but their failure doesn't fail Run All, the command line or the JUnit report until their last day is past.",

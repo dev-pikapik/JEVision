@@ -88,8 +88,11 @@ impl SettingsFileError {
 
 /// Check requirements before decoding the payload: newer files may have unfamiliar fields
 /// or values. The typed reader still checks every field it understands afterwards.
-pub(crate) fn check_settings_header(text: &str, supported: u32) -> Result<(), SettingsFileError> {
-    let value: Value = serde_json::from_str(text)
+pub(crate) fn check_settings_header(
+    text: &str,
+    supported: u32,
+) -> Result<Value, SettingsFileError> {
+    let UniqueValue(value) = serde_json::from_str(text)
         .map_err(|error| SettingsFileError::Invalid(json_problem(&error)))?;
     let object = value
         .as_object()
@@ -130,5 +133,60 @@ pub(crate) fn check_settings_header(text: &str, supported: u32) -> Result<(), Se
             "$schema"
         )));
     }
-    Ok(())
+    Ok(value)
+}
+
+/// Reject duplicate keys before reducing the JSON to known fields. Otherwise two conflicting
+/// values could collapse into one before the typed settings reader sees them.
+struct UniqueValue(Value);
+impl<'de> Deserialize<'de> for UniqueValue {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use serde::de::{Error, MapAccess, SeqAccess, Visitor};
+        struct Json;
+        impl<'de> Visitor<'de> for Json {
+            type Value = UniqueValue;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("JSON with unique object keys")
+            }
+            fn visit_bool<E: Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(UniqueValue(v.into()))
+            }
+            fn visit_i64<E: Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(UniqueValue(v.into()))
+            }
+            fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(UniqueValue(v.into()))
+            }
+            fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
+                serde_json::Number::from_f64(v)
+                    .map(|v| UniqueValue(Value::Number(v)))
+                    .ok_or_else(|| E::custom("non-finite number"))
+            }
+            fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(UniqueValue(v.into()))
+            }
+            fn visit_unit<E: Error>(self) -> Result<Self::Value, E> {
+                Ok(UniqueValue(Value::Null))
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut values = Vec::new();
+                while let Some(UniqueValue(value)) = seq.next_element()? {
+                    values.push(value);
+                }
+                Ok(UniqueValue(Value::Array(values)))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut values = serde_json::Map::new();
+                while let Some((key, UniqueValue(value))) =
+                    map.next_entry::<String, UniqueValue>()?
+                {
+                    if values.insert(key.clone(), value).is_some() {
+                        return Err(A::Error::custom(format!("duplicate field `{key}`")));
+                    }
+                }
+                Ok(UniqueValue(Value::Object(values)))
+            }
+        }
+        deserializer.deserialize_any(Json)
+    }
 }
