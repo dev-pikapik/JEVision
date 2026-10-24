@@ -15,7 +15,7 @@ pub const BASE_URL: &str = "https://dev-pikapik.github.io/JEVision/schemas/";
 
 /// A semantic version as JEVision reads one: `MAJOR.MINOR.PATCH`, an optional `-pre.release`
 /// part whose numbers have no leading zeros, and an optional `+build` part that is ignored.
-pub const SEMVER_PATTERN: &str = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+.*)?$";
+pub const SEMVER_PATTERN: &str = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$";
 
 /// Set to `1` to write the schemas into `docs/schemas` instead of comparing them.
 const WRITE: &str = "JEVISION_WRITE_SCHEMAS";
@@ -30,7 +30,7 @@ pub struct Kind {
     /// The values `format` can have; empty for a file without `format`.
     pub formats: &'static [u32],
     /// The file may name its schema in `$schema` and the oldest JEVision that opens it in
-    /// `minVersion`. Only the readers of tests and resource labels take these two keys.
+    /// `minVersion`. Readers must check the requirement before decoding the rest of the file.
     pub header: bool,
 }
 

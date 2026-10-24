@@ -18,10 +18,22 @@ pub(crate) struct Environment {
 /// environment.
 pub(crate) fn load(project: &Path, name: Option<&str>) -> Result<Option<Environment>, Failure> {
     let Some(name) = name else { return Ok(None) };
-    let environments = Environments::load(project).map_err(|reason| {
+    let environments = Environments::load_checked(project).map_err(|error| {
+        if error.requires_newer() {
+            let issue = error.issue(ENVIRONMENTS_FILE, "flow.environments.invalid");
+            return Failure {
+                code: issue.code,
+                params: issue
+                    .params
+                    .into_iter()
+                    .map(|param| (param.name, param.value))
+                    .collect(),
+                message: String::new(),
+            };
+        }
         Failure::new("run.environments.unreadable")
             .with("file", ENVIRONMENTS_FILE)
-            .with("reason", reason)
+            .with("reason", error)
     })?;
     let values = environments.get(name).cloned().ok_or_else(|| {
         Failure::new("run.env.unknown")

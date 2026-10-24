@@ -1,9 +1,13 @@
-//! Which format a test needs, and keeping a copy of every file before it is written in a newer
-//! format, so that an older JEVision can have it back.
+//! Project-file requirements, retained settings fields, and backups before writing files in a
+//! newer format, so that an older JEVision can have them back.
 //!
 //! A test is always written in the lowest format that holds it: opening and saving a test never
 //! makes it unreadable for the JEVision that made it. Only a test that uses something newer is
 //! raised, and then the first time that raises the project asks before it does.
+
+mod settings;
+pub(crate) use settings::check_settings_header;
+pub use settings::{SettingsFileError, SettingsMetadata};
 
 use std::collections::BTreeMap;
 use std::fs;

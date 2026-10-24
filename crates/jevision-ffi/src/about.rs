@@ -88,6 +88,8 @@ pub fn asks_for_newer_jevision(code: String) -> bool {
     [
         "flow.format.tooNew",
         "flow.needsNewer",
+        "settings.needsNewer",
+        "settings.format.tooNew",
         "project.format.tooNew",
         "block.version.needsNewer",
         "run.test.needsNewer",
@@ -208,6 +210,13 @@ mod tests {
         assert!(newer(file("sign-in.template.json", r#"{"format":99}"#)));
         assert!(newer(file("image.png.jevmeta", r#"{"format":99}"#)));
         assert!(asks_for_newer_jevision("flow.needsNewer".into()));
+        assert!(asks_for_newer_jevision("settings.needsNewer".into()));
+        assert!(asks_for_newer_jevision("settings.format.tooNew".into()));
+        assert!(!asks_for_newer_jevision("settings.field.unknown".into()));
+        assert!(newer(file(
+            "jevision.environments.json",
+            r#"{"format":1,"minVersion":"9999.0.0"}"#
+        )));
         assert!(!newer(file("notes.json", r#"{"format": 99}"#)));
         assert!(newer(file("last-results.json", r#"{"format": 99}"#)));
         assert!(newer(file("schedule-history.json", r#"{"format": 99}"#)));

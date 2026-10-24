@@ -50508,6 +50508,38 @@
         }
       }
     },
+    "settings.field.unknown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unrecognized field “%@” will be kept unchanged."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестное поле «%@» будет сохранено без изменений."
+          }
+        }
+      }
+    },
+    "settings.needsNewer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file requires JEVision %@. Update JEVision to open it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для этого файла нужна JEVision %@. Обновите JEVision, чтобы открыть его."
+          }
+        }
+      }
+    },
     "start play test" : {
       "localizations" : {
         "ru" : {

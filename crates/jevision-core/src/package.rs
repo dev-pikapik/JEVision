@@ -75,7 +75,17 @@ impl FromStr for Version {
     type Err = ();
 
     fn from_str(text: &str) -> Result<Self, ()> {
-        let text = text.split_once('+').map_or(text, |(version, _)| version);
+        let text = match text.split_once('+') {
+            Some((version, build)) => {
+                if !build.split('.').all(|part| {
+                    !part.is_empty() && part.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+                }) {
+                    return Err(());
+                }
+                version
+            }
+            None => text,
+        };
         let (numbers, pre) = match text.split_once('-') {
             Some((numbers, pre)) => (numbers, Some(pre)),
             None => (text, None),
@@ -1471,6 +1481,10 @@ mod tests {
             "1.2.3+build.5".parse::<Version>().unwrap().to_string(),
             "1.2.3"
         );
+        assert_eq!(
+            "1.2.3+001.a-b".parse::<Version>().unwrap(),
+            Version::new(1, 2, 3)
+        );
         for bad in [
             "1",
             "1.2",
@@ -1479,6 +1493,11 @@ mod tests {
             "1.2.x",
             "1.2.3-",
             "1.2.3-a..b",
+            "1.2.3+",
+            "1.2.3+build..5",
+            "1.2.3+build+5",
+            "1.2.3+build_5",
+            "1.2.3+build 5",
             "",
             "v1.2.3",
         ] {

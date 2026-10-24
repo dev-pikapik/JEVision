@@ -332,7 +332,7 @@ pub struct DiskCache {
     exists: HashMap<PathBuf, bool>,
     inputs: HashMap<PathBuf, Vec<String>>,
     unmet: HashMap<(PathBuf, String), Vec<Issue>>,
-    environments: HashMap<PathBuf, Result<Environments, String>>,
+    environments: HashMap<PathBuf, Result<Environments, crate::SettingsFileError>>,
     tables: HashMap<PathBuf, Result<DataTable, DataError>>,
 }
 
@@ -344,11 +344,13 @@ impl DiskCache {
             .or_insert_with_key(|path| path.exists())
     }
 
-    pub(crate) fn environments(&mut self, dir: &Path) -> Result<&Environments, &str> {
+    pub(crate) fn environments(
+        &mut self,
+        dir: &Path,
+    ) -> Result<&Environments, &crate::SettingsFileError> {
         (self.environments.entry(dir.to_path_buf()))
-            .or_insert_with(|| Environments::find(dir))
+            .or_insert_with(|| Environments::find_checked(dir))
             .as_ref()
-            .map_err(String::as_str)
     }
 
     /// Reads the table at `path` unless it has been read; [`DiskCache::table`] then gives it.

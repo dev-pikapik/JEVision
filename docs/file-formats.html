@@ -228,7 +228,7 @@
     "staging": { "BASE_URL": "https://staging.example.com" }
   }
 }</code></pre>
-<p>See <a href="environments.html#file">The environments file</a> for the rules.</p>
+<p>Optional <code>$schema</code> and <code>minVersion</code> headers are supported. Unrecognized top-level fields survive edits and produce validation warnings in tests that read environment values. A newer format or minimum version prevents editing and running with these environments. See <a href="environments.html#file">The environments file</a> for the rules.</p>
 
 <h2 id="project">Project settings</h2>
 <p><code>jevision.project.json</code>, in the project folder, optional:</p>
@@ -333,7 +333,7 @@
 <h3 id="lowest-format">The lowest format that holds the test</h3>
 <p>JEVision writes each test in the lowest format that holds what the test uses, not in the newest format it knows. So opening and saving a test never makes it unreadable for the JEVision that made it: a test without labels stays at format 1, however new the app. The first time a test needs a format that no other test of the project has yet, the app asks before it saves, because a JEVision older than that format can't open that test any more.</p>
 <h3 id="newer">Files from a newer JEVision</h3>
-<p>A JEVision that finds a newer format than it knows refuses the file with “The file uses format 3 from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. A test or a <a href="#labels">label</a> can also say which JEVision it needs, with <code>"minVersion": "1.4.0"</code> next to <code>"format"</code>. An older JEVision then says only “This test was made in JEVision 1.4.0. Update JEVision to open it.” instead of listing every field it doesn't know. JEVision doesn't write <code>minVersion</code> itself; it is there for tools that make tests.</p>
+<p>A JEVision that finds a newer format than it knows refuses the file with “The file uses format 3 from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. A test, a <a href="#labels">label</a> or an <a href="#environments">environments file</a> can also say which JEVision it needs, with <code>"minVersion": "1.4.0"</code> next to <code>"format"</code>. An older JEVision then asks to be updated instead of listing every field it doesn't know. JEVision does not add <code>minVersion</code> to tests or environments itself; tools can declare a requirement, and environment edits preserve it.</p>
 <h3 id="backups">Backups</h3>
 <p>Before a file is written in a newer format than it had, JEVision copies it to <code>.jevision/backups/</code>, into a folder named after the time in UTC. A <code>backup.json</code> in that folder lists the files with the format each was in and the format it was written in. Restoring a backup puts those files back, after it backs up the files as they are now, so a restore can be undone the same way.</p>
 <p>The backups folder has a <code>.gitignore</code> of its own, so backups stay out of git even when the project's <code>.gitignore</code> doesn't mention <code>.jevision</code>. JEVision keeps the 20 newest backups and removes the oldest while all of them together take more than 500 MB. The newest backup is always kept.</p>

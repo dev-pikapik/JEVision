@@ -107,6 +107,12 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.format.unsupported" => {
             tr_in!(lang, "flow.format.unsupported", p("found"), p("oldest"))
         }
+        "settings.needsNewer" => tr_in!(lang, "settings.needsNewer", p("version")),
+        "settings.format.tooNew" => {
+            tr_in!(lang, "project.format.tooNew", p("found"), p("supported"))
+        }
+        "settings.minVersion.invalid" => tr_in!(lang, "flow.minVersion.invalid", p("value")),
+        "settings.field.unknown" => tr_in!(lang, "settings.field.unknown", p("name")),
         "flow.needsNewer" => tr_in!(lang, "flow.needsNewer", p("version")),
         "flow.minVersion.invalid" => tr_in!(lang, "flow.minVersion.invalid", p("value")),
         "resource.meta.invalid" => {
@@ -447,6 +453,12 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
 /// tools that show issues outside the app, such as the command line and AI assistants.
 pub fn describe_in(lang: &str, issue: &Issue) -> String {
     let text = sentence_in(lang, issue);
+    if issue.code.starts_with("settings.") {
+        return match issue.param("file") {
+            Some(file) => format!("{file}: {text}"),
+            None => text,
+        };
+    }
     let named = |name| issue.param(name).filter(|v| !v.is_empty());
     let mut place: Vec<String> = [
         named("block").map(|v| tr_in!(lang, "flow.place.block", v)),

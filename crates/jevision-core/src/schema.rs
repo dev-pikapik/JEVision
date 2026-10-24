@@ -59,7 +59,7 @@ const ENVIRONMENTS: Kind = Kind {
         read as `${env.NAME}`, like the address of a server. Secrets never go here; tests read \
         them as `${secret.NAME}`.",
     formats: &[ENVIRONMENTS_FORMAT],
-    header: false,
+    header: true,
 };
 const SCHEDULES: Kind = Kind {
     name: "schedules",
@@ -1014,7 +1014,7 @@ mod tests {
         kind: &'static Kind,
         file: Value,
         reads: fn(&str) -> bool,
-        /// The reader turns away keys it doesn't know, and a file without `format`.
+        /// The reader turns away keys it doesn't know.
         strict: bool,
         /// A key at the top whose value must not be text.
         not_text: &'static str,
@@ -1207,6 +1207,18 @@ mod tests {
             Sample {
                 wrong: vec![
                     (
+                        with(&environments, "/minVersion", "1.0.0+".into()),
+                        "empty build metadata",
+                    ),
+                    (
+                        with(&environments, "/minVersion", Value::Null),
+                        "a null minimum version",
+                    ),
+                    (
+                        with(&environments, "/$schema", Value::Null),
+                        "a null schema address",
+                    ),
+                    (
                         with(&environments, "/environments", json!({ "my env": {} })),
                         "a space in a name",
                     ),
@@ -1226,7 +1238,7 @@ mod tests {
                 kind: &ENVIRONMENTS,
                 file: environments,
                 reads: |text| Environments::parse(text).is_ok(),
-                strict: true,
+                strict: false,
                 not_text: "environments",
             },
             Sample {
@@ -1315,14 +1327,18 @@ mod tests {
             );
             passes(&schema, &sample.file, &format!("the {name} sample"));
 
-            // Only tests and labels have `$schema` and `minVersion`: to the readers of the other
-            // files they are keys like any other.
+            // Readers with compatibility headers accept these explicitly; older permissive
+            // readers treat them like any other unknown key.
             for (key, value) in [
                 ("$schema", sample.kind.url()),
                 ("minVersion", "0.1.0".into()),
             ] {
                 let headed = with(&sample.file, &format!("/{key}"), value.into());
-                fails(&schema, &headed, &format!("`{key}` in a {name} file"));
+                if sample.kind.header {
+                    passes(&schema, &headed, &format!("`{key}` in a {name} file"));
+                } else {
+                    fails(&schema, &headed, &format!("`{key}` in a {name} file"));
+                }
                 assert_eq!(read(&headed), !sample.strict, "{name}: `{key}`");
             }
             if !sample.kind.formats.is_empty() {
@@ -1334,18 +1350,26 @@ mod tests {
                 );
                 assert_eq!(
                     read(&no_format),
-                    !sample.strict,
+                    !sample.strict && !sample.kind.header,
                     "{name}: a file without format"
                 );
             }
 
             let mut misspelled = sample.file.clone();
             misspelled["fromat"] = 1.into();
-            fails(
-                &schema,
-                &misspelled,
-                &format!("a misspelled key in a {name} file"),
-            );
+            if sample.kind.header {
+                passes(
+                    &schema,
+                    &misspelled,
+                    &format!("an optional key in a {name} file"),
+                );
+            } else {
+                fails(
+                    &schema,
+                    &misspelled,
+                    &format!("a misspelled key in a {name} file"),
+                );
+            }
             assert_eq!(
                 read(&misspelled),
                 !sample.strict,

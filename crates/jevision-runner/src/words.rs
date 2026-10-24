@@ -78,6 +78,10 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
     };
     let key = f.code.as_str();
     match key {
+        "settings.needsNewer" => Phrase::new(key, &[p("version")]),
+        "settings.format.tooNew" => {
+            Phrase::new("project.format.tooNew", &[p("found"), p("supported")])
+        }
         "run.test.unreadable" => Phrase::new(key, &[p("test"), reason()]),
         "run.test.needsNewer" => Phrase::new(key, &[p("test"), p("found"), p("supported")]),
         "run.test.invalid" => Phrase::new(key, &[p("errors")]),

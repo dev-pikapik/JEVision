@@ -58,8 +58,9 @@ pub use ci::{
 };
 pub use compat::{
     BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS, MigratedFile,
-    MigrationProblem, MigrationReport, NewLabel, Requirement, SaveOutcome, TEST_SCHEMA,
-    list_backups, migrate_project, project_requirement, restore_backup, save_test,
+    MigrationProblem, MigrationReport, NewLabel, Requirement, SaveOutcome, SettingsFileError,
+    SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project, project_requirement,
+    restore_backup, save_test,
 };
 pub use create::{
     CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,

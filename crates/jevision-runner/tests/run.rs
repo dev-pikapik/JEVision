@@ -1710,6 +1710,41 @@ fn environment_values_and_one_data_row() {
 }
 
 #[test]
+fn environment_requirements_stop_runs_before_input() {
+    let p = Project::new();
+    p.test(r#""type":{"type":"type","text":"${env.HOST}"}"#, "type", 0);
+    let opts = RunOptions {
+        environment: Some("staging".into()),
+        ..options()
+    };
+    for (text, code) in [
+        (
+            r#"{"format":99,"environments":false}"#,
+            "settings.format.tooNew",
+        ),
+        (
+            r#"{"format":1,"minVersion":"9999.0.0","environments":false}"#,
+            "settings.needsNewer",
+        ),
+    ] {
+        p.write("jevision.environments.json", text);
+        let hands = Fake::new(solid([0, 0, 0]));
+        let report = run_with(&p, &hands, RunControl::new(), &opts).0.report;
+        assert_eq!(failure_code(&report), code);
+        assert!(hands.typed().is_empty());
+    }
+    p.write(
+        "jevision.environments.json",
+        r#"{"format":1,"minVersion":"1.0.0+build.7",
+        "future":{"HOST":"ignored"},"environments":{"staging":{"HOST":"actual"}}}"#,
+    );
+    let hands = Fake::new(solid([0, 0, 0]));
+    let report = run_with(&p, &hands, RunControl::new(), &opts).0.report;
+    assert_eq!(report.verdict, Verdict::Passed);
+    assert_eq!(hands.typed(), ["actual"]);
+}
+
+#[test]
 fn a_condition_can_branch_on_the_environment_the_test_runs_in() {
     let p = Project::new();
     p.write(

@@ -386,7 +386,7 @@ window.searchIndex = [
    {
     "id": "file",
     "title": "The environments file",
-    "text": "Environments live in jevision.environments.json in the project folder, next to the tests, and are committed with them: { \"format\": 1, \"default\": \"staging\", \"environments\": { \"production\": { \"BASE_URL\": \"https://example.com\" }, \"staging\": { \"BASE_URL\": \"https://staging.example.com\", \"USER\": \"qa\" } } } format is 1 . environments maps each environment's name to its values. Environment names use letters, digits, - and _ , up to 64 characters. Value names start with a letter or _ and use letters, digits and _ . Values are text. default is optional and must name one of the environments. It is used when you don't choose one. JEVision finds the file in the nearest folder at or above the tests that has the file or a .jevision folder. Never put secrets in this file. It is committed with your tests and everyone with the repository can read it. Use secrets for passwords, tokens and keys."
+    "text": "Environments live in jevision.environments.json in the project folder, next to the tests, and are committed with them: { \"format\": 1, \"default\": \"staging\", \"environments\": { \"production\": { \"BASE_URL\": \"https://example.com\" }, \"staging\": { \"BASE_URL\": \"https://staging.example.com\", \"USER\": \"qa\" } } } format is 1 . environments maps each environment's name to its values. Environment names use letters, digits, - and _ , up to 64 characters. Value names start with a letter or _ and use letters, digits and _ . Values are text. default is optional and must name one of the environments. It is used when you don't choose one. The optional $schema field can name the environments schema . An optional minVersion , such as \"1.4.0\" , requires that version of JEVision or later. If the format or minimum version is newer than this app supports, JEVision refuses to edit the file or run with one of its environments. Requirements are checked before the contents, so a newer file produces an update message even if its contents have changed. Unrecognized top-level fields are kept when you add an environment or change a value. Validation of tests that read environment values reports them as warnings; they do not supply values to a run. Optional headers are also kept, and saving retains the latest unfamiliar fields on disk, including changes made since the editor loaded them. Known fields still have to follow the rules above. JEVision finds the file in the nearest folder at or above the tests that has the file or a .jevision folder. Never put secrets in this file. It is committed with your tests and everyone with the repository can read it. Use secrets for passwords, tokens and keys."
    },
    {
     "id": "use",
@@ -1151,7 +1151,7 @@ window.searchIndex = [
    {
     "id": "environments",
     "title": "Environments",
-    "text": "jevision.environments.json , in the project folder: { \"format\": 1, \"default\": \"staging\", \"environments\": { \"staging\": { \"BASE_URL\": \"https://staging.example.com\" } } } See The environments file for the rules."
+    "text": "jevision.environments.json , in the project folder: { \"format\": 1, \"default\": \"staging\", \"environments\": { \"staging\": { \"BASE_URL\": \"https://staging.example.com\" } } } Optional $schema and minVersion headers are supported. Unrecognized top-level fields survive edits and produce validation warnings in tests that read environment values. A newer format or minimum version prevents editing and running with these environments. See The environments file for the rules."
    },
    {
     "id": "project",
@@ -1201,7 +1201,7 @@ window.searchIndex = [
    {
     "id": "newer",
     "title": "Files from a newer JEVision",
-    "text": "A JEVision that finds a newer format than it knows refuses the file with “The file uses format 3 from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. A test or a label can also say which JEVision it needs, with \"minVersion\": \"1.4.0\" next to \"format\" . An older JEVision then says only “This test was made in JEVision 1.4.0. Update JEVision to open it.” instead of listing every field it doesn't know. JEVision doesn't write minVersion itself; it is there for tools that make tests."
+    "text": "A JEVision that finds a newer format than it knows refuses the file with “The file uses format 3 from a newer JEVision”, rather than misreading it or overwriting what it doesn't understand. A test, a label or an environments file can also say which JEVision it needs, with \"minVersion\": \"1.4.0\" next to \"format\" . An older JEVision then asks to be updated instead of listing every field it doesn't know. JEVision does not add minVersion to tests or environments itself; tools can declare a requirement, and environment edits preserve it."
    },
    {
     "id": "backups",

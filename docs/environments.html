@@ -91,6 +91,8 @@
   <li><code>environments</code> maps each environment's name to its values. Environment names use letters, digits, <code>-</code> and <code>_</code>, up to 64 characters. Value names start with a letter or <code>_</code> and use letters, digits and <code>_</code>. Values are text.</li>
   <li><code>default</code> is optional and must name one of the environments. It is used when you don't choose one.</li>
 </ul>
+<p>The optional <code>$schema</code> field can name <a href="schemas/environments.schema.json">the environments schema</a>. An optional <code>minVersion</code>, such as <code>"1.4.0"</code>, requires that version of JEVision or later. If the format or minimum version is newer than this app supports, JEVision refuses to edit the file or run with one of its environments. Requirements are checked before the contents, so a newer file produces an update message even if its contents have changed.</p>
+<p>Unrecognized top-level fields are kept when you add an environment or change a value. Validation of tests that read environment values reports them as warnings; they do not supply values to a run. Optional headers are also kept, and saving retains the latest unfamiliar fields on disk, including changes made since the editor loaded them. Known fields still have to follow the rules above.</p>
 <p>JEVision finds the file in the nearest folder at or above the tests that has the file or a <code>.jevision</code> folder.</p>
 <div class="warning">
   <p><strong>Never put secrets in this file.</strong> It is committed with your tests and everyone with the repository can read it. Use <a href="#secrets">secrets</a> for passwords, tokens and keys.</p>

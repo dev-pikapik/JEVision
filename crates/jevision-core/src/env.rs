@@ -10,6 +10,7 @@ use std::{fs, io};
 use jevision_l10n::tr;
 use serde::{Deserialize, Serialize};
 
+use crate::compat::{SettingsFileError, SettingsMetadata, check_settings_header};
 use crate::issue::{Issue, json_problem};
 use crate::model::Flow;
 use crate::validate::{DiskCache, is_identifier, placeholder_fields, placeholders};
@@ -39,11 +40,12 @@ pub struct Environments {
     pub all: BTreeMap<String, EnvironmentValues>,
     /// The environment a run uses when none is chosen; always one of `all`.
     pub default: Option<String>,
+    /// Optional requirements and fields preserved for readers from other versions.
+    pub metadata: SettingsMetadata,
 }
 
 #[derive(Deserialize, Serialize)]
 #[cfg_attr(test, derive(schemars::JsonSchema))]
-#[serde(deny_unknown_fields)]
 pub(crate) struct File {
     format: u32,
     /// The environment a run uses when none is chosen; one of `environments`.
@@ -63,28 +65,27 @@ pub(crate) struct File {
         ))
     )]
     environments: BTreeMap<String, EnvironmentValues>,
+    #[serde(flatten)]
+    metadata: SettingsMetadata,
 }
 
 impl Environments {
     /// Reads the text of an environments file; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let file: File = serde_json::from_str(text).map_err(|e| json_problem(&e))?;
-        if file.format > ENVIRONMENTS_FORMAT {
-            return Err(tr!(
-                "project.format.tooNew",
-                file.format,
-                ENVIRONMENTS_FORMAT
-            ));
-        }
-        if file.format < 1 {
-            return Err(tr!("project.format.invalid", ENVIRONMENTS_FORMAT));
-        }
+        Self::parse_checked(text).map_err(|error| error.to_string())
+    }
+
+    fn parse_checked(text: &str) -> Result<Self, SettingsFileError> {
+        check_settings_header(text, ENVIRONMENTS_FORMAT)?;
+        let invalid = SettingsFileError::Invalid;
+        let file: File =
+            serde_json::from_str(text).map_err(|error| invalid(json_problem(&error)))?;
         for (name, values) in &file.environments {
             if !is_environment_name(name) {
-                return Err(tr!("env.name.invalid", name));
+                return Err(invalid(tr!("env.name.invalid", name)));
             }
             if let Some(bad) = values.keys().find(|key| !is_identifier(key)) {
-                return Err(tr!("env.valueName.invalid", bad, name));
+                return Err(invalid(tr!("env.valueName.invalid", bad, name)));
             }
         }
         if let Some(name) = file
@@ -92,30 +93,39 @@ impl Environments {
             .as_deref()
             .filter(|name| !file.environments.contains_key(*name))
         {
-            return Err(tr!("env.default.unknown", name));
+            return Err(invalid(tr!("env.default.unknown", name)));
         }
         Ok(Self {
             all: file.environments,
             default: file.default,
+            metadata: file.metadata,
         })
     }
 
     /// Reads the environments file of the project folder `project`; a project without one has
     /// no environments.
     pub fn load(project: &Path) -> Result<Self, String> {
+        Self::load_checked(project).map_err(|error| error.to_string())
+    }
+
+    /// Reads with structured errors so tools can distinguish an update requirement from damage.
+    pub fn load_checked(project: &Path) -> Result<Self, SettingsFileError> {
         match fs::read_to_string(project.join(ENVIRONMENTS_FILE)) {
-            Ok(text) => Self::parse(&text),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(e.to_string()),
+            Ok(text) => Self::parse_checked(&text),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(error) => Err(SettingsFileError::Invalid(error.to_string())),
         }
     }
 
-    /// The environments of the project that `dir` is in: the nearest folder at or above `dir`
-    /// with an environments file or a `.jevision` folder.
+    /// The environments of the nearest project at or above `dir`.
     pub fn find(dir: &Path) -> Result<Self, String> {
+        Self::find_checked(dir).map_err(|error| error.to_string())
+    }
+
+    pub(crate) fn find_checked(dir: &Path) -> Result<Self, SettingsFileError> {
         dir.ancestors()
             .find(|folder| is_project_folder(folder))
-            .map_or_else(|| Ok(Self::default()), Self::load)
+            .map_or_else(|| Ok(Self::default()), Self::load_checked)
     }
 
     pub fn get(&self, name: &str) -> Option<&EnvironmentValues> {
@@ -181,17 +191,30 @@ impl Environments {
         current.save(project).map_err(SetValueError::Unwritable)
     }
 
-    fn save(self, project: &Path) -> Result<(), String> {
-        // Do not replace a file that changed to an unsupported format while editing.
-        Self::load(project)?;
+    /// The file in its original format, retaining optional headers and unfamiliar fields.
+    pub fn to_json(&self) -> String {
         let file = File {
             format: ENVIRONMENTS_FORMAT,
-            default: self.default,
-            environments: self.all,
+            default: self.default.clone(),
+            environments: self.all.clone(),
+            metadata: self.metadata.clone(),
         };
-        let mut text = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
+        let mut text = serde_json::to_string_pretty(&file).expect("environments always serialize");
         text.push('\n');
-        crate::atomic::write(&project.join(ENVIRONMENTS_FILE), text).map_err(|e| e.to_string())
+        text
+    }
+
+    fn save(mut self, project: &Path) -> Result<(), String> {
+        Self::parse(&self.to_json())?;
+        let path = project.join(ENVIRONMENTS_FILE);
+        match fs::read_to_string(&path) {
+            // Optional fields are opaque to this editor. Keep their latest on-disk values,
+            // including deletions, rather than restoring an older snapshot of them.
+            Ok(text) => self.metadata = Self::parse(&text)?.metadata,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.to_string()),
+        }
+        crate::atomic::write(&path, self.to_json()).map_err(|error| error.to_string())
     }
 }
 
@@ -255,25 +278,19 @@ pub fn validate_environment_values(flow: &Flow, dir: &Path) -> Vec<Issue> {
 
 /// [`validate_environment_values`], reading the environments through `disk`.
 pub(crate) fn environment_issues(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Issue> {
-    let used: Vec<_> = used(flow)
-        .into_iter()
-        .filter(|(_, _, name)| *name != ENVIRONMENT_NAME)
-        .collect();
+    let used = used(flow);
     if used.is_empty() {
         return Vec::new();
     }
     let environments = match disk.environments(dir) {
         Ok(environments) => environments,
-        Err(reason) => {
-            return vec![
-                Issue::error("flow.environments.invalid")
-                    .with("file", ENVIRONMENTS_FILE)
-                    .with("reason", reason),
-            ];
-        }
+        Err(error) => return vec![error.issue(ENVIRONMENTS_FILE, "flow.environments.invalid")],
     };
-    let mut out = Vec::new();
-    for (block, field, name) in used {
+    let mut out = environments.metadata.warnings(ENVIRONMENTS_FILE);
+    for (block, field, name) in used
+        .into_iter()
+        .filter(|(_, _, name)| *name != ENVIRONMENT_NAME)
+    {
         let lacking: Vec<&str> = environments
             .all
             .iter()
@@ -371,7 +388,7 @@ mod tests {
                 r#"{"format":1,"environments":{"s":{"X":1}}}"#,
                 "invalid type",
             ),
-            (r#"{"format":1,"envs":{}}"#, "unknown field"),
+            (r#"{"format":1,"envs":{}}"#, "missing field"),
             (
                 r#"{"format":1,"default":"prod","environments":{"dev":{}}}"#,
                 "default environment “prod”",
@@ -396,13 +413,126 @@ mod tests {
         let file = dir.join(ENVIRONMENTS_FILE);
         for changed in [
             r#"{"format":99,"future":true}"#,
-            r#"{"format":1,"future":true}"#,
+            r#"{"format":1,"minVersion":"9999.0.0","environments":{"dev":{}}}"#,
             "{",
         ] {
             fs::write(&file, changed).unwrap();
             assert!(edited.clone().save(&dir).is_err());
             assert_eq!(fs::read_to_string(&file).unwrap(), changed);
         }
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn optional_headers_and_fields_survive_edits_and_stale_saves() {
+        let original = r#"{"format":1,"$schema":"https://example.com/env.schema.json",
+            "minVersion":"1.0.0+build.7","future":{"nested":[1,null,{"enabled":true}]},
+            "removedLater":true,"environments":{"dev":{"HOST":"old"}}}"#;
+        let dir = project(Some(original));
+        let parsed = Environments::load(&dir).unwrap();
+        assert_eq!(Environments::parse(&parsed.to_json()).unwrap(), parsed);
+        Environments::set_value(&dir, "dev", "HOST", "edited").unwrap();
+        Environments::add(&dir, "staging", EnvironmentValues::new()).unwrap();
+        let current = Environments::load(&dir).unwrap();
+        assert_eq!(current.metadata, parsed.metadata);
+        assert_eq!(current.get("dev").unwrap()["HOST"], "edited");
+        assert!(current.get("staging").is_some());
+
+        let mut stale = current.clone();
+        stale
+            .all
+            .get_mut("dev")
+            .unwrap()
+            .insert("HOST".into(), "last edit".into());
+        let mut external: serde_json::Value = serde_json::from_str(&current.to_json()).unwrap();
+        external.as_object_mut().unwrap().remove("removedLater");
+        external["future"] = serde_json::json!({"replaced": [false, 42]});
+        external["addedLater"] = serde_json::json!(["keep me"]);
+        external["$schema"] = "https://example.com/new.schema.json".into();
+        fs::write(dir.join(ENVIRONMENTS_FILE), external.to_string()).unwrap();
+        stale.save(&dir).unwrap();
+        let saved = Environments::load(&dir).unwrap();
+        assert_eq!(
+            saved.metadata,
+            Environments::parse(&external.to_string()).unwrap().metadata
+        );
+        assert_eq!(saved.get("dev").unwrap()["HOST"], "last edit");
+        assert_eq!(saved.metadata.min_version.as_deref(), Some("1.0.0+build.7"));
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn requirements_are_checked_before_payloads_and_refuse_edits() {
+        for (text, code) in [
+            (
+                r#"{"format":99,"environments":["future payload"]}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":1,"minVersion":"9999.0.0","environments":false}"#,
+                "settings.needsNewer",
+            ),
+            (
+                r#"{"format":1,"minVersion":"1.0.0+","environments":{}}"#,
+                "settings.minVersion.invalid",
+            ),
+            (
+                r#"{"format":1,"minVersion":null,"environments":{}}"#,
+                "settings.minVersion.invalid",
+            ),
+            (
+                r#"{"format":1,"minVersion":1,"environments":{}}"#,
+                "settings.minVersion.invalid",
+            ),
+        ] {
+            let dir = project(Some(text));
+            let error = Environments::load_checked(&dir).unwrap_err();
+            assert_eq!(error.issue(ENVIRONMENTS_FILE, "invalid").code, code);
+            assert_eq!(
+                error.requires_newer(),
+                code != "settings.minVersion.invalid"
+            );
+            let issues = validate_environment_values(&flow("${env.HOST}"), &dir);
+            assert_eq!(issues.len(), 1, "{text}");
+            let built_in_only = validate_environment_values(&flow("${env.ENVIRONMENT}"), &dir);
+            assert_eq!(built_in_only.len(), 1, "{text}");
+            assert_eq!(built_in_only[0].code, code);
+            assert_eq!(issues[0].code, code);
+            assert_eq!(issues[0].param("file"), Some(ENVIRONMENTS_FILE));
+            assert!(Environments::add(&dir, "new", EnvironmentValues::new()).is_err());
+            assert!(Environments::set_value(&dir, "dev", "HOST", "changed").is_err());
+            assert_eq!(
+                fs::read_to_string(dir.join(ENVIRONMENTS_FILE)).unwrap(),
+                text
+            );
+            fs::remove_dir_all(dir).unwrap();
+        }
+        for text in [
+            r#"{"format":1,"$schema":null,"environments":{}}"#,
+            r#"{"format":1,"$schema":{},"environments":{}}"#,
+            r#"{"format":1,"environments":{},"environments":{}}"#,
+        ] {
+            assert!(Environments::parse(text).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn optional_fields_are_reported_without_changing_execution_values() {
+        let dir = project(Some(
+            r#"{"format":1,"minVersion":"1.0.0","future":{"HOST":"ignored"},
+            "environments":{"dev":{"HOST":"actual"}}}"#,
+        ));
+        let issues = validate_environment_values(&flow("${env.HOST}"), &dir);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].code, "settings.field.unknown");
+        assert_eq!(issues[0].severity, crate::Severity::Warning);
+        assert_eq!(issues[0].param("name"), Some("future"));
+        assert_eq!(issues[0].param("file"), Some(ENVIRONMENTS_FILE));
+        assert!(crate::issue::describe_in("en", &issues[0]).contains(ENVIRONMENTS_FILE));
+        assert_eq!(
+            Environments::load(&dir).unwrap().get("dev").unwrap()["HOST"],
+            "actual"
+        );
         fs::remove_dir_all(dir).unwrap();
     }
 
