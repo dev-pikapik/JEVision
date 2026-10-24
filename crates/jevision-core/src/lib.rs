@@ -41,6 +41,7 @@ mod search;
 mod template;
 mod validate;
 
+pub use atomic::write as write_file_atomically;
 pub use batch::{
     Batch, BatchTest, BlockReason, Blocker, DEFAULT_PARALLEL, Loaded, MAX_PARALLEL, RunMode,
     TestOutcome, TestState, WaitingFor, dependency_issues, resolve_test,
@@ -59,8 +60,8 @@ pub use ci::{
 pub use compat::{
     BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS, MigratedFile,
     MigrationProblem, MigrationReport, NewLabel, Requirement, SaveOutcome, SettingsFileError,
-    SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project, project_requirement,
-    restore_backup, save_test,
+    SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project, parse_settings_document,
+    project_requirement, restore_backup, save_test,
 };
 pub use create::{
     CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,

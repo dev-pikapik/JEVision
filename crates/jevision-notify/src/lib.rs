@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 mod chats;
+mod settings;
+pub use settings::{NotificationMetadata, settings_issues};
 mod message;
 mod render;
 #[cfg(test)]
@@ -117,6 +119,7 @@ pub struct NotificationSettings {
     pub slack: Option<SlackChannel>,
     pub telegram: Option<TelegramChat>,
     pub email: Option<MailServer>,
+    pub metadata: NotificationMetadata,
 }
 
 /// Where a message goes.
@@ -280,20 +283,7 @@ fn migrate(file: &mut Value) -> Result<(), String> {
 impl NotificationSettings {
     /// Reads the text of a settings file, of format 1 or 2; `Err` says what is wrong with it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let mut value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-        migrate(&mut value)?;
-        let file: File = serde_json::from_value(value).map_err(|e| e.to_string())?;
-        if file.format != FORMAT {
-            return Err(tr!("notify.settings.format", FORMAT));
-        }
-        let settings = Self {
-            unattended_only: file.unattended_only,
-            slack: file.slack,
-            telegram: file.telegram,
-            email: file.email,
-        };
-        settings.check()?;
-        Ok(settings)
+        Self::parse_compatible(text).map_err(|error| error.to_string())
     }
 
     /// Whether the settings can be used; `Err` names what is missing or wrong.
@@ -330,29 +320,6 @@ impl NotificationSettings {
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
             Err(e) => Err(unreadable(e.to_string())),
         }
-    }
-
-    /// Writes the settings to the project folder; settings without a channel remove the file.
-    pub fn save(&self, project: &Path) -> Result<(), NotifyError> {
-        self.check()
-            .map_err(|reason| NotifyError::Rejected { reason })?;
-        let path = project.join(FILE);
-        if self.channels().is_empty() {
-            return match fs::remove_file(&path) {
-                Err(e) if e.kind() != io::ErrorKind::NotFound => Err(unwritable(e.to_string())),
-                _ => Ok(()),
-            };
-        }
-        let file = File {
-            format: FORMAT,
-            unattended_only: self.unattended_only,
-            slack: self.slack,
-            telegram: self.telegram.clone(),
-            email: self.email.clone(),
-        };
-        let mut text = serde_json::to_string_pretty(&file).expect("settings always serialize");
-        text.push('\n');
-        fs::write(path, text).map_err(|e| unwritable(e.to_string()))
     }
 
     /// The channels that are on.

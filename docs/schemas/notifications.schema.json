@@ -16,7 +16,7 @@
       ]
     },
     "MailServer": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Mail sent through an SMTP server.",
       "properties": {
         "from": {
@@ -55,6 +55,24 @@
           "default": "failedOrFixed"
         }
       },
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "webhook",
+            "webhookUrl",
+            "slackWebhook",
+            "token",
+            "botToken",
+            "telegramToken",
+            "password",
+            "smtpPassword",
+            "secret",
+            "apiKey",
+            "authorization",
+            "credentials"
+          ]
+        }
+      },
       "required": [
         "server",
         "port",
@@ -89,7 +107,7 @@
       ]
     },
     "SlackChannel": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "The Slack channel of the webhook.",
       "properties": {
         "when": {
@@ -97,10 +115,28 @@
           "default": "failedOrFixed"
         }
       },
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "webhook",
+            "webhookUrl",
+            "slackWebhook",
+            "token",
+            "botToken",
+            "telegramToken",
+            "password",
+            "smtpPassword",
+            "secret",
+            "apiKey",
+            "authorization",
+            "credentials"
+          ]
+        }
+      },
       "type": "object"
     },
     "TelegramChat": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "A Telegram chat a bot posts to.",
       "properties": {
         "chat": {
@@ -113,6 +149,24 @@
           "default": "failedOrFixed"
         }
       },
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "webhook",
+            "webhookUrl",
+            "slackWebhook",
+            "token",
+            "botToken",
+            "telegramToken",
+            "password",
+            "smtpPassword",
+            "secret",
+            "apiKey",
+            "authorization",
+            "credentials"
+          ]
+        }
+      },
       "required": [
         "chat"
       ],
@@ -121,9 +175,13 @@
   },
   "$id": "https://dev-pikapik.github.io/JEVision/schemas/notifications.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "How a project tells people how its test runs went, in `jevision.notifications.json` in the project folder: a message to Slack, Telegram or email, each with when to send it. Webhooks, tokens and passwords are secret and never go in this file.",
   "properties": {
+    "$schema": {
+      "description": "Address of this schema, so that editors check the file and suggest its keys.",
+      "type": "string"
+    },
     "email": {
       "anyOf": [
         {
@@ -138,6 +196,11 @@
     "format": {
       "const": 2,
       "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows."
+    },
+    "minVersion": {
+      "description": "The oldest JEVision that can open the file, such as 1.4.0. An older one asks to be updated instead of opening it.",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+      "type": "string"
     },
     "slack": {
       "anyOf": [
@@ -164,6 +227,25 @@
     "unattendedOnly": {
       "description": "Only runs started by a schedule or on CI are told about, not the ones someone watched.",
       "type": "boolean"
+    }
+  },
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "webhook",
+        "webhookUrl",
+        "slackWebhook",
+        "token",
+        "botToken",
+        "telegramToken",
+        "password",
+        "smtpPassword",
+        "secret",
+        "apiKey",
+        "authorization",
+        "credentials",
+        "when"
+      ]
     }
   },
   "required": [

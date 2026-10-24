@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Writes `bytes` to `path` through a temporary file next to it, then renames it over the old one.
 /// The file keeps its permissions, and a symbolic link keeps pointing where it did.
-pub(crate) fn write(path: &Path, bytes: impl AsRef<[u8]>) -> io::Result<()> {
+pub fn write(path: &Path, bytes: impl AsRef<[u8]>) -> io::Result<()> {
     let path = match fs::canonicalize(path) {
         Ok(real) => real,
         Err(e) if e.kind() == io::ErrorKind::NotFound => path.to_path_buf(),

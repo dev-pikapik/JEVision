@@ -85,6 +85,7 @@ fn settings_are_saved_read_back_and_checked() {
             to: vec!["team@acme.com".into(), "Ann <ann@acme.com>".into()],
             when: NotifyWhen::Failed,
         }),
+        metadata: NotificationMetadata::default(),
     };
     settings.save(&project).unwrap();
     let text = fs::read_to_string(project.join(FILE)).unwrap();
@@ -116,9 +117,10 @@ fn settings_are_saved_read_back_and_checked() {
     );
     assert!(NotificationSettings::parse(r#"{"format": 2, "slack": true}"#).is_err());
     assert!(NotificationSettings::parse(r#"{"format": 2, "when": "every"}"#).is_err());
-    assert_eq!(
-        NotificationSettings::parse(r#"{"format": 3}"#),
-        Err("\"format\" must be 1 or 2".into())
+    assert!(
+        NotificationSettings::parse_compatible(r#"{"format": 3}"#)
+            .unwrap_err()
+            .requires_newer()
     );
 
     NotificationSettings::default().save(&project).unwrap();
@@ -902,14 +904,26 @@ const NOTIFICATIONS: jevision_schema::Kind = jevision_schema::Kind {
         email, each with when to send it. Webhooks, tokens and passwords are secret and never go \
         in this file.",
     formats: &[FORMAT],
-    header: false,
+    header: true,
 };
 
 #[test]
 fn the_notifications_schema_is_published_and_fits_the_files() {
     use jevision_schema::Validator;
 
-    let schema = NOTIFICATIONS.schema::<File>();
+    let mut schema = NOTIFICATIONS.schema::<File>();
+    schema["additionalProperties"] = true.into();
+    let credentials = json!({"not": {"enum": ["webhook", "webhookUrl", "slackWebhook", "token", "botToken", "telegramToken", "password", "smtpPassword", "secret", "apiKey", "authorization", "credentials"]}});
+    for name in ["SlackChannel", "TelegramChat", "MailServer"] {
+        schema["$defs"][name]["additionalProperties"] = true.into();
+        schema["$defs"][name]["propertyNames"] = credentials.clone();
+    }
+    let mut root_names = credentials;
+    root_names["not"]["enum"]
+        .as_array_mut()
+        .unwrap()
+        .push("when".into());
+    schema["propertyNames"] = root_names;
     NOTIFICATIONS.check_published(&schema);
     let project = folder("schema");
     let settings = NotificationSettings {
@@ -930,6 +944,7 @@ fn the_notifications_schema_is_published_and_fits_the_files() {
             to: vec!["team@acme.com".into()],
             when: NotifyWhen::FailedOrFixed,
         }),
+        metadata: NotificationMetadata::default(),
     };
     settings.save(&project).unwrap();
     let text = fs::read_to_string(project.join(FILE)).unwrap();
@@ -946,16 +961,28 @@ fn the_notifications_schema_is_published_and_fits_the_files() {
         changed.pointer_mut(parent).unwrap()[key] = value;
         changed
     };
+    for (pointer, value) in [
+        ("/$schema", NOTIFICATIONS.url().into()),
+        ("/minVersion", "0.1.0".into()),
+        ("/optional", json!({"keep": [null, 42]})),
+        ("/email/optional", json!([1, 2])),
+    ] {
+        let compatible = changed(pointer, value);
+        assert!(NotificationSettings::parse(&compatible.to_string()).is_ok());
+        assert!(check(&compatible).is_ok());
+    }
     let mut no_format = file.clone();
     no_format.as_object_mut().unwrap().remove("format");
     for (wrong, what) in [
         (no_format, "no format"),
-        (changed("/unatendedOnly", true.into()), "a misspelled key"),
         (
-            changed("/$schema", NOTIFICATIONS.url().into()),
-            "the address of a schema",
+            changed("/when", "every".into()),
+            "a global when in format 2",
         ),
-        (changed("/minVersion", "0.1.0".into()), "a minVersion"),
+        (
+            changed("/email/password", "private".into()),
+            "a password in public settings",
+        ),
         (changed("/email/port", "587".into()), "text for a number"),
         (changed("/email/port", 0.into()), "port 0"),
         (changed("/email/to", json!([])), "mail to nobody"),

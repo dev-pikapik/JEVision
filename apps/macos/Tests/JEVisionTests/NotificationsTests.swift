@@ -5,6 +5,58 @@ import Testing
 @testable import JEVision
 
 struct NotificationsTests {
+  @Test func savesRetainCurrentOptionalFieldsThroughTheFrontendRecord() throws {
+    let project = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: project) }
+    let file = project.appending(path: notificationSettingsFileName())
+    try #"{"format":2,"minVersion":"0.1.0","extra":{"keep":42},"slack":{"when":"changed","extra":[1,2]}}"#
+      .write(to: file, atomically: true, encoding: .utf8)
+    var stale = try notificationSettings(project: project.path)
+    stale.slack = SlackChannel(when: .every)
+    try #"{"format":2,"minVersion":"0.1.0","latest":true,"slack":{"when":"changed","extra":[3,4]}}"#
+      .write(to: file, atomically: true, encoding: .utf8)
+    try saveNotificationSettings(project: project.path, settings: stale)
+    let saved = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    #expect(saved["extra"] == nil)
+    #expect(saved["latest"] as? Bool == true)
+    let slack = try #require(saved["slack"] as? [String: Any])
+    #expect(slack["extra"] as? [Int] == [3, 4])
+    #expect(slack["when"] as? String == "every")
+    #expect(notificationSettingsIssues(project: project.path).map(\.code) == ["settings.field.unknown", "settings.field.unknown"])
+    try saveNotificationSettings(project: project.path, settings: .off)
+    let off = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    #expect(off["slack"] == nil)
+    #expect(off["latest"] as? Bool == true)
+    #expect(off["minVersion"] as? String == "0.1.0")
+  }
+
+  @Test func unsupportedOrBrokenFilesRefuseStaleSaveAndClear() throws {
+    let project = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: project) }
+    let file = project.appending(path: notificationSettingsFileName())
+    var stale = NotificationSettings.off
+    stale.slack = SlackChannel(when: .every)
+    for (text, code) in [
+      (#"{"format":99,"slack":true}"#, "settings.format.tooNew"),
+      (#"{"format":2,"minVersion":"9999.0.0","slack":true}"#, "settings.needsNewer"),
+      (#"{"format":2,"minVersion":null}"#, "settings.minVersion.invalid"),
+      (#"{"format":2,"slack":{},"slack":{}}"#, "settings.notification.invalid"),
+      (#"{"format":2,"optional":{"password":"hidden-value"}}"#, "settings.notification.invalid"),
+      ("{", "settings.notification.invalid"),
+    ] {
+      try text.write(to: file, atomically: true, encoding: .utf8)
+      #expect(throws: NotifyError.self) { try saveNotificationSettings(project: project.path, settings: stale) }
+      #expect(throws: NotifyError.self) { try saveNotificationSettings(project: project.path, settings: .off) }
+      #expect(throws: NotifyError.self) { try notificationSettings(project: project.path) }
+      #expect(try String(contentsOf: file, encoding: .utf8) == text)
+      let issues = notificationSettingsIssues(project: project.path)
+      #expect(issues.map(\.code) == [code])
+      #expect(!issues.map { describeIssue(issue: $0) }.joined().contains("hidden-value"))
+    }
+  }
+
   @Test func theDraftKeepsWhatWasTypedAndSaysWhatToFix() {
     var draft = NotificationsDraft()
     draft.telegram = true

@@ -6,7 +6,7 @@
 //! raised, and then the first time that raises the project asks before it does.
 
 mod settings;
-pub use settings::{SettingsFileError, SettingsMetadata};
+pub use settings::{SettingsFileError, SettingsMetadata, parse_settings_document};
 pub(crate) use settings::{
     UniqueValue, check_settings_header, check_settings_value, read_settings_json,
 };

@@ -44386,18 +44386,18 @@
         }
       }
     },
-    "notify.settings.format" : {
+    "notify.settings.globalWhen" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"format\" must be 1 or %lld"
+            "value" : "Format 2 needs a separate when for each channel; remove the global when."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "значение \"format\" должно быть 1 или %lld"
+            "value" : "В формате 2 нужен отдельный when для каждого канала; удалите общий when."
           }
         }
       }
@@ -44446,6 +44446,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "для почты нужен хотя бы один адрес получателя"
+          }
+        }
+      }
+    },
+    "notify.settings.secret" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The field %@ belongs in the Keychain or environment variables, not in notification settings."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поле %@ должно храниться в Связке ключей или переменных окружения, а не в настройках уведомлений."
           }
         }
       }

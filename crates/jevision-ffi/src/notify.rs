@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 
 use jevision_notify::{
     ChatKind, Endpoints, FILE, FoundChat, FoundChats, MailSecurity, MailServer,
-    NotificationSettings, NotifyChannel, NotifyError, NotifyWhen, SlackChannel, TelegramChat,
+    NotificationSettings as CoreSettings, NotifyChannel, NotifyError, NotifyWhen, SlackChannel,
+    TelegramChat,
 };
 
 #[uniffi::remote(Enum)]
@@ -51,12 +52,35 @@ pub struct MailServer {
     pub when: NotifyWhen,
 }
 
-#[uniffi::remote(Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct NotificationSettings {
     pub unattended_only: bool,
     pub slack: Option<SlackChannel>,
     pub telegram: Option<TelegramChat>,
     pub email: Option<MailServer>,
+}
+
+impl From<CoreSettings> for NotificationSettings {
+    fn from(settings: CoreSettings) -> Self {
+        Self {
+            unattended_only: settings.unattended_only,
+            slack: settings.slack,
+            telegram: settings.telegram,
+            email: settings.email,
+        }
+    }
+}
+
+impl From<NotificationSettings> for CoreSettings {
+    fn from(settings: NotificationSettings) -> Self {
+        Self {
+            unattended_only: settings.unattended_only,
+            slack: settings.slack,
+            telegram: settings.telegram,
+            email: settings.email,
+            ..Self::default()
+        }
+    }
 }
 
 #[uniffi::remote(Enum)]
@@ -101,7 +125,7 @@ pub struct NotifySent {
 /// every channel off.
 #[uniffi::export]
 pub fn notification_settings(project: String) -> Result<NotificationSettings, NotifyError> {
-    NotificationSettings::load(Path::new(&project))
+    CoreSettings::load(Path::new(&project)).map(Into::into)
 }
 
 /// Saves the notification settings of the project; with every channel off the file is removed.
@@ -110,7 +134,13 @@ pub fn save_notification_settings(
     project: String,
     settings: NotificationSettings,
 ) -> Result<(), NotifyError> {
-    settings.save(Path::new(&project))
+    CoreSettings::from(settings).save(Path::new(&project))
+}
+
+/// Optional fields and requirement diagnostics of the notification settings file.
+#[uniffi::export]
+pub fn notification_settings_issues(project: String) -> Vec<crate::Issue> {
+    jevision_notify::settings_issues(Path::new(&project))
 }
 
 /// Name of the notification settings file in a project folder.
@@ -145,7 +175,7 @@ pub fn notification_secret_variable(channel: NotifyChannel) -> String {
 #[uniffi::export]
 pub fn send_test_notification(project: String, channel: NotifyChannel) -> Result<(), NotifyError> {
     let project = Path::new(&project);
-    let settings = NotificationSettings::load(project)?;
+    let settings = CoreSettings::load(project)?;
     jevision_notify::send(
         &settings,
         channel,

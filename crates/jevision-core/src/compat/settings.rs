@@ -27,7 +27,8 @@ pub struct SettingsMetadata {
 }
 
 impl SettingsMetadata {
-    pub(crate) fn warnings(&self, file: &str) -> Vec<Issue> {
+    /// Diagnostics for retained fields that this version does not interpret.
+    pub fn warnings(&self, file: &str) -> Vec<Issue> {
         self.extra
             .keys()
             .map(|name| {
@@ -93,6 +94,16 @@ pub(crate) fn check_settings_header(
     supported: u32,
 ) -> Result<Value, SettingsFileError> {
     check_settings_value(read_settings_json(text)?, supported, None)
+}
+
+/// Decode unique-key JSON and check its requirements before inspecting its payload.
+/// Only readers of historically unversioned files should supply a legacy format.
+pub fn parse_settings_document(
+    text: &str,
+    supported: u32,
+    legacy: Option<u32>,
+) -> Result<Value, SettingsFileError> {
+    check_settings_value(read_settings_json(text)?, supported, legacy)
 }
 
 pub(crate) fn read_settings_json(text: &str) -> Result<Value, SettingsFileError> {

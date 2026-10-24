@@ -11,6 +11,7 @@ struct NotificationSettingsView: View {
   @State private var draft = NotificationsDraft()
   @State private var loadProblem: String?
   @State private var failure: String?
+  @State private var diagnostics: [Issue] = []
   @State private var settingSecret: NotifyChannel?
   /// Bumped after a secret is saved or removed, to read the statuses again.
   @State private var secretsVersion = 0
@@ -31,6 +32,14 @@ struct NotificationSettingsView: View {
             Button("Try Again") { load(root) }
           }
         } else if saved != nil {
+          if !diagnostics.isEmpty {
+            Section {
+              ForEach(Array(diagnostics.enumerated()), id: \.offset) { _, issue in
+                Label(describeIssue(issue: issue), systemImage: "exclamationmark.triangle")
+                  .foregroundStyle(issue.severity == .error ? Color.red : Color.orange)
+              }
+            }
+          }
           form(root)
         }
       } else {
@@ -350,11 +359,13 @@ struct NotificationSettingsView: View {
     do {
       let settings = try notificationSettings(project: root.path)
       saved = settings
+      diagnostics = notificationSettingsIssues(project: root.path)
       draft = NotificationsDraft(settings)
       chatSearch = .idle
       loadProblem = nil
     } catch {
       saved = nil
+      diagnostics = []
       loadProblem = NotificationsText.message(error)
     }
   }
@@ -368,6 +379,7 @@ struct NotificationSettingsView: View {
     case .success(let settings):
       do {
         try saveNotificationSettings(project: root.path, settings: settings)
+        diagnostics = notificationSettingsIssues(project: root.path)
         saved = settings
         draft = NotificationsDraft(settings)
         return true

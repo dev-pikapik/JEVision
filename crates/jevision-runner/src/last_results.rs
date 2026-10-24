@@ -9,7 +9,9 @@ use std::path::Path;
 use std::sync::{Mutex, PoisonError};
 use std::{fs, io};
 
-use jevision_core::LAST_RESULTS_FILE;
+use jevision_core::{
+    LAST_RESULTS_FILE, SettingsMetadata, parse_settings_document, write_file_atomically,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -33,6 +35,8 @@ struct LastResults {
     /// By test file, relative to the project folder.
     #[serde(default)]
     tests: BTreeMap<String, LastResult>,
+    #[serde(flatten)]
+    metadata: SettingsMetadata,
 }
 
 impl Default for LastResults {
@@ -40,6 +44,7 @@ impl Default for LastResults {
         Self {
             format: LAST_RESULTS_FORMAT,
             tests: BTreeMap::new(),
+            metadata: SettingsMetadata::default(),
         }
     }
 }
@@ -52,30 +57,40 @@ struct LastResult {
     /// The verdict kept for the test before this run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     before: Option<Verdict>,
+    #[serde(flatten)]
+    extra: BTreeMap<String, Value>,
 }
 
-/// The file at `path`, upgraded to [`LAST_RESULTS_FORMAT`]; empty when it is missing or can't be
-/// read, so a broken one starts over. `None` when a newer JEVision wrote it: this one can't tell
-/// what it says, and leaves it as it is for that one.
-fn load(path: &Path) -> Option<LastResults> {
-    let Some(Value::Object(mut file)) = fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str(&text).ok())
-    else {
-        return Some(LastResults::default());
+/// A missing cache starts empty. Unreadable JSON, unknown required values and unsupported
+/// requirements stay untouched; a cached baseline is then unavailable, without stopping tests.
+fn load(path: &Path) -> io::Result<Option<LastResults>> {
+    let text = match fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Some(LastResults::default())),
+        Err(e) => return Err(e),
     };
-    let found = file.get("format").map_or(Some(1), Value::as_u64);
-    match found {
-        Some(found) if found > u64::from(LAST_RESULTS_FORMAT) => return None,
-        Some(found) if found >= u64::from(OLDEST_FORMAT) => {
-            for step in &MIGRATIONS[(found - u64::from(OLDEST_FORMAT)) as usize..] {
-                step(&mut file);
-            }
-        }
-        _ => return Some(LastResults::default()),
+    let Ok(Value::Object(mut file)) =
+        parse_settings_document(&text, LAST_RESULTS_FORMAT, Some(OLDEST_FORMAT))
+    else {
+        return Ok(None);
+    };
+    let found = file["format"].as_u64().expect("a checked format");
+    for step in &MIGRATIONS[(found - u64::from(OLDEST_FORMAT)) as usize..] {
+        step(&mut file);
     }
     file.insert("format".into(), LAST_RESULTS_FORMAT.into());
-    Some(serde_json::from_value(Value::Object(file)).unwrap_or_default())
+    let Ok(results) = serde_json::from_value::<LastResults>(Value::Object(file)) else {
+        return Ok(None);
+    };
+    let finished = |verdict| matches!(verdict, Verdict::Passed | Verdict::Failed);
+    if results
+        .tests
+        .values()
+        .any(|last| !finished(last.verdict) || last.before.is_some_and(|v| !finished(v)))
+    {
+        return Ok(None);
+    }
+    Ok(Some(results))
 }
 
 /// The lock file beside the file, held while this exists: the app, the command line and the
@@ -119,27 +134,24 @@ pub(crate) fn record(project: &Path, run: &Run) -> io::Result<()> {
     let path = project.join(LAST_RESULTS_FILE);
     let _this_process = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
     let _other_programs = Writing::wait(&path.with_extension("json.lock"))?;
-    let Some(mut results) = load(&path) else {
+    let Some(mut results) = load(&path)? else {
         return Ok(());
     };
-    let before = results.tests.get(&run.report.file).map(|last| last.verdict);
+    let previous = results.tests.remove(&run.report.file);
+    let before = previous.as_ref().map(|last| last.verdict);
+    let extra = previous.map_or_else(BTreeMap::new, |last| last.extra);
     results.tests.insert(
         run.report.file.clone(),
         LastResult {
             run: name,
             verdict,
             before,
+            extra,
         },
     );
     let mut text = serde_json::to_string_pretty(&results).map_err(io::Error::other)?;
     text.push('\n');
-    // Written beside it and renamed, so no one ever reads half a file.
-    let partial = path.with_extension(format!("json.{}.partial", std::process::id()));
-    let written = fs::write(&partial, text).and_then(|()| fs::rename(&partial, &path));
-    if written.is_err() {
-        let _ = fs::remove_file(&partial);
-    }
-    written
+    write_file_atomically(&path, text)
 }
 
 /// The verdict of the run of `run`'s test before it that passed or failed, as `project` keeps
@@ -147,7 +159,8 @@ pub(crate) fn record(project: &Path, run: &Run) -> io::Result<()> {
 /// newer JEVision.
 pub fn verdict_before(project: &Path, run: &Run) -> Option<Verdict> {
     let name = folder(run)?;
-    let last = load(&project.join(LAST_RESULTS_FILE))?
+    let last = load(&project.join(LAST_RESULTS_FILE))
+        .ok()??
         .tests
         .remove(&run.report.file)?;
     match last.run.cmp(&name) {
@@ -178,7 +191,7 @@ mod tests {
     }
 
     #[test]
-    fn only_runs_that_passed_or_failed_are_kept_and_a_broken_file_starts_over() {
+    fn only_finished_results_are_kept_and_broken_files_wait_for_explicit_repair() {
         let project = std::env::temp_dir().join(format!("jevision-last-{}", std::process::id()));
         let _ = fs::remove_dir_all(&project);
         fs::create_dir_all(project.join(".jevision")).unwrap();
@@ -187,6 +200,13 @@ mod tests {
         assert_eq!(verdict_before(&project, &first), None);
         record(&project, &first).unwrap();
         assert_eq!(verdict_before(&project, &first), None);
+        assert_eq!(
+            fs::read_to_string(project.join(LAST_RESULTS_FILE)).unwrap(),
+            "{ not json"
+        );
+        // Removing the damaged local cache is an explicit repair, never an automatic reset.
+        fs::remove_file(project.join(LAST_RESULTS_FILE)).unwrap();
+        record(&project, &first).unwrap();
 
         let stopped = run(&project, "20261019-083000-t", "t.flow.json", "cancelled");
         record(&project, &stopped).unwrap();
@@ -254,6 +274,69 @@ mod tests {
             fs::read_to_string(project.join(LAST_RESULTS_FILE)).unwrap(),
             newer
         );
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn optional_root_and_test_fields_survive_recording_the_next_verdict() {
+        let project = project("fields");
+        let file = project.join(LAST_RESULTS_FILE);
+        let original = json!({"format":1,"$schema":"https://example.test/results.json","minVersion":"0.1.0+state",
+            "cursor":[null,42],"tests":{"t.flow.json":{"run":"20261019-080000-t","verdict":"failed","extra":{"keep":true}},
+            "u.flow.json":{"run":"20261019-080000-u","verdict":"passed","extra":[1,2]}}});
+        fs::write(&file, original.to_string()).unwrap();
+        let next = run(&project, "20261019-090000-t", "t.flow.json", "passed");
+        record(&project, &next).unwrap();
+        let saved: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        for key in ["$schema", "minVersion", "cursor"] {
+            assert_eq!(saved[key], original[key]);
+        }
+        assert_eq!(
+            saved["tests"]["u.flow.json"],
+            original["tests"]["u.flow.json"]
+        );
+        assert_eq!(
+            saved["tests"]["t.flow.json"]["extra"],
+            original["tests"]["t.flow.json"]["extra"]
+        );
+        assert_eq!(verdict_before(&project, &next), Some(Verdict::Failed));
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn unreadable_or_unsupported_result_state_is_never_reset_by_a_finished_run() {
+        let project = project("refuse-state");
+        let file = project.join(LAST_RESULTS_FILE);
+        let next = run(&project, "20261019-090000-t", "t.flow.json", "passed");
+        for text in [
+            r#"{"format":99,"tests":false}"#,
+            r#"{"minVersion":"9999.0.0","tests":false}"#,
+            r#"{"format":1,"minVersion":null}"#,
+            r#"{"format":1,"$schema":false}"#,
+            r#"{"format":1,"tests":{},"tests":{}}"#,
+            r#"{"format":1,"extra":{"x":1,"x":2}}"#,
+            r#"{"format":1,"tests":{"t.flow.json":{"run":"old","verdict":"deferred"}}}"#,
+            r#"{"format":1,"tests":{"t.flow.json":{"run":"old","verdict":"blocked"}}}"#,
+            "{",
+        ] {
+            fs::write(&file, text).unwrap();
+            assert_eq!(verdict_before(&project, &next), None);
+            record(&project, &next).unwrap();
+            assert_eq!(fs::read_to_string(&file).unwrap(), text);
+        }
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn cached_folder_names_can_repeat_between_fresh_ci_jobs() {
+        let project = project("same-name");
+        let failed = run(&project, "20261019-080000-t", "t.flow.json", "failed");
+        let passed = run(&project, "20261019-080000-t", "t.flow.json", "passed");
+        record(&project, &failed).unwrap();
+        record(&project, &passed).unwrap();
+        assert_eq!(verdict_before(&project, &passed), Some(Verdict::Failed));
+        record(&project, &passed).unwrap();
+        assert_eq!(verdict_before(&project, &passed), Some(Verdict::Passed));
         fs::remove_dir_all(project).unwrap();
     }
 

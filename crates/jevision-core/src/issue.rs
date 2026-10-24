@@ -33,7 +33,8 @@ pub struct IssueParam {
 }
 
 impl Issue {
-    pub(crate) fn error(code: &str) -> Self {
+    /// An error identified by its localization key.
+    pub fn error(code: &str) -> Self {
         Self {
             code: code.to_owned(),
             severity: Severity::Error,
@@ -41,14 +42,16 @@ impl Issue {
         }
     }
 
-    pub(crate) fn warning(code: &str) -> Self {
+    /// A warning identified by its localization key.
+    pub fn warning(code: &str) -> Self {
         Self {
             severity: Severity::Warning,
             ..Self::error(code)
         }
     }
 
-    pub(crate) fn with(mut self, name: &str, value: impl ToString) -> Self {
+    /// Add a named value used by the localized diagnostic.
+    pub fn with(mut self, name: &str, value: impl ToString) -> Self {
         self.params.push(IssueParam {
             name: name.to_owned(),
             value: value.to_string(),
@@ -107,7 +110,9 @@ pub fn sentence_in(lang: &str, issue: &Issue) -> String {
         "flow.format.unsupported" => {
             tr_in!(lang, "flow.format.unsupported", p("found"), p("oldest"))
         }
-        "settings.project.invalid" | "settings.schedule.invalid" => p("reason").to_owned(),
+        "settings.project.invalid"
+        | "settings.schedule.invalid"
+        | "settings.notification.invalid" => p("reason").to_owned(),
         "settings.needsNewer" => tr_in!(lang, "settings.needsNewer", p("version")),
         "settings.format.tooNew" => {
             tr_in!(lang, "project.format.tooNew", p("found"), p("supported"))
