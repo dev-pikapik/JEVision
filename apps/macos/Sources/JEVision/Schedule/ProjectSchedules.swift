@@ -10,6 +10,7 @@ import Observation
 @Observable
 final class ProjectSchedules {
   private(set) var all: [ProjectSchedule] = []
+  private(set) var warnings: [Issue] = []
   /// Scheduled runs on this Mac, newest first.
   private(set) var runs: [ScheduledRun] = []
   /// Why the schedule file or the history of its runs can't be read; the schedules don't run
@@ -51,8 +52,10 @@ final class ProjectSchedules {
     let path = project.path(percentEncoded: false)
     do {
       all = try projectSchedules(project: path)
+      warnings = try projectScheduleWarnings(project: path)
       problem = nil
     } catch {
+      warnings = []
       problem = error.localizedDescription
     }
     do {
@@ -84,13 +87,18 @@ final class ProjectSchedules {
   /// the file holds then. Returns once the file is saved; macOS is asked in the background, and
   /// the task returned fails with the reason when the schedules don't run in the end.
   func save(
-    _ schedules: [ProjectSchedule], action: String, undoManager: UndoManager?,
+    _ schedules: [ProjectSchedule], renaming: (oldName: String, newName: String)? = nil,
+    action: String, undoManager: UndoManager?,
     ask: @escaping FileUndo.Ask = FileUndo.askToReplace
   ) throws -> Task<Void, any Error> {
     guard let project else { return Task {} }
     let file = project.appending(path: scheduleFileName())
     try FileUndo.record(file, action: action, in: undoManager, ask: ask, then: { [weak self] in self?.followFile() }) {
-      try saveProjectSchedules(project: project.path(percentEncoded: false), schedules: schedules)
+      if let renaming {
+        try saveProjectSchedulesRenaming(project: project.path(percentEncoded: false), schedules: schedules, from: renaming.oldName, to: renaming.newName)
+      } else {
+        try saveProjectSchedules(project: project.path(percentEncoded: false), schedules: schedules)
+      }
     }
     let asked = change(to: schedules)
     read()

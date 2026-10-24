@@ -109,6 +109,11 @@
 </table>
 </div>
 
+<h3 id="compatibility">Compatibility when editing schedules</h3>
+<p>The optional <code>$schema</code> header can name <a href="schemas/schedules.schema.json">the schedules schema</a>. An optional <code>minVersion</code>, such as <code>"1.4.0"</code>, requires that JEVision or later. Requirements are checked before the contents: a newer format or minimum version blocks edits and scheduled runs, even if the contents use unfamiliar types. The scheduler leaves the file and its history untouched in that case. JEVision does not add or raise a minimum version automatically.</p>
+<p>Unrecognized optional fields at the top level and in schedule entries are preserved when you edit. The app's Schedules sheet and test validation report them as warnings, without using their values to execute a schedule. Known times, names, environments and video modes remain checked. Test selectors and repetition rules remain strict: an unfamiliar selector, repetition variant or extra variant key is an error.</p>
+<p>Fields stay with each schedule by its name, ignoring case, when entries are reordered. Renaming in the editor carries its fields to the new name, including through Undo and Redo. Deleting an entry removes its fields. Saving reloads the current metadata from disk, so external changes and removals of optional fields survive a stale edit. Clearing every schedule keeps an empty file if headers or unfamiliar top-level fields remain; otherwise it removes the file. The launch agent is removed whenever no schedules remain.</p>
+
 <h2 id="how">How schedules run</h2>
 <p>A schedule file in git does nothing by itself on a Mac: schedules run on a Mac only after you save them or click <strong>Turn On</strong> in the sheet there. The app then installs a launch agent for the project, a small file macOS uses to start programs at set times:</p>
 <pre><code>~/Library/LaunchAgents/io.github.dev-pikapik.jevision.schedule.&lt;id&gt;.plist</code></pre>

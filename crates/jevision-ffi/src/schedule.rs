@@ -271,6 +271,26 @@ pub fn save_project_schedules(
     jevision_core::save_schedules(Path::new(&project), &to_core(schedules)?).map_err(Into::into)
 }
 
+/// Saves a renamed entry without discarding its optional fields; the old name must still exist.
+#[uniffi::export]
+pub fn save_project_schedules_renaming(
+    project: String,
+    schedules: Vec<ProjectSchedule>,
+    from: String,
+    to: String,
+) -> Result<(), ScheduleError> {
+    jevision_core::save_schedules_renaming(Path::new(&project), &to_core(schedules)?, &from, &to)
+        .map_err(Into::into)
+}
+
+/// Optional fields retained in a schedule file, reported without exposing or executing their values.
+#[uniffi::export]
+pub fn project_schedule_warnings(project: String) -> Result<Vec<crate::Issue>, ScheduleError> {
+    jevision_core::ScheduleFile::load(Path::new(&project))
+        .map(|document| document.warnings())
+        .map_err(Into::into)
+}
+
 /// What keeps `schedule` from running, if anything; `others` are the project's other schedules.
 #[uniffi::export]
 pub fn schedule_problem(schedule: ProjectSchedule, others: Vec<ProjectSchedule>) -> Option<String> {
@@ -464,6 +484,37 @@ mod tests {
         );
         assert!(agent.plist.contains("<string>schedule</string>"));
         std::fs::remove_dir_all(&project).unwrap();
+    }
+
+    #[test]
+    fn frontend_renames_keep_metadata_and_future_files_stop_before_history() {
+        let project = std::env::temp_dir().join(format!(
+            "jevision-ffi-schedule-extras-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&project).unwrap();
+        let path = project.to_string_lossy().into_owned();
+        let file = project.join(jevision_core::SCHEDULE_FILE);
+        std::fs::write(&file, r#"{"format":1,"future":true,"schedules":[{"name":"Nightly","tests":"all","repeat":"daily","at":"09:00","optional":{"keep":42}}]}"#).unwrap();
+        assert_eq!(project_schedule_warnings(path.clone()).unwrap().len(), 2);
+        let mut edited = project_schedules(path.clone()).unwrap();
+        edited[0].name = "Evening".into();
+        save_project_schedules_renaming(path.clone(), edited, "Nightly".into(), "Evening".into())
+            .unwrap();
+        let value: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["schedules"][0]["optional"]["keep"], 42);
+        save_project_schedules(path.clone(), vec![]).unwrap();
+        assert!(file.is_file());
+        let future = r#"{"format":1,"minVersion":"9999.0.0","schedules":false}"#;
+        std::fs::write(&file, future).unwrap();
+        assert!(
+            matches!(begin_schedule_check(path.clone(), 0), Err(ScheduleError::Invalid { code, .. }) if code == "settings.needsNewer")
+        );
+        assert!(save_project_schedules(path, vec![]).is_err());
+        assert_eq!(std::fs::read_to_string(file).unwrap(), future);
+        assert!(!project.join(jevision_core::SCHEDULE_HISTORY_FILE).exists());
+        std::fs::remove_dir_all(project).unwrap();
     }
 
     #[test]

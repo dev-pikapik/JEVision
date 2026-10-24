@@ -50286,6 +50286,22 @@
         }
       }
     },
+    "schedule.name.notFound" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule “%@” is no longer in this project. Reload it before saving."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расписания «%@» больше нет в проекте. Обновите список перед сохранением."
+          }
+        }
+      }
+    },
     "schedule.name.twice" : {
       "localizations" : {
         "en" : {
@@ -50314,6 +50330,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "расписание «%1$@»: %2$@"
+          }
+        }
+      }
+    },
+    "schedule.rename.invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renaming must replace the old schedule with one entry under the new name."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При переименовании старое расписание нужно заменить одной записью с новым именем."
           }
         }
       }

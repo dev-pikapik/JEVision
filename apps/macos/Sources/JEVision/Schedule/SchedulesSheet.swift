@@ -134,6 +134,18 @@ struct SchedulesSheet: View {
         Label(problem, systemImage: "exclamationmark.triangle.fill")
           .foregroundStyle(.orange)
       }
+      if !schedules.warnings.isEmpty {
+        ScrollView {
+          VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(schedules.warnings.enumerated()), id: \.offset) { _, issue in
+              Label(describeIssue(issue: issue), systemImage: "exclamationmark.triangle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            }
+          }
+        }
+        .frame(maxHeight: 100)
+      }
       if schedules.all.isEmpty {
         ContentUnavailableView(
           "No schedules yet", systemImage: "calendar.badge.clock",
@@ -238,13 +250,17 @@ struct SchedulesSheet: View {
       return
     }
     var all = schedules.all
+    var renaming: (oldName: String, newName: String)?
     if let index = all.firstIndex(where: { $0.name == name }) {
-      if let saved { all[index] = saved } else { all.remove(at: index) }
+      if let saved {
+        if all[index].name != saved.name { renaming = (all[index].name, saved.name) }
+        all[index] = saved
+      } else { all.remove(at: index) }
     } else if let saved {
       all.append(saved)
     }
     do {
-      let turningOn = try schedules.save(all, action: action, undoManager: undoManager)
+      let turningOn = try schedules.save(all, renaming: renaming, action: action, undoManager: undoManager)
       editing = nil
       Task {
         do {

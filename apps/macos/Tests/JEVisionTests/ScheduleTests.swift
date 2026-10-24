@@ -87,6 +87,20 @@ struct ScheduleCommandTests {
     #expect(try String(contentsOf: history, encoding: .utf8) == Self.newer, "the newer history is left as it is")
   }
 
+  @Test func newerScheduleRequirementsStopBeforeCheckingTheScreen() throws {
+    let project = try scratch()
+    let file = project.appending(path: scheduleFileName())
+    for text in [#"{"format":99,"schedules":false}"#, #"{"format":1,"minVersion":"9999.0.0","schedules":false}"#] {
+      try text.write(to: file, atomically: true, encoding: .utf8)
+      var command = ScheduleCommand(project: project.path)
+      command.blocker = { Testing.Issue.record("readiness was checked for an unsupported file"); return .screenLocked }
+      command.runTests = { _ throws(UsageError) in Testing.Issue.record("unsupported schedules ran"); return [] }
+      #expect(command.execute() == .needsNewer)
+      #expect(try String(contentsOf: file, encoding: .utf8) == text)
+      #expect(!FileManager.default.fileExists(atPath: project.appending(path: ".jevision/schedule-history.json").path))
+    }
+  }
+
   static let newer = #"{"format": 99, "runs": []}"#
 }
 
@@ -351,6 +365,34 @@ struct ScheduleUndoTests {
     undo.beginUndoGrouping()
     defer { undo.endUndoGrouping() }
     return try schedules.save(list, action: action, undoManager: undo, ask: ask ?? never)
+  }
+
+  @Test func renamedScheduleMetadataSurvivesUndoAndRedo() async throws {
+    let project = try scratch()
+    let file = project.appending(path: scheduleFileName())
+    let original = #"{"format":1,"minVersion":"1.0.0","future":true,"schedules":[{"name":"Nightly","tests":"all","repeat":"daily","at":"09:00","optional":{"keep":42}}]}"#
+    try original.write(to: file, atomically: true, encoding: .utf8)
+    let (store, _) = try schedules(project)
+    #expect(store.warnings.count == 2)
+    let undo = undoManager()
+    undo.beginUndoGrouping()
+    let task = try store.save([daily("Evening", at: 18, 0)], renaming: ("Nightly", "Evening"), action: "Rename", undoManager: undo, ask: never)
+    undo.endUndoGrouping()
+    try await task.value
+    func value() throws -> [String: Any] {
+      try #require(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+    }
+    let entries = try #require(try value()["schedules"] as? [[String: Any]])
+    #expect(entries.first?["name"] as? String == "Evening")
+    #expect((entries.first?["optional"] as? [String: Int])?["keep"] == 42)
+    undo.undo()
+    try await settled(store)
+    #expect(try String(contentsOf: file, encoding: .utf8) == original)
+    undo.redo()
+    try await settled(store)
+    let redone = try #require(try value()["schedules"] as? [[String: Any]])
+    #expect(redone.first?["name"] as? String == "Evening")
+    #expect((redone.first?["optional"] as? [String: Int])?["keep"] == 42)
   }
 
   /// Waits until macOS has taken up every change asked of it, for no longer than `limit`.

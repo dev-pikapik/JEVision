@@ -142,10 +142,10 @@ pub use route::route_around;
 pub use schedule::{
     CalendarInterval, EVERY_HOURS, MAX_LATE_MINUTES, Repeat, SCHEDULE_FILE, SCHEDULE_FORMAT,
     SCHEDULE_HISTORY_FILE, SCHEDULE_HISTORY_FORMAT, SCHEDULE_HISTORY_KEPT, SCHEDULE_VIDEO_MODES,
-    Schedule, ScheduleHistory, ScheduleProblem, ScheduleTests, ScheduledOutcome, ScheduledRun,
-    SkipReason, TimeOfDay, Weekday, begin_schedule_check, calendar_intervals, due_schedules,
-    launch_agent_plist, load_schedules, parse_schedules, record_scheduled_run, save_schedules,
-    schedule_agent_label, schedules_to_json,
+    Schedule, ScheduleFile, ScheduleHistory, ScheduleProblem, ScheduleTests, ScheduledOutcome,
+    ScheduledRun, SkipReason, TimeOfDay, Weekday, begin_schedule_check, calendar_intervals,
+    due_schedules, launch_agent_plist, load_schedules, parse_schedules, record_scheduled_run,
+    save_schedules, save_schedules_renaming, schedule_agent_label, schedules_to_json,
 };
 pub use search::{SearchCandidate, SearchIndex, rank, test_keywords};
 pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};

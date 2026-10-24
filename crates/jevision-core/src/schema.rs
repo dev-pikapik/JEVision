@@ -68,7 +68,7 @@ const SCHEDULES: Kind = Kind {
         the project folder: each schedule names the tests, the days or hours, and the time of \
         day.",
     formats: &[SCHEDULE_FORMAT],
-    header: false,
+    header: true,
 };
 const SCHEDULE_HISTORY: Kind = Kind {
     name: "schedule-history",
@@ -1002,6 +1002,13 @@ mod tests {
         schema
     }
 
+    fn schedule_schema() -> Value {
+        let mut schema = SCHEDULES.schema::<crate::schedule::File>();
+        schema["additionalProperties"] = true.into();
+        schema["$defs"]["Schedule"]["additionalProperties"] = true.into();
+        schema
+    }
+
     /// The schema of each kind of file this crate reads.
     fn schemas() -> Vec<(&'static Kind, Value)> {
         vec![
@@ -1009,7 +1016,7 @@ mod tests {
             (&JEVMETA, JEVMETA.schema::<ResourceMeta>()),
             (&PROJECT, project_schema()),
             (&ENVIRONMENTS, ENVIRONMENTS.schema::<crate::env::File>()),
-            (&SCHEDULES, SCHEDULES.schema::<crate::schedule::File>()),
+            (&SCHEDULES, schedule_schema()),
             (
                 &SCHEDULE_HISTORY,
                 SCHEDULE_HISTORY.schema::<ScheduleHistory>(),
@@ -1315,7 +1322,7 @@ mod tests {
                 kind: &SCHEDULES,
                 file: schedules,
                 reads: |text| crate::schedule::parse_schedules(text).is_ok(),
-                strict: true,
+                strict: false,
                 not_text: "schedules",
             },
             Sample {

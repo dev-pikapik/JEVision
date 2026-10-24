@@ -334,6 +334,7 @@ pub struct DiskCache {
     unmet: HashMap<(PathBuf, String), Vec<Issue>>,
     environments: HashMap<PathBuf, Result<Environments, crate::SettingsFileError>>,
     projects: HashMap<PathBuf, Result<crate::ProjectSettings, crate::SettingsFileError>>,
+    schedules: HashMap<PathBuf, Result<crate::ScheduleFile, crate::ScheduleProblem>>,
     tables: HashMap<PathBuf, Result<DataTable, DataError>>,
 }
 
@@ -358,6 +359,21 @@ impl DiskCache {
         self.projects
             .entry(root.to_path_buf())
             .or_insert_with(|| crate::ProjectSettings::load_checked(root))
+            .as_ref()
+    }
+
+    fn schedules(&mut self, dir: &Path) -> Result<&crate::ScheduleFile, &crate::ScheduleProblem> {
+        let root = dir
+            .ancestors()
+            .find(|folder| {
+                folder.join(crate::SCHEDULE_FILE).is_file()
+                    || folder.join(crate::PROJECT_FILE).is_file()
+                    || crate::env::is_project_folder(folder)
+            })
+            .unwrap_or(dir);
+        self.schedules
+            .entry(root.to_path_buf())
+            .or_insert_with(|| crate::ScheduleFile::load(root))
             .as_ref()
     }
 
@@ -449,6 +465,21 @@ pub fn validate_in_with(flow: &Flow, dir: &Path, disk: &mut DiskCache) -> Vec<Is
     match disk.project_settings(dir) {
         Ok(settings) => out.extend(settings.compatibility_warnings()),
         Err(error) => out.push(error.issue(crate::PROJECT_FILE, "settings.project.invalid")),
+    }
+    match disk.schedules(dir) {
+        Ok(document) => out.extend(document.warnings()),
+        Err(problem) if problem.code.starts_with("settings.") => {
+            let mut issue = Issue::error(&problem.code);
+            for (key, value) in &problem.params {
+                issue = issue.with(key, value);
+            }
+            out.push(issue);
+        }
+        Err(problem) => out.push(
+            Issue::error("settings.schedule.invalid")
+                .with("file", crate::SCHEDULE_FILE)
+                .with("reason", problem.describe()),
+        ),
     }
     out.extend(crate::env::environment_issues(flow, dir, disk));
     out.extend(crate::data::data_issues(flow, dir, disk));

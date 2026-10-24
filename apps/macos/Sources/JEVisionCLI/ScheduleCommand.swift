@@ -45,7 +45,7 @@ struct ScheduleCommand {
   static func status(_ error: Error, in root: String) -> ExitStatus {
     let file: String
     switch error as? ScheduleError {
-    case .Invalid(let code, _) where code == "project.format.tooNew": return .needsNewer
+    case .Invalid(let code, _) where asksForNewerJevision(code: code): return .needsNewer
     case .Invalid(_, let params): file = params["file"] ?? scheduleFileName()
     case .Unreadable(let name, _), .Unwritable(let name, _): file = name
     case nil: file = scheduleFileName()

@@ -14,6 +14,9 @@ use jevision_l10n::{language, tr_in};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod document;
+pub use document::ScheduleFile;
+
 use crate::env::is_environment_name;
 
 /// Name of the schedule file in the project folder.
@@ -229,6 +232,15 @@ impl ScheduleProblem {
         let of_file = |text: String| tr_in!(lang, "project.file.unreadable", p("file"), text);
         let of_schedule = |text: String| tr_in!(lang, "schedule.problem", p("name"), text);
         match self.code.as_str() {
+            code if code.starts_with("settings.") => {
+                let mut issue = crate::Issue::error(code);
+                for (name, value) in &self.params {
+                    issue = issue.with(name, value);
+                }
+                crate::describe_in(lang, &issue)
+            }
+            "schedule.rename.invalid" => tr_in!(lang, "schedule.rename.invalid"),
+            "schedule.name.notFound" => tr_in!(lang, "schedule.name.notFound", p("name")),
             "project.file.unreadable" => {
                 tr_in!(lang, "project.file.unreadable", p("file"), p("reason"))
             }
@@ -446,89 +458,37 @@ fn check(schedules: &[Schedule]) -> Result<(), ScheduleProblem> {
 
 /// Reads the text of a schedule file; `Err` says what is wrong with it.
 pub fn parse_schedules(text: &str) -> Result<Vec<Schedule>, ScheduleProblem> {
-    let problem = |code: &str| ScheduleProblem::new(code).with("file", SCHEDULE_FILE);
-    let value: Value = serde_json::from_str(text).map_err(|e| {
-        problem("flow.json.syntax")
-            .with("line", e.line())
-            .with("column", e.column())
-    })?;
-    // Before the fields: a newer format may have fields this version doesn't know.
-    match value.get("format").and_then(Value::as_u64) {
-        Some(found) if found > u64::from(SCHEDULE_FORMAT) => {
-            return Err(problem("project.format.tooNew")
-                .with("found", found)
-                .with("supported", SCHEDULE_FORMAT));
-        }
-        Some(0) => return Err(problem("project.format.invalid").with("supported", SCHEDULE_FORMAT)),
-        _ => {}
-    }
-    // Named here: the JSON reader would put a time that is no time in its own words.
-    if let Some(time) = value
-        .get("schedules")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|schedule| schedule.get("at")?.as_str())
-        .find(|time| TimeOfDay::parse(time).is_none())
-    {
-        return Err(problem("schedule.time.invalid").with("time", time));
-    }
-    let file: File = serde_json::from_str(text)
-        .map_err(|e| problem("project.file.unreadable").with("reason", e))?;
-    check(&file.schedules)?;
-    Ok(file.schedules)
+    ScheduleFile::parse(text).map(|document| document.schedules)
 }
 
-/// The schedules of the project folder `project`; a project without a schedule file has none.
+/// The schedules of the project; this projection is for execution. Saves reload the complete file.
 pub fn load_schedules(project: &Path) -> Result<Vec<Schedule>, ScheduleProblem> {
-    match fs::read_to_string(project.join(SCHEDULE_FILE)) {
-        Ok(text) => parse_schedules(&text),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Vec::new()),
-        Err(e) => Err(ScheduleProblem::io(
-            "project.file.unreadable",
-            SCHEDULE_FILE,
-            &e,
-        )),
-    }
+    ScheduleFile::load(project).map(|document| document.schedules)
 }
 
-/// The schedule file for `schedules`: days in week order, two-space indentation and a
-/// trailing newline, so edits make small diffs.
+/// A new schedule file, without compatibility metadata from an existing file.
 pub fn schedules_to_json(schedules: &[Schedule]) -> Result<String, ScheduleProblem> {
-    check(schedules)?;
-    let mut schedules = schedules.to_vec();
-    for schedule in &mut schedules {
-        if let Repeat::Days(days) = &mut schedule.repeat {
-            days.sort();
-        }
-    }
-    let file = File {
-        format: SCHEDULE_FORMAT,
-        schedules,
-    };
-    let mut text = serde_json::to_string_pretty(&file).expect("schedules always serialize to JSON");
-    text.push('\n');
-    Ok(text)
+    ScheduleFile::new(schedules.to_vec()).to_json()
 }
 
-/// Writes the schedule file of `project`; without schedules the file goes away.
+/// Writes schedules, preserving current optional fields and requirements. An empty file is
+/// removed only when no top-level metadata remains.
 pub fn save_schedules(project: &Path, schedules: &[Schedule]) -> Result<(), ScheduleProblem> {
-    let file = project.join(SCHEDULE_FILE);
-    let text = schedules_to_json(schedules)?;
-    // Deleting the last schedule must respect newer and unreadable files too.
-    load_schedules(project)?;
-    if schedules.is_empty() {
-        return match fs::remove_file(&file) {
-            Err(e) if e.kind() != io::ErrorKind::NotFound => Err(ScheduleProblem::io(
-                "project.file.unwritable",
-                SCHEDULE_FILE,
-                &e,
-            )),
-            _ => Ok(()),
-        };
-    }
-    crate::atomic::write(&file, &text)
-        .map_err(|e| ScheduleProblem::io("project.file.unwritable", SCHEDULE_FILE, &e))
+    let mut document = ScheduleFile::load(project)?;
+    document.schedules = schedules.to_vec();
+    document.save(project)
+}
+
+/// Saves an explicit rename while moving the old entry's opaque fields to its new name.
+pub fn save_schedules_renaming(
+    project: &Path,
+    schedules: &[Schedule],
+    from: &str,
+    to: &str,
+) -> Result<(), ScheduleProblem> {
+    let mut document = ScheduleFile::load(project)?;
+    document.schedules = schedules.to_vec();
+    document.save_renaming(project, Some((from, to)))
 }
 
 /// The schedules with a run in `(since, now]`, not counting runs later than
@@ -881,7 +841,10 @@ mod tests {
         let base = r#""name": "A", "tests": "all", "repeat": "daily""#;
         assert!(file(&format!(r#"{{{base}, "at": "9:00"}}"#)).contains("HH:MM"));
         assert!(file(&format!(r#"{{{base}, "at": "24:00"}}"#)).contains("HH:MM"));
-        assert!(file(&format!(r#"{{{base}, "at": "09:00", "when": 1}}"#)).contains("unknown"));
+        assert!(
+            file(&format!(r#"{{{base}, "at": "09:00", "repeat": "future"}}"#))
+                .contains("duplicate")
+        );
         assert!(
             file(r#"{"name": "A", "tests": "all", "repeat": {"everyHours": 5}, "at": "00:00"}"#)
                 .contains("one of 1, 2, 3, 4, 6, 8, 12")
@@ -921,6 +884,142 @@ mod tests {
                 .describe_in("en")
                 .contains("format 2")
         );
+    }
+
+    #[test]
+    fn optional_schedule_fields_survive_edits_reordering_and_explicit_renames() {
+        let project =
+            std::env::temp_dir().join(format!("jevision-schedule-extras-{}", std::process::id()));
+        fs::create_dir_all(&project).unwrap();
+        let file = project.join(SCHEDULE_FILE);
+        fs::write(&file, r#"{"format":1,"$schema":"https://example.com/schedule.json","minVersion":"1.0.0+build.7",
+            "future":{"values":[null,true]},"removedLater":42,
+            "schedules":[{"name":"Nightly","tests":"all","repeat":"daily","at":"09:00","futureEntry":{"id":"night"}},
+              {"name":"Morning","tests":"all","repeat":"daily","at":"10:00","futureEntry":{"id":"morning"}}]}"#).unwrap();
+        let mut stale = ScheduleFile::load(&project).unwrap();
+        assert_eq!(
+            ScheduleFile::parse(&stale.to_json().unwrap()).unwrap(),
+            stale
+        );
+        stale.schedules.reverse();
+        stale.schedules[0].video = Some("always".into());
+        stale.save(&project).unwrap();
+        let value: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["schedules"][0]["futureEntry"]["id"], "morning");
+        assert_eq!(value["schedules"][1]["futureEntry"]["id"], "night");
+        let mut external = value;
+        external.as_object_mut().unwrap().remove("removedLater");
+        external["future"] = serde_json::json!({"changed":true});
+        external["schedules"][1]["futureEntry"] = serde_json::json!({"new":"latest"});
+        fs::write(&file, external.to_string()).unwrap();
+        stale.save(&project).unwrap();
+        let latest = ScheduleFile::load(&project).unwrap();
+        assert_eq!(
+            latest.metadata,
+            ScheduleFile::parse(&external.to_string()).unwrap().metadata
+        );
+        let mut edited = latest.schedules.clone();
+        edited[1].name = "Evening".into();
+        save_schedules_renaming(&project, &edited, "Nightly", "Evening").unwrap();
+        let value: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["schedules"][1]["futureEntry"]["new"], "latest");
+        assert!(value.get("removedLater").is_none());
+        assert!(
+            ScheduleFile::load(&project)
+                .unwrap()
+                .warnings()
+                .iter()
+                .any(|i| i.param("name") == Some("schedules[Evening].futureEntry"))
+        );
+        // Case-only edits keep identity; deleting an entry cannot move its fields to another.
+        edited[0].name = "УТРО".into();
+        save_schedules_renaming(&project, &edited, "morning", "утро").unwrap();
+        edited[0].name = "утро".into();
+        save_schedules(&project, &edited).unwrap();
+        edited.remove(0);
+        save_schedules(&project, &edited).unwrap();
+        let value: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["schedules"][0]["futureEntry"]["new"], "latest");
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn clearing_schedules_keeps_top_level_metadata_and_refuses_ambiguous_renames() {
+        let project =
+            std::env::temp_dir().join(format!("jevision-schedule-empty-{}", std::process::id()));
+        fs::create_dir_all(&project).unwrap();
+        let file = project.join(SCHEDULE_FILE);
+        let text = r#"{"format":1,"future":true,"schedules":[{"name":"Nightly","tests":"all","repeat":"daily","at":"09:00","extra":"keep"}]}"#;
+        fs::write(&file, text).unwrap();
+        let mut new = schedule(Repeat::Daily, 9, 0);
+        new.name = "New".into();
+        let original = schedule(Repeat::Daily, 9, 0);
+        for (entries, from, to) in [
+            (vec![new.clone()], "Gone", "New"),
+            (vec![original.clone()], "Nightly", "Gone"),
+            (vec![original, new], "Nightly", "New"),
+        ] {
+            assert!(save_schedules_renaming(&project, &entries, from, to).is_err());
+            assert_eq!(fs::read_to_string(&file).unwrap(), text);
+        }
+        save_schedules(&project, &[]).unwrap();
+        let value: Value = serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(value["future"], true);
+        assert_eq!(value["schedules"], serde_json::json!([]));
+        fs::write(&file, r#"{"format":1,"schedules":[]}"#).unwrap();
+        save_schedules(&project, &[]).unwrap();
+        assert!(!file.exists());
+        fs::remove_dir_all(project).unwrap();
+    }
+
+    #[test]
+    fn schedule_requirements_precede_execution_and_history_writes() {
+        let project = std::env::temp_dir().join(format!(
+            "jevision-schedule-requirements-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(project.join("tests")).unwrap();
+        let file = project.join(SCHEDULE_FILE);
+        let flow = crate::parse(r#"{"format":1,"name":"T","app":"com.example.App","start":"a","blocks":{"a":{"type":"pressKeys","keys":"cmd+s"}}}"#).unwrap();
+        for (text, code) in [
+            (
+                r#"{"format":99,"schedules":false}"#,
+                "settings.format.tooNew",
+            ),
+            (
+                r#"{"format":1,"minVersion":"9999.0.0","schedules":false}"#,
+                "settings.needsNewer",
+            ),
+            (
+                r#"{"format":1,"minVersion":null,"schedules":[]}"#,
+                "settings.minVersion.invalid",
+            ),
+        ] {
+            fs::write(&file, text).unwrap();
+            assert_eq!(begin_schedule_check(&project, 0).unwrap_err().code, code);
+            assert!(save_schedules(&project, &[]).is_err());
+            assert_eq!(fs::read_to_string(&file).unwrap(), text);
+            assert!(!project.join(SCHEDULE_HISTORY_FILE).exists());
+            let issues = crate::validate_in(&flow, &project.join("tests"));
+            assert!(
+                issues
+                    .iter()
+                    .any(|i| i.code == code && i.param("file") == Some(SCHEDULE_FILE))
+            );
+        }
+        for entry in [
+            r#"{"name":"A","tests":"future","repeat":"daily","at":"09:00"}"#,
+            r#"{"name":"A","tests":{"folder":"x","future":true},"repeat":"daily","at":"09:00"}"#,
+            r#"{"name":"A","tests":"all","repeat":"future","at":"09:00"}"#,
+            r#"{"name":"A","tests":"all","repeat":{"days":["mon"],"future":true},"at":"09:00"}"#,
+            r#"{"name":"A","tests":"all","repeat":"daily","at":"09:00","extra":{"x":1,"x":2}}"#,
+        ] {
+            assert!(
+                parse_schedules(&format!(r#"{{"format":1,"schedules":[{entry}]}}"#)).is_err(),
+                "{entry}"
+            );
+        }
+        fs::remove_dir_all(project).unwrap();
     }
 
     #[test]
@@ -1044,7 +1143,7 @@ mod tests {
         save_schedules(&project, &schedules).unwrap();
         for changed in [
             r#"{"format":99,"future":true}"#,
-            r#"{"format":1,"schedules":[],"future":true}"#,
+            r#"{"format":1,"minVersion":"9999.0.0","schedules":[]}"#,
             "{",
         ] {
             fs::write(&file, changed).unwrap();
