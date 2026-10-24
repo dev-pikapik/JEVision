@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The board in view: an endless plane with the project's tests, frames, notes, links and other
-/// boards on it. Two fingers or the wheel pan, a pinch or ⌘ with the wheel zooms, a drag moves
+/// boards on it. Scrolling or pinching zooms, Shift-drag selects an area, and a drag moves
 /// what it starts on or else the board, a double click opens what is under it or writes a note,
 /// and a right click adds things or changes the one under the pointer.
 struct BoardView: View {
@@ -12,6 +12,7 @@ struct BoardView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @AppStorage("boardShowsMinimap") private var showsMinimap = true
   @AppStorage(GridSnap.key) private var snaps = true
   @State private var viewport = BoardViewport()
@@ -58,6 +59,7 @@ struct BoardView: View {
     case move(ids: Set<String>, by: CGSize)
     case resize(id: String, rect: CGRect)
     case connect(from: String, to: CGPoint)
+    case select(from: CGPoint, rect: CGRect, original: Set<String>)
   }
 
   /// A point of the board and where it shows in the view.
@@ -87,6 +89,8 @@ struct BoardView: View {
 
   var body: some View {
     content
+      .background(.background)
+      .backgroundExtensionEffect(isEnabled: !reduceTransparency)
       .safeAreaInset(edge: .top, spacing: 0) { header }
       .task(id: project.items) { await loadMap() }
       .task(id: RouteKey(generation: boards.generation, map: map)) { await route() }
@@ -218,6 +222,14 @@ struct BoardView: View {
       handles(scene, detailed: detailed)
       connection(scene)
       noteEditor(scene)
+      if case .select(_, let rect, _) = drag {
+        let shown = screen(rect)
+        Rectangle().fill(Color.accentColor.opacity(0.1))
+          .overlay { Rectangle().strokeBorder(Color.accentColor, lineWidth: 1) }
+          .frame(width: shown.width, height: shown.height)
+          .position(x: shown.midX, y: shown.midY)
+          .allowsHitTesting(false)
+      }
     }
     // Exactly the space it is given: the nodes are moved into place by offsets, so a node bigger
     // than the view, as an open test can be, must not make the board, and the window, bigger.
@@ -594,7 +606,10 @@ struct BoardView: View {
       .onChanged { value in
         if drag == nil {
           if isInEditor(value.startLocation) { return }
-          if let id = hit(onBoard(value.startLocation), wholeFrames: false) {
+          if NSEvent.modifierFlags.contains(.shift) {
+            let from = onBoard(value.startLocation)
+            drag = .select(from: from, rect: CGRect(origin: from, size: .zero), original: picked)
+          } else if let id = hit(onBoard(value.startLocation), wholeFrames: false) {
             if !picked.contains(id) { picked = [id] }
             pickedArrow = nil
             drag = .move(ids: Set(boardWithContents(board: scene.board, ids: Array(picked))), by: .zero)
@@ -607,11 +622,25 @@ struct BoardView: View {
           viewport.offset = CGPoint(x: from.x + value.translation.width, y: from.y + value.translation.height)
         case .move(let ids, _)?:
           drag = .move(ids: ids, by: value.translation)
+        case .select(let from, _, let original)?:
+          let to = onBoard(value.location)
+          drag = .select(from: from, rect: CGRect(x: min(from.x, to.x), y: min(from.y, to.y),
+            width: abs(to.x - from.x), height: abs(to.y - from.y)), original: original)
         default: break
         }
       }
       .onEnded { value in
         defer { drag = nil }
+        if case .select(_, let rect, let original) = drag {
+          let found = scene.layout.nodes.filter { laid in
+            if let node = scene.nodes[laid.id], case .group = node.kind { return rect.contains(laid.rect.cgRect) }
+            return rect.intersects(laid.rect.cgRect)
+          }.map(\.id)
+          picked = original.union(found)
+          pickedArrow = nil
+          focus = .board
+          return
+        }
         guard case .move? = drag, let board = boards.board else { return }
         let by = Point(x: value.translation.width / viewport.scale, y: value.translation.height / viewport.scale)
         let snap = snaps != NSEvent.modifierFlags.contains(.command)

@@ -11,6 +11,7 @@ import Testing
     let runs: RunCenter
     let records: RecordCenter
     let shown: () -> Void
+    var blocks = false
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @FocusState private var canvasFocused: Bool
@@ -24,13 +25,19 @@ import Testing
           shown()
         }
         .background {
-          CommandPalettePresenter(isPresented: project.showsCommandPalette) {
+          CommandPalettePresenter(isPresented: project.showsCommandPalette,
+            size: blocks ? PaletteView.size : CommandPaletteView.size,
+            location: blocks ? CGPoint(x: 120, y: 80) : nil) {
             project.showsCommandPalette = false
           } palette: {
-            CommandPaletteView(openWindow: openWindow, openSettings: openSettings)
-              .environment(project)
-              .environment(runs)
-              .environment(records)
+            if blocks {
+              PaletteView(pick: { _ in project.showsCommandPalette = false }, close: { project.showsCommandPalette = false })
+            } else {
+              CommandPaletteView(openWindow: openWindow, openSettings: openSettings)
+                .environment(project)
+                .environment(runs)
+                .environment(records)
+            }
           }
         }
     }
@@ -40,7 +47,11 @@ import Testing
     var isSet = false
   }
 
-  @Test func typingGoesStraightIntoTheSearchAndEscapeCloses() throws {
+  @Test func typingGoesStraightIntoTheSearchAndEscapeCloses() throws { try verifyPalette(blocks: false) }
+
+  @Test func blockPaletteTakesFocusAndClosesWithoutFocusingItsSearchManually() throws { try verifyPalette(blocks: true) }
+
+  private func verifyPalette(blocks: Bool) throws {
     let project = ProjectStore()
     let shown = Flag()
     let window = NSWindow(
@@ -50,7 +61,7 @@ import Testing
     window.contentView = NSHostingView(
       rootView: Host(
         project: project, runs: RunCenter(defaults: UserDefaults(suiteName: "PaletteFocusTests")!),
-        records: RecordCenter(), shown: { shown.isSet = true }))
+        records: RecordCenter(), shown: { shown.isSet = true }, blocks: blocks))
     window.orderFront(nil)
     defer { window.close() }
     try eventually("the window shows the view") { shown.isSet }
@@ -61,6 +72,7 @@ import Testing
     let panel = try #require(palette())
     try eventually("the search field has the keyboard") { panel.firstResponder is NSTextView }
 
+    panel.makeFirstResponder(nil)
     panel.cancelOperation(nil)
     try eventually("escape closes the palette") { window.childWindows?.isEmpty ?? true }
     #expect(!project.showsCommandPalette)

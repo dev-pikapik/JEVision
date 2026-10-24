@@ -39,6 +39,7 @@ struct InspectorView: View {
         BlockNotes(document: document, block: id)
       }
       .formStyle(.grouped)
+      .scrollContentBackground(.hidden)
     }
   }
 

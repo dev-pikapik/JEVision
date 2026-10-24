@@ -268,11 +268,11 @@ struct BoardOpenTestView: View {
       let heavy = detail == .shape
       for edge in layout.edges where edge.points.count > 1 {
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
-        context.stroke(
-          Edges.line(points), with: .style(.secondary), style: StrokeStyle(lineWidth: heavy ? 8 : 1.5, lineJoin: .round))
-        if !heavy {
-          context.fill(Edges.head(from: points[points.count - 2], to: points[points.count - 1]), with: .style(.secondary))
-        }
+        let arrow = Edges.connector(points)
+        var joined = (heavy ? Edges.line(points) : arrow.stem)
+          .strokedPath(StrokeStyle(lineWidth: heavy ? 8 : 1.5, lineJoin: .round))
+        if !heavy { joined.addPath(arrow.head) }
+        context.fill(joined, with: .style(.secondary))
       }
       var symbols: [String: GraphicsContext.ResolvedImage] = [:]
       for tile in tiles {

@@ -27,6 +27,7 @@ struct FlowCanvas: View {
   /// canvas, with no slot, to add after the selection; where a link is dropped on the empty
   /// canvas, with the link's slot. Also gives the same point in this view.
   let onPalette: (Slot?, Point, CGPoint) -> Void
+  let onPan: (CGSize) -> Void
 
   /// The test while something is dragged: drawn, but saved only when the drag ends.
   @AppStorage(GridSnap.key) private var snapsToGrid = true
@@ -37,6 +38,12 @@ struct FlowCanvas: View {
   @State private var hovered: String?
   @State private var pointer: CGPoint?
   @State private var editing: CanvasItem?
+  @State private var backgroundDrag: BackgroundDrag?
+
+  private enum BackgroundDrag {
+    case pan(previous: CGSize)
+    case select(original: Set<CanvasItem>)
+  }
 
   var body: some View {
     let flow = preview?.flow ?? document.flow
@@ -106,7 +113,7 @@ struct FlowCanvas: View {
       }
       .contentShape(.rect)
       .onTapGesture { onPick([], nil) }
-      .gesture(marqueeGesture)
+      .gesture(backgroundGesture)
   }
 
   private func content(canvas: CanvasContent?, layout: FlowLayout) -> some View {
@@ -524,19 +531,31 @@ struct FlowCanvas: View {
     return rect.map { Rect(x: $0.x, y: $0.y, width: $0.width + delta.width, height: $0.height + delta.height) }
   }
 
-  private var marqueeGesture: some Gesture {
+  private var backgroundGesture: some Gesture {
     DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.space))
       .onChanged { value in
+        if backgroundDrag == nil {
+          backgroundDrag = NSEvent.modifierFlags.contains(.shift) ? .select(original: document.picked) : .pan(previous: .zero)
+        }
+        if case .pan(let previous) = backgroundDrag {
+          onPan(CGSize(width: value.translation.width - previous.width, height: value.translation.height - previous.height))
+          backgroundDrag = .pan(previous: value.translation)
+          return
+        }
         let a = onCanvas(value.startLocation)
         let b = onCanvas(value.location)
         marquee = CGRect(
           x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
       }
-      .onEnded { _ in
-        guard let marquee else { return }
-        self.marquee = nil
+      .onEnded { value in
+        defer { backgroundDrag = nil; self.marquee = nil }
+        if case .pan(let previous) = backgroundDrag {
+          onPan(CGSize(width: value.translation.width - previous.width, height: value.translation.height - previous.height))
+          return
+        }
+        guard case .select(let original) = backgroundDrag, let marquee else { return }
         let found = items(in: marquee)
-        onPick(NSEvent.modifierFlags.contains(.shift) ? document.picked.union(found) : found, nil)
+        onPick(original.union(found), nil)
       }
   }
 
@@ -737,9 +756,10 @@ struct Edges: View {
           style.dash = [4, 4]
         }
         let points = edge.points.map { CGPoint(x: $0.x, y: $0.y) }
-        context.stroke(Self.line(points), with: shading, style: style)
-        context.fill(
-          Self.head(from: points[points.count - 2], to: points[points.count - 1]), with: shading)
+        let arrow = Self.connector(points)
+        var joined = arrow.stem.strokedPath(style)
+        joined.addPath(arrow.head)
+        context.fill(joined, with: shading)
       }
     }
     .frame(width: bounds.width * renderScale, height: bounds.height * renderScale)
@@ -752,6 +772,7 @@ struct Edges: View {
 
   static func line(_ points: [CGPoint]) -> Path {
     var path = Path()
+    guard points.count > 1 else { return path }
     path.move(to: points[0])
     for i in 1..<points.count - 1 {
       let a = points[i - 1]
@@ -765,17 +786,30 @@ struct Edges: View {
   }
 
   static func head(from a: CGPoint, to b: CGPoint) -> Path {
-    let angle = atan2(b.y - a.y, b.x - a.x)
-    let length = 8.0
-    let spread = 0.45
+    connector([a, b]).head
+  }
+
+  /// The stem stops at the head's base, so no stroke shows through the arrow tip.
+  static func connector(_ points: [CGPoint]) -> (stem: Path, head: Path, base: CGPoint?) {
+    var points = points.reduce(into: [CGPoint]()) { result, point in
+      if result.last != point { result.append(point) }
+    }
+    guard points.count > 1 else { return (Path(), Path(), nil) }
+    let tip = points.removeLast()
+    let previous = points[points.count - 1]
+    let distance = hypot(tip.x - previous.x, tip.y - previous.y)
+    let length = min(8, distance * 0.75)
+    let dx = (tip.x - previous.x) / distance
+    let dy = (tip.y - previous.y) / distance
+    let base = CGPoint(x: tip.x - length * dx, y: tip.y - length * dy)
+    let halfWidth = length * 0.48
     var path = Path()
-    path.move(to: b)
-    path.addLine(
-      to: CGPoint(x: b.x - length * cos(angle - spread), y: b.y - length * sin(angle - spread)))
-    path.addLine(
-      to: CGPoint(x: b.x - length * cos(angle + spread), y: b.y - length * sin(angle + spread)))
+    path.move(to: tip)
+    path.addLine(to: CGPoint(x: base.x - halfWidth * dy, y: base.y + halfWidth * dx))
+    path.addLine(to: CGPoint(x: base.x + halfWidth * dy, y: base.y - halfWidth * dx))
     path.closeSubpath()
-    return path
+    points.append(base)
+    return (line(points), path, base)
   }
 }
 
@@ -844,6 +878,7 @@ private struct CanvasItemGestures<Move: Gesture>: ViewModifier {
 
   func body(content: Content) -> some View {
     content
+      .contentShape(CanvasItemHitShape(isFrame: item.isFrame), eoFill: true)
       .gesture(move, including: isEditing ? .subviews : .all)
       .gesture(TapGesture(count: 2).onEnded(edit), including: isEditing ? .subviews : .all)
       .simultaneousGesture(TapGesture().onEnded(pick), including: isEditing ? .subviews : .all)
@@ -1281,6 +1316,23 @@ private struct ResizeHandle: View {
       .pointerStyle(.frameResize(position: .bottomTrailing))
       .help(Text("Drag to resize"))
       .accessibilityHidden(true)
+  }
+}
+
+private extension CanvasItem {
+  var isFrame: Bool { if case .section = self { true } else { false } }
+}
+
+/// A frame's empty interior belongs to the workspace; only its heading and border move it.
+struct CanvasItemHitShape: Shape {
+  var isFrame: Bool
+
+  func path(in rect: CGRect) -> Path {
+    var path = Path(rect)
+    if isFrame, rect.width > 16, rect.height > 44 {
+      path.addRect(CGRect(x: rect.minX + 8, y: rect.minY + 36, width: rect.width - 16, height: rect.height - 44))
+    }
+    return path
   }
 }
 

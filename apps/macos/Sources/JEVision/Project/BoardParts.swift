@@ -35,6 +35,7 @@ struct BoardGlance: Equatable {
 /// never turns into a grey wash, and every sixth line is stronger.
 struct BoardGrid: View {
   let viewport: BoardViewport
+  @Environment(\.displayScale) private var displayScale
 
   var body: some View {
     Canvas { context, size in
@@ -45,21 +46,24 @@ struct BoardGrid: View {
       // once, as strong as the coarsest grid it belongs to.
       while step * scale < max(size.width, size.height) * 6 {
         let spacing = step * scale
+        let hasCoarser = spacing * 6 < max(size.width, size.height) * 6
         let strength = min(max((spacing - 4) / 60, 0), 1)
+        let pixel = 1 / displayScale
+        func aligned(_ value: Double) -> Double { (value / pixel).rounded(.down) * pixel + pixel / 2 }
         var lines = Path()
         let first = (-viewport.offset.x / spacing).rounded(.down)
-        for i in stride(from: first, through: first + size.width / spacing + 1, by: 1) where i.remainder(dividingBy: 6) != 0 {
-          let x = i * spacing + viewport.offset.x
+        for i in stride(from: first, through: first + size.width / spacing + 1, by: 1) where !hasCoarser || i.remainder(dividingBy: 6) != 0 {
+          let x = aligned(i * spacing + viewport.offset.x)
           lines.move(to: CGPoint(x: x, y: 0))
           lines.addLine(to: CGPoint(x: x, y: size.height))
         }
         let top = (-viewport.offset.y / spacing).rounded(.down)
-        for i in stride(from: top, through: top + size.height / spacing + 1, by: 1) where i.remainder(dividingBy: 6) != 0 {
-          let y = i * spacing + viewport.offset.y
+        for i in stride(from: top, through: top + size.height / spacing + 1, by: 1) where !hasCoarser || i.remainder(dividingBy: 6) != 0 {
+          let y = aligned(i * spacing + viewport.offset.y)
           lines.move(to: CGPoint(x: 0, y: y))
           lines.addLine(to: CGPoint(x: size.width, y: y))
         }
-        context.stroke(lines, with: .color(.primary.opacity(0.03 + 0.09 * strength)), lineWidth: 1)
+        context.stroke(lines, with: .color(.primary.opacity(0.03 + 0.09 * strength)), lineWidth: pixel)
         step *= 6
       }
     }
@@ -495,10 +499,14 @@ struct BoardArrows: View {
       UsesArrows.draw(uses, in: context, transform: transform, area: area)
       for arrow in arrows {
         let curve = Self.curve(arrow, scale: viewport.scale).applying(transform)
+        var stem = curve
+        if arrow.toHead { stem.end = Edges.connector([curve.endControl, curve.end]).base ?? curve.end }
+        if arrow.fromHead { stem.start = Edges.connector([curve.startControl, curve.start]).base ?? curve.start }
         let color = arrow.id == picked ? Color.accentColor : arrow.color ?? .secondary
-        context.stroke(curve.path, with: .color(color), lineWidth: arrow.id == picked ? 2.5 : 1.75)
-        if arrow.toHead { context.fill(Self.head(at: curve.end, from: curve.endControl), with: .color(color)) }
-        if arrow.fromHead { context.fill(Self.head(at: curve.start, from: curve.startControl), with: .color(color)) }
+        var joined = stem.path.strokedPath(StrokeStyle(lineWidth: arrow.id == picked ? 2.5 : 1.75))
+        if arrow.toHead { joined.addPath(Self.head(at: curve.end, from: curve.endControl)) }
+        if arrow.fromHead { joined.addPath(Self.head(at: curve.start, from: curve.startControl)) }
+        context.fill(joined, with: .color(color))
         if !arrow.label.isEmpty {
           let text = context.resolve(Text(verbatim: arrow.label).font(.caption).foregroundStyle(.secondary))
           let size = text.measure(in: CGSize(width: 240, height: 40))
@@ -552,18 +560,12 @@ struct BoardArrows: View {
   }
 
   private static func head(at end: CGPoint, from control: CGPoint) -> Path {
-    let angle = atan2(end.y - control.y, end.x - control.x)
-    var head = Path()
-    head.move(to: end)
-    head.addLine(to: CGPoint(x: end.x - 10 * cos(angle - 0.42), y: end.y - 10 * sin(angle - 0.42)))
-    head.addLine(to: CGPoint(x: end.x - 10 * cos(angle + 0.42), y: end.y - 10 * sin(angle + 0.42)))
-    head.closeSubpath()
-    return head
+    Edges.head(from: control, to: end)
   }
 }
 
-/// Takes the trackpad and the mouse wheel over the board, and right clicks: two fingers pan,
-/// a pinch or ⌘ with the wheel zooms, a two-finger double tap zooms in or out to fit. Every
+/// Takes the trackpad and the mouse wheel over the board, and right clicks: scrolling and
+/// pinching zoom around the pointer; a two-finger double tap zooms in or out to fit. Every
 /// other click goes through to the views under it; text being written keeps its own scrolling.
 struct BoardInput: NSViewRepresentable {
   /// Moves the board by a distance in view points.
@@ -598,19 +600,16 @@ struct BoardInput: NSViewRepresentable {
         guard bounds.contains(point), !isOverText(event) else { return event }
         switch event.type {
         case .scrollWheel:
-          if event.modifierFlags.contains(.command) {
-            let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
-            owner.zoom(exp(delta * 0.01), point)
-          } else {
-            let factor = event.hasPreciseScrollingDeltas ? 1.0 : 10
-            owner.pan(CGSize(width: event.scrollingDeltaX * factor, height: event.scrollingDeltaY * factor))
-          }
+          let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 8
+          owner.zoom(Self.scrollZoom(delta), point)
         case .magnify: owner.zoom(1 + event.magnification, point)
         default: owner.smartZoom(point)
         }
         return nil
       }
     }
+
+    static func scrollZoom(_ delta: Double) -> Double { exp(max(-40, min(40, delta)) * 0.01) }
 
     /// The pointer is over text being written, which scrolls by itself.
     private func isOverText(_ event: NSEvent) -> Bool {

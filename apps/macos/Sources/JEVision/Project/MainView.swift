@@ -24,6 +24,7 @@ struct MainView: View {
       recordsNewTest = true
       project.isCreatingTest = true
     })
+    .modifier(WorkspaceChrome())
     .sheet(isPresented: $project.isCreatingTest, onDismiss: recordCreatedTest) {
       NewTestSheet(records: recordsNewTest) { createdTestToRecord = recordsNewTest }
     }

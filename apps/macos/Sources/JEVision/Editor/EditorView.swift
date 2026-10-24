@@ -9,6 +9,7 @@ struct EditorView: View {
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   let document: FlowDocument
   @State private var camera = FlowViewport()
   @State private var needsInitialPosition = true
@@ -69,35 +70,45 @@ struct EditorView: View {
   private func editor(_ flow: Flow) -> some View {
     canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
       .unmirrored()
+      .background(.background)
       .safeAreaInset(edge: .top, spacing: 0) {
         if document.isReadOnly { ReadOnlyBar(id: blockPackageId(path: document.url.path)) }
       }
-      .overlay(alignment: .topLeading) {
-        if let target = palette {
-          GeometryReader { box in
-            PaletteView(library: project.library.entries) { choice in
-              palette = nil
-              canvasFocused = true
-              switch choice {
-              case .block(let type):
-                document.insert(type, at: target.slot, placedAt: target.point)
-                showsInspector = true
-              case .library(let entry):
-                document.add(entry, at: target.slot, placedAt: target.point)
-                showsInspector = entry.kind == .block
-              case .note: addNote(at: target.point)
-              case .frame: addFrame(at: target.point)
-              case .describe: describeTest()
-              }
-            } close: {
-              palette = nil
-              canvasFocused = true
+      .backgroundExtensionEffect(isEnabled: !reduceTransparency)
+      .background {
+        GeometryReader { box in
+          CommandPalettePresenter(
+            isPresented: palette != nil, size: PaletteView.size,
+            location: palette.map { target in
+              let offset = paletteOffset(target, in: box.size)
+              return CGPoint(x: offset.width, y: offset.height)
             }
-            .environment(\.layoutDirection, layoutDirection)
-            .offset(paletteOffset(target, in: box.size))
+          ) {
+            palette = nil
+            canvasFocused = true
+          } palette: {
+            if let target = palette {
+              PaletteView(library: project.library.entries) { choice in
+                palette = nil
+                canvasFocused = true
+                switch choice {
+                case .block(let type):
+                  document.insert(type, at: target.slot, placedAt: target.point)
+                  showsInspector = true
+                case .library(let entry):
+                  document.add(entry, at: target.slot, placedAt: target.point)
+                  showsInspector = entry.kind == .block
+                case .note: addNote(at: target.point)
+                case .frame: addFrame(at: target.point)
+                case .describe: describeTest()
+                }
+              } close: {
+                palette = nil
+                canvasFocused = true
+              }
+              .environment(\.layoutDirection, layoutDirection)
+            }
           }
-          .unmirrored()
-          .transition(reduceMotion ? .opacity : .scale(scale: 0.96).combined(with: .opacity))
         }
       }
       .overlay(alignment: .top) {
@@ -172,7 +183,7 @@ struct EditorView: View {
           }
         }
         .disabled(document.isReadOnly)
-        .inspectorColumnWidth(min: 280, ideal: 320, max: 440)
+        .inspectorColumnWidth(min: 300, ideal: 380, max: 600)
         // Esc hands the keyboard back to the canvas, where ⌫ deletes the selected block.
         .onExitCommand { canvasFocused = true }
       }
@@ -380,6 +391,8 @@ struct EditorView: View {
       } onPalette: { slot, point, at in
         guard !document.isReadOnly else { return }
         palette = PaletteTarget(slot: slot ?? document.slotAfterSelection, point: point, anchor: at)
+      } onPan: { by in
+        camera.offset = CGPoint(x: camera.offset.x + by.width, y: camera.offset.y + by.height)
       }
       .overlay {
         BoardInput(

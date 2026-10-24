@@ -7,6 +7,53 @@ import Testing
 
 @MainActor
 struct FlowViewportTests {
+  @Test func gridKeepsItsOriginLinesAtEveryZoomAndPixelDensity() throws {
+    for zoom in [0.25, 1, 1.5, 2] {
+      for dpi in [1.0, 2.0] {
+        let origin = CGPoint(x: 96.4, y: 80.4)
+        let renderer = ImageRenderer(content: BoardGrid(viewport: BoardViewport(offset: origin, scale: zoom))
+          .environment(\.displayScale, dpi).frame(width: 320, height: 240))
+        renderer.scale = dpi
+        let image = try #require(renderer.cgImage)
+        var pixels = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        let context = try #require(CGContext(data: &pixels, width: image.width, height: image.height,
+          bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        let column = Int((origin.x * dpi).rounded(.down))
+        let ink = (0..<image.height).filter { pixels[($0 * image.width + column) * 4 + 3] > 0 }.count
+        #expect(Double(ink) > Double(image.height) * 0.9, "The world origin must not be skipped by every grid level")
+        let row = Int((origin.y * dpi).rounded(.down))
+        let counts: [Int] = [row, image.height - row - 1].map { y in
+          (0..<image.width).filter { pixels[(y * image.width + $0) * 4 + 3] > 0 }.count
+        }
+        let horizontal = max(counts[0], counts[1])
+        #expect(Double(horizontal) > Double(image.width) * 0.9)
+      }
+    }
+  }
+
+  @Test func connectorStemsEndAtTheArrowBaseAndHandleShortOrRepeatedSegments() {
+    let arrow = Edges.connector([.zero, CGPoint(x: 50, y: 0), CGPoint(x: 50, y: 100)])
+    #expect(arrow.base == CGPoint(x: 50, y: 92))
+    #expect(arrow.stem.currentPoint == arrow.base)
+    #expect(arrow.stem.boundingRect.maxY == 92)
+    #expect(arrow.head.boundingRect.maxY == 100)
+    let short = Edges.connector([.zero, .zero, CGPoint(x: 1, y: 0), CGPoint(x: 1, y: 0)])
+    #expect(short.base == CGPoint(x: 0.25, y: 0))
+    #expect(short.stem.currentPoint == short.base)
+    #expect(Edges.connector([.zero, .zero]).head.isEmpty)
+  }
+
+  @Test func emptyFrameInteriorsAllowWorkspaceDrags() {
+    let rect = CGRect(x: 0, y: 0, width: 400, height: 300)
+    let frame = CanvasItemHitShape(isFrame: true).path(in: rect)
+    #expect(frame.contains(CGPoint(x: 100, y: 20), eoFill: true))
+    #expect(frame.contains(CGPoint(x: 2, y: 100), eoFill: true))
+    #expect(!frame.contains(CGPoint(x: 100, y: 100), eoFill: true))
+    #expect(CanvasItemHitShape(isFrame: false).path(in: rect).contains(CGPoint(x: 100, y: 100)))
+  }
+
   @Test func panelsAndViewportResizeDoNotMoveTheDrawing() {
     let camera = FlowViewport(offset: CGPoint(x: 430, y: 70), scale: 1.5)
     let block = CGPoint(x: -200, y: -20)

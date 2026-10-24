@@ -24,6 +24,7 @@ struct ProjectView: View {
     @Bindable var search = search
     NavigationSplitView {
       testList
+      .scrollContentBackground(.hidden)
       // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
       .safeAreaBar(edge: .top, spacing: 0) {
         VStack(spacing: 0) {
@@ -62,7 +63,7 @@ struct ProjectView: View {
       .searchable(
         text: $search.text, placement: .sidebar,
         prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search projects and tests"))
-      .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
+      .navigationSplitViewColumnWidth(min: 240, ideal: 340, max: 600)
     } detail: {
       detail
         .overlay(alignment: .bottom) {
