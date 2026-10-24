@@ -34,7 +34,8 @@ fi
 
 mkdir -p "$(dirname "$OUT")"
 LOG=$(mktemp -t bench-scale)
-trap 'rm -f "$LOG"' EXIT
+APP_LOG="$LOG.app"
+trap 'rm -f "$LOG" "$APP_LOG"' EXIT
 
 # A failed measurement fails the script; its output is shown to tell why.
 measure() {
@@ -53,8 +54,25 @@ if ((APP)); then
     exit 1
   fi
   echo "==> Measuring the app"
-  measure env JEVISION_SCALE=1 swift test --package-path apps/macos -c release -Xswiftc -enable-testing \
-    --filter ScaleBenchmark
+  # A UI case owns an application/window lifecycle. Give each a fresh host process and
+  # require a completed test summary: an early clean process exit is not a successful run.
+  measure_app() {
+    if ! env JEVISION_SCALE=1 swift test --package-path apps/macos -c release -Xswiftc -enable-testing \
+      --no-parallel --filter "$1" >"$APP_LOG" 2>&1; then
+      tail -40 "$APP_LOG" >&2
+      exit 1
+    fi
+    if ! grep -Eq 'Test run with [1-9][0-9]* tests? .*passed' "$APP_LOG"; then
+      tail -40 "$APP_LOG" >&2
+      echo "The app benchmark runner ended without completing its tests." >&2
+      exit 1
+    fi
+    cat "$APP_LOG" >>"$LOG"
+  }
+  measure_app ScaleBenchmarkTests
+  for scenario in sidebar board largestTest longReport; do
+    measure_app "ScaleUIBenchmarkTests.$scenario"
+  done
 fi
 
 # A test's own output may follow the test runner's text on the same line.

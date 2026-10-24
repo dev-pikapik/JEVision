@@ -19,7 +19,6 @@ struct ScaleUIBenchmarkTests {
   @MainActor
   final class Offscreen {
     let window: NSWindow
-
     init(width: Double = 1200, height: Double = 760) {
       window = NSWindow(
         contentRect: NSRect(x: -10000, y: -10000, width: width, height: height), styleMask: [.titled, .resizable],
@@ -96,15 +95,32 @@ struct ScaleUIBenchmarkTests {
   /// Times `work` on the main thread three times after `prepare`, prints the best and returns it.
   @discardableResult
   static func bench(
-    _ name: String, prepare: () -> Void = {}, _ work: () -> Void
-  ) -> (wall: Double, cpu: Double) {
+    _ name: String, prepare: () throws -> Void = {}, _ work: () throws -> Void
+  ) rethrows -> (wall: Double, cpu: Double) {
     let clock = ContinuousClock()
     var best = (wall: Double.infinity, cpu: Double.infinity)
     for _ in 0..<3 {
-      prepare()
+      try prepare()
       let cpu = Offscreen.mainCPU()
-      let wall = ScaleBench.milliseconds(clock.measure(work))
+      let wall = ScaleBench.milliseconds(try clock.measure(work))
       best = (min(best.wall, wall), min(best.cpu, Offscreen.mainCPU() - cpu))
+    }
+    ScaleBench.report(name, wall: best.wall, cpu: best.cpu)
+    return best
+  }
+
+  @discardableResult
+  static func bench(
+    _ name: String, prepare: () async throws -> Void = {}, _ work: () async throws -> Void
+  ) async rethrows -> (wall: Double, cpu: Double) {
+    var best = (wall: Double.infinity, cpu: Double.infinity)
+    for _ in 0..<3 {
+      try await prepare()
+      let start = ContinuousClock.now
+      let cpu = Offscreen.mainCPU()
+      try await work()
+      best = (min(best.wall, ScaleBench.milliseconds(ContinuousClock.now - start)),
+        min(best.cpu, Offscreen.mainCPU() - cpu))
     }
     ScaleBench.report(name, wall: best.wall, cpu: best.cpu)
     return best
@@ -116,24 +132,33 @@ struct ScaleUIBenchmarkTests {
     let runs: RunCenter
     let records: RecordCenter
     let summary: SyntheticSummary
+    let defaults: UserDefaults
+    let domain: String
+
+    func close() { defaults.removePersistentDomain(forName: domain) }
 
     func window(_ view: some View) -> some View {
-      view.environment(project).environment(runs).environment(records)
+      view.environment(project).environment(runs).environment(records).defaultAppStorage(defaults)
     }
   }
 
   private func opened() async throws -> Opened {
     let (root, summary) = try ScaleBench.project()
-    let project = ProjectStore()
-    project.open(root)
+    let domain = "ScaleUIBenchmarkTests." + UUID().uuidString
+    let defaults = try #require(UserDefaults(suiteName: domain))
+    var keepDefaults = false
+    defer { if !keepDefaults { defaults.removePersistentDomain(forName: domain) } }
+    let project = ProjectStore(defaults: defaults)
+    project.openProject(root)
     let deadline = ContinuousClock.now + .seconds(300)
-    while project.status != .ready {
+    while project.status != .ready || project.runs.count != Int(summary.reports) {
       try #require(ContinuousClock.now < deadline, "Gave up waiting for the project to open")
       try await Task.sleep(for: .milliseconds(5))
     }
+    keepDefaults = true
     return Opened(
-      project: project, runs: RunCenter(defaults: UserDefaults(suiteName: "ScaleUIBenchmarkTests")!),
-      records: RecordCenter(), summary: summary)
+      project: project, runs: RunCenter(defaults: defaults),
+      records: RecordCenter(), summary: summary, defaults: defaults, domain: domain)
   }
 
   private func sidebar(_ screen: Offscreen) throws -> NSOutlineView {
@@ -144,12 +169,13 @@ struct ScaleUIBenchmarkTests {
 
   @Test func sidebar() async throws {
     let opened = try await opened()
+    defer { opened.close() }
     let project = opened.project
     let tests = project.items.flatMap(\.tests)
     var screen = Offscreen()
     defer { screen.close() }
 
-    Self.bench("app.ui.sidebar.build") {
+    try Self.bench("app.ui.sidebar.build") {
       screen.close()
       screen = Offscreen()
       screen.show(opened.window(ProjectView(recordFirstTest: {})))
@@ -157,49 +183,54 @@ struct ScaleUIBenchmarkTests {
     }
     #expect(try sidebar(screen).numberOfRows > 0)
 
-    // Every folder opened by a click on its disclosure triangle, from the top down, and closed
-    // again from the bottom up.
+    // Open the project and its folders through their native disclosure controls, then close
+    // them from the bottom up. The section header itself is not an expandable project row.
     let outline = try sidebar(screen)
-    func click(_ row: Int) {
+    func click(_ row: Int) throws {
       outline.scrollRowToVisible(row)
       screen.draw()
-      let triangle = outline.rowView(atRow: row, makeIfNecessary: false).flatMap {
-        Offscreen.views(NSButton.self, in: $0).first { $0.identifier == NSOutlineView.disclosureButtonIdentifier }
-      }
-      guard let triangle else {
-        Issue.record("Row \(row) has no disclosure triangle")
-        return
-      }
+      let rowView = try #require(outline.rowView(atRow: row, makeIfNecessary: true))
+      let triangle = try #require(Offscreen.views(NSButton.self, in: rowView).first {
+        $0.identifier == NSOutlineView.disclosureButtonIdentifier
+      }, "Row \(row) has no native disclosure control")
       triangle.performClick(nil)
       screen.draw()
     }
-    func setAll(expanded: Bool) -> Int {
+    func setAll(expanded: Bool) throws -> Int {
       var clicks = 0
       var row = expanded ? 0 : outline.numberOfRows - 1
       while expanded ? row < outline.numberOfRows : row >= 0 {
         let item = outline.item(atRow: row)
-        if outline.isExpandable(item), outline.isItemExpanded(item) != expanded {
-          click(row)
+        let sectionHeader = outline.rowView(atRow: row, makeIfNecessary: true)?.isGroupRowStyle == true
+        if !sectionHeader, outline.isExpandable(item), outline.isItemExpanded(item) != expanded {
+          try click(row)
           clicks += 1
-          guard outline.isItemExpanded(outline.item(atRow: row)) == expanded else {
-            Issue.record("A click on row \(row) didn't open or close it")
-            return clicks
-          }
+          try #require(outline.isItemExpanded(outline.item(atRow: row)) == expanded,
+            "The native disclosure control on row \(row) did not change its expanded state")
         }
         row += expanded ? 1 : -1
       }
       return clicks
     }
     var clicks = 0
-    let opening = Self.bench("app.ui.sidebar.expandAll", prepare: {
-      _ = setAll(expanded: false)
+    let opening = try Self.bench("app.ui.sidebar.expandAll", prepare: {
+      _ = try setAll(expanded: false)
       screen.settle()
     }) {
-      clicks = setAll(expanded: true)
+      clicks = try setAll(expanded: true)
+      try #require(clicks > 0, "The synthetic project must contain expandable project and folder rows")
       screen.settle()
     }
     ScaleBench.report("app.ui.sidebar.expandFolder", wall: opening.wall / Double(clicks), cpu: opening.cpu / Double(clicks))
-    #expect(outline.numberOfRows >= tests.count)
+
+    // The complete expanded tree includes its project/section, boards and New Board action.
+    // Count those separately so a heading cannot stand in for a missing test row.
+    func treeRows(_ items: [ProjectItem]) -> Int {
+      items.reduce(0) { $0 + 1 + treeRows($1.children) }
+    }
+    try #require(tests.count >= 1_000)
+    let fullRows = treeRows(project.items) + project.boards.names.count + 3
+    try #require(outline.numberOfRows == fullRows)
 
     // From one test to another far from it, the editor opening on it included.
     let deep = try #require(tests.max { $0.id.split(separator: "/").count < $1.id.split(separator: "/").count })
@@ -215,39 +246,50 @@ struct ScaleUIBenchmarkTests {
     screen.settle()
 
     // A query typed letter by letter, then its results shown.
-    let field = try #require(screen.views(NSSearchField.self).first, "The sidebar has a search field")
     let query = "checkout coupon"
-    let expected = ProjectScanner.tests(in: project.items, matching: query).count
-    func type(_ text: String) {
+    let expected = ProjectScanner.tests(in: project.items, matching: query)
+    try #require(!expected.isEmpty && expected.count < tests.count)
+    func type(_ text: String) throws {
+      let field = try #require(screen.views(NSSearchField.self).first, "The sidebar has a search field")
       field.stringValue = text
       field.delegate?.controlTextDidChange?(Notification(name: NSControl.textDidChangeNotification, object: field))
     }
-    let total = Self.bench("app.ui.sidebar.search.query", prepare: {
-      type("")
-      screen.settle()
+    let total = try await Self.bench("app.ui.sidebar.search.query", prepare: {
+      try type("")
+      await screen.settleAsync { (try? sidebar(screen).numberOfRows) == fullRows }
     }) {
       for end in 1...query.count {
-        type(String(query.prefix(end)))
+        try type(String(query.prefix(end)))
         screen.draw()
       }
-      screen.settle { (try? sidebar(screen).numberOfRows) == expected }
+      await screen.settleAsync { (try? sidebar(screen).numberOfRows) == expected.count + 2 }
     }
     ScaleBench.report(
       "app.ui.sidebar.search.keystroke", wall: total.wall / Double(query.count), cpu: total.cpu / Double(query.count))
-    #expect(try sidebar(screen).numberOfRows == expected)
+    let results = try sidebar(screen)
+    // Only the section and project headings precede flat search results. Select every real
+    // result through the native outline and require it to open the exact ranked test file.
+    try #require(results.numberOfRows == expected.count + 2)
+    for (index, item) in expected.enumerated() {
+      results.selectRowIndexes(IndexSet(integer: index + 2), byExtendingSelection: false)
+      await screen.settleAsync { project.selection == item.id && project.document != nil }
+      try #require(project.selection == item.id)
+      #expect(project.document?.url.standardizedFileURL == project.rootURL?.appending(path: item.id).standardizedFileURL)
+    }
   }
 
   // MARK: Board
 
   @Test func board() async throws {
     let opened = try await opened()
+    defer { opened.close() }
     let project = opened.project
     let allTests = try #require(project.boards.allTests)
     var screen = Offscreen()
     defer { screen.close() }
 
     // Until it first shows, then until what was worked out off the main thread is in it too.
-    Self.bench("app.ui.board.build") {
+    try Self.bench("app.ui.board.build") {
       screen.close()
       screen = Offscreen()
       project.showBoard(allTests)
@@ -255,18 +297,18 @@ struct ScaleUIBenchmarkTests {
       screen.draw()
       screen.draw()
     }
-    Self.bench("app.ui.board.settle") {
+    try Self.bench("app.ui.board.settle") {
       screen.settle(limit: .seconds(20))
     }
 
     let input = try #require(screen.views(BoardInput.InputView.self).first?.owner, "The board takes pans")
-    Self.bench("app.ui.board.pan") {
+    try Self.bench("app.ui.board.pan") {
       for _ in 0..<10 {
         input.pan(CGSize(width: -80, height: -40))
         screen.draw()
       }
     }
-    Self.bench("app.ui.board.zoom") {
+    try Self.bench("app.ui.board.zoom") {
       for step in 0..<10 {
         input.zoom(step < 5 ? 1.25 : 0.8, CGPoint(x: 600, y: 380))
         screen.draw()
@@ -277,13 +319,14 @@ struct ScaleUIBenchmarkTests {
     let source = BoardStatusSource(
       names: Dictionary(project.items.flatMap(\.tests).map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a }),
       latest: project.latestRuns)
-    Self.bench("app.board.look") { _ = BoardLook(scene, source) }
+    try Self.bench("app.board.look") { _ = BoardLook(scene, source) }
   }
 
   // MARK: Test of 200 blocks
 
   @Test func largestTest() async throws {
     let opened = try await opened()
+    defer { opened.close() }
     let project = opened.project
     let largest = opened.summary.largest
     let screen = Offscreen()
@@ -304,7 +347,7 @@ struct ScaleUIBenchmarkTests {
 
     let ids = document.order
     let first = try #require(ids.first)
-    Self.bench("app.ui.flow.select") {
+    try Self.bench("app.ui.flow.select") {
       for id in ids.prefix(10) {
         document.selection = id
         screen.settle()
@@ -312,7 +355,7 @@ struct ScaleUIBenchmarkTests {
     }
 
     var right = true
-    Self.bench("app.ui.flow.move") {
+    try Self.bench("app.ui.flow.move") {
       document.move([.block(id: first)], dx: right ? 40 : -40, dy: 0, snap: false)
       right.toggle()
       screen.settle()
@@ -320,28 +363,28 @@ struct ScaleUIBenchmarkTests {
 
     // A link taken away and made again.
     let link = try #require(document.layout.edges.first { $0.from != $0.to && $0.edge == "next" })
-    Self.bench("app.ui.flow.connect") {
+    try Self.bench("app.ui.flow.connect") {
       document.connect(link.from, edge: link.edge, to: nil)
       screen.settle()
       document.connect(link.from, edge: link.edge, to: link.to)
       screen.settle()
     }
     // What starting to drag a link out of a block works out: which blocks it may lead to.
-    Self.bench("app.flow.linkTargets") {
+    try Self.bench("app.flow.linkTargets") {
       _ = ids.filter { document.canConnect(link.from, edge: link.edge, to: $0) }
     }
     // What every change of the test, and every change of what it depends on, has checked.
-    Self.bench("app.flow.check") { document.revalidate() }
+    try Self.bench("app.flow.check") { document.revalidate() }
     // A letter typed into the test's name, as far as the main thread works it out at once, and
     // with what follows from it: the file written, the project told, the window drawn.
     let name = try #require(document.flow?.name)
     var letters = 0
-    Self.bench("app.flow.edit") {
+    try Self.bench("app.flow.edit") {
       letters += 1
       document.updateFlow(field: "name") { $0.name = name + String(repeating: "x", count: letters) }
     }
     screen.settle()
-    Self.bench("app.ui.flow.edit") {
+    try Self.bench("app.ui.flow.edit") {
       letters += 1
       document.updateFlow(field: "name") { $0.name = name + String(repeating: "x", count: letters) }
       screen.settle()
@@ -349,11 +392,11 @@ struct ScaleUIBenchmarkTests {
     document.updateFlow(field: "name") { $0.name = name }
     screen.settle()
     let flow = try #require(document.flow)
-    Self.bench("app.flow.lastRun") {
+    try Self.bench("app.flow.lastRun") {
       _ = LastRun(file: largest, flow: flow, runs: project.runs, pinned: nil)
     }
     // What each step of dragging a block works out before the canvas draws it.
-    Self.bench("app.flow.dragFrame") {
+    try Self.bench("app.flow.dragFrame") {
       if let moved = moveOnCanvas(flow: flow, items: [.block(id: first)], dx: 40, dy: 0, snap: false) {
         _ = layoutFlow(flow: moved)
       }
@@ -385,15 +428,17 @@ struct ScaleUIBenchmarkTests {
 
   @Test func longReport() async throws {
     let opened = try await opened()
+    defer { opened.close() }
     let dir = try longReport(opened.project)
     #expect(try loadRun(dir: dir).report.attempts[0].steps.count == 10_000)
     var screen = Offscreen()
     defer { screen.close() }
-    Self.bench("app.ui.report.open.10k") {
+    try await Self.bench("app.ui.report.open.10k") {
       screen.close()
       screen = Offscreen()
       screen.show(opened.window(RunReportView(dir: dir)))
-      screen.settle()
+      await screen.settleAsync { !screen.views(NSScrollView.self).isEmpty }
+      try #require(!screen.views(NSScrollView.self).isEmpty, "The loaded report must replace its progress indicator")
     }
   }
 }

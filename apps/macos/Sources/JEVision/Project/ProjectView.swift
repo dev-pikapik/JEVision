@@ -7,7 +7,10 @@ struct ProjectView: View {
   @Environment(ProjectStore.self) private var project
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
+  @Environment(\.layoutDirection) private var layoutDirection
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @AppStorage("workspaceSidebarWidth") private var sidebarWidth = 340.0
+  @AppStorage("workspaceShowsSidebar") private var showsSidebar = true
   @State private var search = SidebarSearch()
   @State private var catalog = ProjectCatalog()
   @State private var expandedProjects: Set<String> = []
@@ -21,67 +24,35 @@ struct ProjectView: View {
 
   var body: some View {
     @Bindable var project = project
-    @Bindable var search = search
-    NavigationSplitView {
-      testList
-      .scrollContentBackground(.hidden)
-      // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
-      .safeAreaBar(edge: .top, spacing: 0) {
-        VStack(spacing: 0) {
-          HStack(spacing: 8) {
-            Button("Projects", systemImage: "square.grid.2x2") { project.close() }
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Button("Open…", systemImage: "folder.badge.plus", action: project.choose)
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Button("New Project", systemImage: "plus") { project.newProject = .new }
-              .labelStyle(.iconOnly).buttonStyle(.borderless)
-            Spacer()
-          }.padding(.horizontal, 10).padding(.bottom, 8)
-          HStack(spacing: 8) {
-            Picker("Show", selection: $project.sidebar) {
-              Text("Tests").tag(ProjectStore.Sidebar.tests)
-              Text("Runs").tag(ProjectStore.Sidebar.runs)
+    GeometryReader { box in
+      let width = WorkspacePanelWidth.clamp(sidebarWidth, minimum: 240, maximum: 600, available: max(0, box.size.width - 16))
+      let inset = showsSidebar ? width + 16 : 0
+      ZStack(alignment: .leading) {
+        workspaceDetail
+          .environment(\.layoutDirection, layoutDirection)
+          .padding(.leading, usesCanvas ? 0 : inset)
+          .environment(\.workspaceInsets, WorkspaceInsets(leading: inset, top: box.safeAreaInsets.top))
+        if showsSidebar {
+          sidebar
+            .environment(\.layoutDirection, layoutDirection)
+            .frame(width: width)
+            .frame(maxHeight: .infinity)
+            .adaptiveGlass(in: .rect(cornerRadius: 20))
+            .overlay(alignment: .trailing) {
+              WorkspacePanelResizer(width: $sidebarWidth, minimum: 240, maximum: 600,
+                available: max(0, box.size.width - 16), trailingEdge: true, label: Text("Projects"))
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            if project.sidebar == .tests, !project.items.isEmpty { TestFilterMenu() }
-          }
-          .padding(.horizontal, 10)
-          .padding(.bottom, 6)
-          if project.sidebar == .tests, project.filtersTests { TestFilterBar() }
+            .padding(8)
         }
       }
-      .safeAreaBar(edge: .bottom, spacing: 0) {
-        VStack(spacing: 0) {
-          if project.rootURL != nil {
-            EnvironmentChip()
-            ScheduleChip()
-            if let status = project.git.status { GitChip(status: status) }
-          }
-        }
+      .environment(\.layoutDirection, .leftToRight)
+    }
+    .toolbar {
+      ToolbarItem(placement: .navigation) {
+        Button("Projects", systemImage: "sidebar.left") { showsSidebar.toggle() }
+          .labelStyle(.iconOnly)
+          .keyboardShortcut("s", modifiers: [.command, .control])
       }
-      .searchable(
-        text: $search.text, placement: .sidebar,
-        prompt: project.sidebar == .runs ? Text("Filter runs by test") : Text("Search projects and tests"))
-      .navigationSplitViewColumnWidth(min: 240, ideal: 340, max: 600)
-    } detail: {
-      detail
-        .overlay(alignment: .bottom) {
-          if let result = runs.batchResult {
-            BatchResultBar(result: result)
-              .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-          }
-        }
-        .animation(reduceMotion ? nil : .snappy, value: runs.batchResult)
-        .overlay(alignment: .top) {
-          if !project.unrestored.isEmpty, !project.restoreDeclined {
-            BlockRestoreBar(count: project.unrestored.count, review: project.restoreBlocks) {
-              project.restoreDeclined = true
-            }
-            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
-          }
-        }
-        .animation(reduceMotion ? nil : .snappy, value: project.unrestored.isEmpty || project.restoreDeclined)
     }
     .onChange(of: runs.result) { _, result in
       // Run Again from a report: the new run's report takes its place.
@@ -125,6 +96,78 @@ struct ProjectView: View {
     ) { _ in
       Button("OK") {}
     } message: { Text($0) }
+  }
+
+  private var usesCanvas: Bool {
+    project.status == .ready && project.sidebar == .tests
+      && (project.showsBoard || project.document?.flow != nil)
+  }
+
+  private var sidebar: some View {
+    @Bindable var project = project
+    @Bindable var search = search
+    return testList
+      .scrollContentBackground(.hidden)
+      // Bars, not insets: the list scrolls under them, and their edge effect keeps them readable.
+      .safeAreaBar(edge: .top, spacing: 0) {
+        VStack(spacing: 0) {
+          WorkspaceSearchField(text: $search.text, prompt: project.sidebar == .runs
+            ? String(localized: "Filter runs by test") : String(localized: "Search projects and tests"))
+            .frame(height: 28)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+          HStack(spacing: 8) {
+            Button("Projects", systemImage: "square.grid.2x2") { project.close() }
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Button("Open…", systemImage: "folder.badge.plus", action: project.choose)
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Button("New Project", systemImage: "plus") { project.newProject = .new }
+              .labelStyle(.iconOnly).buttonStyle(.borderless)
+            Spacer()
+          }.padding(.horizontal, 10).padding(.bottom, 8)
+          HStack(spacing: 8) {
+            Picker("Show", selection: $project.sidebar) {
+              Text("Tests").tag(ProjectStore.Sidebar.tests)
+              Text("Runs").tag(ProjectStore.Sidebar.runs)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            if project.sidebar == .tests, !project.items.isEmpty { TestFilterMenu() }
+          }
+          .padding(.horizontal, 10)
+          .padding(.bottom, 6)
+          if project.sidebar == .tests, project.filtersTests { TestFilterBar() }
+        }
+      }
+      .safeAreaBar(edge: .bottom, spacing: 0) {
+        VStack(spacing: 0) {
+          if project.rootURL != nil {
+            EnvironmentChip()
+            ScheduleChip()
+            if let status = project.git.status { GitChip(status: status) }
+          }
+        }
+      }
+  }
+
+  private var workspaceDetail: some View {
+      detail
+        .overlay(alignment: .bottom) {
+          if let result = runs.batchResult {
+            BatchResultBar(result: result)
+              .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+          }
+        }
+        .animation(reduceMotion ? nil : .snappy, value: runs.batchResult)
+        .overlay(alignment: .top) {
+          if !project.unrestored.isEmpty, !project.restoreDeclined {
+            BlockRestoreBar(count: project.unrestored.count, review: project.restoreBlocks) {
+              project.restoreDeclined = true
+            }
+            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+          }
+        }
+        .animation(reduceMotion ? nil : .snappy, value: project.unrestored.isEmpty || project.restoreDeclined)
   }
 
   @ViewBuilder private var detail: some View {
@@ -183,6 +226,7 @@ struct ProjectView: View {
         if search.isSearching, listedProjects.isEmpty { ContentUnavailableView.search(text: search.query) }
       }
     }
+      .listStyle(.sidebar)
       // A fresh list for search results: reusing the tree's rows left a ghost of the selected one.
       .id(search.isSearching)
       .onChange(of: shown, initial: true) { search.search(in: shown) }

@@ -12,7 +12,9 @@ struct BoardView: View {
   @Environment(RunCenter.self) private var runs
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.workspaceInsets) private var workspaceInsets
+  @State private var headerHeight = 80.0
+  @State private var headerMeasured = false
   @AppStorage("boardShowsMinimap") private var showsMinimap = true
   @AppStorage(GridSnap.key) private var snaps = true
   @State private var viewport = BoardViewport()
@@ -90,8 +92,17 @@ struct BoardView: View {
   var body: some View {
     content
       .background(.background)
-      .backgroundExtensionEffect(isEnabled: !reduceTransparency)
-      .safeAreaInset(edge: .top, spacing: 0) { header }
+      .overlay(alignment: .top) {
+        header
+          .adaptiveGlass(in: .rect(cornerRadius: 16))
+          .padding(8)
+          .workspacePadding(leading: workspaceInsets.leading)
+          .onGeometryChange(for: Double.self) { $0.size.height } action: {
+            headerHeight = $0
+            headerMeasured = $0 > 0
+            fitIfNeeded()
+          }
+      }
       .task(id: project.items) { await loadMap() }
       .task(id: RouteKey(generation: boards.generation, map: map)) { await route() }
       .onChange(of: boards.current, initial: true) { old, new in switched(from: old, to: new) }
@@ -203,7 +214,7 @@ struct BoardView: View {
 
   private func canvas(_ scene: BoardScene) -> some View {
     let scale = viewport.scale
-    let area = visibleRect.insetBy(dx: -60 / scale, dy: -60 / scale)
+    let area = drawingRect.insetBy(dx: -60 / scale, dy: -60 / scale)
     let seen = scene.visible(in: area, moved: movedIDs, by: moveShift)
     let laid = seen.nodes.map { scene.layout.nodes[$0] }
     let detailed = scale >= Self.detailZoom
@@ -249,9 +260,14 @@ struct BoardView: View {
     .overlay(alignment: .bottomLeading) {
       ZoomBar(zoom: canvasZoom, fitHelp: Text("Show everything on the board (⌘0)"))
         .padding(12)
+        .padding(.leading, workspaceInsets.leading)
     }
     .overlay(alignment: .bottomTrailing) { minimap(scene).padding(12) }
-    .overlay(alignment: .top) { connectionBanner }
+    .overlay(alignment: .top) {
+      connectionBanner.padding(.top, workspaceInsets.top + headerHeight)
+        .padding(.leading, workspaceInsets.leading)
+    }
+    .ignoresSafeArea(.container, edges: .top)
     .onGeometryChange(for: CGSize.self) { $0.size } action: {
       size = $0
       fitIfNeeded()
@@ -266,7 +282,7 @@ struct BoardView: View {
       drop(providers, at: onBoard(location))
     }
     .onPasteCommand(of: [.fileURL, .image]) { providers in
-      _ = drop(providers, at: onBoard(CGPoint(x: size.width / 2, y: size.height / 2)))
+      _ = drop(providers, at: onBoard(CGPoint(x: workingArea.midX, y: workingArea.midY)))
     }
     .popover(item: inspection, attachmentAnchor: .rect(.rect(inspectionRect(scene))), arrowEdge: .trailing) { inspection in
       inspector(inspection)
@@ -1208,7 +1224,7 @@ struct BoardView: View {
   private func handle(_ request: BoardRequest?) {
     guard let request else { return }
     boards.request = nil
-    let middle = CGPoint(x: size.width / 2, y: size.height / 2)
+    let middle = CGPoint(x: workingArea.midX, y: workingArea.midY)
     switch request {
     case .add(let addition): add(addition, at: onBoard(middle), view: middle)
     case .reveal(let id): reveal(id)
@@ -1241,7 +1257,7 @@ struct BoardView: View {
 
   private var canvasZoom: CanvasZoom {
     CanvasZoom(
-      value: viewport.scale, set: { zoom(to: $0, around: CGPoint(x: size.width / 2, y: size.height / 2)) },
+      value: viewport.scale, set: { zoom(to: $0, around: CGPoint(x: workingArea.midX, y: workingArea.midY)) },
       fit: { fit() }, range: Self.zoomRange)
   }
 
@@ -1258,24 +1274,24 @@ struct BoardView: View {
   private func fit() {
     guard size.width > 0 else { return }
     guard let bounds = boards.layout.bounds?.cgRect, bounds.width > 0, bounds.height > 0 else {
-      viewport = BoardViewport(offset: CGPoint(x: size.width / 2, y: size.height / 2), scale: 1)
+      viewport = BoardViewport(offset: CGPoint(x: workingArea.midX, y: workingArea.midY), scale: 1)
       return
     }
     let margin = 40.0
-    let fits = min((size.width - 2 * margin) / bounds.width, (size.height - 2 * margin) / bounds.height)
+    let fits = min((workingArea.width - 2 * margin) / bounds.width, (workingArea.height - 2 * margin) / bounds.height)
     let scale = min(1, max(Self.zoomRange.lowerBound, fits))
     viewport = BoardViewport(
-      offset: CGPoint(x: size.width / 2 - bounds.midX * scale, y: size.height / 2 - bounds.midY * scale), scale: scale)
+      offset: CGPoint(x: workingArea.midX - bounds.midX * scale, y: workingArea.midY - bounds.midY * scale), scale: scale)
   }
 
   private func fitIfNeeded() {
-    guard needsFit, size.width > 0, boards.board != nil else { return }
+    guard needsFit, headerMeasured, size.width > 0, size.height > 0, boards.board != nil else { return }
     needsFit = false
     fit()
   }
 
   private func center(on point: CGPoint) {
-    viewport.offset = CGPoint(x: size.width / 2 - point.x * viewport.scale, y: size.height / 2 - point.y * viewport.scale)
+    viewport.offset = CGPoint(x: workingArea.midX - point.x * viewport.scale, y: workingArea.midY - point.y * viewport.scale)
   }
 
   private func switched(from old: String?, to new: String?) {
@@ -1295,10 +1311,20 @@ struct BoardView: View {
   }
 
   /// The part of the board in view, in board points.
+  private var workingArea: CGRect {
+    WorkspaceInsets(leading: workspaceInsets.leading, top: workspaceInsets.top + headerHeight)
+      .workingArea(in: size)
+  }
+
   private var visibleRect: CGRect {
-    CGRect(
-      x: -viewport.offset.x / viewport.scale, y: -viewport.offset.y / viewport.scale,
-      width: size.width / viewport.scale, height: size.height / viewport.scale)
+    CGRect(origin: onBoard(workingArea.origin),
+      size: CGSize(width: workingArea.width / viewport.scale, height: workingArea.height / viewport.scale))
+  }
+
+  /// Draw the complete window, including the real nodes beneath the glass panels.
+  private var drawingRect: CGRect {
+    CGRect(origin: onBoard(.zero),
+      size: CGSize(width: size.width / viewport.scale, height: size.height / viewport.scale))
   }
 
   private func screen(_ rect: CGRect) -> CGRect {

@@ -9,7 +9,8 @@ struct EditorView: View {
   @Environment(RecordCenter.self) private var records
   @Environment(\.undoManager) private var undoManager
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.workspaceInsets) private var workspaceInsets
+  @AppStorage("workspaceInspectorWidth") private var preferredInspectorWidth = 380.0
   let document: FlowDocument
   @State private var camera = FlowViewport()
   @State private var needsInitialPosition = true
@@ -74,7 +75,6 @@ struct EditorView: View {
       .safeAreaInset(edge: .top, spacing: 0) {
         if document.isReadOnly { ReadOnlyBar(id: blockPackageId(path: document.url.path)) }
       }
-      .backgroundExtensionEffect(isEnabled: !reduceTransparency)
       .background {
         GeometryReader { box in
           CommandPalettePresenter(
@@ -114,6 +114,7 @@ struct EditorView: View {
       .overlay(alignment: .top) {
         if let drafter = document.drafter {
           DraftPanel(document: document, drafter: drafter)
+            .workspacePadding(leading: workspaceInsets.leading, trailing: canvasTrailingInset)
             .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
         }
       }
@@ -156,6 +157,7 @@ struct EditorView: View {
               .padding()
           }
         }
+        .workspacePadding(leading: workspaceInsets.leading, trailing: canvasTrailingInset)
       }
       .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: palette)
       .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: document.drafter == nil)
@@ -174,18 +176,34 @@ struct EditorView: View {
         // A new run of the test is what the blocks show from now on.
         if result?.test == document.url { document.reportRun = nil }
       }
-      .inspector(isPresented: inspectorShown) {
-        Group {
-          if let selection = document.selection {
-            InspectorView(document: document, id: selection, failure: lastRun?.failure(of: selection))
-          } else if let note = document.pickedNote {
-            NoteInspector(document: document, id: note.id)
+      .overlay {
+        if inspectorShown.wrappedValue, !compactInspector {
+          HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            inspectorContent
+              .environment(\.layoutDirection, layoutDirection)
+            .frame(width: inspectorWidth)
+            .frame(maxHeight: .infinity)
+            .adaptiveGlass(in: .rect(cornerRadius: 20))
+            .overlay(alignment: .leading) {
+              WorkspacePanelResizer(width: $preferredInspectorWidth, minimum: 300, maximum: 600,
+                available: max(0, viewport.width - workspaceInsets.leading - 32),
+                trailingEdge: false, label: Text("Test details"))
+            }
+            .padding(8)
           }
+          .environment(\.layoutDirection, .leftToRight)
         }
-        .disabled(document.isReadOnly)
-        .inspectorColumnWidth(min: 300, ideal: 380, max: 600)
-        // Esc hands the keyboard back to the canvas, where ⌫ deletes the selected block.
-        .onExitCommand { canvasFocused = true }
+      }
+      .sheet(isPresented: Binding(
+        get: { compactInspector && inspectorShown.wrappedValue },
+        set: { if !$0, compactInspector { showsInspector = false } })
+      ) {
+        VStack(spacing: 0) {
+          HStack { Spacer(); Button("Done") { showsInspector = false } }.padding()
+          inspectorContent
+        }
+        .frame(minWidth: 300, idealWidth: 380, minHeight: 320, idealHeight: 500)
       }
       .toolbar {
         ToolbarItem(placement: .navigation) {
@@ -305,12 +323,12 @@ struct EditorView: View {
   }
 
   private var canvasZoom: CanvasZoom {
-    CanvasZoom(value: camera.scale, set: { setZoom($0, anchor: CGPoint(x: viewport.width / 2, y: viewport.height / 2)) }, fit: fitZoom)
+    CanvasZoom(value: camera.scale, set: { setZoom($0, anchor: CGPoint(x: workingArea.midX, y: workingArea.midY)) }, fit: fitZoom)
   }
 
   /// Zooms around the pointer, preserving the world point under it even past the origin.
   private func setZoom(_ value: Double, anchor: CGPoint? = nil) {
-    let at = anchor ?? pointer ?? CGPoint(x: viewport.width / 2, y: viewport.height / 2)
+    let at = anchor ?? pointer ?? CGPoint(x: workingArea.midX, y: workingArea.midY)
     camera.zoom(to: value, around: at)
   }
 
@@ -321,8 +339,8 @@ struct EditorView: View {
   /// Frames the content itself, including items to the left or above the world origin.
   private func fitZoom() {
     let bounds = contentBounds
-    camera.scale = Zoom.fit(bounds.size, in: viewport)
-    camera.center(on: CGPoint(x: bounds.midX, y: bounds.midY), in: viewport)
+    camera.scale = Zoom.fit(bounds.size, in: workingArea.size)
+    center(on: CGPoint(x: bounds.midX, y: bounds.midY))
   }
 
   /// The environment, data row and retries the next runs use.
@@ -371,6 +389,44 @@ struct EditorView: View {
     runs.run(document, in: root, from: block, stepByStep: stepByStep)
   }
 
+  private var compactInspector: Bool {
+    viewport.width > 0 && viewport.width - workspaceInsets.leading < 652
+  }
+
+  private var inspectorWidth: Double {
+    WorkspacePanelWidth.clamp(preferredInspectorWidth, minimum: 300, maximum: 600,
+      available: max(0, viewport.width - workspaceInsets.leading - 32))
+  }
+
+  private var canvasTrailingInset: Double {
+    inspectorShown.wrappedValue && !compactInspector ? inspectorWidth + 16 : 0
+  }
+
+  private var workingArea: CGRect {
+    WorkspaceInsets(leading: workspaceInsets.leading, trailing: canvasTrailingInset, top: workspaceInsets.top)
+      .workingArea(in: viewport)
+  }
+
+  private func center(on point: CGPoint) {
+    camera.offset = CGPoint(x: workingArea.midX - point.x * camera.scale,
+      y: workingArea.midY - point.y * camera.scale)
+  }
+
+  private var inspectorContent: some View {
+    Group {
+      if let selection = document.selection {
+        InspectorView(document: document, id: selection, failure: lastRun?.failure(of: selection))
+      } else if let note = document.pickedNote {
+        NoteInspector(document: document, id: note.id)
+      }
+    }
+    .disabled(document.isReadOnly)
+    .onExitCommand {
+      if compactInspector { showsInspector = false }
+      canvasFocused = true
+    }
+  }
+
   private var inspectorShown: Binding<Bool> {
     Binding(
       get: { showsInspector && (document.selection != nil || document.pickedNote != nil) },
@@ -390,7 +446,8 @@ struct EditorView: View {
         palette = PaletteTarget(slot: slot)
       } onPalette: { slot, point, at in
         guard !document.isReadOnly else { return }
-        palette = PaletteTarget(slot: slot ?? document.slotAfterSelection, point: point, anchor: at)
+        palette = PaletteTarget(slot: slot ?? document.slotAfterSelection, point: point,
+          anchor: CGPoint(x: at.x, y: at.y - workspaceInsets.top))
       } onPan: { by in
         camera.offset = CGPoint(x: camera.offset.x + by.width, y: camera.offset.y + by.height)
       }
@@ -404,12 +461,14 @@ struct EditorView: View {
           menu: { _ in nil }, capturesSecondaryClicks: false)
       }
       .overlay(alignment: .bottomTrailing) {
-        if !document.layout.blocks.isEmpty { minimap.padding(12) }
+        if !document.layout.blocks.isEmpty { minimap.padding(12).padding(.trailing, canvasTrailingInset) }
       }
       .overlay(alignment: .topTrailing) {
         if project.rootURL != nil, let flow = document.flow {
           EnvironmentStrip(flow: flow)
             .padding(12)
+            .padding(.top, workspaceInsets.top)
+            .workspacePadding(leading: workspaceInsets.leading, trailing: canvasTrailingInset)
             .unmirrored()
         }
       }
@@ -425,9 +484,13 @@ struct EditorView: View {
                 .buttonStyle(.glassProminent)
             }
           }
+          .padding(.top, workspaceInsets.top)
+          .padding(.leading, workspaceInsets.leading)
+          .padding(.trailing, canvasTrailingInset)
         }
       }
     }
+    .ignoresSafeArea(.container, edges: .top)
     .onGeometryChange(for: CGSize.self) {
       $0.size
     } action: { size in
@@ -436,7 +499,8 @@ struct EditorView: View {
         needsInitialPosition = false
         let bounds = contentBounds
         camera.offset = CGPoint(
-          x: max(48, (size.width - bounds.width) / 2) - bounds.minX, y: 48 - bounds.minY)
+          x: workingArea.minX + max(48, (workingArea.width - bounds.width) / 2) - bounds.minX,
+          y: workingArea.minY + 48 - bounds.minY)
       }
     }
     .onContinuousHover { phase in
@@ -486,9 +550,10 @@ struct EditorView: View {
     if showsMinimap {
       FlowMinimap(
         layout: document.layout, canvas: document.flow?.canvas,
-        visible: camera.visible(in: viewport), picked: document.picked
+        visible: CGRect(origin: camera.world(workingArea.origin),
+          size: CGSize(width: workingArea.width / camera.scale, height: workingArea.height / camera.scale)), picked: document.picked
       ) {
-        camera.center(on: $0, in: viewport)
+        center(on: $0)
       }
       .padding(6)
       .adaptiveGlass(in: .rect(cornerRadius: 16))
@@ -543,7 +608,7 @@ struct EditorView: View {
     guard let rect = document.layout.blocks.first(where: { $0.id == id })?.rect.cgRect else {
       return
     }
-    camera.center(on: CGPoint(x: rect.midX, y: rect.midY), in: viewport)
+    center(on: CGPoint(x: rect.midX, y: rect.midY))
   }
 
   /// The palette next to where the canvas was right-clicked, inside the editor; otherwise at the top.
@@ -551,7 +616,8 @@ struct EditorView: View {
     let size = PaletteView.size
     let margin = 12.0
     guard let anchor = target.anchor else {
-      return CGSize(width: (box.width - size.width) / 2, height: 24)
+      return CGSize(width: min(max(workingArea.midX - size.width / 2, margin),
+        max(margin, box.width - size.width - margin)), height: 24)
     }
     return CGSize(
       width: min(max(anchor.x, margin), max(margin, box.width - size.width - margin)),
@@ -566,7 +632,8 @@ struct EditorView: View {
     {
       return Point(x: rect.x + rect.width + 2 * FlowCanvas.grid, y: rect.y)
     }
-    let at = camera.world(CGPoint(x: 2 * FlowCanvas.grid, y: 2 * FlowCanvas.grid))
+    let at = camera.world(CGPoint(x: workingArea.minX + 2 * FlowCanvas.grid,
+      y: workingArea.minY + 2 * FlowCanvas.grid))
     return Point(x: at.x, y: at.y)
   }
 
