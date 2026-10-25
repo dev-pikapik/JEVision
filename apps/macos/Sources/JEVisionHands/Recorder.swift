@@ -250,8 +250,8 @@ public final class Recorder: @unchecked Sendable {
   /// `front`: the app's process that had the keyboard at the press, `nil` for another app.
   private func key(_ press: KeyPress, front: pid_t?, frame: WindowFrame?) {
     let inApp = front != nil
-    let focus = front.flatMap { focus(of: $0, at: press.time) }
-    switch recording.key(press, inApp: inApp, frame: frame, focus: focus) {
+    let focused = front.flatMap { focus(of: $0, at: press.time) }
+    switch recording.key(press, inApp: inApp, frame: frame, focus: focused) {
     case .stop:
       lock.withLock { onStop }?()
     case .recorded:
