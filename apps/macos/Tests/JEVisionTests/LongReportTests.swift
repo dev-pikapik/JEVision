@@ -14,7 +14,7 @@ import Testing
   private static func run() throws -> URL {
     let dir = FileManager.default.temporaryDirectory.appending(path: "jevision-long-report-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    let steps = (1...steps).map { seq in
+    let lines = (1...steps).map { seq in
       """
       {"seq": \(seq), "test": "loop.flow.json", "block": "press-\(seq % 7)", "type": "pressKeys",
        "status": "\(seq == steps ? "failed" : "passed")", "durationMs": 2}
@@ -23,7 +23,7 @@ import Testing
     let report = """
       {"format": 1, "test": "Loop", "file": "loop.flow.json", "app": "com.example.Notes",
        "startedAt": "2026-10-19T09:30:00Z", "durationMs": 20000, "verdict": "failed", "flaky": false,
-       "attempts": [{"number": 1, "verdict": "failed", "durationMs": 20000, "steps": [\(steps.joined(separator: ","))]}]}
+       "attempts": [{"number": 1, "verdict": "failed", "durationMs": 20000, "steps": [\(lines.joined(separator: ","))]}]}
       """
     try report.write(to: dir.appending(path: "report.json"), atomically: true, encoding: .utf8)
     return dir
