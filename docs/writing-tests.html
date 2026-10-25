@@ -634,7 +634,7 @@
   <li>A <code>dateTime</code> <code>format</code> that isn't valid, or a <code>greaterThan</code> or <code>lessThan</code> compared with something that isn't a number.</li>
   <li>A picture, area or script input that is just <code>${var.NAME}</code> when every block that keeps NAME keeps a value of a type that doesn't fit (text always fits).</li>
   <li>A <code>dateTime</code> <code>language</code> other than <code>en</code> or <code>ru</code>, or a <code>timeZone</code> that isn't an IANA name.</li>
-  <li><code>threshold</code> without <code>"compare": "similar"</code>; <code>expect</code>, <code>provider</code> or <code>model</code> without <code>"compare": "meaning"</code>; a <code>provider</code> JEVision doesn't know.</li>
+  <li><code>threshold</code> without <code>"compare": "similar"</code>; <code>expect</code>, <code>provider</code>, <code>model</code> or <code>confidence</code> without <code>"compare": "meaning"</code>; a <code>provider</code> JEVision doesn't know; a <code>confidence</code> outside 0.5–0.99.</li>
   <li>A note file or link that is neither a plain file name nor a web address, or two replies of a note with the same id.</li>
 </ul>
 <h3 id="warnings">Warnings</h3>

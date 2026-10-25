@@ -469,7 +469,7 @@ struct ReferenceEditor: View {
         switch $0 {
         case .exact: reference.compare = .exact
         case .similar: reference.compare = .similar(threshold: 0.95)
-        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "", model: "", provider: "") }
+        case .meaning: if !isMeaning { reference.compare = .meaning(expect: "", model: "", provider: "", confidence: 0.5) }
         }
       })
   }
@@ -478,20 +478,37 @@ struct ReferenceEditor: View {
     if case .meaning = reference.compare { true } else { false }
   }
 
-  private var meaning: (expect: String, model: String, provider: String) {
-    if case .meaning(let expect, let model, let provider) = reference.compare { (expect, model, provider) } else { ("", "", "") }
+  private var meaning: (expect: String, model: String, provider: String, confidence: Double) {
+    if case .meaning(let expect, let model, let provider, let confidence) = reference.compare {
+      (expect, model, provider, confidence)
+    } else {
+      ("", "", "", 0.5)
+    }
   }
 
   private var expectation: Binding<String> {
     Binding(
       get: { meaning.expect },
-      set: { reference.compare = .meaning(expect: $0, model: meaning.model, provider: meaning.provider) })
+      set: {
+        reference.compare = .meaning(expect: $0, model: meaning.model, provider: meaning.provider, confidence: meaning.confidence)
+      })
   }
 
   private var model: Binding<String> {
     Binding(
       get: { meaning.model },
-      set: { reference.compare = .meaning(expect: meaning.expect, model: $0, provider: meaning.provider) })
+      set: {
+        reference.compare = .meaning(expect: meaning.expect, model: $0, provider: meaning.provider, confidence: meaning.confidence)
+      })
+  }
+
+  private var confidence: Binding<Double> {
+    Binding(
+      get: { meaning.confidence },
+      set: {
+        reference.compare = .meaning(
+          expect: meaning.expect, model: meaning.model, provider: meaning.provider, confidence: ($0 * 100).rounded() / 100)
+      })
   }
 
   /// A model belongs to its provider, so choosing another provider clears it.
@@ -500,12 +517,18 @@ struct ReferenceEditor: View {
       get: { meaning.provider },
       set: {
         guard $0 != meaning.provider else { return }
-        reference.compare = .meaning(expect: meaning.expect, model: "", provider: $0)
+        reference.compare = .meaning(expect: meaning.expect, model: "", provider: $0, confidence: meaning.confidence)
       })
   }
 
   /// Checks by meaning work with the AI of Settings or with the one the project names.
   private var hasAI: Bool { !aiProvider.isEmpty || project.settings.aiScreen.map { !$0.provider.isEmpty } == true }
+
+  /// The provider that answers the check: the block's, the project's, or the one of Settings.
+  private var judgingProvider: String {
+    let inherited = resolveAiChoice(settings: project.settings, task: .screen, block: AiChoice(provider: meaning.provider, model: ""))
+    return inherited.provider.isEmpty ? aiProvider : inherited.provider
+  }
 
   /// The model the project or the settings choose for the block's provider, shown when the
   /// block keeps it.
@@ -591,6 +614,8 @@ struct ReferenceEditor: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".model"))
+      ConfidenceSlider(confidence: confidence, provider: judgingProvider)
+      IssueList(issues: context.issues(field + ".confidence"))
     }
     if !hasAI {
       HStack(alignment: .firstTextBaseline) {

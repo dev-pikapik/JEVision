@@ -1257,6 +1257,7 @@ pub enum Compare {
         expect: String,
         model: String,
         provider: String,
+        confidence: f64,
     },
 }
 

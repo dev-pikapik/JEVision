@@ -382,7 +382,8 @@ when it exists and the light picture otherwise. The test file names only the lig
 With `"compare": "meaning"`, an AI model looks at the screen and decides whether it shows what
 `expect` says, in plain words: `{ "compare": "meaning", "expect": "The cart shows 2 items" }`.
 The reference image is optional; with one, the model compares the screen with it. `check`,
-`waitFor` and `if` all accept such a reference.
+`waitFor` and `if` all accept such a reference. JEV says how sure it is, so `"confidence": 0.9`
+passes only when it is at least 90% sure; other providers answer yes or no.
 
 </details>
 
