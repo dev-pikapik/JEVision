@@ -84,6 +84,8 @@ pub enum ActivityKind {
     SignInFailed,
     RunStarted,
     RunStopped,
+    /// A phone changed a test; the subject is `project/path`.
+    TestEdited,
     ReportRead,
     /// A request the device was not allowed to make or that reached outside a project.
     Denied,

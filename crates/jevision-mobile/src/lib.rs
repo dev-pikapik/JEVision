@@ -108,6 +108,10 @@ remote_error!(
     MacTooOld,
     Unsupported,
     DevicesFromNewer,
+    TestChanged,
+    TestBusyOnMac,
+    EditInvalid,
+    EditNeedsMac,
     Unknown,
 );
 
@@ -272,6 +276,21 @@ impl RemoteConnection {
     ) -> Result<String, RemoteError> {
         let client = Arc::clone(&self.client);
         spawn(async move { client.run_test(project, path, row).await }).await
+    }
+
+    /// Makes one change to a test read at `revision`, its [`TestSummary::revision`]. A test
+    /// that changed on the Mac meanwhile fails with `TestChanged` and stays as it is.
+    pub async fn edit_test(
+        &self,
+        project: String,
+        path: String,
+        revision: String,
+        edit: TestEdit,
+    ) -> Result<EditedTest, RemoteError> {
+        let client = Arc::clone(&self.client);
+        let (test, select) =
+            spawn(async move { client.edit_test(project, path, revision, edit).await }).await?;
+        Ok(EditedTest { test, select })
     }
 
     pub async fn stop_run(&self, project: String, run: String) -> Result<(), RemoteError> {

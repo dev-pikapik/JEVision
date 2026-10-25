@@ -10,6 +10,7 @@ use jevision_runner::{Failure, RunReport, StepStatus, Verdict};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::{Permission, RemoteError};
 
@@ -142,6 +143,7 @@ pub(crate) struct Welcome {
     pub app_version: String,
     pub host_name: String,
     pub device_id: String,
+    #[serde(flatten, with = "granted")]
     pub permission: Permission,
     /// The Mac's current addresses, so the phone's saved record stays fresh.
     pub relay_url: Option<String>,
@@ -150,6 +152,35 @@ pub(crate) struct Welcome {
 
 fn first_protocol() -> u32 {
     1
+}
+
+/// [`Permission`] as the welcome writes it: `edit` as `run` with `"edit": true`, which a phone
+/// that predates editing reads as `run`.
+mod granted {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use crate::Permission;
+
+    #[derive(Serialize, Deserialize)]
+    struct Granted {
+        permission: Permission,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        edit: bool,
+    }
+
+    pub(super) fn serialize<S: Serializer>(p: &Permission, s: S) -> Result<S::Ok, S::Error> {
+        let edit = *p == Permission::Edit;
+        let permission = if edit { Permission::Run } else { *p };
+        Granted { permission, edit }.serialize(s)
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Permission, D::Error> {
+        let granted = Granted::deserialize(d)?;
+        Ok(match granted.permission {
+            Permission::Run if granted.edit => Permission::Edit,
+            permission => permission,
+        })
+    }
 }
 
 /// Phone to Mac after the handshake. `project` is a project name, `path` a test file relative
@@ -203,6 +234,15 @@ pub(crate) enum Request {
         run: String,
         picture: String,
     },
+    /// Makes one change to the test, if the file is still at `revision`, the
+    /// [`TestSummary::revision`] the phone read. Macs that predate editing answer
+    /// [`RemoteError::Unsupported`].
+    EditTest {
+        project: String,
+        path: String,
+        revision: String,
+        edit: TestEdit,
+    },
     /// A request of a newer phone; the Mac answers [`RemoteError::Unsupported`].
     #[serde(other)]
     Unknown,
@@ -212,6 +252,7 @@ impl Request {
     #[cfg(feature = "host")]
     pub(crate) fn needs(&self) -> Permission {
         match self {
+            Self::EditTest { .. } => Permission::Edit,
             Self::RunTest { .. } | Self::StopRun { .. } => Permission::Run,
             _ => Permission::View,
         }
@@ -220,8 +261,43 @@ impl Request {
     #[cfg(feature = "client")]
     /// Asking again after a lost connection cannot do anything twice.
     pub(crate) fn is_idempotent(&self) -> bool {
-        !matches!(self, Self::RunTest { .. })
+        !matches!(self, Self::RunTest { .. } | Self::EditTest { .. })
     }
+}
+
+/// One change to a test from a phone. The Mac makes it the way its editor does, checks the
+/// block still reads and saves the file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "change",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum TestEdit {
+    /// Sets the setting `field` of block `block`, one of its [`BlockSummary::fields`], to
+    /// `value` written as the phone shows it: `true` or `false` for a switch, digits for a
+    /// number. An empty value takes an optional setting away.
+    SetField {
+        block: String,
+        field: String,
+        value: String,
+    },
+    /// Adds a block of type `block_type`, one of [`TestSummary::palette`], after block
+    /// `after` (on the `then` branch of an `if`, after a loop rather than in it), or at the
+    /// end of the test without one.
+    AddBlock {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        after: Option<String>,
+        block_type: String,
+    },
+    /// Removes the block and joins what led to it with what came after it; its notes stay as
+    /// notes about the test.
+    RemoveBlock { block: String },
+    /// Gives the test a new name; the file keeps its own.
+    Rename { name: String },
+    /// A change of a newer phone; the Mac answers [`RemoteError::Unsupported`].
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -256,6 +332,13 @@ pub(crate) enum Response {
     /// The PNG bytes follow in the next frame.
     Picture {
         size: u64,
+    },
+    /// The test as it is after the change. `select` is the block the phone shows next: the one
+    /// it added, or the one after the block it removed.
+    Edited {
+        test: Box<TestSummary>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        select: Option<String>,
     },
     /// An answer of a newer Mac.
     #[serde(other)]
@@ -398,6 +481,65 @@ pub struct TestSummary {
     /// ignore it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub notes: Vec<NoteSummary>,
+    /// Which version of the file this is, sent back with every change so none overwrites
+    /// what changed on the Mac meanwhile. Empty from Macs that predate editing.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub revision: String,
+    /// The block types the Mac can add to the test, in the order of its library.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub palette: Vec<PaletteEntry>,
+}
+
+/// A block type of the Mac's library.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaletteEntry {
+    /// The block's `type`, such as `click`.
+    pub block_type: String,
+    /// Its group in the library: `actions`, `waiting`, `checks`, `logic`, `subTests`, `data`.
+    pub group: String,
+}
+
+/// A setting of a block a phone can change.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BlockField {
+    /// Where it is in the block, such as `text` or `target.description`.
+    pub path: String,
+    pub kind: FieldKind,
+    /// As the phone shows it: `true` or `false` for a switch; empty when not set.
+    #[serde(default)]
+    pub value: String,
+    /// The values a [`FieldKind::Choice`] takes, as the test file writes them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub choices: Vec<String>,
+}
+
+/// How a phone edits a setting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FieldKind {
+    Flag,
+    Number,
+    Choice,
+    /// A time such as `2s` or `500ms`.
+    Duration,
+    /// Text of several lines, such as a script.
+    LongText,
+    /// One line of text. A kind from a newer Mac reads as this one.
+    #[serde(other)]
+    Text,
+}
+
+/// A problem the Mac finds in a block, as a key of the shared catalog with its values, so the
+/// phone words it in its own language.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Problem {
+    pub code: String,
+    /// The test still runs, but probably not as meant.
+    #[serde(default)]
+    pub warning: bool,
+    #[serde(default)]
+    pub params: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -410,6 +552,12 @@ pub struct BlockSummary {
     pub title: String,
     /// `None` for a block the layout leaves out.
     pub area: Option<Area>,
+    /// The settings a phone that may edit can change. Absent from Macs that predate editing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fields: Vec<BlockField>,
+    /// What is wrong with the block. Absent from Macs that predate editing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub problems: Vec<Problem>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -524,7 +672,7 @@ pub struct NoteAttachmentSummary {
 }
 
 /// `text` cut to at most `max` bytes at a character boundary, with `…` where it was cut.
-fn cut(text: &mut String, max: usize) {
+pub(crate) fn cut(text: &mut String, max: usize) {
     if text.len() <= max {
         return;
     }

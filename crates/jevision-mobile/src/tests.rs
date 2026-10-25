@@ -81,9 +81,22 @@ struct Fake {
     active: Mutex<HashMap<String, RunStatus>>,
     stopped: Mutex<Vec<String>>,
     rows: Mutex<Vec<Option<u32>>>,
+    edited: Mutex<Vec<(String, String)>>,
 }
 
 impl HostDelegate for Fake {
+    fn can_edit(
+        &self,
+        _project_root: String,
+        _test: String,
+    ) -> Result<(), jevision_remote::RemoteError> {
+        Ok(())
+    }
+
+    fn test_edited(&self, project_root: String, test: String) {
+        self.edited.lock().unwrap().push((project_root, test));
+    }
+
     fn can_run(&self) -> Result<(), jevision_remote::RemoteError> {
         Ok(())
     }
@@ -538,4 +551,73 @@ fn texts_follow_the_language_the_app_sets() {
         "Экран занят: jevision, тест Sign in, с 12:03"
     );
     set_language(before);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_paired_to_edit_changes_a_test_and_reads_its_problems() {
+    let setup = Setup::new("edit").await;
+    let phone = RemoteConnection::pair(
+        parse_pairing_offer(setup.qr(Permission::Edit)).unwrap(),
+        "Anna's iPhone".into(),
+        TestSigner::new(1),
+        offline(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(phone.permission(), Permission::Edit);
+    let test = phone
+        .get_test("Demo".into(), "people.flow.json".into())
+        .await
+        .unwrap();
+    let typed = test.blocks.iter().find(|b| b.id == "type").unwrap();
+    let text = typed.fields.iter().find(|f| f.path == "text").unwrap();
+    assert_eq!(text.value, "${data.name}");
+
+    let edited = phone
+        .edit_test(
+            "Demo".into(),
+            "people.flow.json".into(),
+            test.revision.clone(),
+            TestEdit::SetField {
+                block: "type".into(),
+                field: "text".into(),
+                value: "${data.name}!".into(),
+            },
+        )
+        .await
+        .unwrap();
+    assert_ne!(edited.test.revision, test.revision);
+    let saved = fs::read_to_string(Path::new(&setup.root()).join("people.flow.json")).unwrap();
+    assert!(saved.contains("${data.name}!"));
+    assert_eq!(
+        *setup.fake.edited.lock().unwrap(),
+        [(setup.root(), "people.flow.json".to_owned())]
+    );
+
+    let stale = phone
+        .edit_test(
+            "Demo".into(),
+            "people.flow.json".into(),
+            test.revision,
+            TestEdit::Rename { name: "Old".into() },
+        )
+        .await;
+    assert_eq!(stale.unwrap_err(), RemoteError::TestChanged);
+
+    let added = phone
+        .edit_test(
+            "Demo".into(),
+            "people.flow.json".into(),
+            edited.test.revision,
+            TestEdit::AddBlock {
+                after: Some("type".into()),
+                block_type: "click".into(),
+            },
+        )
+        .await
+        .unwrap();
+    let new = added.select.unwrap();
+    let block = added.test.blocks.iter().find(|b| b.id == new).unwrap();
+    let problem = block.problems.first().unwrap();
+    assert!(!describe_problem(problem.clone()).is_empty());
 }

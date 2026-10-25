@@ -2,7 +2,7 @@
 //! catalog; the app picks the language once with [`set_language`] and gets ready sentences, so
 //! the phone words a failure exactly as the Mac does.
 
-use crate::Failure;
+use crate::{Failure, Problem};
 
 /// Sets the language of every text this library produces. A tag as the system writes it
 /// (`ru`, `ru-RU`, `en_US`); a language without a catalog falls back to English.
@@ -59,6 +59,26 @@ impl From<&Failure> for jevision_runner::Failure {
 #[uniffi::export]
 pub fn describe_failure(failure: Failure) -> String {
     jevision_runner::describe(&(&failure).into())
+}
+
+/// What a problem the Mac found in a block says, in the current language, without naming the
+/// block: the phone shows it with the block's settings.
+#[uniffi::export]
+pub fn describe_problem(problem: Problem) -> String {
+    let issue = jevision_core::Issue {
+        code: problem.code,
+        severity: if problem.warning {
+            jevision_core::Severity::Warning
+        } else {
+            jevision_core::Severity::Error
+        },
+        params: problem
+            .params
+            .into_iter()
+            .map(|(name, value)| jevision_core::IssueParam { name, value })
+            .collect(),
+    };
+    jevision_core::sentence(&issue)
 }
 
 /// The sentence for a problem with an AI model, without the block it happened in.

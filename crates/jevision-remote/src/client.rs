@@ -14,7 +14,7 @@ use crate::pairing::{auth_transcript, code_bytes, pair_transcript};
 use crate::wire::{
     self, AssistantReply, AssistantRequest, CLOSE_DISABLED, CLOSE_DONE, CLOSE_REVOKED, Hello,
     HelloKind, HostHello, MAX_ASSISTANT_REPLY, MAX_PICTURE, PROTOCOLS, Proof, Protocols, Reply,
-    Request, Response, WatchFrame, Welcome,
+    Request, Response, TestEdit, WatchFrame, Welcome,
 };
 use crate::{
     ALPN_ASSISTANT, ALPN_PHONE, APP_VERSION, DeviceSigner, Network, PairingOffer, Permission,
@@ -195,6 +195,33 @@ impl Client {
     ) -> Result<String, RemoteError> {
         match self.call(Request::RunTest { project, path, row }).await? {
             (Response::RunStarted { run }, _) => Ok(run),
+            _ => Err(RemoteError::Protocol),
+        }
+    }
+
+    /// Makes one change to the test the phone read at `revision`, its
+    /// [`TestSummary::revision`]. Returns the test as it is now and the block to show next. A
+    /// test changed on the Mac meanwhile fails with [`RemoteError::TestChanged`] and stays as
+    /// it is.
+    pub async fn edit_test(
+        &self,
+        project: String,
+        path: String,
+        revision: String,
+        edit: TestEdit,
+    ) -> Result<(TestSummary, Option<String>), RemoteError> {
+        let request = Request::EditTest {
+            project,
+            path,
+            revision,
+            edit,
+        };
+        match self.call(request).await? {
+            (Response::Edited { test, select }, _) => {
+                let mut test = *test;
+                test.notes = wire::bounded_notes(test.notes);
+                Ok((test, select))
+            }
             _ => Err(RemoteError::Protocol),
         }
     }
