@@ -59,6 +59,10 @@ if [ -n "$NOTARY_PROFILE" ] && ! xcrun notarytool history --keychain-profile "$N
   exit 2
 fi
 
+# The core comes first: the package refers to it, so nothing resolves before it exists.
+echo "==> Building the core (release, from the locked sources)"
+rm -rf "$ROOT/build/apple"
+PROFILE=release ../../scripts/build-core-apple.sh
 swift package resolve >/dev/null
 SPARKLE_BIN=.build/artifacts/sparkle/Sparkle/bin
 if [ -z "${SPARKLE_PUBLIC_ED_KEY:-}" ] && [ -z "$ADHOC" ]; then
@@ -77,9 +81,6 @@ else
   export SPARKLE_PUBLIC_ED_KEY
 fi
 
-echo "==> Building the core (release, from the locked sources)"
-rm -rf "$ROOT/build/apple"
-PROFILE=release ../../scripts/build-core-apple.sh
 echo "==> Building and signing the app"
 scripts/build.sh
 
