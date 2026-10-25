@@ -82,7 +82,7 @@ struct AskEditor: View {
       case .isShown:
         TextField(text: text, prompt: Text("The dark theme is on"), axis: .vertical) { Text("Question") }
           .lineLimit(2...5)
-        Text("Describe in plain words what the screen may show. An AI model looks at the screen and answers yes or no.")
+        Text("Describe in plain words what the screen may show. An AI model looks at the screen and says how likely it is.")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -122,7 +122,7 @@ struct AskEditor: View {
       Group {
         switch question {
         case .isShown:
-          Text("Later blocks read the answer as ${var.NAME}: 1 when the screen shows it, 0 when it doesn’t. An If block can go one way or the other by it.")
+          Text("Later blocks read the answer as ${var.NAME}: the probability from 0 to 1 that the screen shows it when JEV answers, or 1 or 0 from an AI that only answers yes or no. An If block can go one way or the other by it.")
         case .find:
           Text("Later blocks read the element’s area as ${var.NAME}. For example, a Click with the target “Area” and ${var.NAME} clicks its middle.")
         }

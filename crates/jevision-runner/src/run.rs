@@ -2060,14 +2060,14 @@ impl Exec<'_> {
                         };
                         let (answer, fallback_reason) =
                             self.ask_or_fall_back(t, id, judge, &question)?;
-                        let likely = if answer.judgement.passed { "1" } else { "0" };
+                        let likely = likely_value(&answer.judgement);
                         step.vision = Some(self.vision_answer(
                             answer,
                             fallback_reason,
                             Compare::DEFAULT_CONFIDENCE,
                         ));
                         self.record_sent(step, &sent)?;
-                        likely.to_owned()
+                        likely
                     }
                     AskQuestion::Find { description } => {
                         let area = self.find_area(t, id, description, &shot, &window, step)?;
@@ -3593,6 +3593,15 @@ fn for_model(
 ) -> Result<MaskedImage, Stop> {
     let covered: Vec<_> = r.ignore.iter().chain(private).copied().collect();
     masked(id, image, &covered, r.area.as_ref())
+}
+
+/// How likely the screen shows what was asked, for a variable: JEV's probability from 0 to 1,
+/// to four decimals, or 1 or 0 from the verdict of a provider that only answers yes or no.
+fn likely_value(judgement: &Judgement) -> String {
+    match judgement.probability {
+        Some(p) => ((p.clamp(0.0, 1.0) * 10_000.0).round() / 10_000.0).to_string(),
+        None => if judgement.passed { "1" } else { "0" }.to_owned(),
+    }
 }
 
 /// `area` as a variable of type area keeps it, `x,y,width,height`, to a ten-thousandth of the

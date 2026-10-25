@@ -8633,18 +8633,18 @@
         }
       }
     },
-    "Describe in plain words what the screen may show. An AI model looks at the screen and answers yes or no." : {
+    "Describe in plain words what the screen may show. An AI model looks at the screen and says how likely it is." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Describe in plain words what the screen may show. An AI model looks at the screen and answers yes or no."
+            "value" : "Describe in plain words what the screen may show. An AI model looks at the screen and says how likely it is."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Опишите простыми словами, что может быть на экране. Модель ИИ посмотрит на экран и ответит «да» или «нет»."
+            "value" : "Опишите простыми словами, что может быть на экране. Модель ИИ посмотрит на экран и скажет, насколько это вероятно."
           }
         }
       }
@@ -12950,18 +12950,18 @@
         }
       }
     },
-    "Later blocks read the answer as ${var.NAME}: 1 when the screen shows it, 0 when it doesn’t. An If block can go one way or the other by it." : {
+    "Later blocks read the answer as ${var.NAME}: the probability from 0 to 1 that the screen shows it when JEV answers, or 1 or 0 from an AI that only answers yes or no. An If block can go one way or the other by it." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Later blocks read the answer as ${var.NAME}: 1 when the screen shows it, 0 when it doesn’t. An If block can go one way or the other by it."
+            "value" : "Later blocks read the answer as ${var.NAME}: the probability from 0 to 1 that the screen shows it when JEV answers, or 1 or 0 from an AI that only answers yes or no. An If block can go one way or the other by it."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Следующие блоки читают ответ как ${var.NAME}: 1, если это есть на экране, и 0, если нет. По нему блок «Если» может пойти по одной или другой ветке."
+            "value" : "Следующие блоки читают ответ как ${var.NAME}: вероятность от 0 до 1, что это есть на экране, когда отвечает JEV, или 1 и 0 от ИИ, который отвечает только «да» или «нет». По нему блок «Если» может пойти по одной или другой ветке."
           }
         }
       }

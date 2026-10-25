@@ -5435,6 +5435,33 @@ fn asking_whether_the_screen_shows_something_keeps_the_answer_for_a_condition() 
 }
 
 #[test]
+fn asking_jev_whether_the_screen_shows_something_keeps_its_probability() {
+    let p = Project::new();
+    p.test(
+        r#""ask":{"type":"ask","question":"isShown","expect":"The dark theme is on","saveAs":"dark","next":"branch"},
+        "branch":{"type":"if","value":{"of":"${var.dark}","is":"greaterThan","to":"0.8"},"then":"yes","else":"no"},
+        "yes":{"type":"type","text":"sure ${var.dark}"},
+        "no":{"type":"type","text":"unsure ${var.dark}"}"#,
+        "ask",
+        0,
+    );
+    let hands = Fake::new(solid([0, 200, 0]));
+    let judge = Judge::new(
+        false,
+        Ok(Judgement {
+            passed: true,
+            probability: Some(0.83),
+            reason: "JEV is 83% sure the screenshot meets the expectation.".into(),
+            usage: Usage::default(),
+        }),
+    );
+    let report = run_judged(&p, &hands, Some(&judge), false).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    assert_eq!(last_steps(&report)[0].outputs["dark"], "0.83");
+    assert_eq!(hands.typed(), ["sure 0.83"]);
+}
+
+#[test]
 fn asking_where_an_element_is_keeps_its_area_for_a_click() {
     let p = Project::new();
     p.test(
