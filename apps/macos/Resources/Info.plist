@@ -92,6 +92,6 @@
   <key>SUScheduledCheckInterval</key>
   <integer>86400</integer>
   <key>JEVisionDataFormat</key>
-  <integer>2</integer>
+  <integer>3</integer>
 </dict>
 </plist>

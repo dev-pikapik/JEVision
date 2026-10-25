@@ -83,7 +83,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "Opens files or web addresses, each file from a fresh copy so the original stays intact.",
+          "description": "Opens files, web addresses or links into apps, each file from a fresh copy so the original stays intact.",
           "properties": {
             "app": {
               "description": "Bundle id; without it, each file opens in its default application.",
@@ -94,7 +94,7 @@
               "type": "boolean"
             },
             "files": {
-              "description": "Relative file paths or `http(s)://` addresses. It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
+              "description": "Relative file paths, `http(s)://` addresses, or links of a scheme an app registered, like `myapp://inbox` (these need format 3). It may instead be `res:` and the 16 lowercase hex digits of a label, which finds the file wherever it moves inside the project. A test that names a file by its label is saved in format 2.",
               "items": {
                 "type": "string"
               },
@@ -1832,6 +1832,24 @@
       ],
       "type": "string"
     },
+    "Simulator": {
+      "additionalProperties": false,
+      "description": "An iOS Simulator device that runs the application under test. Tests act on the device's screen as it shows in the Simulator window, and look at it as the device draws it.",
+      "properties": {
+        "device": {
+          "description": "The device as Xcode lists it, like `iPhone 17`, or its identifier (UDID). Of devices with the same name, one already started is used, else the one with the newest iOS.",
+          "type": "string"
+        },
+        "install": {
+          "description": "The app build (a `.app` folder) installed on the device before the application starts: relative to the test file's folder or absolute, and may contain placeholders such as `${env.NAME}`. Without it, the application must be installed already.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "device"
+      ],
+      "type": "object"
+    },
     "Target": {
       "description": "Where on screen an action happens.",
       "oneOf": [
@@ -2162,7 +2180,8 @@
       "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows.",
       "enum": [
         1,
-        2
+        2,
+        3
       ]
     },
     "icon": {
@@ -2199,6 +2218,10 @@
       "maximum": 10,
       "minimum": 0,
       "type": "integer"
+    },
+    "simulator": {
+      "$ref": "#/$defs/Simulator",
+      "description": "The iOS Simulator device the application runs in; without it, the application runs on this Mac."
     },
     "start": {
       "description": "Id of the first block to run.",

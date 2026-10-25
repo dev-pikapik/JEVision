@@ -13,6 +13,8 @@ In Russian: [CHANGELOG.ru.md](CHANGELOG.ru.md).
   inspector, JEV must be at least 90% sure that the screen shows what is expected. The report
   says how sure JEV was and what the check needed. Providers that answer only yes or no keep
   their own answer, and the editor and the report say so.
+- Tests can run their app on a simulated iPhone or iPad in Simulator: choose the device under Runs On in the test card, and optionally a build that is installed before the test. Clicks and typing go through the Simulator window at any size; screenshots come from the device itself.
+- Open File opens links into apps, such as `myapp://inbox`, on the Mac and on a simulated device.
 
 ## [1.0.0] - 2026-10-20
 

@@ -25,7 +25,7 @@ use crate::model::{
 use crate::package_files::package_flow_path;
 use crate::resolve_test;
 use crate::validate::{
-    is_identifier, is_relative_path, is_web_address, required_inputs, validate_in,
+    is_identifier, is_link, is_relative_path, is_web_address, required_inputs, validate_in,
 };
 
 /// Ending of the folder of a package.
@@ -1104,9 +1104,7 @@ pub(crate) fn visit_images(flow: &mut Flow, mut visit: impl FnMut(&str, &mut Str
 pub(crate) fn visit_files(flow: &mut Flow, mut visit: impl FnMut(&str, bool, &mut String)) {
     for b in &mut flow.blocks {
         let others: Vec<&mut String> = match &mut b.kind {
-            BlockKind::OpenFile { files, .. } => {
-                files.iter_mut().filter(|f| !is_web_address(f)).collect()
-            }
+            BlockKind::OpenFile { files, .. } => files.iter_mut().filter(|f| !is_link(f)).collect(),
             BlockKind::UseData { file, .. } => vec![file],
             _ => Vec::new(),
         };

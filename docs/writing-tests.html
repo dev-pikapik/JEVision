@@ -67,6 +67,7 @@
   <ul>
     <li><a href="#how-a-test-runs">How a test runs</a></li>
     <li><a href="#test-fields">Fields of a test</a></li>
+    <li><a href="#simulator">Testing on a simulated iPhone or iPad</a></li>
     <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#pause">pause</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a>, <a href="#script">script</a>, <a href="#clipboard">clipboard</a>, <a href="#dateTime">dateTime</a>, <a href="#http">http</a>, <a href="#database">database</a>, <a href="#checkFile">checkFile</a>, <a href="#command">command</a></li>
     <li><a href="#shapes">Targets, areas, durations and paths</a></li>
     <li><a href="#placeholders">Placeholders</a></li>
@@ -97,6 +98,7 @@
     <tr><td><code>description</code></td><td>No</td><td>What the test checks, in your words.</td></tr>
     <tr><td><code>icon</code></td><td>No</td><td>For a <a href="custom-blocks.html">custom block</a>: the name of an <a href="https://developer.apple.com/sf-symbols/">SF Symbol</a> the block library shows for it, such as <code>person.badge.key</code>.</td></tr>
     <tr><td><code>app</code></td><td>Yes</td><td>Bundle identifier of the application under test, such as <code>com.apple.TextEdit</code>. At least two parts separated by dots, each made of letters, digits and <code>-</code>.</td></tr>
+    <tr><td><code>simulator</code></td><td>No</td><td>Runs the app on a simulated iPhone or iPad instead of this Mac: <code>{ "device": "iPhone 17", "install": "build/App.app" }</code>. See <a href="#simulator">Testing on a simulated iPhone or iPad</a>.</td></tr>
     <tr><td><code>testType</code></td><td>No</td><td><code>smoke</code>, <code>regression</code> or <code>acceptance</code>.</td></tr>
     <tr><td><code>priority</code></td><td>No</td><td><code>critical</code>, <code>high</code>, <code>medium</code> or <code>low</code>.</td></tr>
     <tr><td><code>status</code></td><td>No</td><td><code>draft</code>, <code>ready</code> or <code>outdated</code>.</td></tr>
@@ -116,6 +118,22 @@
 </div>
 <p>The card fields <code>testType</code>, <code>priority</code>, <code>status</code> and <code>author</code>, and the flaky mark, also choose which tests run. In the app, the filter button above the test list shows only the tests that fit, and <strong>Run All Tests</strong> then runs only those. On the command line use <a href="cli.html#filter"><code>jevision run --priority high --type smoke</code></a>, and an assistant can pass the same fields to <a href="mcp.html#list_tests"><code>list_tests</code></a>. A test whose card leaves out a field you filter by isn't chosen.</p>
 <p>Block ids use letters, digits, <code>-</code> and <code>_</code>, up to 64 characters, and are unique within the test. Unknown fields are an error, so a typo such as <code>"nxet"</code> never goes unnoticed.</p>
+
+<h2 id="simulator">Testing on a simulated iPhone or iPad</h2>
+<p>A test can run its app in Simulator, the app that comes with Xcode and shows a simulated iPhone or iPad in a window on your Mac. In the test card, choose the device under <strong>Runs On</strong>, then the app on it, and optionally the build to install. In the file, that is the <code>simulator</code> field:</p>
+<pre><code>"app": "com.example.Shop",
+"simulator": { "device": "iPhone 17", "install": "../build/Debug-iphonesimulator/Shop.app" }</code></pre>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>device</code></td><td>Yes</td><td>The name of the device, as in Simulator, such as <code>iPhone 17</code>, or its UDID. When several devices have the name, the one that is running is used, otherwise the one with the newest iOS.</td></tr>
+    <tr><td><code>install</code></td><td>No</td><td>The app built for Simulator, a <code>.app</code> folder, relative to the test file; it may hold <a href="#placeholders">placeholders</a>. It is installed once per run before the first <a href="#openApp">openApp</a> of the test's app, and again for each <code>openApp</code> with <code>resetState</code>, which also removes the app's data first. Without it, the app has to be on the device already.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>JEVision starts the device if it is off, opens Simulator on it and launches the app with its <code>arguments</code> and <code>environment</code>. Clicks, typing and key presses go to the Simulator window, and JEVision works out where the device screen sits in it, so the window can be any size. Screenshots and checks are taken from the device itself at its full resolution, the same however large the window is. <a href="#openFile">openFile</a> opens web addresses and links into apps, such as <code>shop://cart</code>, on the device; files can't be opened there. For a link into an app, iOS first asks whether to open it in that app, so the test then clicks <strong>Open</strong> as a person would. The window of Simulator has to stay visible on the screen while the test runs.</p>
+<p>A test can <a href="#runTest">run another test</a> only when that one runs on the same device. Tests that run on this Mac and on a device can't be mixed in one <code>runTest</code>.</p>
 
 <h2 id="blocks">Block types</h2>
 <p>The editor's block palette groups blocks by what they do: actions, waiting, checks, conditions and loops, sub-tests, data and system.</p>
@@ -172,7 +190,7 @@
 <p><code>resetState</code> quits the running copy politely, so an app that asks to save or confirm first still gets to ask: the run stops and says so if the app does not quit. It does not delete anything: the app's settings, documents and caches stay as they are. To start the app as on its first launch, turn on Start apps as on their first launch in Settings → Advanced (<code>cleanHome</code> in the <a href="file-formats.html#project">project settings file</a>): for each such block the app gets an empty home folder of its own, which the run deletes when it ends, and starts without its settings, which come back once the run ends and the app has quit. Passwords in the Keychain, the list of recent documents and what the app keeps online are not reset. Apps in the macOS sandbox keep their data where macOS puts it, so for them the step says the reset was not applied. Checks look at the window of the application under test, never at the whole screen, so what lies around the window never changes the result.</p>
 
 <h3 id="openFile">openFile: open files or web addresses</h3>
-<p>Opens one or more files, or <code>http://</code> and <code>https://</code> addresses. Each file is opened from a fresh copy made in the run's folder, so the original stays as it was and every run starts from the same file.</p>
+<p>Opens one or more files, <code>http://</code> and <code>https://</code> addresses, or links into apps, such as <code>myapp://inbox</code>. Each file is opened from a fresh copy made in the run's folder, so the original stays as it was and every run starts from the same file.</p>
 <div class="table-wrap">
 <table>
   <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>

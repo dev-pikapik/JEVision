@@ -26,6 +26,7 @@ use crate::report::{
     UsedPackage, Verdict, VisionAnswer, kept_percent, summarize,
 };
 use crate::screen::{ScreenHolder, ScreenLock};
+use crate::simulator::{Simctl, SimulatorHands};
 use crate::system::{self, ProcessError};
 use crate::usage::{LimitState, UsageBook, price_of};
 use crate::{
@@ -159,6 +160,8 @@ impl Default for RunOptions {
 /// other threads through `control`.
 pub struct Runner<'a> {
     pub hands: &'a dyn Hands,
+    /// Drives simulated devices for tests of apps in the iOS Simulator.
+    pub simctl: &'a dyn Simctl,
     pub secrets: &'a dyn SecretSource,
     pub events: &'a dyn EventSink,
     pub control: RunControl,
@@ -513,12 +516,22 @@ impl Runner<'_> {
                 );
             }
             Ok((root, start, environment, data)) => {
+                // A test of an app on a simulated device reaches it through Simulator.
+                let simulator = root
+                    .flow
+                    .simulator
+                    .as_ref()
+                    .map(|s| SimulatorHands::new(self.hands, self.simctl, &s.device));
+                let hands: &dyn Hands = match &simulator {
+                    Some(simulator) => simulator,
+                    None => self.hands,
+                };
                 // The video's clock starts just before the recording does; step markers count
                 // from it.
                 let video =
                     if options.video != VideoMode::Off && uses_screen && !report.app.is_empty() {
                         let start = Instant::now();
-                        self.hands
+                        hands
                             .start_video(&report.app, &dir.join(VIDEO_FILE), &hide)
                             .ok()
                             .map(|()| start)
@@ -554,11 +567,13 @@ impl Runner<'_> {
                         // attempt opened.
                         launched.dedup();
                         for app in launched.drain(..).rev() {
-                            let _ = self.hands.quit(&app);
+                            let _ = hands.quit(&app);
                         }
                         self.events.send(&Event::AttemptStarted { attempt: number });
                         let exec = Exec {
                             runner: self,
+                            hands,
+                            simulator: simulator.as_ref(),
                             options,
                             project: &project,
                             dir: &dir,
@@ -616,7 +631,7 @@ impl Runner<'_> {
                 let mut quit: Vec<&str> = homes.iter().map(|h| h.app.as_str()).collect();
                 quit.dedup();
                 for app in quit {
-                    let _ = self.hands.quit(app);
+                    let _ = hands.quit(app);
                 }
                 if let Some(folder) = &options.saved_settings {
                     for app in &saved {
@@ -1108,6 +1123,10 @@ enum Unanswered {
 /// One attempt of a run.
 struct Exec<'r> {
     runner: &'r Runner<'r>,
+    /// What the run does on screen with: the runner's own hands, or those of a simulated device.
+    hands: &'r dyn Hands,
+    /// The simulated device, for a test of an app in the iOS Simulator.
+    simulator: Option<&'r SimulatorHands<'r>>,
     options: &'r RunOptions,
     project: &'r Path,
     dir: &'r Path,
@@ -1173,7 +1192,7 @@ impl Exec<'_> {
         // Whatever the verdict, nothing a block was asked to close stays open; a window that
         // won't close must not change the result.
         for (items, app) in std::mem::take(&mut self.to_close).into_iter().rev() {
-            let _ = self.runner.hands.close(&items, app.as_deref());
+            let _ = self.hands.close(&items, app.as_deref());
         }
         self.steps.sort_by_key(|s| s.seq);
         let attempt = Attempt {
@@ -1314,6 +1333,13 @@ impl Exec<'_> {
                     .iter()
                     .map(|(name, value)| Ok((name.clone(), self.substitute(id, value)?)))
                     .collect::<Result<HashMap<_, _>, Stop>>()?;
+                if let Some(simulator) = self.simulator
+                    && let Some(build) = t.flow.simulator.as_ref().and_then(|s| s.install.as_ref())
+                    && app == t.flow.app
+                {
+                    let path = normalize(&t.dir.join(self.substitute(id, build)?));
+                    self.hands(id, |_| simulator.install(&app, &path, *reset_state))?;
+                }
                 let (start, note) = self.app_start(id, &app, *reset_state)?;
                 self.hands(id, |h| h.open_app(&app, start, &arguments, &environment))?;
                 step.note = note;
@@ -1336,7 +1362,7 @@ impl Exec<'_> {
                 let mut items = Vec::with_capacity(files.len());
                 for (i, file) in files.iter().enumerate() {
                     let address = self.substitute(id, file)?;
-                    if address.starts_with("http://") || address.starts_with("https://") {
+                    if jevision_core::is_link(&address) {
                         items.push(Openable::Url(address));
                     } else {
                         let copy = self.fresh_copy(t, id, file, step.seq, i)?;
@@ -2063,6 +2089,14 @@ impl Exec<'_> {
                         Ok(sub)
                     })
                     .map_err(|f| fail(with_package(f, package.as_ref()).with("block", id)))?;
+                let device = |t: &TestFile| t.flow.simulator.as_ref().map(|s| s.device.clone());
+                if device(&sub) != device(t) {
+                    return Err(fail(
+                        Failure::new("run.runTest.otherDevice")
+                            .with("block", id)
+                            .with("test", test),
+                    ));
+                }
                 self.tests.push(path);
                 self.apps.push(sub.flow.app.clone());
                 self.inputs.push(given);
@@ -3056,7 +3090,7 @@ impl Exec<'_> {
         let control = &self.runner.control;
         let reason = match control.pause_reason(block, before_block)? {
             Some(reason) => reason,
-            None if self.runner.hands.user_input_detected() => {
+            None if self.hands.user_input_detected() => {
                 control.enter_pause();
                 PauseReason::UserInput
             }
@@ -3085,7 +3119,8 @@ impl Exec<'_> {
         if !reset {
             return Ok((AppStart::AsUsual, None));
         }
-        if !self.clean_home {
+        // On a simulated device a fresh start is a clean one when the test installs its build.
+        if !self.clean_home || self.simulator.is_some() {
             return Ok((AppStart::Fresh, None));
         }
         if self.hands(id, |h| h.sandboxed(app))? {
@@ -3130,7 +3165,7 @@ impl Exec<'_> {
         if self.runner.control.is_cancelled() {
             return Err(Stop::Cancelled);
         }
-        call(self.runner.hands).map_err(|e| fail(hands_failure(id, e)))
+        call(self.hands).map_err(|e| fail(hands_failure(id, e)))
     }
 
     fn capture(&self, id: &str) -> Result<Screenshot, Stop> {
@@ -3152,7 +3187,7 @@ impl Exec<'_> {
         if self.runner.control.is_cancelled() {
             return Err(Stop::Cancelled);
         }
-        let Ok(shot) = self.runner.hands.capture(&self.app()) else {
+        let Ok(shot) = self.hands.capture(&self.app()) else {
             return Ok(None);
         };
         self.saw(&shot);

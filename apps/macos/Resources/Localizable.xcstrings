@@ -2585,6 +2585,16 @@
         }
       }
     },
+    "A built .app to install on the device before the test, relative to the test file. Open App with Start Fresh installs it again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собранное приложение .app, которое ставится на устройство перед тестом; путь — от файла теста. «Открыть приложение» с флажком «Запустить с нуля» ставит его заново."
+          }
+        }
+      }
+    },
     "A change counts at once, even for a test that is running." : {
       "localizations" : {
         "ru" : {
@@ -2801,6 +2811,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Секрет или значение, которое хранится вне теста"
+          }
+        }
+      }
+    },
+    "A simulated iPhone or iPad runs in Simulator, which comes with Xcode." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Симулированный iPhone или iPad работает в приложении Simulator, оно входит в Xcode."
           }
         }
       }
@@ -5515,6 +5535,16 @@
         }
       }
     },
+    "Build" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сборка"
+          }
+        }
+      }
+    },
     "Button" : {
       "localizations" : {
         "ru" : {
@@ -6611,6 +6641,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сначала выберите модель ИИ в Настройках → ИИ."
+          }
+        }
+      }
+    },
+    "Choose an app built for Simulator" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите приложение, собранное для Simulator"
           }
         }
       }
@@ -15004,6 +15044,26 @@
         }
       }
     },
+    "Not on %@ yet. Give a build to install." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На «%@» его пока нет. Укажите сборку для установки."
+          }
+        }
+      }
+    },
+    "Not on %@." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На «%@» его нет."
+          }
+        }
+      }
+    },
     "Not reset: passwords in the Keychain, the list of recent documents and what the app keeps on its servers or in iCloud. Apps from the App Store and others in the macOS sandbox keep their data where macOS puts it, so for them “Start Fresh” only leaves out the windows from last time. The setting is saved in %@ in the project folder." : {
       "localizations" : {
         "ru" : {
@@ -19980,6 +20040,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запускать после"
+          }
+        }
+      }
+    },
+    "Runs On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где запускать"
           }
         }
       }
@@ -39936,6 +40006,22 @@
         }
       }
     },
+    "flow.format.3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tests can run their app on a simulated iPhone or iPad in the iOS Simulator, and open links into apps, such as myapp://inbox."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тесты могут запускать своё приложение на симулированном iPhone или iPad в симуляторе iOS и открывать ссылки в приложения, например myapp://inbox."
+          }
+        }
+      }
+    },
     "flow.format.missing" : {
       "localizations" : {
         "en" : {
@@ -49478,6 +49564,22 @@
         }
       }
     },
+    "run.runTest.otherDevice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Block “%@”: the test %@ runs on another device than this test, and a test can only run tests made for the same Mac or simulated device."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок «%1$@»: тест %2$@ выполняется на другом устройстве, чем этот тест, а тест может запускать только тесты для того же Mac или того же симулированного устройства."
+          }
+        }
+      }
+    },
     "run.runTest.recursion" : {
       "localizations" : {
         "en" : {
@@ -49586,6 +49688,166 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Секрет %@ не задан. Задайте его в карточке теста."
+          }
+        }
+      }
+    },
+    "run.simulator.noApp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulator isn’t installed: add it in Xcode › Settings › Components, then run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение Simulator не установлено: добавьте его в Xcode › Настройки › Компоненты и запустите тест снова."
+          }
+        }
+      }
+    },
+    "run.simulator.noBuild" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There is no app built at %@: build it for the simulator first, or fix the path in Test details."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По пути %@ нет собранного приложения: сначала соберите его для симулятора или исправьте путь в карточке теста."
+          }
+        }
+      }
+    },
+    "run.simulator.noDevice" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This Mac has no simulated device “%@”: add it in Xcode › Window › Devices and Simulators, or choose another device in Test details."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом Mac нет симулированного устройства «%@»: добавьте его в Xcode › Окно › Устройства и симуляторы или выберите другое устройство в карточке теста."
+          }
+        }
+      }
+    },
+    "run.simulator.noScreen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The screen of “%@” can’t be found in the Simulator window: bring that device’s window to the front and make sure nothing covers it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Экран «%@» не найден в окне Simulator: выведите окно этого устройства на передний план и проверьте, что его ничто не закрывает."
+          }
+        }
+      }
+    },
+    "run.simulator.noWindow" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulator doesn’t show “%@”: open the app first with an Open App block."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulator не показывает «%@»: сначала откройте приложение блоком «Открыть приложение»."
+          }
+        }
+      }
+    },
+    "run.simulator.noXcode" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tests in the iOS Simulator need Xcode: install it from the App Store, open it once, and add the iOS platform in Xcode › Settings › Components."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для тестов в симуляторе iOS нужен Xcode: установите его из App Store, откройте один раз и добавьте платформу iOS в Xcode › Настройки › Компоненты."
+          }
+        }
+      }
+    },
+    "run.simulator.notInstalled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ isn’t installed on “%@”: install it there, or give the test the path to its build."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ не установлено на «%2$@»: установите его туда или укажите в тесте путь к его сборке."
+          }
+        }
+      }
+    },
+    "run.simulator.otherBuild" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app built at %@ is %@, but the test is for %@: point the test at the build of its app."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение по пути %1$@ — это %2$@, а тест написан для %3$@: укажите в тесте сборку его приложения."
+          }
+        }
+      }
+    },
+    "run.simulator.said" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iOS Simulator says: %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Симулятор iOS сообщает: %@"
+          }
+        }
+      }
+    },
+    "run.simulator.unknownScreen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xcode has no description of the screen of %@ devices: update Xcode or choose another device in Test details."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В Xcode нет описания экрана устройств %@: обновите Xcode или выберите другое устройство в карточке теста."
           }
         }
       }

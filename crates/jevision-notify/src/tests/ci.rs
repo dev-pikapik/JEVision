@@ -141,6 +141,7 @@ fn a_fresh_checkout_tells_changed_and_fixed_from_the_kept_last_results() {
         let events = |_: &Event| {};
         let runner = Runner {
             hands: &Keys { broken },
+            simctl: &jevision_runner::Xcrun,
             secrets: &secrets,
             events: &events,
             control: RunControl::new(),

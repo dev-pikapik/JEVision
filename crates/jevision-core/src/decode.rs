@@ -14,8 +14,8 @@ use crate::model::{
     ClipboardAction, ClipboardContent, Compare, Condition, DATE_LANGUAGES, DEFAULT_DATE_FORMAT,
     DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton,
     NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
-    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Target,
-    TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
+    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Simulator,
+    Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
     WindowPosition, WindowSize, parse_duration, time_zone_known,
 };
 use crate::package::{Version, app_version};
@@ -30,13 +30,18 @@ pub(crate) type Migration = fn(&mut Map<String, Value>);
 /// `MIGRATIONS[i]` upgrades a file from format `OLDEST_FORMAT + i` to the next version, and
 /// `FORMAT_CHANGES[i]` is the catalog key of a sentence saying what that next version adds.
 /// Appending a step raises [`crate::FORMAT_VERSION`] by one.
-pub(crate) const MIGRATIONS: &[Migration] = &[to_labels];
-pub(crate) const FORMAT_CHANGES: &[&str] = &["flow.format.2"];
+pub(crate) const MIGRATIONS: &[Migration] = &[to_labels, to_simulators];
+pub(crate) const FORMAT_CHANGES: &[&str] = &["flow.format.2", "flow.format.3"];
 const _: () = assert!(MIGRATIONS.len() == FORMAT_CHANGES.len());
 
 /// Format 2 lets a test name an image or file by its label (`res:…`, see [`crate::resources`])
 /// instead of its path. A format-1 file holds no labels, so nothing in it changes.
 fn to_labels(_: &mut Map<String, Value>) {}
+
+/// Format 3 lets a test run its application in the iOS Simulator (`simulator`) and open app
+/// links of any scheme, like `myapp://inbox`. A format-2 file has neither, so nothing in it
+/// changes.
+fn to_simulators(_: &mut Map<String, Value>) {}
 
 /// The steps that upgrade a `.jevmeta` file, the label of a resource, like [`MIGRATIONS`] for a
 /// test, and the newest format of it.
@@ -593,6 +598,9 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
     let description = o.opt_string("description", out);
     let icon = o.opt_string("icon", out);
     let app = o.string("app", out);
+    let simulator = o
+        .opt_object("simulator", out)
+        .and_then(|s| simulator(s, out));
     let test_type = o.opt_choice("testType", TEST_TYPES, out);
     let priority = o.opt_choice("priority", PRIORITIES, out);
     let status = o.opt_choice("status", STATUSES, out);
@@ -616,6 +624,7 @@ fn flow(mut o: Obj<'_>, out: &mut Out) -> Option<Flow> {
         description,
         icon,
         app: app?,
+        simulator,
         test_type,
         priority,
         status,
@@ -1297,6 +1306,16 @@ fn window_size(mut o: Obj<'_>, out: &mut Out) -> Option<WindowSize> {
     Some(WindowSize {
         width: width?,
         height: height?,
+    })
+}
+
+fn simulator(mut o: Obj<'_>, out: &mut Out) -> Option<Simulator> {
+    let device = o.string("device", out);
+    let install = o.opt_string("install", out);
+    o.finish(out);
+    Some(Simulator {
+        device: device?,
+        install,
     })
 }
 

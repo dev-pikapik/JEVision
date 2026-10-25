@@ -22,6 +22,7 @@ mod report;
 mod run;
 mod saved;
 mod screen;
+mod simulator;
 mod system;
 mod usage;
 mod words;
@@ -63,6 +64,10 @@ pub use saved::{PruneSummary, preview_prune_runs, prune_runs};
 pub use screen::{
     ScreenHolder, ScreenLock, default_screen_lock, describe_screen_holder,
     describe_screen_holder_in,
+};
+pub use simulator::{
+    SIMULATOR_APP, Simctl, SimulatorApp, SimulatorDevice, SimulatorHands, Xcrun, installed_apps,
+    pick_device, simulator_apps, simulator_devices,
 };
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,

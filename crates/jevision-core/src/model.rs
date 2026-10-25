@@ -29,6 +29,9 @@ pub struct Flow {
     pub icon: Option<String>,
     /// Bundle identifier of the application under test, e.g. `com.apple.TextEdit`.
     pub app: String,
+    /// The iOS Simulator device the application runs in; without it, the application runs on
+    /// this Mac.
+    pub simulator: Option<Simulator>,
     pub test_type: Option<TestType>,
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
@@ -62,6 +65,21 @@ pub struct Flow {
     /// How the test is drawn; changes nothing in how it runs.
     #[cfg_attr(test, schemars(default))]
     pub canvas: CanvasContent,
+}
+
+/// An iOS Simulator device that runs the application under test. Tests act on the device's
+/// screen as it shows in the Simulator window, and look at it as the device draws it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
+pub struct Simulator {
+    /// The device as Xcode lists it, like `iPhone 17`, or its identifier (UDID). Of devices with
+    /// the same name, one already started is used, else the one with the newest iOS.
+    pub device: String,
+    /// The app build (a `.app` folder) installed on the device before the application starts:
+    /// relative to the test file's folder or absolute, and may contain placeholders such as
+    /// `${env.NAME}`. Without it, the application must be installed already.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub install: Option<String>,
 }
 
 /// The drawing of a test on the editor canvas: blocks placed by hand, section frames and sticky
@@ -282,9 +300,11 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
-    /// Opens files or web addresses, each file from a fresh copy so the original stays intact.
+    /// Opens files, web addresses or links into apps, each file from a fresh copy so the
+    /// original stays intact.
     OpenFile {
-        /// Relative file paths or `http(s)://` addresses.
+        /// Relative file paths, `http(s)://` addresses, or links of a scheme an app registered,
+        /// like `myapp://inbox` (these need format 3).
         #[cfg_attr(test, schemars(transform = crate::schema::path_or_label))]
         files: Vec<String>,
         /// Bundle id; without it, each file opens in its default application.
@@ -1433,6 +1453,9 @@ impl Serialize for Flow {
             map.serialize_entry("icon", icon)?;
         }
         map.serialize_entry("app", &self.app)?;
+        if let Some(simulator) = &self.simulator {
+            map.serialize_entry("simulator", simulator)?;
+        }
         if let Some(t) = &self.test_type {
             map.serialize_entry("testType", t)?;
         }

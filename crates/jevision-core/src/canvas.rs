@@ -364,6 +364,7 @@ impl Flow {
             description: None,
             icon: None,
             app: self.app.clone(),
+            simulator: self.simulator.clone(),
             test_type: None,
             priority: None,
             status: None,

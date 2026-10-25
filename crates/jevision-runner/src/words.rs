@@ -184,7 +184,9 @@ pub fn phrase(lang: &str, f: &Failure) -> Phrase {
         "run.data.noRow" => Phrase::new(key, &[block, p("file"), p("rows"), p("row")]),
         "run.data.unreadable" => Phrase::new(key, &[block, p("file"), &data_problem(lang, f)]),
         "run.data.unknownColumn" => Phrase::new(key, &[block, p("column")]),
-        "run.runTest.recursion" => Phrase::new(key, &[block, p("test")]),
+        "run.runTest.recursion" | "run.runTest.otherDevice" => {
+            Phrase::new(key, &[block, p("test")])
+        }
         "run.io.writeFailed" => Phrase::new(key, &[p("path"), reason()]),
         "run.hands.permissionDenied" => {
             Phrase::new(key, &[&permission_name(lang, p("permission"))])

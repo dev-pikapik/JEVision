@@ -482,6 +482,7 @@ pub(crate) fn run(
         .map(|p| NamedJudge::new(finder(&options), p));
     let runner = Runner {
         hands: &hands,
+        simctl: &jevision_runner::Xcrun,
         secrets: &secrets,
         events,
         control,

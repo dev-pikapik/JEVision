@@ -144,10 +144,18 @@ struct InspectorView: View {
           arguments: arguments, environment: environment, next: next)
       }
       Section {
-        LabeledContent("App") {
-          AppPicker(
-            bundleID: bind("app", app) { make($0, resetState, windowSize, windowPosition) },
-            noneTitle: Text("The app under test (\(AppCatalog.shared.name(of: flow.app)))"))
+        if let device = flow.simulator?.device {
+          let openApp = bind("app", app) { make($0, resetState, windowSize, windowPosition) }
+          SimulatedAppField(
+            device: device, value: app ?? "", prompt: Text(verbatim: flow.app),
+            missing: Text("Not on \(device).")
+          ) { openApp.wrappedValue = $0.isEmpty || $0 == flow.app ? nil : $0 }
+        } else {
+          LabeledContent("App") {
+            AppPicker(
+              bundleID: bind("app", app) { make($0, resetState, windowSize, windowPosition) },
+              noneTitle: Text("The app under test (\(AppCatalog.shared.name(of: flow.app)))"))
+          }
         }
         IssueList(issues: context.issues("app"))
         Toggle("Start Fresh", isOn: bind("resetState", resetState) { make(app, $0, windowSize, windowPosition) })
