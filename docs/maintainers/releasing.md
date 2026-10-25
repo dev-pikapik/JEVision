@@ -285,8 +285,10 @@ Use a key pair of its own for the bench, never the release key. The script build
 `update-probe.swift` that the beta is offered the release with its notes in English and in Russian
 and its data format, that the release isn't offered itself or the older beta, that the beta channel
 is used only when it is turned on, and that a feed that was changed, isn't signed or is signed with
-another key is refused. It doesn't open JEVision; at the end it prints how to try the update window
-by hand and how to stop the server. Everything goes to `build/update-e2e/`.
+another key is refused. It doesn't open JEVision. It preserves the normal app build and stops its temporary server when
+the checks end. It prints instructions for manual installation checks in a separate macOS
+account, where the test copies cannot change the installed app's settings. Everything goes to
+`build/update-e2e/`.
 
 The test copies read the feed from `JEVISION_UPDATE_FEED`. The app takes that address from the
 environment it was opened with, only when it is an `http` or `https` address, and never stores it.

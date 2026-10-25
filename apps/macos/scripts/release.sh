@@ -81,7 +81,7 @@ echo "==> Building the core (release, from the locked sources)"
 rm -rf "$ROOT/build/apple"
 PROFILE=release ../../scripts/build-core-apple.sh
 echo "==> Building and signing the app"
-scripts/build.sh
+JEVISION_BUILD_OUTPUT=build scripts/build.sh
 
 APP=build/JEVision.app
 PLIST=$APP/Contents/Info.plist

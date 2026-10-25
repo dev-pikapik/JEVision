@@ -3,6 +3,7 @@
 # Contents/Helpers (not Contents/MacOS: on a case-insensitive disk "jevision" is "JEVision").
 #   ARCHS="arm64"          build for one architecture (default: arm64 x86_64)
 #   SIGN_IDENTITY="Name"   sign with a certificate (default: ad-hoc)
+#   JEVISION_BUILD_OUTPUT=build/check   use a separate generated output folder
 #   BUILD_NUMBER=42        CFBundleVersion (default: the number of commits, see scripts/version.sh)
 #   SPARKLE_PUBLIC_ED_KEY  public key of update feeds and archives; without it the app never looks for updates
 #   JEVISION_VERSION       another version, for the update test bench only (see scripts/version.sh)
@@ -16,7 +17,16 @@ if ! xcrun --find xcstringstool >/dev/null 2>&1; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
 
-APP=build/JEVision.app
+BUILD_OUTPUT=${JEVISION_BUILD_OUTPUT:-build}
+if [[ $BUILD_OUTPUT != build && ! $BUILD_OUTPUT =~ ^build/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+  echo "JEVISION_BUILD_OUTPUT must be build or one named folder directly inside build." >&2
+  exit 2
+fi
+if [[ $BUILD_OUTPUT == *.[aA][pP][pP] ]]; then
+  echo "JEVISION_BUILD_OUTPUT must not name an app bundle." >&2
+  exit 2
+fi
+APP=$BUILD_OUTPUT/JEVision.app
 MIN_OS=26.0
 ARCHS=${ARCHS:-arm64 x86_64}
 
@@ -36,8 +46,8 @@ SPARKLE=.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64
 VERSION=$("$ROOT/scripts/version.sh" version)
 BUILD_NUMBER=$("$ROOT/scripts/version.sh" build)
 
-rm -rf build
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Frameworks" "$APP/Contents/Resources" build/strings
+rm -rf "$BUILD_OUTPUT"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Frameworks" "$APP/Contents/Resources" ${BUILD_OUTPUT}/strings
 
 SOURCES=()
 while IFS= read -r -d '' f; do SOURCES+=("$f"); done < <(find Sources/JEVision -name '*.swift' -print0)
@@ -48,10 +58,10 @@ while IFS= read -r -d '' f; do CLI+=("$f"); done < <(find Sources/JEVisionCLI -n
 
 BINARIES=()
 TOOLS=()
-EMIT=(-Xfrontend -emit-localized-strings -Xfrontend -emit-localized-strings-path -Xfrontend build/strings)
+EMIT=(-Xfrontend -emit-localized-strings -Xfrontend -emit-localized-strings-path -Xfrontend ${BUILD_OUTPUT}/strings)
 for ARCH in $ARCHS; do
   echo "Building $ARCH"
-  MODULES=build/modules-$ARCH
+  MODULES=${BUILD_OUTPUT}/modules-$ARCH
   mkdir -p "$MODULES"
   swiftc -O -g -whole-module-optimization -parse-as-library \
     -swift-version 6 -warnings-as-errors \
@@ -80,8 +90,8 @@ for ARCH in $ARCHS; do
     -emit-executable -emit-module-path "$MODULES/JEVision.swiftmodule" \
     ${EMIT[@]+"${EMIT[@]}"} \
     "${SOURCES[@]}" \
-    -o "build/JEVision-$ARCH"
-  BINARIES+=("build/JEVision-$ARCH")
+    -o "${BUILD_OUTPUT}/JEVision-$ARCH"
+  BINARIES+=("${BUILD_OUTPUT}/JEVision-$ARCH")
   EMIT=()
   swiftc -O -g -whole-module-optimization -parse-as-library \
     -swift-version 6 -warnings-as-errors \
@@ -91,34 +101,34 @@ for ARCH in $ARCHS; do
     -L "$MODULES" -lJEVisionHands -lJEVisionCore -L "$FFI" -ljevision_ffi -framework SystemConfiguration \
     -emit-executable -emit-module-path "$MODULES/JEVisionCLI.swiftmodule" \
     "${CLI[@]}" \
-    -o "build/cli-$ARCH"
-  TOOLS+=("build/cli-$ARCH")
+    -o "${BUILD_OUTPUT}/cli-$ARCH"
+  TOOLS+=("${BUILD_OUTPUT}/cli-$ARCH")
 done
 lipo -create "${BINARIES[@]}" -output "$APP/Contents/MacOS/JEVision"
 lipo -create "${TOOLS[@]}" -output "$APP/Contents/Helpers/jevision"
 
 # swiftc wrote a dSYM next to every per-architecture binary. Each product gets one dSYM with all
-# architectures in build/dSYMs (release.sh archives them to symbolicate crash reports), and the
+# architectures in ${BUILD_OUTPUT}/dSYMs (release.sh archives them to symbolicate crash reports), and the
 # shipped binaries lose their debug map, which only names temporary files. The dSYM matches its
 # binary by UUID, which stripping and signing keep.
 merge_dsym() { # thin binary prefix, dSYM name, binary name
-  local dwarf=build/dSYMs/$2.dSYM/Contents/Resources/DWARF slices=() first=
+  local dwarf=${BUILD_OUTPUT}/dSYMs/$2.dSYM/Contents/Resources/DWARF slices=() first=
   for ARCH in $ARCHS; do
-    slices+=("build/$1-$ARCH.dSYM/Contents/Resources/DWARF/$1-$ARCH")
-    first=${first:-build/$1-$ARCH.dSYM/Contents/Info.plist}
+    slices+=("${BUILD_OUTPUT}/$1-$ARCH.dSYM/Contents/Resources/DWARF/$1-$ARCH")
+    first=${first:-${BUILD_OUTPUT}/$1-$ARCH.dSYM/Contents/Info.plist}
   done
   mkdir -p "$dwarf"
   lipo -create "${slices[@]}" -output "$dwarf/$3"
-  cp "$first" "build/dSYMs/$2.dSYM/Contents/Info.plist"
-  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.apple.xcode.dsym.$2" "build/dSYMs/$2.dSYM/Contents/Info.plist"
+  cp "$first" "${BUILD_OUTPUT}/dSYMs/$2.dSYM/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.apple.xcode.dsym.$2" "${BUILD_OUTPUT}/dSYMs/$2.dSYM/Contents/Info.plist"
 }
 merge_dsym JEVision JEVision.app JEVision
 merge_dsym cli jevision jevision
 strip -S "$APP/Contents/MacOS/JEVision" "$APP/Contents/Helpers/jevision"
-rm -r "${BINARIES[@]}" "${TOOLS[@]}" build/*.dSYM build/modules-*
+rm -r "${BINARIES[@]}" "${TOOLS[@]}" ${BUILD_OUTPUT}/*.dSYM ${BUILD_OUTPUT}/modules-*
 
-python3 scripts/check-localization.py build/strings
-rm -rf build/strings
+python3 scripts/check-localization.py ${BUILD_OUTPUT}/strings
+rm -rf ${BUILD_OUTPUT}/strings
 
 cp Resources/Info.plist "$APP/Contents/"
 PLIST="$APP/Contents/Info.plist"
@@ -165,12 +175,12 @@ SPARKLE_CODE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
 "${SIGN[@]}" --identifier io.github.dev-pikapik.jevision.cli "$APP/Contents/Helpers/jevision"
 # The app's one entitlement: AppleScript blocks send Apple events to other apps, which the hardened
 # runtime blocks without it (the system still asks the user once per target app).
-cp Resources/JEVision.entitlements build/app.entitlements
+cp Resources/JEVision.entitlements ${BUILD_OUTPUT}/app.entitlements
 if [ -z "${SIGN_IDENTITY:-}" ]; then
   # Library validation wants the app and Sparkle from one team, and ad-hoc code has none.
-  /usr/libexec/PlistBuddy -c "Add :com.apple.security.cs.disable-library-validation bool true" build/app.entitlements >/dev/null
+  /usr/libexec/PlistBuddy -c "Add :com.apple.security.cs.disable-library-validation bool true" ${BUILD_OUTPUT}/app.entitlements >/dev/null
 fi
-"${SIGN[@]}" --entitlements build/app.entitlements "$APP"
-rm build/app.entitlements
+"${SIGN[@]}" --entitlements ${BUILD_OUTPUT}/app.entitlements "$APP"
+rm ${BUILD_OUTPUT}/app.entitlements
 codesign --verify --deep --strict "$APP"
 echo "Built $PWD/$APP"
