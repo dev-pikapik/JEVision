@@ -141,7 +141,16 @@ jobs:
           print(sorted(phones, key=lambda d: d["name"])[0]["udid"])')
           xcodebuild test -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
             -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build/ios \
+            -resultBundlePath build/ios-tests.xcresult \
             -only-testing:JEVisionRemoteTests CODE_SIGNING_ALLOWED=NO
+      # The log names a failed test but not why; the result bundle holds the reason and pictures.
+      - name: Keep the test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-test-results
+          path: build/ios-tests.xcresult
+          if-no-files-found: ignore
       - name: The app carries the version of the core
         run: |
           plist=build/ios/Build/Products/Debug-iphonesimulator/JEVisionRemote.app/Info.plist
