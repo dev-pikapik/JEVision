@@ -217,7 +217,7 @@ struct ProjectView: View {
   private var testList: some View {
     @Bindable var project = project
     let shown = project.filtered(project.items)
-    let selection = Binding(get: { project.sidebarSelection }, set: project.selectSidebar)
+    let selection = Binding(get: { project.sidebarSelection }, set: { project.selectSidebar($0) })
     return List(selection: selection) {
       Section("Projects") {
         ForEach(listedProjects, id: \.path) { entry in

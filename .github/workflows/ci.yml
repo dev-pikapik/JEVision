@@ -141,7 +141,24 @@ jobs:
           print(sorted(phones, key=lambda d: d["name"])[0]["udid"])')
           xcodebuild test -project apps/ios/JEVisionRemote.xcodeproj -scheme JEVisionRemote \
             -destination "platform=iOS Simulator,id=$udid" -derivedDataPath build/ios \
+            -resultBundlePath build/ios/tests.xcresult \
             -only-testing:JEVisionRemoteTests CODE_SIGNING_ALLOWED=NO
+      # xcodebuild names a failing test but not what failed in it, so say it here and keep the
+      # results, with the pictures the tests attach, for a closer look.
+      - name: Why the simulator tests failed
+        if: failure()
+        run: |
+          xcrun xcresulttool get test-results summary --path build/ios/tests.xcresult --compact | python3 -c '
+          import json, sys
+          for failure in json.load(sys.stdin)["testFailures"]:
+              print(failure["testIdentifierString"] + ": " + failure["failureText"])'
+      - name: Keep the simulator test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-test-results
+          path: build/ios/tests.xcresult
+          if-no-files-found: ignore
       - name: The app carries the version of the core
         run: |
           plist=build/ios/Build/Products/Debug-iphonesimulator/JEVisionRemote.app/Info.plist

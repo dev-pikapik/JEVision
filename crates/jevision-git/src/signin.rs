@@ -12,12 +12,6 @@ use crate::github::{agent, text};
 pub const SITE: &str = "https://github.com";
 /// Enough to open pull requests and issues in private repositories, and to push.
 const SCOPES: &str = "repo";
-#[cfg(not(test))]
-const KEYCHAIN_SERVICE: &str = "JEVision GitHub";
-/// Tests keep their token apart from the developer's own sign-in.
-#[cfg(test)]
-const KEYCHAIN_SERVICE: &str = "JEVision GitHub Tests";
-const KEYCHAIN_ACCOUNT: &str = "github.com";
 
 /// The code the user enters on GitHub to let JEVision in.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,8 +187,14 @@ pub fn access_page(client_id: &str) -> String {
 pub(crate) mod keychain {
     use security_framework::passwords;
 
-    use super::{KEYCHAIN_ACCOUNT, KEYCHAIN_SERVICE};
     use crate::GitError;
+
+    #[cfg(not(test))]
+    const KEYCHAIN_SERVICE: &str = "JEVision GitHub";
+    /// Tests keep their token apart from the developer's own sign-in.
+    #[cfg(test)]
+    const KEYCHAIN_SERVICE: &str = "JEVision GitHub Tests";
+    const KEYCHAIN_ACCOUNT: &str = "github.com";
 
     /// The Keychain's "item not found".
     const NOT_FOUND: i32 = -25300;

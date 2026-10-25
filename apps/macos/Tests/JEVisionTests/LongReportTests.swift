@@ -14,10 +14,10 @@ import Testing
   private static func run() throws -> URL {
     let dir = FileManager.default.temporaryDirectory.appending(path: "jevision-long-report-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    let steps = (1...steps).map { seq in
+    let steps = (1...Self.steps).map { seq in
       """
       {"seq": \(seq), "test": "loop.flow.json", "block": "press-\(seq % 7)", "type": "pressKeys",
-       "status": "\(seq == steps ? "failed" : "passed")", "durationMs": 2}
+       "status": "\(seq == Self.steps ? "failed" : "passed")", "durationMs": 2}
       """
     }
     let report = """
