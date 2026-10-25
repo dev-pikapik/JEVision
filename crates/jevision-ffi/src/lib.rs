@@ -45,6 +45,7 @@ mod resources;
 mod run;
 mod schedule;
 mod signin;
+mod simulator;
 mod stats;
 mod synthetic;
 mod vision;
@@ -71,6 +72,7 @@ pub use remote::*;
 pub use resources::*;
 pub use run::*;
 pub use schedule::*;
+pub use simulator::*;
 pub use stats::*;
 pub use synthetic::*;
 

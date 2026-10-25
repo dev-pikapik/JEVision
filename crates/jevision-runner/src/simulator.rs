@@ -77,6 +77,8 @@ pub struct SimulatorDevice {
     pub booted: bool,
     /// Such as `com.apple.CoreSimulator.SimDeviceType.iPhone-17`.
     pub device_type: String,
+    /// The folder the device keeps its apps and files in.
+    pub data_path: PathBuf,
 }
 
 /// An app on a simulated device.
@@ -103,6 +105,8 @@ struct DeviceEntry {
     device_type_identifier: String,
     #[serde(default = "available")]
     is_available: bool,
+    #[serde(default)]
+    data_path: PathBuf,
 }
 
 fn available() -> bool {
@@ -133,6 +137,7 @@ pub fn simulator_devices(simctl: &dyn Simctl) -> Result<Vec<SimulatorDevice>, Ha
                         os: os.clone(),
                         booted: e.state == "Booted",
                         device_type: e.device_type_identifier,
+                        data_path: e.data_path,
                     }),
             )
         })
@@ -208,6 +213,46 @@ pub fn simulator_apps(simctl: &dyn Simctl, udid: &str) -> Result<Vec<SimulatorAp
         .collect();
     apps.sort_by(|a, b| b.user.cmp(&a.user).then_with(|| a.name.cmp(&b.name)));
     Ok(apps)
+}
+
+/// The apps a person installed on `device`, read from its folder, so they can be listed while it is
+/// off; `simctl listapps` answers only for a running device.
+pub fn installed_apps(device: &SimulatorDevice) -> Vec<SimulatorApp> {
+    let bundles = device.data_path.join("Containers/Bundle/Application");
+    let mut apps: Vec<SimulatorApp> = std::fs::read_dir(bundles)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .flat_map(|container| {
+            std::fs::read_dir(container.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+        })
+        .filter(|entry| entry.path().extension().is_some_and(|e| e == "app"))
+        .filter_map(|entry| {
+            let info = plist::Value::from_file(entry.path().join("Info.plist")).ok()?;
+            let info = info.as_dictionary()?;
+            let text = |key: &str| {
+                info.get(key)
+                    .and_then(plist::Value::as_string)
+                    .filter(|t| !t.is_empty())
+            };
+            let bundle_id = text("CFBundleIdentifier")?.to_owned();
+            let name = text("CFBundleDisplayName")
+                .or_else(|| text("CFBundleName"))
+                .unwrap_or(&bundle_id)
+                .to_owned();
+            Some(SimulatorApp {
+                bundle_id,
+                name,
+                user: true,
+            })
+        })
+        .collect();
+    apps.sort_by(|a, b| a.name.cmp(&b.name));
+    apps.dedup_by(|a, b| a.bundle_id == b.bundle_id);
+    apps
 }
 
 #[derive(Deserialize)]
@@ -873,6 +918,54 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn apps_on_a_device_that_is_off_are_read_from_its_folder() {
+        let data = std::env::temp_dir().join(format!("jevision-sim-data-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        let app = |container: &str, folder: &str, info: &str| {
+            let dir = data
+                .join("Containers/Bundle/Application")
+                .join(container)
+                .join(folder);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("Info.plist"), info).unwrap();
+        };
+        let info = |keys: &str| {
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>{keys}</dict></plist>"#
+            )
+        };
+        app(
+            "A",
+            "Shop.app",
+            &info(
+                "<key>CFBundleIdentifier</key><string>com.example.Shop</string><key>CFBundleDisplayName</key><string>Shop</string>",
+            ),
+        );
+        app(
+            "B",
+            "Notes.app",
+            &info("<key>CFBundleIdentifier</key><string>com.example.Notes</string>"),
+        );
+        app("C", "Broken.app", &info(""));
+        let mut devices = simulator_devices(&Answers(vec![("list devices", DEVICES)])).unwrap();
+        devices[0].data_path = data.clone();
+        let apps = installed_apps(&devices[0]);
+        std::fs::remove_dir_all(&data).unwrap();
+        let shown: Vec<(&str, &str)> = apps
+            .iter()
+            .map(|a| (a.bundle_id.as_str(), a.name.as_str()))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                ("com.example.Shop", "Shop"),
+                ("com.example.Notes", "com.example.Notes")
+            ]
+        );
+        assert!(installed_apps(&devices[1]).is_empty());
     }
 
     #[test]

@@ -66,8 +66,8 @@ pub use screen::{
     describe_screen_holder_in,
 };
 pub use simulator::{
-    SIMULATOR_APP, Simctl, SimulatorApp, SimulatorDevice, SimulatorHands, Xcrun, pick_device,
-    simulator_apps, simulator_devices,
+    SIMULATOR_APP, Simctl, SimulatorApp, SimulatorDevice, SimulatorHands, Xcrun, installed_apps,
+    pick_device, simulator_apps, simulator_devices,
 };
 pub use usage::{
     DaySpend, Limit, LimitState, Price, ProviderSpend, Spend, UsageBook, UsageRecord, UsageSummary,
