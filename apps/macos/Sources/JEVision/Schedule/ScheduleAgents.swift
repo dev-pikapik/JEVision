@@ -78,7 +78,7 @@ struct ScheduleAgents {
       throw Failure(errorDescription: String(localized: "Schedules don’t run in a separate profile."))
     }
     try checkPreferences()
-    try checkExistingFile(for: project)
+    let wasInstalled = try checkExistingFile(for: project)
     guard let agent = try agent(for: project, schedules: schedules) else { return try removeUnlocked(project) }
     guard tool.unavailableReason == nil else {
       throw Failure(errorDescription: String(localized: "This copy of JEVision can’t run tests on a schedule."))
@@ -98,6 +98,10 @@ struct ScheduleAgents {
         errorDescription: String(localized: "macOS was still stopping the previous version of these schedules."))
     }
     try checkPreferences()
+    let stillInstalled = try checkExistingFile(for: project)
+    guard !wasInstalled || stillInstalled else {
+      throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: file.path])
+    }
     do {
       try agent.plist.write(to: file, atomically: true, encoding: .utf8)
       do {
@@ -114,7 +118,7 @@ struct ScheduleAgents {
     } catch {
       // The old job is gone or on its way out: without its file, the schedules read as not
       // running, rather than as running the old way.
-      try? FileManager.default.removeItem(at: file)
+      if managedProject(in: file) == Self.path(project) { try? FileManager.default.removeItem(at: file) }
       throw error
     }
   }
@@ -146,6 +150,7 @@ struct ScheduleAgents {
       throw Failure(errorDescription: String(localized: "macOS was still stopping the previous version of these schedules."))
     }
     try checkPreferences()
+    guard try checkExistingFile(for: project) else { return }
     try FileManager.default.removeItem(at: file)
   }
 
@@ -186,12 +191,14 @@ struct ScheduleAgents {
 
   private func service(for project: URL) -> String { "gui/\(getuid())/\(label(for: project))" }
 
-  private func checkExistingFile(for project: URL) throws {
+  @discardableResult
+  private func checkExistingFile(for project: URL) throws -> Bool {
     let file = file(for: project)
-    guard (try? FileManager.default.attributesOfItem(atPath: file.path)) != nil else { return }
+    guard (try? FileManager.default.attributesOfItem(atPath: file.path)) != nil else { return false }
     guard managedProject(in: file) == Self.path(project) else {
       throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: file.path])
     }
+    return true
   }
 
   /// Match both the command and the path-derived identity before reading or changing a job.

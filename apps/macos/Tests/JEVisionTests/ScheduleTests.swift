@@ -201,6 +201,7 @@ private final class FakeLaunchd: @unchecked Sendable {
   var refusals = 0
   /// launchctl was run on the main thread.
   var ranOnMain = false
+  var interveningWrite: (@Sendable (String) throws -> Void)?
   /// The jobs launchd has, with how many more times `print` finds each that is being taken out.
   private var jobs: [String: Int?] = [:]
   private let lock = NSLock()
@@ -221,6 +222,7 @@ private final class FakeLaunchd: @unchecked Sendable {
       let job = arguments[1] + "/" + URL(filePath: arguments[2]).deletingPathExtension().lastPathComponent
       guard refusals == 0, jobs[job] == nil else {
         refusals = max(0, refusals - 1)
+        try interveningWrite?("bootstrap")
         throw Failure(errorDescription: "Bootstrap failed: 5: Input/output error")
       }
       jobs[job] = .some(nil)
@@ -232,6 +234,7 @@ private final class FakeLaunchd: @unchecked Sendable {
       guard let leaving else { return }
       guard leaving > 0 else {
         jobs[arguments[1]] = nil
+        try interveningWrite?("gone")
         throw Failure()
       }
       jobs[arguments[1]] = leaving - 1
@@ -476,6 +479,52 @@ struct ScheduleAgentsTests {
     #expect(agents.reconcile().isEmpty)
     #expect(agents.state(of: project, schedules: schedules) == (false, false))
     #expect(calls.list.isEmpty)
+    #expect(try Data(contentsOf: file) == bytes)
+  }
+
+  @Test(arguments: [false, true])
+  func aJobFileChangedWhileMacOSStopsIsNeverOverwrittenOrDeleted(removing: Bool) throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    try agents.install(project, schedules: [daily("Nightly", at: 3, 0)])
+    let file = agents.file(for: project)
+    var foreign = try #require(PropertyListSerialization.propertyList(from: Data(contentsOf: file), format: nil) as? [String: Any])
+    foreign["ProgramArguments"] = ["/bin/echo", "belongs to someone else"]
+    let bytes = try PropertyListSerialization.data(fromPropertyList: foreign, format: .xml, options: 0)
+    calls.interveningWrite = { phase in if phase == "gone" { try bytes.write(to: file, options: .atomic) } }
+    calls.list = []
+    #expect(throws: CocoaError.self) {
+      if removing { try agents.remove(project) }
+      else { try agents.install(project, schedules: [daily("Nightly", at: 4, 0)]) }
+    }
+    #expect(try Data(contentsOf: file) == bytes)
+    #expect(!calls.list.contains { $0.first == "bootstrap" })
+  }
+
+  @Test func deletingTheJobFileDuringStopCancelsItsReplacement() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    try agents.install(project, schedules: [daily("Nightly", at: 3, 0)])
+    let file = agents.file(for: project)
+    calls.interveningWrite = { phase in if phase == "gone" { try FileManager.default.removeItem(at: file) } }
+    calls.list = []
+    #expect(throws: CocoaError.self) { try agents.install(project, schedules: [daily("Nightly", at: 4, 0)]) }
+    #expect(!FileManager.default.fileExists(atPath: file.path))
+    #expect(!calls.list.contains { $0.first == "bootstrap" })
+  }
+
+  @Test func aBootstrapFailureCannotDeleteAFileAnotherProcessReplaced() throws {
+    let calls = FakeLaunchd()
+    let agents = try agents(in: try scratch(), calls: calls)
+    let project = try scratch()
+    try agents.install(project, schedules: [daily("Nightly", at: 3, 0)])
+    let file = agents.file(for: project)
+    let bytes = Data("This file was replaced while launchd was answering.".utf8)
+    calls.refusals = 1
+    calls.interveningWrite = { phase in if phase == "bootstrap" { try bytes.write(to: file, options: .atomic) } }
+    #expect(throws: ScheduleAgents.Failure.self) { try agents.install(project, schedules: [daily("Nightly", at: 4, 0)]) }
     #expect(try Data(contentsOf: file) == bytes)
   }
 
