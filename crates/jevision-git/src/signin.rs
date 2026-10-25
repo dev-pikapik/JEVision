@@ -12,11 +12,12 @@ use crate::github::{agent, text};
 pub const SITE: &str = "https://github.com";
 /// Enough to open pull requests and issues in private repositories, and to push.
 const SCOPES: &str = "repo";
-#[cfg(not(test))]
+#[cfg(all(target_os = "macos", not(test)))]
 const KEYCHAIN_SERVICE: &str = "JEVision GitHub";
 /// Tests keep their token apart from the developer's own sign-in.
-#[cfg(test)]
+#[cfg(all(target_os = "macos", test))]
 const KEYCHAIN_SERVICE: &str = "JEVision GitHub Tests";
+#[cfg(target_os = "macos")]
 const KEYCHAIN_ACCOUNT: &str = "github.com";
 
 /// The code the user enters on GitHub to let JEVision in.
