@@ -25,6 +25,8 @@ protocol MacSession: AnyObject, Sendable {
   /// index into `TestFlow.rows`; `nil` runs every row.
   func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String
   func stopRun(project: String, run: String) async throws(RemoteError)
+  /// Makes `edit` on the test as read at `revision`; `.testChanged` when it changed since.
+  func editTest(project: String, path: String, revision: String, edit: TestEdit) async throws(RemoteError) -> EditedTest
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus
   /// The run as it happens: the full status first, then events. The stream ends after the run
   /// finishes and throws a `RemoteError` if the connection drops.
@@ -53,6 +55,16 @@ enum RemoteError: Error, Hashable, Sendable {
   case revoked
   /// The test's data table no longer has the chosen row.
   case dataRowNotFound
+  /// The test changed on the Mac since it was read here.
+  case testChanged
+  /// The test is open on the Mac with a change not saved yet.
+  case testBusyOnMac
+  /// The Mac doesn't take the value or the change.
+  case editInvalid
+  /// The change needs a question answered at the Mac first.
+  case editNeedsMac
+  /// More than the Mac takes from a phone, or sends to one.
+  case tooLarge
   /// This app is too old for the Mac or its pairing code. `version` is the Mac's JEVision, when
   /// the Mac told it.
   case updateApp(version: String?)

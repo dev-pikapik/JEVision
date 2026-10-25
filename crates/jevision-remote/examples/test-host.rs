@@ -189,6 +189,13 @@ impl HostDelegate for Player {
         Ok(())
     }
 
+    /// Nothing here holds a test open, so a phone that may edit always can.
+    fn can_edit(&self, _project_root: String, _test: String) -> Result<(), RemoteError> {
+        Ok(())
+    }
+
+    fn test_edited(&self, _project_root: String, _test: String) {}
+
     fn run_status(&self, _project_root: String, run: String) -> Option<RunStatus> {
         self.runs.lock().unwrap().get(&run).cloned()
     }

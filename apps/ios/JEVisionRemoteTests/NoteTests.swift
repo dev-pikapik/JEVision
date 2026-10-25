@@ -58,7 +58,8 @@ struct NoteMappingTests {
   @Test func aTestCarriesItsNotesAndOldMacsSendNone() {
     let with = JEVisionMobile.TestSummary(
       name: "Sign in", description: nil, priority: nil, testType: nil, status: nil, author: nil, app: "com.example.app", start: "open",
-      width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [summary()])
+      width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [summary()], revision: "",
+      palette: [])
     #expect(TestFlow(with).notes.map(\.id) == ["n"])
     var without = with
     without.notes = []

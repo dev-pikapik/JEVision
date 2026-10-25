@@ -32,6 +32,8 @@ mod wire;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "host")]
+mod edit;
+#[cfg(feature = "host")]
 mod host;
 #[cfg(feature = "host")]
 mod project;
@@ -55,10 +57,10 @@ pub use project::running_title;
 #[cfg(feature = "host")]
 pub use store::{Activity, ActivityKind, Device, DeviceKind};
 pub use wire::{
-    Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, NoteAttachmentSummary,
-    NoteReplySummary, NoteResolvedSummary, NoteSummary, PauseReason, Position, ProjectInfo,
-    RunEvent, RunList, RunState, RunStatus, RunSummary, RunUpdate, ScreenHolder, ScreenWait,
-    TestEntry, TestSummary,
+    Area, BlockField, BlockSummary, EdgeSummary, FieldKind, FrameSummary, LastRun,
+    NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary, PaletteEntry,
+    PauseReason, Position, Problem, ProjectInfo, RunEvent, RunList, RunState, RunStatus,
+    RunSummary, RunUpdate, ScreenHolder, ScreenWait, TestEdit, TestEntry, TestSummary,
 };
 
 /// The protocol spoken between the Mac and the phone.
@@ -73,15 +75,33 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// What a paired phone may do. Every request is checked against the device's current level,
 /// so a change on the Mac applies to the next request.
+///
+/// The welcome a phone gets writes `Edit` as `run` with `"edit": true`, so a phone that
+/// predates editing still runs tests. `devices.json` writes it as `edit`, which a Mac that
+/// predates editing reads as `View`: going back to an older Mac never gives a phone more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Permission {
+    /// Everything `Run` allows, plus changing tests: their name, blocks and block settings.
+    Edit,
     /// Everything `View` allows, plus starting and stopping runs.
     Run,
     /// List projects and tests, look at tests, runs, reports and pictures. A level from a newer
     /// Mac reads as this one, the least.
     #[serde(other)]
     View,
+}
+
+impl Permission {
+    /// Whether this level covers everything `needed` does.
+    pub fn allows(self, needed: Permission) -> bool {
+        let rank = |p| match p {
+            Self::View => 0,
+            Self::Run => 1,
+            Self::Edit => 2,
+        };
+        rank(self) >= rank(needed)
+    }
 }
 
 /// Why something didn't happen, as a stable code shared by the Mac and the phone.
@@ -151,6 +171,15 @@ pub enum RemoteError {
     Unsupported,
     /// The list of paired devices was saved by a newer JEVision, so this one cannot change it.
     DevicesFromNewer,
+    /// The test changed on the Mac since the phone read it, so its change was not made.
+    TestChanged,
+    /// The test is open on the Mac with a change not saved yet.
+    TestBusyOnMac,
+    /// The change doesn't fit the test, such as text where a number goes.
+    EditInvalid,
+    /// The change needs a newer format of test files than the project has, which only the
+    /// Mac can agree to.
+    EditNeedsMac,
     /// A code from a newer JEVision.
     #[serde(other)]
     Unknown,
@@ -198,6 +227,10 @@ impl RemoteError {
             Self::MacTooOld => "remote.error.macTooOld",
             Self::Unsupported => "remote.error.unsupported",
             Self::DevicesFromNewer => "remote.error.devicesFromNewer",
+            Self::TestChanged => "remote.error.testChanged",
+            Self::TestBusyOnMac => "remote.error.testBusyOnMac",
+            Self::EditInvalid => "remote.error.editInvalid",
+            Self::EditNeedsMac => "remote.error.editNeedsMac",
             Self::Unknown => "remote.error.unknown",
         }
     }

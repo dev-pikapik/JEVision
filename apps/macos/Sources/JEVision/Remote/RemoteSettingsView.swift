@@ -137,6 +137,7 @@ struct RemoteSettingsView: View {
         }
         .padding(.vertical, 6)
         Picker("The next device can", selection: Bindable(remote).nextPermission) {
+          Text("Can edit tests").tag(DevicePermission.edit)
           Text("Can run tests").tag(DevicePermission.run)
           Text("View only").tag(DevicePermission.view)
         }
@@ -237,6 +238,7 @@ struct RemoteSettingsView: View {
                 "Permission",
                 selection: Binding(get: { device.permission }, set: { remote.setPermission($0, of: device) })
               ) {
+                Text("Can edit tests").tag(DevicePermission.edit)
                 Text("Can run tests").tag(DevicePermission.run)
                 Text("View only").tag(DevicePermission.view)
               }

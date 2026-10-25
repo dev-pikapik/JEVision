@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// A test drawn the way the Mac editor lays it out, read-only, scaled to fit the width.
+/// A test drawn the way the Mac editor lays it out, scaled to fit the width. With `select`,
+/// tapping a block hands it over to be edited.
 struct FlowView: View {
   let flow: TestFlow
   var marks: [String: StepStatus] = [:]
   var current: String?
   var maxHeight: CGFloat = .infinity
+  var select: ((TestFlow.Block) -> Void)?
   @State private var width: CGFloat = 0
   @State private var hidesResolved = false
   @State private var openNote: TestNote?
@@ -58,9 +60,19 @@ struct FlowView: View {
       }
       ForEach(Array(steps.enumerated()), id: \.element.id) { index, block in
         if let area = block.area {
-          BlockCard(block: block, mark: marks[block.id], isCurrent: current == block.id, step: index + 1, steps: steps.count)
-            .frame(width: area.width, height: area.height)
-            .offset(x: area.minX, y: area.minY)
+          Group {
+            let card = BlockCard(block: block, mark: marks[block.id], isCurrent: current == block.id, step: index + 1, steps: steps.count)
+            if let select {
+              Button { select(block) } label: { card }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the block’s settings")
+                .accessibilityIdentifier("block.\(block.id)")
+            } else {
+              card
+            }
+          }
+          .frame(width: area.width, height: area.height)
+          .offset(x: area.minX, y: area.minY)
         }
       }
       ForEach(notes) { note in
@@ -186,6 +198,13 @@ private struct BlockCard: View {
           .font(.system(size: 18))
           .background(Circle().fill(.background).padding(2))
           .offset(x: 7, y: -7)
+      } else if let problem = block.problems.first {
+        let worst = block.problems.first { !$0.warning } ?? problem
+        Image(systemName: worst.warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill")
+          .font(.system(size: 16))
+          .foregroundStyle(worst.warning ? .yellow : .red)
+          .background(Circle().fill(.background).padding(2))
+          .offset(x: 7, y: -7)
       }
     }
     .shadow(color: isCurrent ? .orange.opacity(0.45) : .black.opacity(0.08), radius: isCurrent ? 10 : 3, y: 1)
@@ -198,7 +217,8 @@ private struct BlockCard: View {
 
   private var value: String {
     if isCurrent { return String(localized: "Running now") }
-    return mark.map { VerdictStyle($0).title } ?? ""
+    if let mark { return VerdictStyle(mark).title }
+    return block.problems.isEmpty ? "" : String(localized: "Has problems")
   }
 }
 

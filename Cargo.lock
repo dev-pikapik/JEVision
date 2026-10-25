@@ -1819,6 +1819,7 @@ dependencies = [
 name = "jevision-mobile"
 version = "1.0.0"
 dependencies = [
+ "jevision-core",
  "jevision-l10n",
  "jevision-remote",
  "jevision-runner",

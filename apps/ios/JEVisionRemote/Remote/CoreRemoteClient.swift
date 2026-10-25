@@ -53,6 +53,7 @@ final class CoreMacSession: MacSession {
     switch connection.permission() {
     case .view: .view
     case .run: .run
+    case .edit: .edit
     }
   }
 
@@ -74,6 +75,13 @@ final class CoreMacSession: MacSession {
 
   func stopRun(project: String, run: String) async throws(RemoteError) {
     try await core(hostId) { try await connection.stopRun(project: project, run: run) }
+  }
+
+  func editTest(project: String, path: String, revision: String, edit: TestEdit) async throws(RemoteError) -> EditedTest {
+    try await core(hostId) {
+      let edited = try await connection.editTest(project: project, path: path, revision: revision, edit: JEVisionMobile.TestEdit(edit))
+      return EditedTest(flow: TestFlow(edited.test), select: edited.select)
+    }
   }
 
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus {
@@ -154,12 +162,17 @@ extension RemoteError {
     case .RunInProgress: self = .runInProgress
     case .DeclinedOnMac: self = .declinedOnMac
     case .DataRowNotFound: self = .dataRowNotFound
+    case .TestChanged: self = .testChanged
+    case .TestBusyOnMac: self = .testBusyOnMac
+    case .EditInvalid: self = .editInvalid
+    case .EditNeedsMac: self = .editNeedsMac
+    case .TooLarge: self = .tooLarge
     case .DeviceTooOld, .Unknown: self = .updateApp(version: hostId.flatMap { macAppVersion(hostId: $0) })
     case .MacTooOld, .Unsupported: self = .updateMac(version: appVersion())
     case .DevicesFromNewer: self = .updateMac(version: nil)
     case .HostOffline, .HostNotRunning, .Network: self = .macOffline
     case .BadSignature, .ProjectNotFound, .TestNotFound, .TestUnreadable, .RunNotFound, .PictureNotFound,
-      .PathOutsideProject, .TooLarge, .UnexpectedMessage, .InvalidSecretKey, .InvalidRelayUrl, .SignerFailed,
+      .PathOutsideProject, .UnexpectedMessage, .InvalidSecretKey, .InvalidRelayUrl, .SignerFailed,
       .Storage, .HostFailed:
       self = .other
     }
@@ -238,13 +251,44 @@ extension TestFlow {
     self.init(
       name: test.name, description: test.description, app: test.app, start: test.start,
       size: CGSize(width: test.width, height: test.height),
-      blocks: test.blocks.map { Block(id: $0.id, kind: $0.kind, title: $0.title, area: $0.area.map(CGRect.init)) },
+      blocks: test.blocks.map {
+        Block(
+          id: $0.id, kind: $0.kind, title: $0.title, area: $0.area.map(CGRect.init), fields: $0.fields.map(Field.init),
+          problems: $0.problems.map { Problem(code: $0.code, params: $0.params, warning: $0.warning) })
+      },
       frames: test.frames.map { Frame(block: $0.block, area: CGRect($0.area)) },
       edges: test.edges.map {
         Edge(from: $0.from, edge: $0.edge, to: $0.to, points: $0.points.map { CGPoint(x: $0.x, y: $0.y) })
       },
       rows: test.rows, priority: test.priority, testType: test.testType, status: test.status, author: test.author,
-      notes: test.notes.map(TestNote.init))
+      notes: test.notes.map(TestNote.init), revision: test.revision,
+      palette: test.palette.map { PaletteEntry(blockType: $0.blockType, group: $0.group) })
+  }
+}
+
+extension TestFlow.Field {
+  init(_ field: BlockField) {
+    let kind: TestFlow.FieldKind =
+      switch field.kind {
+      case .flag: .flag
+      case .number: .number
+      case .choice: .choice
+      case .duration: .duration
+      case .longText: .longText
+      case .text: .text
+      }
+    self.init(path: field.path, kind: kind, value: field.value, choices: field.choices)
+  }
+}
+
+extension JEVisionMobile.TestEdit {
+  init(_ edit: TestEdit) {
+    switch edit {
+    case .setField(let block, let field, let value): self = .setField(block: block, field: field, value: value)
+    case .addBlock(let after, let blockType): self = .addBlock(after: after, blockType: blockType)
+    case .removeBlock(let block): self = .removeBlock(block: block)
+    case .rename(let name): self = .rename(name: name)
+    }
   }
 }
 

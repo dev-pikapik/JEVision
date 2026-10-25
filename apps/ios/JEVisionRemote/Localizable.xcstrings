@@ -57,6 +57,56 @@
         }
       }
     },
+    "Actions" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действия"
+          }
+        }
+      }
+    },
+    "Add Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок"
+          }
+        }
+      }
+    },
+    "Add Block After" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок после"
+          }
+        }
+      }
+    },
+    "Add Block After This One" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок после этого"
+          }
+        }
+      }
+    },
+    "Add Block at the End" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить блок в конец"
+          }
+        }
+      }
+    },
     "After 1 Minute" : {
       "localizations" : {
         "ru" : {
@@ -87,6 +137,26 @@
         }
       }
     },
+    "Amount" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько"
+          }
+        }
+      }
+    },
+    "App" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение"
+          }
+        }
+      }
+    },
     "App Lock" : {
       "localizations" : {
         "ru" : {
@@ -103,6 +173,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Автор"
+          }
+        }
+      }
+    },
+    "Body" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тело"
+          }
+        }
+      }
+    },
+    "Button" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кнопка"
           }
         }
       }
@@ -173,12 +263,62 @@
         }
       }
     },
+    "Checks" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверки"
+          }
+        }
+      }
+    },
     "Click" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клик"
+          }
+        }
+      }
+    },
+    "Close after the test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть после теста"
+          }
+        }
+      }
+    },
+    "Code" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код"
+          }
+        }
+      }
+    },
+    "Command" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команда"
+          }
+        }
+      }
+    },
+    "Conditions and Loops" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Условия и циклы"
           }
         }
       }
@@ -233,12 +373,42 @@
         }
       }
     },
+    "Data and System" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Данные и система"
+          }
+        }
+      }
+    },
     "Declined on the Mac" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отклонено на Mac"
+          }
+        }
+      }
+    },
+    "Delete Block" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить блок"
+          }
+        }
+      }
+    },
+    "Delete this block?" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить этот блок?"
           }
         }
       }
@@ -253,12 +423,42 @@
         }
       }
     },
+    "Direction" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Направление"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Double-click" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Двойной клик"
+          }
+        }
+      }
+    },
+    "Down" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вниз"
           }
         }
       }
@@ -279,6 +479,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перетаскивание"
+          }
+        }
+      }
+    },
+    "Drag From" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откуда"
+          }
+        }
+      }
+    },
+    "Drop On" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность"
+          }
+        }
+      }
+    },
+    "Edit Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить тест"
           }
         }
       }
@@ -313,12 +553,62 @@
         }
       }
     },
+    "File" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файл"
+          }
+        }
+      }
+    },
+    "Find the element by a picture of the project or by words. Filling in one clears the other." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найдите элемент по картинке из проекта или по описанию словами. Если заполнить одно, другое очистится."
+          }
+        }
+      }
+    },
+    "Find the field by a picture of the project or by words, or leave both empty to type where the cursor is." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найдите поле по картинке из проекта или по описанию словами либо оставьте оба пустыми, чтобы вводить там, где стоит курсор."
+          }
+        }
+      }
+    },
     "Flaky" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нестабилен"
+          }
+        }
+      }
+    },
+    "Folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка"
+          }
+        }
+      }
+    },
+    "For example, 2s or 500ms" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Например, 2s или 500ms"
           }
         }
       }
@@ -339,6 +629,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Забыть «%@»?"
+          }
+        }
+      }
+    },
+    "Format" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат"
+          }
+        }
+      }
+    },
+    "Has problems" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Есть проблемы"
           }
         }
       }
@@ -383,6 +693,26 @@
         }
       }
     },
+    "In Words" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Словами"
+          }
+        }
+      }
+    },
+    "It’s more than the Mac sends to or takes from an iPhone. Make the text shorter, or do this on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это больше, чем Mac передаёт на iPhone или принимает от него. Сократите текст или сделайте это на Mac."
+          }
+        }
+      }
+    },
     "JEVision Is Locked" : {
       "localizations" : {
         "ru" : {
@@ -423,12 +753,52 @@
         }
       }
     },
+    "Keys" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиши"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Язык"
+          }
+        }
+      }
+    },
     "Last Runs" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Последние запуски"
+          }
+        }
+      }
+    },
+    "Left" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Левая"
+          }
+        }
+      }
+    },
+    "Lines" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Строки"
           }
         }
       }
@@ -483,12 +853,52 @@
         }
       }
     },
+    "Make This Change on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделайте это на Mac"
+          }
+        }
+      }
+    },
     "Medium" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Средняя"
+          }
+        }
+      }
+    },
+    "Method" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метод"
+          }
+        }
+      }
+    },
+    "Middle" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средняя"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название"
           }
         }
       }
@@ -653,6 +1063,26 @@
         }
       }
     },
+    "Open in a new copy of the app" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в новом экземпляре приложения"
+          }
+        }
+      }
+    },
+    "Opens the block’s settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает настройки блока"
+          }
+        }
+      }
+    },
     "Outdated" : {
       "localizations" : {
         "ru" : {
@@ -789,6 +1219,16 @@
         }
       }
     },
+    "Path" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Путь"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "ru" : {
@@ -805,6 +1245,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пауза на Mac"
+          }
+        }
+      }
+    },
+    "Picture" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Картинка"
+          }
+        }
+      }
+    },
+    "Pixels" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пиксели"
           }
         }
       }
@@ -839,6 +1299,26 @@
         }
       }
     },
+    "Problems" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проблемы"
+          }
+        }
+      }
+    },
+    "Query" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрос"
+          }
+        }
+      }
+    },
     "Ready" : {
       "localizations" : {
         "ru" : {
@@ -869,6 +1349,16 @@
         }
       }
     },
+    "Reference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эталон"
+          }
+        }
+      }
+    },
     "Regression" : {
       "localizations" : {
         "ru" : {
@@ -889,12 +1379,42 @@
         }
       }
     },
+    "Rename" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать"
+          }
+        }
+      }
+    },
+    "Rename Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать тест"
+          }
+        }
+      }
+    },
     "Repeat" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Повтор"
+          }
+        }
+      }
+    },
+    "Right" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правая"
           }
         }
       }
@@ -929,6 +1449,36 @@
         }
       }
     },
+    "Save" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить"
+          }
+        }
+      }
+    },
+    "Save to Variable" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить в переменную"
+          }
+        }
+      }
+    },
+    "Similarity" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сходство"
+          }
+        }
+      }
+    },
     "Smoke" : {
       "localizations" : {
         "ru" : {
@@ -939,12 +1489,112 @@
         }
       }
     },
+    "Someone changed it on the Mac while you were editing. The test now shows what the Mac has; make your change again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока вы редактировали, тест изменили на Mac. Теперь показан тест таким, какой он на Mac, — повторите изменение."
+          }
+        }
+      }
+    },
+    "Start Fresh" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить с нуля"
+          }
+        }
+      }
+    },
     "Status" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Состояние"
+          }
+        }
+      }
+    },
+    "Sub-Tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтесты"
+          }
+        }
+      }
+    },
+    "Target" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цель"
+          }
+        }
+      }
+    },
+    "Test" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест"
+          }
+        }
+      }
+    },
+    "Text" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст"
+          }
+        }
+      }
+    },
+    "The Mac can’t take this value or this change. Check what you entered and try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac не может принять это значение или это изменение. Проверьте, что вы ввели, и попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "The Mac doesn’t allow this iPhone to do that. To allow it, change this iPhone’s permission in JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac не разрешает этому iPhone так делать. Чтобы разрешить, измените доступ этого iPhone в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "The Test Changed on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест изменился на Mac"
+          }
+        }
+      }
+    },
+    "The Test Is Being Changed on the Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест меняют на Mac"
           }
         }
       }
@@ -981,6 +1631,16 @@
         }
       }
     },
+    "The name the test shows. Its file keeps its name." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название, под которым виден тест. Имя файла не меняется."
+          }
+        }
+      }
+    },
     "The test is in a state this app doesn’t know yet. Update JEVision Remote to see it." : {
       "localizations" : {
         "en" : {
@@ -993,6 +1653,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тест в состоянии, которое это приложение пока не знает. Обновите JEVision Remote, чтобы его увидеть."
+          }
+        }
+      }
+    },
+    "The test is open on the Mac with a change that isn’t saved yet. Finish that change on the Mac, then try again." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест открыт на Mac, и в нём есть несохранённое изменение. Закончите его на Mac и попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "This Change Doesn’t Work" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Так изменить не получится"
+          }
+        }
+      }
+    },
+    "This block has no settings to change from the iPhone. Change it in JEVision on the Mac." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У этого блока нет настроек, которые можно менять с iPhone. Измените его в JEVision на Mac."
+          }
+        }
+      }
+    },
+    "This change needs a question answered on the Mac. Open the test in JEVision on the Mac to make it." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для этого изменения нужно ответить на вопрос на Mac. Откройте тест в JEVision на Mac и сделайте его там."
           }
         }
       }
@@ -1093,12 +1793,92 @@
         }
       }
     },
+    "Time Zone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часовой пояс"
+          }
+        }
+      }
+    },
+    "Timeout" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тайм-аут"
+          }
+        }
+      }
+    },
+    "Times" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько раз"
+          }
+        }
+      }
+    },
+    "Too Much for the iPhone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Слишком много для iPhone"
+          }
+        }
+      }
+    },
     "Type" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Тип"
+          }
+        }
+      }
+    },
+    "Type Into" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Куда вводить"
+          }
+        }
+      }
+    },
+    "URL" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL"
+          }
+        }
+      }
+    },
+    "Unit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Единицы"
+          }
+        }
+      }
+    },
+    "Up" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вверх"
           }
         }
       }
@@ -1611,16 +2391,6 @@
         }
       }
     },
-    "This iPhone can only look at tests. To run them from here, allow it in JEVision on the Mac." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Этому iPhone можно только смотреть тесты. Чтобы запускать их отсюда, разрешите это в JEVision на Mac."
-          }
-        }
-      }
-    },
     "This iPhone couldn’t save the list of paired Macs. They’ll be forgotten when JEVision quits." : {
       "localizations" : {
         "ru" : {
@@ -1771,12 +2541,32 @@
         }
       }
     },
+    "Wait until the screen changes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ждать, пока экран изменится"
+          }
+        }
+      }
+    },
     "Wait until the test running on the Mac finishes, then try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Дождитесь окончания теста на Mac и попробуйте снова."
+          }
+        }
+      }
+    },
+    "Waiting" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидание"
           }
         }
       }
@@ -1797,6 +2587,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ждёт экран"
+          }
+        }
+      }
+    },
+    "What led to it will lead to the block after it. This can’t be undone." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "То, что вело к нему, будет вести к следующему блоку. Это нельзя отменить."
           }
         }
       }

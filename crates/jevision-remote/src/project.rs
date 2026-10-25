@@ -12,12 +12,12 @@ use jevision_core::{
 };
 use jevision_runner::{Run, RunReport};
 
-use crate::RemoteError;
 use crate::wire::{
     Area, BlockSummary, EdgeSummary, FrameSummary, LastRun, MAX_MESSAGE, MAX_PICTURE,
     NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary, Position, RunState,
     RunStatus, RunSummary, TestEntry, TestSummary, bounded_notes,
 };
+use crate::{RemoteError, edit};
 
 const TEST_SUFFIX: &str = ".flow.json";
 
@@ -132,7 +132,8 @@ pub(crate) fn tests(root: &Path) -> Result<Vec<TestEntry>, RemoteError> {
 
 /// The test at `path` as the phone draws it.
 pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteError> {
-    let (file, flow) = read_test(root, path)?;
+    let (file, text, flow) = read_test(root, path)?;
+    let mut problems = edit::problems(&flow, file.parent().unwrap_or(root));
     let layout = jevision_core::layout(&flow);
     let area = |r: jevision_core::Rect| Area {
         x: r.x,
@@ -152,6 +153,8 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
                 .iter()
                 .find(|laid| laid.id == block.id)
                 .map(|laid| area(laid.rect)),
+            fields: edit::fields(&block.kind),
+            problems: problems.remove(&block.id).unwrap_or_default(),
         })
         .collect();
     Ok(TestSummary {
@@ -190,6 +193,8 @@ pub(crate) fn summary(root: &Path, path: &str) -> Result<TestSummary, RemoteErro
             .collect(),
         rows: row_labels(root, &file, &flow),
         notes: bounded_notes(flow.canvas.notes.iter().map(note_summary).collect()),
+        revision: edit::revision(&text),
+        palette: edit::palette(),
     })
 }
 
@@ -253,18 +258,22 @@ fn tag(value: Option<impl serde::Serialize>) -> Option<String> {
 
 /// What each row of the data table a run of the test at `path` goes through is called.
 pub(crate) fn data_rows(root: &Path, path: &str) -> Result<Vec<String>, RemoteError> {
-    let (file, flow) = read_test(root, path)?;
+    let (file, _, flow) = read_test(root, path)?;
     Ok(row_labels(root, &file, &flow))
 }
 
-fn read_test(root: &Path, path: &str) -> Result<(PathBuf, jevision_core::Flow), RemoteError> {
+/// The test file at `path`, what it holds and the test it reads as.
+pub(crate) fn read_test(
+    root: &Path,
+    path: &str,
+) -> Result<(PathBuf, String, jevision_core::Flow), RemoteError> {
     let file = test_file(root, path)?;
     if fs::metadata(&file).map_or(true, |m| m.len() > MAX_MESSAGE as u64) {
         return Err(RemoteError::TestUnreadable);
     }
     let text = fs::read_to_string(&file).map_err(|_| RemoteError::TestUnreadable)?;
     let flow = jevision_core::parse(&text).map_err(|_| RemoteError::TestUnreadable)?;
-    Ok((file, flow))
+    Ok((file, text, flow))
 }
 
 /// Labels of the rows of the test's data table, the way the Mac's Data Rows menu reads them;
@@ -294,7 +303,7 @@ pub fn running_title(
     block: &str,
     values: &HashMap<String, String>,
 ) -> Option<String> {
-    let (_, flow) = read_test(&self::root(root).ok()?, path).ok()?;
+    let (_, _, flow) = read_test(&self::root(root).ok()?, path).ok()?;
     let block = flow.blocks.iter().find(|b| b.id == block)?;
     let title = title(&block.kind);
     let mut filled = String::with_capacity(title.len());
@@ -499,7 +508,7 @@ fn inside(base: &Path, path: &Path, missing: RemoteError) -> Result<PathBuf, Rem
     }
 }
 
-fn slash_path(path: &Path) -> String {
+pub(crate) fn slash_path(path: &Path) -> String {
     path.components()
         .map(|c| c.as_os_str().to_string_lossy())
         .collect::<Vec<_>>()

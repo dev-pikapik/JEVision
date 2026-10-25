@@ -7,10 +7,11 @@
 use std::collections::HashMap;
 
 pub use jevision_remote::{
-    Area, BlockSummary, EdgeSummary, FrameSummary, HostRecord, LastRun, Network,
-    NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary, PairingOffer,
-    PauseReason, Permission, Position, ProjectInfo, Relay, RunList, RunState, RunStatus,
-    RunSummary, ScreenHolder, ScreenWait, StepStatus, TestEntry, TestSummary, Verdict,
+    Area, BlockField, BlockSummary, EdgeSummary, FieldKind, FrameSummary, HostRecord, LastRun,
+    Network, NoteAttachmentSummary, NoteReplySummary, NoteResolvedSummary, NoteSummary,
+    PairingOffer, PaletteEntry, PauseReason, Permission, Position, Problem, ProjectInfo, Relay,
+    RunList, RunState, RunStatus, RunSummary, ScreenHolder, ScreenWait, StepStatus, TestEdit,
+    TestEntry, TestSummary, Verdict,
 };
 
 /// A paired Mac as the phone saves it, with [`crate::host_record_to_json`].
@@ -65,10 +66,12 @@ pub enum Relay {
 /// What a paired phone may do.
 #[uniffi::remote(Enum)]
 pub enum Permission {
-    /// List projects and tests, look at tests, runs, reports and pictures.
-    View,
+    /// Everything `run` allows, plus changing tests: their name, blocks and block settings.
+    Edit,
     /// Everything `view` allows, plus starting and stopping runs.
     Run,
+    /// List projects and tests, look at tests, runs, reports and pictures.
+    View,
 }
 
 /// A project the Mac shares with phones.
@@ -128,6 +131,86 @@ pub struct TestSummary {
     pub rows: Vec<String>,
     /// The sticky notes on the canvas, read-only, already limited in number and length.
     pub notes: Vec<NoteSummary>,
+    /// Which version of the file this is; pass it to [`crate::RemoteConnection::edit_test`].
+    /// Empty from Macs that predate editing.
+    pub revision: String,
+    /// The block types the Mac can add, in the order of its library.
+    pub palette: Vec<PaletteEntry>,
+}
+
+/// A block type of the Mac's library.
+#[uniffi::remote(Record)]
+pub struct PaletteEntry {
+    /// The block's type, such as `click`.
+    pub block_type: String,
+    /// `actions`, `waiting`, `checks`, `logic`, `subTests` or `data`.
+    pub group: String,
+}
+
+/// A setting of a block a phone that may edit can change.
+#[uniffi::remote(Record)]
+pub struct BlockField {
+    /// Where it is in the block, such as `text` or `target.description`.
+    pub path: String,
+    pub kind: FieldKind,
+    /// As the phone shows it: `true` or `false` for a switch; empty when not set.
+    pub value: String,
+    /// The values a choice takes, as the test file writes them.
+    pub choices: Vec<String>,
+}
+
+/// How the phone edits a setting.
+#[uniffi::remote(Enum)]
+pub enum FieldKind {
+    Flag,
+    Number,
+    Choice,
+    /// A time such as `2s` or `500ms`.
+    Duration,
+    /// Text of several lines, such as a script.
+    LongText,
+    /// One line of text.
+    Text,
+}
+
+/// A problem the Mac finds in a block; [`crate::describe_problem`] words it.
+#[uniffi::remote(Record)]
+pub struct Problem {
+    pub code: String,
+    /// The test still runs, but probably not as meant.
+    pub warning: bool,
+    pub params: HashMap<String, String>,
+}
+
+/// One change to a test.
+#[uniffi::remote(Enum)]
+pub enum TestEdit {
+    /// Sets the setting `field`, one of the block's fields, to `value` as the phone shows it.
+    /// An empty value takes an optional setting away.
+    SetField {
+        block: String,
+        field: String,
+        value: String,
+    },
+    /// Adds a block of `block_type` after block `after`, or at the end without one.
+    AddBlock {
+        after: Option<String>,
+        block_type: String,
+    },
+    /// Removes the block and joins what led to it with what came after it.
+    RemoveBlock { block: String },
+    /// Gives the test a new name; the file keeps its own.
+    Rename { name: String },
+    /// A change this version doesn't know; the Mac refuses it.
+    Unknown,
+}
+
+/// A test after a change, and the block to show next: the one added, or the one after the
+/// one removed.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct EditedTest {
+    pub test: TestSummary,
+    pub select: Option<String>,
 }
 
 /// A sticky note of a test. `text` is Markdown. Files that come with it stay on the Mac.
@@ -188,6 +271,10 @@ pub struct BlockSummary {
     pub title: String,
     /// `nil` for a block the layout leaves out.
     pub area: Option<Area>,
+    /// The settings a phone that may edit can change. Empty from Macs that predate editing.
+    pub fields: Vec<BlockField>,
+    /// What is wrong with the block. Empty from Macs that predate editing.
+    pub problems: Vec<Problem>,
 }
 
 #[uniffi::remote(Record)]

@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::pairing::{code_bytes, pair_transcript};
 use crate::store::Store;
-use crate::wire::{PROTOCOLS, Protocols};
+use crate::wire::{PROTOCOLS, Protocols, Request, Welcome};
 
 const EXAMPLE: &str = include_str!("../../../examples/sign-in.flow.json");
 const RUN: &str = "20261018-120000-sign-in";
@@ -88,6 +88,9 @@ struct Fake {
     hellos: Mutex<Vec<Value>>,
     called: Mutex<Vec<Called>>,
     ended: Mutex<Vec<String>>,
+    /// The test open on the Mac with a change not saved yet.
+    unsaved: Mutex<Option<String>>,
+    edited: Mutex<Vec<(String, String)>>,
 }
 
 impl HostDelegate for Fake {
@@ -139,6 +142,18 @@ impl HostDelegate for Fake {
     fn stop_run(&self, _project_root: String, run: String) -> Result<(), RemoteError> {
         self.stopped.lock().unwrap().push(run);
         Ok(())
+    }
+
+    fn can_edit(&self, _project_root: String, test: String) -> Result<(), RemoteError> {
+        if self.unsaved.lock().unwrap().as_ref() == Some(&test) {
+            Err(RemoteError::TestBusyOnMac)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn test_edited(&self, project_root: String, test: String) {
+        self.edited.lock().unwrap().push((project_root, test));
     }
 
     fn run_status(&self, _project_root: String, run: String) -> Option<RunStatus> {
@@ -2037,6 +2052,8 @@ fn notes_are_an_addition_older_peers_ignore() {
         edges: Vec::new(),
         rows: Vec::new(),
         notes,
+        revision: String::new(),
+        palette: Vec::new(),
     };
 
     // A Mac that has no notes to send says what an older Mac says, and a summary from an older
@@ -2718,4 +2735,379 @@ async fn a_devices_file_that_cannot_be_read_is_set_aside() {
     // Phones pair again.
     setup.pair(Permission::Run, TestSigner::new(1)).await;
     assert_eq!(setup.host.devices().len(), 1);
+}
+
+/// The permission as a phone or a Mac that predates editing reads it.
+#[derive(Debug, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum BeforeEditing {
+    Run,
+    #[serde(other)]
+    View,
+}
+
+#[test]
+fn edit_reads_as_run_on_older_phones_and_as_view_on_older_macs() {
+    let welcome = |permission| Welcome {
+        protocol: 1,
+        app_version: APP_VERSION.into(),
+        host_name: "Studio Mac".into(),
+        device_id: "0123".into(),
+        permission,
+        relay_url: None,
+        addrs: Vec::new(),
+    };
+    // The phone is told `run` with `edit`; one that predates editing still runs tests.
+    let json = serde_json::to_value(welcome(Permission::Edit)).unwrap();
+    assert_eq!(
+        (&json["permission"], &json["edit"]),
+        (&json!("run"), &json!(true))
+    );
+    let old: BeforeEditing = serde_json::from_value(json["permission"].clone()).unwrap();
+    assert_eq!(old, BeforeEditing::Run);
+    assert_eq!(
+        serde_json::from_value::<Welcome>(json).unwrap(),
+        welcome(Permission::Edit)
+    );
+    // Other levels are written as before, and a welcome of an older Mac reads as before.
+    for permission in [Permission::Run, Permission::View] {
+        let json = serde_json::to_value(welcome(permission)).unwrap();
+        assert!(json.get("edit").is_none());
+        assert_eq!(
+            serde_json::from_value::<Welcome>(json).unwrap(),
+            welcome(permission)
+        );
+    }
+    let mut odd = serde_json::to_value(welcome(Permission::View)).unwrap();
+    odd["edit"] = json!(true);
+    assert_eq!(
+        serde_json::from_value::<Welcome>(odd).unwrap().permission,
+        Permission::View
+    );
+
+    // `devices.json` writes `edit`, which a Mac that predates it reads as the least level.
+    let json = serde_json::to_value(Permission::Edit).unwrap();
+    assert_eq!(json, json!("edit"));
+    assert_eq!(
+        serde_json::from_value::<BeforeEditing>(json).unwrap(),
+        BeforeEditing::View
+    );
+    assert!(Permission::Edit.allows(Permission::Run));
+    assert!(!Permission::Run.allows(Permission::Edit));
+    assert!(!Permission::View.allows(Permission::Run));
+}
+
+#[test]
+fn editing_is_an_addition_older_peers_ignore() {
+    // A change from a phone reaches a Mac that predates editing as an unknown request, which
+    // it answers as unsupported; a change of a newer phone reads as an unknown change here.
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    #[serde(tag = "type", rename_all = "camelCase")]
+    enum BeforeEditingRequest {
+        GetTest,
+        #[serde(other)]
+        Unknown,
+    }
+    let request = Request::EditTest {
+        project: "Demo".into(),
+        path: "smoke.flow.json".into(),
+        revision: "abc".into(),
+        edit: TestEdit::Rename {
+            name: "Smoke".into(),
+        },
+    };
+    let json = serde_json::to_value(&request).unwrap();
+    assert_eq!(json["edit"], json!({ "change": "rename", "name": "Smoke" }));
+    assert_eq!(
+        serde_json::from_value::<BeforeEditingRequest>(json.clone()).unwrap(),
+        BeforeEditingRequest::Unknown
+    );
+    assert_eq!(serde_json::from_value::<Request>(json).unwrap(), request);
+    let newer = json!({ "type": "editTest", "project": "Demo", "path": "a.flow.json",
+        "revision": "abc", "edit": { "change": "moveBlock", "block": "open" } });
+    match serde_json::from_value::<Request>(newer).unwrap() {
+        Request::EditTest { edit, .. } => assert_eq!(edit, TestEdit::Unknown),
+        other => panic!("{other:?}"),
+    }
+
+    // A summary of an older Mac has no revision, palette, settings or problems, and a phone
+    // that predates editing reads a newer one as before.
+    let old = json!({
+        "name": "Smoke", "description": null, "app": "com.example.App", "start": "open",
+        "width": 1.0, "height": 1.0, "frames": [], "edges": [],
+        "blocks": [{ "id": "open", "kind": "openApp", "title": "", "area": null }]
+    });
+    let summary: TestSummary = serde_json::from_value(old).unwrap();
+    assert!(summary.revision.is_empty() && summary.palette.is_empty());
+    assert!(summary.blocks[0].fields.is_empty() && summary.blocks[0].problems.is_empty());
+    let mut block = summary.blocks[0].clone();
+    block.fields = vec![BlockField {
+        path: "app".into(),
+        kind: FieldKind::Text,
+        value: "com.example.App".into(),
+        choices: Vec::new(),
+    }];
+    #[derive(serde::Deserialize)]
+    struct BeforeEditingBlock {
+        id: String,
+        kind: String,
+    }
+    let read: BeforeEditingBlock =
+        serde_json::from_value(serde_json::to_value(&block).unwrap()).unwrap();
+    assert_eq!((read.id.as_str(), read.kind.as_str()), ("open", "openApp"));
+    // A kind of setting from a newer Mac is edited as text.
+    assert_eq!(
+        serde_json::from_value::<FieldKind>(json!("colour")).unwrap(),
+        FieldKind::Text
+    );
+}
+
+/// The test file `path` of the project of `setup` as JSON.
+fn test_json(setup: &Setup, path: &str) -> Value {
+    serde_json::from_str(&fs::read_to_string(setup.scratch.0.join("project").join(path)).unwrap())
+        .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_that_may_edit_changes_a_test_through_the_mac() {
+    let setup = Setup::new("edit").await;
+    let path = "login/sign-in.flow.json";
+    let client = setup.pair(Permission::Run, TestSigner::new(1)).await;
+    let test = client.get_test("Demo".into(), path.into()).await.unwrap();
+    let edit = |revision: &str, edit| {
+        client.edit_test("Demo".into(), path.into(), revision.to_owned(), edit)
+    };
+    let rename = |name: &str| TestEdit::Rename { name: name.into() };
+    let set = |block: &str, field: &str, value: &str| TestEdit::SetField {
+        block: block.into(),
+        field: field.into(),
+        value: value.into(),
+    };
+
+    // Running is not editing.
+    assert_eq!(
+        edit(&test.revision, rename("New")).await,
+        Err(RemoteError::NotAllowed)
+    );
+    assert_eq!(setup.host.activity(1)[0].kind, ActivityKind::TestEdited);
+    assert_eq!(
+        setup.host.activity(1)[0].error,
+        Some(RemoteError::NotAllowed)
+    );
+    let id = client.record().device_id;
+    setup.host.set_permission(&id, Permission::Edit).unwrap();
+
+    // What a phone is offered: the settings of each block and the Mac's library.
+    assert_eq!(test.revision.len(), 64);
+    assert_eq!(test.palette.len(), jevision_core::catalog().len());
+    assert_eq!(test.palette[0].block_type, "openApp");
+    assert_eq!(test.palette[0].group, "actions");
+    let fields = |test: &TestSummary, block: &str| {
+        let block = test.blocks.iter().find(|b| b.id == block).unwrap();
+        block
+            .fields
+            .iter()
+            .map(|f| (f.path.clone(), f.value.clone()))
+            .collect::<Vec<_>>()
+    };
+    let pairs = |list: &[(&str, &str)]| {
+        list.iter()
+            .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        fields(&test, "email"),
+        pairs(&[
+            ("text", "demo@example.com"),
+            ("into.image", "refs/email-field.png"),
+            ("into.description", ""),
+        ])
+    );
+    let submit = test.blocks.iter().find(|b| b.id == "submit").unwrap();
+    assert_eq!(submit.fields[2].kind, FieldKind::Choice);
+    assert_eq!(submit.fields[2].choices, ["left", "right", "middle"]);
+    // The wait's condition is changed on the Mac; its timeout here.
+    assert_eq!(fields(&test, "inbox"), pairs(&[("timeout", "10s")]));
+
+    // A change saves the file and tells the Mac's editor.
+    let (changed, select) = edit(&test.revision, set("email", "text", "anna@example.com"))
+        .await
+        .unwrap();
+    assert_eq!(select, None);
+    assert_ne!(changed.revision, test.revision);
+    assert_eq!(fields(&changed, "email")[0].1, "anna@example.com");
+    assert_eq!(
+        test_json(&setup, path)["blocks"]["email"]["text"],
+        "anna@example.com"
+    );
+    assert_eq!(
+        setup.fake.edited.lock().unwrap().clone(),
+        vec![(setup.root(), path.to_owned())]
+    );
+    let entry = &setup.host.activity(1)[0];
+    assert_eq!(entry.kind, ActivityKind::TestEdited);
+    assert_eq!(
+        entry.subject.as_deref(),
+        Some("Demo/login/sign-in.flow.json")
+    );
+    assert_eq!(entry.error, None);
+
+    // A phone that read the test before that change doesn't overwrite it.
+    assert_eq!(
+        edit(&test.revision, set("email", "text", "boris@example.com")).await,
+        Err(RemoteError::TestChanged)
+    );
+    assert_eq!(
+        test_json(&setup, path)["blocks"]["email"]["text"],
+        "anna@example.com"
+    );
+    let mut revision = changed.revision;
+
+    // Nor does it change a test open on the Mac with a change not saved yet.
+    *setup.fake.unsaved.lock().unwrap() = Some(path.to_owned());
+    assert_eq!(
+        edit(&revision, rename("Sign in")).await,
+        Err(RemoteError::TestBusyOnMac)
+    );
+    *setup.fake.unsaved.lock().unwrap() = None;
+
+    // Finding by description replaces the image; emptying an optional one takes it away.
+    let (changed, _) = edit(
+        &revision,
+        set("email", "into.description", "the e-mail field"),
+    )
+    .await
+    .unwrap();
+    revision = changed.revision;
+    assert_eq!(
+        test_json(&setup, path)["blocks"]["email"]["into"],
+        json!({ "description": "the e-mail field" })
+    );
+    let (changed, _) = edit(&revision, set("email", "into.description", ""))
+        .await
+        .unwrap();
+    revision = changed.revision;
+    assert!(
+        test_json(&setup, path)["blocks"]["email"]
+            .get("into")
+            .is_none()
+    );
+
+    // Switches, choices and times, as the phone writes them.
+    for (field, value) in [("double", "true"), ("button", "right")] {
+        revision = edit(&revision, set("submit", field, value))
+            .await
+            .unwrap()
+            .0
+            .revision;
+    }
+    let submit = &test_json(&setup, path)["blocks"]["submit"];
+    assert_eq!(
+        (&submit["double"], &submit["button"]),
+        (&json!(true), &json!("right"))
+    );
+    revision = edit(&revision, set("inbox", "timeout", "30s"))
+        .await
+        .unwrap()
+        .0
+        .revision;
+    assert_eq!(test_json(&setup, path)["blocks"]["inbox"]["timeout"], "30s");
+
+    // What doesn't fit is refused and changes nothing.
+    let before = test_json(&setup, path);
+    for wrong in [
+        set("submit", "button", "sideways"),
+        set("submit", "double", "yes"),
+        set("inbox", "timeout", "soon"),
+        set("submit", "next", "open"),
+        set("nowhere", "text", "x"),
+        rename("  "),
+        TestEdit::AddBlock {
+            after: None,
+            block_type: "teleport".into(),
+        },
+        TestEdit::AddBlock {
+            after: Some("nowhere".into()),
+            block_type: "pause".into(),
+        },
+        TestEdit::RemoveBlock {
+            block: "nowhere".into(),
+        },
+    ] {
+        assert_eq!(
+            edit(&revision, wrong.clone()).await,
+            Err(RemoteError::EditInvalid),
+            "{wrong:?}"
+        );
+    }
+    let long = "x".repeat(crate::edit::MAX_FIELD_VALUE + 1);
+    assert_eq!(
+        edit(&revision, set("email", "text", &long)).await,
+        Err(RemoteError::TooLarge)
+    );
+    assert_eq!(
+        edit(&revision, rename(&"x".repeat(crate::edit::MAX_NAME + 1))).await,
+        Err(RemoteError::TooLarge)
+    );
+    assert_eq!(test_json(&setup, path), before);
+
+    // A block from the library goes after the chosen one, and comes with what is missing.
+    let (changed, select) = edit(
+        &revision,
+        TestEdit::AddBlock {
+            after: Some("submit".into()),
+            block_type: "click".into(),
+        },
+    )
+    .await
+    .unwrap();
+    revision = changed.revision.clone();
+    let added = select.unwrap();
+    let blocks = &test_json(&setup, path)["blocks"];
+    assert_eq!(blocks["submit"]["next"], json!(added));
+    assert_eq!(blocks[&added]["next"], "inbox");
+    let new = changed.blocks.iter().find(|b| b.id == added).unwrap();
+    assert!(
+        new.problems.iter().any(|p| !p.warning),
+        "{:?}",
+        new.problems
+    );
+
+    // Removing it joins its neighbours again and shows the block after it.
+    let (changed, select) = edit(
+        &revision,
+        TestEdit::RemoveBlock {
+            block: added.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    revision = changed.revision;
+    assert_eq!(select.as_deref(), Some("inbox"));
+    assert_eq!(test_json(&setup, path)["blocks"]["submit"]["next"], "inbox");
+
+    let (changed, _) = edit(&revision, rename(" Sign in again ")).await.unwrap();
+    assert_eq!(changed.name, "Sign in again");
+    assert_eq!(test_json(&setup, path)["name"], "Sign in again");
+
+    // Taken back to running, the phone can no longer change tests.
+    setup.host.set_permission(&id, Permission::Run).unwrap();
+    assert_eq!(
+        edit(&changed.revision, rename("Again")).await,
+        Err(RemoteError::NotAllowed)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_paired_to_edit_learns_it_and_keeps_it_across_restarts() {
+    let setup = Setup::new("edit-pairing").await;
+    let client = setup.pair(Permission::Edit, TestSigner::new(1)).await;
+    assert_eq!(client.permission(), Permission::Edit);
+    let saved: Value = serde_json::from_str(
+        &fs::read_to_string(setup.scratch.0.join("state/devices.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(saved["devices"][0]["permission"], "edit");
+    let store = Store::open(&setup.scratch.0.join("state")).unwrap();
+    assert_eq!(store.devices()[0].permission, Permission::Edit);
 }

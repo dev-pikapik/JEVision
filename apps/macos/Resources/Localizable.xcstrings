@@ -5739,6 +5739,16 @@
         }
       }
     },
+    "Can edit tests" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Может менять тесты"
+          }
+        }
+      }
+    },
     "Can run tests" : {
       "localizations" : {
         "ru" : {
@@ -46862,6 +46872,22 @@
         }
       }
     },
+    "remote.activity.testEdited" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changed a test"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменён тест"
+          }
+        }
+      }
+    },
     "remote.activity.unreadableCopy" : {
       "localizations" : {
         "en" : {
@@ -46954,6 +46980,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Список подключённых устройств на Mac сохранила более новая версия JEVision, поэтому изменить его нельзя. Обновите JEVision на Mac."
+          }
+        }
+      }
+    },
+    "remote.error.editInvalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test can’t be changed this way. Check the value and try again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Так тест изменить нельзя. Проверьте значение и попробуйте ещё раз."
+          }
+        }
+      }
+    },
+    "remote.error.editNeedsMac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This change needs a question answered on the Mac. Make it on the Mac."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для этого изменения нужно ответить на вопрос на Mac. Сделайте его на Mac."
           }
         }
       }
@@ -47338,6 +47396,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удаётся сохранить список подключённых устройств."
+          }
+        }
+      }
+    },
+    "remote.error.testBusyOnMac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test is open on the Mac with a change that isn’t saved yet."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тест открыт на Mac, и в нём есть ещё не сохранённое изменение."
+          }
+        }
+      }
+    },
+    "remote.error.testChanged" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test changed on the Mac in the meantime. Look at it again and repeat the change."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тем временем тест изменился на Mac. Посмотрите на него ещё раз и повторите изменение."
           }
         }
       }

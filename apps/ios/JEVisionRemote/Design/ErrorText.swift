@@ -12,6 +12,11 @@ extension RemoteError {
     case .codeExpired: String(localized: "This Code Has Expired")
     case .revoked: String(localized: "This iPhone Was Removed")
     case .dataRowNotFound: String(localized: "This Row Is Gone")
+    case .testChanged: String(localized: "The Test Changed on the Mac")
+    case .testBusyOnMac: String(localized: "The Test Is Being Changed on the Mac")
+    case .editInvalid: String(localized: "This Change Doesn’t Work")
+    case .editNeedsMac: String(localized: "Make This Change on the Mac")
+    case .tooLarge: String(localized: "Too Much for the iPhone")
     case .updateApp: String(localized: "Update JEVision Remote")
     case .updateMac: String(localized: "Update JEVision on the Mac")
     case .other: String(localized: "Something Went Wrong")
@@ -27,7 +32,7 @@ extension RemoteError {
     case .runInProgress:
       String(localized: "Wait until the test running on the Mac finishes, then try again.")
     case .notAllowed:
-      String(localized: "This iPhone can only look at tests. To run them from here, allow it in JEVision on the Mac.")
+      String(localized: "The Mac doesn’t allow this iPhone to do that. To allow it, change this iPhone’s permission in JEVision on the Mac.")
     case .declinedOnMac:
       String(localized: "Someone at the Mac said no to this run.")
     case .invalidCode:
@@ -38,6 +43,16 @@ extension RemoteError {
       String(localized: "The Mac no longer knows this iPhone. Forget the Mac here and pair again.")
     case .dataRowNotFound:
       String(localized: "The test’s data table changed on the Mac. Pull down to refresh the test and choose a row again.")
+    case .testChanged:
+      String(localized: "Someone changed it on the Mac while you were editing. The test now shows what the Mac has; make your change again.")
+    case .testBusyOnMac:
+      String(localized: "The test is open on the Mac with a change that isn’t saved yet. Finish that change on the Mac, then try again.")
+    case .editInvalid:
+      String(localized: "The Mac can’t take this value or this change. Check what you entered and try again.")
+    case .editNeedsMac:
+      String(localized: "This change needs a question answered on the Mac. Open the test in JEVision on the Mac to make it.")
+    case .tooLarge:
+      String(localized: "It’s more than the Mac sends to or takes from an iPhone. Make the text shorter, or do this on the Mac.")
     case .updateApp(let version?):
       String(localized: "This Mac needs JEVision Remote \(version) or later. Update the app and try again.")
     case .updateApp(nil):
@@ -59,6 +74,10 @@ extension RemoteError {
     case .notAllowed, .revoked: "hand.raised"
     case .declinedOnMac: "xmark.circle"
     case .dataRowNotFound: "tablecells"
+    case .testChanged: "arrow.triangle.2.circlepath"
+    case .testBusyOnMac: "pencil.and.list.clipboard"
+    case .editInvalid: "exclamationmark.circle"
+    case .editNeedsMac, .tooLarge: "desktopcomputer"
     case .invalidCode, .codeExpired: "qrcode"
     case .updateApp: "arrow.down.app"
     case .updateMac: "desktopcomputer.and.arrow.down"

@@ -25,7 +25,7 @@ use crate::wire::{
 };
 use crate::{
     ALPN_ASSISTANT, ALPN_PHONE, APP_VERSION, Network, PairingOffer, Permission, ProjectInfo,
-    RemoteError, bind, hex, now, plain_version, project, random, unhex,
+    RemoteError, bind, edit, hex, now, plain_version, project, random, unhex,
 };
 
 /// How long a pairing code works.
@@ -106,6 +106,11 @@ pub trait HostDelegate: Send + Sync {
         requested_by: Device,
     ) -> Result<String, RemoteError>;
     fn stop_run(&self, project_root: String, run: String) -> Result<(), RemoteError>;
+    /// Whether a phone may change `test` now: `Err(RemoteError::TestBusyOnMac)` while it is
+    /// open on the Mac with a change not saved yet.
+    fn can_edit(&self, project_root: String, test: String) -> Result<(), RemoteError>;
+    /// A phone changed `test` and the file is saved: an open editor shows it now.
+    fn test_edited(&self, project_root: String, test: String);
     /// Status of a run that is going on; `None` once it has finished or was never started,
     /// and the saved report answers instead.
     fn run_status(&self, project_root: String, run: String) -> Option<RunStatus>;
@@ -878,7 +883,7 @@ impl Shared {
         device: &Device,
         request: &Request,
     ) -> Result<(Response, Option<Vec<u8>>), RemoteError> {
-        if request.needs() == Permission::Run && device.permission != Permission::Run {
+        if !device.permission.allows(request.needs()) {
             return Err(RemoteError::NotAllowed);
         }
         let response = match request.clone() {
@@ -968,6 +973,31 @@ impl Shared {
                     },
                     Some(bytes),
                 ));
+            }
+            Request::EditTest {
+                project,
+                path,
+                revision,
+                edit,
+            } => {
+                let (given, root) = self.project(&project)?;
+                let delegate = Arc::clone(&self.delegate);
+                let (test, select) = blocking(move || {
+                    let (file, text, mut flow) = project::read_test(&root, &path)?;
+                    if edit::revision(&text) != revision {
+                        return Err(RemoteError::TestChanged);
+                    }
+                    delegate.can_edit(given.clone(), path.clone())?;
+                    let select = edit::apply(&mut flow, edit)?;
+                    edit::save(&root, &file, &flow)?;
+                    delegate.test_edited(given, path.clone());
+                    Ok((project::summary(&root, &path)?, select))
+                })
+                .await??;
+                Response::Edited {
+                    test: Box::new(test),
+                    select,
+                }
             }
             Request::Watch { .. } => return Err(RemoteError::Protocol),
             Request::Unknown => return Err(RemoteError::Unsupported),
@@ -1104,7 +1134,7 @@ impl Shared {
         self.project(&name).map(|(given, _)| given)
     }
 
-    /// Runs, stops, reports read and anything refused for permission or path go to the log.
+    /// Runs, stops, changes, reports read and anything refused for permission or path go to the log.
     fn audit(&self, device: &Device, request: &Request, error: Option<RemoteError>) {
         let (kind, subject) = match request {
             Request::RunTest { project, path, .. } => {
@@ -1115,6 +1145,9 @@ impl Shared {
             }
             Request::GetReport { project, run } => {
                 (ActivityKind::ReportRead, format!("{project}/{run}"))
+            }
+            Request::EditTest { project, path, .. } => {
+                (ActivityKind::TestEdited, format!("{project}/{path}"))
             }
             _ if matches!(
                 error,

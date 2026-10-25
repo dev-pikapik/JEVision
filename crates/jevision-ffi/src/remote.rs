@@ -43,6 +43,8 @@ pub enum DevicePermission {
     View,
     /// Also start and stop runs.
     Run,
+    /// Also change tests: their name, blocks and block settings.
+    Edit,
 }
 
 impl From<DevicePermission> for remote::Permission {
@@ -50,6 +52,7 @@ impl From<DevicePermission> for remote::Permission {
         match p {
             DevicePermission::View => Self::View,
             DevicePermission::Run => Self::Run,
+            DevicePermission::Edit => Self::Edit,
         }
     }
 }
@@ -59,6 +62,7 @@ impl From<remote::Permission> for DevicePermission {
         match p {
             remote::Permission::View => Self::View,
             remote::Permission::Run => Self::Run,
+            remote::Permission::Edit => Self::Edit,
         }
     }
 }
@@ -134,6 +138,11 @@ pub trait RemoteDelegate: Send + Sync {
     ) -> Option<RemoteError>;
     /// Stops the run going on, as the emergency stop does.
     fn stop_run(&self);
+    /// Why a phone can't change `test`, relative to `project_root`, now: `TestBusyOnMac` while
+    /// it is open with a change not saved yet; `None` when it can.
+    fn edit_blocker(&self, project_root: String, test: String) -> Option<RemoteError>;
+    /// A phone changed `test` and the file is saved: an editor that has it open shows it now.
+    fn test_edited(&self, project_root: String, test: String);
 }
 
 /// A new secret key for the Mac's endpoint, to keep in the Keychain.
@@ -388,6 +397,16 @@ impl remote::HostDelegate for Bridge {
             .ok_or(RemoteError::RunNotFound)?;
         self.app.stop_run();
         Ok(())
+    }
+
+    fn can_edit(&self, project_root: String, test: String) -> Result<(), RemoteError> {
+        self.app
+            .edit_blocker(project_root, test)
+            .map_or(Ok(()), Err)
+    }
+
+    fn test_edited(&self, project_root: String, test: String) {
+        self.app.test_edited(project_root, test);
     }
 
     fn run_status(&self, project_root: String, run: String) -> Option<remote::RunStatus> {
@@ -676,6 +695,7 @@ pub enum ActivityKind {
     SignInFailed,
     RunStarted,
     RunStopped,
+    TestEdited,
     ReportRead,
     Denied,
     PermissionChanged,
@@ -740,6 +760,10 @@ pub enum RemoteError {
     MacTooOld,
     Unsupported,
     DevicesFromNewer,
+    TestChanged,
+    TestBusyOnMac,
+    EditInvalid,
+    EditNeedsMac,
     Unknown,
 }
 
@@ -841,6 +865,12 @@ mod tests {
         fn stop_run(&self) {
             self.run().cancel();
         }
+
+        fn edit_blocker(&self, _project_root: String, _test: String) -> Option<RemoteError> {
+            None
+        }
+
+        fn test_edited(&self, _project_root: String, _test: String) {}
     }
 
     struct Scratch(PathBuf);

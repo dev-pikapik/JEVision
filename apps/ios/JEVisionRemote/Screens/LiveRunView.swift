@@ -158,7 +158,7 @@ struct LiveRunView: View {
         }
         .buttonStyle(.glassProminent)
         .accessibilityIdentifier("showReport")
-      } else if model.permission(on: host) == .run {
+      } else if model.permission(on: host)?.canRun == true {
         Button(role: .destructive, action: stop) {
           Label(stopping ? "Stopping…" : "Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
         }

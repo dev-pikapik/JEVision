@@ -27,6 +27,9 @@ final class FakeSession: MacSession {
   func getTest(project: String, path: String) async throws(RemoteError) -> TestFlow { throw .other }
   func runTest(project: String, path: String, row: Int?) async throws(RemoteError) -> String { "run-1" }
   func stopRun(project: String, run: String) async throws(RemoteError) {}
+  func editTest(project: String, path: String, revision: String, edit: TestEdit) async throws(RemoteError) -> EditedTest {
+    throw .other
+  }
   func runStatus(project: String, run: String) async throws(RemoteError) -> RunStatus { throw .other }
   func runEvents(project: String, run: String) -> AsyncThrowingStream<RunUpdate, any Error> { events }
   func listRuns(project: String) async throws(RemoteError) -> RunList { RunList(active: [], saved: []) }
