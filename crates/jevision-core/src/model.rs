@@ -1213,11 +1213,14 @@ pub enum Compare {
     /// the same as the reference image when `expect` is empty. `provider` names the AI provider
     /// to ask instead of the one chosen in the settings, one of [`AI_PROVIDERS`]; `model` names
     /// the model of that provider to ask instead of its chosen one. Each is empty for the
-    /// settings' choice.
+    /// settings' choice. `confidence` is how sure the model must be that the answer is yes,
+    /// within [`Compare::CONFIDENCE`]; only a provider that says how sure it is (JEV) can be
+    /// held to it, the others' yes or no counts as it is.
     Meaning {
         expect: String,
         model: String,
         provider: String,
+        confidence: f64,
     },
 }
 
@@ -1235,6 +1238,11 @@ pub const AI_PROVIDERS: &[&str] = &[
 
 impl Compare {
     pub const DEFAULT_THRESHOLD: f64 = 0.95;
+    /// The confidence a check by meaning asks for when it doesn't say: an even chance, so the
+    /// model's yes or no decides.
+    pub const DEFAULT_CONFIDENCE: f64 = 0.5;
+    /// The confidences a check by meaning can ask for.
+    pub const CONFIDENCE: std::ops::RangeInclusive<f64> = 0.5..=0.99;
 }
 
 impl Default for Compare {
@@ -1720,6 +1728,7 @@ impl Serialize for Reference {
                 expect,
                 model,
                 provider,
+                confidence,
             } => {
                 map.serialize_entry("compare", "meaning")?;
                 if !expect.is_empty() {
@@ -1730,6 +1739,9 @@ impl Serialize for Reference {
                 }
                 if !model.is_empty() {
                     map.serialize_entry("model", model)?;
+                }
+                if *confidence != Compare::DEFAULT_CONFIDENCE {
+                    map.serialize_entry("confidence", confidence)?;
                 }
             }
             Compare::Similar { threshold } => {

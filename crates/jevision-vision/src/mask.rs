@@ -16,6 +16,7 @@
 //!     screenshot: &b"\x89PNG"[..],
 //!     reference: None,
 //!     model: "",
+//!     confidence: 0.5,
 //! };
 //! ```
 

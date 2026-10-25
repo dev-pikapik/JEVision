@@ -168,6 +168,38 @@ struct SimilaritySlider: View {
   }
 }
 
+/// How sure the AI must be that the screen shows what a check by meaning expects. Only JEV
+/// says how sure it is; for the providers that answer yes or no the line under it says so.
+struct ConfidenceSlider: View {
+  @Binding var confidence: Double
+  /// Id of the provider that answers the check; empty when there is none yet.
+  let provider: String
+
+  var body: some View {
+    LabeledContent {
+      HStack {
+        Slider(value: $confidence, in: 0.5...0.99, step: 0.01) { Text("Confidence") }
+          .labelsHidden()
+        Text(BlockSummary.percent(confidence))
+          .monospacedDigit()
+          .frame(width: 44, alignment: .trailing)
+      }
+    } label: {
+      Text("Confidence")
+    }
+    Group {
+      if provider.isEmpty || provider.hasPrefix("jev") {
+        Text("How sure JEV must be that the screen shows this. At \(BlockSummary.percent(0.5)) its yes or no decides; higher passes only when JEV is at least that sure.")
+      } else {
+        Text("\(AISettings.provider(provider)?.name ?? provider) answers only yes or no, so the confidence applies only when JEV checks.")
+      }
+    }
+    .font(.callout)
+    .foregroundStyle(.secondary)
+    .fixedSize(horizontal: false, vertical: true)
+  }
+}
+
 /// The reference picture large, with tools to draw, move, resize and delete its areas, set the
 /// similarity and replace the picture. Every change is saved to the test right away.
 struct ReferenceAreaEditor: View {

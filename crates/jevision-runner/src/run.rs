@@ -29,10 +29,11 @@ use crate::screen::{ScreenHolder, ScreenLock};
 use crate::system::{self, ProcessError};
 use crate::usage::{LimitState, UsageBook, price_of};
 use crate::{
-    AppStart, CiOrigin, Event, EventSink, Hands, HandsError, Openable, Question, RunControl,
-    SECRET_MASK, Screenshot, SecretSource, VisionError, VisionJudge,
+    AppStart, CiOrigin, Event, EventSink, Hands, HandsError, Judgement, Openable, Question,
+    RunControl, SECRET_MASK, Screenshot, SecretSource, VisionError, VisionJudge,
 };
 use jevision_core::DataTable;
+use jevision_l10n::tr_in;
 use jevision_vision::image::{Comparison, Image};
 use jevision_vision::{MaskedImage, Provider};
 
@@ -2346,13 +2347,14 @@ impl Exec<'_> {
         strict: bool,
         cache: &mut Option<Loaded>,
     ) -> Result<Result<Evaluation, String>, Stop> {
-        let (expect, model, provider) = match &r.compare {
+        let (expect, model, provider, confidence) = match &r.compare {
             Compare::Meaning {
                 expect,
                 model,
                 provider,
-            } => (expect.trim(), model.trim(), provider.as_str()),
-            _ => ("", "", ""),
+                confidence,
+            } => (expect.trim(), model.trim(), provider.as_str(), *confidence),
+            _ => ("", "", "", Compare::DEFAULT_CONFIDENCE),
         };
         // The block's own choice, then the project's, then the app's, which empty stands for;
         // a run that forces its own AI asks only that.
@@ -2414,6 +2416,7 @@ impl Exec<'_> {
             screenshot: &screenshot,
             reference: reference_picture.as_ref(),
             model,
+            confidence,
         };
         let fallback = self.runner.fallback.filter(|f| {
             !self.options.force_vision
@@ -2436,6 +2439,12 @@ impl Exec<'_> {
             (Err(Unanswered::Unavailable(f) | Unanswered::Failed(f)), _) => return Err(fail(f)),
         };
         let judgement = answer.judgement;
+        let reason = held_to(
+            &judgement,
+            confidence,
+            &answer.provider,
+            &self.options.language(),
+        );
         Ok(Ok(Evaluation {
             reference,
             actual,
@@ -2445,7 +2454,7 @@ impl Exec<'_> {
                 model: answer.model,
                 passed: judgement.passed,
                 // The model may read a secret off the screen.
-                reason: self.mask(&judgement.reason),
+                reason: self.mask(&reason),
                 input_tokens: judgement.usage.input_tokens,
                 output_tokens: judgement.usage.output_tokens,
                 cost: answer.cost,
@@ -3396,6 +3405,23 @@ fn write_failed(path: &Path, e: impl ToString) -> Stop {
             .with("path", path.display())
             .with("reason", e.to_string()),
     )
+}
+
+/// The model's reason, and when the check asks for more than an even chance, the confidence it
+/// needs, or that the provider doesn't say how sure it is and so its own verdict counted.
+fn held_to(judgement: &Judgement, confidence: f64, provider: &str, lang: &str) -> String {
+    if confidence == Compare::DEFAULT_CONFIDENCE {
+        return judgement.reason.clone();
+    }
+    let needed = (confidence * 100.0).round() as i64;
+    let note = match judgement.probability {
+        Some(_) => tr_in!(lang, "run.vision.confidenceNeeded", needed),
+        None => tr_in!(lang, "run.vision.noProbability", provider, needed),
+    };
+    match judgement.reason.trim() {
+        "" => note,
+        reason => format!("{reason} {note}"),
+    }
 }
 
 /// Why a `check` failed: too few matching pixels, or a vision model said no.

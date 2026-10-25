@@ -237,13 +237,19 @@ struct VisionTextTests {
 
   @Test func checksByMeaningReadAsTheirExpectation() {
     let reference = Reference(
-      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: ""), area: nil, ignore: [],
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "", confidence: 0.5), area: nil, ignore: [],
       hide: [])
     #expect(BlockSummary.text(.check(of: .screen(reference), next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items”")
     let named = Reference(
-      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "ollama"), area: nil,
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "ollama", confidence: 0.5), area: nil,
       ignore: [], hide: [])
     #expect(BlockSummary.text(.check(of: .screen(named), next: nil), appName: { $0 }) == "Screen shows “The cart shows 2 items” · Ollama")
+    let sure = Reference(
+      image: "", compare: .meaning(expect: "The cart shows 2 items", model: "", provider: "jev", confidence: 0.9), area: nil,
+      ignore: [], hide: [])
+    #expect(
+      BlockSummary.text(.check(of: .screen(sure), next: nil), appName: { $0 })
+        == "Screen shows “The cart shows 2 items” · JEV (TypeSafe AI) · at least 90% sure")
   }
 }
 

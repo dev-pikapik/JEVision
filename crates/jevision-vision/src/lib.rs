@@ -273,12 +273,19 @@ pub struct Question<'a> {
     pub reference: Option<&'a MaskedImage>,
     /// Model to ask instead of the configured one; empty for the configured one.
     pub model: &'a str,
+    /// How sure the model must be that the answer is yes, from 0.5 to 1. Applies only to a
+    /// provider that says how sure it is ([`Judgement::probability`]); the others' verdict
+    /// counts as it is.
+    pub confidence: f64,
 }
 
 /// A model's verdict.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Judgement {
     pub passed: bool,
+    /// How sure the model is that the answer is yes, from 0 to 1, when it says: JEV does, the
+    /// providers that answer with a written verdict don't.
+    pub probability: Option<f64>,
     /// Why, in a sentence.
     pub reason: String,
     pub usage: Usage,
@@ -491,6 +498,7 @@ impl Client {
             screenshot: &picture,
             reference: None,
             model: "",
+            confidence: jevision_core::Compare::DEFAULT_CONFIDENCE,
         })
     }
 
@@ -729,15 +737,16 @@ impl VisionJudge for Client {
         self.ready()?;
         let (url, body) = request(c, question);
         let text = self.post(&url, &body)?;
-        let mut judgement = answer(c.provider, &text).map_err(|e| match e {
-            VisionError::BadAnswer { answer } => VisionError::BadAnswer {
-                answer: self.excerpt(&answer),
-            },
-            VisionError::Refused { message } => VisionError::Refused {
-                message: self.excerpt(&message),
-            },
-            other => other,
-        })?;
+        let mut judgement =
+            answer(c.provider, &text, question.confidence).map_err(|e| match e {
+                VisionError::BadAnswer { answer } => VisionError::BadAnswer {
+                    answer: self.excerpt(&answer),
+                },
+                VisionError::Refused { message } => VisionError::Refused {
+                    message: self.excerpt(&message),
+                },
+                other => other,
+            })?;
         judgement.reason = self.excerpt(&judgement.reason);
         Ok(judgement)
     }
@@ -1111,13 +1120,13 @@ fn located(
 }
 
 /// Reads the verdict from a successful response body.
-fn answer(provider: Provider, body: &str) -> Result<Judgement, VisionError> {
+fn answer(provider: Provider, body: &str, confidence: f64) -> Result<Judgement, VisionError> {
     let bad = |text: &str| VisionError::BadAnswer {
         answer: text.to_owned(),
     };
     let v: Value = serde_json::from_str(body).map_err(|_| bad(body))?;
     let v = jev_answer(provider, v).ok_or_else(|| bad(body))?;
-    let mut judgement = verdict_of(provider, &v)?;
+    let mut judgement = verdict_of(provider, &v, confidence)?;
     judgement.usage = usage(provider, &v);
     Ok(judgement)
 }
@@ -1154,8 +1163,8 @@ pub(crate) fn usage(provider: Provider, v: &Value) -> Usage {
     }
 }
 
-/// The verdict in a successful response, without its usage.
-fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
+/// The verdict in a successful response, without its usage; JEV's is held to `confidence`.
+fn verdict_of(provider: Provider, v: &Value, confidence: f64) -> Result<Judgement, VisionError> {
     let bad = |text: &str| VisionError::BadAnswer {
         answer: text.to_owned(),
     };
@@ -1215,19 +1224,28 @@ fn verdict_of(provider: Provider, v: &Value) -> Result<Judgement, VisionError> {
                 .as_f64()
                 .filter(|p| (0.0..=1.0).contains(p))
                 .ok_or_else(|| bad(&v.to_string()))?;
-            let passed = yes >= 0.5;
-            let sure = ((if passed { yes } else { 1.0 - yes }) * 100.0).round() as i64;
-            let reason = if passed {
-                jevision_l10n::tr!("vision.jev.passed", sure)
-            } else {
-                jevision_l10n::tr!("vision.jev.failed", sure)
-            };
-            Ok(Judgement {
-                passed,
-                reason,
-                usage: Usage::default(),
-            })
+            Ok(jev_judgement(yes, confidence))
         }
+    }
+}
+
+/// JEV's verdict from how sure it is that the answer is yes: yes when at least `confidence`.
+fn jev_judgement(yes: f64, confidence: f64) -> Judgement {
+    let passed = yes >= confidence;
+    let reason = if passed {
+        jevision_l10n::tr!("vision.jev.passed", (yes * 100.0).round() as i64)
+    } else if yes >= 0.5 {
+        // Leaning to yes, short of the confidence asked for: rounded down, so it never reads
+        // as the very share that is needed.
+        jevision_l10n::tr!("vision.jev.unsure", (yes * 100.0).floor() as i64)
+    } else {
+        jevision_l10n::tr!("vision.jev.failed", ((1.0 - yes) * 100.0).round() as i64)
+    };
+    Judgement {
+        passed,
+        probability: Some(yes),
+        reason,
+        usage: Usage::default(),
     }
 }
 
@@ -1259,6 +1277,7 @@ fn verdict(v: &Value) -> Option<Judgement> {
     let reason = v["reason"].as_str().unwrap_or_default().trim().to_owned();
     Some(Judgement {
         passed,
+        probability: None,
         reason,
         usage: Usage::default(),
     })
