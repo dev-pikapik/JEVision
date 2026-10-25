@@ -2,9 +2,9 @@
   "jsonVersion": 1,
   "version": "1.0.0",
   "formats": [
-    { "file": "*.flow.json", "version": 2 },
-    { "file": "*.block.json", "version": 2 },
-    { "file": "*.template.json", "version": 2 },
+    { "file": "*.flow.json", "version": 3 },
+    { "file": "*.block.json", "version": 3 },
+    { "file": "*.template.json", "version": 3 },
     { "file": "*.jevmeta", "version": 1 },
     { "file": "jevision.project.json", "version": 1 },
     { "file": "jevision.environments.json", "version": 1 },
