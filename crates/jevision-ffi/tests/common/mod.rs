@@ -71,7 +71,7 @@ pub fn cpu_ms() -> f64 {
         assert_eq!(libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()), 0);
         usage.assume_init()
     };
-    let ms = |t: libc::timeval| t.tv_sec as f64 * 1000.0 + f64::from(t.tv_usec) / 1000.0;
+    let ms = |t: libc::timeval| t.tv_sec as f64 * 1000.0 + t.tv_usec as f64 / 1000.0;
     ms(usage.ru_utime) + ms(usage.ru_stime)
 }
 
