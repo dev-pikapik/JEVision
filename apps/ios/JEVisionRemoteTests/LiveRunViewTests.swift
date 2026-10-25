@@ -81,17 +81,21 @@ struct LiveRunViewTests {
     return Int((bar.convert(bar.bounds, to: nil).maxY + 24) * window.screen.scale)
   }
 
-  /// Where the card ends: the first row under `top` that starts eight points of rows in the
-  /// colour of the screen's margin.
+  /// Where the card ends: the first row under `top`, past the card's first content, that starts
+  /// eight points of rows in the colour of the screen's margin. Glass on a light screen can be
+  /// as light as the margin, and then the card's top padding looks like margin too.
   private func cardBottom(_ image: CGImage, from top: Int, scale: Int) -> Int {
     let width = image.width
     let rows = lightness(image, rows: top..<image.height)
     let margin = rows[2 * scale]
     let band = 8 * scale
     var empty = 0
+    var content = false
     for row in 0..<rows.count / width {
       let line = rows[row * width..<(row + 1) * width]
-      empty = line.allSatisfy { abs(Int($0) - Int(margin)) <= 10 } ? empty + 1 : 0
+      let blank = line.allSatisfy { abs(Int($0) - Int(margin)) <= 10 }
+      content = content || !blank
+      empty = blank && content ? empty + 1 : 0
       if empty == band { return top + row - band + 1 }
     }
     return image.height
