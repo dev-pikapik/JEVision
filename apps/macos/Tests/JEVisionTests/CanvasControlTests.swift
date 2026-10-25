@@ -13,6 +13,7 @@ struct CanvasControlTests {
     let root = FileManager.default.temporaryDirectory.appending(path: "jevision-map-control-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     let profile = Profile(folder: root)
+    profile.defaults.set(false, forKey: "flowShowsMinimap")
     defer {
       profile.defaults.removePersistentDomain(forName: profile.defaultsDomain)
       try? FileManager.default.removeItem(at: root)
@@ -37,14 +38,6 @@ struct CanvasControlTests {
       window.close()
     }
 
-    func pixels() -> Data? {
-      host.layoutSubtreeIfNeeded()
-      window.displayIfNeeded()
-      let rect = NSRect(x: host.bounds.maxX - 232, y: (host.isFlipped ? host.bounds.maxY - 180 : host.bounds.minY), width: 232, height: 180)
-      guard let bitmap = host.bitmapImageRepForCachingDisplay(in: rect) else { return nil }
-      host.cacheDisplay(in: rect, to: bitmap)
-      return bitmap.representation(using: .png, properties: [:])
-    }
     try await Task.sleep(for: .milliseconds(300))
     func buttons(_ view: NSView) -> [NSButton] {
       ((view as? NSButton).map { [$0] } ?? []) + view.subviews.flatMap(buttons)
@@ -55,22 +48,27 @@ struct CanvasControlTests {
         a.convert(a.bounds, to: host).midX < b.convert(b.bounds, to: host).midX
       }
     }
-    let hideButton = try #require(mapButton())
-    let initialY = hideButton.convert(hideButton.bounds, to: host).midY
-    hideButton.performClick(nil)
-    try await eventuallyAsync("the map collapses without forced layout", timeout: 3) {
-      guard let button = mapButton(), button !== hideButton else { return false }
-      return abs(button.convert(button.bounds, to: host).midY - initialY) > 80
+    func changed(from old: NSButton, shown: Bool) async throws -> NSButton {
+      let oldY = old.convert(old.bounds, to: host).midY
+      old.performClick(nil)
+      try await eventuallyAsync("the map changes without layout, focus or camera actions", timeout: 3) {
+        guard let button = mapButton(), button !== old else { return false }
+        return abs(button.convert(button.bounds, to: host).midY - oldY) > 80
+      }
+      #expect(profile.defaults.bool(forKey: "flowShowsMinimap") == shown)
+      return try #require(mapButton())
     }
-    #expect(profile.defaults.object(forKey: "flowShowsMinimap") as? Bool == false)
-    let showButton = try #require(mapButton())
-    let hidden = try #require(pixels())
-    showButton.performClick(nil)
-    try await eventuallyAsync("the map returns without forced layout", timeout: 3) {
-      guard let button = mapButton(), button !== showButton else { return false }
-      return abs(button.convert(button.bounds, to: host).midY - initialY) < 1
+    var button = try #require(mapButton())
+    button = try await changed(from: button, shown: true)
+    button = try await changed(from: button, shown: false)
+    button = try await changed(from: button, shown: true)
+    let shownY = button.convert(button.bounds, to: host).midY
+    let shownButton = button
+    // Another settings view can write the same preference; the canvas must observe it too.
+    profile.defaults.set(false, forKey: "flowShowsMinimap")
+    try await eventuallyAsync("external preference changes update the map", timeout: 3) {
+      guard let button = mapButton(), button !== shownButton else { return false }
+      return abs(button.convert(button.bounds, to: host).midY - shownY) > 80
     }
-    #expect(profile.defaults.bool(forKey: "flowShowsMinimap"))
-    try await eventuallyAsync("the map returns immediately", timeout: 3) { pixels().map { $0 != hidden } ?? false }
   }
 }

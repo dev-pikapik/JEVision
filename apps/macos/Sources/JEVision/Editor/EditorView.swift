@@ -33,11 +33,12 @@ struct EditorView: View {
   private let apps = AppCatalog.shared
 
   var body: some View {
-    Group {
+    let mapIsShown = showsMinimap
+    return Group {
       if let failure = document.failure {
         BrokenTestView(document: document, failure: failure)
       } else if let flow = document.flow {
-        editor(flow)
+        editor(flow, mapIsShown: mapIsShown)
       }
     }
     .onAppear {
@@ -68,8 +69,8 @@ struct EditorView: View {
     }
   }
 
-  private func editor(_ flow: Flow) -> some View {
-    canvas(outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
+  private func editor(_ flow: Flow, mapIsShown: Bool) -> some View {
+    canvas(mapIsShown: mapIsShown, outcomes: lastRun?.results.mapValues(\.outcome) ?? [:], taken: lastRun?.taken ?? [])
       .unmirrored()
       .background(.background)
       .safeAreaInset(edge: .top, spacing: 0) {
@@ -433,9 +434,8 @@ struct EditorView: View {
       set: { showsInspector = $0 })
   }
 
-  private func canvas(outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
-    let mapIsShown = showsMinimap
-    return GeometryReader { box in
+  private func canvas(mapIsShown: Bool, outcomes: [String: BlockOutcome], taken: Set<Slot>) -> some View {
+    GeometryReader { box in
       FlowCanvas(
         document: document, appName: apps.name(of:), camera: camera, size: box.size,
         outcomes: outcomes, taken: taken

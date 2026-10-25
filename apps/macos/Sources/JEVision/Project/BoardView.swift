@@ -90,7 +90,8 @@ struct BoardView: View {
   private var canRun: Bool { !runs.isBusy && !records.isRecording && project.rootURL != nil }
 
   var body: some View {
-    content
+    let mapIsShown = showsMinimap
+    return content(mapIsShown: mapIsShown)
       .background(.background)
       .overlay(alignment: .top) {
         header
@@ -136,9 +137,9 @@ struct BoardView: View {
       .focusedSceneValue(\.canvasZoom, canvasZoom)
   }
 
-  @ViewBuilder private var content: some View {
+  @ViewBuilder private func content(mapIsShown: Bool) -> some View {
     if boards.board != nil {
-      canvas(boards.scene)
+      canvas(boards.scene, mapIsShown: mapIsShown)
         .unmirrored()
     } else if let problem = boards.problem {
       ContentUnavailableView {
@@ -212,8 +213,7 @@ struct BoardView: View {
   /// How many nodes VoiceOver is told of at once: a board zoomed out over thousands would swamp it.
   private static let spokenLimit = 150
 
-  private func canvas(_ scene: BoardScene) -> some View {
-    let mapIsShown = showsMinimap
+  private func canvas(_ scene: BoardScene, mapIsShown: Bool) -> some View {
     let scale = viewport.scale
     let area = drawingRect.insetBy(dx: -60 / scale, dy: -60 / scale)
     let seen = scene.visible(in: area, moved: movedIDs, by: moveShift)
