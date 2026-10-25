@@ -49524,6 +49524,22 @@
         }
       }
     },
+    "run.simulator.noApp" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulator isn’t installed: add it in Xcode › Settings › Components, then run the test again."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение Simulator не установлено: добавьте его в Xcode › Настройки › Компоненты и запустите тест снова."
+          }
+        }
+      }
+    },
     "run.simulator.noBuild" : {
       "localizations" : {
         "en" : {

@@ -173,6 +173,8 @@ impl Simctl for Sim {
 #[derive(Default)]
 struct Mac {
     log: Mutex<Vec<String>>,
+    /// Xcode came without Simulator, as when its Simulator component isn't added.
+    no_simulator: bool,
 }
 
 impl Mac {
@@ -193,6 +195,9 @@ impl Hands for Mac {
         arguments: &[String],
         _: &HashMap<String, String>,
     ) -> Result<(), HandsError> {
+        if self.no_simulator && app == jevision_runner::SIMULATOR_APP {
+            return Err(HandsError::AppNotFound(app.to_owned()));
+        }
         self.note(format!("open {app} {arguments:?}"));
         Ok(())
     }
@@ -522,6 +527,43 @@ fn a_missing_device_build_or_app_says_what_to_do() {
         reason(&absent).contains("com.example.Mail isn’t installed on “iPhone 17”"),
         "{}",
         reason(&absent)
+    );
+}
+
+#[test]
+fn without_the_simulator_app_the_run_says_how_to_add_it() {
+    let p = Project::new();
+    p.build(APP).write(
+        "t.flow.json",
+        &format!(
+            r#"{{"format":3,"name":"Mail","app":"{APP}",{SIMULATOR},"start":"open","blocks":{{"open":{{"type":"openApp"}}}}}}"#
+        ),
+    );
+    let sim = Sim::new(&p.0, &[]);
+    let mac = Mac {
+        no_simulator: true,
+        ..Mac::default()
+    };
+    let report = p.run("t.flow.json", &sim, &mac);
+    let failure = report.attempts.last().unwrap().failure.clone().unwrap();
+    assert_eq!(
+        describe_in("en", &failure),
+        "Block “Open App”: Simulator isn’t installed: add it in Xcode › Settings › Components, then run the test again."
+    );
+    // The run says it in the language of the app; in Russian:
+    assert_eq!(
+        jevision_l10n::text_in("ru", "run.simulator.noApp", &[]),
+        "Приложение Simulator не установлено: добавьте его в Xcode › Настройки › Компоненты и запустите тест снова."
+    );
+    assert!(
+        sim.log().iter().any(|c| c.starts_with("install ")),
+        "{:?}",
+        sim.log()
+    );
+    assert!(
+        !sim.log().iter().any(|c| c.starts_with("launch ")),
+        "{:?}",
+        sim.log()
     );
 }
 

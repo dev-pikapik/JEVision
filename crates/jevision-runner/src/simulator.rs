@@ -585,7 +585,7 @@ impl Hands for SimulatorHands<'_> {
         self.mac
             .open_app(SIMULATOR_APP, AppStart::AsUsual, &shown, &HashMap::new())
             .map_err(|e| match e {
-                HandsError::AppNotFound(_) => HandsError::Failed(tr!("run.simulator.noXcode")),
+                HandsError::AppNotFound(_) => HandsError::Failed(tr!("run.simulator.noApp")),
                 e => e,
             })?;
         let mut args = vec!["launch"];

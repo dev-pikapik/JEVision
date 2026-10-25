@@ -132,7 +132,7 @@
   </tbody>
 </table>
 </div>
-<p>JEVision starts the device if it is off, opens Simulator on it and launches the app with its <code>arguments</code> and <code>environment</code>. Clicks, typing and key presses go to the Simulator window, and JEVision works out where the device screen sits in it, so the window can be any size. Screenshots and checks are taken from the device itself at its full resolution, the same however large the window is. <a href="#openFile">openFile</a> opens web addresses and links into apps, such as <code>shop://cart</code>, on the device; files can't be opened there. The window of Simulator has to stay visible on the screen while the test runs.</p>
+<p>JEVision starts the device if it is off, opens Simulator on it and launches the app with its <code>arguments</code> and <code>environment</code>. Clicks, typing and key presses go to the Simulator window, and JEVision works out where the device screen sits in it, so the window can be any size. Screenshots and checks are taken from the device itself at its full resolution, the same however large the window is. <a href="#openFile">openFile</a> opens web addresses and links into apps, such as <code>shop://cart</code>, on the device; files can't be opened there. For a link into an app, iOS first asks whether to open it in that app, so the test then clicks <strong>Open</strong> as a person would. The window of Simulator has to stay visible on the screen while the test runs.</p>
 <p>A test can <a href="#runTest">run another test</a> only when that one runs on the same device. Tests that run on this Mac and on a device can't be mixed in one <code>runTest</code>.</p>
 
 <h2 id="blocks">Block types</h2>
