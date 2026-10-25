@@ -21,6 +21,11 @@ struct CoreMappingTests {
     (.NotAllowed, .notAllowed),
     (.DeclinedOnMac, .declinedOnMac),
     (.DataRowNotFound, .dataRowNotFound),
+    (.TestChanged, .testChanged),
+    (.TestBusyOnMac, .testBusyOnMac),
+    (.EditInvalid, .editInvalid),
+    (.EditNeedsMac, .editNeedsMac),
+    (.TooLarge, .tooLarge),
     (.SignerFailed, .other),
     (.TestNotFound, .other),
     (.DeviceTooOld, .updateApp(version: nil)),
@@ -78,7 +83,8 @@ struct CoreMappingTests {
 
     let summary = JEVisionMobile.TestSummary(
       name: "Sign in", description: nil, priority: "high", testType: "regression", status: "draft", author: "Anna",
-      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [])
+      app: "com.example.app", start: "open", width: 1, height: 1, blocks: [], frames: [], edges: [], rows: [], notes: [],
+      revision: "", palette: [])
     let flow = TestFlow(summary)
     #expect((flow.priority, flow.testType, flow.status, flow.author) == ("high", "regression", "draft", "Anna"))
     #expect(flow.notes.isEmpty)
@@ -97,6 +103,38 @@ struct CoreMappingTests {
     #expect(JEVisionRemote.RunUpdate(end) == .event(.finished(verdict: .unknown, flaky: false)))
     #expect(VerdictStyle(.unknown).title == String(localized: "Unknown status"))
     #expect(VerdictStyle(StepStatus.unknown).title == String(localized: "Unknown status"))
+  }
+
+  /// What a Mac that lets this iPhone edit sends about a block reaches the editor, and each
+  /// change goes back to the core as the Mac reads it.
+  @Test func editingCrossesTheCore() {
+    let block = JEVisionMobile.BlockSummary(
+      id: "click", kind: "click", title: "Send", area: nil,
+      fields: [
+        BlockField(path: "target.description", kind: .text, value: "Send", choices: []),
+        BlockField(path: "button", kind: .choice, value: "left", choices: ["left", "right", "middle"]),
+      ],
+      problems: [JEVisionMobile.Problem(code: "flow.block.unreachable", warning: true, params: ["block": "click"])])
+    let test = JEVisionMobile.TestSummary(
+      name: "Send", description: nil, priority: nil, testType: nil, status: nil, author: nil, app: "com.example.Mail",
+      start: "click", width: 100, height: 100, blocks: [block], frames: [], edges: [], rows: [], notes: [],
+      revision: "abc", palette: [JEVisionMobile.PaletteEntry(blockType: "click", group: "actions")])
+    let flow = TestFlow(test)
+    #expect(flow.revision == "abc")
+    #expect(flow.palette == [TestFlow.PaletteEntry(blockType: "click", group: "actions")])
+    let fields = flow.blocks[0].fields
+    #expect(fields.map(\.kind) == [.text, .choice])
+    #expect(fields[1].choices == ["left", "right", "middle"])
+    #expect(flow.blocks[0].problems == [TestFlow.Problem(code: "flow.block.unreachable", params: ["block": "click"], warning: true)])
+    #expect(BlockText.sections(fields).map(\.group) == ["target", nil])
+    #expect(!BlockText.problem(flow.blocks[0].problems[0]).isEmpty)
+
+    #expect(
+      JEVisionMobile.TestEdit(.setField(block: "click", field: "button", value: "right"))
+        == .setField(block: "click", field: "button", value: "right"))
+    #expect(JEVisionMobile.TestEdit(.addBlock(after: nil, blockType: "pause")) == .addBlock(after: nil, blockType: "pause"))
+    #expect(JEVisionMobile.TestEdit(.removeBlock("click")) == .removeBlock(block: "click"))
+    #expect(JEVisionMobile.TestEdit(.rename("Send mail")) == .rename(name: "Send mail"))
   }
 
   /// A test that didn't run because a test it depends on failed reads as blocked and names it.

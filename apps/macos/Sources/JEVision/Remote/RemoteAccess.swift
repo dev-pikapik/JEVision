@@ -137,7 +137,7 @@ final class RemoteAccess {
           localDiscovery: true,
           // n0's address lookup is a third party, like its relays.
           globalDiscovery: relayChoice == .standard),
-        delegate: RemoteBridge(runs: runs),
+        delegate: RemoteBridge(runs: runs, project: project),
         // Assistants on other computers get what the ones on this Mac get.
         assistants: MacAssistantHost(readiness: { [runs, name = Self.macName] in Self.assistantBlocker(runs: runs, mac: name) }))
     } catch {
@@ -406,9 +406,11 @@ final class RemoteAccess {
 /// The app's side of remote access, called on the host's background threads.
 private final class RemoteBridge: RemoteDelegate {
   let runs: RunCenter
+  let project: ProjectStore
 
-  init(runs: RunCenter) {
+  init(runs: RunCenter, project: ProjectStore) {
     self.runs = runs
+    self.project = project
   }
 
   func runBlocker() -> RemoteError? {
@@ -446,6 +448,29 @@ private final class RemoteBridge: RemoteDelegate {
     DispatchQueue.main.async { [runs] in
       MainActor.assumeIsolated { runs.stop() }
     }
+  }
+
+  /// A phone's change would be lost under a change the Mac hasn't written yet.
+  func editBlocker(projectRoot: String, test: String) -> RemoteError? {
+    let busy = DispatchQueue.main.sync {
+      MainActor.assumeIsolated { documents(of: test, in: projectRoot).contains(where: \.hasUnsavedChanges) }
+    }
+    return busy ? .TestBusyOnMac : nil
+  }
+
+  /// The canvas shows what the phone wrote.
+  func testEdited(projectRoot: String, test: String) {
+    DispatchQueue.main.async { [self] in
+      MainActor.assumeIsolated {
+        for document in documents(of: test, in: projectRoot) where !document.hasUnsavedChanges { document.reload() }
+      }
+    }
+  }
+
+  @MainActor
+  private func documents(of test: String, in projectRoot: String) -> [FlowDocument] {
+    let file = URL(filePath: projectRoot, directoryHint: .isDirectory).appending(path: test).standardizedFileURL
+    return project.openDocuments.filter { $0.url.standardizedFileURL == file }
   }
 }
 

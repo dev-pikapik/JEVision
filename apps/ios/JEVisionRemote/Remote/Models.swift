@@ -19,6 +19,10 @@ struct HostRecord: Codable, Hashable, Identifiable, Sendable {
 enum Permission: Sendable {
   case view
   case run
+  /// Runs tests and changes them.
+  case edit
+
+  var canRun: Bool { self != .view }
 }
 
 struct Project: Hashable, Identifiable, Sendable {
@@ -76,6 +80,11 @@ struct TestFlow: Hashable, Sendable {
   var author: String? = nil
   /// The sticky notes on the canvas; empty without any and from Macs that don't send them.
   var notes: [TestNote] = []
+  /// The version of the file this was read from, which a change names so the Mac can tell
+  /// that nothing changed in between. Empty from Macs that predate editing.
+  var revision = ""
+  /// The blocks a change can add, in the order of the Mac's library.
+  var palette: [PaletteEntry] = []
 
   /// The read-only drawing shifted into its scroll view, without changing wire coordinates.
   var normalizedCanvas: Self {
@@ -106,6 +115,46 @@ struct TestFlow: Hashable, Sendable {
     var title: String
     /// `nil` for a block the layout leaves out.
     var area: CGRect?
+    /// The settings this iPhone can change, when it may edit.
+    var fields: [Field] = []
+    /// What the Mac finds wrong with the block.
+    var problems: [Problem] = []
+  }
+
+  /// One setting of a block, with its value as the Mac shows it.
+  struct Field: Hashable, Identifiable, Sendable {
+    /// Where it is in the block, such as `text` or `target.description`.
+    var path: String
+    var kind: FieldKind
+    /// `true` or `false` for a switch; empty when not set.
+    var value: String
+    /// The values a choice takes, as the test file writes them.
+    var choices: [String] = []
+    var id: String { path }
+  }
+
+  enum FieldKind: Hashable, Sendable {
+    case text
+    case longText
+    case number
+    case flag
+    case choice
+    /// A time such as `2s` or `500ms`.
+    case duration
+  }
+
+  /// A catalog key of the core with its values; `BlockText` words it.
+  struct Problem: Hashable, Sendable {
+    var code: String
+    var params: [String: String]
+    /// The test still runs, but probably not as meant.
+    var warning: Bool
+  }
+
+  struct PaletteEntry: Hashable, Sendable {
+    var blockType: String
+    /// The library group, such as `actions`.
+    var group: String
   }
 
   struct Frame: Hashable, Sendable {
@@ -121,6 +170,24 @@ struct TestFlow: Hashable, Sendable {
     var to: String
     var points: [CGPoint]
   }
+}
+
+/// One change to a test, made by the Mac.
+enum TestEdit: Hashable, Sendable {
+  /// An empty value takes an optional setting away.
+  case setField(block: String, field: String, value: String)
+  /// After `after`, or at the end of the test.
+  case addBlock(after: String?, blockType: String)
+  /// What led to the block then leads to what came after it.
+  case removeBlock(String)
+  /// The name the test shows; its file keeps its own.
+  case rename(String)
+}
+
+/// A test as a change left it, and the block to show next: the one a change added.
+struct EditedTest: Hashable, Sendable {
+  var flow: TestFlow
+  var select: String?
 }
 
 /// A sticky note of a test, for reading only. Its text is Markdown; the Mac has already limited

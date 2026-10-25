@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// One test: its flow, its last results, and the Run button.
+/// One test: its flow, its last results, and the Run button. An iPhone that may edit opens a
+/// block's settings by tapping it, and adds blocks and renames the test from the menu.
 struct TestDetailView: View {
   let host: HostRecord
   let project: String
@@ -13,6 +14,14 @@ struct TestDetailView: View {
   @Environment(\.push) private var push
   /// Row of the data table to run, counted from 0; `nil` runs every row.
   @State private var row: Int?
+  @State private var editing: EditorSheet?
+  @State private var renaming = false
+  @State private var newName = ""
+  @State private var editError: RemoteError?
+  /// Why the block sheet closed, told once it is gone.
+  @State private var closedBy: RemoteError?
+
+  private var canEdit: Bool { model.permission(on: host) == .edit }
 
   var body: some View {
     LoadableView(state: flow, retry: load) { flow in
@@ -48,7 +57,7 @@ struct TestDetailView: View {
             }
             .padding(.horizontal)
           }
-          FlowView(flow: flow, maxHeight: 520)
+          FlowView(flow: flow, maxHeight: 520, select: canEdit ? { editing = .block($0.id) } : nil)
             .background(.fill.quinary, in: .rect(cornerRadius: 20))
             .padding(.horizontal)
           if !runs.isEmpty {
@@ -84,6 +93,58 @@ struct TestDetailView: View {
     }
     .navigationTitle(flow.value?.name ?? "")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if canEdit, let current = flow.value {
+        Menu("Edit Test", systemImage: "pencil") {
+          Button("Add Block at the End", systemImage: "plus.rectangle.on.rectangle") { editing = .library }
+            .disabled(current.palette.isEmpty)
+          Button("Rename Test", systemImage: "character.cursor.ibeam") {
+            newName = current.name
+            renaming = true
+          }
+        }
+        .accessibilityIdentifier("editTest")
+      }
+    }
+    .sheet(item: $editing, onDismiss: { (editError, closedBy) = (closedBy, nil) }) { sheet in
+      switch sheet {
+      case .block(let id):
+        if let block = flow.value?.blocks.first(where: { $0.id == id }) {
+          BlockEditor(block: block, palette: flow.value?.palette ?? [], change: change)
+        }
+      case .library:
+        NavigationStack {
+          BlockLibrary(palette: flow.value?.palette ?? []) { type in
+            if let error = await change(.addBlock(after: nil, blockType: type)), error != .testChanged {
+              (closedBy, editing) = (error, nil)
+            }
+          }
+          .navigationTitle("Add Block")
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel", role: .cancel) { editing = nil }
+            }
+          }
+        }
+      }
+    }
+    .alert("Rename Test", isPresented: $renaming) {
+      TextField("Name", text: $newName)
+      Button("Cancel", role: .cancel) {}
+      Button("Rename") {
+        let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != flow.value?.name else { return }
+        Task { editError = await change(.rename(name)) }
+      }
+    } message: {
+      Text("The name the test shows. Its file keeps its name.")
+    }
+    .alert(editError?.title ?? "", isPresented: Binding(get: { editError != nil }, set: { if !$0 { editError = nil } })) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(editError?.message ?? "")
+    }
     .alert(runError?.title ?? "", isPresented: Binding(get: { runError != nil }, set: { if !$0 { runError = nil } })) {
       Button("OK", role: .cancel) {}
     } message: {
@@ -94,7 +155,7 @@ struct TestDetailView: View {
 
   @ViewBuilder private var runBar: some View {
     switch model.permission(on: host) {
-    case .run:
+    case .run, .edit:
       VStack(spacing: 10) {
         if let rows = flow.value?.rows, !rows.isEmpty {
           rowMenu(rows)
@@ -177,6 +238,33 @@ struct TestDetailView: View {
     if let row, row >= flow.value?.rows.count ?? 0 { self.row = nil }
     if case .loaded(let list) = await model.fetch(host, { session throws(RemoteError) in try await session.listRuns(project: project) }) {
       runs = list.saved.filter { $0.file == path }.sorted { $0.startedAt > $1.startedAt }
+    }
+  }
+
+  /// Has the Mac make `edit` on the test as shown here. The test then shows what the Mac saved;
+  /// one that changed on the Mac in between is read again.
+  private func change(_ edit: TestEdit) async -> RemoteError? {
+    guard let revision = flow.value?.revision else { return .other }
+    let (project, path) = (project, path)
+    switch await model.fetch(host, { session throws(RemoteError) in
+      try await session.editTest(project: project, path: path, revision: revision, edit: edit)
+    }) {
+    case .loaded(let edited):
+      flow = .loaded(edited.flow)
+      switch edit {
+      case .addBlock: editing = edited.select.map(EditorSheet.block)
+      case .removeBlock: editing = nil
+      case .setField, .rename: break
+      }
+      return nil
+    case .failed(let error):
+      if error == .testChanged {
+        await load()
+        if editing != nil { (closedBy, editing) = (error, nil) }
+      }
+      return error
+    case .loading:
+      return nil
     }
   }
 

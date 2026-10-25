@@ -91,6 +91,22 @@ enum RemoteText {
         defaultValue:
           "The list of paired devices on the Mac was saved by a newer version of JEVision, so it can’t be changed. Update JEVision on the Mac.",
         bundle: .app, locale: .app)
+    case .TestChanged:
+      return String(
+        localized: "remote.error.testChanged", defaultValue: "The test changed on the Mac in the meantime. Look at it again and repeat the change.",
+        bundle: .app, locale: .app)
+    case .TestBusyOnMac:
+      return String(
+        localized: "remote.error.testBusyOnMac", defaultValue: "The test is open on the Mac with a change that isn’t saved yet.", bundle: .app,
+        locale: .app)
+    case .EditInvalid:
+      return String(
+        localized: "remote.error.editInvalid", defaultValue: "The test can’t be changed this way. Check the value and try again.", bundle: .app,
+        locale: .app)
+    case .EditNeedsMac:
+      return String(
+        localized: "remote.error.editNeedsMac", defaultValue: "This change needs a question answered on the Mac. Make it on the Mac.", bundle: .app,
+        locale: .app)
     case .Unknown:
       return String(
         localized: "remote.error.unknown", defaultValue: "A newer version of JEVision reported a problem this one doesn’t know. Update JEVision.",
@@ -143,6 +159,7 @@ enum RemoteText {
     case .signInFailed: String(localized: "remote.activity.signInFailed", defaultValue: "Connection refused", bundle: .app, locale: .app)
     case .runStarted: String(localized: "remote.activity.runStarted", defaultValue: "Started a run", bundle: .app, locale: .app)
     case .runStopped: String(localized: "remote.activity.runStopped", defaultValue: "Stopped a run", bundle: .app, locale: .app)
+    case .testEdited: String(localized: "remote.activity.testEdited", defaultValue: "Changed a test", bundle: .app, locale: .app)
     case .reportRead: String(localized: "remote.activity.reportRead", defaultValue: "Opened a report", bundle: .app, locale: .app)
     case .denied: String(localized: "remote.activity.denied", defaultValue: "Request refused", bundle: .app, locale: .app)
     case .permissionChanged: String(localized: "remote.activity.permissionChanged", defaultValue: "Permission changed", bundle: .app, locale: .app)

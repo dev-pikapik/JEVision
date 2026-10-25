@@ -196,6 +196,11 @@ final class ExampleSession: MacSession {
   }
 
   /// Nothing to release: the example has no connection.
+  /// The example Mac lets this iPhone look and run, not change its tests.
+  func editTest(project: String, path: String, revision: String, edit: TestEdit) async throws(RemoteError) -> EditedTest {
+    throw .notAllowed
+  }
+
   func close() async {}
 
   private func check(_ project: String) throws(RemoteError) {

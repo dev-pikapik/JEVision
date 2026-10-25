@@ -120,5 +120,7 @@ struct RemoteAccessTests {
   @Test func explainsErrors() {
     #expect(RemoteText.text(.MacLocked) == "The Mac’s screen is locked.")
     #expect(RemoteText.kind(.runStarted) == "Started a run")
+    #expect(RemoteText.text(.TestBusyOnMac) == "The test is open on the Mac with a change that isn’t saved yet.")
+    #expect(RemoteText.kind(.testEdited) == "Changed a test")
   }
 }
