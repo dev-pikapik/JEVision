@@ -33,6 +33,8 @@ struct FieldContext {
         names.formUnion(outputs.filter { $0.kind == kind }.map(\.name))
       case .clipboard(.read(let saveAs, let content), _) where (content == .image ? .image : .text) == kind:
         names.insert(saveAs)
+      case .ask(.isShown, let saveAs, _) where kind == .number, .ask(.find, let saveAs, _) where kind == .area:
+        names.insert(saveAs)
       default:
         break
       }
@@ -530,20 +532,6 @@ struct ReferenceEditor: View {
     return inherited.provider.isEmpty ? aiProvider : inherited.provider
   }
 
-  /// The model the project or the settings choose for the block's provider, shown when the
-  /// block keeps it.
-  private var settingsModel: String {
-    let inherited = resolveAiChoice(settings: project.settings, task: .screen, block: AiChoice(provider: meaning.provider, model: ""))
-    if !inherited.model.isEmpty { return inherited.model }
-    return AISettings.provider(inherited.provider.isEmpty ? aiProvider : inherited.provider)
-      .map { AISettings.app.model(for: $0) } ?? ""
-  }
-
-  /// Why there is no model to show in the empty field; said under it, where the line can wrap.
-  private var noModelReason: LocalizedStringKey {
-    hasAI ? "No model chosen in Settings → AI" : "No AI chosen in Settings → AI"
-  }
-
   private var threshold: Binding<Double> {
     Binding(
       get: { if case .similar(let t) = reference.compare { t } else { 0.95 } },
@@ -591,29 +579,10 @@ struct ReferenceEditor: View {
         .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       IssueList(issues: context.issues(field + ".expect"))
-      Picker(selection: provider) {
-        Text("From Project or Settings").tag("")
-        ForEach(AISettings.providers, id: \.id) { Text($0.name).tag($0.id) }
-      } label: {
-        Text("AI")
-      }
-      Text("Which AI judges this check. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI.")
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-      IssueList(issues: context.issues(field + ".provider"))
-      TextField(text: model, prompt: settingsModel.isEmpty ? nil : Text(verbatim: settingsModel)) { Text("Model") }
-      if settingsModel.isEmpty {
-        Text(noModelReason)
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-      }
-      Text("Leave empty to use the model the project or Settings → AI chooses. Another model of the same provider can suit a harder or a simpler check.")
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
-      IssueList(issues: context.issues(field + ".model"))
+      AIChoiceFields(
+        provider: provider, model: model,
+        help: "Which AI judges this check. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI.",
+        providerIssues: context.issues(field + ".provider"), modelIssues: context.issues(field + ".model"))
       ConfidenceSlider(confidence: confidence, provider: judgingProvider)
       IssueList(issues: context.issues(field + ".confidence"))
     }
@@ -635,6 +604,59 @@ struct ReferenceEditor: View {
       SimilaritySlider(threshold: threshold)
     }
     IssueList(issues: context.issues(field + ".threshold") + context.issues(field + ".compare"))
+  }
+}
+
+/// Which AI looks at the screen and its model. Left empty, they are the ones the project names,
+/// or else the ones chosen in Settings → AI.
+struct AIChoiceFields: View {
+  @Binding var provider: String
+  @Binding var model: String
+  let help: LocalizedStringKey
+  let providerIssues: [Issue]
+  let modelIssues: [Issue]
+  @AppStorage(AISettings.providerKey) private var aiProvider = ""
+  @Environment(ProjectStore.self) private var project
+
+  private var hasAI: Bool { !aiProvider.isEmpty || project.settings.aiScreen.map { !$0.provider.isEmpty } == true }
+
+  /// The model the project or the settings choose for the provider, shown when the block keeps it.
+  private var settingsModel: String {
+    let inherited = resolveAiChoice(settings: project.settings, task: .screen, block: AiChoice(provider: provider, model: ""))
+    if !inherited.model.isEmpty { return inherited.model }
+    return AISettings.provider(inherited.provider.isEmpty ? aiProvider : inherited.provider)
+      .map { AISettings.app.model(for: $0) } ?? ""
+  }
+
+  /// Why there is no model to show in the empty field; said under it, where the line can wrap.
+  private var noModelReason: LocalizedStringKey {
+    hasAI ? "No model chosen in Settings → AI" : "No AI chosen in Settings → AI"
+  }
+
+  var body: some View {
+    Picker(selection: $provider) {
+      Text("From Project or Settings").tag("")
+      ForEach(AISettings.providers, id: \.id) { Text($0.name).tag($0.id) }
+    } label: {
+      Text("AI")
+    }
+    Text(help)
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+    IssueList(issues: providerIssues)
+    TextField(text: $model, prompt: settingsModel.isEmpty ? nil : Text(verbatim: settingsModel)) { Text("Model") }
+    if settingsModel.isEmpty {
+      Text(noModelReason)
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    Text("Leave empty to use the model the project or Settings → AI chooses. Another model of the same provider can suit a harder or a simpler check.")
+      .font(.callout)
+      .foregroundStyle(.secondary)
+      .fixedSize(horizontal: false, vertical: true)
+    IssueList(issues: modelIssues)
   }
 }
 

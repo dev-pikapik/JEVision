@@ -2,8 +2,8 @@
 //! an example, and the shapes blocks share. Tests check that the list matches the core.
 
 use jevision_core::{
-    AI_PROVIDERS, ELEMENT_ROLES, ELEMENT_STATES, LABELS_FORMAT, MAX_REPEAT, MAX_RETRIES,
-    MAX_SCROLL, catalog,
+    AI_PROVIDERS, ASK_FORMAT, ELEMENT_ROLES, ELEMENT_STATES, LABELS_FORMAT, MAX_REPEAT,
+    MAX_RETRIES, MAX_SCROLL, catalog,
 };
 use serde_json::{Value, json};
 
@@ -218,6 +218,18 @@ fn details(type_name: &str) -> (&'static str, Value, Value) {
             }),
             json!({ "type": "dateTime", "saveAs": "tomorrow", "format": "%d.%m.%Y", "shift": { "amount": 1, "unit": "days" } }),
         ),
+        "ask" => (
+            "Asks an AI about the window of the app under test and keeps the answer as a run variable for the following blocks. question \"isShown\" keeps how likely the window shows what expect says, a number from 0 to 1 (1 or 0 from a provider that only answers yes or no), for an if with greaterThan; question \"find\" keeps where the element description names is, an area x,y,width,height in fractions of the window, for the area of a target, and fails the block when the element is not there.",
+            json!({
+                "question": "\"isShown\" or \"find\"",
+                "expect": "for isShown: what the window should show, in words",
+                "provider": "for isShown, optional: the AI provider to ask instead of the one chosen in the settings, as in a check by meaning",
+                "model": "for isShown, optional: the model of that provider to ask instead of its chosen one",
+                "description": "for find: the element to find, in words, such as \"the blue Send button\"; asked of JEV, the AI that finds elements a target describes",
+                "saveAs": "the name to keep the answer under, for ${var.NAME}",
+            }),
+            json!({ "type": "ask", "question": "isShown", "expect": "the dark theme is on", "saveAs": "dark" }),
+        ),
         other => unreachable!("block type {other} has no description"),
     }
 }
@@ -246,8 +258,8 @@ pub(crate) fn guide() -> Value {
     json!({
         "file": {
             "format": format!(
-                "file format version: 1, or {LABELS_FORMAT} when the test names a file by its \
-                 label, res: and 16 hex digits"
+                "file format version: 1, {LABELS_FORMAT} when the test names a file by its \
+                 label, res: and 16 hex digits, or {ASK_FORMAT} when it has an ask block"
             ),
             "name": "name of the test",
             "app": "bundle id of the app under test, such as com.apple.TextEdit",

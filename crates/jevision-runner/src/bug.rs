@@ -7,10 +7,10 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use jevision_core::{
-    BLOCK_SUFFIX, BlockKind, CheckOf, ClipboardAction, ClipboardContent, Compare, Condition,
-    ElementCheck, FileState, Flow, Modifiers, Reference, ScriptLanguage, Target, TimeUnit,
-    ValueTest, WaitUntil, describe_element_in, describe_state_in, format_duration, is_block_path,
-    package_of_path,
+    AskQuestion, BLOCK_SUFFIX, BlockKind, CheckOf, ClipboardAction, ClipboardContent, Compare,
+    Condition, ElementCheck, FileState, Flow, Modifiers, Reference, ScriptLanguage, Target,
+    TimeUnit, ValueTest, WaitUntil, describe_element_in, describe_state_in, format_duration,
+    is_block_path, package_of_path,
 };
 use jevision_l10n::{text_in, tr_in};
 use sha2::{Digest, Sha256};
@@ -581,6 +581,16 @@ pub fn describe_block_in(
                     .map_or_else(String::new, |z| tr_in!(lang, "bug.dateTime.zone", z))
                 + &moved
         }
+        BlockKind::Ask {
+            question, save_as, ..
+        } => match question {
+            AskQuestion::IsShown { expect, .. } => {
+                tr_in!(lang, "bug.block.askIsShown", expect.trim(), save_as)
+            }
+            AskQuestion::Find { description } => {
+                tr_in!(lang, "bug.block.askFind", description.trim(), save_as)
+            }
+        },
     }
 }
 

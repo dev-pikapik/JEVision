@@ -8,15 +8,15 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use jevision_core::{
-    Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec, CanvasContent,
-    CanvasItem, CanvasSection, CheckOf, CheckedTest, ClipboardAction, ClipboardContent, Compare,
-    Condition, DatabaseExpect, ElementCheck, ElementNode, ElementQuery, ElementState, ElseIf,
-    ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue, IssueParam,
-    LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note, NoteAnchor,
-    PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue, ScriptInput,
-    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity,
-    Simulator, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit,
-    ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
+    AskQuestion, Attachment, AttachmentKind, Block, BlockGroup, BlockInput, BlockKind, BlockSpec,
+    CanvasContent, CanvasItem, CanvasSection, CheckOf, CheckedTest, ClipboardAction,
+    ClipboardContent, Compare, Condition, DatabaseExpect, ElementCheck, ElementNode, ElementQuery,
+    ElementState, ElseIf, ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue,
+    IssueParam, LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note,
+    NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue,
+    ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate,
+    Severity, Simulator, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift,
+    TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -980,6 +980,23 @@ pub enum BlockKind {
         time_zone: Option<String>,
         shift: Option<TimeShift>,
         next: Option<String>,
+    },
+    Ask {
+        question: AskQuestion,
+        save_as: String,
+        next: Option<String>,
+    },
+}
+
+#[uniffi::remote(Enum)]
+pub enum AskQuestion {
+    IsShown {
+        expect: String,
+        provider: String,
+        model: String,
+    },
+    Find {
+        description: String,
     },
 }
 

@@ -401,6 +401,7 @@ pub(crate) fn block_title(lang: &str, block_type: &str) -> Option<String> {
         "script" => "Script",
         "clipboard" => "Clipboard",
         "dateTime" => "Date and Time",
+        "ask" => "Ask AI",
         _ => return None,
     };
     Some(text_in(lang, key, &[]))

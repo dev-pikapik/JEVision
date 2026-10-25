@@ -188,6 +188,17 @@ struct BlockSummaryTests {
         == "“%d %B” · Русский · Europe/Berlin → due")
   }
 
+  @Test func describesAskBlocks() {
+    #expect(summary(.ask(question: .isShown(expect: "", provider: "", model: ""), saveAs: "dark", next: nil)) == "No question yet")
+    #expect(
+      summary(.ask(question: .isShown(expect: "The dark theme is on", provider: "jev", model: ""), saveAs: "dark", next: nil))
+        == "On the screen: “The dark theme is on”? → dark")
+    #expect(summary(.ask(question: .find(description: ""), saveAs: "send", next: nil)) == "No element yet")
+    #expect(summary(.ask(question: .find(description: "the Send button"), saveAs: "", next: nil)) == "Where is “the Send button”?")
+    #expect(
+      summary(.ask(question: .find(description: "the Send button"), saveAs: "send", next: nil)) == "Where is “the Send button”? → send")
+  }
+
   @Test func namesElementsDescribedInWords() {
     let save = Target.description("the blue Save button")
     let blank = Target.description(" \n")

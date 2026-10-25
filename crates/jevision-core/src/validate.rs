@@ -9,10 +9,10 @@ use crate::element::{ELEMENT_ROLES, ElementCheck, ElementQuery, ElementRole, Ele
 use crate::env::Environments;
 use crate::issue::Issue;
 use crate::model::{
-    AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, CheckOf, ClipboardAction,
-    Compare, Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, NoteAnchor,
-    Point, Rect, Reference, ScriptInput, Simulator, TEST_SUFFIX, Target, TimeShift, ValueKind,
-    ValueTest, WaitUntil, format_duration,
+    AI_PROVIDERS, AskQuestion, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, CheckOf,
+    ClipboardAction, Compare, Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue,
+    NoteAnchor, Point, Rect, Reference, ScriptInput, Simulator, TEST_SUFFIX, Target, TimeShift,
+    ValueKind, ValueTest, WaitUntil, format_duration,
 };
 use crate::notes::is_safe_name;
 use crate::package::{Version, is_block_path, package_of_path};
@@ -178,6 +178,12 @@ fn saved_kinds(flow: &Flow) -> HashMap<&str, Vec<ValueKind>> {
                 .entry(save_as.as_str())
                 .or_default()
                 .push(content.kind()),
+            BlockKind::Ask {
+                question, save_as, ..
+            } => made
+                .entry(save_as.as_str())
+                .or_default()
+                .push(question.kind()),
             kind => {
                 for (_, name) in saved_names(kind) {
                     made.entry(name).or_default().push(ValueKind::Text);
@@ -864,7 +870,8 @@ fn saved_names(kind: &BlockKind) -> Vec<(String, &str)> {
             action: ClipboardAction::Read { save_as, .. },
             ..
         }
-        | BlockKind::DateTime { save_as, .. } => vec![("saveAs".to_owned(), save_as.as_str())],
+        | BlockKind::DateTime { save_as, .. }
+        | BlockKind::Ask { save_as, .. } => vec![("saveAs".to_owned(), save_as.as_str())],
         _ => Vec::new(),
     }
 }
@@ -1268,6 +1275,27 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 );
             }
         }
+        BlockKind::Ask { question, .. } => match question {
+            AskQuestion::IsShown {
+                expect, provider, ..
+            } => {
+                if expect.trim().is_empty() {
+                    out.push(err("flow.field.empty", "expect"));
+                }
+                if !provider.is_empty() && !AI_PROVIDERS.contains(&provider.as_str()) {
+                    out.push(
+                        err("flow.reference.unknownProvider", "provider")
+                            .with("provider", provider)
+                            .with("allowed", AI_PROVIDERS.join(", ")),
+                    );
+                }
+            }
+            AskQuestion::Find { description } => {
+                if description.trim().is_empty() {
+                    out.push(err("flow.field.empty", "description"));
+                }
+            }
+        },
     }
     let saved = saved_names(&b.kind);
     for (i, (field, name)) in saved.iter().enumerate() {

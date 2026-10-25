@@ -2,8 +2,8 @@
 //! project's test list.
 
 use crate::{
-    BlockKind, CheckOf, ClipboardAction, Compare, Condition, ElementCheck, ElementQuery, Flow,
-    Reference, Target, WaitUntil,
+    AskQuestion, BlockKind, CheckOf, ClipboardAction, Compare, Condition, ElementCheck,
+    ElementQuery, Flow, Reference, Target, WaitUntil,
 };
 
 /// Something a search can find: what it is called, and other words it answers to.
@@ -174,6 +174,10 @@ pub fn test_keywords(flow: &Flow) -> String {
                 ClipboardAction::Read { .. } => {}
             },
             BlockKind::DateTime { .. } => {}
+            BlockKind::Ask { question, .. } => match question {
+                AskQuestion::IsShown { expect, .. } => words.push(expect),
+                AskQuestion::Find { description } => words.push(description),
+            },
         }
     }
     for note in &flow.canvas.notes {

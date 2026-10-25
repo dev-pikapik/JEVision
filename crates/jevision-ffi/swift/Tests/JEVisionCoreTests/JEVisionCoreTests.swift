@@ -50,10 +50,10 @@ private let smokeTest = """
 
 @Test func catalogListsEveryBlockType() {
   let names = blockCatalog().map(\.typeName)
-  #expect(names.count == 22)
+  #expect(names.count == 23)
   #expect(names.contains("repeat") && names.contains("useData") && names.contains("script")
     && names.contains("scroll") && names.contains("pause") && names.contains("clipboard")
-    && names.contains("dateTime"))
+    && names.contains("dateTime") && names.contains("ask"))
 }
 
 @Test func scriptsHandValuesToLaterBlocks() throws {

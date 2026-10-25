@@ -58,9 +58,9 @@ pub use ci::{
     ci_workflow_text, repository_root, write_ci_workflow,
 };
 pub use compat::{
-    BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS, MigratedFile,
-    MigrationProblem, MigrationReport, NewLabel, Requirement, SIMULATOR_FORMAT, SaveOutcome,
-    SettingsFileError, SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project,
+    ASK_FORMAT, BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS,
+    MigratedFile, MigrationProblem, MigrationReport, NewLabel, Requirement, SIMULATOR_FORMAT,
+    SaveOutcome, SettingsFileError, SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project,
     parse_settings_document, project_requirement, restore_backup, save_test,
 };
 pub use create::{
@@ -211,6 +211,7 @@ const CATALOG: &[(&str, BlockGroup, &[&str])] = &[
     ("waitFor", BlockGroup::Waiting, &[NEXT]),
     ("pause", BlockGroup::Waiting, &[NEXT]),
     ("check", BlockGroup::Checks, &[NEXT]),
+    ("ask", BlockGroup::Checks, &[NEXT]),
     ("if", BlockGroup::Logic, &[THEN, ELSE]),
     ("repeat", BlockGroup::Logic, &[BODY, NEXT]),
     ("runTest", BlockGroup::SubTests, &[NEXT]),

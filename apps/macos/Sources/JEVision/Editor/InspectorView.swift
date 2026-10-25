@@ -99,6 +99,7 @@ struct InspectorView: View {
     case .waitFor: ["until", "timeout"]
     case .pause: ["duration"]
     case .check: ["reference", "element"]
+    case .ask: ["question", "expect", "description", "provider", "model", "saveAs"]
     case .if: ["reference", "value", "element", "elseIf"]
     case .repeat: ["times"]
     case .useData: ["file"]
@@ -717,6 +718,11 @@ struct InspectorView: View {
 
     case .clipboard(let action, let next):
       clipboardFields(action: action, next: next, context: context, values: values)
+
+    case .ask(let question, let saveAs, let next):
+      AskEditor(
+        question: bind("question", question) { .ask(question: $0, saveAs: saveAs, next: next) },
+        saveAs: bind("saveAs", saveAs) { .ask(question: question, saveAs: $0, next: next) }, context: context)
 
     case .dateTime(let saveAs, let format, let language, let timeZone, let shift, let next):
       dateTimeFields(

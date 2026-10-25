@@ -363,6 +363,7 @@ readable diff.
 | `pressKeys` | actions | Presses a key combination such as `cmd+shift+s` |
 | `waitFor` | wait and check | Waits until an image appears, disappears, the screen stops changing or an interface element is in a state (`{ "element": { "id": "send", "is": "enabled" } }`) |
 | `check` | wait and check | Compares the screen with a reference image, exactly or by similarity, or checks it by meaning; or checks an interface element: there or not, enabled, selected, its value or title |
+| `ask` | wait and check | Asks AI about the screen and keeps the answer as `${var.NAME}` (`saveAs`): `"question": "isShown"` with `expect` gives a number, how likely the screen shows it: JEV's probability from 0 to 1, or 1 and 0 from an AI that only answers yes or no, for an `if` to branch on; `"question": "find"` with `description` gives the element's area, `x,y,width,height`, for a target `{ "area": "${var.NAME}" }`, and fails when the element isn't there |
 | `if` | logic | Goes to `then`, to the first matching `elseIf` condition, or to `else`, depending on what is on screen, a value or an interface element |
 | `repeat` | logic | Runs its `body` a given number of times |
 | `runTest` | logic | Runs another test file or a [custom block](#custom-blocks) as a step; its `inputs` give values to `${input.NAME}` in that test |

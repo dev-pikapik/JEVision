@@ -6,10 +6,10 @@ use std::collections::{HashMap, HashSet};
 use crate::decode::{DEFAULT_TASK_TIMEOUT_MS, DEFAULT_WAIT_TIMEOUT_MS};
 use crate::element::{ElementCheck, ElementState};
 use crate::model::{
-    BODY, Block, BlockKind, CheckOf, ClipboardAction, Compare, Condition, DEFAULT_DATE_FORMAT,
-    ELSE, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton, NEXT,
-    Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN, Target, ValueCheck, ValueTest,
-    WaitUntil, else_if_index,
+    AskQuestion, BODY, Block, BlockKind, CheckOf, ClipboardAction, Compare, Condition,
+    DEFAULT_DATE_FORMAT, ELSE, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers,
+    MouseButton, NEXT, Reference, ScriptLanguage, ScrollDirection, ScrollUnit, THEN, Target,
+    ValueCheck, ValueTest, WaitUntil, else_if_index,
 };
 
 /// How far a new scroll block scrolls, in lines.
@@ -180,6 +180,15 @@ impl BlockKind {
                 shift: None,
                 next: None,
             },
+            "ask" => Self::Ask {
+                question: AskQuestion::IsShown {
+                    expect: String::new(),
+                    provider: String::new(),
+                    model: String::new(),
+                },
+                save_as: String::new(),
+                next: None,
+            },
             _ => return None,
         })
     }
@@ -306,7 +315,8 @@ impl BlockKind {
             | Self::CheckFile { next, .. }
             | Self::Database { next, .. }
             | Self::Clipboard { next, .. }
-            | Self::DateTime { next, .. } => Some(next),
+            | Self::DateTime { next, .. }
+            | Self::Ask { next, .. } => Some(next),
         }
     }
 }

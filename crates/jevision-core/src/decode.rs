@@ -10,13 +10,14 @@ use serde_json::{Map, Value};
 use crate::element::{ELEMENT_STATES, ElementCheck, ElementQuery, ElementState};
 use crate::issue::{Issue, ParseError};
 use crate::model::{
-    Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection, CheckOf,
-    ClipboardAction, ClipboardContent, Compare, Condition, DATE_LANGUAGES, DEFAULT_DATE_FORMAT,
-    DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod, Modifiers, MouseButton,
-    NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved,
-    SavedValue, ScriptInput, ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, Simulator,
-    Target, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind, ValueTest, WaitUntil,
-    WindowPosition, WindowSize, parse_duration, time_zone_known,
+    AskQuestion, Attachment, AttachmentKind, Block, BlockKind, CanvasContent, CanvasSection,
+    CheckOf, ClipboardAction, ClipboardContent, Compare, Condition, DATE_LANGUAGES,
+    DEFAULT_DATE_FORMAT, DatabaseExpect, ElseIf, ExpectStatus, FileState, Flow, HttpMethod,
+    Modifiers, MouseButton, NamedValue, Note, NoteAnchor, PackageNeed, Point, Priority, Rect,
+    Reference, Reply, Resolved, SavedValue, ScriptInput, ScriptLanguage, ScriptOutput,
+    ScrollDirection, ScrollUnit, Simulator, Target, TestStatus, TestType, TimeShift, TimeUnit,
+    ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize, parse_duration,
+    time_zone_known,
 };
 use crate::package::{Version, app_version};
 use crate::resources::{RESOURCE_KINDS, ResourceMeta, is_content_hash, is_resource_id};
@@ -38,9 +39,9 @@ const _: () = assert!(MIGRATIONS.len() == FORMAT_CHANGES.len());
 /// instead of its path. A format-1 file holds no labels, so nothing in it changes.
 fn to_labels(_: &mut Map<String, Value>) {}
 
-/// Format 3 lets a test run its application in the iOS Simulator (`simulator`) and open app
-/// links of any scheme, like `myapp://inbox`. A format-2 file has neither, so nothing in it
-/// changes.
+/// Format 3 lets a test run its application in the iOS Simulator (`simulator`), open app links
+/// of any scheme, like `myapp://inbox`, and keep an AI's answer about the window as a run variable
+/// with the `ask` block. A format-2 file has none of them, so nothing in it changes.
 fn to_simulators(_: &mut Map<String, Value>) {}
 
 /// The steps that upgrade a `.jevmeta` file, the label of a resource, like [`MIGRATIONS`] for a
@@ -508,6 +509,12 @@ const CLIPBOARD_CONTENTS: &[(&str, ClipboardContent)] = &[
     ("image", ClipboardContent::Image),
     ("files", ClipboardContent::Files),
 ];
+#[derive(Clone, Copy)]
+enum AskMode {
+    IsShown,
+    Find,
+}
+const ASK_MODES: &[(&str, AskMode)] = &[("isShown", AskMode::IsShown), ("find", AskMode::Find)];
 const CLIPBOARD_MODES: &[(&str, ClipboardMode)] = &[
     ("put", ClipboardMode::Put),
     ("read", ClipboardMode::Read),
@@ -1246,6 +1253,38 @@ fn block_kind(o: &mut Obj<'_>, out: &mut Out) -> Option<BlockKind> {
                     language: language?,
                     time_zone: time_zone.filter(|z| time_zone_known(z)),
                     shift: shift?,
+                    next,
+                })
+            })
+        }
+        "ask" => {
+            let mode = o.opt_choice("question", ASK_MODES, out);
+            let question = match o.require("question", mode, out) {
+                Some(AskMode::IsShown) => {
+                    let expect = o.string("expect", out);
+                    let provider = o.opt_string("provider", out);
+                    let model = o.opt_string("model", out);
+                    expect.map(|expect| AskQuestion::IsShown {
+                        expect,
+                        provider: provider.unwrap_or_default().trim().to_owned(),
+                        model: model.unwrap_or_default().trim().to_owned(),
+                    })
+                }
+                Some(AskMode::Find) => o
+                    .string("description", out)
+                    .map(|description| AskQuestion::Find { description }),
+                None => {
+                    o.known
+                        .extend(["expect", "provider", "model", "description"]);
+                    None
+                }
+            };
+            let save_as = o.string("saveAs", out);
+            let next = next(o, out);
+            all_present(|| {
+                Some(BlockKind::Ask {
+                    question: question?,
+                    save_as: save_as?,
                     next,
                 })
             })

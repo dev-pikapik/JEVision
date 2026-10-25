@@ -36,6 +36,8 @@ pub const TEST_SCHEMA: &str = "https://dev-pikapik.github.io/JEVision/schemas/te
 pub const LABELS_FORMAT: u32 = 2;
 /// The format of tests that run their app in the iOS Simulator or open links into apps.
 pub const SIMULATOR_FORMAT: u32 = 3;
+/// The format of tests that have an `ask` block: the same format, which came with both.
+pub const ASK_FORMAT: u32 = 3;
 /// Where the backups of a project are, relative to it.
 pub const BACKUPS_FOLDER: &str = ".jevision/backups";
 /// The most backups a project keeps; the oldest go first.
@@ -63,8 +65,14 @@ impl Requirement {
             BlockKind::OpenFile { files, .. } => files.iter().any(|f| is_app_link(f)),
             _ => false,
         });
+        let ask = flow
+            .blocks
+            .iter()
+            .any(|b| matches!(b.kind, BlockKind::Ask { .. }));
         let format = if flow.simulator.is_some() || app_links {
             SIMULATOR_FORMAT
+        } else if ask {
+            ASK_FORMAT
         } else if labels {
             LABELS_FORMAT
         } else {
