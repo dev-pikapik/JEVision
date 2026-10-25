@@ -1,0 +1,48 @@
+{
+  "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
+  "format": 3,
+  "name": "Inbox on iPhone",
+  "description": "Opens the inbox through an app link in the iOS Simulator.",
+  "app": "com.example.Mail",
+  "simulator": {
+    "device": "iPhone 17",
+    "install": "build/Mail.app"
+  },
+  "platform": "iOS 27",
+  "start": "launch",
+  "blocks": {
+    "launch": {
+      "type": "openApp",
+      "resetState": true,
+      "arguments": [
+        "-UITests"
+      ],
+      "environment": {
+        "MAIL_SERVER": "localhost"
+      },
+      "next": "inbox"
+    },
+    "inbox": {
+      "type": "openFile",
+      "files": [
+        "mail://inbox"
+      ],
+      "next": "compose"
+    },
+    "compose": {
+      "type": "click",
+      "target": {
+        "point": {
+          "x": 0.9,
+          "y": 0.08
+        }
+      },
+      "button": "left",
+      "next": "subject"
+    },
+    "subject": {
+      "type": "type",
+      "text": "Hello"
+    }
+  }
+}

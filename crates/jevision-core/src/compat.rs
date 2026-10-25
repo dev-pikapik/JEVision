@@ -24,15 +24,18 @@ use serde::{Deserialize, Serialize};
 use crate::atomic;
 use crate::decode::{FORMAT_CHANGES, OLDEST_FORMAT};
 use crate::issue::Issue;
-use crate::model::{BLOCK_SUFFIX, Flow, TEMPLATE_SUFFIX, TEST_SUFFIX};
+use crate::model::{BLOCK_SUFFIX, BlockKind, Flow, TEMPLATE_SUFFIX, TEST_SUFFIX};
 use crate::package::visit_files;
 use crate::package_files::project_files;
 use crate::resources::{META_SUFFIX, RESOURCE_PREFIX, ResourceIndex, resource_id};
+use crate::validate::is_app_link;
 use crate::{parse, to_canonical_json};
 
 pub const TEST_SCHEMA: &str = "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json";
 /// The format of tests that name a file by its label.
 pub const LABELS_FORMAT: u32 = 2;
+/// The format of tests that run their app in the iOS Simulator or open links into apps.
+pub const SIMULATOR_FORMAT: u32 = 3;
 /// Where the backups of a project are, relative to it.
 pub const BACKUPS_FOLDER: &str = ".jevision/backups";
 /// The most backups a project keeps; the oldest go first.
@@ -56,7 +59,17 @@ impl Requirement {
         visit_files(&mut flow.clone(), |_, _, path| {
             labels |= resource_id(path).is_some();
         });
-        let format = if labels { LABELS_FORMAT } else { OLDEST_FORMAT };
+        let app_links = flow.blocks.iter().any(|b| match &b.kind {
+            BlockKind::OpenFile { files, .. } => files.iter().any(|f| is_app_link(f)),
+            _ => false,
+        });
+        let format = if flow.simulator.is_some() || app_links {
+            SIMULATOR_FORMAT
+        } else if labels {
+            LABELS_FORMAT
+        } else {
+            OLDEST_FORMAT
+        };
         Self { format }
     }
 

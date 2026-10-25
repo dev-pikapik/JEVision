@@ -11,8 +11,8 @@ use crate::issue::Issue;
 use crate::model::{
     AI_PROVIDERS, AttachmentKind, BLOCK_SUFFIX, BODY, Block, BlockKind, CheckOf, ClipboardAction,
     Compare, Condition, DatabaseExpect, ExpectStatus, FileState, Flow, NamedValue, NoteAnchor,
-    Point, Rect, Reference, ScriptInput, TEST_SUFFIX, Target, TimeShift, ValueKind, ValueTest,
-    WaitUntil, format_duration,
+    Point, Rect, Reference, ScriptInput, Simulator, TEST_SUFFIX, Target, TimeShift, ValueKind,
+    ValueTest, WaitUntil, format_duration,
 };
 use crate::notes::is_safe_name;
 use crate::package::{Version, is_block_path, package_of_path};
@@ -583,7 +583,7 @@ pub(crate) fn files_read<'a>(kind: &'a BlockKind) -> Vec<(String, &'a str)> {
         BlockKind::OpenFile { files, .. } => files
             .iter()
             .enumerate()
-            .filter(|(_, f)| !is_web_address(f))
+            .filter(|(_, f)| !is_link(f))
             .map(|(i, f)| (format!("files.{i}"), f))
             .collect(),
         BlockKind::Click { target, .. } | BlockKind::Hover { target, .. } => {
@@ -880,6 +880,9 @@ fn root(flow: &Flow, out: &mut Vec<Issue>) {
                 .with("value", &flow.app),
         );
     }
+    if let Some(simulator) = &flow.simulator {
+        simulator_fields(simulator, out);
+    }
     let mut tags = HashSet::new();
     for tag in &flow.tags {
         if tag.trim().is_empty() {
@@ -984,7 +987,7 @@ fn block(b: &Block, ids: &HashSet<&str>, out: &mut Vec<Issue>) {
                 out.push(err("flow.field.empty", "files"));
             }
             for (i, f) in files.iter().enumerate() {
-                if !is_web_address(f) {
+                if !is_link(f) {
                     relative_path(id, &format!("files.{i}"), f, out);
                 }
             }
@@ -1759,6 +1762,45 @@ fn is_bundle_id(s: &str) -> bool {
         && parts
             .iter()
             .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'))
+}
+
+fn simulator_fields(simulator: &Simulator, out: &mut Vec<Issue>) {
+    if simulator.device.trim().is_empty() {
+        out.push(Issue::error("flow.field.empty").with("field", "simulator.device"));
+    }
+    let Some(install) = &simulator.install else {
+        return;
+    };
+    let build = install.trim_end_matches('/');
+    if build.trim().is_empty() {
+        out.push(Issue::error("flow.field.empty").with("field", "simulator.install"));
+    } else if !install.contains("${") && (!build.ends_with(".app") || build.ends_with("/.app")) {
+        out.push(
+            Issue::error("flow.path.extension")
+                .with("field", "simulator.install")
+                .with("value", install)
+                .with("expected", ".app"),
+        );
+    }
+}
+
+/// A web address, or a link into an app such as `myapp://inbox`: something a block opens rather
+/// than a file of the test.
+pub fn is_link(s: &str) -> bool {
+    is_web_address(s) || is_app_link(s)
+}
+
+/// A link of a scheme an app registered, like `myapp://inbox`; neither a web address nor a file.
+pub(crate) fn is_app_link(s: &str) -> bool {
+    let Some((scheme, rest)) = s.split_once("://") else {
+        return false;
+    };
+    let mut chars = scheme.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+        && !["http", "https", "file"].contains(&scheme.to_ascii_lowercase().as_str())
+        && !rest.is_empty()
+        && !s.chars().any(char::is_whitespace)
 }
 
 pub(crate) fn is_web_address(s: &str) -> bool {

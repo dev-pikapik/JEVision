@@ -28,7 +28,7 @@ const TEST: Kind = Kind {
         Tests are `*.flow.json` files; `*.block.json` files are blocks of the project's own, \
         `*.template.json` files are templates, and `flow.json` is the test inside a community \
         block.",
-    formats: &[1, 2],
+    formats: &[1, 2, 3],
     header: true,
 };
 const JEVMETA: Kind = Kind {
@@ -872,7 +872,7 @@ mod tests {
             (wrong_in_block, "a number written as text in a block"),
             (null, "null for a key that may be left out"),
             (without(&sample, "format"), "a test without format"),
-            (with(&sample, "/format", 3.into()), "a newer format"),
+            (with(&sample, "/format", 4.into()), "a newer format"),
             (with(&sample, "/format", 0.into()), "format 0"),
             (
                 with(&sample, "/minVersion", "1.4".into()),

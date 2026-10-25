@@ -217,14 +217,15 @@ fn reading_order_keeps_unreachable_blocks_last() {
 
 #[test]
 fn format_versions() {
-    assert_eq!(FORMAT_VERSION, 2);
+    assert_eq!(FORMAT_VERSION, 3);
     let with_format =
         |n: &str| minimal(r#"{"a": {"type": "openApp"}}"#).replace("\"format\": 1", n);
     assert!(parse(&with_format("\"format\": 1")).is_ok());
     assert!(parse(&with_format("\"format\": 2")).is_ok());
-    let too_new = parse_err(&with_format("\"format\": 3"));
+    assert!(parse(&with_format("\"format\": 3")).is_ok());
+    let too_new = parse_err(&with_format("\"format\": 4"));
     assert_eq!(codes(&too_new), ["flow.format.tooNew"]);
-    assert_eq!(too_new[0].param("supported"), Some("2"));
+    assert_eq!(too_new[0].param("supported"), Some("3"));
     assert_eq!(
         codes(&parse_err(&with_format("\"format\": 0"))),
         ["flow.format.unsupported"]
@@ -256,6 +257,92 @@ fn a_test_is_written_in_the_lowest_format_that_holds_it() {
             .unwrap()
             .contains("\n  \"format\": 1,\n")
     );
+}
+
+#[test]
+fn a_test_in_the_simulator_or_with_an_app_link_needs_format_3() {
+    let simulator = |fields: &str| {
+        minimal(r#"{"a": {"type": "openApp"}}"#)
+            .replace("\"format\": 1", "\"format\": 3")
+            .replace(
+                r#""start""#,
+                &format!(r#""simulator": {{{fields}}}, "start""#),
+            )
+    };
+    let flow = parse(&simulator(r#""device": "iPhone 17""#)).unwrap();
+    assert_eq!(
+        flow.simulator,
+        Some(Simulator {
+            device: "iPhone 17".into(),
+            install: None
+        })
+    );
+    assert_eq!(Requirement::of(&flow).format, SIMULATOR_FORMAT);
+    assert!(to_canonical_json(&flow).contains(
+        "\"app\": \"com.example.App\",\n  \"simulator\": {\n    \"device\": \"iPhone 17\"\n  },"
+    ));
+    assert_eq!(
+        codes(&parse_err(&simulator(
+            r#""device": "iPhone 17", "os": "27""#
+        ))),
+        ["flow.field.unknown"]
+    );
+    let issues = |fields: &str| -> Vec<(String, Option<String>)> {
+        issues_of_flow(&parse(&simulator(fields)).unwrap())
+            .into_iter()
+            .map(|i| (i.code.clone(), i.param("field").map(str::to_owned)))
+            .collect()
+    };
+    let field = |code: &str, field: &str| vec![(code.to_owned(), Some(field.to_owned()))];
+    assert_eq!(
+        issues(r#""device": "iPhone 17", "install": "build/Mail.app""#),
+        []
+    );
+    assert_eq!(
+        issues(r#""device": "iPhone 17", "install": "${env.BUILD}""#),
+        []
+    );
+    assert_eq!(
+        issues(r#""device": "iPhone 17", "install": "build/Mail.ipa""#),
+        field("flow.path.extension", "simulator.install")
+    );
+    assert_eq!(
+        issues(r#""device": "iPhone 17", "install": """#),
+        field("flow.field.empty", "simulator.install")
+    );
+    assert_eq!(
+        issues(r#""device": " ""#),
+        field("flow.field.empty", "simulator.device")
+    );
+
+    let opening = |file: &str| {
+        minimal(&format!(
+            r#"{{"a": {{"type": "openFile", "files": ["{file}"]}}}}"#
+        ))
+        .replace("\"format\": 1", "\"format\": 3")
+    };
+    let link = parse(&opening("mail://inbox?unread=1")).unwrap();
+    assert_eq!(Requirement::of(&link).format, SIMULATOR_FORMAT);
+    assert!(issues_of_flow(&link).is_empty());
+    let web = parse(&opening("https://example.com")).unwrap();
+    assert_eq!(Requirement::of(&web).format, 1);
+    assert!(is_link("mail://inbox") && is_link("https://example.com"));
+    for not_link in [
+        "file:///etc/hosts",
+        "docs/a.txt",
+        "1mail://x",
+        "mail://",
+        "my app://x",
+    ] {
+        assert!(!is_link(not_link), "{not_link}");
+    }
+}
+
+fn issues_of_flow(flow: &Flow) -> Vec<Issue> {
+    validate(flow)
+        .into_iter()
+        .filter(|i| i.code != "flow.noCheck")
+        .collect()
 }
 
 #[test]

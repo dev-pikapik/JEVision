@@ -14,9 +14,9 @@ use jevision_core::{
     ExpectStatus, FileState, Flow, FlowLayout, HttpMethod, InputField, Issue, IssueParam,
     LaidBlock, LaidEdge, LaidFrame, LaidSlot, Modifiers, MouseButton, NamedValue, Note, NoteAnchor,
     PackageNeed, Point, Priority, Rect, Reference, Reply, Resolved, SavedValue, ScriptInput,
-    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity, Slot,
-    Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit, ValueCheck, ValueKind,
-    ValueTest, WaitUntil, WindowPosition, WindowSize,
+    ScriptLanguage, ScriptOutput, ScrollDirection, ScrollUnit, SearchCandidate, Severity,
+    Simulator, Slot, Target, TestCard, TestFilter, TestStatus, TestType, TimeShift, TimeUnit,
+    ValueCheck, ValueKind, ValueTest, WaitUntil, WindowPosition, WindowSize,
 };
 
 uniffi::setup_scaffolding!();
@@ -680,6 +680,8 @@ pub struct Flow {
     pub description: Option<String>,
     pub icon: Option<String>,
     pub app: String,
+    #[uniffi(default = None)]
+    pub simulator: Option<Simulator>,
     pub test_type: Option<TestType>,
     pub priority: Option<Priority>,
     pub status: Option<TestStatus>,
@@ -700,6 +702,13 @@ pub struct Flow {
     pub start: String,
     pub blocks: Vec<Block>,
     pub canvas: CanvasContent,
+}
+
+#[uniffi::remote(Record)]
+pub struct Simulator {
+    pub device: String,
+    #[uniffi(default = None)]
+    pub install: Option<String>,
 }
 
 #[uniffi::remote(Record)]

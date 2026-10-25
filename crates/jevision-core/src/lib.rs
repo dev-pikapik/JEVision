@@ -59,9 +59,9 @@ pub use ci::{
 };
 pub use compat::{
     BACKUPS_FOLDER, Backup, BackupFile, LABELS_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUPS, MigratedFile,
-    MigrationProblem, MigrationReport, NewLabel, Requirement, SaveOutcome, SettingsFileError,
-    SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project, parse_settings_document,
-    project_requirement, restore_backup, save_test,
+    MigrationProblem, MigrationReport, NewLabel, Requirement, SIMULATOR_FORMAT, SaveOutcome,
+    SettingsFileError, SettingsMetadata, TEST_SCHEMA, list_backups, migrate_project,
+    parse_settings_document, project_requirement, restore_backup, save_test,
 };
 pub use create::{
     CreatedProject, GITIGNORE_RUN_FOLDER, NEW_PROJECT_GITIGNORE, ProjectStarter, create_project,
@@ -152,7 +152,7 @@ pub use search::{SearchCandidate, SearchIndex, rank, test_keywords};
 pub use template::{BUILTIN_TEMPLATES, BlockInput, InputField};
 pub use validate::{
     DiskCache, MAX_REPEAT, MAX_RETRIES, MAX_SCROLL, MAX_TIMEOUT_MS, MAX_WINDOW_OFFSET,
-    MAX_WINDOW_SIDE, MIN_WINDOW_SIDE, required_inputs, required_secrets, saved_variables,
+    MAX_WINDOW_SIDE, MIN_WINDOW_SIDE, is_link, required_inputs, required_secrets, saved_variables,
     unbreakable_placeholders, validate, validate_in, validate_in_with,
 };
 
