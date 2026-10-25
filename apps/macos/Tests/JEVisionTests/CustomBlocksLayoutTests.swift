@@ -57,7 +57,14 @@ struct CustomBlocksLayoutTests {
     // The row holds the name, the address and the warning; all of it is in view without scrolling.
     #expect(shown.contains(block), "The block's row \(block) is in the list's view \(shown)")
     // The address can be selected, so it has a view of its own: as wide as the whole address.
-    let address = try #require(all.filter { $0.isDescendant(of: row) && String(describing: type(of: $0)).contains("TextInteraction") }.first)
+    // macOS 26 draws it in a text field, later versions in a view that reads it out.
+    let inRow = all.filter { $0.isDescendant(of: row) }
+    let address = try #require(
+      inRow.first {
+        ($0 as? NSTextField)?.stringValue == Self.source || $0.accessibilityLabel() == Self.source
+          || $0.accessibilityValue() as? String == Self.source
+      },
+      "No view in the row reads out the address: \(inRow.map { String(describing: type(of: $0)) })")
     let font = NSFont.systemFont(ofSize: NSFont.preferredFont(forTextStyle: .caption1).pointSize)
     let needed = (Self.source as NSString).size(withAttributes: [.font: font]).width
     #expect(address.frame.width + 1 >= needed, "The address shows \(address.frame.width) of \(needed) points")

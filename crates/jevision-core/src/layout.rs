@@ -1218,6 +1218,25 @@ mod tests {
     }
 
     #[test]
+    fn branches_join_at_the_first_block_they_all_reach_not_the_first_one_walked() {
+        // The walk from `then` reaches `m` before `n`, but `n` leads to `m`, so they join at `n`.
+        let l = layout(&flow(
+            r#"{"if": {"type": "if", "reference": {"image": "a.png"}, "then": "inner", "else": "b"},
+                "inner": {"type": "if", "reference": {"image": "b.png"}, "then": "c", "else": "d"},
+                "c": {"type": "pressKeys", "keys": "c", "next": "m"},
+                "d": {"type": "pressKeys", "keys": "d", "next": "n"},
+                "b": {"type": "pressKeys", "keys": "b", "next": "n"},
+                "n": {"type": "pressKeys", "keys": "n", "next": "m"},
+                "m": {"type": "pressKeys", "keys": "m"}}"#,
+            "if",
+        ));
+        let (top, join) = (rect(&l, "if"), rect(&l, "n"));
+        assert_eq!(join.x, top.x);
+        assert!(join.y > rect(&l, "m").y);
+        assert!(join.y > rect(&l, "d").y && join.y > rect(&l, "b").y);
+    }
+
+    #[test]
     fn a_loop_is_a_frame_around_its_body() {
         let f = flow(
             r#"{"loop": {"type": "repeat", "times": 2, "body": "x", "next": "after"},

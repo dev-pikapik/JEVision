@@ -112,6 +112,7 @@ cleanup() {
   # A failed run can leave the subject open; it lives only in the working folder.
   pkill -f "$SUBJECT/Contents/MacOS/JEVision" 2>/dev/null || true
   if [ "$HELD" = 1 ]; then rm -rf "$LOCK"; fi
+  # With no earlier runs to prune, ls fails; that must not turn a passed run into a failed one.
   if [ "$KEEP" = 0 ]; then
     ls -1d "$ROOT"/build/selftest/2* 2>/dev/null | sort -r | tail -n +6 | while read -r old; do rm -rf "$old"; done || true
   fi
