@@ -16,6 +16,7 @@ enum BlockInfo {
     case "waitFor": "hourglass"
     case "pause": "timer"
     case "check": "checkmark.seal"
+    case "ask": "sparkle.magnifyingglass"
     case "if": "arrow.triangle.branch"
     case "repeat": "repeat"
     case "useData": "tablecells"
@@ -44,6 +45,7 @@ enum BlockInfo {
     case "waitFor": String(localized: "Wait For")
     case "pause": String(localized: "Pause")
     case "check": String(localized: "Check")
+    case "ask": String(localized: "Ask AI")
     case "if": String(localized: "If")
     case "repeat": String(localized: "Repeat")
     case "useData": String(localized: "Use Data")
@@ -72,6 +74,7 @@ enum BlockInfo {
     case "waitFor": String(localized: "Waits until something appears or disappears, or until the screen stops changing.")
     case "pause": String(localized: "Waits a set time before the next step, for animations or slow screens that give no sign when they are ready.")
     case "check": String(localized: "Fails the test unless the screen looks as expected.")
+    case "ask": String(localized: "Asks an AI model whether the screen shows something, or where an element is, and saves the answer for later blocks.")
     case "if": String(localized: "Takes a different path depending on what the screen shows or what a saved value is.")
     case "repeat": String(localized: "Runs the blocks inside it several times.")
     case "useData": String(localized: "Runs the blocks inside it once for each row of a CSV file.")
@@ -101,6 +104,7 @@ enum BlockInfo {
     case "waitFor": String(localized: "Waits for the screen to change")
     case "pause": String(localized: "Waits a set time")
     case "check": String(localized: "Fails unless the screen matches")
+    case "ask": String(localized: "Saves what an AI sees on the screen")
     case "if": String(localized: "Takes a path by the screen or a value")
     case "repeat": String(localized: "Repeats the steps inside")
     case "useData": String(localized: "Repeats the steps for each table row")
@@ -223,6 +227,7 @@ extension BlockKind {
     case .waitFor: "waitFor"
     case .pause: "pause"
     case .check: "check"
+    case .ask: "ask"
     case .if: "if"
     case .repeat: "repeat"
     case .useData: "useData"

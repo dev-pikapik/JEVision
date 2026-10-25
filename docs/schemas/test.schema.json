@@ -897,6 +897,79 @@
             "saveAs"
           ],
           "type": "object"
+        },
+        {
+          "description": "Asks an AI about the window of the app under test and keeps the answer as the run variable `saveAs`.",
+          "oneOf": [
+            {
+              "description": "Whether the window shows what `expect` says, kept as a variable of type number: how likely it is, from 0 to 1. A provider that only answers yes or no gives 1 or 0. `provider` and `model` are as in a check by meaning; each is empty for the settings' choice.",
+              "properties": {
+                "expect": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "provider": {
+                  "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "jev",
+                    "jev-cloudflare",
+                    "ollama",
+                    "lmstudio",
+                    "openai-compatible"
+                  ],
+                  "type": "string"
+                },
+                "question": {
+                  "const": "isShown",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "question",
+                "expect"
+              ],
+              "type": "object"
+            },
+            {
+              "description": "Where the element `description` names is, kept as a variable of type area; asked of the AI that finds the elements a target describes in words. The block fails when the element is not there.",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "question": {
+                  "const": "find",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "question",
+                "description"
+              ],
+              "type": "object"
+            }
+          ],
+          "properties": {
+            "next": {
+              "type": "string"
+            },
+            "saveAs": {
+              "type": "string"
+            },
+            "type": {
+              "const": "ask",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "saveAs"
+          ],
+          "type": "object",
+          "unevaluatedProperties": false
         }
       ]
     },
@@ -2145,7 +2218,8 @@
       "description": "Version of the layout of the file. JEVision doesn't open a file in a format newer than it knows.",
       "enum": [
         1,
-        2
+        2,
+        3
       ]
     },
     "icon": {

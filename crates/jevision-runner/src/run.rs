@@ -11,11 +11,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
 use jevision_core::{
-    AiChoice, BlockKind, Blocker, CheckOf, ClipboardAction, ClipboardContent, Compare, Condition,
-    DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ENVIRONMENT_NAME, ElementCheck, ElementNode,
-    ElementQuery, ElementState, ExpectStatus, FileState, Flow, Missing, PROJECT_FILE, PackageNeed,
-    Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind, WaitUntil,
-    dark_variant, element_check_name, else_if_edge, parse_area,
+    AiChoice, AskQuestion, BlockKind, Blocker, CheckOf, ClipboardAction, ClipboardContent, Compare,
+    Condition, DEFAULT_WAIT_TIMEOUT_MS, DatabaseExpect, ELSE, ENVIRONMENT_NAME, ElementCheck,
+    ElementNode, ElementQuery, ElementState, ExpectStatus, FileState, Flow, Missing, PROJECT_FILE,
+    PackageNeed, Point, ProjectSettings, Rect, Reference, Severity, THEN, Target, ValueKind,
+    WaitUntil, dark_variant, element_check_name, else_if_edge, parse_area,
 };
 
 use crate::app_settings;
@@ -2034,6 +2034,43 @@ impl Exec<'_> {
                 self.save(step, save_as, text);
                 Ok(next.clone())
             }
+            BlockKind::Ask {
+                question,
+                save_as,
+                next,
+            } => {
+                let shot = self.capture(id)?;
+                let window = decode_screenshot(id, &shot)?;
+                let value = match question {
+                    AskQuestion::IsShown {
+                        expect,
+                        provider,
+                        model,
+                    } => {
+                        let (judge, model) = self.vision_judge(id, provider, model)?;
+                        let private = self.private_areas(&shot, &[]);
+                        let sent = masked(id, &window, &private, None)?;
+                        let question = Question {
+                            expect: expect.trim(),
+                            screenshot: &sent,
+                            reference: None,
+                            model: &model,
+                        };
+                        let (answer, fallback_reason) =
+                            self.ask_or_fall_back(t, id, judge, &question)?;
+                        let likely = if answer.judgement.passed { "1" } else { "0" };
+                        step.vision = Some(self.vision_answer(answer, fallback_reason));
+                        self.record_sent(step, &sent)?;
+                        likely.to_owned()
+                    }
+                    AskQuestion::Find { description } => {
+                        let area = self.find_area(t, id, description, &shot, &window, step)?;
+                        area_value(&area)
+                    }
+                };
+                self.save(step, save_as, value);
+                Ok(next.clone())
+            }
             BlockKind::RunTest {
                 test,
                 package,
@@ -2354,8 +2391,51 @@ impl Exec<'_> {
             } => (expect.trim(), model.trim(), provider.as_str()),
             _ => ("", "", ""),
         };
-        // The block's own choice, then the project's, then the app's, which empty stands for;
-        // a run that forces its own AI asks only that.
+        let (judge, model) = self.vision_judge(id, provider, model)?;
+        let reference = if expect.is_empty() {
+            match self.load_reference(t, id, r, shot, strict, cache)? {
+                Ok(loaded) => Some(loaded),
+                Err(name) => return Ok(Err(name)),
+            }
+        } else if r.image.is_empty() {
+            None
+        } else {
+            self.load_reference(t, id, r, shot, strict, cache)?.ok()
+        };
+        let actual = decode_screenshot(id, shot)?;
+        let private = self.private_areas(shot, &r.hide);
+        let screenshot = for_model(id, &actual, r, &private)?;
+        let reference_picture = match &reference {
+            Some(loaded) => Some(for_model(id, &loaded.image, r, &private)?),
+            None => None,
+        };
+        let question = Question {
+            expect,
+            screenshot: &screenshot,
+            reference: reference_picture.as_ref(),
+            model: &model,
+        };
+        let (answer, fallback_reason) = self.ask_or_fall_back(t, id, judge, &question)?;
+        let passed = answer.judgement.passed;
+        Ok(Ok(Evaluation {
+            reference,
+            actual,
+            passed,
+            judged: Judged::Model(Box::new(self.vision_answer(answer, fallback_reason))),
+            private,
+            sent: Some(screenshot),
+        }))
+    }
+
+    /// The judge to ask about the screen, and the model to ask it for: the block's own choice
+    /// of `provider` and `model`, then the project's, then the app's, which empty stands for; a
+    /// run that forces its own AI asks only that. Stops when that judge can't be asked here.
+    fn vision_judge(
+        &self,
+        id: &str,
+        provider: &str,
+        model: &str,
+    ) -> Result<(&dyn VisionJudge, String), Stop> {
         let chosen = if self.options.force_vision {
             AiChoice::default()
         } else {
@@ -2367,7 +2447,7 @@ impl Exec<'_> {
                 self.ai_screen,
             )
         };
-        let (provider, model) = (chosen.provider.as_str(), chosen.model.trim());
+        let provider = chosen.provider.as_str();
         let judge = if provider.is_empty() {
             self.runner.vision.ok_or_else(|| {
                 fail(Failure::new("run.compare.meaningUnavailable").with("block", id))
@@ -2390,71 +2470,57 @@ impl Exec<'_> {
                     )
                 })?
         };
-        let local_only = self.options.local_only || self.local_only;
         self.allow(id, judge)?;
-        let reference = if expect.is_empty() {
-            match self.load_reference(t, id, r, shot, strict, cache)? {
-                Ok(loaded) => Some(loaded),
-                Err(name) => return Ok(Err(name)),
-            }
-        } else if r.image.is_empty() {
-            None
-        } else {
-            self.load_reference(t, id, r, shot, strict, cache)?.ok()
-        };
-        let actual = decode_screenshot(id, shot)?;
-        let private = self.private_areas(shot, &r.hide);
-        let screenshot = for_model(id, &actual, r, &private)?;
-        let reference_picture = match &reference {
-            Some(loaded) => Some(for_model(id, &loaded.image, r, &private)?),
-            None => None,
-        };
-        let question = Question {
-            expect,
-            screenshot: &screenshot,
-            reference: reference_picture.as_ref(),
-            model,
-        };
+        Ok((judge, chosen.model.trim().to_owned()))
+    }
+
+    /// Asks `judge`, or the fallback provider when `judge` can't answer now; returns the answer
+    /// and, when the fallback gave it, why `judge` didn't.
+    fn ask_or_fall_back(
+        &self,
+        t: &TestFile,
+        id: &str,
+        judge: &dyn VisionJudge,
+        question: &Question<'_>,
+    ) -> Result<(Answer, Option<Failure>), Stop> {
+        let local_only = self.options.local_only || self.local_only;
         let fallback = self.runner.fallback.filter(|f| {
             !self.options.force_vision
                 && (!local_only || f.is_local())
                 && f.provider_id() != judge.provider_id()
         });
-        let (answer, fallback_reason) = match (self.ask(t, id, judge, &question), fallback) {
-            (Ok(answer), _) => (answer, None),
+        match (self.ask(t, id, judge, question), fallback) {
+            (Ok(answer), _) => Ok((answer, None)),
             (Err(Unanswered::Unavailable(reason)), Some(fallback)) => {
                 // A model named in the block belongs to the main provider.
                 let question = Question {
                     model: "",
-                    ..question
+                    ..*question
                 };
                 match self.ask(t, id, fallback, &question) {
-                    Ok(answer) => (answer, Some(reason)),
-                    Err(_) => return Err(fail(reason)),
+                    Ok(answer) => Ok((answer, Some(reason))),
+                    Err(_) => Err(fail(reason)),
                 }
             }
-            (Err(Unanswered::Unavailable(f) | Unanswered::Failed(f)), _) => return Err(fail(f)),
-        };
+            (Err(Unanswered::Unavailable(f) | Unanswered::Failed(f)), _) => Err(fail(f)),
+        }
+    }
+
+    /// What a provider said, as a report shows it.
+    fn vision_answer(&self, answer: Answer, fallback_reason: Option<Failure>) -> VisionAnswer {
         let judgement = answer.judgement;
-        Ok(Ok(Evaluation {
-            reference,
-            actual,
+        VisionAnswer {
+            provider: answer.provider,
+            model: answer.model,
             passed: judgement.passed,
-            judged: Judged::Model(Box::new(VisionAnswer {
-                provider: answer.provider,
-                model: answer.model,
-                passed: judgement.passed,
-                // The model may read a secret off the screen.
-                reason: self.mask(&judgement.reason),
-                input_tokens: judgement.usage.input_tokens,
-                output_tokens: judgement.usage.output_tokens,
-                cost: answer.cost,
-                warning: answer.warning,
-                fallback_reason,
-            })),
-            private,
-            sent: Some(screenshot),
-        }))
+            // The model may read a secret off the screen.
+            reason: self.mask(&judgement.reason),
+            input_tokens: judgement.usage.input_tokens,
+            output_tokens: judgement.usage.output_tokens,
+            cost: answer.cost,
+            warning: answer.warning,
+            fallback_reason,
+        }
     }
 
     /// Asks one provider, held to its spending limits, and logs what the call used.
@@ -2824,8 +2890,7 @@ impl Exec<'_> {
             .with("found", self.elements_param(&listed))
     }
 
-    /// Asks the locator where the element `what` describes is on `shot`, private areas covered;
-    /// returns the centre of it in fractions of the window.
+    /// The centre of the element `what` describes on `shot`, in fractions of the window.
     fn find_described(
         &self,
         t: &TestFile,
@@ -2835,6 +2900,24 @@ impl Exec<'_> {
         window: &Image,
         step: &mut Step,
     ) -> Result<Point, Stop> {
+        let area = self.find_area(t, id, what, shot, window, step)?;
+        Ok(Point {
+            x: area.x + area.width / 2.0,
+            y: area.y + area.height / 2.0,
+        })
+    }
+
+    /// Asks the locator where the element `what` describes is on `shot`, private areas covered;
+    /// returns its area in fractions of the window.
+    fn find_area(
+        &self,
+        t: &TestFile,
+        id: &str,
+        what: &str,
+        shot: &Screenshot,
+        window: &Image,
+        step: &mut Step,
+    ) -> Result<Rect, Stop> {
         let locator = self
             .runner
             .locator
@@ -2863,10 +2946,7 @@ impl Exec<'_> {
             )
         })?;
         step.found.push(area);
-        Ok(Point {
-            x: area.x + area.width / 2.0,
-            y: area.y + area.height / 2.0,
-        })
+        Ok(area)
     }
 
     /// Copies a file the test opens into the run folder, so the original stays intact.
@@ -3475,6 +3555,24 @@ fn for_model(
     masked(id, image, &covered, r.area.as_ref())
 }
 
+/// `area` as a variable of type area keeps it, `x,y,width,height`, to a ten-thousandth of the
+/// window: at least that wide and high, and inside the window, so a target can take it.
+fn area_value(area: &Rect) -> String {
+    const STEPS: f64 = 10_000.0;
+    let edge = |n: f64| (n * STEPS).round().clamp(0.0, STEPS);
+    let right = edge(area.x + area.width).max(1.0);
+    let bottom = edge(area.y + area.height).max(1.0);
+    let left = edge(area.x).min(right - 1.0);
+    let top = edge(area.y).min(bottom - 1.0);
+    format!(
+        "{},{},{},{}",
+        left / STEPS,
+        top / STEPS,
+        (right - left) / STEPS,
+        (bottom - top) / STEPS
+    )
+}
+
 /// `image` as a vision model gets it: `covered` painted over, cut to `crop`, made small enough.
 fn masked(
     id: &str,
@@ -3736,6 +3834,33 @@ pub fn rfc3339(time: SystemTime) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_found_area_is_kept_inside_the_window_and_never_empty() {
+        let area = |x, y, width, height| {
+            area_value(&Rect {
+                x,
+                y,
+                width,
+                height,
+            })
+        };
+        assert_eq!(area(0.5, 0.25, 0.2, 0.5), "0.5,0.25,0.2,0.5");
+        assert_eq!(area(0.123456, 0.0, 0.3, 1.0), "0.1235,0,0.3,1");
+        assert_eq!(area(0.9, 0.9, 0.5, 0.5), "0.9,0.9,0.1,0.1");
+        assert_eq!(area(1.0, 0.5, 0.0, 0.0), "0.9999,0.4999,0.0001,0.0001");
+        assert_eq!(area(-0.1, -0.1, 0.05, 0.05), "0,0,0.0001,0.0001");
+        for text in [
+            area(0.33333, 0.66667, 0.33333, 0.33333),
+            area(0.1, 0.2, 0.7, 0.8),
+        ] {
+            let parts: Vec<f64> = text.split(',').map(|n| n.parse().unwrap()).collect();
+            assert!(
+                parts[0] + parts[2] <= 1.0 && parts[1] + parts[3] <= 1.0,
+                "{text}"
+            );
+        }
+    }
 
     #[test]
     fn cloudflare_failures_read_as_sentences_in_each_language() {

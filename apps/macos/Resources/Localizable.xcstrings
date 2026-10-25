@@ -4795,6 +4795,38 @@
         }
       }
     },
+    "Ask" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить"
+          }
+        }
+      }
+    },
+    "Ask AI" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask AI"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить ИИ"
+          }
+        }
+      }
+    },
     "Ask GitHub again" : {
       "localizations" : {
         "ru" : {
@@ -4855,12 +4887,44 @@
         }
       }
     },
+    "Asking AI needs an AI model." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asking AI needs an AI model."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы спросить ИИ, нужна модель ИИ."
+          }
+        }
+      }
+    },
     "Asking GitHub" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Спрашиваем GitHub"
+          }
+        }
+      }
+    },
+    "Asks an AI model whether the screen shows something, or where an element is, and saves the answer for later blocks." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks an AI model whether the screen shows something, or where an element is, and saves the answer for later blocks."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спрашивает модель ИИ, есть ли что-то на экране или где находится элемент, и сохраняет ответ для следующих блоков."
           }
         }
       }
@@ -8539,6 +8603,22 @@
         }
       }
     },
+    "Describe in plain words what the screen may show. An AI model looks at the screen and answers yes or no." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe in plain words what the screen may show. An AI model looks at the screen and answers yes or no."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите простыми словами, что может быть на экране. Модель ИИ посмотрит на экран и ответит «да» или «нет»."
+          }
+        }
+      }
+    },
     "Describe the Test" : {
       "localizations" : {
         "ru" : {
@@ -8565,6 +8645,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Опишите элемент простыми словами. %@ найдёт его на экране, и указатель попадёт в его середину."
+          }
+        }
+      }
+    },
+    "Describe the element in plain words. %@ finds it on the screen. If it isn’t there, the test fails here." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe the element in plain words. %@ finds it on the screen. If it isn’t there, the test fails here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опишите элемент простыми словами. %@ найдёт его на экране. Если его там нет, тест остановится на этом блоке с ошибкой."
           }
         }
       }
@@ -10179,6 +10275,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Найти чат"
+          }
+        }
+      }
+    },
+    "Find Element" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find Element"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти элемент"
           }
         }
       }
@@ -11927,6 +12039,22 @@
         }
       }
     },
+    "Is It on Screen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Is It on Screen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Есть ли на экране"
+          }
+        }
+      }
+    },
     "Is disabled" : {
       "localizations" : {
         "ru" : {
@@ -12746,6 +12874,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Следующие блоки читают его как ${var.NAME}; если в буфере нет текста, значение пустое. Сохранённый текст виден среди значений запуска, поэтому не читайте буфер, пока в нём что-то личное."
+          }
+        }
+      }
+    },
+    "Later blocks read the answer as ${var.NAME}: 1 when the screen shows it, 0 when it doesn’t. An If block can go one way or the other by it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later blocks read the answer as ${var.NAME}: 1 when the screen shows it, 0 when it doesn’t. An If block can go one way or the other by it."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующие блоки читают ответ как ${var.NAME}: 1, если это есть на экране, и 0, если нет. По нему блок «Если» может пойти по одной или другой ветке."
+          }
+        }
+      }
+    },
+    "Later blocks read the element’s area as ${var.NAME}. For example, a Click with the target “Area” and ${var.NAME} clicks its middle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later blocks read the element’s area as ${var.NAME}. For example, a Click with the target “Area” and ${var.NAME} clicks its middle."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующие блоки читают область элемента как ${var.NAME}. Например, «Клик» с целью «Область» и ${var.NAME} нажмёт в её середину."
           }
         }
       }
@@ -14480,6 +14640,22 @@
         }
       }
     },
+    "No element yet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No element yet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Элемента пока нет"
+          }
+        }
+      }
+    },
     "No file chosen" : {
       "localizations" : {
         "ru" : {
@@ -14606,6 +14782,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ни основной, ни запасной провайдер не будет выбран, модели, адреса и Account ID забудутся, а ассистенты не смогут запускать тесты и делать снимки экрана. API-ключи останутся в Связке ключей, а лимиты расходов, цены и настройки самого проекта не изменятся."
+          }
+        }
+      }
+    },
+    "No question yet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No question yet"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вопроса пока нет"
           }
         }
       }
@@ -15400,6 +15592,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "На сервере"
+          }
+        }
+      }
+    },
+    "On the screen: %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the screen: %@?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На экране: %@?"
           }
         }
       }
@@ -17804,6 +18012,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запрос"
+          }
+        }
+      }
+    },
+    "Question" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Question"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вопрос"
           }
         }
       }
@@ -20376,6 +20600,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Сохраняет сегодняшнюю дату или время"
+          }
+        }
+      }
+    },
+    "Saves what an AI sees on the screen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves what an AI sees on the screen"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняет, что ИИ видит на экране"
           }
         }
       }
@@ -23676,6 +23916,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Копия готова"
+          }
+        }
+      }
+    },
+    "The dark theme is on" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The dark theme is on"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включена тёмная тема"
           }
         }
       }
@@ -27568,12 +27824,44 @@
         }
       }
     },
+    "Where is %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where is %@?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Где %@?"
+          }
+        }
+      }
+    },
     "Where to click" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Куда нажать"
+          }
+        }
+      }
+    },
+    "Which AI answers. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which AI answers. “From Project or Settings” uses the one the project names, or else the one chosen in Settings → AI."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Какой ИИ отвечает. «Как в проекте или настройках» — тот, что назван в проекте, а если там нет, то выбранный в Настройках → ИИ."
           }
         }
       }
@@ -30500,6 +30788,38 @@
         }
       }
     },
+    "bug.block.askFind" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask AI where “%@” is and save its area as `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить ИИ, где находится «%1$@», и сохранить область как `%2$@`"
+          }
+        }
+      }
+    },
+    "bug.block.askIsShown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask AI whether the screen shows “%@” and save the answer as `%@`"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить ИИ, видно ли на экране «%1$@», и сохранить ответ как `%2$@`"
+          }
+        }
+      }
+    },
     "bug.block.check" : {
       "localizations" : {
         "en" : {
@@ -32730,6 +33050,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "в репозитории уже есть этот workflow"
+          }
+        }
+      }
+    },
+    "cli.block.ask" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI question"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вопрос ИИ"
           }
         }
       }
@@ -39812,6 +40148,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Картинки и файлы называются по метке, поэтому тесты продолжают работать, когда файлы переносят или переименовывают."
+          }
+        }
+      }
+    },
+    "flow.format.3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask AI blocks: an AI model answers a question about the screen, and later blocks use the answer."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блоки «Спросить ИИ»: модель ИИ отвечает на вопрос об экране, а следующие блоки используют ответ."
           }
         }
       }

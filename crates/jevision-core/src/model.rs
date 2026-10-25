@@ -619,6 +619,61 @@ pub enum BlockKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         next: Option<String>,
     },
+    /// Asks an AI about the window of the app under test and keeps the answer as the run
+    /// variable `saveAs`.
+    Ask {
+        #[serde(flatten)]
+        question: AskQuestion,
+        save_as: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        next: Option<String>,
+    },
+}
+
+/// What an `ask` block asks about the window.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema), schemars(deny_unknown_fields))]
+#[serde(
+    tag = "question",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum AskQuestion {
+    /// Whether the window shows what `expect` says, kept as a variable of type number: how
+    /// likely it is, from 0 to 1. A provider that only answers yes or no gives 1 or 0.
+    /// `provider` and `model` are as in a check by meaning; each is empty for the settings'
+    /// choice.
+    IsShown {
+        expect: String,
+        #[cfg_attr(test, schemars(default, extend("enum" = AI_PROVIDERS)))]
+        #[serde(skip_serializing_if = "String::is_empty")]
+        provider: String,
+        #[cfg_attr(test, schemars(default))]
+        #[serde(skip_serializing_if = "String::is_empty")]
+        model: String,
+    },
+    /// Where the element `description` names is, kept as a variable of type area; asked of the
+    /// AI that finds the elements a target describes in words. The block fails when the
+    /// element is not there.
+    Find { description: String },
+}
+
+impl AskQuestion {
+    /// The word a file uses.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::IsShown { .. } => "isShown",
+            Self::Find { .. } => "find",
+        }
+    }
+
+    /// Kind of the variable the answer is kept as.
+    pub fn kind(&self) -> ValueKind {
+        match self {
+            Self::IsShown { .. } => ValueKind::Number,
+            Self::Find { .. } => ValueKind::Area,
+        }
+    }
 }
 
 /// What a clipboard block does.
@@ -1288,6 +1343,7 @@ impl BlockKind {
             Self::Database { .. } => "database",
             Self::Clipboard { .. } => "clipboard",
             Self::DateTime { .. } => "dateTime",
+            Self::Ask { .. } => "ask",
         }
     }
 
@@ -1390,7 +1446,8 @@ impl BlockKind {
             | Self::CheckFile { next, .. }
             | Self::Database { next, .. }
             | Self::Clipboard { next, .. }
-            | Self::DateTime { next, .. } => {
+            | Self::DateTime { next, .. }
+            | Self::Ask { next, .. } => {
                 out.extend(next.as_deref().map(|t| (Cow::Borrowed(NEXT), t)));
             }
         }

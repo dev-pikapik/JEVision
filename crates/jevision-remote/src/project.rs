@@ -7,8 +7,8 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 use jevision_core::{
-    AttachmentKind, BlockKind, CheckOf, ClipboardAction, Condition, DataTable, NoteAnchor,
-    ScrollDirection, ScrollUnit, Target, WaitUntil,
+    AskQuestion, AttachmentKind, BlockKind, CheckOf, ClipboardAction, Condition, DataTable,
+    NoteAnchor, ScrollDirection, ScrollUnit, Target, WaitUntil,
 };
 use jevision_runner::{Run, RunReport};
 
@@ -377,6 +377,10 @@ fn title(kind: &BlockKind) -> String {
             ClipboardAction::Check { to, .. } => to.clone(),
         },
         BlockKind::DateTime { save_as, .. } => save_as.clone(),
+        BlockKind::Ask { question, .. } => match question {
+            AskQuestion::IsShown { expect, .. } => expect.trim().to_owned(),
+            AskQuestion::Find { description } => description.trim().to_owned(),
+        },
     }
 }
 

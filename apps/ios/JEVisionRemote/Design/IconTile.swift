@@ -32,6 +32,7 @@ enum BlockInfo {
     case "waitFor": "hourglass"
     case "pause": "timer"
     case "check": "checkmark.seal"
+    case "ask": "sparkle.magnifyingglass"
     case "if": "arrow.triangle.branch"
     case "repeat": "repeat"
     case "useData": "tablecells"
@@ -60,6 +61,7 @@ enum BlockInfo {
     case "waitFor": String(localized: "Wait For")
     case "pause": String(localized: "Pause")
     case "check": String(localized: "Check")
+    case "ask": String(localized: "Ask AI")
     case "if": String(localized: "If")
     case "repeat": String(localized: "Repeat")
     case "useData": String(localized: "Use Data")
@@ -78,7 +80,7 @@ enum BlockInfo {
   static func color(_ kind: String) -> Color {
     switch kind {
     case "openApp", "openFile", "click", "hover", "drag", "scroll", "type", "pressKeys": .blue
-    case "waitFor", "pause", "check": .orange
+    case "waitFor", "pause", "check", "ask": .orange
     case "if", "repeat", "runTest": .purple
     case "useData", "http", "database", "checkFile", "command", "script", "clipboard", "dateTime": .green
     default: .gray

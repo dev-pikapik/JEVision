@@ -153,6 +153,17 @@ enum BlockSummary {
       case .check(let test, let to, let timeoutMs):
         return String(localized: "Until the clipboard \(sign(of: test)) \(quoted(to)) · \(duration(timeoutMs))")
       }
+    case .ask(let question, let saveAs, _):
+      let text: String
+      switch question {
+      case .isShown(let expect, _, _):
+        guard !expect.isEmpty else { return String(localized: "No question yet") }
+        text = String(localized: "On the screen: \(quoted(expect, limit: 32))?")
+      case .find(let description):
+        guard !description.isEmpty else { return String(localized: "No element yet") }
+        text = String(localized: "Where is \(quoted(description, limit: 32))?")
+      }
+      return saveAs.isEmpty ? text : text + " → " + saveAs
     case .dateTime(let saveAs, let format, let language, let timeZone, let shift, _):
       guard !saveAs.isEmpty else { return String(localized: "Choose a name to save it as") }
       let names = language.map { " · " + AppLanguage.name($0) } ?? ""

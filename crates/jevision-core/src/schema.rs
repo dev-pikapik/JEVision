@@ -28,7 +28,7 @@ const TEST: Kind = Kind {
         Tests are `*.flow.json` files; `*.block.json` files are blocks of the project's own, \
         `*.template.json` files are templates, and `flow.json` is the test inside a community \
         block.",
-    formats: &[1, 2],
+    formats: &[1, 2, 3],
     header: true,
 };
 const JEVMETA: Kind = Kind {
@@ -661,7 +661,7 @@ mod tests {
     /// takes it.
     const EVERY_BLOCK: &str = r#"{
   "$schema": "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json",
-  "format": 2,
+  "format": 3,
   "minVersion": "0.1.0",
   "name": "Every block",
   "description": "Uses every block with every setting.",
@@ -711,7 +711,9 @@ mod tests {
     "copy": { "type": "clipboard", "action": "put", "text": "hello", "next": "picture" },
     "picture": { "type": "clipboard", "action": "put", "image": "res:3f9c2a7b81d04e65", "next": "paste" },
     "paste": { "type": "clipboard", "action": "read", "saveAs": "copied", "content": "files", "next": "copied" },
-    "copied": { "type": "clipboard", "action": "check", "is": "contains", "to": "hello", "timeout": "2s", "next": "date" },
+    "copied": { "type": "clipboard", "action": "check", "is": "contains", "to": "hello", "timeout": "2s", "next": "shown" },
+    "shown": { "type": "ask", "question": "isShown", "expect": "The dark theme is on", "provider": "jev", "model": "noul", "saveAs": "dark", "next": "where" },
+    "where": { "type": "ask", "question": "find", "description": "The Send button", "saveAs": "send", "next": "date" },
     "date": { "type": "dateTime", "saveAs": "today", "format": "%d.%m.%Y", "language": "ru", "timeZone": "Europe/Berlin", "shift": { "amount": -2, "unit": "days" } }
   },
   "canvas": {
@@ -872,7 +874,10 @@ mod tests {
             (wrong_in_block, "a number written as text in a block"),
             (null, "null for a key that may be left out"),
             (without(&sample, "format"), "a test without format"),
-            (with(&sample, "/format", 3.into()), "a newer format"),
+            (
+                with(&sample, "/format", (crate::FORMAT_VERSION + 1).into()),
+                "a newer format",
+            ),
             (with(&sample, "/format", 0.into()), "format 0"),
             (
                 with(&sample, "/minVersion", "1.4".into()),

@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use crate::atomic;
 use crate::decode::{FORMAT_CHANGES, OLDEST_FORMAT};
 use crate::issue::Issue;
-use crate::model::{BLOCK_SUFFIX, Flow, TEMPLATE_SUFFIX, TEST_SUFFIX};
+use crate::model::{BLOCK_SUFFIX, BlockKind, Flow, TEMPLATE_SUFFIX, TEST_SUFFIX};
 use crate::package::visit_files;
 use crate::package_files::project_files;
 use crate::resources::{META_SUFFIX, RESOURCE_PREFIX, ResourceIndex, resource_id};
@@ -33,6 +33,8 @@ use crate::{parse, to_canonical_json};
 pub const TEST_SCHEMA: &str = "https://dev-pikapik.github.io/JEVision/schemas/test.schema.json";
 /// The format of tests that name a file by its label.
 pub const LABELS_FORMAT: u32 = 2;
+/// The format of tests that have an `ask` block.
+pub const ASK_FORMAT: u32 = 3;
 /// Where the backups of a project are, relative to it.
 pub const BACKUPS_FOLDER: &str = ".jevision/backups";
 /// The most backups a project keeps; the oldest go first.
@@ -56,7 +58,17 @@ impl Requirement {
         visit_files(&mut flow.clone(), |_, _, path| {
             labels |= resource_id(path).is_some();
         });
-        let format = if labels { LABELS_FORMAT } else { OLDEST_FORMAT };
+        let ask = flow
+            .blocks
+            .iter()
+            .any(|b| matches!(b.kind, BlockKind::Ask { .. }));
+        let format = if ask {
+            ASK_FORMAT
+        } else if labels {
+            LABELS_FORMAT
+        } else {
+            OLDEST_FORMAT
+        };
         Self { format }
     }
 

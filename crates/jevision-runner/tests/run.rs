@@ -5363,3 +5363,78 @@ fn check_an_element_says_what_differs() {
     assert_eq!(steps[0].status, StepStatus::Passed);
     assert!(steps[1].after.is_some(), "the report shows the window");
 }
+
+#[test]
+fn asking_whether_the_screen_shows_something_keeps_the_answer_for_a_condition() {
+    let p = Project::new();
+    p.test(
+        r#""ask":{"type":"ask","question":"isShown","expect":"The dark theme is on","model":"seer-2","saveAs":"dark","next":"branch"},
+        "branch":{"type":"if","value":{"of":"${var.dark}","is":"greaterThan","to":"0.5"},"then":"yes","else":"no"},
+        "yes":{"type":"type","text":"dark ${var.dark}"},
+        "no":{"type":"type","text":"light ${var.dark}"}"#,
+        "ask",
+        0,
+    );
+    for (passed, typed) in [(true, "dark 1"), (false, "light 0")] {
+        let hands = Fake::new(solid([0, 200, 0]));
+        let judge = Judge::says(passed);
+        let report = run_judged(&p, &hands, Some(&judge), false).report;
+        assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+        assert_eq!(hands.typed(), [typed]);
+        let step = &last_steps(&report)[0];
+        assert_eq!(step.outputs["dark"], &typed[typed.len() - 1..]);
+        assert_eq!(step.vision.as_ref().unwrap().model, "seer-2");
+        assert!(step.sent.is_some(), "the report shows what the model saw");
+        let asked = judge.asked.lock().unwrap();
+        assert_eq!(asked.len(), 1);
+        assert_eq!(asked[0].expect, "The dark theme is on");
+        assert!(asked[0].reference.is_none());
+    }
+}
+
+#[test]
+fn asking_where_an_element_is_keeps_its_area_for_a_click() {
+    let p = Project::new();
+    p.test(
+        r#""ask":{"type":"ask","question":"find","description":"the blue Save button","saveAs":"save","next":"click"},
+        "click":{"type":"click","target":{"area":"${var.save}"}}"#,
+        "ask",
+        0,
+    );
+    let hands = Fake::new(png(40, 20, |_, _| [0, 200, 0]));
+    let locator = Locator::new(Some(jevision_core::Rect {
+        x: 0.5,
+        y: 0.25,
+        width: 0.2,
+        height: 0.5,
+    }));
+    let report = run_located(&p, &hands, Some(&locator)).report;
+    assert_eq!(report.verdict, Verdict::Passed, "{report:?}");
+    let steps = last_steps(&report);
+    assert_eq!(steps[0].outputs["save"], "0.5,0.25,0.2,0.5");
+    assert_eq!(steps[0].found.len(), 1);
+    // The middle of the area, (0.6, 0.5) of a 40×20 window shot at scale 2, in points.
+    assert_eq!(hands.log(), ["click Left 12 5"]);
+    let asked = locator.asked.lock().unwrap();
+    assert_eq!(asked[0].0, "the blue Save button");
+}
+
+#[test]
+fn asking_for_an_element_that_is_not_on_screen_fails_with_its_description() {
+    let p = Project::new();
+    p.test(
+        r#""ask":{"type":"ask","question":"find","description":"the blue Save button","saveAs":"save","next":"click"},
+        "click":{"type":"click","target":{"area":"${var.save}"}}"#,
+        "ask",
+        0,
+    );
+    let hands = Fake::new(solid([9, 9, 9]));
+    let report = run_located(&p, &hands, Some(&Locator::new(None))).report;
+    assert_eq!(failure_code(&report), "run.target.descriptionNotFound");
+    let failure = report.attempts[0].failure.clone().unwrap();
+    assert_eq!(
+        describe(&failure),
+        "Block “Ask AI”: “the blue Save button” wasn’t found on the screen."
+    );
+    assert!(hands.log().is_empty(), "nothing is clicked");
+}

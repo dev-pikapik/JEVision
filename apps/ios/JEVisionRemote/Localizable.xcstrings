@@ -2011,6 +2011,16 @@
         }
       }
     },
+    "Ask AI" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросить ИИ"
+          }
+        }
+      }
+    },
     "Note" : {
       "localizations" : {
         "ru" : {

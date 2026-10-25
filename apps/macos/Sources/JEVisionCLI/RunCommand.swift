@@ -847,6 +847,7 @@ private final class Progress: RunListener, @unchecked Sendable {
     case "database": words("cli.block.database")
     case "clipboard": words("cli.block.clipboard")
     case "dateTime": words("cli.block.dateTime")
+    case "ask": words("cli.block.ask")
     default: type
     }
   }

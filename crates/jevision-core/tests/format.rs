@@ -217,14 +217,15 @@ fn reading_order_keeps_unreachable_blocks_last() {
 
 #[test]
 fn format_versions() {
-    assert_eq!(FORMAT_VERSION, 2);
+    assert_eq!(FORMAT_VERSION, 3);
     let with_format =
         |n: &str| minimal(r#"{"a": {"type": "openApp"}}"#).replace("\"format\": 1", n);
     assert!(parse(&with_format("\"format\": 1")).is_ok());
     assert!(parse(&with_format("\"format\": 2")).is_ok());
-    let too_new = parse_err(&with_format("\"format\": 3"));
+    assert!(parse(&with_format("\"format\": 3")).is_ok());
+    let too_new = parse_err(&with_format("\"format\": 4"));
     assert_eq!(codes(&too_new), ["flow.format.tooNew"]);
-    assert_eq!(too_new[0].param("supported"), Some("2"));
+    assert_eq!(too_new[0].param("supported"), Some("3"));
     assert_eq!(
         codes(&parse_err(&with_format("\"format\": 0"))),
         ["flow.format.unsupported"]
@@ -791,7 +792,7 @@ fn a_target_described_in_words_round_trips_and_must_say_something() {
 #[test]
 fn catalog_matches_the_file_format() {
     let specs = catalog();
-    assert_eq!(specs.len(), 22);
+    assert_eq!(specs.len(), 23);
     for spec in specs {
         let issues = parse_err(&minimal(&format!(
             r#"{{"a": {{"type": "{}", "bogus": 1}}}}"#,
@@ -1708,6 +1709,133 @@ fn clipboard_and_date_blocks_round_trip_in_canonical_form() {
         let block = BlockKind::new(name, "x").unwrap();
         assert_eq!(block.type_name(), name);
     }
+}
+
+const ASK: &str = r#"{
+  "format": 1, "name": "t", "app": "com.example.App", "start": "dark",
+  "blocks": {
+    "dark": {"type": "ask", "question": "isShown", "expect": "The dark theme is on", "provider": "jev", "model": " noul ", "saveAs": "dark", "next": "send"},
+    "send": {"type": "ask", "question": "find", "description": "The Send button", "saveAs": "send", "next": "branch"},
+    "branch": {"type": "if", "value": {"of": "${var.dark}", "is": "greaterThan", "to": "0.8"}, "then": "click"},
+    "click": {"type": "click", "target": {"area": "${var.send}"}}
+  }
+}"#;
+
+#[test]
+fn ask_blocks_round_trip_and_keep_typed_answers() {
+    let flow = parse(ASK).unwrap();
+    assert_eq!(codes(&validate(&flow)), ["flow.noCheck"]);
+    assert_eq!(saved_variables(&flow), ["dark", "send"]);
+    let kind = |id: &str| &flow.blocks.iter().find(|b| b.id == id).unwrap().kind;
+    assert_eq!(
+        *kind("dark"),
+        BlockKind::Ask {
+            question: AskQuestion::IsShown {
+                expect: "The dark theme is on".to_owned(),
+                provider: "jev".to_owned(),
+                model: "noul".to_owned(),
+            },
+            save_as: "dark".to_owned(),
+            next: Some("send".to_owned()),
+        }
+    );
+    assert_eq!(
+        *kind("send"),
+        BlockKind::Ask {
+            question: AskQuestion::Find {
+                description: "The Send button".to_owned(),
+            },
+            save_as: "send".to_owned(),
+            next: Some("branch".to_owned()),
+        }
+    );
+    let once = to_canonical_json(&flow);
+    assert_eq!(canonicalize(&once).unwrap(), once);
+    assert_eq!(parse(&once).unwrap(), flow);
+    // An ask block needs format 3; an older JEVision would not know it.
+    assert!(once.contains("\n  \"format\": 3,\n"));
+    assert_eq!(Requirement::of(&flow).format, ASK_FORMAT);
+    assert!(once.contains(
+        "\"type\": \"ask\",\n      \"question\": \"find\",\n      \"description\": \"The Send button\",\n      \"saveAs\": \"send\""
+    ));
+    // The settings' choice is left out.
+    let plain = parse(&minimal(
+        r#"{"a": {"type": "ask", "question": "isShown", "expect": "x", "saveAs": "y"}}"#,
+    ))
+    .unwrap();
+    let written = to_canonical_json(&plain);
+    assert!(!written.contains("provider") && !written.contains("model"));
+    assert!(!kind("dark").checks() && kind("dark").wait_ms().is_none());
+    let block = BlockKind::new("ask", "x").unwrap();
+    assert_eq!(block.type_name(), "ask");
+
+    // A probability is no area, and an area is no number to click by.
+    let issues = issues_of(
+        r#"{"a": {"type": "ask", "question": "isShown", "expect": "x", "saveAs": "p", "next": "b"},
+            "b": {"type": "click", "target": {"area": "${var.p}"}}}"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("field"), i.param("from")))
+        .collect();
+    assert_eq!(
+        found,
+        [("flow.var.kind", Some("target.area"), Some("number"))]
+    );
+}
+
+#[test]
+fn ask_blocks_say_what_is_missing_or_wrong() {
+    let issues = issues_of(
+        r#"{"a": {"type": "ask", "question": "isShown", "expect": " ", "provider": "nobody", "saveAs": "bad name", "next": "b"},
+            "b": {"type": "ask", "question": "find", "description": "", "saveAs": ""}}"#,
+    );
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("flow.field.empty", Some("a"), Some("expect")),
+            (
+                "flow.reference.unknownProvider",
+                Some("a"),
+                Some("provider")
+            ),
+            ("flow.name.invalid", Some("a"), Some("saveAs")),
+            ("flow.field.empty", Some("b"), Some("description")),
+            ("flow.name.invalid", Some("b"), Some("saveAs")),
+        ]
+    );
+    // A search is asked of the AI that finds elements; it takes no provider or model.
+    let issues = parse_err(&minimal(
+        r#"{"a": {"type": "ask", "question": "find", "description": "x", "provider": "jev", "saveAs": "y"},
+            "b": {"type": "ask", "question": "guess", "saveAs": "z"},
+            "c": {"type": "ask", "expect": "x", "saveAs": "z"}}"#,
+    ));
+    let found: Vec<(&str, Option<&str>, Option<&str>)> = issues
+        .iter()
+        .map(|i| (i.code.as_str(), i.param("block"), i.param("field")))
+        .collect();
+    assert!(
+        found.contains(&("flow.field.unknown", Some("a"), Some("provider"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.value", Some("b"), Some("question"))),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&("flow.field.missing", Some("c"), Some("question"))),
+        "{found:?}"
+    );
+    assert!(
+        !found
+            .iter()
+            .any(|(_, block, field)| *block == Some("b") && *field == Some("saveAs")),
+        "{found:?}"
+    );
 }
 
 #[test]

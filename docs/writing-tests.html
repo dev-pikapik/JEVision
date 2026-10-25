@@ -67,7 +67,7 @@
   <ul>
     <li><a href="#how-a-test-runs">How a test runs</a></li>
     <li><a href="#test-fields">Fields of a test</a></li>
-    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#pause">pause</a>, <a href="#check">check</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a>, <a href="#script">script</a>, <a href="#clipboard">clipboard</a>, <a href="#dateTime">dateTime</a>, <a href="#http">http</a>, <a href="#database">database</a>, <a href="#checkFile">checkFile</a>, <a href="#command">command</a></li>
+    <li><a href="#blocks">Block types</a>: <a href="#openApp">openApp</a>, <a href="#openFile">openFile</a>, <a href="#click">click</a>, <a href="#hover">hover</a>, <a href="#drag">drag</a>, <a href="#scroll">scroll</a>, <a href="#type">type</a>, <a href="#pressKeys">pressKeys</a>, <a href="#waitFor">waitFor</a>, <a href="#pause">pause</a>, <a href="#check">check</a>, <a href="#ask">ask</a>, <a href="#if">if</a>, <a href="#repeat">repeat</a>, <a href="#useData">useData</a>, <a href="#runTest">runTest</a>, <a href="#script">script</a>, <a href="#clipboard">clipboard</a>, <a href="#dateTime">dateTime</a>, <a href="#http">http</a>, <a href="#database">database</a>, <a href="#checkFile">checkFile</a>, <a href="#command">command</a></li>
     <li><a href="#shapes">Targets, areas, durations and paths</a></li>
     <li><a href="#placeholders">Placeholders</a></li>
     <li><a href="#keys">Key combinations</a></li>
@@ -134,6 +134,7 @@
     <tr><td><a href="#waitFor"><code>waitFor</code></a></td><td>Waiting</td><td>Waits for something to appear or disappear, for the screen to settle, or for an interface element to be in a state</td><td><code>next</code></td></tr>
     <tr><td><a href="#pause"><code>pause</code></a></td><td>Waiting</td><td>Waits a set time</td><td><code>next</code></td></tr>
     <tr><td><a href="#check"><code>check</code></a></td><td>Checks</td><td>Fails the test unless the screen matches a reference, or an interface element is in a state</td><td><code>next</code></td></tr>
+    <tr><td><a href="#ask"><code>ask</code></a></td><td>Checks</td><td>Asks an AI model whether the screen shows something, or where an element is, and keeps the answer as a variable</td><td><code>next</code></td></tr>
     <tr><td><a href="#if"><code>if</code></a></td><td>Conditions and loops</td><td>Takes one of several ways depending on the screen, a value or an interface element</td><td><code>then</code>, <code>elseIf1</code>…, <code>else</code></td></tr>
     <tr><td><a href="#repeat"><code>repeat</code></a></td><td>Conditions and loops</td><td>Runs its body a number of times</td><td><code>body</code>, <code>next</code></td></tr>
     <tr><td><a href="#runTest"><code>runTest</code></a></td><td>Sub-tests</td><td>Runs another test as one step</td><td><code>next</code></td></tr>
@@ -322,6 +323,31 @@
 { "type": "check", "reference": { "compare": "meaning", "expect": "The inbox lists at least one message" } }
 { "type": "check", "element": { "role": "textField", "id": "email", "is": "valueEquals", "to": "${data.email}" } }</code></pre>
 <p>A check of an element looks once. When it fails, the report says which element it looked for, what it expected and what the element is instead, such as <i>Expected: value “Ann”. Actual: value “Bo”.</i> An element that isn't there comes with a list of similar ones in the window, so a changed title or id is easy to put right.</p>
+
+<h3 id="ask">ask: ask AI about the screen</h3>
+<p>Asks an AI model a question about the window and keeps the answer as a variable for the blocks after it. Unlike <a href="#check"><code>check</code></a>, it doesn't fail the test because of the answer: an <a href="#if"><code>if</code></a> block can go one way or the other by it, and a target can use it. The question is one of two:</p>
+<ul>
+  <li><code>"question": "isShown"</code>: does the screen show what <code>expect</code> says? The answer is a <a href="#value-types"><code>number</code></a>: <code>1</code> for yes, <code>0</code> for no. It's asked of the AI that <code>provider</code> and <code>model</code> name, or else of the one the project names, or else of the one chosen in Settings → AI, as a <a href="checks.html#meaning">check by meaning</a> is.</li>
+  <li><code>"question": "find"</code>: where is the element that <code>description</code> describes? The answer is an <a href="#value-types"><code>area</code></a>, <code>x,y,width,height</code> in fractions of the window, so a <a href="#click"><code>click</code></a> with <code>"target": { "area": "${var.NAME}" }</code> clicks its middle. JEV finds it, as it finds a <a href="#target">target by description</a>. If the element isn't on the screen, the block fails and says what it looked for.</li>
+</ul>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Field</th><th scope="col">Required</th><th scope="col">Value</th></tr></thead>
+  <tbody>
+    <tr><td><code>question</code></td><td>Yes</td><td><code>isShown</code> or <code>find</code>.</td></tr>
+    <tr><td><code>expect</code></td><td>With <code>isShown</code></td><td>What the screen may show, in plain words: <i>The dark theme is on</i>.</td></tr>
+    <tr><td><code>provider</code></td><td>No, <code>isShown</code> only</td><td>The AI that answers, such as <code>jev</code> or <code>openai</code>.</td></tr>
+    <tr><td><code>model</code></td><td>No, <code>isShown</code> only</td><td>A model of that AI.</td></tr>
+    <tr><td><code>description</code></td><td>With <code>find</code></td><td>The element, in plain words: <i>the blue Send button</i>.</td></tr>
+    <tr><td><code>saveAs</code></td><td>Yes</td><td>The variable that gets the answer, read later as <code>${var.NAME}</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>{ "type": "ask", "question": "isShown", "expect": "A dialog asks to save the changes", "saveAs": "asks", "next": "branch" }
+{ "type": "if", "value": { "of": "${var.asks}", "is": "greaterThan", "to": "0.5" }, "then": "dont-save", "else": "done" }
+{ "type": "ask", "question": "find", "description": "the blue Send button", "saveAs": "send", "next": "press" }
+{ "type": "click", "target": { "area": "${var.send}" } }</code></pre>
+<p>Like a check by meaning, the AI sees the window with the project's <a href="checks.html#areas">hidden areas</a> covered, and the question doesn't take placeholders, so a secret never reaches it. A test with an <code>ask</code> block is saved at <a href="file-formats.html#versions">format 3</a>.</p>
 
 <h3 id="if">if: choose a way</h3>
 <p>Looks at the screen once. If it matches the reference, the test goes on at <code>then</code>; otherwise at <code>else</code>. A missing <code>then</code> or <code>else</code> ends the test on that way. Use it for screens that show up only sometimes, such as a “What's new” window.</p>
@@ -593,7 +619,7 @@
   <li><code>${secret.NAME}</code>: a secret, such as a password, from the Keychain or an environment variable. It is never stored in the file. See <a href="environments.html#secrets">Secrets</a>.</li>
   <li><code>${env.NAME}</code>: a value of the chosen <a href="environments.html">environment</a>, such as a server address. <code>${env.ENVIRONMENT}</code> is the name of the environment itself.</li>
   <li><code>${data.COLUMN}</code>: a value from the current row of a <a href="data-driven.html">data table</a>.</li>
-  <li><code>${var.NAME}</code>: a value an earlier block of the run kept: an output of a <a href="#script"><code>script</code></a>, or what a <code>clipboard</code>, <code>dateTime</code>, <code>http</code>, <code>database</code> or <code>command</code> block saved.</li>
+  <li><code>${var.NAME}</code>: a value an earlier block of the run kept: an output of a <a href="#script"><code>script</code></a>, or what an <code>ask</code>, <code>clipboard</code>, <code>dateTime</code>, <code>http</code>, <code>database</code> or <code>command</code> block saved.</li>
   <li><code>${input.NAME}</code>: in a <a href="custom-blocks.html">custom block</a>, a value the test that runs it gives in <code>inputs</code>.</li>
 </ul>
 <p>They work in these fields:</p>
