@@ -51,6 +51,10 @@ struct LiveRunViewTests {
 
       let scale = Int(window.screen.scale)
       let strip = cardBottom(after, from: top, scale: scale)..<cardBottom(before, from: top, scale: scale)
+      if strip.isEmpty {
+        Attachment.record(UIImage(cgImage: before), named: "before \(name)", as: .png)
+        Attachment.record(UIImage(cgImage: after), named: "\(name)", as: .png)
+      }
       try #require(!strip.isEmpty, "The card didn't get shorter on \(name)")
       let old = lightness(before, rows: strip)
       let new = lightness(after, rows: strip)
