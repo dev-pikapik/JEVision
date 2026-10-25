@@ -23,7 +23,7 @@ struct CleanHomeSection: View {
           .foregroundStyle(.red)
           .textSelection(.enabled)
       } else {
-        Toggle(isOn: Binding(get: { saved ?? project.settings.cleanHome }, set: set(cleanHome:))) {
+        Toggle(isOn: Binding(get: { saved ?? project.settings.cleanHome }, set: { set(cleanHome: $0) })) {
           RowLabel(
             Text("Start apps as on their first launch"),
             Text(
