@@ -36,8 +36,8 @@ struct LiveRunViewTests {
 
     feed.yield(.status(waiting))
     try await Task.sleep(for: .seconds(3))
-    let top = try #require(contentTop(of: window))
     var before = try #require(picture(of: window).cgImage)
+    var bottom = try #require(cardBottom(in: window))
     for (name, status) in [("running", running), ("passed", passed)] {
       feed.yield(.status(status))
       var frames: [UIImage] = []
@@ -48,9 +48,9 @@ struct LiveRunViewTests {
       }
       try await Task.sleep(for: .seconds(1.5))
       let after = try #require(picture(of: window).cgImage)
+      let shorter = try #require(cardBottom(in: window))
 
-      let scale = Int(window.screen.scale)
-      let strip = cardBottom(after, from: top, scale: scale)..<cardBottom(before, from: top, scale: scale)
+      let strip = shorter..<bottom
       try #require(!strip.isEmpty, "The card didn't get shorter on \(name)")
       let old = lightness(before, rows: strip)
       let new = lightness(after, rows: strip)
@@ -68,37 +68,18 @@ struct LiveRunViewTests {
         worst.strays <= old.count / 1000,
         "Under the card, \(worst.strays) of \(old.count) pixels are neither the screen before nor after \(name)")
       before = after
+      bottom = shorter
     }
   }
 
-  /// The top of the screen's content, a little inside the card: under the navigation bar and
-  /// the content's margin. In pixels.
-  private func contentTop(of window: UIWindow) -> Int? {
-    func bar(in controller: UIViewController) -> UINavigationBar? {
-      (controller as? UINavigationController)?.navigationBar ?? controller.children.lazy.compactMap(bar).first
-    }
-    guard let root = window.rootViewController, let bar = bar(in: root) else { return nil }
-    return Int((bar.convert(bar.bounds, to: nil).maxY + 24) * window.screen.scale)
-  }
-
-  /// Where the card ends: the first row under `top`, past the card's first content, that starts
-  /// eight points of rows in the colour of the screen's margin. Glass on a light screen can be
-  /// as light as the margin, and then the card's top padding looks like margin too.
-  private func cardBottom(_ image: CGImage, from top: Int, scale: Int) -> Int {
-    let width = image.width
-    let rows = lightness(image, rows: top..<image.height)
-    let margin = rows[2 * scale]
-    let band = 8 * scale
-    var empty = 0
-    var content = false
-    for row in 0..<rows.count / width {
-      let line = rows[row * width..<(row + 1) * width]
-      let blank = line.allSatisfy { abs(Int($0) - Int(margin)) <= 10 }
-      content = content || !blank
-      empty = blank && content ? empty + 1 : 0
-      if empty == band { return top + row - band + 1 }
-    }
-    return image.height
+  /// Where the card ends, in pixels: the card is all the screen scrolls, inside the content's
+  /// 16-point margin. The picture can't tell, as glass on a light screen can be as light as the
+  /// margin around it.
+  private func cardBottom(in window: UIWindow) -> Int? {
+    func scroll(in view: UIView) -> UIScrollView? { view as? UIScrollView ?? view.subviews.lazy.compactMap(scroll).first }
+    guard let scroll = scroll(in: window) else { return nil }
+    let bottom = scroll.convert(CGPoint(x: 0, y: scroll.contentSize.height - 16), to: nil).y
+    return Int((bottom * window.screen.scale).rounded())
   }
 }
 
