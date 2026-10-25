@@ -38,9 +38,10 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   private var isSearching = false
   private var writer: AVAssetWriter?
   private var input: AVAssetWriterInput?
-  /// The moment the video starts, on the host clock the pictures are stamped with.
-  private var origin = CMTime.invalid
-  private var hasPicture = false
+  private var frames = Frames(origin: .invalid)
+  /// Frames queued before a content-filter replacement finishes still belong to its old
+  /// processes. Hold the last accepted picture until a later capture reaches the new filter.
+  private var acceptAfter = CMTime.invalid
   /// Processes of the app the picture shows.
   private var shown: Set<pid_t> = []
   private var following: DispatchSourceTimer?
@@ -136,7 +137,8 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
       self.secure = secure
       self.writer = writer
       self.input = input
-      self.origin = origin
+      frames = Frames(origin: origin)
+      acceptAfter = origin
       self.stream = stream
       self.display = display
       self.size = size
@@ -149,25 +151,31 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
 
   func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
     guard type == .screen, sampleBuffer.isValid, Self.isComplete(sampleBuffer),
-      let input, input.isReadyForMoreMediaData, hasPicture || showsApp(), cover(sampleBuffer),
-      let picture = hasPicture ? sampleBuffer : Self.picture(sampleBuffer, at: origin)
+      let input, input.isReadyForMoreMediaData
     else { return }
-    if input.append(picture) { hasPicture = true }
+    let windows = shownWindows()
+    frames.append(sampleBuffer, visible: !windows.isEmpty, notBefore: acceptAfter,
+      cover: { cover($0, windows: windows) }, write: { input.append($0) })
   }
 
-  /// Whether the picture has the app in it: the stream shows the app's processes and one of
-  /// their windows is on screen. Before that the picture is empty, black but for the pointer.
-  private func showsApp() -> Bool {
-    !MacHands.windows(of: MacHands.runningApps(app).filter { shown.contains($0.processIdentifier) }).isEmpty
+  private typealias Window = (id: CGWindowID, bounds: CGRect, title: String?)
+
+  /// Query every frame, not just the first: ScreenCaptureKit keeps sending complete black
+  /// pictures after the last window closes. Those must never replace the last useful picture.
+  private func shownWindows() -> [Window] {
+    MacHands.windows(of: MacHands.runningApps(app).filter { shown.contains($0.processIdentifier) })
   }
 
   /// Paints over the hidden areas and password fields of every window of the app, where the
   /// windows are now. A picture that can't be painted is left out rather than kept as it is.
-  private func cover(_ sample: CMSampleBuffer) -> Bool {
+  private func cover(_ sample: CMSampleBuffer, windows: [Window]) -> Bool {
+    // A relaunched process or a new window needs its own password-field scan before its
+    // first frame may enter the file. An older window's masks cannot stand in for it.
+    guard Self.masksAreKnown(for: windows.map(\.id), in: secure) else { return false }
     guard !hide.isEmpty || secure.values.contains(where: { !$0.isEmpty }) else { return true }
     guard let display, let picture = sample.imageBuffer else { return false }
     let origin = display.frame.origin
-    let windows = MacHands.windows(of: MacHands.runningApps(app)).map {
+    let windows = windows.map {
       VideoWindow(bounds: Rect($0.bounds.offsetBy(dx: -origin.x, dy: -origin.y)), hide: hide + (secure[$0.id] ?? []))
     }
     let mask = videoMask(
@@ -189,7 +197,7 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     guard let writer, let input else { return done(nil) }
     self.writer = nil
     self.input = nil
-    guard hasPicture, writer.status == .writing else {
+    guard frames.hasPicture, writer.status == .writing else {
       writer.cancelWriting()
       try? FileManager.default.removeItem(at: url)
       return done(writer.status == .failed ? writer.error?.localizedDescription : nil)
@@ -228,10 +236,11 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     let windows = MacHands.windows(of: apps).map(\.bounds)
     let area = windows.isEmpty ? self.area : Self.framing(windows, on: display.frame)
     let moves = area != self.area
-    guard running != shown || moves else { return }
+    let rejoins = running != shown || acceptAfter == .positiveInfinity
+    guard rejoins || moves else { return }
     isUpdating = true
     let config = moves ? Self.configuration(size: size, area: area) : nil
-    let rejoins = running != shown
+    if rejoins { acceptAfter = .positiveInfinity }
     if moves { nextArea = area }
     Task {
       var shows: Set<pid_t>?
@@ -248,10 +257,14 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
         moved = (try? await stream.updateConfiguration(config)) != nil
       }
       let isMoved = moved, nowShown = shows
+      let updatedAt = CMClockGetTime(CMClockGetHostTimeClock())
       self.queue.async {
         self.isUpdating = false
         self.nextArea = nil
-        if let nowShown { self.shown = nowShown }
+        if let nowShown {
+          self.shown = nowShown
+          self.acceptAfter = updatedAt
+        }
         if isMoved { self.area = area }
       }
     }
@@ -285,6 +298,35 @@ final class RunVideo: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
   }
 
   // MARK: Helpers
+
+  /// An empty scan is a known absence of password fields. A missing window id means that
+  /// window has not been scanned yet, including immediately after the app relaunches.
+  static func masksAreKnown(for windows: [CGWindowID], in fields: [CGWindowID: [Rect]]) -> Bool {
+    !windows.isEmpty && windows.allSatisfy { fields[$0] != nil }
+  }
+
+  /// Admit only masked pictures of a currently visible subject. Rejected samples add no
+  /// timestamp: the writer holds the preceding picture across the gap, and endSession extends
+  /// the last one through the end of the recording. No capture-pool buffer needs retaining.
+  struct Frames {
+    let origin: CMTime
+    private(set) var hasPicture = false
+
+    @discardableResult
+    mutating func append(
+      _ sample: CMSampleBuffer, visible: Bool, notBefore: CMTime,
+      cover: (CMSampleBuffer) -> Bool, write: (CMSampleBuffer) -> Bool
+    ) -> Bool {
+      let capturedAt = sample.presentationTimeStamp
+      guard visible, capturedAt.isNumeric,
+        !notBefore.isValid || CMTimeCompare(capturedAt, notBefore) >= 0,
+        cover(sample), let picture = hasPicture ? sample : RunVideo.picture(sample, at: origin)
+      else { return false }
+      guard write(picture) else { return false }
+      hasPicture = true
+      return true
+    }
+  }
 
   /// `sample` moved to `time`, so the video opens on the app's first picture rather than on
   /// black while the app starts and the stream takes it in.

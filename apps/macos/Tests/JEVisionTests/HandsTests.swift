@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import CoreGraphics
 import CoreMedia
 import CoreVideo
@@ -369,6 +370,118 @@ struct TemplateMatcherTests {
 }
 
 struct RunVideoTests {
+  @Test func aNewWindowWaitsForItsOwnPasswordFieldScan() {
+    let old: [CGWindowID: [Rect]] = [11: [Rect(x: 0.1, y: 0.2, width: 0.3, height: 0.1)]]
+    #expect(RunVideo.masksAreKnown(for: [11], in: old))
+    #expect(!RunVideo.masksAreKnown(for: [22], in: old))
+    #expect(!RunVideo.masksAreKnown(for: [11, 22], in: old))
+    #expect(!RunVideo.masksAreKnown(for: [], in: old))
+    // A completed scan without password fields is different from no scan at all.
+    #expect(RunVideo.masksAreKnown(for: [11, 22], in: old.merging([22: []]) { _, fresh in fresh }))
+  }
+
+  @MainActor @Test(arguments: [false, true])
+  func encodedVideoHoldsItsMaskedPictureAcrossAbsentAndUnreadyFrames(fixedDuration: Bool) async throws {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "jevision-video-gap-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let file = folder.appending(path: "gap.mp4")
+    let writer = try AVAssetWriter(outputURL: file, fileType: .mp4)
+    let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
+      AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 64, AVVideoHeightKey: 64,
+      AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: 512_000],
+    ])
+    writer.add(input)
+    try #require(writer.startWriting(), "\(writer.error as Any)")
+    writer.startSession(atSourceTime: .zero)
+    var frames = RunVideo.Frames(origin: .zero)
+    let mask = VideoMask(areas: [PixelArea(x: 16, y: 16, width: 32, height: 32)], luma: 126, chromaBlue: 128, chromaRed: 128)
+
+    func sample(_ luma: UInt8, at seconds: Double) throws -> CMSampleBuffer {
+      var made: CVPixelBuffer?
+      try #require(CVPixelBufferCreate(nil, 64, 64, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &made) == kCVReturnSuccess)
+      let image = try #require(made)
+      CVPixelBufferLockBaseAddress(image, [])
+      for (plane, value) in [(0, luma), (1, UInt8(128))] {
+        let count = CVPixelBufferGetBytesPerRowOfPlane(image, plane) * CVPixelBufferGetHeightOfPlane(image, plane)
+        CVPixelBufferGetBaseAddressOfPlane(image, plane)!.initializeMemory(as: UInt8.self, repeating: value, count: count)
+      }
+      CVPixelBufferUnlockBaseAddress(image, [])
+      var format: CMVideoFormatDescription?
+      try #require(CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: image, formatDescriptionOut: &format) == noErr)
+      return try CMSampleBuffer(imageBuffer: image, formatDescription: try #require(format),
+        sampleTiming: CMSampleTimingInfo(duration: fixedDuration ? CMTime(value: 1, timescale: 15) : .invalid,
+          presentationTimeStamp: CMTime(seconds: seconds, preferredTimescale: 600), decodeTimeStamp: .invalid))
+    }
+    func ready() async throws {
+      let deadline = ContinuousClock.now + .seconds(5)
+      while !input.isReadyForMoreMediaData {
+        try #require(ContinuousClock.now < deadline && writer.status == .writing, "\(writer.error as Any)")
+        try await Task.sleep(for: .milliseconds(5))
+      }
+    }
+    var painted = 0
+    func cover(_ sample: CMSampleBuffer) -> Bool {
+      painted += 1
+      return sample.imageBuffer.map { RunVideo.paint(mask, on: $0) } ?? false
+    }
+    func mustNotWrite(_ sample: CMSampleBuffer) -> Bool {
+      Issue.record("An absent, stale or unmasked picture reached the encoder")
+      return false
+    }
+    #expect(!frames.append(try sample(16, at: 0.1), visible: false, notBefore: .zero, cover: cover, write: mustNotWrite))
+    #expect(!frames.hasPicture)
+    try await ready()
+    #expect(frames.append(try sample(50, at: 0.5), visible: true, notBefore: .zero, cover: cover, write: { input.append($0) }))
+    // ScreenCaptureKit delivers black frames after close. They add no samples at all.
+    for second in [1.0, 2.0] {
+      #expect(!frames.append(try sample(16, at: second), visible: false, notBefore: .zero, cover: cover, write: mustNotWrite))
+    }
+    // A filter update in flight, and its queued old frames, cannot reopen admission.
+    #expect(!frames.append(try sample(16, at: 2.5), visible: true, notBefore: .positiveInfinity, cover: cover, write: mustNotWrite))
+    #expect(!frames.append(try sample(16, at: 2.9), visible: true,
+      notBefore: CMTime(seconds: 3, preferredTimescale: 600), cover: cover, write: mustNotWrite))
+    let oldFields: [CGWindowID: [Rect]] = [11: []]
+    #expect(!frames.append(try sample(235, at: 3.2), visible: true, notBefore: .zero,
+      cover: { _ in RunVideo.masksAreKnown(for: [22], in: oldFields) }, write: mustNotWrite))
+    try await ready()
+    #expect(frames.append(try sample(190, at: 4), visible: true,
+      notBefore: CMTime(seconds: 3, preferredTimescale: 600), cover: cover, write: { input.append($0) }))
+    #expect(painted == 2, "Only admitted subject pictures are masked and encoded")
+    input.markAsFinished()
+    writer.endSession(atSourceTime: CMTime(seconds: 6, preferredTimescale: 600))
+    await withCheckedContinuation { done in writer.finishWriting { done.resume() } }
+    try #require(writer.status == .completed, "\(writer.error as Any)")
+
+    func pixels(at seconds: Double) async throws -> [UInt8] {
+      // Each concurrent decode owns its generator and asset; neither is shared with the
+      // actor across AVFoundation's asynchronous image operation.
+      let generator = AVAssetImageGenerator(asset: AVURLAsset(url: file))
+      generator.requestedTimeToleranceBefore = .zero
+      generator.requestedTimeToleranceAfter = .zero
+      let image = try await generator.image(at: CMTime(seconds: seconds, preferredTimescale: 600)).image
+      #expect(image.width == 64 && image.height == 64)
+      var bytes = [UInt8](repeating: 0, count: 64 * 64 * 4)
+      try bytes.withUnsafeMutableBytes { raw in
+        let context = try #require(CGContext(data: raw.baseAddress, width: 64, height: 64, bitsPerComponent: 8, bytesPerRow: 64 * 4,
+          space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: 64, height: 64))
+      }
+      return bytes
+    }
+    let before = try await pixels(at: 0.25)
+    #expect(try await pixels(at: 1.5) == before)
+    #expect(try await pixels(at: 2.5) == before)
+    #expect(try await pixels(at: 3.5) == before, "A new PID without its mask scan must retain the old masked picture")
+    let after = try await pixels(at: 4.25)
+    #expect(try await pixels(at: 5.5) == after, "Stopping while static extends the final picture")
+    #expect(after != before, "The new process must supply a fresh picture")
+    let center = (32 * 64 + 32) * 4, outside = (8 * 64 + 8) * 4
+    // Known luma50 / mask126 / luma190 remain clearly distinct after H.264 conversion.
+    #expect(Int(before[center]) > Int(before[outside]) + 40)
+    #expect(Int(after[outside]) > Int(after[center]) + 40)
+  }
+
   @Test func paintCoversTheMaskedPixelsOfAFrame() throws {
     var made: CVPixelBuffer?
     CVPixelBufferCreate(nil, 8, 4, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &made)
