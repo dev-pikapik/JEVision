@@ -113,7 +113,7 @@ cleanup() {
   pkill -f "$SUBJECT/Contents/MacOS/JEVision" 2>/dev/null || true
   if [ "$HELD" = 1 ]; then rm -rf "$LOCK"; fi
   if [ "$KEEP" = 0 ]; then
-    ls -1d "$ROOT"/build/selftest/2* 2>/dev/null | sort -r | tail -n +6 | while read -r old; do rm -rf "$old"; done
+    ls -1d "$ROOT"/build/selftest/2* 2>/dev/null | sort -r | tail -n +6 | while read -r old; do rm -rf "$old"; done || true
   fi
 }
 trap cleanup EXIT
